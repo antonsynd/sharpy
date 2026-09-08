@@ -1,0 +1,12 @@
+# #1717 (R-H): two instantiations of one generic interface in ONE base list. Before: SPY0909 ICE
+# (the queue-vs-symbol assertion fired before any gate). After: SPY0607 naming both, both explicit.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+class H(IA[int], IA[str]):
+    def get(self) -> int:
+        return 1
+
+def main():
+    pass

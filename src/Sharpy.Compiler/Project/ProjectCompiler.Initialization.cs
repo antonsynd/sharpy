@@ -97,9 +97,13 @@ internal partial class ProjectCompiler
                                     semanticBinding.SetBaseTypeReference(typeSymbol, typeSymbol.BaseTypeRef);
                                 }
                             }
+                            // The FULL reference: a restored `class R(IA[int?])` or a dunder-
+                            // synthesized entry keeps its type arguments and SynthesizedVia on the
+                            // binding side too, so the closure gate and the synthesized-interface
+                            // read see on a warm build exactly what they saw cold (#1746, #1717).
                             foreach (var iface in typeSymbol.Interfaces)
                             {
-                                semanticBinding.AddInterface(typeSymbol, iface.Definition);
+                                semanticBinding.AddInterface(typeSymbol, iface);
                             }
 
                             // Register variable types for fields
@@ -139,6 +143,45 @@ internal partial class ProjectCompiler
         if (restoredCount > 0)
         {
             _logger.LogInfo($"Restored symbols from {restoredCount} cached file(s)");
+        }
+    }
+
+    /// <summary>
+    /// Derives <c>CodeGenInfo.SynthesizedInterfaces</c> for every restored type (#1746). The fact is
+    /// not on the wire (RULED 2026-09-07: derive, do not grow the format); it is READ off the
+    /// restored type's MATERIALIZED closure through the same reader the cold path uses — one owner
+    /// — so cold == warm. Must run after <c>MaterializeInheritance</c> (the closure is on the symbol
+    /// only then) and before <c>MaterializeCodeGenInfo</c> (which bridges the fact into the restored
+    /// CodeGenInfo). Each file's module scope is entered so the references' written arguments
+    /// (<c>IEquatable[Foo]</c>) resolve.
+    /// </summary>
+    private void DeriveSynthesizedInterfacesForRestoredTypes()
+    {
+        var semanticBinding = _projectModel!.SemanticBinding;
+        var resolver = new TypeResolver(SymbolTable, SemanticInfo, _logger);
+        var canEnter = SymbolTable.CurrentScope == SymbolTable.GlobalScope;
+
+        foreach (var group in _restoredSymbols.Values.OfType<TypeSymbol>()
+                     .GroupBy(t => t.DefiningFilePath ?? t.DeclaringFilePath ?? string.Empty))
+        {
+            var unit = group.Key.Length > 0 ? _projectModel.GetUnit(group.Key) : null;
+            var entered = canEnter && unit != null;
+            if (entered)
+                SymbolTable.EnterModuleScope(unit!.ModulePath);
+            try
+            {
+                foreach (var restoredType in group)
+                {
+                    var synthesized = SynthesizedInterfaceReader.Read(restoredType, resolver);
+                    if (synthesized.Count > 0)
+                        semanticBinding.SetSynthesizedInterfaces(restoredType, synthesized);
+                }
+            }
+            finally
+            {
+                if (entered)
+                    SymbolTable.ExitScope();
+            }
         }
     }
 }

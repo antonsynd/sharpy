@@ -50,13 +50,24 @@ internal class FileCompilationPipeline
 
     /// <summary>
     /// Resolves inheritance for imported types (transitive base types from external modules),
-    /// then materializes and freezes inheritance data on symbols.
+    /// runs the SPY0607 closure gate, then materializes and freezes inheritance data on symbols.
     /// Call this after both name resolution and import resolution have completed.
     /// </summary>
-    public void ResolveImportedInheritanceAndMaterialize(ImportResolver importResolver)
+    /// <remarks>
+    /// The gate sits BETWEEN inheritance resolution and materialization on purpose (#1717): the
+    /// supertype closure it needs is the binding's interface QUEUE, and materialization collapses
+    /// that queue by definition name. Run afterwards, the gate cannot see the second instantiation
+    /// of a two-entry base list at all, and the pipeline has already either ICEd on the
+    /// queue-vs-symbol count or emitted a base list C# refuses.
+    /// </remarks>
+    public void ResolveImportedInheritanceAndMaterialize(
+        ImportResolver importResolver, DiagnosticBag diagnostics)
     {
         var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger, _semanticBinding);
         inheritanceResolver.ResolveAll(importResolver);
+
+        InterfaceInstantiationGate.CheckAll(
+            _symbolTable, _semanticBinding, _semanticInfo, _logger, diagnostics);
 
         _semanticBinding.MaterializeInheritance();
         DualWriteAssertions.AssertInheritanceConsistency(_symbolTable, _semanticBinding);
@@ -163,17 +174,6 @@ internal class FileCompilationPipeline
         }
 
         return new TypeCheckResult(typeChecker, aborted);
-    }
-
-    /// <summary>
-    /// Runs the SPY0607 gate: detects types that implement the same generic interface at
-    /// two distinct instantiations. Call after <see cref="ResolveImportedInheritanceAndMaterialize"/>
-    /// and before the type checker runs (#1717).
-    /// </summary>
-    public void RunInterfaceInstantiationGate(DiagnosticBag diagnostics)
-    {
-        InterfaceInstantiationGate.CheckAll(
-            _symbolTable, _semanticBinding, _semanticInfo, _logger, diagnostics);
     }
 
     /// <summary>
@@ -301,7 +301,8 @@ internal class FileCompilationPipeline
         {
             nameResolver.ResolveInheritance(cancellationToken);
         }
-        ResolveImportedInheritanceAndMaterialize(importResolver);
+        // SPY0607 (the closure gate) is an inheritance refusal, so it lands on the same bag.
+        ResolveImportedInheritanceAndMaterialize(importResolver, nameResolver.Diagnostics);
 
         return new ImportResolveResult(importResolver);
     }

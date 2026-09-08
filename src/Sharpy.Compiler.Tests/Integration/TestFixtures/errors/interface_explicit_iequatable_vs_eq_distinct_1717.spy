@@ -1,0 +1,26 @@
+# #1717 (R-H) + #1746: an explicit IEquatable[str] base and the IEquatable[Foo] synthesized from the
+# class's own __eq__(self, other: Foo) are two instantiations of one generic interface — refused,
+# naming 'explicit' and 'synthesized via __eq__'. (The synthesized row follows the FIRST __eq__
+# declaration; the later __eq__(str) overload still emits its Equals(string).)
+from system import IEquatable
+
+class Foo(IEquatable[str]):
+    v: int
+
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def __eq__(self, other: Foo) -> bool:
+        return self.v == other.v
+
+    def __eq__(self, other: str) -> bool:
+        return str(self.v) == other
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return self.v
+
+def main():
+    pass

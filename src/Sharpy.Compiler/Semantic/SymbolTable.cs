@@ -152,6 +152,14 @@ public class SymbolTable : IGlobalSymbolTable
         return _moduleScopes.GetValueOrDefault(moduleName);
     }
 
+    /// <summary>
+    /// The names of every module scope created so far, so a whole-program pass can visit each
+    /// module's declarations WITH that scope entered — a name written in a module resolves only
+    /// from inside it (#1717: the closure gate skipped every instantiation naming a user type
+    /// while it looked them up from the global scope).
+    /// </summary>
+    public IReadOnlyList<string> GetModuleScopeNames() => _moduleScopes.Keys.ToList();
+
     public void ExitScope()
     {
         if (_scopeStack.Count <= 1)

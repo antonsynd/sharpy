@@ -1,0 +1,15 @@
+# #1717 (R-H): a generic host is walked at its own parameter — IA[T] and IA[int] are distinct
+# instantiations whether or not T is int. Before: SPY0909. After: SPY0607.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+class G[T](IA[T], IA[int]):
+    v: T
+    def __init__(self, v: T) -> None:
+        self.v = v
+    def get(self) -> T:
+        return self.v
+
+def main():
+    pass

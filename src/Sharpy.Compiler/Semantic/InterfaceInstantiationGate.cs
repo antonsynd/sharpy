@@ -1,21 +1,31 @@
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Pre-materialization gate that detects a type implementing the same generic interface at
-/// two distinct type-argument instantiations. C# refuses this (CS0738), so the gate surfaces
-/// it as SPY0607 before the error reaches codegen as an ICE (#1717, R-H ruling).
+/// The R-H gate: a type may reach a generic interface at ONE instantiation. C# refuses two
+/// (CS0738), and Sharpy's materialization silently collapses the second by definition name, so
+/// without this gate the program either ICEs behind SPY0908 or runs with one instantiation
+/// quietly discarded. SPY0607 refuses it by name, before materialization (#1717, R-H ruling).
 /// </summary>
+/// <remarks>
+/// <para><b>Placement.</b> The gate runs between inheritance resolution and
+/// <c>SemanticBinding.MaterializeInheritance</c> (see
+/// <c>FileCompilationPipeline.ResolveImportedInheritanceAndMaterialize</c>). Anywhere later is
+/// inert for the commonest shape — two instantiations in ONE declaration's base list — because
+/// the queue-vs-symbol comparison in <see cref="DualWriteAssertions"/> and the C# base list are
+/// both downstream of the collapse.</para>
+/// <para><b>The walk.</b> <see cref="GenericInstantiationWalker.EnumerateImplementedInterfaces"/>
+/// is the one supertype-closure reader: it reads the BINDING (the pre-dedupe queue, so both
+/// entries of a two-instantiation base list are visible), substitutes each level's arguments
+/// through interface parents and the base chain, converts written annotations with their
+/// modifiers intact (<c>IA[T?]</c> is not <c>IA[T]</c>), and reports the route it took. The gate
+/// does not re-derive any of that.</para>
+/// </remarks>
 internal static class InterfaceInstantiationGate
 {
-    private record struct CollectedInterface(
-        TypeSymbol Definition,
-        IReadOnlyList<SemanticType> ResolvedArgs,
-        string SourcePath,
-        bool IsClrSource);
-
     public static void CheckAll(
         SymbolTable symbolTable,
         SemanticBinding semanticBinding,
@@ -25,84 +35,114 @@ internal static class InterfaceInstantiationGate
     {
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols()
-            .Concat(symbolTable.GetAllModuleScopeSymbols()))
+
+        void CheckScope(IEnumerable<Symbol> symbols)
         {
-            if (symbol is TypeSymbol typeSymbol &&
-                typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct or TypeKind.Interface &&
-                visited.Add(typeSymbol))
+            foreach (var symbol in symbols)
             {
-                Check(typeSymbol, typeResolver, diagnostics);
+                // Interfaces are checked too: `interface ID(IB, IC)` is the declaration that
+                // INTRODUCES the conflict under R-H, so the diagnostic belongs there and not only
+                // at every class that names ID. Reflected CLR types are not walked at all — their
+                // supertype graph is not declared in Sharpy source, so there is no declaration to
+                // refuse (the same reason the per-path exemption in Check exists, applied to the
+                // host before paying for the walk).
+                if (symbol is TypeSymbol typeSymbol &&
+                    typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct or TypeKind.Interface &&
+                    typeSymbol.ClrType == null &&
+                    visited.Add(typeSymbol))
+                {
+                    Check(typeSymbol, semanticBinding, typeResolver, diagnostics);
+                }
+            }
+        }
+
+        CheckScope(symbolTable.GlobalScope.GetAllSymbols());
+
+        // A module's declarations are checked WITH its scope entered: an instantiation's written
+        // argument (`IEquatable[Foo]` synthesized from `__eq__(self, other: Foo)`, `IA[Point]`)
+        // names a type that resolves only from inside the module that declared it. Looked up
+        // from the global scope every such reference was Unknown, the walker skipped it, and the
+        // gate was inert for every user-typed instantiation while the builtin-typed cells passed.
+        var canEnter = symbolTable.CurrentScope == symbolTable.GlobalScope;
+        foreach (var moduleName in symbolTable.GetModuleScopeNames())
+        {
+            var scope = symbolTable.GetModuleScope(moduleName);
+            if (scope == null)
+                continue;
+            if (!canEnter)
+            {
+                CheckScope(scope.GetAllSymbols());
+                continue;
+            }
+            symbolTable.EnterModuleScope(moduleName);
+            try
+            {
+                CheckScope(scope.GetAllSymbols());
+            }
+            finally
+            {
+                symbolTable.ExitScope();
             }
         }
     }
 
     public static void Check(
         TypeSymbol typeSymbol,
+        SemanticBinding semanticBinding,
         TypeResolver typeResolver,
         DiagnosticBag diagnostics)
     {
-        var collected = CollectAllInterfaces(typeSymbol, typeResolver);
-        if (collected.Count == 0)
+        // A generic host is walked at its OWN type parameters, so `class G[T](IA[T], IA[int])`
+        // compares `IA[T]` against `IA[int]` rather than skipping the open arm: `T` may be `int`,
+        // and C# refuses the declaration whether or not it is.
+        var ownArguments = typeSymbol.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+
+        var reached = GenericInstantiationWalker
+            .EnumerateImplementedInterfaces(typeSymbol, ownArguments, semanticBinding, typeResolver)
+            .ToList();
+
+        if (reached.Count < 2)
             return;
 
-        var groups = new Dictionary<TypeSymbol, List<CollectedInterface>>(
-            ReferenceEqualityComparer.Instance);
+        var groups = new Dictionary<object, List<GenericInstantiationWalker.InstantiatedSupertype>>(
+            DefinitionIdentityComparer.Instance);
 
-        foreach (var entry in collected)
+        foreach (var entry in reached)
         {
-            if (!groups.TryGetValue(entry.Definition, out var list))
+            var key = DefinitionIdentity(entry.Definition);
+            if (!groups.TryGetValue(key, out var list))
             {
-                list = new List<CollectedInterface>();
-                groups[entry.Definition] = list;
+                list = new List<GenericInstantiationWalker.InstantiatedSupertype>();
+                groups[key] = list;
             }
             list.Add(entry);
         }
 
-        foreach (var (definition, entries) in groups)
+        foreach (var entries in groups.Values)
         {
             if (entries.Count < 2)
                 continue;
 
-            // Only generic interfaces can conflict
-            if (entries.All(e => e.ResolvedArgs.Count == 0))
+            // A non-generic interface reached twice is not a conflict — it is the same contract.
+            if (entries.All(e => e.TypeArguments.Count == 0))
                 continue;
 
-            // Find distinct instantiations by CanonicalKey tuple
-            var distinct = new List<CollectedInterface>();
-            foreach (var entry in entries)
-            {
-                bool isDuplicate = false;
-                foreach (var existing in distinct)
-                {
-                    if (ArgKeysMatch(entry.ResolvedArgs, existing.ResolvedArgs))
-                    {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if (!isDuplicate)
-                    distinct.Add(entry);
-            }
+            // The walker's visited set already collapses identical (definition, arguments) pairs,
+            // so every entry left in a group is a DISTINCT instantiation. Two of them is a
+            // conflict; the same instantiation via two paths never gets here.
+            var first = entries[0];
+            var second = entries[1];
 
-            if (distinct.Count < 2)
+            // Exempt when every contributing path is CLR-internal: a reflected type's own
+            // supertype graph is not something Sharpy source can change.
+            if (entries.All(e => e.FromClrDeclaration))
                 continue;
-
-            // CLR exemption: if ALL contributing paths for this conflict are CLR-sourced, skip
-            bool allClr = entries.All(e => e.IsClrSource);
-            if (allClr)
-                continue;
-
-            // Emit SPY0607 for the first pair of conflicting instantiations
-            var first = distinct[0];
-            var second = distinct[1];
-
-            var firstDisplay = FormatInterfaceDisplay(definition.Name, first.ResolvedArgs);
-            var secondDisplay = FormatInterfaceDisplay(definition.Name, second.ResolvedArgs);
 
             var message =
-                $"Type '{typeSymbol.Name}' implements '{firstDisplay}' ({first.SourcePath}) " +
-                $"and '{secondDisplay}' ({second.SourcePath}) " +
+                $"Type '{typeSymbol.Name}' implements '{FormatInstantiation(first)}' ({first.Path}) " +
+                $"and '{FormatInstantiation(second)}' ({second.Path}) " +
                 "— one generic interface cannot have conflicting type arguments";
 
             diagnostics.AddError(
@@ -114,137 +154,44 @@ internal static class InterfaceInstantiationGate
         }
     }
 
-    private static List<CollectedInterface> CollectAllInterfaces(
-        TypeSymbol typeSymbol, TypeResolver typeResolver)
+    /// <summary>
+    /// ONE identity per interface DEFINITION. Two routes can produce two distinct
+    /// <see cref="TypeSymbol"/>s for the same CLR interface — <c>from system import IEquatable</c>
+    /// builds one through discovery, the dunder hoist builds one through
+    /// <c>ClrTypeBridge</c>, whose cache is per instance — so a reference-keyed group would split
+    /// the pair and miss the conflict. The key is the CLR definition <see cref="Type"/> when the
+    /// definition is CLR-backed, and the symbol reference otherwise (#1746).
+    /// </summary>
+    private static object DefinitionIdentity(TypeSymbol definition)
     {
-        var result = new List<CollectedInterface>();
-
-        // Direct interfaces (includes synthesized since Phase 4)
-        foreach (var ifaceRef in typeSymbol.Interfaces)
-        {
-            var args = ResolveArgs(ifaceRef, typeResolver);
-            if (args == null)
-                continue;
-
-            string sourcePath;
-            if (ifaceRef.SynthesizedVia != null)
-                sourcePath = $"synthesized via {ifaceRef.SynthesizedVia}";
-            else
-                sourcePath = "explicit";
-
-            result.Add(new CollectedInterface(
-                ifaceRef.Definition,
-                args,
-                sourcePath,
-                IsClrSource: ifaceRef.Definition.ClrType != null));
-        }
-
-        // Walk base type chain
-        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
-        var ancestor = typeSymbol.BaseType;
-        while (ancestor != null && visited.Add(ancestor))
-        {
-            foreach (var ifaceRef in ancestor.Interfaces)
-            {
-                var args = ResolveArgs(ifaceRef, typeResolver);
-                if (args == null)
-                    continue;
-
-                string sourcePath;
-                if (ifaceRef.SynthesizedVia != null)
-                    sourcePath = $"inherited from {ancestor.Name}, synthesized via {ifaceRef.SynthesizedVia}";
-                else
-                    sourcePath = $"inherited from {ancestor.Name}";
-
-                result.Add(new CollectedInterface(
-                    ifaceRef.Definition,
-                    args,
-                    sourcePath,
-                    IsClrSource: ancestor.ClrType != null));
-            }
-
-            // Also collect from interfaces the ancestor implements (transitive)
-            foreach (var ifaceRef in ancestor.Interfaces)
-            {
-                CollectFromInterfaceHierarchy(ifaceRef.Definition, typeResolver, result, visited);
-            }
-
-            ancestor = ancestor.BaseType;
-        }
-
-        // Collect from direct interfaces' own hierarchies
-        foreach (var ifaceRef in typeSymbol.Interfaces)
-        {
-            CollectFromInterfaceHierarchy(ifaceRef.Definition, typeResolver, result, visited);
-        }
-
-        return result;
+        if (definition.ClrType is not { } clr)
+            return definition;
+        return clr.IsGenericType && !clr.IsGenericTypeDefinition
+            ? clr.GetGenericTypeDefinition()
+            : clr;
     }
 
-    private static void CollectFromInterfaceHierarchy(
-        TypeSymbol interfaceSymbol,
-        TypeResolver typeResolver,
-        List<CollectedInterface> result,
-        HashSet<TypeSymbol> visited)
+    private sealed class DefinitionIdentityComparer : IEqualityComparer<object>
     {
-        if (!visited.Add(interfaceSymbol))
-            return;
+        internal static readonly DefinitionIdentityComparer Instance = new();
 
-        foreach (var ifaceRef in interfaceSymbol.Interfaces)
-        {
-            var args = ResolveArgs(ifaceRef, typeResolver);
-            if (args == null)
-                continue;
+        public new bool Equals(object? x, object? y)
+            => x is Type xt && y is Type yt ? xt == yt : ReferenceEquals(x, y);
 
-            result.Add(new CollectedInterface(
-                ifaceRef.Definition,
-                args,
-                $"via {interfaceSymbol.Name}",
-                IsClrSource: interfaceSymbol.ClrType != null));
-
-            CollectFromInterfaceHierarchy(ifaceRef.Definition, typeResolver, result, visited);
-        }
+        public int GetHashCode(object obj)
+            => obj is Type t ? t.GetHashCode() : RuntimeHelpers.GetHashCode(obj);
     }
 
-    private static IReadOnlyList<SemanticType>? ResolveArgs(
-        InterfaceReference ifaceRef, TypeResolver typeResolver)
+    /// <summary>
+    /// Renders an instantiation the way Sharpy source spells it — <c>IA[int32?]</c>, not
+    /// <c>IA&lt;Optional&lt;int&gt;&gt;</c> — so both arms of the message read in one notation
+    /// (RULED 2026-09-07).
+    /// </summary>
+    private static string FormatInstantiation(GenericInstantiationWalker.InstantiatedSupertype entry)
     {
-        if (!ifaceRef.ResolvedTypeArguments.IsDefaultOrEmpty)
-            return ifaceRef.ResolvedTypeArguments;
-
-        if (ifaceRef.TypeArgAnnotations.IsDefaultOrEmpty)
-            return Array.Empty<SemanticType>();
-
-        var resolved = new List<SemanticType>(ifaceRef.TypeArgAnnotations.Length);
-        foreach (var annotation in ifaceRef.TypeArgAnnotations)
-        {
-            var type = typeResolver.ResolveTypeAnnotation(annotation);
-            if (type is UnknownType)
-                return null;
-            resolved.Add(type);
-        }
-        return resolved;
-    }
-
-    private static bool ArgKeysMatch(
-        IReadOnlyList<SemanticType> a, IReadOnlyList<SemanticType> b)
-    {
-        if (a.Count != b.Count)
-            return false;
-        for (int i = 0; i < a.Count; i++)
-        {
-            if (a[i].CanonicalKey != b[i].CanonicalKey)
-                return false;
-        }
-        return true;
-    }
-
-    private static string FormatInterfaceDisplay(
-        string definitionName, IReadOnlyList<SemanticType> args)
-    {
-        if (args.Count == 0)
-            return definitionName;
-        var argDisplay = string.Join(", ", args.Select(a => a.GetDisplayName()));
-        return $"{definitionName}[{argDisplay}]";
+        if (entry.TypeArguments.Count == 0)
+            return entry.Definition.Name;
+        var argDisplay = string.Join(", ", entry.TypeArguments.Select(a => a.GetDisplayName()));
+        return $"{entry.Definition.Name}[{argDisplay}]";
     }
 }

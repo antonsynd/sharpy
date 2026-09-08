@@ -1,0 +1,12 @@
+# #1717 (R-H): the struct host of the direct two-instantiation form. Before: SPY0909. After: SPY0607.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+struct S(IA[int], IA[str]):
+    x: int
+    def get(self) -> int:
+        return self.x
+
+def main():
+    pass

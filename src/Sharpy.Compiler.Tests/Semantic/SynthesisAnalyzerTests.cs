@@ -1,580 +1,164 @@
-using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
+using Xunit;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests for the SynthesisAnalyzer class which computes synthesized interfaces
-/// from dunder method definitions on TypeSymbol instances.
+/// The ONE classifier for dunder-driven interface synthesis is annotation-level:
+/// <see cref="SynthesisAnalyzer.ClassifyDundersFromAst"/> reads a class body's dunder
+/// declarations and yields the rows <c>NameResolver</c> enqueues into the supertype closure at
+/// inheritance resolution (#1746, plan-499995 Design Decision 4). These tests drive it from
+/// Sharpy SOURCE, so each row is pinned by the spelling a user writes, and the row ORDER is
+/// pinned too — the emitted base list follows it and is snapshot-pinned.
 /// </summary>
 public class SynthesisAnalyzerTests
 {
-    // ==================== Helper Methods ====================
+    /// <summary>The seven dunder → interface rows the classifier knows; a new row must be placed here.</summary>
+    private const int RowCount = 7;
 
-    /// <summary>
-    /// Creates a minimal TypeSymbol with the given protocol and operator methods.
-    /// </summary>
-    private static TypeSymbol CreateTypeSymbol(
-        string name = "TestType",
-        Dictionary<string, List<FunctionSymbol>>? protocolMethods = null,
-        Dictionary<string, List<FunctionSymbol>>? operatorMethods = null)
+    private static List<(string InterfaceName, string Namespace, string[] TypeArgs, string TriggeringDunder)> Classify(string body)
     {
-        return new TypeSymbol
+        var source = "class C:\n" + string.Join("\n", body.Split('\n').Select(l => "    " + l)) + "\n";
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var parser = new global::Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll(), NullLogger.Instance);
+        var module = parser.ParseModule();
+        var classDef = module.Body.OfType<ClassDef>().Single();
+        return SynthesisAnalyzer.ClassifyDundersFromAst(classDef.Body)
+            .Select(r => (r.InterfaceName, r.Namespace, r.TypeArgAnnotations.Select(Spell).ToArray(), r.TriggeringDunder))
+            .ToList();
+    }
+
+    private static string Spell(TypeAnnotation annotation)
+    {
+        var name = annotation.TypeArguments.Length == 0
+            ? annotation.Name
+            : $"{annotation.Name}[{string.Join(", ", annotation.TypeArguments.Select(Spell))}]";
+        if (annotation.IsOptional)
+            name += "?";
+        else if (annotation.IsCSharpNullable)
+            name += " | None";
+        return name;
+    }
+
+    // ── one row per dunder ────────────────────────────────────────────────────────────────
+
+    public static IEnumerable<object[]> SingleRows()
+    {
+        yield return new object[] { "def __len__(self) -> int:\n    return 0", "ISized", "Sharpy", Array.Empty<string>(), DunderNames.Len };
+        yield return new object[] { "def __bool__(self) -> bool:\n    return True", "IBoolConvertible", "Sharpy", Array.Empty<string>(), DunderNames.Bool };
+        yield return new object[] { "def __reversed__(self) -> str:\n    return \"\"", "IReverseEnumerable", "Sharpy", new[] { "str" }, DunderNames.Reversed };
+        yield return new object[] { "def __reversed__(self):\n    return \"\"", "IReverseEnumerable", "Sharpy", new[] { "object" }, DunderNames.Reversed };
+        yield return new object[] { "def __next__(self) -> int:\n    return 0", "IEnumerator", "System.Collections.Generic", new[] { "int" }, DunderNames.Next };
+        yield return new object[] { "def __next__(self):\n    return 0", "IEnumerator", "System.Collections.Generic", new[] { "object" }, DunderNames.Next };
+        yield return new object[] { "def __eq__(self, other: Point) -> bool:\n    return True", "IEquatable", "System", new[] { "Point" }, DunderNames.Eq };
+        yield return new object[] { "def __eq__(self, other: int) -> bool:\n    return True", "IEquatable", "System", new[] { "int" }, DunderNames.Eq };
+        yield return new object[] { "def __eq__(self, other: int?) -> bool:\n    return True", "IEquatable", "System", new[] { "int?" }, DunderNames.Eq };
+        yield return new object[] { "def __iter__(self) -> int:\n    yield 1", "IEnumerable", "System.Collections.Generic", new[] { "int" }, DunderNames.Iter };
+    }
+
+    [Theory]
+    [MemberData(nameof(SingleRows))]
+    public void SingleDunder_YieldsItsRow(string body, string interfaceName, string ns, string[] typeArgs, string via)
+    {
+        var rows = Classify(body);
+        rows.Should().ContainSingle();
+        rows[0].InterfaceName.Should().Be(interfaceName);
+        rows[0].Namespace.Should().Be(ns);
+        rows[0].TypeArgs.Should().Equal(typeArgs);
+        rows[0].TriggeringDunder.Should().Be(via);
+    }
+
+    // ── shapes that yield nothing ─────────────────────────────────────────────────────────
+
+    public static IEnumerable<object[]> EmptyShapes()
+    {
+        yield return new object[] { "pass" };
+        yield return new object[] { "def __str__(self) -> str:\n    return \"\"" };
+        yield return new object[] { "def __eq__(self, other: object) -> bool:\n    return True" };
+        yield return new object[] { "def __eq__(self, other) -> bool:\n    return True" };
+        yield return new object[] { "def __eq__(self) -> bool:\n    return True" };
+        // __iter__ without __next__ and without a yield is a plain method, not a generator.
+        yield return new object[] { "def __iter__(self) -> int:\n    return 0" };
+    }
+
+    [Theory]
+    [MemberData(nameof(EmptyShapes))]
+    public void NonSynthesizingShape_YieldsNothing(string body)
+    {
+        Classify(body).Should().BeEmpty();
+    }
+
+    // ── combinations and order ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IterAndNext_YieldEnumeratorThenEnumerable_AtNextsElementType()
+    {
+        var rows = Classify("def __iter__(self):\n    return self\ndef __next__(self) -> str:\n    return \"\"");
+        rows.Select(r => r.InterfaceName).Should().Equal("IEnumerator", "IEnumerable");
+        rows.Should().OnlyContain(r => r.TypeArgs.SequenceEqual(new[] { "str" }));
+        rows[0].TriggeringDunder.Should().Be(DunderNames.Next);
+        rows[1].TriggeringDunder.Should().Be(DunderNames.Iter);
+    }
+
+    [Fact]
+    public void AllSevenRows_ClassifyInBaseListOrder()
+    {
+        var body = string.Join("\n",
+            "def __eq__(self, other: int) -> bool:",
+            "    return True",
+            "def __next__(self) -> str:",
+            "    return \"\"",
+            "def __iter__(self):",
+            "    return self",
+            "def __reversed__(self) -> str:",
+            "    return \"\"",
+            "def __bool__(self) -> bool:",
+            "    return True",
+            "def __len__(self) -> int:",
+            "    return 0");
+        var rows = Classify(body);
+
+        // Declaration order does not matter; the roster order does (the emitted base list is
+        // snapshot-pinned on it).
+        rows.Select(r => r.InterfaceName).Should().Equal(
+            "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IEquatable");
+        rows.Should().HaveCount(6, "the generator-__iter__ row is mutually exclusive with __next__, so six of the seven rows fit in one class");
+    }
+
+    [Fact]
+    public void OnlyTheFirstDeclaration_OfARepeatedDunder_Classifies()
+    {
+        var rows = Classify("def __eq__(self, other: int) -> bool:\n    return True\ndef __eq__(self, other: object) -> bool:\n    return True");
+        rows.Should().ContainSingle();
+        rows[0].TypeArgs.Should().Equal("int");
+    }
+
+    // ── rosters ───────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void SynthesizableSharpyCoreInterfaces_AreTheProtocolRegistrysNonGenericRows()
+    {
+        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().BeEquivalentTo(new[] { "ISized", "IBoolConvertible" });
+        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().NotContain("IReverseEnumerable");
+    }
+
+    [Fact]
+    public void ClrDefinitionFor_CoversEveryRow_AndNothingElse()
+    {
+        var names = new[] { "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IEquatable" };
+        names.Length.Should().Be(RowCount - 1, "IEnumerable is one interface reached by two dunder rows");
+        foreach (var name in names)
         {
-            Name = name,
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Class,
-            ProtocolMethods = protocolMethods ?? new(),
-            OperatorMethods = operatorMethods ?? new(),
-        };
-    }
-
-    /// <summary>
-    /// Creates a FunctionSymbol with the given parameters and return type.
-    /// </summary>
-    private static FunctionSymbol CreateFunctionSymbol(
-        string name,
-        List<ParameterSymbol>? parameters = null,
-        SemanticType? returnType = null)
-    {
-        return new FunctionSymbol
-        {
-            Name = name,
-            Kind = SymbolKind.Function,
-            Parameters = parameters ?? new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown }
-            },
-            ReturnType = returnType ?? SemanticType.Unknown,
-        };
-    }
-
-    // ==================== Phase 1: Sharpy.Core Protocol Interfaces ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_LenDunder_ProducesISized()
-    {
-        // Arrange
-        var lenFunc = CreateFunctionSymbol(DunderNames.Len, returnType: SemanticType.Int);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Len] = new List<FunctionSymbol> { lenFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("ISized");
-        info.Namespace.Should().Be("Sharpy");
-        info.TypeArgs.Should().BeEmpty();
-        info.TriggeringDunder.Should().Be(DunderNames.Len);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_BoolDunder_ProducesIBoolConvertible()
-    {
-        // Arrange
-        var boolFunc = CreateFunctionSymbol(DunderNames.Bool, returnType: SemanticType.Bool);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Bool] = new List<FunctionSymbol> { boolFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IBoolConvertible");
-        info.Namespace.Should().Be("Sharpy");
-        info.TypeArgs.Should().BeEmpty();
-        info.TriggeringDunder.Should().Be(DunderNames.Bool);
-    }
-
-    // ==================== Phase 2a: IReverseEnumerable ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_ReversedDunder_ProducesIReverseEnumerableWithElementType()
-    {
-        // Arrange: __reversed__ returning str should synthesize IReverseEnumerable<str>
-        var reversedFunc = CreateFunctionSymbol(DunderNames.Reversed, returnType: SemanticType.Str);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Reversed] = new List<FunctionSymbol> { reversedFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IReverseEnumerable");
-        info.Namespace.Should().Be("Sharpy");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().Be(SemanticType.Str);
-        info.TriggeringDunder.Should().Be(DunderNames.Reversed);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_ReversedWithUnknownReturnType_FallsBackToObject()
-    {
-        // Arrange: __reversed__ with UnknownType should fall back to object
-        var reversedFunc = CreateFunctionSymbol(DunderNames.Reversed, returnType: SemanticType.Unknown);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Reversed] = new List<FunctionSymbol> { reversedFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IReverseEnumerable");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
-        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("object");
-    }
-
-    // ==================== Phase 2b: Iterator Interfaces ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_NextDunder_ProducesIEnumeratorWithElementType()
-    {
-        // Arrange: __next__ returning str should synthesize IEnumerator<str>
-        var nextFunc = CreateFunctionSymbol(DunderNames.Next, returnType: SemanticType.Str);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Next] = new List<FunctionSymbol> { nextFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: Only IEnumerator<str> (no IEnumerable without __iter__)
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEnumerator");
-        info.Namespace.Should().Be("System.Collections.Generic");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().Be(SemanticType.Str);
-        info.TriggeringDunder.Should().Be(DunderNames.Next);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_IterAndNextDunders_ProducesBothIEnumeratorAndIEnumerable()
-    {
-        // Arrange: __iter__ + __next__ returning str should synthesize both
-        var nextFunc = CreateFunctionSymbol(DunderNames.Next, returnType: SemanticType.Str);
-        var iterFunc = CreateFunctionSymbol(DunderNames.Iter);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Next] = new List<FunctionSymbol> { nextFunc },
-                [DunderNames.Iter] = new List<FunctionSymbol> { iterFunc },
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: Should have IEnumerator<str> and IEnumerable<str>
-        var enumerator = result.Should().Contain(i => i.InterfaceName == "IEnumerator").Which;
-        enumerator.Namespace.Should().Be("System.Collections.Generic");
-        enumerator.TypeArgs.Should().HaveCount(1);
-        enumerator.TypeArgs[0].Should().Be(SemanticType.Str);
-        enumerator.TriggeringDunder.Should().Be(DunderNames.Next);
-
-        var enumerable = result.Should().Contain(i => i.InterfaceName == "IEnumerable").Which;
-        enumerable.Namespace.Should().Be("System.Collections.Generic");
-        enumerable.TypeArgs.Should().HaveCount(1);
-        enumerable.TypeArgs[0].Should().Be(SemanticType.Str);
-        enumerable.TriggeringDunder.Should().Be(DunderNames.Iter);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_NextWithUnknownReturnType_FallsBackToObject()
-    {
-        // Arrange: __next__ with UnknownType should fall back to object as element type
-        var nextFunc = CreateFunctionSymbol(DunderNames.Next, returnType: SemanticType.Unknown);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Next] = new List<FunctionSymbol> { nextFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEnumerator");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
-        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("object");
-    }
-
-    // ==================== Phase 3: IEquatable from __eq__ ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EqDunderWithUserType_ProducesIEquatable()
-    {
-        // Arrange: __eq__(self, other: Point) should synthesize IEquatable<Point>
-        var pointType = new UserDefinedType { Name = "Point" };
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = pointType },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEquatable");
-        info.Namespace.Should().Be("System");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
-        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("Point");
-        info.TriggeringDunder.Should().Be(DunderNames.Eq);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EqDunderWithObjectType_SkipsIEquatable()
-    {
-        // Arrange: __eq__(self, other: object) should NOT synthesize IEquatable
-        // because object-typed __eq__ maps to override Equals(object), not IEquatable<T>
-        var objectType = new UserDefinedType { Name = "object" };
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = objectType },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EqDunderWithUnknownType_SkipsIEquatable()
-    {
-        // Arrange: __eq__(self, other: <unresolved>) should NOT synthesize IEquatable
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = SemanticType.Unknown },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    // ==================== Empty / No Dunders ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_NoDunders_ReturnsEmptyList()
-    {
-        // Arrange
-        var typeSymbol = CreateTypeSymbol();
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    // ==================== Combined Scenarios ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_MultipleDunders_ProducesAllInterfaces()
-    {
-        // Arrange: A type with __len__, __bool__, __next__, __iter__, __eq__(self, other: Point)
-        var lenFunc = CreateFunctionSymbol(DunderNames.Len, returnType: SemanticType.Int);
-        var boolFunc = CreateFunctionSymbol(DunderNames.Bool, returnType: SemanticType.Bool);
-        var nextFunc = CreateFunctionSymbol(DunderNames.Next, returnType: SemanticType.Int);
-        var iterFunc = CreateFunctionSymbol(DunderNames.Iter);
-
-        var pointType = new UserDefinedType { Name = "Point" };
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = pointType },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Len] = new List<FunctionSymbol> { lenFunc },
-                [DunderNames.Bool] = new List<FunctionSymbol> { boolFunc },
-                [DunderNames.Next] = new List<FunctionSymbol> { nextFunc },
-                [DunderNames.Iter] = new List<FunctionSymbol> { iterFunc },
-            },
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: ISized, IBoolConvertible, IEnumerator<int>, IEnumerable<int>, IEquatable<Point>
-        result.Should().HaveCount(5);
-        result.Should().Contain(i => i.InterfaceName == "ISized");
-        result.Should().Contain(i => i.InterfaceName == "IBoolConvertible");
-        result.Should().Contain(i => i.InterfaceName == "IEnumerator");
-        result.Should().Contain(i => i.InterfaceName == "IEnumerable");
-        result.Should().Contain(i => i.InterfaceName == "IEquatable");
-    }
-
-    // ==================== Non-Synthesizable Protocol Methods ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_StrDunder_NotSynthesized()
-    {
-        // Arrange: __str__ maps to IStrConvertible, but it is NOT in SynthesizableSharpyCoreInterfaces
-        var strFunc = CreateFunctionSymbol(DunderNames.Str, returnType: SemanticType.Str);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Str] = new List<FunctionSymbol> { strFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: __str__ should not produce any synthesized interface
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_IterAloneWithoutNext_DoesNotProduceIEnumerable()
-    {
-        // Arrange: __iter__ without __next__ should not produce IEnumerable
-        var iterFunc = CreateFunctionSymbol(DunderNames.Iter);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Iter] = new List<FunctionSymbol> { iterFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    // ==================== SynthesizableSharpyCoreInterfaces Registry ====================
-
-    [Fact]
-    public void SynthesizableSharpyCoreInterfaces_ContainsExpectedInterfaces()
-    {
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().Contain("ISized");
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().Contain("IBoolConvertible");
-    }
-
-    [Fact]
-    public void SynthesizableSharpyCoreInterfaces_DoesNotContainNonSynthesizable()
-    {
-        // These interfaces exist in ProtocolRegistry but should NOT be auto-synthesized
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().NotContain("IStrConvertible");
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().NotContain("IHashable");
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().NotContain("IContainer");
-        SynthesisAnalyzer.SynthesizableSharpyCoreInterfaces.Should().NotContain("IIterable");
-    }
-
-    // ==================== Edge Cases ====================
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EqWithOnlySelfParam_SkipsIEquatable()
-    {
-        // Arrange: __eq__(self) with no "other" parameter
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EqWithBuiltinType_ProducesIEquatable()
-    {
-        // Arrange: __eq__(self, other: int) should synthesize IEquatable<int>
-        var eqFunc = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = SemanticType.Int },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEquatable");
-        info.Namespace.Should().Be("System");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().Be(SemanticType.Int);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_NextWithIntReturn_ProducesIEnumeratorOfInt()
-    {
-        // Arrange: __next__ returning int should synthesize IEnumerator<int>
-        var nextFunc = CreateFunctionSymbol(DunderNames.Next, returnType: SemanticType.Int);
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Next] = new List<FunctionSymbol> { nextFunc }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEnumerator");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().Be(SemanticType.Int);
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_EmptyOverloadList_HandledGracefully()
-    {
-        // Arrange: __next__ with empty overload list should not crash
-        var typeSymbol = CreateTypeSymbol(
-            protocolMethods: new()
-            {
-                [DunderNames.Next] = new List<FunctionSymbol>()
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: Empty overload list produces nothing (FirstOrDefault returns null)
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ComputeSynthesizedInterfaces_MultipleEqOverloads_SynthesizesOnlyNonObjectOverloads()
-    {
-        // Arrange: a class with both __eq__(self, other: Point) and __eq__(self, other: object)
-        // This is the canonical pattern — typed overload for IEquatable<T>, object overload for Equals(object).
-        // Only the typed overload should produce IEquatable<Point>; the object overload is skipped.
-        var pointType = new UserDefinedType { Name = "Point" };
-        var objectType = new UserDefinedType { Name = "object" };
-
-        var eqPoint = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = pointType },
-            },
-            returnType: SemanticType.Bool);
-
-        var eqObject = CreateFunctionSymbol(
-            DunderNames.Eq,
-            parameters: new List<ParameterSymbol>
-            {
-                new() { Name = "self", Type = SemanticType.Unknown },
-                new() { Name = "other", Type = objectType },
-            },
-            returnType: SemanticType.Bool);
-
-        var typeSymbol = CreateTypeSymbol(
-            operatorMethods: new()
-            {
-                [DunderNames.Eq] = new List<FunctionSymbol> { eqPoint, eqObject }
-            });
-
-        // Act
-        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Assert: only IEquatable<Point>, not IEquatable<object>
-        result.Should().ContainSingle();
-        var info = result[0];
-        info.InterfaceName.Should().Be("IEquatable");
-        info.Namespace.Should().Be("System");
-        info.TypeArgs.Should().HaveCount(1);
-        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
-        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("Point");
-        info.TriggeringDunder.Should().Be(DunderNames.Eq);
+            var definition = SynthesisAnalyzer.ClrDefinitionFor(name);
+            definition.Should().NotBeNull(name);
+            definition!.IsInterface.Should().BeTrue(name);
+            definition.Name.Should().StartWith(name);
+        }
+        SynthesisAnalyzer.ClrDefinitionFor("IComparable").Should().BeNull();
+        SynthesisAnalyzer.ClrDefinitionFor("ISizedd").Should().BeNull();
     }
 }

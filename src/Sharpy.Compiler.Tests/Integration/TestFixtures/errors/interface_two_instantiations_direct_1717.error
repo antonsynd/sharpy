@@ -1,0 +1,2 @@
+Type 'H' implements 'IA[int32]' (explicit) and 'IA[str]' (explicit) @7:1
+one generic interface cannot have conflicting type arguments

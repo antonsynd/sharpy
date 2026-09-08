@@ -1,0 +1,19 @@
+# #1746 overlap cell (the plan's s46f): explicit ISized + __len__ is ONE base-list entry.
+# Before (the range's first cut): CS0528 'ISized' already listed. After: prints.
+class Bag(ISized):
+    items: list[int]
+
+    def __init__(self, items: list[int]) -> None:
+        self.items = items
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+def size(s: ISized) -> str:
+    return "sized"
+
+def main():
+    b = Bag([1, 2, 3])
+    print(len(b))
+    print(size(b))
+    print(isinstance(b, ISized))

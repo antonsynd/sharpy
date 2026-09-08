@@ -18,6 +18,7 @@ internal class InheritanceResolver
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
     private readonly SemanticBinding _semanticBinding;
+    private readonly Discovery.ClrTypeBridge _clrTypeBridge = new();
 
     public InheritanceResolver(SymbolTable symbolTable, ICompilerLogger? logger = null, SemanticBinding? semanticBinding = null)
     {
@@ -120,6 +121,36 @@ internal class InheritanceResolver
                 {
                     _logger.LogWarning($"Could not resolve interface '{ifaceAnnotation.Name}' for {type.Name}", 0, 0);
                 }
+            }
+
+            // Restored dunder-synthesized rows (#1746): a synthesized definition is CLR-backed and
+            // has no registry id, so the cache carries the row by name. Re-enqueue it through the
+            // rule the cold hoist used, flagged the same way, so the closure gate and the
+            // synthesized-interface read see on a warm build exactly what they saw cold. Not
+            // deduped against the explicit rows on purpose — the cold queue holds both an explicit
+            // ISized and the `__len__` row too, and materialization is the one dedupe.
+            var queued = _semanticBinding.GetInterfaces(type);
+            foreach (var synthesized in type.UnresolvedSynthesizedInterfaces)
+            {
+                if (queued != null && queued.Any(r => r.SynthesizedVia == synthesized.SynthesizedVia
+                        && r.Definition.Name == synthesized.InterfaceName))
+                    continue;
+
+                var definition = SynthesisAnalyzer.ResolveInterfaceDefinition(
+                    synthesized.InterfaceName, LookupTypeInModuleScopes, _clrTypeBridge);
+                if (definition == null)
+                {
+                    _logger.LogWarning($"Could not resolve synthesized interface '{synthesized.InterfaceName}' for {type.Name}", 0, 0);
+                    continue;
+                }
+
+                _semanticBinding.AddInterface(type, new InterfaceReference
+                {
+                    Definition = definition,
+                    TypeArgAnnotations = synthesized.TypeArgAnnotations,
+                    SynthesizedVia = synthesized.SynthesizedVia
+                });
+                _logger.LogDebug($"Restored synthesized interface: {type.Name} : {definition.Name} via {synthesized.SynthesizedVia}");
             }
         }
     }

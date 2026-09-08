@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Parser.Ast;
@@ -32,6 +33,19 @@ internal class CodeGenInfoComputer
         _diagnostics = diagnostics ?? new DiagnosticBag();
         _semanticInfo = semanticInfo;
     }
+
+    private TypeResolver? _synthesizedArgumentResolver;
+
+    /// <summary>
+    /// The resolver <see cref="SynthesizedInterfaceReader"/> converts a synthesized reference's
+    /// written arguments with (an <c>__eq__(self, other: Foo)</c> row names <c>Foo</c>). Null when
+    /// this computer was built without a <see cref="SemanticInfo"/>, in which case only rows whose
+    /// arguments are already resolved, empty, or the declaring type's own parameters are read.
+    /// </summary>
+    private TypeResolver? SynthesizedArgumentResolver
+        => _semanticInfo == null
+            ? null
+            : _synthesizedArgumentResolver ??= new TypeResolver(_symbolTable, _semanticInfo);
 
     /// <summary>
     /// Sets CodeGenInfo in SemanticBinding. Symbol properties are populated later
@@ -405,10 +419,17 @@ internal class CodeGenInfoComputer
         }
     }
 
-    private static readonly HashSet<string> ComparisonDunders = new()
+    /// <summary>
+    /// The six comparison dunders whose C# operator carries a parameter-shape decision. Immutable
+    /// (<see cref="FrozenSet{T}"/>, the <c>KnownPythonCollectionVerbs</c> precedent) because a
+    /// mutable static in the compiler assembly is per-process state a warm build can carry across
+    /// compilations — <c>StaticStateConformanceTests</c> enumerates every static field and a
+    /// <c>HashSet</c> here is a listed failure, never an allowlist entry (#1719).
+    /// </summary>
+    private static readonly FrozenSet<string> ComparisonDunders = new HashSet<string>(StringComparer.Ordinal)
     {
         DunderNames.Eq, DunderNames.Ne, DunderNames.Lt, DunderNames.Le, DunderNames.Gt, DunderNames.Ge
-    };
+    }.ToFrozenSet(StringComparer.Ordinal);
 
     private void ProcessMethodDef(TypeSymbol typeSymbol, FunctionDef funcDef)
     {
@@ -478,37 +499,25 @@ internal class CodeGenInfoComputer
         return false;
     }
 
+    /// <summary>
+    /// Reads the dunder-synthesized interfaces off the MATERIALIZED supertype closure (#1746).
+    /// </summary>
+    /// <remarks>
+    /// <para>This is a read, not a decision. <c>NameResolver</c> classified every row at
+    /// inheritance resolution and enqueued it as a flagged <see cref="InterfaceReference"/>;
+    /// materialization then applied its dedupe. So an explicit <c>ISized</c> base plus
+    /// <c>__len__</c> leaves ONE entry — the explicit one, unflagged — and this read produces
+    /// nothing, which is exactly why the emitted base list no longer carries <c>ISized</c> twice
+    /// (CS0528). A recomputation here, however careful, is a second decider that disagrees with
+    /// the closure the type checker and the SPY0607 gate already used.</para>
+    /// <para>SPY1001 stays on this per-file path deliberately: the incremental cache serves a
+    /// restored file's diagnostics from its per-file bag (#1553), so announcing synthesis here
+    /// keeps the note cacheable. <c>CompilerAnalyzeTests</c> asserts the code and message only,
+    /// never the phase.</para>
+    /// </remarks>
     private void ComputeSynthesizedInterfaces(TypeSymbol typeSymbol, IReadOnlyList<Statement> body)
     {
-        // #1746 Phase 4 Task 2: read from the materialized supertype closure.
-        // Sharpy.Core interfaces (ISized, IBoolConvertible, IReverseEnumerable) are flagged
-        // via SynthesizedVia during inheritance resolution. BCL interfaces (IEnumerator,
-        // IEnumerable, IEquatable) are not resolvable at name-resolution time and are still
-        // computed from ProtocolMethods here.
-        var analyzerByName = new Dictionary<string, SynthesizedInterfaceInfo>(StringComparer.Ordinal);
-        foreach (var info in SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol))
-            analyzerByName.TryAdd(info.InterfaceName, info);
-
-        if (analyzerByName.Count == 0)
-            return;
-
-        var result = new List<SynthesizedInterfaceInfo>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var iface in typeSymbol.Interfaces)
-        {
-            if (iface.SynthesizedVia == null || !seen.Add(iface.Definition.Name))
-                continue;
-            if (analyzerByName.TryGetValue(iface.Definition.Name, out var info))
-                result.Add(info);
-        }
-
-        foreach (var kvp in analyzerByName)
-        {
-            if (seen.Add(kvp.Key))
-                result.Add(kvp.Value);
-        }
-
+        var result = SynthesizedInterfaceReader.Read(typeSymbol, SynthesizedArgumentResolver);
         if (result.Count == 0)
             return;
 
@@ -542,62 +551,8 @@ internal class CodeGenInfoComputer
 
         _semanticBinding.SetSynthesizedInterfaces(typeSymbol, result);
 
-        CheckBclInterfaceConflicts(typeSymbol, result);
     }
 
-    private void CheckBclInterfaceConflicts(
-        TypeSymbol typeSymbol, List<SynthesizedInterfaceInfo> currentInterfaces)
-    {
-        var currentGeneric = currentInterfaces
-            .Where(i => i.TypeArgs.Length > 0 && i.Namespace != "Sharpy")
-            .ToList();
-        if (currentGeneric.Count == 0)
-            return;
-
-        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
-        var ancestor = typeSymbol.BaseType;
-        while (ancestor != null && visited.Add(ancestor))
-        {
-            var ancestorInterfaces = SynthesisAnalyzer.ComputeSynthesizedInterfaces(ancestor);
-            foreach (var current in currentGeneric)
-            {
-                foreach (var ancestorIface in ancestorInterfaces)
-                {
-                    if (current.InterfaceName != ancestorIface.InterfaceName
-                        || ancestorIface.TypeArgs.Length == 0)
-                        continue;
-
-                    bool match = current.TypeArgs.Length == ancestorIface.TypeArgs.Length;
-                    if (match)
-                    {
-                        for (int i = 0; i < current.TypeArgs.Length; i++)
-                        {
-                            if (current.TypeArgs[i].CanonicalKey != ancestorIface.TypeArgs[i].CanonicalKey)
-                            {
-                                match = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (match)
-                        continue;
-
-                    var currentDisplay = $"{current.InterfaceName}[{string.Join(", ", current.TypeArgs.Select(t => t.GetDisplayName()))}]";
-                    var ancestorDisplay = $"{ancestorIface.InterfaceName}[{string.Join(", ", ancestorIface.TypeArgs.Select(t => t.GetDisplayName()))}]";
-                    _diagnostics.AddError(
-                        $"Type '{typeSymbol.Name}' implements '{currentDisplay}' (synthesized via {current.TriggeringDunder}) " +
-                        $"and '{ancestorDisplay}' (inherited from {ancestor.Name}, synthesized via {ancestorIface.TriggeringDunder}) " +
-                        "— one generic interface cannot have conflicting type arguments",
-                        typeSymbol.DeclarationLine,
-                        typeSymbol.DeclarationColumn,
-                        _sourceFilePath,
-                        code: DiagnosticCodes.SemanticOverflow.ConflictingInterfaceInstantiation);
-                    return;
-                }
-            }
-            ancestor = ancestor.BaseType;
-        }
-    }
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)
     {

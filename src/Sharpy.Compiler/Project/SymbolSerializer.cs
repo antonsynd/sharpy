@@ -134,15 +134,25 @@ internal static class SymbolSerializer
                 : ts.BaseType is { ClrType: not null } clrBase ? clrBase.Name : null,
             UnresolvedInterfaces = ts.UnresolvedInterfaces.Count > 0
                 ? ts.UnresolvedInterfaces.Select(SerializeTypeAnnotation).ToList() : null,
+            // Three carriers for three kinds of reference: a source-declared user interface travels
+            // as a registry id; a source-declared CLR interface travels as its written annotation in
+            // UnresolvedInterfaces and is re-resolved by name on restore; a dunder-synthesized row
+            // (always CLR-backed — the hoist's rule) travels by CLR interface name with its
+            // SynthesizedVia, and is re-resolved on restore through the SAME rule the hoist used.
             InterfaceEntries = ts.Interfaces.Count > 0
-                ? ts.Interfaces.Where(i => i.Definition.ClrType == null).Select(i => new CachedInterfaceEntry
-                {
-                    SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
-                    TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
-                          ? null
-                          : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList(),
-                    SynthesizedVia = i.SynthesizedVia
-                }).ToList()
+                ? ts.Interfaces
+                    .Where(i => i.Definition.ClrType == null || i.SynthesizedVia != null)
+                    .Select(i => new CachedInterfaceEntry
+                    {
+                        SymbolId = i.Definition.ClrType == null
+                            ? ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath)
+                            : null,
+                        ClrInterfaceName = i.Definition.ClrType == null ? null : i.Definition.Name,
+                        TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
+                              ? null
+                              : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList(),
+                        SynthesizedVia = i.SynthesizedVia
+                    }).ToList()
                 : null,
             Fields = fields,
             Methods = methods,
@@ -1244,17 +1254,27 @@ internal static class SymbolSerializer
         {
             foreach (var entry in cached.InterfaceEntries)
             {
-                if (symbolRegistry.TryGetValue(entry.SymbolId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
+                var typeArgs = entry.TypeArgs != null && entry.TypeArgs.Count > 0
+                    ? entry.TypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
+                    : ImmutableArray<TypeAnnotation>.Empty;
+                if (entry.SymbolId != null
+                    && symbolRegistry.TryGetValue(entry.SymbolId, out var ifaceSymbol)
+                    && ifaceSymbol is TypeSymbol ifaceType)
                 {
-                    var typeArgs = entry.TypeArgs != null && entry.TypeArgs.Count > 0
-                        ? entry.TypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
-                        : ImmutableArray<TypeAnnotation>.Empty;
                     ts.Interfaces.Add(new InterfaceReference
                     {
                         Definition = ifaceType,
                         TypeArgAnnotations = typeArgs,
                         SynthesizedVia = entry.SynthesizedVia
                     });
+                }
+                else if (entry.ClrInterfaceName != null && entry.SynthesizedVia != null)
+                {
+                    // A synthesized row's CLR definition is re-resolved by InheritanceResolver on
+                    // the warm path — the same phase that re-resolves UnresolvedInterfaces — through
+                    // the hoist's own rule (#1746).
+                    ts.UnresolvedSynthesizedInterfaces.Add(new UnresolvedSynthesizedInterface(
+                        entry.ClrInterfaceName, typeArgs, entry.SynthesizedVia));
                 }
             }
         }
@@ -1267,36 +1287,6 @@ internal static class SymbolSerializer
                 ResolveTypeReferences(cached.NestedTypes[i], ts.NestedTypes[i], symbolRegistry);
             }
         }
-    }
-
-    /// <summary>
-    /// Derives <c>CodeGenInfo.SynthesizedInterfaces</c> from the restored
-    /// <see cref="InterfaceReference"/> entries flagged with <see cref="InterfaceReference.SynthesizedVia"/>.
-    /// Called after <see cref="ResolveReferences"/> so the interface definitions are linked (#1746).
-    /// </summary>
-    public static void DeriveSynthesizedInterfacesOnRestore(TypeSymbol ts, SemanticBinding binding)
-    {
-        // ProtocolMethods is empty for cached types (NameResolver doesn't re-run).
-        // Scan restored Methods for dunder names and compute the synthesis directly.
-        // This mirrors SynthesisAnalyzer.ComputeSynthesizedInterfaces but works on
-        // restored FunctionSymbols rather than ProtocolMethods.
-        var dunders = new Dictionary<string, FunctionSymbol>();
-        foreach (var m in ts.Methods)
-        {
-            if (DunderDetector.IsDunderMethod(m.Name) && !dunders.ContainsKey(m.Name))
-                dunders[m.Name] = m;
-        }
-
-        if (dunders.Count == 0)
-            return;
-
-        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfacesFromMethods(dunders);
-        if (synthesized.Count == 0)
-            return;
-
-        var existing = binding.GetCodeGenInfo(ts);
-        if (existing != null)
-            binding.SetCodeGenInfo(ts, existing with { SynthesizedInterfaces = synthesized });
     }
 
     #endregion

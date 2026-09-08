@@ -1,0 +1,11 @@
+# #1717 (R-H): `interface ID(IA[int], IA[str])` is the INTRODUCING declaration, so the gate fires
+# at ID itself, not only at a class that names ID. Before: SPY0909. After: SPY0607 at ID.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+interface ID(IA[int], IA[str]):
+    pass
+
+def main():
+    pass

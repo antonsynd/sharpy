@@ -1,0 +1,22 @@
+# #1717 positive control: IA[int] reached twice (explicit and inherited) is ONE instantiation — runs.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+class B(IA[int]):
+    def get(self) -> int:
+        return 7
+
+class D(B, IA[int]):
+    pass
+
+struct S(IA[int]):
+    x: int
+    def get(self) -> int:
+        return self.x
+
+def main():
+    d = D()
+    print(d.get())
+    s = S(3)
+    print(s.get())

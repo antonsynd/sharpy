@@ -472,6 +472,15 @@ public record TypeSymbol : Symbol
     public List<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
 
     /// <summary>
+    /// Dunder-synthesized interface rows restored from the symbol cache and not yet resolved to
+    /// a definition (#1746). The cold hoist resolves each row's definition to a CLR-backed
+    /// symbol, which has no registry id, so the cache carries the row by CLR interface name;
+    /// <see cref="InheritanceResolver"/> re-resolves it through the same rule on a warm build,
+    /// alongside <see cref="UnresolvedInterfaces"/>. Empty on the cold path.
+    /// </summary>
+    public List<UnresolvedSynthesizedInterface> UnresolvedSynthesizedInterfaces { get; init; } = new();
+
+    /// <summary>
     /// Builds a MethodOverloads dictionary from a list of methods, excluding dunder methods.
     /// Used by ModuleLoader and BuiltinRegistry to batch-populate overloads.
     /// </summary>

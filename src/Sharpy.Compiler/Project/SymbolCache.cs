@@ -364,9 +364,19 @@ internal record CachedEvent
 internal record CachedInterfaceEntry
 {
     /// <summary>
-    /// Stable symbol ID of the interface TypeSymbol.
+    /// Stable symbol ID of the interface TypeSymbol. Null for a dunder-synthesized row, whose
+    /// definition is a CLR interface with no registry id — see <see cref="ClrInterfaceName"/>.
     /// </summary>
-    public required string SymbolId { get; init; }
+    public string? SymbolId { get; init; }
+
+    /// <summary>
+    /// The CLR-backed definition's Sharpy name (<c>ISized</c>, <c>IEquatable</c>) for a
+    /// dunder-synthesized row (#1746). A synthesized reference always points at a CLR
+    /// definition (the hoist's rule), so it cannot travel as a registry id; a warm build
+    /// re-resolves the name through the same rule the cold hoist used, so the restored
+    /// closure carries exactly the rows the cold one did. Null for source-declared rows.
+    /// </summary>
+    public string? ClrInterfaceName { get; init; }
 
     /// <summary>
     /// Serialized TypeAnnotation strings for type arguments (e.g., ["str"] for IEquatable[str]).

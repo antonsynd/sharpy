@@ -44,15 +44,20 @@ internal static class DualWriteAssertions
                 }
             }
 
-            if (symbol.Interfaces.Count > 0)
+            // The queue is compared by DISTINCT DEFINITION, because that is the rule
+            // MaterializeInheritance applies: it adds a queued reference only when no entry with
+            // the same `Definition.Name` is already on the symbol. A raw count comparison made
+            // every legitimate duplicate an ICE — `class Bag(ISized)` with `__len__` enqueues the
+            // explicit and the synthesized reference and materializes one — and, worse, it fired
+            // BEFORE the SPY0607 gate could name the real problem for the conflicting case
+            // (#1717, #1746). Stating the dedupe rule keeps the guard falsifiable: drop
+            // MaterializeInheritance's interface loop and every symbol with an interface throws.
+            var distinctQueuedDefinitions = DistinctQueuedDefinitionCount(semanticBinding, symbol);
+            if (symbol.Interfaces.Count > 0 && distinctQueuedDefinitions != symbol.Interfaces.Count)
             {
-                var bindingInterfaceRefs = semanticBinding.GetInterfaces(symbol);
-                if (bindingInterfaceRefs == null || bindingInterfaceRefs.Count != symbol.Interfaces.Count)
-                {
-                    throw new InvalidOperationException(
-                        $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaceRefs?.Count ?? 0} (materialization inconsistency). " +
-                        "This is a compiler bug - please report it.");
-                }
+                throw new InvalidOperationException(
+                    $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() holds {distinctQueuedDefinitions} distinct interface definition(s) (materialization inconsistency). " +
+                    "This is a compiler bug - please report it.");
             }
 
             // Reverse: SemanticBinding → Symbol (catches materialization failures)
@@ -107,17 +112,29 @@ internal static class DualWriteAssertions
                     "This is a compiler bug - please report it.");
             }
 
-            var sbInterfaceRefs = semanticBinding.GetInterfaces(symbol);
-            if (sbInterfaceRefs != null && sbInterfaceRefs.Count > 0)
+            if (distinctQueuedDefinitions > 0 && symbol.Interfaces.Count < distinctQueuedDefinitions)
             {
-                if (symbol.Interfaces.Count < sbInterfaceRefs.Count)
-                {
-                    throw new InvalidOperationException(
-                        $"SemanticBinding has {sbInterfaceRefs.Count} interface(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed). " +
-                        "This is a compiler bug - please report it.");
-                }
+                throw new InvalidOperationException(
+                    $"SemanticBinding has {distinctQueuedDefinitions} distinct interface definition(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed). " +
+                    "This is a compiler bug - please report it.");
             }
         }
+    }
+
+    /// <summary>
+    /// The number of interface definitions the binding's queue holds for <paramref name="symbol"/>
+    /// after applying materialization's own dedupe rule (one entry per <c>Definition.Name</c>).
+    /// </summary>
+    private static int DistinctQueuedDefinitionCount(SemanticBinding semanticBinding, TypeSymbol symbol)
+    {
+        var queued = semanticBinding.GetInterfaces(symbol);
+        if (queued == null || queued.Count == 0)
+            return 0;
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var iface in queued)
+            names.Add(iface.Definition.Name);
+        return names.Count;
     }
 
     /// <summary>

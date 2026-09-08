@@ -1,0 +1,19 @@
+# #1717 adversarial (g): an interface parent's annotation keeps its modifier through substitution —
+# IB[T](IA[T?]) at IB[int] is IA[int?], IC[T](IA[T]) at IC[int] is IA[int]: distinct.
+# Before: CS0738 behind SPY0908 (the gate resolved 'T' to Unknown and skipped both). After: SPY0607.
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+interface IB[T](IA[T?]):
+    pass
+
+interface IC[T](IA[T]):
+    pass
+
+class D(IB[int], IC[int]):
+    def get(self) -> int:
+        return 1
+
+def main():
+    pass

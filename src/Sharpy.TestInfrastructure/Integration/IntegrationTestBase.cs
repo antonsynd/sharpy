@@ -443,7 +443,8 @@ public abstract class IntegrationTestBase
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
                     GeneratedCSharp = generatedCSharp,
-                    CompilationWarnings = compilationWarnings
+                    CompilationWarnings = compilationWarnings,
+                    RawDiagnostics = rawDiagnostics
                 };
             }
             finally
@@ -633,7 +634,8 @@ public abstract class IntegrationTestBase
                 result.GeneratedCSharpFiles.Values.ToList(),
                 FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles),
                 projectWarnings,
-                executionTimeoutMs);
+                executionTimeoutMs,
+                result.Diagnostics.GetAll().ToList());
         }
         catch (Exception ex)
         {
@@ -741,7 +743,8 @@ public abstract class IntegrationTestBase
                 result.GeneratedCSharpFiles.Values.ToList(),
                 generatedReport,
                 compilationWarnings,
-                executionTimeoutMs);
+                executionTimeoutMs,
+                rawDiagnostics);
         }
         catch (Exception ex)
         {
@@ -781,7 +784,8 @@ public abstract class IntegrationTestBase
         IReadOnlyList<string> csharpSources,
         string generatedCSharpReport,
         List<string> compilationWarnings,
-        int executionTimeoutMs)
+        int executionTimeoutMs,
+        List<CompilerDiagnostic>? rawDiagnostics = null)
     {
         string? runtimePath;
 
@@ -944,7 +948,8 @@ public abstract class IntegrationTestBase
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
                     GeneratedCSharp = generatedCSharpReport,
-                    CompilationWarnings = compilationWarnings
+                    CompilationWarnings = compilationWarnings,
+                    RawDiagnostics = rawDiagnostics ?? new()
                 };
             }
             finally

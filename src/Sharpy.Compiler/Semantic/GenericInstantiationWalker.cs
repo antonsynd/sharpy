@@ -20,9 +20,29 @@ internal static class GenericInstantiationWalker
     /// A supertype definition paired with the concrete type arguments produced by
     /// substituting the walked type's arguments through the hierarchy.
     /// </summary>
+    /// <param name="Definition">The supertype's definition symbol.</param>
+    /// <param name="TypeArguments">The definition's arguments at this instantiation.</param>
+    /// <param name="Path">
+    /// How the walked type reaches this supertype, in the phrasing SPY0607 prints:
+    /// <c>explicit</c>, <c>via IB</c>, <c>inherited from B</c>, <c>synthesized via __eq__</c>,
+    /// <c>inherited from B, synthesized via __reversed__</c> (#1717). Filled only by
+    /// <see cref="EnumerateImplementedInterfaces"/> — the one channel whose consumer (the
+    /// SPY0607 gate) has to NAME both routes to a conflicting instantiation; the other
+    /// channels leave it null rather than compute a string no caller reads.
+    /// </param>
+    /// <param name="FromClrDeclaration">
+    /// True when the interface reference was read off a CLR-reflected symbol's interface list
+    /// (the DECLARING symbol, not the definition). The SPY0607 gate exempts a conflict whose
+    /// every contributing path is CLR-internal: a reflected type's own supertype graph is not
+    /// something Sharpy source can fix. Keyed on the declaring symbol because every BCL row the
+    /// dunder hoist adds (<c>IEquatable</c>, <c>IEnumerator</c>, <c>IEnumerable</c>) has a
+    /// CLR-backed DEFINITION while being declared by user source (#1746).
+    /// </param>
     internal sealed record InstantiatedSupertype(
         TypeSymbol Definition,
-        IReadOnlyList<SemanticType> TypeArguments);
+        IReadOnlyList<SemanticType> TypeArguments,
+        string? Path = null,
+        bool FromClrDeclaration = false);
 
     /// <summary>
     /// Enumerates all instantiated supertypes of <paramref name="type"/> in BFS order
@@ -204,14 +224,14 @@ internal static class GenericInstantiationWalker
         if (initialSubstitution == null)
             yield break;
 
-        var queue = new Queue<(TypeSymbol Symbol, Dictionary<string, SemanticType> Substitution)>();
+        var queue = new Queue<(TypeSymbol Symbol, Dictionary<string, SemanticType> Substitution, string? PathPrefix)>();
         var visited = new HashSet<string>(StringComparer.Ordinal);
-        queue.Enqueue((symbol, initialSubstitution));
+        queue.Enqueue((symbol, initialSubstitution, null));
         visited.Add(MakeKey(symbol, typeArguments));
 
         while (queue.Count > 0)
         {
-            var (current, substitution) = queue.Dequeue();
+            var (current, substitution, pathPrefix) = queue.Dequeue();
 
             foreach (var interfaceRef in GetInterfaceReferences(current, binding))
             {
@@ -226,11 +246,15 @@ internal static class GenericInstantiationWalker
                 if (!visited.Add(MakeKey(interfaceRef.Definition, concreteArguments)))
                     continue;
 
-                yield return new InstantiatedSupertype(interfaceRef.Definition, concreteArguments);
+                yield return new InstantiatedSupertype(
+                    interfaceRef.Definition,
+                    concreteArguments,
+                    DescribePath(pathPrefix, interfaceRef.SynthesizedVia),
+                    current.ClrType != null);
 
                 var nextSubstitution = BuildSubstitution(interfaceRef.Definition.TypeParameters, concreteArguments);
                 if (nextSubstitution != null)
-                    queue.Enqueue((interfaceRef.Definition, nextSubstitution));
+                    queue.Enqueue((interfaceRef.Definition, nextSubstitution, $"via {interfaceRef.Definition.Name}"));
             }
 
             // Follow the base chain to reach interfaces implemented by ancestors, but do NOT yield
@@ -245,9 +269,36 @@ internal static class GenericInstantiationWalker
             var baseSubstitution = BuildSubstitution(
                 baseSupertype.Definition.TypeParameters, baseSupertype.TypeArguments);
             if (baseSubstitution != null)
-                queue.Enqueue((baseSupertype.Definition, baseSubstitution));
+                queue.Enqueue((baseSupertype.Definition, baseSubstitution, $"inherited from {baseSupertype.Definition.Name}"));
         }
     }
+
+    /// <summary>
+    /// The <see cref="InstantiatedSupertype.Path"/> phrase for one reference: the route to the
+    /// DECLARING symbol (null at the walked type itself, <c>via IB</c> through an interface
+    /// parent, <c>inherited from C</c> through the base chain — naming the ancestor whose base
+    /// list DECLARES the interface, never the intermediate parent the host names, since the
+    /// declaring type is where the conflicting argument is written) followed by the reference's
+    /// own origin (explicit base-list entry, or dunder synthesis) (#1717).
+    /// </summary>
+    private static string DescribePath(string? pathPrefix, string? synthesizedVia)
+        => synthesizedVia == null
+            ? pathPrefix ?? "explicit"
+            : pathPrefix == null
+                ? $"synthesized via {synthesizedVia}"
+                : $"{pathPrefix}, synthesized via {synthesizedVia}";
+
+    /// <summary>
+    /// Converts one interface type-argument annotation to a <see cref="SemanticType"/> in the
+    /// scope of <paramref name="declaringSymbol"/>'s own type parameters — the same conversion
+    /// the walker performs while enumerating supertypes, exposed so that the closure's two
+    /// readers (the SPY0607 gate through <see cref="EnumerateImplementedInterfaces"/>, and
+    /// <c>CodeGenInfoComputer</c>'s read of the synthesized references) resolve a reference's
+    /// arguments through ONE converter (#1746, #1717).
+    /// </summary>
+    internal static SemanticType? ConvertInterfaceArgument(
+        TypeAnnotation annotation, TypeSymbol declaringSymbol, TypeResolver? typeResolver)
+        => ConvertAnnotation(annotation, declaringSymbol, typeResolver);
 
     /// <summary>
     /// The nearest ancestor of <paramref name="symbol"/> that is backed by a CLR type, instantiated

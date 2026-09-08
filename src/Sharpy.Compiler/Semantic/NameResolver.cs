@@ -15,6 +15,10 @@ internal partial class NameResolver
     private readonly ICompilerLogger _logger;
     private readonly SemanticBinding _semanticBinding;
     private readonly DiagnosticBag _diagnostics = new();
+    // Import-free source of BCL/Sharpy.Core interface DEFINITION symbols for the dunder hoist
+    // (#1746). Per-instance, like every other ClrTypeBridge: definition identity is keyed on
+    // TypeSymbol.ClrType wherever it matters, not on the symbol reference.
+    private readonly Discovery.ClrTypeBridge _clrTypeBridge = new();
     // Each pending definition carries the file it was declared in as well as its module scope
     // (#1369): pass 2 can run on an aggregate resolver that has no file of its own, and a
     // definition that arrives there without its path produces an unattributable diagnostic.
@@ -433,7 +437,7 @@ internal partial class NameResolver
         }
 
         var synthesized = SynthesisAnalyzer.ClassifyDundersFromAst(classDef.Body);
-        AddSynthesizedInterfaces(typeSymbol, synthesized, classDef.BaseClasses);
+        AddSynthesizedInterfaces(typeSymbol, synthesized);
     }
 
     private void ResolveStructInheritance(StructDef structDef, TypeSymbol typeSymbol)
@@ -476,38 +480,55 @@ internal partial class NameResolver
         }
 
         var synthesized = SynthesisAnalyzer.ClassifyDundersFromAst(structDef.Body);
-        AddSynthesizedInterfaces(typeSymbol, synthesized, structDef.BaseClasses);
+        AddSynthesizedInterfaces(typeSymbol, synthesized);
     }
 
+    /// <summary>
+    /// Enqueues every dunder-synthesized interface as a flagged <see cref="InterfaceReference"/>,
+    /// so the supertype closure the type checker and the SPY0607 gate read already contains them
+    /// (#1746). All seven rows hoist, for class AND struct hosts.
+    /// </summary>
+    /// <remarks>
+    /// <para>No filtering by the explicit base list. A spelling filter answered the wrong
+    /// question: <c>class Bag(ISized)</c> with <c>__len__</c> and <c>class Bag(ISized)</c> with
+    /// <c>__eq__(str)</c> are not the same situation, and neither is a spelling. The OVERLAP
+    /// (same definition, same instantiation) is collapsed once, by materialization's dedupe, and
+    /// the explicit entry wins because it was enqueued first — so the base list keeps exactly one
+    /// entry and <c>CodeGenInfoComputer</c>'s read finds no synthesized flag to emit a second
+    /// time. A CONFLICT (same definition, different instantiations — explicit
+    /// <c>IEquatable[str]</c> against <c>__eq__(self, other: Foo)</c>) is refused by the gate,
+    /// naming both paths.</para>
+    /// <para>The definition symbol comes from the symbol table when the name is in scope, and
+    /// otherwise from the CLR bridge: the BCL rows are not nameable in Sharpy source without an
+    /// import, and a lookup miss used to DROP them silently — leaving <c>__eq__</c> and
+    /// <c>__next__</c> instantiations outside the closure altogether.</para>
+    /// </remarks>
     private void AddSynthesizedInterfaces(
         TypeSymbol typeSymbol,
-        List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder, int Line, int Column)> synthesized,
-        ImmutableArray<TypeAnnotation> explicitBaseClasses)
+        List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder, int Line, int Column)> synthesized)
     {
-        if (synthesized.Count == 0)
-            return;
-
-        var explicitNames = new HashSet<string>();
-        foreach (var baseAnnot in explicitBaseClasses)
-            explicitNames.Add(baseAnnot.Name);
-
-        foreach (var (interfaceName, ns, typeArgAnnotations, triggeringDunder, line, column) in synthesized)
+        foreach (var (interfaceName, _, typeArgAnnotations, triggeringDunder, _, _) in synthesized)
         {
-            if (explicitNames.Contains(interfaceName))
-                continue;
-
-            var symbol = _symbolTable.Lookup(interfaceName) as TypeSymbol;
-            if (symbol == null || symbol.TypeKind != TypeKind.Interface)
+            var definition = ResolveSynthesizedInterfaceDefinition(interfaceName);
+            if (definition == null)
                 continue;
 
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
-                Definition = symbol,
+                Definition = definition,
                 TypeArgAnnotations = typeArgAnnotations,
                 SynthesizedVia = triggeringDunder
             });
         }
     }
+
+    /// <summary>
+    /// The definition symbol for a synthesized interface — <see cref="SynthesisAnalyzer.ResolveInterfaceDefinition"/>,
+    /// the rule shared with the warm re-resolution in <see cref="InheritanceResolver"/> (#1746).
+    /// </summary>
+    private TypeSymbol? ResolveSynthesizedInterfaceDefinition(string interfaceName)
+        => SynthesisAnalyzer.ResolveInterfaceDefinition(
+            interfaceName, name => _symbolTable.Lookup(name) as TypeSymbol, _clrTypeBridge);
 
     private void ResolveInterfaceInheritance(InterfaceDef interfaceDef, TypeSymbol typeSymbol)
     {

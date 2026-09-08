@@ -1,0 +1,23 @@
+# #1746 overlap cell for a BCL row: an imported IEquatable[Foo] base plus __eq__(self, other: Foo)
+# is ONE base-list entry (the definition is the same CLR interface through both routes).
+# Before (the range's first cut): CS0528 'IEquatable<Foo>' already listed. After: prints.
+from system import IEquatable
+
+class Foo(IEquatable[Foo]):
+    v: int
+
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def __eq__(self, other: Foo) -> bool:
+        return self.v == other.v
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Foo) and self.v == other.v
+
+    def __hash__(self) -> int:
+        return self.v
+
+def main():
+    print(Foo(1) == Foo(1))
+    print(Foo(1) == Foo(2))

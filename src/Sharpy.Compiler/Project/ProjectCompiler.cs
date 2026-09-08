@@ -293,8 +293,8 @@ internal partial class ProjectCompiler
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
             var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
-            compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
-            compilationPipeline.RunInterfaceInstantiationGate(_diagnostics);
+            compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver, _diagnostics);
+            DeriveSynthesizedInterfacesForRestoredTypes();
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4d: Partition source generators (if any)

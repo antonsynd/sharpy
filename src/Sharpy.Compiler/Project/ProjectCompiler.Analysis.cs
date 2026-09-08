@@ -88,8 +88,8 @@ internal partial class ProjectCompiler
                 ct.ThrowIfCancellationRequested();
 
                 compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel!.SemanticBinding, _logger);
-                compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
-                compilationPipeline.RunInterfaceInstantiationGate(_diagnostics);
+                compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver, _diagnostics);
+                DeriveSynthesizedInterfacesForRestoredTypes();
             }
             ct.ThrowIfCancellationRequested();
 
