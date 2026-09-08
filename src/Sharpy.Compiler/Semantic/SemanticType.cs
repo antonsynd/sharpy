@@ -417,8 +417,10 @@ public sealed record UserDefinedType : SemanticType
 
     public bool Equals(UserDefinedType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
         return CanonicalKey == other.CanonicalKey;
     }
 
@@ -1055,8 +1057,10 @@ public sealed record TypeParameterType : SemanticType
 
     public bool Equals(TypeParameterType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
         return CanonicalKey == other.CanonicalKey;
     }
 
@@ -1125,8 +1129,10 @@ public sealed record GenericFunctionType : SemanticType
 
     public bool Equals(GenericFunctionType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
         return CanonicalKey == other.CanonicalKey;
     }
 
@@ -1240,8 +1246,10 @@ public sealed record UnionType : SemanticType
 
     public bool Equals(UnionType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
         return CanonicalKey == other.CanonicalKey;
     }
 

@@ -134,7 +134,8 @@ class Test {
     private static bool IsInsideGetDisplayNameImpl(SyntaxNode node)
     {
         var method = node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        if (method == null) return false;
+        if (method == null)
+            return false;
         return method.Identifier.Text == "GetDisplayName"
             || method.Identifier.Text == "FormatTypeArgs";
     }

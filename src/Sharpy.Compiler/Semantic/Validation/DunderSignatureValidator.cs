@@ -24,14 +24,16 @@ internal class DunderSignatureValidator : SemanticValidatorBase
         foreach (var classDef in visitor.Classes)
         {
             var typeSymbol = context.LookupDeclaredType(classDef, classDef.Name);
-            if (typeSymbol == null) continue;
+            if (typeSymbol == null)
+                continue;
             CheckAllOverloadGroups(context, typeSymbol);
         }
 
         foreach (var structDef in visitor.Structs)
         {
             var typeSymbol = context.LookupDeclaredType(structDef, structDef.Name);
-            if (typeSymbol == null) continue;
+            if (typeSymbol == null)
+                continue;
             CheckAllOverloadGroups(context, typeSymbol);
         }
 
@@ -43,7 +45,8 @@ internal class DunderSignatureValidator : SemanticValidatorBase
         var groups = new Dictionary<string, List<FunctionSymbol>>();
         foreach (var method in typeSymbol.Methods)
         {
-            if (method.Name == DunderNames.Init) continue;
+            if (method.Name == DunderNames.Init)
+                continue;
             if (!groups.TryGetValue(method.Name, out var list))
             {
                 list = new List<FunctionSymbol>();
@@ -64,7 +67,8 @@ internal class DunderSignatureValidator : SemanticValidatorBase
 
         foreach (var (name, overloads) in groups)
         {
-            if (overloads.Count < 2) continue;
+            if (overloads.Count < 2)
+                continue;
             CheckGroupForClrCollisions(context, typeSymbol.Name, name, overloads);
         }
     }
@@ -77,7 +81,8 @@ internal class DunderSignatureValidator : SemanticValidatorBase
             if (stmt is FunctionDef funcDef && seen.Add(funcDef.Name))
             {
                 var overloads = context.SymbolTable.LookupFunctionOverloads(funcDef.Name);
-                if (overloads == null || overloads.Count < 2) continue;
+                if (overloads == null || overloads.Count < 2)
+                    continue;
                 CheckGroupForClrCollisions(context, "<module>", funcDef.Name, overloads);
             }
         }
