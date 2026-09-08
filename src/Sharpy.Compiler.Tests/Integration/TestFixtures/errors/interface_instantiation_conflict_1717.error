@@ -1,0 +1,3 @@
+'IA[int32]'
+'IA[str]'
+one generic interface cannot have conflicting type arguments

@@ -936,6 +936,7 @@ public static class DiagnosticCodes
         public const string StrictOptionalConstruction = "SPY0604"; // Active (#1720)
         public const string ConstantPatternNotCompileTime = "SPY0605"; // Active (#1788)
         public const string ClassAttributeBareStore = "SPY0606"; // Active (#1786)
+        public const string ConflictingInterfaceInstantiation = "SPY0607"; // Active (#1717)
     }
 
     /// <summary>

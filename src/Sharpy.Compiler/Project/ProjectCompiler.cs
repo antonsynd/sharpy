@@ -294,6 +294,7 @@ internal partial class ProjectCompiler
             // but imported types from external modules still have unresolved base names.
             var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
             compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
+            compilationPipeline.RunInterfaceInstantiationGate(_diagnostics);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4d: Partition source generators (if any)

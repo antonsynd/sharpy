@@ -1,0 +1,14 @@
+interface IA[T]:
+    def get(self) -> T:
+        ...
+
+class B(IA[int]):
+    def get(self) -> int:
+        return 1
+
+class D(B, IA[str]):
+    def get(self) -> str:
+        return "hello"
+
+def main():
+    pass

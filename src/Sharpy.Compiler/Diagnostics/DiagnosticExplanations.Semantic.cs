@@ -1307,5 +1307,25 @@ public static partial class DiagnosticExplanations
             "Or shadow with a typed local:\n" +
             "    count: int = self.count + 1  # new local variable");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ConflictingInterfaceInstantiation,
+            "Conflicting generic interface instantiation",
+            "Semantic",
+            "A type implements the same generic interface at two distinct instantiations, either " +
+            "directly or through its inheritance chain (base classes, implemented interfaces, or " +
+            "synthesized interfaces from dunder methods). C# forbids a type from implementing the " +
+            "same generic interface with different type arguments — for example, both IEquatable<int> " +
+            "and IEquatable<str> — because method dispatch cannot choose between the two " +
+            "implementations. The conflict may arise from explicit declarations, inherited " +
+            "interfaces, or interfaces synthesized from dunder methods (e.g. __eq__ synthesizes " +
+            "IEquatable<T>).",
+            "interface IA[T]:\n    def get(self) -> T: ...\n\n" +
+            "class B(IA[int]):\n    def get(self) -> int:\n        return 1\n\n" +
+            "class D(B, IA[str]):  # SPY0607: IA[int] via B and IA[str] explicit\n" +
+            "    def get(self) -> str:\n        return \"hello\"",
+            "Remove one of the conflicting interface implementations, or restructure the " +
+            "hierarchy so only one instantiation of the generic interface is present. If the " +
+            "conflict comes from a synthesized interface (via a dunder method), remove the " +
+            "dunder method from the derived class or ensure the type arguments match.");
+
     }
 }

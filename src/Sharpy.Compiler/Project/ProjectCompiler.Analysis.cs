@@ -89,6 +89,7 @@ internal partial class ProjectCompiler
 
                 compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel!.SemanticBinding, _logger);
                 compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
+                compilationPipeline.RunInterfaceInstantiationGate(_diagnostics);
             }
             ct.ThrowIfCancellationRequested();
 

@@ -166,6 +166,17 @@ internal class FileCompilationPipeline
     }
 
     /// <summary>
+    /// Runs the SPY0607 gate: detects types that implement the same generic interface at
+    /// two distinct instantiations. Call after <see cref="ResolveImportedInheritanceAndMaterialize"/>
+    /// and before the type checker runs (#1717).
+    /// </summary>
+    public void RunInterfaceInstantiationGate(DiagnosticBag diagnostics)
+    {
+        InterfaceInstantiationGate.CheckAll(
+            _symbolTable, _semanticBinding, _semanticInfo, _logger, diagnostics);
+    }
+
+    /// <summary>
     /// Materializes CodeGenInfo and VariableTypes onto symbol properties, verifies
     /// consistency via dual-write assertions. Idempotent — safe to call more than once
     /// (re-copies stores onto symbols, including entries added since the last call).
