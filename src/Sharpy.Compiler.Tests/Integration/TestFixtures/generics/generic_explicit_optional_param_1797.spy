@@ -1,10 +1,17 @@
+# #1797: an explicitly instantiated generic callee pushes the CLOSED formal (T? -> int?) at every
+# position — a bare statement, an untyped assignment, an `if` condition, a keyword argument — not
+# only where an outer expectation leaks in. (The plan's first fixture used only annotated
+# assignments, which printed the same at BASE; these positions are the discriminating ones.)
 def f[T](x: T?) -> T?:
+    print("got", x)
     return x
 
 def main():
-    a: int? = f[int](Some(5))
-    print(a)
-    b: int? = f[int](x=Some(5))
-    print(b)
-    c: int? = f[int](None())
-    print(c)
+    f[int](Some(5))
+    y = f[int](Some(6))
+    print(y)
+    if f[int](Some(7)) is not None:
+        print("some")
+    f[int](x=Some(8))
+    z = f[int](None())
+    print(z)

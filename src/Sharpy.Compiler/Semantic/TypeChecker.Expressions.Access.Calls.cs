@@ -157,20 +157,12 @@ internal partial class TypeChecker
         // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType ?? ClosedExtensionSignature(callee);
 
-        // Phase 3 (#1797): for explicitly-instantiated generic callees, build the substitution
-        // so CheckCallArguments pushes the CLOSED formal (T? → int?) at every position.
-        IReadOnlyDictionary<string, SemanticType>? genericSubstitution = null;
-        if (calleeType is GenericFunctionType gft && gft.TypeArguments.Count > 0)
-        {
-            var typeParams = gft.FunctionSymbol.TypeParameters;
-            if (typeParams != null && typeParams.Count == gft.TypeArguments.Count)
-            {
-                var sub = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
-                for (int i = 0; i < typeParams.Count; i++)
-                    sub[typeParams[i].Name] = gft.TypeArguments[i];
-                genericSubstitution = sub;
-            }
-        }
+        // The ONE resolver for the formal each argument is checked against (plan-499995 Design
+        // Decision 3, #1797): the early symbol, an explicitly instantiated generic function, a
+        // written generic constructor reference, or the callee's own function type — closed at the
+        // written type arguments when there are any. Built once, before the loops; every argument
+        // position and the deferred callable-reference seam below read it.
+        var formals = FormalSlots.For(callee, calleeType, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         // Not a type test: each scope pushes the field's CURRENT value, so an enclosing type test's
         // operand and type argument survive rather than being cleared for this call's arguments. The
         // type-argument scope carries the conjunction — the second argument only names a type when
@@ -192,7 +184,7 @@ internal partial class TypeChecker
                        : _typeTestTypeArgument))
         using (ScopedValue.Push(ref _currentCallArguments, DirectArgumentSetOf(call)))
         {
-            (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType, genericSubstitution);
+            (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType, formals);
         }
 
         // The arguments are checked, so the type parameters the receiver left open are now knowable:
@@ -211,31 +203,11 @@ internal partial class TypeChecker
         // the shape a generic builtin like `map` has, which ResolveEarlyFunctionSymbol leaves null.
         // Entries this site cannot bind stay for the inference dispatch below; whatever that leaves
         // is refused when the call's scope closes.
-        if (HasPendingOverloadSelections)
+        if (HasPendingOverloadSelections && formals.IsOpenGeneric)
         {
-            Func<int, SemanticType?>? formalAt = null;
-            if (earlyFuncSymbol != null)
-            {
-                if (earlyFuncSymbol.IsGeneric)
-                {
-                    formalAt = i => i + earlyParamOffset < earlyFuncSymbol.Parameters.Count
-                        ? earlyFuncSymbol.Parameters[i + earlyParamOffset].Type
-                        : null;
-                }
-            }
-            else if (calleeFunctionType != null && ContainsTypeParameter(calleeFunctionType))
-            {
-                formalAt = i => i < calleeFunctionType.ParameterTypes.Count
-                    ? calleeFunctionType.ParameterTypes[i]
-                    : null;
-            }
-
-            if (formalAt != null)
-            {
-                var substitutions = InferSubstitutionsFromArguments(formalAt, argTypes);
-                if (substitutions.Count > 0)
-                    ResolvePendingOverloadSelections(substitutions, argTypes);
-            }
+            var substitutions = InferSubstitutionsFromArguments(formals.RawPositional, argTypes);
+            if (substitutions.Count > 0)
+                ResolvePendingOverloadSelections(substitutions, argTypes);
         }
 
         var totalArgCount = argTypes.Count + kwargTypes.Count;
@@ -2959,7 +2931,7 @@ internal partial class TypeChecker
             // cmp_to_key(cmp=lambda a: int, b: int: ...)). Map them into their formal
             // parameter slots so the index-aligned inference can see them (#909).
             var inferenceArgTypes = BuildInferenceArgumentTypes(
-                funcSymbol, ApplyProjectionsToArgumentTypes(call, argTypes), kwargTypes);
+                funcSymbol, call, ApplyProjectionsToArgumentTypes(call, argTypes), kwargTypes);
             var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, inferenceArgTypes);
             if (inferenceResult.Success && inferenceResult.InferredTypes != null)
             {
@@ -2999,8 +2971,17 @@ internal partial class TypeChecker
                 // non-generic parameter gets. The slot mapping kwargs use for inference
                 // (BuildInferenceArgumentTypes) matches names through the same
                 // FindKeywordParameter arms, so what steered inference is what validates here.
+                var inferredBinding = InferredTypeParameterBinding(funcSymbol, inferenceResult.InferredTypes);
+
+                // The POSITIONAL half of the same hole (#1797, contract §4 "recorded ≠ applied"):
+                // an argument checked against an OPEN formal recorded an OPEN type, and the emitter
+                // reads that recording. `None()` in a `T?` slot records `Optional[T]` and emits
+                // `Optional<T>.None` — CS0246 behind SPY0908 — even though inference closed `T` one
+                // line later. Re-check those arguments under the now-CLOSED slot.
+                RecheckOpenPositionalArguments(call, funcSymbol.Parameters, inferredBinding, argTypes);
+
                 ValidateKeywordArguments(call, funcSymbol.Parameters, argTypes.Count, kwargTypes,
-                    InferredTypeParameterBinding(funcSymbol, inferenceResult.InferredTypes),
+                    inferredBinding,
                     clrParameterNames: funcSymbol.ClrMethodName != null);
 
                 // Wrap result in optional/nullable for null conditional calls
@@ -3068,7 +3049,15 @@ internal partial class TypeChecker
         List<SemanticType>? substituted = null;
         for (int i = 0; i < argTypes.Count; i++)
         {
-            if (ProjectedArgumentType(ArgumentNodeAt(call, i)) is not { } projected)
+            var argNode = ArgumentNodeAt(call, i);
+            if (NoBindingInferenceType(argNode) is { } masked)
+            {
+                substituted ??= new List<SemanticType>(argTypes);
+                substituted[i] = masked;
+                continue;
+            }
+
+            if (ProjectedArgumentType(argNode) is not { } projected)
                 continue;
             substituted ??= new List<SemanticType>(argTypes);
             substituted[i] = projected;
@@ -3077,8 +3066,55 @@ internal partial class TypeChecker
         return substituted ?? argTypes;
     }
 
+    /// <summary>
+    /// The name of the synthetic type parameter a <c>None</c>/<c>None()</c> argument contributes at
+    /// the inference-argument seam. It shares
+    /// <see cref="GenericTypeInferenceService.SyntheticTypeParameterPrefix"/>, so
+    /// <see cref="GenericTypeInferenceService.IsSyntheticTypeParameter"/> — the ONE rule that says
+    /// "this actual carries no type information" — skips it without a second mechanism.
+    /// </summary>
+    private const string NoBindingPlaceholderName =
+        GenericTypeInferenceService.SyntheticTypeParameterPrefix + "_None";
+
+    /// <summary>
+    /// The type an argument contributes to generic inference when the argument is <c>None</c> or
+    /// <c>None()</c>, else null. Both spellings name ABSENCE: they have no payload type, so they
+    /// contribute NO binding to a type parameter (plan-499995 Design Decision 3, #1797). The
+    /// placeholder keeps the argument's WRAPPER SHAPE — <c>None()</c> is an Optional, bare
+    /// <c>None</c> is not — so unification still descends the formal (<c>T?</c> against
+    /// <c>Optional[__synth_T_None]</c> reaches <c>T</c>) and simply declines to bind there.
+    ///
+    /// <para>Deciding this on the written EXPRESSION, at the one seam that builds the inference
+    /// argument vector, is what keeps the rule from being re-derived from the RECORDED type: a
+    /// <c>None()</c> in an open <c>T?</c> slot records <c>Optional[T]</c>, which is
+    /// indistinguishable by name from a caller's own <c>T</c> flowing into a callee's <c>T</c> —
+    /// and refusing the latter broke every generic-to-generic call in the stdlib.</para>
+    /// </summary>
+    private static SemanticType? NoBindingInferenceType(Expression? argument)
+    {
+        if (argument == null)
+            return null;
+
+        var expr = UnwrapParenthesized(argument);
+        if (expr is NoneLiteral)
+            return new TypeParameterType { Name = NoBindingPlaceholderName };
+
+        if (expr is FunctionCall { Function: NoneLiteral } noneCall
+            && noneCall.Arguments.Length == 0
+            && noneCall.KeywordArguments.Length == 0)
+        {
+            return new OptionalType
+            {
+                UnderlyingType = new TypeParameterType { Name = NoBindingPlaceholderName }
+            };
+        }
+
+        return null;
+    }
+
     private static List<SemanticType> BuildInferenceArgumentTypes(
         FunctionSymbol funcSymbol,
+        FunctionCall call,
         List<SemanticType> argTypes,
         Dictionary<string, SemanticType> kwargTypes)
     {
@@ -3089,14 +3125,42 @@ internal partial class TypeChecker
         for (int i = 0; i < funcSymbol.Parameters.Count; i++)
         {
             if (i < argTypes.Count)
+            {
                 ordered.Add(argTypes[i]);
+            }
             else if (TryGetKeywordArgumentType(kwargTypes, funcSymbol.Parameters[i].Name, out var kwargType))
-                ordered.Add(kwargType);
+            {
+                // A keyword argument reaches inference through this slot mapping, so the
+                // no-binding rule applies here too — the seam is the vector, not the loop that
+                // fills one half of it (#1797).
+                ordered.Add(NoBindingInferenceType(KeywordArgumentNode(call, funcSymbol.Parameters[i].Name))
+                            ?? kwargType);
+            }
             else
+            {
                 break;
+            }
         }
 
         return ordered;
+    }
+
+    /// <summary>
+    /// The written expression bound to <paramref name="parameterName"/> as a keyword argument, using
+    /// the same two spelling arms <see cref="TryGetKeywordArgumentType"/> uses, or null.
+    /// </summary>
+    private static Expression? KeywordArgumentNode(FunctionCall call, string parameterName)
+    {
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (string.Equals(kwarg.Name, parameterName, StringComparison.Ordinal)
+                || string.Equals(parameterName, NameMangler.ToCamelCase(kwarg.Name), StringComparison.Ordinal))
+            {
+                return kwarg.Value;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -3801,6 +3865,49 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Re-checks the positional arguments whose RECORDED type is still open after a generic call's
+    /// inference has closed the binding, against the now-closed formal (#1797).
+    ///
+    /// <para>The seam this closes is contract §4's "recorded ≠ applied": the argument loop pushed
+    /// the OPEN formal (a shape hint, so the payload types freely and unification can bind), and the
+    /// type it recorded for the argument node is what code generation reads. For <c>None()</c> in a
+    /// <c>T?</c> slot that recording is <c>Optional[T]</c> — semantically fine, emitted as
+    /// <c>Optional&lt;T&gt;.None</c>, which is CS0246. Re-entering the store with the substituted
+    /// formal both records the closed type and applies the ordinary store rules to it, so the
+    /// diagnosis of a genuinely wrong argument stays SPY0220 naming closed types.</para>
+    ///
+    /// <para>Only arguments whose recorded type still contains a type parameter are re-checked, so
+    /// an ordinary call re-enters nothing. Calls with a spread argument are skipped outright: a
+    /// tuple spread contributes several entries for one node, so <c>argTypes[i]</c> and
+    /// <c>call.Arguments[i]</c> no longer name the same thing.</para>
+    /// </summary>
+    private void RecheckOpenPositionalArguments(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
+        TypeParameterBinding binding, List<SemanticType> argTypes)
+    {
+        if (call.Arguments.Any(a => a is SpreadElement))
+            return;
+
+        string? calleeDisplay = null;
+        for (int i = 0; i < argTypes.Count && i < call.Arguments.Length && i < parameters.Count; i++)
+        {
+            if (!ContainsTypeParameterType(argTypes[i]))
+                continue;
+            if (SubstitutedParameterType(parameters[i].Type, binding) is not { } closedFormal)
+                continue;
+
+            calleeDisplay ??= CalleeDisplayName(UnwrapParenthesized(call.Function));
+            // CheckExpression memoizes per node; forget the open recording or the re-check returns it.
+            _semanticInfo.ClearExpressionType(call.Arguments[i]);
+            using (EnterStore(StorePosition.ArgumentPositional, closedFormal, call.Arguments[i],
+                       calleeDisplay: calleeDisplay, argumentOrdinal: i + 1))
+            {
+                argTypes[i] = CheckExpression(call.Arguments[i]);
+            }
+        }
+    }
+
+    /// <summary>
     /// The binding for a construction that WROTE its type arguments — <c>Slot[int, str](...)</c>.
     /// The vector is the resolver's, already default-filled, and is positionally paired with the
     /// declaration's type parameters.
@@ -4192,6 +4299,121 @@ internal partial class TypeChecker
     };
 
     /// <summary>
+    /// The ONE resolver for "the formal this argument is checked against" (plan-499995 Design
+    /// Decision 3, #1797). Four sources, first match wins: the early-resolved symbol (a non-generic
+    /// function, a constructor, a receiver-substituted method — <see cref="ResolveEarlyFunctionSymbol"/>);
+    /// an explicitly instantiated generic function (<c>f[int](…)</c>, a <see cref="GenericFunctionType"/>
+    /// carrying the written type arguments); a written generic constructor reference
+    /// (<c>Box[int](…)</c>, a <see cref="GenericType"/> callee); the callee's own function type (the
+    /// inferred generic route, whose RAW formal is a shape hint the constructor arms type freely
+    /// against). Written type arguments CLOSE the formal before it is pushed, so <c>Some(5)</c> into
+    /// <c>x: T?</c> meets <c>int?</c> at the store seam in every position — a bare statement, an
+    /// untyped assignment, an <c>if</c> condition — not only where an outer expectation happened to
+    /// leak in (the shape that made the range's first cut inert).
+    /// </summary>
+    private sealed class FormalSlots
+    {
+        public static readonly FormalSlots None = new(null, 0, null, null);
+
+        private readonly IReadOnlyList<ParameterSymbol>? _parameters;
+        private readonly int _offset;
+        private readonly IReadOnlyDictionary<string, SemanticType>? _substitution;
+        private readonly FunctionType? _functionType;
+
+        private FormalSlots(
+            IReadOnlyList<ParameterSymbol>? parameters, int offset,
+            IReadOnlyDictionary<string, SemanticType>? substitution, FunctionType? functionType)
+        {
+            _parameters = parameters;
+            _offset = offset;
+            _substitution = substitution;
+            _functionType = functionType;
+        }
+
+        public static FormalSlots For(
+            Expression callee, SemanticType calleeType, FunctionSymbol? earlyFuncSymbol,
+            int earlyParamOffset, FunctionType? calleeFunctionType)
+        {
+            if (earlyFuncSymbol != null)
+                return new(earlyFuncSymbol.Parameters, earlyParamOffset, null, calleeFunctionType);
+
+            if (calleeType is GenericFunctionType { TypeArguments.Count: > 0 } gft
+                && WrittenBinding(gft.FunctionSymbol.TypeParameters, gft.TypeArguments) is { } fnBinding)
+            {
+                return new(gft.FunctionSymbol.Parameters, 0, fnBinding, null);
+            }
+
+            // `Box[int](…)`: the callee is a WRITTEN type reference whose definition is a class or
+            // struct with exactly one constructor (an overloaded __init__ is the overload
+            // resolver's, and it must not be guessed here — #1671's rule for overload sets).
+            if (callee is IndexAccess
+                && calleeType is GenericType { GenericDefinition: { TypeKind: TypeKind.Class or TypeKind.Struct } definition } gt
+                && definition.Methods.Where(m => m.Name == DunderNames.Init).ToList() is { Count: 1 } inits
+                && WrittenBinding(definition.TypeParameters, gt.TypeArguments) is { } ctorBinding)
+            {
+                return new(inits[0].Parameters, 1, ctorBinding, null);
+            }
+
+            if (calleeFunctionType != null)
+                return new(null, 0, null, calleeFunctionType);
+
+            return None;
+        }
+
+        private static Dictionary<string, SemanticType>? WrittenBinding(
+            IReadOnlyList<TypeParameterDef>? typeParameters, IReadOnlyList<SemanticType> typeArguments)
+        {
+            if (typeParameters == null || typeParameters.Count == 0 || typeParameters.Count != typeArguments.Count)
+                return null;
+
+            var binding = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+            for (int i = 0; i < typeParameters.Count; i++)
+                binding[typeParameters[i].Name] = typeArguments[i];
+            return binding;
+        }
+
+        /// <summary>The closed formal at a positional index, or null when the source has none there.</summary>
+        public SemanticType? Positional(int argIdx)
+            => RawPositional(argIdx) is { } raw ? Close(raw) : null;
+
+        /// <summary>The formal at a positional index BEFORE closing — the shape an open generic binds through.</summary>
+        public SemanticType? RawPositional(int argIdx)
+        {
+            if (_parameters != null)
+            {
+                var index = argIdx + _offset;
+                if (index < _parameters.Count)
+                    return _parameters[index].Type;
+            }
+            if (_functionType != null && argIdx < _functionType.ParameterTypes.Count)
+                return _functionType.ParameterTypes[argIdx];
+            return null;
+        }
+
+        /// <summary>The closed formal a keyword names, through the same two spelling arms as validation.</summary>
+        public SemanticType? Keyword(string name)
+        {
+            if (_parameters == null)
+                return null;
+            var parameter = FindKeywordParameter(_parameters, name);
+            return parameter == null ? null : Close(parameter.Type);
+        }
+
+        /// <summary>
+        /// Whether the formals still mention a type parameter nothing closes — the inferred generic
+        /// route, where a deferred callable-reference selection (#1589) binds through them.
+        /// </summary>
+        public bool IsOpenGeneric
+            => _substitution == null
+               && (_parameters != null
+                   ? _parameters.Any(p => ContainsTypeParameter(p.Type))
+                   : _functionType != null && ContainsTypeParameter(_functionType));
+
+        private SemanticType Close(SemanticType formal)
+            => _substitution == null ? formal : TypeSubstitution.Apply(formal, _substitution);
+    }
+
+    /// <summary>
     /// Checks call arguments and keyword arguments, collecting their types.
     /// Sets _expectedType per-parameter when an early function symbol or callee FunctionType
     /// is available, enabling constructor inference (Some/None()/Ok/Err) in function arguments.
@@ -4200,7 +4422,7 @@ internal partial class TypeChecker
     /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     private (List<SemanticType> ArgTypes, Dictionary<string, SemanticType> KwargTypes) CheckCallArguments(
         FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset,
-        FunctionType? calleeFunctionType, IReadOnlyDictionary<string, SemanticType>? genericSubstitution = null)
+        FunctionType? calleeFunctionType, FormalSlots formals)
     {
         // #1671: a COLLECTION LITERAL (or comprehension) written as an argument may take its
         // contextual type only from a RESOLVED callee. `earlyFuncSymbol` and `calleeFunctionType`
@@ -4282,20 +4504,11 @@ internal partial class TypeChecker
                 var noCandidateExpectation = calleeDenotesOverloadSet
                     && TakesContextualCollectionType(call.Arguments[argIdx]);
 
-                if (!noCandidateExpectation
-                    && earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
+                if (!noCandidateExpectation && formals.Positional(argIdx) is { } paramType)
                 {
-                    var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
-                    if (genericSubstitution != null)
-                        paramType = TypeSubstitution.Apply(paramType, genericSubstitution);
-                    using (EnterStore(StorePosition.ArgumentPositional, paramType, call.Arguments[argIdx],
-                               calleeDisplay: calleeDisplayName, argumentOrdinal: argIdx + 1))
-                        argTypes.Add(CheckExpression(call.Arguments[argIdx]));
-                }
-                else if (!noCandidateExpectation
-                    && calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
-                {
-                    var paramType = calleeFunctionType.ParameterTypes[argIdx];
+                    // The formal this position is checked against — CLOSED at the written type
+                    // arguments for `f[int](…)` / `Box[int](…)`, the early symbol's own for a
+                    // non-generic callee, the RAW formal (a shape hint) for an inferred generic one.
                     using (EnterStore(StorePosition.ArgumentPositional, paramType, call.Arguments[argIdx],
                                calleeDisplay: calleeDisplayName, argumentOrdinal: argIdx + 1))
                         argTypes.Add(CheckExpression(call.Arguments[argIdx]));
@@ -4342,17 +4555,10 @@ internal partial class TypeChecker
                 {
                     kwScope = ClearExpectation(kwarg.Value);
                 }
-                else if (earlyFuncSymbol != null)
+                else if (formals.Keyword(kwarg.Name) is { } kwParamType)
                 {
-                    var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
-                    if (param != null)
-                    {
-                        var kwParamType = param.Type;
-                        if (genericSubstitution != null)
-                            kwParamType = TypeSubstitution.Apply(kwParamType, genericSubstitution);
-                        kwScope = EnterStore(StorePosition.ArgumentKeyword, kwParamType, kwarg.Value,
-                            calleeDisplay: kwCalleeDisplayName, keywordName: kwarg.Name);
-                    }
+                    kwScope = EnterStore(StorePosition.ArgumentKeyword, kwParamType, kwarg.Value,
+                        calleeDisplay: kwCalleeDisplayName, keywordName: kwarg.Name);
                 }
                 kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
             }
@@ -5282,7 +5488,10 @@ internal partial class TypeChecker
             TypeParameters = typeSymbol.TypeParameters,
         };
 
-        var inferenceResult = _genericInference.InferTypeArguments(syntheticFunc, argTypes);
+        // Constructor inference reads the SAME argument vector as function inference, so it goes
+        // through the same seam: `Box(None())` contributes no binding for `T` here either (#1797).
+        var inferenceResult = _genericInference.InferTypeArguments(
+            syntheticFunc, ApplyProjectionsToArgumentTypes(call, argTypes));
         if (inferenceResult.Success && inferenceResult.InferredTypes != null)
         {
             _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);

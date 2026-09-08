@@ -1,0 +1,17 @@
+# #1797: a written generic constructor reference closes its __init__ formals the same way a
+# written generic function does — in an untyped assignment and a bare statement.
+class Box[T]:
+    v: T?
+
+    def __init__(self, v: T?) -> None:
+        print("boxed", v)
+        self.v = v
+
+    def get(self) -> T?:
+        return self.v
+
+def main():
+    b = Box[int](Some(5))
+    print(b.get())
+    Box[int](None())
+    Box[str](v=Some("s"))

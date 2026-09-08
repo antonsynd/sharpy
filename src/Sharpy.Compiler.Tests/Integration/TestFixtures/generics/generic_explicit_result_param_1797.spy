@@ -1,0 +1,11 @@
+# #1797: Ok(v)/Err(e) into an explicitly closed T!str get the closed Result type in every position;
+# the slot the constructor does not fill is taken from the closed formal, never defaulted to object.
+def f[T](x: T!str) -> T!str:
+    print("got", x)
+    return x
+
+def main():
+    f[int](Ok(5))
+    f[int](Err("bad"))
+    r = f(Ok(6))
+    print(r)

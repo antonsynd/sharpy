@@ -288,9 +288,15 @@ public class StoreSeamConformanceTests
     /// comment that happens to name <c>EnterStore()</c> no longer moves it (the anchor it replaced
     /// was bumped 45 -> 47 for two comment mentions). 47 -> 48 @ 80d759f8c: the starred-unpacking
     /// arm pushes each non-star target's declared slot through <c>EnterStore(TupleElement, …)</c>
-    /// (38 pushes + 10 clears, measured by this scan at 9785f8a91).
+    /// (38 pushes + 10 clears, measured by this scan at 9785f8a91). 48 -> 51 (plan-499995,
+    /// #1797): the <c>Some</c>/<c>Ok</c>/<c>Err</c> constructor arms clear the expectation to type a
+    /// payload freely when the formal's slot is OPEN (a shape hint the inference binds through),
+    /// three <c>ClearExpectation</c> sites; the post-inference re-check pushes the CLOSED formal
+    /// through <c>EnterStore(ArgumentPositional, …)</c> and the argument loops' two channels
+    /// collapsed into the one <c>FormalSlots</c> push, so the push count stays 38
+    /// (38 pushes + 13 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 48;
+    private const int ExpectedSeamCallSiteCount = 51;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

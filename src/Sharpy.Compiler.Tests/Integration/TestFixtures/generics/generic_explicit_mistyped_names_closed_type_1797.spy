@@ -1,0 +1,7 @@
+# #1797 / #1728: a mistyped payload into an explicitly closed slot is refused naming the CLOSED
+# type — never SPY0227, never a message naming 'T'.
+def f[T](x: T?) -> T?:
+    return x
+
+def main():
+    f[int](Some("x"))

@@ -1,0 +1,19 @@
+# #1797 (plan-499995 Design Decision 3): a generic caller's own T is concrete information for a
+# generic callee that also names its parameter T — `outer[T]` calling `inner[T]` binds callee-T to
+# caller-T. The range's first cut refused every such call by NAME (SPY0237) and broke the stdlib
+# (bisect, heapq, itertools). Python: same-named type variables are unrelated names.
+def inner[T](a: list[T], x: T) -> int:
+    return len(a)
+
+def outer[T](a: list[T], x: T) -> int:
+    return inner(a, x)
+
+def describe[T](xs: list[T]) -> str:
+    return "n=" + str(inner(xs, xs[0]))
+
+def main():
+    xs: list[int] = [1, 2, 3]
+    print(outer(xs, 1))
+    names: list[str] = ["a", "b"]
+    print(outer(names, "a"))
+    print(describe(names))

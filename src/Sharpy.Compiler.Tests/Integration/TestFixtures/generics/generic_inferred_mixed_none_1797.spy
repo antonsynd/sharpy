@@ -1,0 +1,14 @@
+# #1797: None() contributes NO binding to a type parameter — the other argument binds T, and the
+# None() argument is re-recorded at the CLOSED slot (Optional<int>.None), not the open one.
+def count_some[T](a: T?, b: T?) -> int:
+    n: int = 0
+    if a is not None:
+        n = n + 1
+    if b is not None:
+        n = n + 1
+    return n
+
+def main():
+    print(count_some(Some(5), None()))
+    print(count_some(None(), Some("x")))
+    print(count_some(Some(1), Some(2)))

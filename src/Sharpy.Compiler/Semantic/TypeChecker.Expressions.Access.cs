@@ -2947,6 +2947,33 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The name of the synthetic type parameter that stands for a tagged-union slot the written
+    /// constructor does NOT fill. It shares
+    /// <see cref="GenericTypeInferenceService.SyntheticTypeParameterPrefix"/>, so
+    /// <see cref="GenericTypeInferenceService.IsSyntheticTypeParameter"/> — the one rule that says
+    /// "this actual carries no type information" — skips it.
+    /// </summary>
+    private const string UnfilledSlotPlaceholderName =
+        GenericTypeInferenceService.SyntheticTypeParameterPrefix + "_UnfilledSlot";
+
+    /// <summary>
+    /// What a tagged-union constructor contributes for the slot it does not fill. <c>Ok(5)</c> says
+    /// nothing about the Error type and <c>Err("bad")</c> says nothing about the Ok type, so when
+    /// that slot is OPEN the constructor's natural type carries a placeholder there rather than
+    /// echoing the formal's own type parameter back at inference (#1797).
+    ///
+    /// <para>Echoing it back is what made <c>f(Err("bad"))</c> into <c>T!str</c> bind
+    /// <c>T := T</c> — a binding that looks concrete, leaks <c>T</c> into the emitted C# (CS0246),
+    /// and was previously papered over by rejecting every same-named binding, which in turn refused
+    /// legitimate generic-to-generic calls. A CLOSED slot is contributed unchanged: it really is
+    /// information the formal supplies.</para>
+    /// </summary>
+    private static SemanticType UnfilledSlotType(SemanticType formalSlot)
+        => ContainsTypeParameterType(formalSlot)
+            ? new TypeParameterType { Name = UnfilledSlotPlaceholderName }
+            : formalSlot;
+
+    /// <summary>
     /// Tries to check a function call as a tagged union constructor (Some/Ok/Err).
     /// Returns the resolved type if successful, or null if this is not a constructor call.
     /// </summary>
@@ -3027,7 +3054,7 @@ internal partial class TypeChecker
                     {
                         argType = CheckExpression(call.Arguments[0]);
                     }
-                    return new ResultType { OkType = argType, ErrorType = result.ErrorType };
+                    return new ResultType { OkType = argType, ErrorType = UnfilledSlotType(result.ErrorType) };
                 }
                 var argType2 = CheckExpression(call.Arguments[0]);
                 // Ok(v)'s argument is a store into the Result's Ok slot, so the SEAM decides it —
@@ -3043,7 +3070,8 @@ internal partial class TypeChecker
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[0].Span);
                 }
-                return _expectedType;
+                // The Error slot is the one this constructor does NOT fill — see UnfilledSlotType.
+                return new ResultType { OkType = result.OkType, ErrorType = UnfilledSlotType(result.ErrorType) };
             }
             else if (_expectedType != null && _symbolTable.Lookup("Ok") == null)
             {
@@ -3078,7 +3106,7 @@ internal partial class TypeChecker
                     {
                         argType = CheckExpression(call.Arguments[0]);
                     }
-                    return new ResultType { OkType = result2.OkType, ErrorType = argType };
+                    return new ResultType { OkType = UnfilledSlotType(result2.OkType), ErrorType = argType };
                 }
                 var argType2 = CheckExpression(call.Arguments[0]);
                 // Err(e)'s argument is a store into the Result's Error slot — the Ok arm's twin, and
@@ -3090,7 +3118,8 @@ internal partial class TypeChecker
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[0].Span);
                 }
-                return _expectedType;
+                // The Ok slot is the one this constructor does NOT fill — see UnfilledSlotType.
+                return new ResultType { OkType = UnfilledSlotType(result2.OkType), ErrorType = result2.ErrorType };
             }
             else if (_expectedType != null && _symbolTable.Lookup("Err") == null)
             {

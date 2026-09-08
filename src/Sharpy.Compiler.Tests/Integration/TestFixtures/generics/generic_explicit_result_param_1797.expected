@@ -1,0 +1,4 @@
+got Ok(5)
+got Err(bad)
+got Ok(6)
+Ok(6)

@@ -1,0 +1,10 @@
+# #1797 positive control for generic_explicit_nullable_none_refused_1797: a REFERENCE instantiation
+# keeps `T | None` nullable, so None passes and prints.
+def g[T](x: T | None) -> T | None:
+    return x
+
+def main():
+    r = g[str](None)
+    print(r)
+    s = g[str]("a")
+    print(s)

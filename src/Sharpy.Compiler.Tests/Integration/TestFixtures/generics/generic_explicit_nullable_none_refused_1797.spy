@@ -1,0 +1,9 @@
+# #1797 / Axiom 1: `T | None` on a type parameter is C#'s unconstrained `T?` — plain `T` when T is
+# a value type — so None cannot be passed at g[int]. Refused by name (was CS1503 behind SPY0908).
+# Positive control: generic_explicit_nullable_reference_none_1797 (g[str](None) prints None).
+def g[T](x: T | None) -> T | None:
+    return x
+
+def main():
+    r = g[int](None)
+    print(r)

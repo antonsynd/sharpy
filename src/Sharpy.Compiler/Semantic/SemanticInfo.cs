@@ -539,6 +539,18 @@ public class SemanticInfo : ISemanticQuery
         return _expressionTypes.TryGetValue(expr, out var type) ? type : null;
     }
 
+    /// <summary>
+    /// Forgets the recorded type of <paramref name="expr"/> so the next <c>CheckExpression</c>
+    /// re-derives and re-records it. <c>CheckExpression</c> memoizes per node, so an argument first
+    /// checked against an OPEN generic formal (recording <c>Optional[T]</c>) would otherwise keep
+    /// that recording after inference closed the slot — and the emitter reads the recording
+    /// (#1797, contract §4 "recorded ≠ applied"). The one caller is the post-inference re-check.
+    /// </summary>
+    public void ClearExpressionType(Expression expr)
+    {
+        _expressionTypes.TryRemove(expr, out _);
+    }
+
     public void SetIdentifierSymbol(Identifier id, Symbol symbol)
     {
         _identifierSymbols[id] = symbol;

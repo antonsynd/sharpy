@@ -154,11 +154,13 @@ internal class GenericTypeInferenceService
         var inferredTypes = new List<SemanticType>();
         foreach (var typeParam in typeParams)
         {
-            if (!substitutions.TryGetValue(typeParam.Name, out var inferredType)
-                // #1797: a self-binding (T bound to TypeParameterType("T")) is vacuous —
-                // it means no argument carried concrete information (e.g. None() into T?).
-                || (inferredType is TypeParameterType selfTp
-                    && string.Equals(selfTp.Name, typeParam.Name, StringComparison.Ordinal)))
+            // #1797: "no argument carried information" is decided at the inference-argument seam
+            // (TypeChecker's InferenceArgumentTypes), which replaces a `None`/`None()` argument with
+            // a synthetic placeholder that never binds. Deciding it HERE by NAME instead refused
+            // every legitimate caller-T-into-callee-T call — `def outer[T](a: list[T], x: T)`
+            // calling `inner[T](a, x)` binds T to the caller's own `T`, which is concrete
+            // information about this call and must not be mistaken for its absence.
+            if (!substitutions.TryGetValue(typeParam.Name, out var inferredType))
             {
                 // PEP 696: try using the type parameter default. Resolved through
                 // ResolveTypeParameterDefault so a default naming an earlier parameter takes that
@@ -322,6 +324,15 @@ internal class GenericTypeInferenceService
         Dictionary<string, SemanticType> substitutions,
         TypeParameterVariance variance = TypeParameterVariance.None)
     {
+        // A synthetic placeholder carries no type information, so it neither binds nor conflicts —
+        // whether or not the parameter is already bound. The bound half matters for #1797's
+        // `g(Some(5), None())`: the masked `None()` argument reaches an already-bound `T` and must
+        // be skipped, not compared against `int32` and reported as a conflict.
+        if (IsSyntheticTypeParameter(actual))
+        {
+            return InferenceResult.Succeeded(new List<SemanticType>());
+        }
+
         if (substitutions.TryGetValue(paramName, out var existing))
         {
             // If the existing binding is a synthetic type parameter (from synthesized
@@ -362,13 +373,6 @@ internal class GenericTypeInferenceService
             }
 
             // Already bound to compatible type - success
-            return InferenceResult.Succeeded(new List<SemanticType>());
-        }
-
-        // Skip binding if actual is a synthetic type parameter — it carries no
-        // type information, so defer binding to a later argument with a concrete type.
-        if (IsSyntheticTypeParameter(actual))
-        {
             return InferenceResult.Succeeded(new List<SemanticType>());
         }
 

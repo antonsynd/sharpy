@@ -39,6 +39,15 @@ internal static class TypeSubstitution
                 GenericDefinition = gt.GenericDefinition,
                 ClrOriginTypeName = gt.ClrOriginTypeName
             },
+            // `T | None` written on a TYPE PARAMETER is C#'s unconstrained `T?`, which is the
+            // nullable-reference ANNOTATION: for a reference instantiation it is `T?` (nullable),
+            // for a VALUE instantiation it is plain `T` — there is no `Nullable<T>` behind it and
+            // `null` cannot be passed (CS1503 `<null>` to `int` at the emitted call). The closed
+            // slot must say what the emitted parameter is, so a value-type binding collapses the
+            // nullable wrapper (#1797, plan-499995 Design Decision 3; Axiom 1). A `T | None` on
+            // anything but a bare type parameter (`list[T] | None`) is an ordinary reference slot.
+            NullableType { UnderlyingType: TypeParameterType tp } when substitutions.TryGetValue(tp.Name, out var bound)
+                && bound.IsValueType && bound is not TypeParameterType => bound,
             NullableType nt => new NullableType
             {
                 UnderlyingType = Apply(nt.UnderlyingType, substitutions, substituteNamedUserTypes)

@@ -1,0 +1,12 @@
+# #1797: the deferred-lambda route — a generic callee with a lambda argument — closes its
+# non-lambda formals at the written type arguments in statement position too.
+def apply[T, U](x: T?, fn: (T) -> U) -> str:
+    if x is None:
+        return "none"
+    return "ok:" + str(fn(x))
+
+def main():
+    print(apply[int, int](Some(5), lambda v: v + 1))
+    apply[int, int](Some(6), lambda v: v * 2)
+    r = apply[int, str](None(), lambda v: str(v))
+    print(r)
