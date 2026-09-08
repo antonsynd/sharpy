@@ -273,6 +273,12 @@ internal class OperatorValidator : ValidatingAstWalker
             };
         }
 
+        // OptionalType (Sharpy T?) — Optional<T> defines operator == and operator !=
+        if (type is OptionalType)
+        {
+            return dunderName is DunderNames.Eq or DunderNames.Ne;
+        }
+
         // Generic types — check TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {

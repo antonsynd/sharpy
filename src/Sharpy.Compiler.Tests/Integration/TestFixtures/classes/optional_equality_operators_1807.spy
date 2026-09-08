@@ -1,0 +1,7 @@
+def main():
+    a: int? = Some(1)
+    b: int? = Some(1)
+    c: int? = None()
+    print(a == b)
+    print(a == c)
+    print(a != c)
