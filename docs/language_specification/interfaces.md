@@ -100,6 +100,49 @@ interface IContainer[T]:
     def count(self) -> int: ...
 ```
 
+### One instantiation per generic interface
+
+A type may implement a generic interface at most once — at exactly one set of type arguments. If a type reaches the same generic interface at two distinct instantiations (through explicit declarations, base classes, or synthesized interfaces from dunder methods), the compiler refuses with SPY0607:
+
+```python
+interface IA[T]:
+    def get(self) -> T: ...
+
+class B(IA[int]):
+    def get(self) -> int:
+        return 1
+
+class D(B, IA[str]):  # SPY0607: IA[int] via B and IA[str] explicit
+    def get(self) -> str:
+        return "hello"
+```
+
+The same instantiation via multiple paths is accepted (the diamond is harmless):
+
+```python
+interface IB(IA[int]):
+    pass
+
+interface IC(IA[int]):
+    pass
+
+class D(IB, IC):  # OK — IA[int] via both paths
+    def get(self) -> int:
+        return 42
+```
+
+Conflicts from dunder-synthesized interfaces follow the same rule:
+
+```python
+class Base:
+    def __eq__(self, other: str) -> bool:
+        return False
+
+class Derived(Base):
+    def __eq__(self, other: int) -> bool:  # SPY0607
+        return False
+```
+
 ## Interface Inheritance
 
 Interfaces can extend other interfaces:
