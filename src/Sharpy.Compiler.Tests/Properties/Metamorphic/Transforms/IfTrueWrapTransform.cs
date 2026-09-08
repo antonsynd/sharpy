@@ -4,7 +4,9 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic.Transforms;
 /// Wraps each single-line <c>print(...)</c> statement in an <c>if True:</c> block. The guarded
 /// statement always executes, so output is unchanged and the surrounding block structure is
 /// preserved (the wrapper takes the statement's own indentation and the body is indented one level
-/// deeper).
+/// deeper). A print that BINDS a name — a walrus in its argument, <c>print((z := 5))</c> — is left
+/// alone: Sharpy scopes the binding to the block, so wrapping it would hide <c>z</c> from the
+/// statements after it (SPY0200, measured on generic_inferred_wrapper_scoped_payload_1797).
 /// </summary>
 internal sealed class IfTrueWrapTransform : IAstTransform
 {
@@ -21,7 +23,8 @@ internal sealed class IfTrueWrapTransform : IAstTransform
                 continue;
 
             var code = masked.MaskedLines[i].TrimStart();
-            if (!code.StartsWith("print(", StringComparison.Ordinal))
+            if (!code.StartsWith("print(", StringComparison.Ordinal)
+                || code.Contains(":=", StringComparison.Ordinal))
                 continue;
 
             var line = masked.Lines[i];

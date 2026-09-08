@@ -14,6 +14,13 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// For each of the 20 sealed leaf types: construct an equal-by-value pair and a distinct pair;
 /// assert <c>a.CanonicalKey == b.CanonicalKey ⟺ a.Equals(b)</c> and <c>GetHashCode</c>
 /// consistency. The leaf count is anchored to the literal 20, not derived.
+/// <para>
+/// A third family covers the wrapper leaves: a wrapper never keys as its payload. Without it a
+/// wrapper whose key arm dropped its marker (<c>int?</c> keying as <c>int</c>) survived every
+/// same-leaf pair above and was caught only downstream, by the SPY0607 closure matrix (the
+/// verify round's M52, 2026-09-08). The wrapper roster is a literal; when
+/// <see cref="ExpectedLeafCount"/> moves, decide whether the new leaf wraps a payload.
+/// </para>
 /// </summary>
 public class SemanticTypeIdentityTotalityTests
 {
@@ -56,6 +63,39 @@ public class SemanticTypeIdentityTotalityTests
         _ = leafName;
         Assert.NotEqual(a.CanonicalKey, b.CanonicalKey);
         Assert.NotEqual(a, b);
+    }
+
+    /// <summary>
+    /// The leaves that wrap one or more payload types. Literal, not derived: a leaf that is added
+    /// to the hierarchy and wraps a payload must be added here by hand, and
+    /// <see cref="WrapperLeaves_AreEachLeavesWithAtLeastOnePayloadPair"/> refuses a roster name
+    /// that is not a leaf or a roster leaf without a pair.
+    /// </summary>
+    private static readonly string[] WrapperLeafNames =
+    {
+        "GenericType", "OptionalType", "ResultType", "NullableType", "FunctionType", "TupleType", "TaskType",
+    };
+
+    [Fact]
+    public void WrapperLeaves_AreEachLeavesWithAtLeastOnePayloadPair()
+    {
+        var leafNames = GetLeafTypes().Select(t => t.Name).ToHashSet();
+        var pairedNames = GetWrapperVsPayloadPairs().Select(p => p.LeafName).ToHashSet();
+
+        Assert.Equal(7, WrapperLeafNames.Length);
+        Assert.Empty(WrapperLeafNames.Except(leafNames));
+        Assert.Empty(WrapperLeafNames.Except(pairedNames));
+        Assert.Empty(pairedNames.Except(WrapperLeafNames));
+    }
+
+    [Theory]
+    [MemberData(nameof(WrapperVsPayloadData))]
+    public void WrapperVsPayload_KeysDisagree(string leafName, SemanticType wrapper, SemanticType payload)
+    {
+        _ = leafName;
+        Assert.NotEqual(wrapper.CanonicalKey, payload.CanonicalKey);
+        Assert.NotEqual(wrapper, payload);
+        Assert.NotEqual(payload, wrapper);
     }
 
     [Fact]
@@ -154,6 +194,9 @@ public class SemanticTypeIdentityTotalityTests
 
     public static IEnumerable<object[]> DistinctPairData()
         => GetDistinctPairs().Select(p => new object[] { p.LeafName, p.A, p.B });
+
+    public static IEnumerable<object[]> WrapperVsPayloadData()
+        => GetWrapperVsPayloadPairs().Select(p => new object[] { p.LeafName, p.Wrapper, p.Payload });
 
     private static List<Type> GetLeafTypes()
     {
@@ -288,5 +331,44 @@ public class SemanticTypeIdentityTotalityTests
         yield return ("TaskType",
             new TaskType { ResultType = intType },
             new TaskType { ResultType = strType });
+    }
+
+    /// <summary>
+    /// One (wrapper, payload) pair per payload slot of every wrapper leaf. The payload is the
+    /// exact instance the wrapper was built over, so a key arm that forgets its marker collapses
+    /// onto the payload's key and the pair fails.
+    /// </summary>
+    private static IEnumerable<(string LeafName, SemanticType Wrapper, SemanticType Payload)> GetWrapperVsPayloadPairs()
+    {
+        var intType = new BuiltinType { Name = "int32" };
+        var strType = new BuiltinType { Name = "str" };
+
+        yield return ("GenericType",
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { intType } },
+            intType);
+        yield return ("OptionalType",
+            new OptionalType { UnderlyingType = intType },
+            intType);
+        yield return ("ResultType",
+            new ResultType { OkType = intType, ErrorType = strType },
+            intType);
+        yield return ("ResultType",
+            new ResultType { OkType = intType, ErrorType = strType },
+            strType);
+        yield return ("NullableType",
+            new NullableType { UnderlyingType = intType },
+            intType);
+        yield return ("FunctionType",
+            new FunctionType { ParameterTypes = new List<SemanticType>(), ReturnType = intType },
+            intType);
+        yield return ("FunctionType",
+            new FunctionType { ParameterTypes = new List<SemanticType> { intType }, ReturnType = new VoidType() },
+            intType);
+        yield return ("TupleType",
+            new TupleType { ElementTypes = new List<SemanticType> { intType } },
+            intType);
+        yield return ("TaskType",
+            new TaskType { ResultType = intType },
+            intType);
     }
 }

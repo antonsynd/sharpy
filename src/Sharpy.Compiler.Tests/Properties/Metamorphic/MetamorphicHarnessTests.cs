@@ -368,6 +368,19 @@ public class MetamorphicHarnessTests
         Assert.Contains("        if True:\n            print(1)", result, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A print whose argument binds a name (a walrus) is not wrappable: the binding would be
+    /// scoped to the inserted block and the next statement's read of it would be SPY0200. The
+    /// print after it, which only reads the name, is still wrapped (positive control).
+    /// </summary>
+    [Fact]
+    public void IfTrueWrap_LeavesAWalrusBindingPrintAlone()
+    {
+        var result = new IfTrueWrapTransform().Apply(
+            "def main():\n    print((z := 5))\n    print(z)\n");
+        Assert.Contains("def main():\n    print((z := 5))\n    if True:\n        print(z)", result, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void PassInsertion_UsesTheOriginalIndentationString()
     {
