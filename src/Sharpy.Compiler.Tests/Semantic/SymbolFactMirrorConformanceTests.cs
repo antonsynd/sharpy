@@ -986,7 +986,7 @@ def main() -> None:
         ["OverridesClrBaseMember"] = "same-file-only — read at RoslynEmitter.ClassMembers.Methods.cs:155",
         ["ForwardingConstructors"] = "same-file-only — read at RoslynEmitter.ClassMembers.Constructors.cs:391",
         ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",
-        ["SynthesizedInterfaces"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs (CollectSynthesizedInterfaces)",
+        ["SynthesizedInterfaces"] = "derived — restored from InterfaceReference.SynthesizedVia on warm restore (#1746)",
     };
 
     /// <summary>

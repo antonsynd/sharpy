@@ -106,7 +106,7 @@ All diagnostics use the `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 - **`None` semantics:** bare `None` is null for `T?` (nullable); `None()` constructs the `Optional` union variant.
 - **Spy-sourced stdlib modules:** for modules in the `MODULES` mapping of `build_tools/regenerate_spy_stdlib.sh`, the C# under `<Module>/` is **generated** from the `.spy` source in `spy/` — never hand-edit it; run the script (CI gate: `check_spy_staleness.sh`).
 - **The compiler has zero compile-time dependency on Stdlib** — modules are discovered at runtime via `ModuleRegistry.LoadReference()`.
-- **Dunder-driven protocol synthesis:** the emitter implicitly adds `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>` to a class when `__len__`/`__bool__`/`__reversed__` is present (emits SPY1001).
+- **Dunder-driven protocol synthesis:** the compiler synthesizes `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>` during inheritance resolution when `__len__`/`__bool__`/`__reversed__` is present; visible to the type checker (SPY1001).
 
 ## Testing
 

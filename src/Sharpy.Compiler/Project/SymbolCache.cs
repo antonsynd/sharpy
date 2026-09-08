@@ -373,6 +373,12 @@ internal record CachedInterfaceEntry
     /// Null or empty if the interface has no type arguments.
     /// </summary>
     public List<string>? TypeArgs { get; init; }
+
+    /// <summary>
+    /// Non-null when this interface was synthesized from a dunder method (#1746).
+    /// Null for source-declared interfaces.
+    /// </summary>
+    public string? SynthesizedVia { get; init; }
 }
 
 /// <summary>

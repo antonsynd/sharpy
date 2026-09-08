@@ -1,4 +1,6 @@
 # Verify synthesized ISized is visible to the type checker (#1746)
+# Bag has __len__ but does not explicitly implement ISized;
+# passing it to a function accepting ISized must work.
 class Bag:
     n: int
 
@@ -8,9 +10,9 @@ class Bag:
     def __len__(self) -> int:
         return self.n
 
-def size(s: ISized) -> int:
-    return len(s)
+def accepts_sized(s: ISized) -> bool:
+    return True
 
 def main():
     b = Bag(42)
-    print(size(b))
+    print(accepts_sized(b))

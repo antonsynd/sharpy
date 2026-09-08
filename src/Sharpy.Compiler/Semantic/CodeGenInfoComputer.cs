@@ -281,7 +281,7 @@ internal class CodeGenInfoComputer
                 OriginalName = classDef.Name
             });
 
-            ComputeSynthesizedInterfaces(typeSymbol, classDef.BaseClasses, classDef.Body);
+            ComputeSynthesizedInterfaces(typeSymbol, classDef.Body);
 
             // Process class members
             ProcessTypeMembers(typeSymbol, classDef.Body);
@@ -300,7 +300,7 @@ internal class CodeGenInfoComputer
                 OriginalName = structDef.Name
             });
 
-            ComputeSynthesizedInterfaces(typeSymbol, structDef.BaseClasses, structDef.Body);
+            ComputeSynthesizedInterfaces(typeSymbol, structDef.Body);
 
             ProcessTypeMembers(typeSymbol, structDef.Body);
             DetectMemberCollisions(typeSymbol, structDef.Body);
@@ -454,33 +454,51 @@ internal class CodeGenInfoComputer
         return false;
     }
 
-    private void ComputeSynthesizedInterfaces(
-        TypeSymbol typeSymbol,
-        IReadOnlyList<TypeAnnotation> explicitBaseClasses,
-        IReadOnlyList<Statement> body)
+    private void ComputeSynthesizedInterfaces(TypeSymbol typeSymbol, IReadOnlyList<Statement> body)
     {
-        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-        if (synthesized.Count == 0)
+        // #1746 Phase 4 Task 2: read from the materialized supertype closure.
+        // Sharpy.Core interfaces (ISized, IBoolConvertible, IReverseEnumerable) are flagged
+        // via SynthesizedVia during inheritance resolution. BCL interfaces (IEnumerator,
+        // IEnumerable, IEquatable) are not resolvable at name-resolution time and are still
+        // computed from ProtocolMethods here.
+        var analyzerByName = new Dictionary<string, SynthesizedInterfaceInfo>(StringComparer.Ordinal);
+        foreach (var info in SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol))
+            analyzerByName.TryAdd(info.InterfaceName, info);
+
+        if (analyzerByName.Count == 0)
             return;
 
-        var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
-        var filtered = new List<SynthesizedInterfaceInfo>();
+        var result = new List<SynthesizedInterfaceInfo>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
+        foreach (var iface in typeSymbol.Interfaces)
+        {
+            if (iface.SynthesizedVia == null || !seen.Add(iface.Definition.Name))
+                continue;
+            if (analyzerByName.TryGetValue(iface.Definition.Name, out var info))
+                result.Add(info);
+        }
+
+        foreach (var kvp in analyzerByName)
+        {
+            if (seen.Add(kvp.Key))
+                result.Add(kvp.Value);
+        }
+
+        if (result.Count == 0)
+            return;
+
+        // SPY1001 per-file emission — cacheable by the incremental cache (#1553).
         var dunderFuncs = new Dictionary<string, FunctionDef>();
         foreach (var stmt in body)
         {
-            if (stmt is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name) && !dunderFuncs.ContainsKey(funcDef.Name))
+            if (stmt is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name)
+                && !dunderFuncs.ContainsKey(funcDef.Name))
                 dunderFuncs[funcDef.Name] = funcDef;
         }
 
-        foreach (var info in synthesized)
+        foreach (var info in result)
         {
-            if (explicitNames.Contains(info.InterfaceName))
-                continue;
-
-            filtered.Add(info);
-            explicitNames.Add(info.InterfaceName);
-
             var displayName = info.TypeArgs.Length > 0
                 ? $"{info.InterfaceName}<{string.Join(", ", info.TypeArgs.Select(t => t.GetDisplayName()))}>"
                 : info.InterfaceName;
@@ -498,8 +516,7 @@ internal class CodeGenInfoComputer
                 phase: CompilerPhase.TypeChecking);
         }
 
-        if (filtered.Count > 0)
-            _semanticBinding.SetSynthesizedInterfaces(typeSymbol, filtered);
+        _semanticBinding.SetSynthesizedInterfaces(typeSymbol, result);
     }
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)

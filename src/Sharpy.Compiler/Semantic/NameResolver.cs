@@ -481,7 +481,7 @@ internal partial class NameResolver
 
     private void AddSynthesizedInterfaces(
         TypeSymbol typeSymbol,
-        List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder)> synthesized,
+        List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder, int Line, int Column)> synthesized,
         ImmutableArray<TypeAnnotation> explicitBaseClasses)
     {
         if (synthesized.Count == 0)
@@ -491,7 +491,7 @@ internal partial class NameResolver
         foreach (var baseAnnot in explicitBaseClasses)
             explicitNames.Add(baseAnnot.Name);
 
-        foreach (var (interfaceName, _, typeArgAnnotations, triggeringDunder) in synthesized)
+        foreach (var (interfaceName, ns, typeArgAnnotations, triggeringDunder, line, column) in synthesized)
         {
             if (explicitNames.Contains(interfaceName))
                 continue;
@@ -506,12 +506,6 @@ internal partial class NameResolver
                 TypeArgAnnotations = typeArgAnnotations,
                 SynthesizedVia = triggeringDunder
             });
-
-            _diagnostics.AddInfo(
-                $"Type '{typeSymbol.Name}' implicitly implements '{interfaceName}' via '{triggeringDunder}'.",
-                filePath: _currentFilePath,
-                code: DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
-                phase: CompilerPhase.NameResolution);
         }
     }
 

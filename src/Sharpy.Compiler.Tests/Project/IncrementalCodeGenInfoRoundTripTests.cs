@@ -337,21 +337,13 @@ def main() -> None:
         AssertRoundTripped(coldFacts, warmFacts, "the warm build");
 
         // The five fields SerializeCodeGenInfo does NOT write (OverridesClrBaseMember,
-        // IsCompileTimeConstant, ForwardingConstructors, SelfInterfaceBridges,
-        // SynthesizedInterfaces) come back at their defaults. Stated as an assertion rather than
-        // a comment: it is safe TODAY only because a cache-served file's C# is served from the
-        // cache too — it is never re-emitted from restored symbols — and the day either half of
-        // that changes, this row goes red and the wire format has to grow (drain on fix). The
-        // cold arm is the positive control: without it, "restored is 0" would also pass if the
-        // fact never existed.
+        // #1746: SynthesizedInterfaces is derived on restore from the flagged InterfaceReferences
+        // (SynthesizedVia != null) rather than carried on the wire. Cold == warm.
         TypeInfo(cold, "lib.spy", "Box")!.SynthesizedInterfaces.Should().HaveCount(1,
-            "`__len__` makes the cold build synthesize ISized on Box — the fact whose absence "
-            + "after a round trip the next assertion documents");
-        TypeInfo(warm, "lib.spy", "Box")!.SynthesizedInterfaces.Should().BeNullOrEmpty(
-            "SynthesizedInterfaces is one of the five CodeGenInfo fields the wire format does not "
-            + "carry (SymbolSerializer.SerializeCodeGenInfo writes twelve). A restored Box "
-            + "therefore knows nothing about ISized — which no emission consults, because lib.spy "
-            + "is served from the cache rather than re-emitted");
+            "`__len__` makes the cold build synthesize ISized on Box — the positive control");
+        TypeInfo(warm, "lib.spy", "Box")!.SynthesizedInterfaces.Should().HaveCount(1,
+            "SynthesizedInterfaces is derived on restore from flagged InterfaceReferences (#1746); "
+            + "cold == warm");
         TypeInfo(warm, "lib.spy", "Box")!.CSharpName.Should().Be("Box",
             "the carried half of the record must still be there — this is not a null CodeGenInfo");
 

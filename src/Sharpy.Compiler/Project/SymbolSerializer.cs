@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 using TypeAnnotation = Sharpy.Compiler.Parser.Ast.TypeAnnotation;
 using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
@@ -139,7 +140,8 @@ internal static class SymbolSerializer
                     SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
                     TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
                           ? null
-                          : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList()
+                          : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList(),
+                    SynthesizedVia = i.SynthesizedVia
                 }).ToList()
                 : null,
             Fields = fields,
@@ -1250,7 +1252,8 @@ internal static class SymbolSerializer
                     ts.Interfaces.Add(new InterfaceReference
                     {
                         Definition = ifaceType,
-                        TypeArgAnnotations = typeArgs
+                        TypeArgAnnotations = typeArgs,
+                        SynthesizedVia = entry.SynthesizedVia
                     });
                 }
             }
@@ -1264,6 +1267,36 @@ internal static class SymbolSerializer
                 ResolveTypeReferences(cached.NestedTypes[i], ts.NestedTypes[i], symbolRegistry);
             }
         }
+    }
+
+    /// <summary>
+    /// Derives <c>CodeGenInfo.SynthesizedInterfaces</c> from the restored
+    /// <see cref="InterfaceReference"/> entries flagged with <see cref="InterfaceReference.SynthesizedVia"/>.
+    /// Called after <see cref="ResolveReferences"/> so the interface definitions are linked (#1746).
+    /// </summary>
+    public static void DeriveSynthesizedInterfacesOnRestore(TypeSymbol ts, SemanticBinding binding)
+    {
+        // ProtocolMethods is empty for cached types (NameResolver doesn't re-run).
+        // Scan restored Methods for dunder names and compute the synthesis directly.
+        // This mirrors SynthesisAnalyzer.ComputeSynthesizedInterfaces but works on
+        // restored FunctionSymbols rather than ProtocolMethods.
+        var dunders = new Dictionary<string, FunctionSymbol>();
+        foreach (var m in ts.Methods)
+        {
+            if (DunderDetector.IsDunderMethod(m.Name) && !dunders.ContainsKey(m.Name))
+                dunders[m.Name] = m;
+        }
+
+        if (dunders.Count == 0)
+            return;
+
+        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfacesFromMethods(dunders);
+        if (synthesized.Count == 0)
+            return;
+
+        var existing = binding.GetCodeGenInfo(ts);
+        if (existing != null)
+            binding.SetCodeGenInfo(ts, existing with { SynthesizedInterfaces = synthesized });
     }
 
     #endregion

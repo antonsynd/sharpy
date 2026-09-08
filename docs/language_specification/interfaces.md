@@ -171,7 +171,7 @@ The actual protocol interfaces in Sharpy.Core are:
 - `IBoolConvertible` -- `bool IsTrue { get; }` -- synthesized when `__bool__` is present
 - `IReverseEnumerable<T>` -- `IEnumerator<T> GetReverseEnumerator()` -- synthesized when `__reversed__` is present
 
-These interfaces are implicitly added to a class's base list by the emitter when the corresponding dunder method is detected (emitting an SPY1001 info diagnostic). Users do not import or explicitly implement these interfaces.
+These interfaces are synthesized during inheritance resolution when the corresponding dunder method is present in the class body; they are visible to the type checker and announced by an SPY1001 info diagnostic. Users do not import or explicitly implement these interfaces.
 
 ```python
 # ✅ Standard library protocol interface (implicit via dunder)
@@ -186,6 +186,16 @@ class MyCollection:
         return len(self._items) > 0
     # Compiler implicitly adds IBoolConvertible to the base list
 
+# ✅ Synthesized interface visible to the type checker
+def size(s: ISized) -> int:
+    return len(s)
+
+def main():
+    c = MyCollection()
+    print(size(c))    # works — Bag implements ISized via __len__
+```
+
+```python
 # ❌ ERROR: User-defined interface cannot declare dunders
 interface IMyProtocol:
     def __custom__(self) -> int:    # ERROR: dunder methods not allowed

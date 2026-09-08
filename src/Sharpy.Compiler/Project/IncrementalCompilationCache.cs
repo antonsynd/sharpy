@@ -115,7 +115,7 @@ internal class IncrementalCompilationCache
     //          Code/Line/Column/Span) and carries RelatedLocations — the first cut coerced nulls
     //          to defaults, and the warm-fidelity sweep measured the 0-vs-null divergence on three
     //          fixtures before the entries ever shipped in a release.
-    internal const int CurrentSchemaVersion = 31;
+    internal const int CurrentSchemaVersion = 32;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
@@ -605,6 +605,18 @@ internal class IncrementalCompilationCache
 
         // Resolve cross-references
         SymbolSerializer.ResolveReferences(entry.Symbols, symbolRegistry);
+
+        // #1746: derive CodeGenInfo.SynthesizedInterfaces from the restored flagged interfaces.
+        // The wire format carries SynthesizedVia on InterfaceReference but not the
+        // SynthesizedInterfaceInfo list on CodeGenInfo (it is the same data in a different shape).
+        if (binding != null)
+        {
+            foreach (var cachedSymbol in entry.Symbols)
+            {
+                if (symbolRegistry.TryGetValue(cachedSymbol.Id, out var sym) && sym is TypeSymbol ts)
+                    SymbolSerializer.DeriveSynthesizedInterfacesOnRestore(ts, binding);
+            }
+        }
 
         if (_logger.IsEnabled(CompilerLogLevel.Debug))
         {

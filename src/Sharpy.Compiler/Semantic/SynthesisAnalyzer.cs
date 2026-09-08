@@ -159,14 +159,84 @@ internal static class SynthesisAnalyzer
     }
 
     /// <summary>
+    /// Computes synthesized interfaces from a pre-built method dictionary.
+    /// Used by the warm-restore path where ProtocolMethods is not populated (#1746).
+    /// </summary>
+    public static List<SynthesizedInterfaceInfo> ComputeSynthesizedInterfacesFromMethods(
+        Dictionary<string, FunctionSymbol> dunders)
+    {
+        var result = new List<SynthesizedInterfaceInfo>();
+
+        foreach (var (name, _) in dunders)
+        {
+            var protocol = ProtocolRegistry.GetProtocol(name);
+            if (protocol?.SharpyCoreInterface != null
+                && SynthesizableSharpyCoreInterfaces.Contains(protocol.SharpyCoreInterface))
+            {
+                result.Add(new SynthesizedInterfaceInfo(
+                    protocol.SharpyCoreInterface, "Sharpy",
+                    Array.Empty<SemanticType>(), name));
+            }
+        }
+
+        if (dunders.TryGetValue(DunderNames.Reversed, out var reversedFunc))
+        {
+            var elementType = reversedFunc.ReturnType is not UnknownType
+                ? reversedFunc.ReturnType
+                : new UserDefinedType { Name = "object" };
+            result.Add(new SynthesizedInterfaceInfo(
+                "IReverseEnumerable", "Sharpy", new[] { elementType }, DunderNames.Reversed));
+        }
+
+        if (dunders.TryGetValue(DunderNames.Next, out var nextFunc))
+        {
+            var elementType = nextFunc.ReturnType is not UnknownType
+                ? nextFunc.ReturnType
+                : new UserDefinedType { Name = "object" };
+            result.Add(new SynthesizedInterfaceInfo(
+                "IEnumerator", "System.Collections.Generic", new[] { elementType }, DunderNames.Next));
+
+            if (dunders.ContainsKey(DunderNames.Iter))
+            {
+                result.Add(new SynthesizedInterfaceInfo(
+                    "IEnumerable", "System.Collections.Generic", new[] { elementType }, DunderNames.Iter));
+            }
+        }
+
+        if (!dunders.ContainsKey(DunderNames.Next)
+            && dunders.TryGetValue(DunderNames.Iter, out var iterFunc)
+            && iterFunc.IsGenerator)
+        {
+            var elementType = iterFunc.ReturnType is not (UnknownType or VoidType)
+                ? iterFunc.ReturnType
+                : SemanticType.Object;
+            result.Add(new SynthesizedInterfaceInfo(
+                "IEnumerable", "System.Collections.Generic", new[] { elementType }, DunderNames.Iter));
+        }
+
+        if (dunders.TryGetValue(DunderNames.Eq, out var eqFunc))
+        {
+            var otherParam = eqFunc.Parameters
+                .FirstOrDefault(p => p.Name != PythonNames.Self);
+            if (otherParam?.Type is not (null or UserDefinedType { Name: "object" } or UnknownType))
+            {
+                result.Add(new SynthesizedInterfaceInfo(
+                    "IEquatable", "System", new[] { otherParam.Type }, DunderNames.Eq));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// AST-level classifier: examines FunctionDef nodes in a class/struct body to determine
     /// which interfaces should be synthesized, BEFORE type checking runs. Returns tuples of
     /// (InterfaceName, Namespace, TypeArgAnnotations, TriggeringDunder).
     /// </summary>
-    internal static List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder)>
+    internal static List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder, int Line, int Column)>
         ClassifyDundersFromAst(IReadOnlyList<Statement> body)
     {
-        var result = new List<(string, string, ImmutableArray<TypeAnnotation>, string)>();
+        var result = new List<(string, string, ImmutableArray<TypeAnnotation>, string, int, int)>();
 
         var dunders = new Dictionary<string, FunctionDef>();
         foreach (var stmt in body)
@@ -179,15 +249,15 @@ internal static class SynthesisAnalyzer
         }
 
         // __len__ → ISized
-        if (dunders.ContainsKey(DunderNames.Len))
+        if (dunders.TryGetValue(DunderNames.Len, out var lenFunc))
         {
-            result.Add(("ISized", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Len));
+            result.Add(("ISized", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Len, lenFunc.LineStart, lenFunc.ColumnStart));
         }
 
         // __bool__ → IBoolConvertible
-        if (dunders.ContainsKey(DunderNames.Bool))
+        if (dunders.TryGetValue(DunderNames.Bool, out var boolFunc))
         {
-            result.Add(("IBoolConvertible", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Bool));
+            result.Add(("IBoolConvertible", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Bool, boolFunc.LineStart, boolFunc.ColumnStart));
         }
 
         // __reversed__ → IReverseEnumerable<T>
@@ -195,7 +265,7 @@ internal static class SynthesisAnalyzer
         {
             var typeArg = reversedFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
             result.Add(("IReverseEnumerable", "Sharpy",
-                ImmutableArray.Create(typeArg), DunderNames.Reversed));
+                ImmutableArray.Create(typeArg), DunderNames.Reversed, reversedFunc.LineStart, reversedFunc.ColumnStart));
         }
 
         // __next__ → IEnumerator<T>; __next__ + __iter__ → IEnumerable<T>
@@ -203,12 +273,12 @@ internal static class SynthesisAnalyzer
         {
             var typeArg = nextFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
             result.Add(("IEnumerator", "System.Collections.Generic",
-                ImmutableArray.Create(typeArg), DunderNames.Next));
+                ImmutableArray.Create(typeArg), DunderNames.Next, nextFunc.LineStart, nextFunc.ColumnStart));
 
-            if (dunders.ContainsKey(DunderNames.Iter))
+            if (dunders.TryGetValue(DunderNames.Iter, out var iterForNext))
             {
                 result.Add(("IEnumerable", "System.Collections.Generic",
-                    ImmutableArray.Create(typeArg), DunderNames.Iter));
+                    ImmutableArray.Create(typeArg), DunderNames.Iter, iterForNext.LineStart, iterForNext.ColumnStart));
             }
         }
 
@@ -221,7 +291,7 @@ internal static class SynthesisAnalyzer
             {
                 var typeArg = iterFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
                 result.Add(("IEnumerable", "System.Collections.Generic",
-                    ImmutableArray.Create(typeArg), DunderNames.Iter));
+                    ImmutableArray.Create(typeArg), DunderNames.Iter, iterFunc.LineStart, iterFunc.ColumnStart));
             }
         }
 
@@ -233,7 +303,7 @@ internal static class SynthesisAnalyzer
             if (otherParam?.Type != null && otherParam.Type.Name != "object")
             {
                 result.Add(("IEquatable", "System",
-                    ImmutableArray.Create(otherParam.Type), DunderNames.Eq));
+                    ImmutableArray.Create(otherParam.Type), DunderNames.Eq, eqFunc.LineStart, eqFunc.ColumnStart));
             }
         }
 
