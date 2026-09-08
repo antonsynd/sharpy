@@ -44,8 +44,31 @@ public class TypeSubstitutionTests
         Assert.Same(BuiltinType.Int, gt.TypeArguments[0]);
     }
 
+    /// <summary>
+    /// <c>T | None</c> closed at a reference type keeps its nullable wrapper.
+    /// </summary>
     [Fact]
-    public void Apply_NullableType_SubstitutesUnderlyingType()
+    public void Apply_NullableType_OverReferenceTypeParameter_SubstitutesUnderlyingType()
+    {
+        var nullable = new NullableType
+        {
+            UnderlyingType = new TypeParameterType { Name = "U" }
+        };
+
+        var result = TypeSubstitution.Apply(nullable, Substitutions);
+
+        var nt = Assert.IsType<NullableType>(result);
+        Assert.Same(BuiltinType.Str, nt.UnderlyingType);
+    }
+
+    /// <summary>
+    /// <c>T | None</c> closed at a value type IS that value type (plan-499995 Design Decision 3,
+    /// #1797; Axiom 1): there is no <c>Nullable&lt;T&gt;</c> behind an unconstrained <c>T</c>, so
+    /// the substitution collapses the wrapper rather than inventing an <c>int?</c> the emitted
+    /// C# cannot spell.
+    /// </summary>
+    [Fact]
+    public void Apply_NullableType_OverValueTypeParameter_CollapsesToTheValueType()
     {
         var nullable = new NullableType
         {
@@ -54,8 +77,30 @@ public class TypeSubstitutionTests
 
         var result = TypeSubstitution.Apply(nullable, Substitutions);
 
+        Assert.Same(BuiltinType.Int, result);
+    }
+
+    /// <summary>
+    /// The collapse is for a BARE type parameter only: <c>list[T] | None</c> is an ordinary
+    /// reference slot whatever <c>T</c> closes at.
+    /// </summary>
+    [Fact]
+    public void Apply_NullableType_OverCompositeOfValueTypeParameter_KeepsTheWrapper()
+    {
+        var nullable = new NullableType
+        {
+            UnderlyingType = new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+
+        var result = TypeSubstitution.Apply(nullable, Substitutions);
+
         var nt = Assert.IsType<NullableType>(result);
-        Assert.Same(BuiltinType.Int, nt.UnderlyingType);
+        var gt = Assert.IsType<GenericType>(nt.UnderlyingType);
+        Assert.Same(BuiltinType.Int, gt.TypeArguments[0]);
     }
 
     [Fact]

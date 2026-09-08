@@ -1,0 +1,25 @@
+def a[T, U](x: T, f: (T) -> U) -> U:
+    return f(x)
+
+
+def m[T](f: () -> T) -> T:
+    return f()
+
+
+def main() -> None:
+    v = "outer"
+    # The lambda parameter shadows an outer name of another type.
+    print(a(1, lambda v: str(v + 1)))
+    print(v)
+    # The lambda closes over an outer name.
+    k = 10
+    print(a(2, lambda n: n * k))
+    # The lambda parameter shadows a loop variable of another type.
+    for s in ["x", "y"]:
+        pass
+    print(a(4, lambda s: s + 1))
+    # T bound only by the lambda's return.
+    print(m(lambda: 5))
+    print(m(lambda: "five"))
+    # A lambda whose body calls the generic again.
+    print(a(3, lambda n: a(n, lambda q: q * 2)))

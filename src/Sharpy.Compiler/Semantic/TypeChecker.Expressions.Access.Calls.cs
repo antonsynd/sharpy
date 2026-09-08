@@ -4069,36 +4069,18 @@ internal partial class TypeChecker
     /// Whether <paramref name="argument"/> re-enters the post-inference re-check: its recording
     /// still names a type parameter (a payload-less <c>None()</c> under an open <c>T?</c>), or it
     /// is a slot-typed construction whose PAYLOAD may narrow against the closed slot
-    /// (<c>Some(7)</c> into an inferred <c>int8?</c>) — provided the payload introduces no scope.
-    /// <see cref="CheckExpression"/> is not idempotent for a lambda, a comprehension or a walrus:
-    /// a second pass binds a fresh versioned symbol and the emitter then names a variable the
-    /// declaration never made (CS0103 — the <c>all([s &gt;= 60 for s in scores])</c> cell, measured).
-    /// Those keep their first recording; nothing in them narrows anyway.
+    /// (<c>Some(7)</c> into an inferred <c>int8?</c>). Nothing else re-enters — in particular not
+    /// a comprehension passed directly at an open formal: its recording is already closed
+    /// (<c>list[bool]</c>), and <see cref="CheckExpression"/> must not type it twice, because a
+    /// second pass binds a fresh versioned symbol and the emitter then names a variable the
+    /// declaration never made (CS0103 — the <c>all([s &gt;= 60 for s in scores])</c> cell,
+    /// measured; it is what a gate that admits every argument breaks). No further exclusion is
+    /// load-bearing: a lambda exclusion and an allowlist over the construction's payload were
+    /// both removed under mutation with every measured cell unchanged (the scoped_payload and
+    /// lambda_slot_shadow fixtures under generics/).
     /// </summary>
     private bool IsRecheckedAfterInference(Expression argument, SemanticType recorded)
-    {
-        if (argument is LambdaExpression)
-            return false;
-        if (ContainsTypeParameterType(recorded))
-            return true;
-        return IsSlotTypedConstruction(argument)
-            && UnwrapParenthesized(argument) is FunctionCall { Arguments: var payload }
-            && payload.All(IsScopeFree);
-    }
-
-    /// <summary>A payload the re-check may type twice: literals, names, operators and calls over them; never a lambda, comprehension or walrus.</summary>
-    private static bool IsScopeFree(Expression expression) => UnwrapParenthesized(expression) switch
-    {
-        IntegerLiteral or FloatLiteral or StringLiteral or BooleanLiteral or NoneLiteral or Identifier => true,
-        UnaryOp unary => IsScopeFree(unary.Operand),
-        BinaryOp binary => IsScopeFree(binary.Left) && IsScopeFree(binary.Right),
-        MemberAccess member => IsScopeFree(member.Object),
-        IndexAccess index => IsScopeFree(index.Object) && IsScopeFree(index.Index),
-        FunctionCall call => IsScopeFree(call.Function)
-            && call.Arguments.All(IsScopeFree)
-            && call.KeywordArguments.All(k => IsScopeFree(k.Value)),
-        _ => false,
-    };
+        => ContainsTypeParameterType(recorded) || IsSlotTypedConstruction(argument);
 
     /// <summary>
     /// The binding for a construction that WROTE its type arguments — <c>Slot[int, str](...)</c>.

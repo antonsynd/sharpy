@@ -511,6 +511,10 @@ def main() -> None:
             + "the side that has not resolved it yet — an extraction has it, the declaration does not",
         ["TypeSymbol.UnresolvedBaseTypeArgs"] = "see TypeSymbol.UnresolvedBaseName",
         ["TypeSymbol.UnresolvedInterfaces"] = "see TypeSymbol.UnresolvedBaseName",
+        ["TypeSymbol.UnresolvedSynthesizedInterfaces"] = "see TypeSymbol.UnresolvedBaseName — the "
+            + "synthesized twin of UnresolvedInterfaces (#1746): a dunder-synthesized row restored "
+            + "from the cache by CLR interface name, consumed by InheritanceResolver's warm "
+            + "re-resolution and empty on the cold path",
         ["TypeSymbol.DataclassInfo"] = "set by the TypeChecker's dataclass pass, which runs for the "
             + "declaring compilation only",
         ["TypeSymbol.DataclassFields"] = "see TypeSymbol.DataclassInfo",

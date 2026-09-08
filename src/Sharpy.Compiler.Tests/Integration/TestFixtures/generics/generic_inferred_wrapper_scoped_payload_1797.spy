@@ -1,0 +1,14 @@
+def f[T](x: T?) -> T:
+    return x.unwrap()
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    # A comprehension payload binds T to list[int] without being typed twice.
+    print(f(Some([y * 2 for y in xs])))
+    # A walrus payload binds T to int and its target stays visible after the call.
+    print(f(Some((z := 5))))
+    print(z)
+    # A lambda payload binds T to the lambda's function type.
+    g = f(Some(lambda a: a + 1))
+    print(g(4))
