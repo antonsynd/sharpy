@@ -366,110 +366,152 @@ internal partial class NameResolver
 
     private void ResolveClassInheritance(ClassDef classDef, TypeSymbol typeSymbol)
     {
-        if (classDef.BaseClasses.Length == 0)
-            return;
-
-        // Process all base classes
-        // First class (if present) becomes BaseType, all interfaces go to Interfaces list
-        bool hasSetBaseType = false;
-
-        foreach (var baseAnnot in classDef.BaseClasses)
+        if (classDef.BaseClasses.Length > 0)
         {
-            var baseSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
-            if (baseSymbol == null)
+            // Process all base classes
+            // First class (if present) becomes BaseType, all interfaces go to Interfaces list
+            bool hasSetBaseType = false;
+
+            foreach (var baseAnnot in classDef.BaseClasses)
             {
-                if (rawSymbol?.IsErrorRecovery == true)
+                var baseSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
+                if (baseSymbol == null)
                 {
+                    if (rawSymbol?.IsErrorRecovery == true)
+                    {
+                        continue;
+                    }
+
+                    AddError($"Base type '{baseAnnot.Name}' not found",
+                        classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: classDef.Span);
                     continue;
                 }
 
-                AddError($"Base type '{baseAnnot.Name}' not found",
-                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: classDef.Span);
-                continue;
-            }
-
-            if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
-            {
-                AddError($"'{baseAnnot.Name}' is not a class or interface",
-                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: classDef.Span);
-                continue;
-            }
-
-            if (!TryCompleteBaseReferenceArguments(baseAnnot, baseSymbol, out var baseTypeArgs))
-                continue;
-
-            if (baseSymbol.TypeKind == TypeKind.Class)
-            {
-                if (hasSetBaseType)
+                if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
                 {
-                    AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
+                    AddError($"'{baseAnnot.Name}' is not a class or interface",
                         classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: classDef.Span);
                     continue;
                 }
-                _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
-                _semanticBinding.SetBaseTypeReference(typeSymbol, new BaseTypeReference
-                {
-                    Definition = baseSymbol,
-                    TypeArgAnnotations = baseTypeArgs,
-                    SourceAnnotation = baseAnnot
-                });
-                hasSetBaseType = true;
 
-                if (IsSourceGeneratorType(baseSymbol))
+                if (!TryCompleteBaseReferenceArguments(baseAnnot, baseSymbol, out var baseTypeArgs))
+                    continue;
+
+                if (baseSymbol.TypeKind == TypeKind.Class)
                 {
-                    typeSymbol.IsSourceGenerator = true;
+                    if (hasSetBaseType)
+                    {
+                        AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
+                            classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: classDef.Span);
+                        continue;
+                    }
+                    _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
+                    _semanticBinding.SetBaseTypeReference(typeSymbol, new BaseTypeReference
+                    {
+                        Definition = baseSymbol,
+                        TypeArgAnnotations = baseTypeArgs,
+                        SourceAnnotation = baseAnnot
+                    });
+                    hasSetBaseType = true;
+
+                    if (IsSourceGeneratorType(baseSymbol))
+                    {
+                        typeSymbol.IsSourceGenerator = true;
+                    }
+
                 }
-
-            }
-            else // TypeKind.Interface
-            {
-                _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+                else // TypeKind.Interface
                 {
-                    Definition = baseSymbol,
-                    TypeArgAnnotations = baseTypeArgs,
-                    SourceAnnotation = baseAnnot
-                });
+                    _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+                    {
+                        Definition = baseSymbol,
+                        TypeArgAnnotations = baseTypeArgs,
+                        SourceAnnotation = baseAnnot
+                    });
+                }
             }
         }
+
+        var synthesized = SynthesisAnalyzer.ClassifyDundersFromAst(classDef.Body);
+        AddSynthesizedInterfaces(typeSymbol, synthesized, classDef.BaseClasses);
     }
 
     private void ResolveStructInheritance(StructDef structDef, TypeSymbol typeSymbol)
     {
-        if (structDef.BaseClasses.Length == 0)
-            return;
-
-        // Structs can only implement interfaces
-        foreach (var baseAnnot in structDef.BaseClasses)
+        if (structDef.BaseClasses.Length > 0)
         {
-            var interfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
-            if (interfaceSymbol == null)
+            // Structs can only implement interfaces
+            foreach (var baseAnnot in structDef.BaseClasses)
             {
-                if (rawSymbol?.IsErrorRecovery == true)
+                var interfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
+                if (interfaceSymbol == null)
                 {
+                    if (rawSymbol?.IsErrorRecovery == true)
+                    {
+                        continue;
+                    }
+
+                    AddError($"Interface '{baseAnnot.Name}' not found",
+                        structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: structDef.Span);
                     continue;
                 }
 
-                AddError($"Interface '{baseAnnot.Name}' not found",
-                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: structDef.Span);
-                continue;
-            }
+                if (interfaceSymbol.TypeKind != TypeKind.Interface)
+                {
+                    AddError($"Structs can only implement interfaces, '{baseAnnot.Name}' is not an interface",
+                        structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: structDef.Span);
+                    continue;
+                }
 
-            if (interfaceSymbol.TypeKind != TypeKind.Interface)
-            {
-                AddError($"Structs can only implement interfaces, '{baseAnnot.Name}' is not an interface",
-                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: structDef.Span);
-                continue;
-            }
+                if (!TryCompleteBaseReferenceArguments(baseAnnot, interfaceSymbol, out var interfaceTypeArgs))
+                    continue;
 
-            if (!TryCompleteBaseReferenceArguments(baseAnnot, interfaceSymbol, out var interfaceTypeArgs))
+                _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+                {
+                    Definition = interfaceSymbol,
+                    TypeArgAnnotations = interfaceTypeArgs,
+                    SourceAnnotation = baseAnnot
+                });
+            }
+        }
+
+        var synthesized = SynthesisAnalyzer.ClassifyDundersFromAst(structDef.Body);
+        AddSynthesizedInterfaces(typeSymbol, synthesized, structDef.BaseClasses);
+    }
+
+    private void AddSynthesizedInterfaces(
+        TypeSymbol typeSymbol,
+        List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder)> synthesized,
+        ImmutableArray<TypeAnnotation> explicitBaseClasses)
+    {
+        if (synthesized.Count == 0)
+            return;
+
+        var explicitNames = new HashSet<string>();
+        foreach (var baseAnnot in explicitBaseClasses)
+            explicitNames.Add(baseAnnot.Name);
+
+        foreach (var (interfaceName, _, typeArgAnnotations, triggeringDunder) in synthesized)
+        {
+            if (explicitNames.Contains(interfaceName))
+                continue;
+
+            var symbol = _symbolTable.Lookup(interfaceName) as TypeSymbol;
+            if (symbol == null || symbol.TypeKind != TypeKind.Interface)
                 continue;
 
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
-                Definition = interfaceSymbol,
-                TypeArgAnnotations = interfaceTypeArgs,
-                SourceAnnotation = baseAnnot
+                Definition = symbol,
+                TypeArgAnnotations = typeArgAnnotations,
+                SynthesizedVia = triggeringDunder
             });
+
+            _diagnostics.AddInfo(
+                $"Type '{typeSymbol.Name}' implicitly implements '{interfaceName}' via '{triggeringDunder}'.",
+                filePath: _currentFilePath,
+                code: DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                phase: CompilerPhase.NameResolution);
         }
     }
 

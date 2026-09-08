@@ -1,0 +1,16 @@
+# Verify synthesized ISized is visible to the type checker (#1746)
+class Bag:
+    n: int
+
+    def __init__(self, n: int):
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+def size(s: ISized) -> int:
+    return len(s)
+
+def main():
+    b = Bag(42)
+    print(size(b))

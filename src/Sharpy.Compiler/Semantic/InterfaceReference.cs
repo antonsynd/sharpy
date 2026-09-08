@@ -37,6 +37,12 @@ public record InterfaceReference
     /// than by name or by position in the base list.</para>
     /// </summary>
     public TypeAnnotation? SourceAnnotation { get; init; }
+
+    /// <summary>
+    /// Non-null when this interface was synthesized from a dunder method (e.g. "__len__" → ISized).
+    /// Null for source-declared interfaces. Set during inheritance resolution (#1746).
+    /// </summary>
+    public string? SynthesizedVia { get; init; }
 }
 
 /// <summary>

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
@@ -150,6 +152,88 @@ internal static class SynthesisAnalyzer
                     "System",
                     new[] { otherParam.Type },
                     DunderNames.Eq));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// AST-level classifier: examines FunctionDef nodes in a class/struct body to determine
+    /// which interfaces should be synthesized, BEFORE type checking runs. Returns tuples of
+    /// (InterfaceName, Namespace, TypeArgAnnotations, TriggeringDunder).
+    /// </summary>
+    internal static List<(string InterfaceName, string Namespace, ImmutableArray<TypeAnnotation> TypeArgAnnotations, string TriggeringDunder)>
+        ClassifyDundersFromAst(IReadOnlyList<Statement> body)
+    {
+        var result = new List<(string, string, ImmutableArray<TypeAnnotation>, string)>();
+
+        var dunders = new Dictionary<string, FunctionDef>();
+        foreach (var stmt in body)
+        {
+            if (stmt is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name)
+                && !dunders.ContainsKey(funcDef.Name))
+            {
+                dunders[funcDef.Name] = funcDef;
+            }
+        }
+
+        // __len__ → ISized
+        if (dunders.ContainsKey(DunderNames.Len))
+        {
+            result.Add(("ISized", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Len));
+        }
+
+        // __bool__ → IBoolConvertible
+        if (dunders.ContainsKey(DunderNames.Bool))
+        {
+            result.Add(("IBoolConvertible", "Sharpy", ImmutableArray<TypeAnnotation>.Empty, DunderNames.Bool));
+        }
+
+        // __reversed__ → IReverseEnumerable<T>
+        if (dunders.TryGetValue(DunderNames.Reversed, out var reversedFunc))
+        {
+            var typeArg = reversedFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+            result.Add(("IReverseEnumerable", "Sharpy",
+                ImmutableArray.Create(typeArg), DunderNames.Reversed));
+        }
+
+        // __next__ → IEnumerator<T>; __next__ + __iter__ → IEnumerable<T>
+        if (dunders.TryGetValue(DunderNames.Next, out var nextFunc))
+        {
+            var typeArg = nextFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+            result.Add(("IEnumerator", "System.Collections.Generic",
+                ImmutableArray.Create(typeArg), DunderNames.Next));
+
+            if (dunders.ContainsKey(DunderNames.Iter))
+            {
+                result.Add(("IEnumerable", "System.Collections.Generic",
+                    ImmutableArray.Create(typeArg), DunderNames.Iter));
+            }
+        }
+
+        // __iter__ without __next__, if generator → IEnumerable<T>
+        if (!dunders.ContainsKey(DunderNames.Next)
+            && dunders.TryGetValue(DunderNames.Iter, out var iterFunc))
+        {
+            bool isGenerator = StatementWalker.Any(iterFunc.Body, stmt => stmt is YieldStatement);
+            if (isGenerator)
+            {
+                var typeArg = iterFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+                result.Add(("IEnumerable", "System.Collections.Generic",
+                    ImmutableArray.Create(typeArg), DunderNames.Iter));
+            }
+        }
+
+        // __eq__ → IEquatable<T>
+        if (dunders.TryGetValue(DunderNames.Eq, out var eqFunc))
+        {
+            var otherParam = eqFunc.Parameters
+                .FirstOrDefault(p => p.Name != PythonNames.Self);
+            if (otherParam?.Type != null && otherParam.Type.Name != "object")
+            {
+                result.Add(("IEquatable", "System",
+                    ImmutableArray.Create(otherParam.Type), DunderNames.Eq));
             }
         }
 
