@@ -1,0 +1,10 @@
+# #1721 contract (ii): `str | None` is the nullable-reference ANNOTATION `string?` — the same C#
+# signature as `str`. Before: CS0111 behind SPY0908. After: SPY0701 by name.
+def f(x: str) -> str:
+    return "str"
+
+def f(x: str | None) -> str:
+    return "nullable"
+
+def main():
+    print(f("a"))

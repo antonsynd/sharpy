@@ -1,0 +1,11 @@
+# #1721 contract (ii): tuple element names are C# metadata, not signature — one CLR signature.
+# Before: CS0111 behind SPY0908 (or SPY0204 when the annotation key was lossy). After: SPY0701 by name.
+def f(x: tuple[int, str]) -> str:
+    return "plain"
+
+def f(x: tuple[a: int, b: str]) -> str:
+    return "named"
+
+def main():
+    t: tuple[int, str] = (1, "a")
+    print(f(t))

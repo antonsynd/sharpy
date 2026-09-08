@@ -1,0 +1,4 @@
+class Point:
+    y: int
+    def __init__(self, y: int) -> None:
+        self.y = y

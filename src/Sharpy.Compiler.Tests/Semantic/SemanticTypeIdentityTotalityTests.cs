@@ -94,6 +94,24 @@ public class SemanticTypeIdentityTotalityTests
         Assert.NotEqual(a, b);
     }
 
+    /// <summary>
+    /// Same-project source types carry <c>DefiningFilePath</c>, not <c>DefiningModule</c> (the
+    /// rule <c>TypeHierarchyService.IsSameType</c> applies). Keying on the module alone made two
+    /// project files' <c>Point</c>s one identity: their overload twins collided (SPY0701) and every
+    /// call to either was ambiguous (SPY0353) (#1718, #1721).
+    /// </summary>
+    [Fact]
+    public void TwoSameNamedTypes_FromDistinctFiles_AreDistinct()
+    {
+        var symbolA = new TypeSymbol { Name = "Point", DefiningFilePath = "/proj/a.spy" };
+        var symbolB = new TypeSymbol { Name = "Point", DefiningFilePath = "/proj/b.spy" };
+        var a = new UserDefinedType { Name = "Point", Symbol = symbolA };
+        var b = new UserDefinedType { Name = "Point", Symbol = symbolB };
+
+        Assert.NotEqual(a.CanonicalKey, b.CanonicalKey);
+        Assert.NotEqual(a, b);
+    }
+
     [Fact]
     public void UserDefinedType_SameName_NullSymbol_AreEqual()
     {

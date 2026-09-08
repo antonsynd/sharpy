@@ -1,0 +1,11 @@
+# #1721 positive control for the CLR-mapped key: `int | None` is Nullable<int>, a DISTINCT C# type
+# from int (unlike `str | None`, which is the string? annotation) — both overloads declare and dispatch.
+def f(x: int) -> str:
+    return "int"
+
+def f(x: int | None) -> str:
+    return "nullable"
+
+def main():
+    print(f(1))
+    print(f(None))

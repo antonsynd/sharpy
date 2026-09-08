@@ -6,9 +6,12 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// Validates that no two overloads in ANY overload group — module functions, methods, struct
-/// methods, <c>__init__</c>, dunders — map to the same C# parameter types (#1721). The CLR key
-/// uses resolved types' <see cref="SemanticType.CanonicalKey"/>, so <c>float</c>/<c>double</c>
-/// (both <c>float64</c>) collide while <c>int</c>/<c>int?</c> (distinct CanonicalKeys) do not.
+/// methods, <c>__init__</c>, dunders — map to the same C# parameter types (#1721). The key is
+/// <see cref="ClrSignatureKey"/>: resolved types' <see cref="SemanticType.CanonicalKey"/> with
+/// the distinctions C# erases removed, so <c>float</c>/<c>double</c> (one <c>float64</c>),
+/// <c>tuple[a: int]</c>/<c>tuple[int]</c>, <c>str | None</c>/<c>str</c> and
+/// <c>LiteralString</c>/<c>str</c> collide, while <c>int</c>/<c>int?</c>, <c>int</c>/<c>int | None</c>
+/// and same-named classes from two modules stay distinct.
 /// Absorbs the former <c>ConstructorOverloadValidator</c> — <c>__init__</c> is a dunder.
 /// </summary>
 internal class DunderSignatureValidator : SemanticValidatorBase
@@ -95,7 +98,7 @@ internal class DunderSignatureValidator : SemanticValidatorBase
         var seen = new Dictionary<string, FunctionSymbol>();
         foreach (var func in overloads)
         {
-            var clrKey = ClrSignatureKey(func);
+            var clrKey = Semantic.ClrSignatureKey.Of(func);
             if (seen.TryGetValue(clrKey, out var first))
             {
                 AddError(
@@ -113,15 +116,6 @@ internal class DunderSignatureValidator : SemanticValidatorBase
         }
     }
 
-    internal static string ClrSignatureKey(FunctionSymbol func)
-    {
-        var paramTypes = func.Parameters
-            .Where(p =>
-                !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
-            .Select(p => p.Type.CanonicalKey);
-        return string.Join(",", paramTypes);
-    }
 
     private class ClassCollector : AstVisitor
     {

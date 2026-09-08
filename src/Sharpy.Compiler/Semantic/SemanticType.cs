@@ -121,9 +121,18 @@ public abstract record SemanticType : ITypeInfo
     /// Shared by <see cref="UserDefinedType"/>, <see cref="UnionType"/>, <see cref="SelfType"/>,
     /// and <see cref="GenericFunctionType"/>.
     /// </summary>
+    /// <summary>
+    /// The one qualified identity of a declared type: the module it was defined in, else the
+    /// file it was declared in, then the declaring-type chain, then its name — the same three-way
+    /// rule <c>TypeHierarchyService.IsSameType</c> applies (module for imported symbols, file for
+    /// same-project source symbols, bare name only for CLR-discovered definitions). Keying on the
+    /// module alone let two same-named classes from two project files collapse into one identity:
+    /// their overload twins were reported as one CLR signature (SPY0701) and every call to either
+    /// was ambiguous (SPY0353) (#1718, #1721).
+    /// </summary>
     internal static string BuildQualifiedTypeKey(TypeSymbol symbol)
     {
-        var module = symbol.DefiningModule ?? "";
+        var module = symbol.DefiningModule ?? symbol.DefiningFilePath ?? "";
         var sb = new System.Text.StringBuilder();
         if (module.Length > 0)
         {

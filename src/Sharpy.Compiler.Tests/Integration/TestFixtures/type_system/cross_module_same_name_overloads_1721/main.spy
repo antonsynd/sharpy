@@ -1,0 +1,23 @@
+# #1718 / #1721: two same-named classes in two project files are two identities — their overload
+# twins are two C# signatures (no SPY0701) and each call selects one (no SPY0353).
+import a
+import b
+
+class Holder:
+    def __init__(self, p: a.Point) -> None:
+        print("init-a")
+
+    def __init__(self, p: b.Point) -> None:
+        print("init-b")
+
+    def m(self, p: a.Point) -> str:
+        return "m-a"
+
+    def m(self, p: b.Point) -> str:
+        return "m-b"
+
+def main() -> None:
+    h = Holder(a.Point(1))
+    g = Holder(b.Point(2))
+    print(h.m(a.Point(1)))
+    print(g.m(b.Point(2)))

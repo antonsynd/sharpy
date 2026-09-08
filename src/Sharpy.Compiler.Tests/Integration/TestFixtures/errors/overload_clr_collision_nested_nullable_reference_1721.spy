@@ -1,0 +1,10 @@
+# #1721 contract (ii): the erasure recurses — list[str | None] is List<string?>, one signature with list[str].
+def f(x: list[str]) -> str:
+    return "list"
+
+def f(x: list[str | None]) -> str:
+    return "listnullable"
+
+def main():
+    a: list[str] = ["a"]
+    print(f(a))
