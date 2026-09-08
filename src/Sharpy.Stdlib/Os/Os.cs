@@ -342,7 +342,7 @@ namespace Sharpy
         /// </summary>
         public static Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
         {
-            return global::Sharpy.Builtins.Iter<System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(_WalkCore(top));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(_WalkCore(top));
         }
     }
 }

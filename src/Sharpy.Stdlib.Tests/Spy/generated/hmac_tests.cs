@@ -57,7 +57,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (20, 5) - (20, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 Sharpy.Bytes msg = new Sharpy.Bytes(new byte[] { 109, 101, 115, 115, 97, 103, 101 });
 #line (21, 5) - (21, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                global::Sharpy.HmacObject h = hmac.New(key, msg, "sha256");
+                global::Sharpy.HmacObject h = hmac.New(key, (Bytes?)msg, "sha256");
 #line (22, 5) - (22, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 Xunit.Assert.Equal("8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b", h.Hexdigest());
 #line hidden

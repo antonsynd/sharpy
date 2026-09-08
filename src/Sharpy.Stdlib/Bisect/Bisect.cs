@@ -75,7 +75,7 @@ namespace Sharpy
         public static int Bisect<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            return BisectRight(a, x, lo, hi);
+            return BisectRight<T>(a, x, lo, hi);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Sharpy
         public static void InsortLeft<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            int idx = BisectLeft(a, x, lo, hi);
+            int idx = BisectLeft<T>(a, x, lo, hi);
             a.Insert(idx, x);
         }
 
@@ -94,7 +94,7 @@ namespace Sharpy
         public static void InsortRight<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            int idx = BisectRight(a, x, lo, hi);
+            int idx = BisectRight<T>(a, x, lo, hi);
             a.Insert(idx, x);
         }
 
@@ -104,7 +104,7 @@ namespace Sharpy
         public static void Insort<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            InsortRight(a, x, lo, hi);
+            InsortRight<T>(a, x, lo, hi);
         }
     }
 }

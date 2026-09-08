@@ -714,7 +714,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (391, 5) - (391, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
                 var dt = new global::Sharpy.DateTime(2024, 1, 15, 10, 30);
 #line (392, 5) - (392, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
-                var result = dt.Replace(year: 2025);
+                var result = dt.Replace(year: (int?)2025);
 #line (393, 5) - (393, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
                 Xunit.Assert.Equal(2025, result.Year);
 #line (394, 5) - (394, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"

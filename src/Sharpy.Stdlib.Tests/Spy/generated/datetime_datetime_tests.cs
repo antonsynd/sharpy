@@ -90,7 +90,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (49, 5) - (49, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_datetime_tests.spy"
                 var dt = new global::Sharpy.DateTime(2024, 6, 15, 10, 30, 45);
 #line (50, 5) - (50, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_datetime_tests.spy"
-                var result = dt.Replace(year: 2025, month: 1, day: 1);
+                var result = dt.Replace(year: (int?)2025, month: (int?)1, day: (int?)1);
 #line (51, 5) - (51, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_datetime_tests.spy"
                 Xunit.Assert.Equal(2025, result.Year);
 #line (52, 5) - (52, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_datetime_tests.spy"
