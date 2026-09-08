@@ -10,6 +10,45 @@ namespace Sharpy.Compiler.Semantic;
 internal partial class TypeChecker
 {
     /// <summary>
+    /// Selects among the <c>__init__</c> overloads that all accept this argument COUNT, by type,
+    /// through the one resolver every other overload route uses (#1721). Arity used to be the only
+    /// rule here ("overloaded constructors have complex resolution that the C# compiler handles"),
+    /// which left a same-arity pair to Roslyn's betterness — and Roslyn's differs from Sharpy's
+    /// exactly where the signature modifiers do: it admits <c>T → Optional&lt;T&gt;</c>
+    /// implicitly, so <c>C(1)</c> against <c>__init__(int?)</c>/<c>__init__(int | None)</c> was
+    /// CS0121 behind SPY0908, and <c>C(None())</c> was typed under whichever <c>__init__</c> was
+    /// declared first. A unique winner is bound (its slot-typed arguments re-checked, its nullable
+    /// slots cast) and validated like a sole-arity match. A call NO candidate accepts is refused
+    /// the way every other overload route refuses it (SPY0220 at the argument, or SPY0354) — that
+    /// was CS1503 behind SPY0908, or the strict-Optional loophole a single <c>__init__(int?)</c>
+    /// never had (#1720). Several equally applicable candidates are left to Roslyn exactly as
+    /// before: the ambiguity story for constructors is unchanged here.
+    /// </summary>
+    private FunctionSymbol? SelectInitializerAmongArityPeers(
+        FunctionCall call, TypeSymbol typeSymbol, List<FunctionSymbol> initMethods,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+    {
+        if (ArityApplicableCount(initMethods, call) <= 1)
+            return null;
+
+        var resolution = ResolveOverloadCore(new OverloadResolutionContext(
+            initMethods, totalArgCount, argTypes,
+            SkipSelfParam: true, SkipUnknownTypes: true,
+            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
+        if (resolution.IsAmbiguous)
+            return null;
+        if (resolution.Match is not { } init)
+        {
+            ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);
+            return null;
+        }
+
+        ValidateCallArguments(call, init.Parameters.Skip(1).ToList(), argTypes, kwargTypes, totalArgCount,
+            UnwrittenTypeParameterBinding(typeSymbol), clrParameterNames: init.ClrMethodName != null);
+        return init;
+    }
+
+    /// <summary>
     /// Handles constructor calls: validates arguments against __init__ parameters,
     /// checks for abstract instantiation, and infers generic type arguments.
     /// </summary>
@@ -54,7 +93,8 @@ internal partial class TypeChecker
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
             var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
-                UnwrittenTypeParameterBinding(typeSymbol));
+                UnwrittenTypeParameterBinding(typeSymbol))
+                ?? SelectInitializerAmongArityPeers(call, typeSymbol, initMethods, argTypes, kwargTypes, totalArgCount);
             if (resolvedInit != null)
                 CheckDeprecatedUsage(resolvedInit, call);
         }

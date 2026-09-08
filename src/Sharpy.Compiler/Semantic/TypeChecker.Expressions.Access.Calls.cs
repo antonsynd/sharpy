@@ -387,7 +387,7 @@ internal partial class TypeChecker
 
             // Resolve user-defined module-level function overloads (same compilation)
             {
-                var userOverloadResult = ResolveUserDefinedFunctionOverload(
+                var userOverloadResult = ResolveUserDefinedFunctionOverload(kwargTypes,
                     id, argTypes, totalArgCount, call);
                 if (userOverloadResult != null)
                     return userOverloadResult;
@@ -395,7 +395,7 @@ internal partial class TypeChecker
 
             // Resolve imported function overloads (e.g., from os.path import join)
             {
-                var importedOverloadResult = ResolveImportedFunctionOverload(
+                var importedOverloadResult = ResolveImportedFunctionOverload(kwargTypes,
                     id, argTypes, totalArgCount, call);
                 if (importedOverloadResult != null)
                     return importedOverloadResult;
@@ -452,7 +452,7 @@ internal partial class TypeChecker
             // Try user-defined method overloads: either when no symbol was found,
             // or when the found symbol's method has multiple overloads on the owning type
             {
-                var overloadResult = ResolveUserMethodOverload(
+                var overloadResult = ResolveUserMethodOverload(kwargTypes,
                     memberAccessCall, argTypes, totalArgCount, call,
                     isNullConditionalCall, isOptionalNullConditional);
                 if (overloadResult != null)
@@ -2141,6 +2141,7 @@ internal partial class TypeChecker
     /// Returns the resolved return type when the method has multiple overloads, null if not applicable.
     /// </summary>
     private SemanticType? ResolveUserMethodOverload(
+        Dictionary<string, SemanticType> kwargTypes,
         MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
         bool isNullConditionalCall, bool isOptionalNullConditional)
     {
@@ -2207,7 +2208,8 @@ internal partial class TypeChecker
         var resolution = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes,
                 SkipSelfParam: true, TypeSubstitution: typeSubstitution,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call,
+                KwargTypes: kwargTypes));
         var matchingOverload = resolution.Match;
 
         if (resolution.IsAmbiguous || matchingOverload == null)
@@ -2389,6 +2391,22 @@ internal partial class TypeChecker
 
         var argNode = argIndex < call.Arguments.Length ? call.Arguments[argIndex] : null;
         const StorePosition position = StorePosition.ArgumentPositional;
+
+        // #1721: a probed `None()` has no type to name — the refusal is the constructor's own
+        // (SPY0244), listing every slot the candidates offer, none of which is an Optional.
+        if (IsNoBindingMask(failedArgType))
+        {
+            var slots = expectedTypes.Count == 1
+                ? $"'{expectedTypes[0].GetDisplayName()}'"
+                : DescribeAlternativeTypes(expectedTypes);
+            AddError($"'None()' can only construct Optional types, not {slots}"
+                    + " — no overload takes an Optional; declare a parameter as 'T?' or pass Some(v)",
+                argNode?.LineStart ?? call.LineStart,
+                argNode?.ColumnStart ?? call.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidNoneConstructor,
+                span: argNode?.Span ?? call.Span);
+            return true;
+        }
 
         // One distinct type: exactly the seam's own refusal, steer included — the same message the
         // single-signature twin (`xs.count(n)`) already gives. Several: name them all; the seam's
@@ -2617,7 +2635,8 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var resolution = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call,
+                KwargTypes: kwargTypes));
         var matchingOverload = resolution.Match;
 
         if (resolution.IsAmbiguous || matchingOverload == null)
@@ -2652,6 +2671,7 @@ internal partial class TypeChecker
     /// ResolveImportedFunctionOverload.
     /// </summary>
     private SemanticType? ResolveUserDefinedFunctionOverload(
+        Dictionary<string, SemanticType> kwargTypes,
         Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
     {
         var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
@@ -2666,7 +2686,8 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var resolution = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call,
+                KwargTypes: kwargTypes));
         var matchingOverload = resolution.Match;
 
         if (resolution.IsAmbiguous || matchingOverload == null)
@@ -2689,6 +2710,7 @@ internal partial class TypeChecker
     /// SymbolTable.LookupFunctionOverloads instead of ModuleSymbol.FunctionOverloads.
     /// </summary>
     private SemanticType? ResolveImportedFunctionOverload(
+        Dictionary<string, SemanticType> kwargTypes,
         Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
     {
         var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
@@ -2711,7 +2733,8 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var resolution = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call,
+                KwargTypes: kwargTypes));
         var matchingOverload = resolution.Match;
 
         if (resolution.IsAmbiguous || matchingOverload == null)
@@ -3110,6 +3133,67 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is the mask <see cref="NoBindingInferenceType"/> gives a
+    /// <c>None()</c> argument — an Optional over the synthetic no-binding parameter.
+    /// </summary>
+    private static bool IsNoBindingMask(SemanticType type)
+        => type is OptionalType { UnderlyingType: TypeParameterType { Name: NoBindingPlaceholderName } };
+
+    /// <summary>
+    /// Whether <paramref name="argument"/> is a construction whose TYPE comes from the slot it is
+    /// stored into rather than from its own text: <c>None()</c>, or a tagged-union constructor
+    /// <c>Some(v)</c> / <c>Ok(v)</c> / <c>Err(e)</c> (a user symbol shadowing one of the three
+    /// names makes it an ordinary call, exactly as the constructor dispatcher decides). At a
+    /// single-candidate callee the slot is the parameter and the ordinary argument push supplies
+    /// it; at an overload set the slot is unknown until selection (#1721).
+    /// </summary>
+    private bool IsSlotTypedConstruction(Expression? argument)
+    {
+        if (argument == null)
+            return false;
+
+        var expr = UnwrapParenthesized(argument);
+        if (NoBindingInferenceType(expr) is OptionalType)
+            return true;
+
+        return expr is FunctionCall
+        {
+            Function: Identifier { Name: "Some" or "Ok" or "Err" } constructor,
+            Arguments.Length: 1,
+            KeywordArguments.Length: 0
+        }
+            && _symbolTable.Lookup(constructor.Name) == null;
+    }
+
+    /// <summary>
+    /// Types a slot-typed construction (<see cref="IsSlotTypedConstruction"/>) for overload
+    /// PROBING, before any candidate has been selected. <c>None()</c> is not checked at all — it
+    /// has no payload and no type of its own — and contributes the no-binding mask
+    /// (<see cref="NoBindingInferenceType"/>), which <see cref="IsArgumentAssignable"/> admits at
+    /// exactly the Optional slots. <c>Some</c>/<c>Ok</c>/<c>Err</c> are checked under an OPEN slot
+    /// — the same synthetic parameter, bare — so the constructor arms type the payload freely and
+    /// return the natural wrapper (<c>Optional[int]</c>, <c>Result[int, _]</c>), which applicability
+    /// then matches against each candidate. The node is remembered so
+    /// <see cref="BindArgumentsToSelectedOverload"/> checks it once more, against the winner's
+    /// slot; that recording is what the emitter reads.
+    /// </summary>
+    private SemanticType ProbeSlotTypedConstruction(
+        StorePosition position, Expression argument, string? calleeDisplay,
+        int? argumentOrdinal = null, string? keywordName = null)
+    {
+        _probedSlotArguments.Add(argument);
+        if (NoBindingInferenceType(argument) is { } mask)
+            return mask;
+
+        var openSlot = new TypeParameterType { Name = NoBindingPlaceholderName };
+        using (EnterStore(position, openSlot, argument, calleeDisplay: calleeDisplay,
+                   argumentOrdinal: argumentOrdinal, keywordName: keywordName))
+        {
+            return CheckExpression(argument);
+        }
     }
 
     private static List<SemanticType> BuildInferenceArgumentTypes(
@@ -4441,8 +4525,18 @@ internal partial class TypeChecker
         var hasContextTypedCollectionArgument =
             call.Arguments.Any(TakesContextualCollectionType)
             || call.KeywordArguments.Any(k => TakesContextualCollectionType(k.Value));
+        // #1721: the same gate for an argument whose TYPE comes from its slot — `None()`,
+        // `Some(v)`, `Ok(v)`, `Err(e)`. Typed under one candidate's parameter it is refused
+        // (`None()` against the `int` of `{int, int?}`, SPY0244) or recorded with that candidate's
+        // slot (`Ok(1)` under `int` records `Result[int, _]`, and the emitter prints it); instead
+        // it is PROBED here and bound to the winner's slot once one is selected
+        // (BindArgumentsToSelectedOverload).
+        var hasSlotTypedConstruction =
+            call.Arguments.Any(IsSlotTypedConstruction)
+            || call.KeywordArguments.Any(k => IsSlotTypedConstruction(k.Value));
         var calleeDenotesOverloadSet =
-            hasContextTypedCollectionArgument && CalleeDenotesOverloadSet(callee, call);
+            (hasContextTypedCollectionArgument || hasSlotTypedConstruction)
+            && CalleeDenotesOverloadSet(callee, call);
 
         var argTypes = new List<SemanticType>();
         // #1009: map(lambda, iter1, iter2, ...) needs the lambda's parameter types inferred
@@ -4501,6 +4595,14 @@ internal partial class TypeChecker
                     continue;
                 }
 
+                if (calleeDenotesOverloadSet && IsSlotTypedConstruction(call.Arguments[argIdx]))
+                {
+                    argTypes.Add(ProbeSlotTypedConstruction(
+                        StorePosition.ArgumentPositional, call.Arguments[argIdx],
+                        calleeDisplayName, argumentOrdinal: argIdx + 1));
+                    continue;
+                }
+
                 var noCandidateExpectation = calleeDenotesOverloadSet
                     && TakesContextualCollectionType(call.Arguments[argIdx]);
 
@@ -4551,6 +4653,13 @@ internal partial class TypeChecker
             IDisposable? kwScope = null;
             try
             {
+                if (calleeDenotesOverloadSet && IsSlotTypedConstruction(kwarg.Value))
+                {
+                    kwargTypes[kwarg.Name] = ProbeSlotTypedConstruction(
+                        StorePosition.ArgumentKeyword, kwarg.Value, kwCalleeDisplayName,
+                        keywordName: kwarg.Name);
+                    continue;
+                }
                 if (calleeDenotesOverloadSet && TakesContextualCollectionType(kwarg.Value))
                 {
                     kwScope = ClearExpectation(kwarg.Value);
@@ -4990,6 +5099,12 @@ internal partial class TypeChecker
                     if (IsUnresolvedSet(_symbolTable.LookupFunctionOverloads(id.Name), call))
                         return true;
 
+                    // A class with several `__init__` overloads accepting this count is an overload
+                    // set too — SelectInitializerAmongArityPeers resolves it by type (#1721).
+                    if (_symbolTable.Lookup(id.Name) is TypeSymbol constructed
+                        && IsUnresolvedSet(InitializerOverloadsOf(constructed), call))
+                        return true;
+
                     // A builtin overload set counts only when the bare spelling actually denotes it:
                     // a user symbol that shadows the name is its own, single target (SPY0212's rule).
                     var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
@@ -5005,6 +5120,11 @@ internal partial class TypeChecker
 
             case MemberAccess memberAccess:
                 {
+                    // `module.Class(...)` — the qualified spelling of the class arm above.
+                    if (TryResolveTypeSymbolFromMemberAccess(memberAccess) is { } qualifiedType
+                        && IsUnresolvedSet(InitializerOverloadsOf(qualifiedType), call))
+                        return true;
+
                     var rawReceiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
                     if (rawReceiverType == null)
                         return false;
@@ -5053,6 +5173,10 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsUnresolvedSet(IReadOnlyList<FunctionSymbol>? candidates, FunctionCall call)
         => candidates is { Count: > 1 } && ArityApplicableCount(candidates, call) > 1;
+
+    /// <summary>The <c>__init__</c> overloads of <paramref name="type"/> — the set CheckConstructorCall resolves among.</summary>
+    private static List<FunctionSymbol> InitializerOverloadsOf(TypeSymbol type)
+        => type.Methods.Where(m => m.Name == DunderNames.Init).ToList();
 
     private static int CallSiteArgumentCount(FunctionCall call)
         => call.Arguments.Length + call.KeywordArguments.Length;
@@ -5562,7 +5686,8 @@ internal partial class TypeChecker
             var resolution = ResolveOverloadCore(
                 new OverloadResolutionContext(overloads, totalArgCount, argTypes,
                     SkipSelfParam: true, TypeSubstitution: typeSubstitution,
-                    SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+                    SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call,
+                    KwargTypes: kwargTypes));
 
             if (resolution.IsAmbiguous || resolution.Match == null)
             {

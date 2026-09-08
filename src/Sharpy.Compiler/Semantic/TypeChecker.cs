@@ -141,6 +141,14 @@ internal partial class TypeChecker
     // argument path is covered and nested calls restore the enclosing set.
     private HashSet<Expression>? _currentCallArguments;
 
+    // #1721: the slot-typed constructions (`None()`, `Some(v)`, `Ok(v)`, `Err(e)`) that an
+    // overload-set callee's argument pass typed by PROBE — under the constructor's own open shape,
+    // or masked outright — because no candidate had been selected to supply the slot. Each is
+    // bound to the winner's slot exactly once by BindArgumentsToSelectedOverload, which removes it
+    // here; a node still present afterwards was an argument no candidate accepted (the call is
+    // already refused). Reference-keyed, like every other per-node set.
+    private readonly HashSet<Expression> _probedSlotArguments = new(ReferenceEqualityComparer.Instance);
+
     // The current store context — position, slot, callee display, ordinal, keyword name — pushed
     // by EnterStore and restored by StoreScope. No consumer yet; Phase 2 will read it for
     // diagnostic context.

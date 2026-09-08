@@ -199,6 +199,15 @@ public class SemanticInfo : ISemanticQuery
     // branches need no entry — their literals are re-typed and print their own suffix).
     private readonly ConcurrentDictionary<Expression, SemanticType> _conditionalBranchNarrowing = new(ReferenceEqualityComparer.Instance);
 
+    // #1721: an argument bound to a `T | None` slot of an OVERLOADED callee, and the slot. Sharpy's
+    // strict Optional refuses a bare `T` at a `T?` slot, so `{int?, int | None}` selects the
+    // nullable overload by construction; Roslyn admits `T → Optional<T>` implicitly (Sharpy.Core's
+    // conversion operator) and would report CS0121 for the same call. The emitter casts the
+    // argument to the recorded slot so the C# binder sees the selection the checker made. Recorded
+    // at the one seam every overload route binds through (BindArgumentsToSelectedOverload);
+    // node-keyed on the ARGUMENT expression.
+    private readonly ConcurrentDictionary<Expression, SemanticType> _argumentSlotCasts = new(ReferenceEqualityComparer.Instance);
+
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
     // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
     // Optional member unwrapped). The recorded type of the node is Optional<T> in both cases, so
@@ -1129,6 +1138,24 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// The narrow slot type recorded for a conditional-expression arm, or null when the arm needs no cast.
     /// </summary>
+    /// <summary>
+    /// Records that <paramref name="argument"/> was bound to the <c>T | None</c> slot
+    /// <paramref name="slot"/> of an overloaded callee and must be emitted cast to it (#1721).
+    /// </summary>
+    public void SetArgumentSlotCast(Expression argument, SemanticType slot)
+    {
+        _argumentSlotCasts[argument] = slot;
+    }
+
+    /// <summary>
+    /// The slot an argument to an overloaded callee must be cast to, or <c>null</c> for every
+    /// argument whose emitted form already binds the selected overload.
+    /// </summary>
+    public SemanticType? GetArgumentSlotCast(Expression argument)
+    {
+        return _argumentSlotCasts.TryGetValue(argument, out var slot) ? slot : null;
+    }
+
     public SemanticType? GetConditionalBranchNarrowing(Expression branch)
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
@@ -1740,6 +1767,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._sequenceMaterializations)
             _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._argumentSlotCasts)
+            _argumentSlotCasts.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._charMaterializations)
             _charMaterializations.TryAdd(kvp.Key, kvp.Value);

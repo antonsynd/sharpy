@@ -90,7 +90,8 @@ internal partial class TypeChecker
         bool SkipUnknownTypes = false,
         IReadOnlyCollection<string>? KeywordArgNames = null,
         FunctionCall? Call = null,
-        bool ReceiverIsLeadingParameter = false);
+        bool ReceiverIsLeadingParameter = false,
+        Dictionary<string, SemanticType>? KwargTypes = null);
 
     /// <summary>
     /// Resolves a binary operator-dunder / <c>__getitem__</c> overload (self + a single argument)
@@ -220,15 +221,120 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Core overload resolution algorithm shared by all overload resolution methods.
-    /// Performs two-pass matching: first filters by argument count, then checks type compatibility.
+    /// Core overload resolution shared by every route that selects among overloads: the pure
+    /// selection (<see cref="SelectOverload"/>), then — when a call node is in hand and one
+    /// candidate won — the binding of that call's arguments to the WINNER's slots
+    /// (<see cref="BindArgumentsToSelectedOverload"/>). Selection stays side-effect free (it runs
+    /// over candidates none of which has been chosen); the binding is the one place every such
+    /// route passes through, so no route can select one overload and leave an argument typed by
+    /// another (#1721).
     /// </summary>
     /// <returns>
     /// The matched overload, the arity-filtered candidates, whether resolution was ambiguous, and
     /// each rejected candidate's first failing argument (<see cref="OverloadCandidateFailure"/>).
     /// </returns>
-    private OverloadResolution ResolveOverloadCore(
-        OverloadResolutionContext context)
+    private OverloadResolution ResolveOverloadCore(OverloadResolutionContext context)
+    {
+        var resolution = SelectOverload(context);
+        if (resolution.Match is { } match && context.Call is { } call)
+            BindArgumentsToSelectedOverload(context, call, match, overloaded: resolution.ArityCandidates.Count > 1);
+        return resolution;
+    }
+
+    /// <summary>
+    /// Binds the arguments of <paramref name="call"/> to the slots of the overload that won (#1721).
+    ///
+    /// <para>An argument whose type comes from its SLOT — <c>None()</c>, <c>Some(v)</c>,
+    /// <c>Ok(v)</c>, <c>Err(e)</c> (<see cref="IsSlotTypedConstruction"/>) — was typed by a probe
+    /// while the candidates were still open (<see cref="ProbeSlotTypedConstruction"/>). It is now
+    /// checked, once, against the selected parameter through the store seam, so the type the
+    /// emitter reads is the winner's: <c>Ok(1)</c> into <c>int!str</c> records
+    /// <c>Result[int, str]</c>, not the probe's <c>Result[int, _]</c> (which printed
+    /// <c>Result&lt;int, object&gt;</c> — CS1503 behind SPY0908). Refusals are the seam's own,
+    /// naming the closed slot. An OPEN slot (a generic candidate's <c>T?</c>) is pushed as the
+    /// shape hint the single-candidate route pushes.</para>
+    ///
+    /// <para>The same pass records the one fact Roslyn's own betterness needs: a bare argument
+    /// bound to a <c>T | None</c> slot of an OVERLOADED callee is emitted with a cast to that slot
+    /// (<see cref="SemanticInfo.SetArgumentSlotCast"/>). Sharpy's strict Optional refuses
+    /// <c>1</c> at a <c>T?</c> slot, so <c>{int?, int | None}</c> selects the nullable overload by
+    /// construction; C# admits <c>T → Optional&lt;T&gt;</c> implicitly (Sharpy.Core's conversion
+    /// operator) and reports CS0121 for the same call (measured). Positional binding is skipped
+    /// when a spread is present — a tuple spread contributes several entries for one node, so the
+    /// argument vector and the argument list no longer align.</para>
+    /// </summary>
+    private void BindArgumentsToSelectedOverload(
+        OverloadResolutionContext context, FunctionCall call, FunctionSymbol match, bool overloaded)
+    {
+        var selfOffset = ReceiverOffsetOf(match, context);
+        var variadic = match.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+        string? calleeDisplay = null;
+
+        SemanticType Substituted(SemanticType formal)
+            => context.TypeSubstitution != null ? context.TypeSubstitution(formal) : formal;
+
+        SemanticType Bind(
+            StorePosition position, Expression argument, SemanticType argType, SemanticType formal,
+            int? argumentOrdinal, string? keywordName)
+        {
+            if (_probedSlotArguments.Remove(argument))
+            {
+                calleeDisplay ??= CalleeDisplayName(UnwrapParenthesized(call.Function));
+                // CheckExpression memoizes per node; forget the probe or the re-check returns it.
+                _semanticInfo.ClearExpressionType(argument);
+                using (EnterStore(position, formal, argument, calleeDisplay: calleeDisplay,
+                           argumentOrdinal: argumentOrdinal, keywordName: keywordName))
+                {
+                    argType = CheckExpression(argument);
+                }
+            }
+
+            if (overloaded && formal is NullableType && !ContainsTypeParameterType(formal)
+                && argType is not (NullableType or UnknownType))
+            {
+                _semanticInfo.SetArgumentSlotCast(argument, formal);
+            }
+
+            return argType;
+        }
+
+        if (!call.Arguments.Any(a => a is SpreadElement))
+        {
+            for (int i = 0; i < context.ArgTypes.Count && i < call.Arguments.Length; i++)
+            {
+                var paramIdx = i + selfOffset;
+                var formal = paramIdx < match.Parameters.Count && !match.Parameters[paramIdx].IsVariadic
+                    ? match.Parameters[paramIdx].Type
+                    : variadic?.Type;
+                if (formal == null)
+                    continue;
+
+                context.ArgTypes[i] = Bind(StorePosition.ArgumentPositional, call.Arguments[i],
+                    context.ArgTypes[i], Substituted(formal), argumentOrdinal: i + 1, keywordName: null);
+            }
+        }
+
+        if (context.KwargTypes is { } kwargTypes && call.KeywordArguments.Length > 0)
+        {
+            var parameters = match.Parameters.Skip(selfOffset).ToList();
+            foreach (var kwarg in call.KeywordArguments)
+            {
+                if (!kwargTypes.TryGetValue(kwarg.Name, out var kwargType))
+                    continue;
+                if (FindKeywordParameter(parameters, kwarg.Name) is not { } param)
+                    continue;
+
+                kwargTypes[kwarg.Name] = Bind(StorePosition.ArgumentKeyword, kwarg.Value, kwargType,
+                    Substituted(param.Type), argumentOrdinal: null, keywordName: kwarg.Name);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The selection half of <see cref="ResolveOverloadCore"/>: two-pass matching — first filters
+    /// by argument count, then checks type compatibility — with no side effects on the call.
+    /// </summary>
+    private OverloadResolution SelectOverload(OverloadResolutionContext context)
     {
         int GetSelfOffset(FunctionSymbol o) => ReceiverOffsetOf(o, context);
 

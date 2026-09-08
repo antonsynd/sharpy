@@ -41,8 +41,17 @@ internal partial class RoslynEmitter
         // already matches its semantic type, which is all of them except CLR-sequence values — so the
         // default path is byte-identical.
         var materializationTarget = _context.SemanticInfo?.GetSequenceMaterialization(expr);
-        return materializationTarget != null
-            ? MaterializeSequence(generated, materializationTarget)
+        if (materializationTarget != null)
+            generated = MaterializeSequence(generated, materializationTarget);
+
+        // Argument slot cast (#1721): the TypeChecker bound this argument to a `T | None` slot of
+        // an OVERLOADED callee and recorded the slot. Roslyn admits `T → Optional<T>` implicitly
+        // (Sharpy.Core's conversion operator) where strict Optional does not, so without the cast
+        // the C# binder sees a tie the selection already broke (CS0121 behind SPY0908). Applied
+        // last: the value is converted and materialized first, then cast to its slot.
+        var slotCast = _context.SemanticInfo?.GetArgumentSlotCast(expr);
+        return slotCast != null
+            ? EmittedTreePrecedence.Cast(_typeMapper.MapSemanticType(slotCast), generated)
             : generated;
     }
 

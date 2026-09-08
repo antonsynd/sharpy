@@ -1,0 +1,9 @@
+# #1721: `None()` selects the unique Optional slot of an overload set; with none, the call is
+# refused by the constructor's own diagnostic, naming every slot the candidates offer.
+def f(x: int) -> str:
+    return "int"
+def f(x: int | None) -> str:
+    return "nullable"
+
+def main():
+    print(f(None()))

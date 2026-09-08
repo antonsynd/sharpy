@@ -1,0 +1,1 @@
+'None()' can only construct Optional types, not 'int32' or 'int32 | None' — no overload takes an Optional; declare a parameter as 'T?' or pass Some(v) @9:13

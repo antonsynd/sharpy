@@ -944,6 +944,15 @@ internal partial class TypeChecker
         // Side-effect free on purpose: this runs during overload PROBING, where no candidate has
         // been chosen yet and no fact may be recorded. The final binding site applies the verdict
         // through ApplyArgumentConversion.
+        //
+        // #1721: a `None()` argument at an overload set is probed as the no-binding mask — an
+        // Optional over a synthetic parameter — and is applicable to exactly the candidates whose
+        // slot is an Optional. That is what makes `f(None())` select `f(x: T?)` from `{T, T?}` by
+        // construction, without ever typing `None()` against `T`. Once bound to the winner's slot
+        // the argument's type IS that slot and the seam's identity verdict below answers.
+        if (IsNoBindingMask(source))
+            return target is OptionalType;
+
         if (IsAcceptedVerdict(ClassifyStore(
                 StorePosition.ArgumentPositional, argument, source, target, allowConstantConversion)))
         {

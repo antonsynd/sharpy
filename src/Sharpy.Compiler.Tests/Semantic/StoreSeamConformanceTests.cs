@@ -59,7 +59,9 @@ public class StoreSeamConformanceTests
         "TypeChecker.Expressions.Access.Calls.cs::ValidateCallArguments",
         "TypeChecker.Expressions.Access.Calls.cs::ValidateKeywordArguments",
         "TypeChecker.Expressions.Access.Calls.cs::ClrParameterAccepts",
-        "TypeChecker.Expressions.Access.Calls.Overloads.cs::ResolveOverloadCore",
+        // The selection half of ResolveOverloadCore (plan-499995, #1721): the probe runs here,
+        // and the binding half applies the verdict once the winner is known.
+        "TypeChecker.Expressions.Access.Calls.Overloads.cs::SelectOverload",
         "TypeChecker.cs::TypeChecker",
         // R-U (#1750): the needle of `in`/`not in` is an ARGUMENT into the container's element slot,
         // so the membership arm calls IsArgumentAssignable exactly as a call site does (plan-757fbb).
@@ -298,9 +300,13 @@ public class StoreSeamConformanceTests
     /// operand seam pushes the selected dunder overload's slot through
     /// <c>EnterStore(OperatorOperand, …)</c> for the right operand of a user operator, and the
     /// dict index READ pushes the key type the same way (40 pushes + 13 clears, measured by this
-    /// scan).
+    /// scan). 53 -> 55 (plan-499995, #1721): a slot-typed construction (`None()`, `Some`, `Ok`,
+    /// `Err`) at an overload-set callee is PROBED under an open slot
+    /// (<c>ProbeSlotTypedConstruction</c>) and, once a candidate wins, bound to that candidate's
+    /// slot (<c>BindArgumentsToSelectedOverload</c>) — two pushes, one per half of the seam
+    /// (42 pushes + 13 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 53;
+    private const int ExpectedSeamCallSiteCount = 55;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

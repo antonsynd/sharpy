@@ -1,0 +1,44 @@
+# #1721: `int` / `int?` / `int | None` / `int!str` are distinct signatures, and resolution among
+# them has one winner: a slot-typed argument (None(), Some, Ok) is typed by the overload it selects,
+# a bare value never selects an Optional slot, and a bare value bound to `T | None` next to a `T?`
+# twin is emitted cast to its slot (Roslyn alone would report CS0121). Same rule at every host.
+def f(x: int) -> str:
+    return "int"
+def f(x: int?) -> str:
+    return "opt"
+
+def g(x: int?) -> str:
+    return "opt"
+def g(x: int | None) -> str:
+    return "nullable"
+
+def h(x: int) -> str:
+    return "int"
+def h(x: int!str) -> str:
+    return "result"
+
+class C:
+    def __init__(self, x: int?) -> None:
+        print("ctor opt")
+    def __init__(self, x: int | None) -> None:
+        print("ctor nullable")
+    def m(self, x: int) -> str:
+        return "int"
+    def m(self, x: int!str) -> str:
+        return "result"
+
+def main():
+    print(f(1))
+    print(f(Some(1)))
+    print(f(None()))
+    print(g(1))
+    print(g(None))
+    print(g(Some(1)))
+    print(g(None()))
+    print(h(1))
+    print(h(Ok(1)))
+    print(h(Err("e")))
+    c = C(1)
+    d = C(None())
+    print(c.m(Ok(2)))
+    print(d.m(3))

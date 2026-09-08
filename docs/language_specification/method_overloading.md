@@ -152,6 +152,57 @@ class Vector:
 *Implementation*
 - *✅ Native - Each dunder overload maps to a separate C# operator overload.*
 
+## Modifiers Are Part of the Signature
+
+An overload's identity is its whole parameter annotation: `int`, `int?`, `int | None`, `int!str` and `list[int?]` are five different signatures, at every host — a module `def`, a method, an `__init__`, an imported `def`. Resolution among them has one winner:
+
+- A bare value is the identity match for `int`. It never selects an Optional slot (`1` is not an `int?`), so next to `int | None` it selects the nullable overload.
+- `Some(v)` and `None()` select the `T?` overload; a bare `None` selects `T | None`.
+- `Ok(v)` / `Err(e)` select the `T!E` overload, and the constructor is typed by the slot it selected — `Ok(1)` passed to `int!str` is a `Result[int, str]`, not a Result with an open error type.
+- `None()` where no overload takes an Optional is refused by the constructor's own diagnostic (SPY0244), naming every slot the candidates offer.
+
+```python
+def f(x: int) -> str:
+    return "int"
+def f(x: int?) -> str:
+    return "opt"
+
+def g(x: int?) -> str:
+    return "opt"
+def g(x: int | None) -> str:
+    return "nullable"
+
+def h(x: int) -> str:
+    return "int"
+def h(x: int!str) -> str:
+    return "result"
+
+print(f(1))          # int
+print(f(Some(1)))    # opt
+print(f(None()))     # opt
+print(g(1))          # nullable — strict Optional: 1 is not an int?
+print(g(None))       # nullable
+print(g(Some(1)))    # opt
+print(g(None()))     # opt
+print(h(Ok(1)))      # result
+print(h(Err("e")))   # result
+```
+
+```python
+def k(x: int) -> str:
+    return "int"
+def k(x: int | None) -> str:
+    return "nullable"
+
+k(None())    # ❌ SPY0244: 'None()' can only construct Optional types, not 'int32' or 'int32 | None'
+k(Some(1))   # ❌ SPY0220: Cannot pass argument of type 'int32?' to parameter of type 'int32' or 'int32 | None'
+```
+
+Two spellings that map to one C# parameter type are ONE signature and are refused at the declaration (SPY0701): `float` and `double` are both C# `double`; `str` and `str | None` are both C# `string`. `int` and `int?` map to `int` and `Sharpy.Optional<int>`, so they are distinct.
+
+*Implementation*
+- *✅ Native — each overload is its own C# method. A bare value bound to a `T | None` slot of an overloaded callee is emitted cast to that slot (`(int?)1`): C# admits `T → Optional<T>` implicitly and would otherwise find `f(int?)` and `f(Optional<int>)` ambiguous where Sharpy's strict Optional had already chosen.*
+
 ## Restrictions
 
 - **Cannot differ only by return type.** Overloads must differ in parameter count or types. Two methods with identical parameter signatures but different return types are rejected.
@@ -174,6 +225,8 @@ class Vector:
 | SPY0353 | Error | Ambiguous overload — multiple overloads match equally well |
 | SPY0354 | Error | No matching overload — the candidates disagree (arity, or different failing arguments). A call every candidate rejects at the SAME argument reports SPY0220 instead; see [Overload Resolution](overload_resolution.md#refusal-shape-the-argument-not-the-overload-set) |
 | SPY0355 | Error | Duplicate method signature — two overloads have identical parameter signatures |
+| SPY0701 | Error | Duplicate CLR-mapped signature — two spellings that are one C# parameter type (`float`/`double`, `str`/`str \| None`) |
+| SPY0244 | Error | `None()` passed to an overload set none of whose slots is an Optional |
 
 ## See Also
 
