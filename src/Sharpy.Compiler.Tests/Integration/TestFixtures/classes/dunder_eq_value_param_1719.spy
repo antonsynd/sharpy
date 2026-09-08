@@ -1,0 +1,10 @@
+class D:
+    def __init__(self):
+        pass
+    def __eq__(self, other: int) -> bool:
+        return other == 42
+
+def main() -> None:
+    d = D()
+    print(d == 42)
+    print(d == 1)

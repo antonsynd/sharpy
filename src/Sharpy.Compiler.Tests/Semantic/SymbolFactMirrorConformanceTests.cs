@@ -987,6 +987,7 @@ def main() -> None:
         ["ForwardingConstructors"] = "same-file-only — read at RoslynEmitter.ClassMembers.Constructors.cs:391",
         ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",
         ["SynthesizedInterfaces"] = "derived — restored from InterfaceReference.SynthesizedVia on warm restore (#1746)",
+        ["OperatorParameterShape"] = "same-file-only — read at RoslynEmitter.Operators.cs equality synthesis (#1719)",
     };
 
     /// <summary>

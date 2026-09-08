@@ -273,14 +273,17 @@ internal partial class RoslynEmitter
             // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
             //   if (other is null) return false;
             // This satisfies the IEquatable<T> contract (Equals(null) must return false, not throw).
-            // Structs don't need this because value type parameters can't be null.
+            // Structs don't need this, nor do value-type parameters (int, Optional<T>) — CS0037 (#1719).
             if (func.Name == DunderNames.Eq && !IsEqualsObjectOverload(func)
                 && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
             {
+                var eqMethodSym = _currentTypeSymbol.Methods.FirstOrDefault(m => m.Name == func.Name);
+                var paramShape = eqMethodSym != null ? GetCodeGenInfo(eqMethodSym)?.OperatorParameterShape : null;
+
                 var otherParam = func.Parameters
                     .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
-                if (otherParam != null)
+                if (otherParam != null && paramShape != Semantic.EqualityParameterShape.ValueOrOptional)
                 {
                     var paramName = ParameterCSharpName(otherParam);
                     var nullGuard = IfStatement(

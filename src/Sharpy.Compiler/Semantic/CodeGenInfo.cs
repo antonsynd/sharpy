@@ -149,6 +149,15 @@ public sealed record CodeGenInfo
     public IReadOnlyList<SynthesizedInterfaceInfo>? SynthesizedInterfaces { get; init; }
 
     /// <summary>
+    /// For equality/comparison dunders (<c>__eq__</c>, <c>__ne__</c>, <c>__lt__</c>, etc.):
+    /// the shape of the non-self parameter that determines how the C# operator body is
+    /// generated. <see cref="EqualityParameterShape.Reference"/> means <c>right is null</c>
+    /// is valid; <see cref="EqualityParameterShape.ValueOrOptional"/> means it is not (#1719).
+    /// Null for non-dunder methods and for the <c>__eq__(self, other: object)</c> override.
+    /// </summary>
+    public EqualityParameterShape? OperatorParameterShape { get; init; }
+
+    /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>
     public string GetVersionedCSharpName()
@@ -157,6 +166,18 @@ public sealed record CodeGenInfo
             return CSharpName;
         return $"{CSharpName}_{Version}";
     }
+}
+
+/// <summary>
+/// The shape of the non-self parameter on a comparison/equality dunder, determining how
+/// the C# operator body handles null (#1719, #1806).
+/// </summary>
+public enum EqualityParameterShape
+{
+    /// <summary>The parameter is a reference type — <c>right is null</c> is valid C#.</summary>
+    Reference,
+    /// <summary>The parameter is a value type or Optional&lt;T&gt; — no null pattern.</summary>
+    ValueOrOptional,
 }
 
 /// <summary>

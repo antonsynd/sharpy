@@ -405,6 +405,11 @@ internal class CodeGenInfoComputer
         }
     }
 
+    private static readonly HashSet<string> ComparisonDunders = new()
+    {
+        DunderNames.Eq, DunderNames.Ne, DunderNames.Lt, DunderNames.Le, DunderNames.Gt, DunderNames.Ge
+    };
+
     private void ProcessMethodDef(TypeSymbol typeSymbol, FunctionDef funcDef)
     {
         var methodSymbol = typeSymbol.Methods.FirstOrDefault(m => m.Name == funcDef.Name);
@@ -417,9 +422,28 @@ internal class CodeGenInfoComputer
                 OriginalName = funcDef.Name,
                 IsModuleLevel = false,
                 StripsOverrideKeyword = ShouldStripOverrideKeyword(typeSymbol, funcDef.Name),
-                ImplementsInterfaceMethod = ImplementsInterfaceMethod(typeSymbol, funcDef.Name)
+                ImplementsInterfaceMethod = ImplementsInterfaceMethod(typeSymbol, funcDef.Name),
+                OperatorParameterShape = ComputeOperatorParameterShape(methodSymbol)
             });
         }
+    }
+
+    private static EqualityParameterShape? ComputeOperatorParameterShape(FunctionSymbol method)
+    {
+        if (!ComparisonDunders.Contains(method.Name))
+            return null;
+
+        var otherParam = method.Parameters
+            .FirstOrDefault(p => p.Name != Shared.PythonNames.Self);
+        if (otherParam?.Type == null || otherParam.Type is UnknownType)
+            return null;
+
+        if (otherParam.Type is UserDefinedType { Name: "object" })
+            return null;
+
+        return otherParam.Type.IsValueType
+            ? EqualityParameterShape.ValueOrOptional
+            : EqualityParameterShape.Reference;
     }
 
     private bool ShouldStripOverrideKeyword(TypeSymbol typeSymbol, string methodName)

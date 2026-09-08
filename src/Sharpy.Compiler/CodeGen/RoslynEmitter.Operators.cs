@@ -492,13 +492,23 @@ internal partial class RoslynEmitter
         var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
             ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
 
+        // Read the materialized shape to decide whether `right is null` is valid C#.
+        var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == funcDef.Name);
+        var paramShape = methodSymbol != null ? GetCodeGenInfo(methodSymbol)?.OperatorParameterShape : null;
+
         if (funcDef.Name == DunderNames.Eq && !IsEqualsObjectOverload(funcDef)
             && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
         {
-            // For classes: return left?.Equals(right) ?? right is null;
-            // This routes through virtual Equals(T), enables polymorphic dispatch,
-            // and handles null correctly (null == null is true, null == x is false)
-            returnExpr = GenerateNullSafeEqualsExpression();
+            if (paramShape == Semantic.EqualityParameterShape.ValueOrOptional)
+            {
+                // Value-type parameter: left?.Equals(right) ?? false (#1719)
+                returnExpr = GenerateValueSafeEqualsExpression();
+            }
+            else
+            {
+                // Reference-type parameter: left?.Equals(right) ?? right is null
+                returnExpr = GenerateNullSafeEqualsExpression();
+            }
         }
         else
         {
@@ -517,6 +527,25 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generates: left?.Equals(right) ?? false
+    /// Used when the right parameter is a value type or Optional — <c>right is null</c> is
+    /// invalid C# for value types (#1719). A null left is never equal to a value-type right.
+    /// </summary>
+    private static ExpressionSyntax GenerateValueSafeEqualsExpression()
+    {
+        var nullConditionalEquals = ConditionalAccessExpression(
+            IdentifierName("left"),
+            InvocationExpression(
+                MemberBindingExpression(IdentifierName("Equals")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right"))))));
+
+        return BinaryExpression(
+            SyntaxKind.CoalesceExpression,
+            nullConditionalEquals,
+            LiteralExpression(SyntaxKind.FalseLiteralExpression));
     }
 
     /// <summary>
@@ -735,12 +764,17 @@ internal partial class RoslynEmitter
             .WithType(param2Type);
 
         ExpressionSyntax returnExpr;
+        var eqMethodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == eqMethod.Name);
+        var eqParamShape = eqMethodSymbol != null ? GetCodeGenInfo(eqMethodSymbol)?.OperatorParameterShape : null;
+
         if (!IsEqualsObjectOverload(eqMethod) && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
         {
-            // For classes: return !(left?.Equals(right) ?? right is null);
+            var equalsExpr = eqParamShape == Semantic.EqualityParameterShape.ValueOrOptional
+                ? GenerateValueSafeEqualsExpression()
+                : GenerateNullSafeEqualsExpression();
             returnExpr = PrefixUnaryExpression(
                 SyntaxKind.LogicalNotExpression,
-                ParenthesizedExpression(GenerateNullSafeEqualsExpression()));
+                ParenthesizedExpression(equalsExpr));
         }
         else
         {
@@ -760,6 +794,39 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a throwing mirror ordering operator (e.g., operator > when only __lt__ is defined).
+    /// C# requires operators in pairs; the mirror throws TypeError matching Python's behavior.
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateThrowingMirrorOperator(
+        FunctionDef definedDunder, string className, SyntaxKind mirrorToken, string mirrorPythonOp)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+        var classTypeSyntax = GetCurrentClassTypeSyntax(className);
+
+        var otherParam = definedDunder.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+
+        var param2Type = otherParam?.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : classTypeSyntax;
+
+        var param1 = Parameter(EscapedIdentifier("left")).WithType(classTypeSyntax);
+        var param2 = Parameter(EscapedIdentifier("right")).WithType(param2Type);
+
+        var message = LiteralExpression(SyntaxKind.StringLiteralExpression,
+            Literal($"'{mirrorPythonOp}' not supported between instances of '{className}' and the given type"));
+
+        var throwStmt = ThrowStatement(
+            ObjectCreationExpression(IdentifierName("TypeError"))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(message)))));
+
+        return OperatorDeclaration(returnType, Token(mirrorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(Block(throwStmt));
     }
 
     /// <summary>

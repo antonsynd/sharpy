@@ -341,6 +341,25 @@ internal partial class RoslynEmitter
             members.Add(GenerateComplementaryEqualsOperator(className));
         }
 
+        // Ordering operators: C# requires < with >, and <= with >=.
+        // Emit a throwing mirror for the missing half of each pair (#1806).
+        var orderingMirrors = new (string defined, string mirror, SyntaxKind mirrorToken, string pythonOp)[]
+        {
+            (DunderNames.Lt, DunderNames.Gt, SyntaxKind.GreaterThanToken, ">"),
+            (DunderNames.Gt, DunderNames.Lt, SyntaxKind.LessThanToken, "<"),
+            (DunderNames.Le, DunderNames.Ge, SyntaxKind.GreaterThanEqualsToken, ">="),
+            (DunderNames.Ge, DunderNames.Le, SyntaxKind.LessThanEqualsToken, "<="),
+        };
+        foreach (var (defined, mirror, mirrorToken, pythonOp) in orderingMirrors)
+        {
+            if (dunders.Contains(defined) && !dunders.Contains(mirror))
+            {
+                var definedFunc = body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == defined);
+                if (definedFunc != null)
+                    members.Add(GenerateThrowingMirrorOperator(definedFunc, className, mirrorToken, pythonOp));
+            }
+        }
+
         _currentTypeSymbol = previousTypeSymbol;
         return members;
     }

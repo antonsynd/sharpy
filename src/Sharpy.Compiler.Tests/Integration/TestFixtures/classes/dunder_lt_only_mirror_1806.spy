@@ -1,0 +1,11 @@
+class D:
+    val: int
+    def __init__(self, val: int) -> None:
+        self.val = val
+    def __lt__(self, other: int) -> bool:
+        return self.val < other
+
+def main():
+    d = D(5)
+    print(d < 10)
+    print(d < 3)
