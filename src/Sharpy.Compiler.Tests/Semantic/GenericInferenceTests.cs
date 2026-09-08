@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -377,6 +378,53 @@ def main():
 
         // Then there should be no errors
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Wrapper cells: T through ?, | None, !E, list[T]?, (T) -> U (#1797)
+
+    /// <summary>
+    /// The wrapper cells (plan-499995 Phase 3): a type parameter reached through a wrapper —
+    /// <c>T?</c>, <c>T | None</c>, <c>T!E</c>, <c>list[T]?</c>, <c>(T) -&gt; U</c> — binds from
+    /// the argument's PAYLOAD (<c>Some(5)</c> binds <c>T</c> to int; <c>Ok(5)</c> too; a plain
+    /// value binds through <c>T | None</c>), and an argument that carries no payload —
+    /// <c>None()</c>, a bare <c>None</c> — binds NOTHING and is refused by name (SPY0237, with the
+    /// explicit-syntax steer) rather than binding <c>T</c> to its own absence. A written type
+    /// argument closes the slot and the payload-less argument is then fine.
+    /// </summary>
+    [Theory]
+    [InlineData("def f[T](x: T?) -> T:\n    return x.unwrap()\n", "f(Some(5))", "int32", "T? × Some")]
+    [InlineData("def f[T](x: T?) -> T:\n    return x.unwrap()\n", "f[int](None())", "int32", "T? × None(), closed by the written argument")]
+    [InlineData("def f[T](x: T?) -> T:\n    return x.unwrap()\n", "f(None())", null, "T? × None(): nothing to bind")]
+    [InlineData("def g[T](x: T | None) -> T:\n    return x\n", "g(5)", "int32", "T | None × plain")]
+    [InlineData("def g[T](x: T | None) -> T:\n    return x\n", "g[str](None)", "str", "T | None × None, closed by the written argument")]
+    [InlineData("def g[T](x: T | None) -> T:\n    return x\n", "g(None)", null, "T | None × None: nothing to bind")]
+    [InlineData("def r[T](x: T!str) -> T:\n    return x.unwrap()\n", "r(Ok(5))", "int32", "T!E × Ok")]
+    [InlineData("def r[T](x: T!str) -> T:\n    return x.unwrap()\n", "r[int](Err(\"e\"))", "int32", "T!E × Err, closed by the written argument")]
+    [InlineData("def h[T](x: list[T]?) -> T:\n    return x.unwrap()[0]\n", "h(Some([1, 2]))", "int32", "list[T]? × Some(list)")]
+    [InlineData("def h[T](x: list[T]?) -> T:\n    return x.unwrap()[0]\n", "h(None())", null, "list[T]? × None(): nothing to bind")]
+    [InlineData("def a[T, U](x: T, f: (T) -> U) -> U:\n    return f(x)\n", "a(1, lambda v: str(v))", "str", "(T) -> U × plain + lambda")]
+    public void WrapperCell_BindsFromThePayload_OrRefusesByName(string decl, string call, string? expectedResult, string cell)
+    {
+        var source = decl + "\ndef main():\n    result = " + call + "\n";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var errors = typeChecker.Diagnostics.GetErrors().Select(e => $"{e.Code}:{e.Message}").ToList();
+        if (expectedResult == null)
+        {
+            errors.Should().Contain(e => e.StartsWith(DiagnosticCodes.Semantic.CannotInferGenericType, StringComparison.Ordinal),
+                $"{cell} must be refused by name (SPY0237); got [{string.Join(", ", errors)}]");
+            errors.Should().Contain(e => e.Contains("explicit syntax", StringComparison.Ordinal),
+                $"{cell} must steer to the explicit syntax; got [{string.Join(", ", errors)}]");
+            return;
+        }
+
+        errors.Should().BeEmpty($"{cell} binds from the payload; got [{string.Join(", ", errors)}]");
+        var resultType = GetCallResultType(module, semanticInfo, "result");
+        resultType.Should().NotBeNull($"{cell}: the call's type is recorded");
+        resultType!.GetDisplayName().Should().Be(expectedResult, $"{cell}: the payload's type is the binding");
     }
 
     #endregion

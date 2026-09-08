@@ -108,9 +108,43 @@ return identity[int]            # ERROR: cannot return it
 
 To pass a specific instantiation around as a value, wrap it in a lambda (`lambda x: identity[int](x)`) or reference the generic function without type arguments and let inference close it at each call site.
 
+**Type parameters through wrappers (`T?`, `T | None`, `T!E`):**
+
+A parameter that reaches `T` through a wrapper binds `T` from the argument's *payload*. An argument that carries no payload — `None()`, a bare `None` — binds nothing: it is refused with the explicit-syntax steer rather than binding `T` to its own absence. A written type argument closes the slot, and the payload-less argument is then fine.
+
+```python
+def f[T](x: T?) -> T:
+    return x.unwrap()
+
+def g[T](x: T | None) -> str:
+    return str(x)
+
+def r[T](x: T!str) -> T:
+    return x.unwrap()
+
+class Box[T]:
+    v: T?
+    def __init__(self, v: T?) -> None:
+        self.v = v
+
+print(f[int](Some(5)))   # 5
+print(f(Some(5)))        # 5 — T bound to int from the payload
+print(g[str](None))      # None
+print(g("a"))            # a
+print(r(Ok(5)))          # 5
+print(r[int](Ok(6)))     # 6
+print(Box[int](Some(5)).v)   # 5
+
+f(None())   # ❌ SPY0237: Type parameter 'T' cannot be inferred; no arguments provide type information. Use explicit syntax: f[T](...)
+g(None)     # ❌ SPY0237 — same steer
+```
+
+Once inference (or a written type argument, or a sibling argument, or the base reference of `super().__init__`) closes `T`, every argument is checked against the *closed* slot exactly as at a non-generic callee: `f[int](1)` is refused because `1` is not an `int?` (SPY0604), `f[int8](300)` because `300` does not fit `int8` (SPY0220), and the closed slot is what the emitted C# binds. `T | None` closed at a value type is that value type (there is no `Nullable<T>` behind an unconstrained `T`), so `g[int](None)` is refused (SPY0229: cannot assign `None` to non-nullable `int32`).
+
 *Implementation*
 - *✅ Native - `identity<int>(42)` in C#*
 - *Type arguments use `[]` in Sharpy, lowered to `<>` in C#*
+- *An inferred instantiation is emitted with its type arguments written out (`F<sbyte>(xs, 7)`), so Roslyn binds the instantiation the checker closed rather than re-inferring it.*
 
 ## Type Constraints
 

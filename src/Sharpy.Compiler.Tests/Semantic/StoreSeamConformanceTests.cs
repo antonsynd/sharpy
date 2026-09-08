@@ -304,9 +304,12 @@ public class StoreSeamConformanceTests
     /// `Err`) at an overload-set callee is PROBED under an open slot
     /// (<c>ProbeSlotTypedConstruction</c>) and, once a candidate wins, bound to that candidate's
     /// slot (<c>BindArgumentsToSelectedOverload</c>) — two pushes, one per half of the seam
-    /// (42 pushes + 13 clears, measured by this scan).
+    /// (42 pushes + 13 clears, measured by this scan). 55 -> 56 (plan-499995, #1797): the
+    /// post-inference re-check (<c>RecheckOpenArguments</c>) pushes the closed slot for a KEYWORD
+    /// argument recorded open, the twin of the positional push it already had
+    /// (43 pushes + 13 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 55;
+    private const int ExpectedSeamCallSiteCount = 56;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

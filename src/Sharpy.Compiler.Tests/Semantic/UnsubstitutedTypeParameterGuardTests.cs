@@ -443,6 +443,46 @@ def main():
         AssertNoDiagnosticNamesATypeParameter(result, cell);
     }
 
+    /// <summary>
+    /// The argument-position rows (#1797, plan-499995 Phase 3): a value refused at a generic
+    /// callee's slot is refused against the CLOSED slot — the written type argument, the
+    /// inference a sibling drove, the keyword's parameter, the base reference's argument — so the
+    /// diagnostic names <c>Optional[int32]</c> or <c>int8</c>, never a bare <c>'T'</c>. Before the
+    /// closed-slot seam these cells either leaked the formal or reached Roslyn (CS1503 behind
+    /// SPY0908). The positive control that a type parameter genuinely in scope is still named is
+    /// <see cref="TypeParameterInScope_IsStillNamedByItsDiagnostic"/>.
+    /// </summary>
+    [Theory]
+    [InlineData("def f[T](x: T?) -> None:\n    print(x)\n\ndef main():\n    f[int](1)\n",
+        "SPY0604", "explicit def: bare value into T? closed at int")]
+    [InlineData("def f[T](xs: list[T], x: T?) -> None:\n    print(x)\n\ndef main():\n    xs: list[int] = [0]\n    f(xs, 1)\n",
+        "SPY0604", "inferred def: bare value into T? bound to int by a sibling")]
+    [InlineData("def f[T](x: T?) -> None:\n    print(x)\n\ndef main():\n    f[int](x=1)\n",
+        "SPY0604", "keyword into T? closed at int")]
+    [InlineData("class Box[T]:\n    def __init__(self, x: T?) -> None:\n        print(x)\n\ndef main():\n    Box[int](1)\n",
+        "SPY0604", "explicit ctor: bare value into T? closed at int")]
+    [InlineData("class Box[T]:\n    def __init__(self, xs: list[T], x: T?) -> None:\n        print(x)\n\ndef main():\n    xs: list[int] = [0]\n    Box(xs, 1)\n",
+        "SPY0604", "inferred ctor: bare value into T? bound to int by a sibling")]
+    [InlineData("class Base[T]:\n    def __init__(self, x: T?) -> None:\n        print(x)\n\nclass D(Base[int]):\n    def __init__(self) -> None:\n        super().__init__(1)\n\ndef main():\n    D()\n",
+        "SPY0604", "super().__init__ into T? closed by the base reference")]
+    [InlineData("def f[T](x: T) -> None:\n    print(x)\n\ndef main():\n    f[int8](300)\n",
+        "SPY0220", "explicit def: out-of-range constant into T closed at int8")]
+    [InlineData("def f[T](xs: list[T], x: T) -> None:\n    print(x)\n\ndef main():\n    xs: list[int8] = [0]\n    f(xs, 300)\n",
+        "SPY0220", "inferred def: out-of-range constant into T bound to int8 by a sibling")]
+    [InlineData("def f[T](xs: list[T], x: T) -> None:\n    print(x)\n\ndef f[T](x: T) -> None:\n    print(x)\n\ndef main():\n    xs: list[int8] = [0]\n    f(xs, 300)\n",
+        "SPY0220", "overloaded inferred def: out-of-range constant into T bound to int8 by a sibling")]
+    public void ArgumentAtAGenericSlot_IsRefusedAgainstTheClosedSlot_NeverT(string program, string code, string cell)
+    {
+        var result = CompileAndExecute(program);
+
+        result.Success.Should().BeFalse($"{cell}: the argument is refused; it printed '{result.StandardOutput}'");
+        result.RawDiagnostics.Should().Contain(d => d.Code == code,
+            $"{cell}: {code} against the closed slot; got " + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"{cell}: the closed slot decides, never Roslyn");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
     private static void AssertNoDiagnosticNamesATypeParameter(ExecutionResult result, string cell)
     {
         // SPY0237 ("cannot infer generic type …") is ABOUT the parameter it names — the diagnostic

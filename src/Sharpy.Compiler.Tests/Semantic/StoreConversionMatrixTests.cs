@@ -642,6 +642,175 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         (accepted + refused).Should().Be(4 * 5, "the whole product");
     }
 
+    // ── Callee-kind axis for the two argument positions (#1797, plan-499995 Phase 3) ────────
+    // The argument seam must receive the CLOSED slot on every route that closes a generic
+    // binding — not only at a non-generic callee (the ArgumentPositional / ArgumentKeyword rows).
+    // Each kind composes the same 24 shapes against a `T` closed to the shape's slot by a
+    // different binding source: the written type arguments of a def or a constructor, the
+    // inference a sibling argument drives, a keyword into a written def, and the enclosing class's
+    // base reference for `super().__init__`. The verdict, code, message head and steer are the
+    // argument row's own, read off the same tables, so a route that admits what the row refuses
+    // (`1` into an inferred `T?`) or refuses what it admits (`7` into a `T` closed to int8) is a
+    // red cell. A refusal the INFERENCE makes (SPY0237: the value's own type conflicts with the
+    // binding a sibling pinned) is a refusal by name too and is admitted for the inferred kinds;
+    // SPY0908 never is.
+
+    private const int CalleeKindCount = 6;
+    private const int CalleeKindAcceptedCellCount = 78;
+    private const int CalleeKindRefusedCellCount = 66;
+    private const int InferenceRefusedCellCount = 6;
+
+    /// <summary>
+    /// The shape's slot split into the type ARGUMENT that closes <c>T</c> and the parameter
+    /// spelling that wraps it: <c>int?</c> is <c>T?</c> closed at <c>int</c>, <c>int8 | None</c> is
+    /// <c>T | None</c> closed at <c>int8</c>, a plain slot is <c>T</c> closed at itself. The
+    /// modifier is the PARAMETER's, never the type argument's — that is what Phase 3 closes (#1797).
+    /// </summary>
+    private static (string TypeArg, string Formal) SplitSlot(Shape s)
+        => s.Slot.EndsWith("?", StringComparison.Ordinal) ? (s.Slot[..^1], "T?")
+         : s.Slot.EndsWith(" | None", StringComparison.Ordinal) ? (s.Slot[..^" | None".Length], "T | None")
+         : (s.Slot, "T");
+
+    /// <summary>A value of the closing type, to seed the sibling that drives inference.</summary>
+    private static string SeedOf(string typeArg) => typeArg switch
+    {
+        "float32" or "decimal" => "0.0",
+        "LiteralString" => "\"\"",
+        _ => "0",
+    };
+
+    /// <summary>
+    /// The inferred-kind cells that refuse through INFERENCE rather than the seam, written down:
+    /// the value's own natural type (an int32 literal, a float64 literal) conflicts with the
+    /// binding its sibling pinned (<c>int8 | None</c>, <c>decimal</c>), and unification refuses
+    /// before any slot closes — SPY0237, by name; C# refuses the same programs with CS0411. Every
+    /// other inferred cell must match its argument row exactly, so an inference that started
+    /// refusing more (or admitting one of these) is a red cell, not a wider allowance.
+    /// </summary>
+    private static readonly HashSet<string> InferenceRefusedCells = new()
+    {
+        "InferredGenericDef×FloatLiteralIntoDecimal",
+        "InferredGenericDef×OptionalIntoNullable",
+        "InferredGenericDef×OptionalIntoNonOptional",
+        "InferredGenericCtor×FloatLiteralIntoDecimal",
+        "InferredGenericCtor×OptionalIntoNullable",
+        "InferredGenericCtor×OptionalIntoNonOptional",
+    };
+
+    /// <summary>
+    /// <c>T | None</c> closed at a VALUE type is the value type itself — C#'s rule for an
+    /// unconstrained <c>T?</c> (there is no <c>Nullable&lt;T&gt;</c> to make), which Sharpy's
+    /// substitution mirrors (the collapse arm in <c>TypeSubstitution</c>). So a shape that stores
+    /// into an <c>int | None</c> slot behaves, through a <c>T | None</c> formal closed at int,
+    /// exactly as its non-nullable twin: <c>None</c> is refused (SPY0229), an Optional is refused
+    /// with the unwrap steer, a constant narrows. The program is still composed from the shape;
+    /// only the expectation is the twin's.
+    /// </summary>
+    private static Shape EffectiveShape(Shape s)
+    {
+        var (typeArg, formal) = SplitSlot(s);
+        if (formal != "T | None" || typeArg is not ("int" or "int8"))
+            return s;
+        return s.Name switch
+        {
+            "NoneIntoNullable" => Shp("NoneIntoNonNullable"),
+            "OptionalIntoNullable" => Shp("OptionalIntoNonOptional"),
+            "ConstantIntoNarrowNullable" => Shp("InRangeIntConstant"),
+            _ => throw new InvalidOperationException(s.Name),
+        };
+    }
+
+    /// <param name="Row">The argument position whose verdict, code and message this kind must match.</param>
+    /// <param name="StoreLine">The line of the store within the composed program (past the shape's prelude).</param>
+    private sealed record CalleeKind(string Name, string Row, Func<Shape, string> Compose, int StoreLine);
+
+    private static readonly CalleeKind[] CalleeKinds =
+    {
+        new("ExplicitGenericDef", "ArgumentPositional",
+            s => { var (a, f) = SplitSlot(s); return $"def f[T](x: {f}) -> None:\n    print(x)\n\ndef main():\n    f[{a}]({s.Value})\n"; }, 5),
+        new("InferredGenericDef", "ArgumentPositional",
+            s => { var (a, f) = SplitSlot(s); return $"def f[T](xs: list[T], x: {f}) -> None:\n    print(x)\n\ndef main():\n    xs: list[{a}] = [{SeedOf(a)}]\n    f(xs, {s.Value})\n"; }, 6),
+        new("GenericCtor", "ArgumentPositional",
+            s => { var (a, f) = SplitSlot(s); return $"class Box[T]:\n    def __init__(self, x: {f}) -> None:\n        print(x)\n\ndef main():\n    Box[{a}]({s.Value})\n"; }, 6),
+        new("InferredGenericCtor", "ArgumentPositional",
+            s => { var (a, f) = SplitSlot(s); return $"class Box[T]:\n    def __init__(self, xs: list[T], x: {f}) -> None:\n        print(x)\n\ndef main():\n    xs: list[{a}] = [{SeedOf(a)}]\n    Box(xs, {s.Value})\n"; }, 7),
+        new("KeywordOnGenericDef", "ArgumentKeyword",
+            s => { var (a, f) = SplitSlot(s); return $"def f[T](x: {f}) -> None:\n    print(x)\n\ndef main():\n    f[{a}](x={s.Value})\n"; }, 5),
+        new("SuperInitIntoGenericBase", "ArgumentPositional",
+            s => { var (a, f) = SplitSlot(s); return $"class Base[T]:\n    def __init__(self, x: {f}) -> None:\n        print(x)\n\nclass D(Base[{a}]):\n    def __init__(self) -> None:\n        super().__init__({s.Value})\n\ndef main():\n    D()\n"; }, 7),
+    };
+
+    public static IEnumerable<object[]> CalleeKindCells
+        => from k in CalleeKinds
+           from s in Shapes
+           select new object[] { k.Name, s.Name };
+
+    [Theory]
+    [MemberData(nameof(CalleeKindCells))]
+    public void CalleeKindCell_MatchesTheArgumentRow(string kind, string shape)
+    {
+        var k = CalleeKinds.Single(x => x.Name == kind);
+        var s = Shp(shape);
+        var row = Pos(k.Row);
+        var source = s.Prelude + k.Compose(s);
+        var label = $"[{kind} × {shape}]";
+        // The verdict, output, code and message come from the shape the closed formal makes of it.
+        var eff = EffectiveShape(s);
+
+        var result = CompileAndExecute(source);
+        var diagnostics = string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}@{d.Line}: {d.Message}"));
+
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"{label} must never reach Roslyn — the closed slot decides here: {diagnostics}\n{source}");
+
+        if (InferenceRefusedCells.Contains($"{kind}×{shape}"))
+        {
+            result.Success.Should().BeFalse($"{label} is refused by inference (see InferenceRefusedCells); it printed '{result.StandardOutput}'\n{source}");
+            result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.CannotInferGenericType,
+                $"{label} must refuse by name through inference: {diagnostics}\n{source}");
+            return;
+        }
+
+        if (Classify(row, eff) == Verdict.Accepted)
+        {
+            result.Success.Should().BeTrue($"{label} must compile — the {k.Row} row admits this shape: {diagnostics}\n{source}");
+            result.StandardOutput.Should().Be(AcceptedOutputOf(row, eff), $"{label} must print the stored value\n{source}");
+            return;
+        }
+
+        result.Success.Should().BeFalse($"{label} must be refused — the {k.Row} row refuses this shape; it printed '{result.StandardOutput}'\n{source}");
+
+        var (code, head, tail) = RefusalOf(row, eff);
+        var seam = result.RawDiagnostics.Where(d => d.Code == code).ToList();
+        seam.Should().HaveCount(1, $"{label} must report {code} exactly once, as the {k.Row} row does: {diagnostics}\n{source}");
+        seam[0].Message.Should().Contain(head, $"{label} must phrase the refusal the way the {k.Row} row does\n{source}");
+        if (tail.Length > 0)
+            seam[0].Message.Should().Contain(tail, $"{label} must carry the shape's steer\n{source}");
+        seam[0].Line.Should().Be(s.Prelude.Count(c => c == '\n') + k.StoreLine,
+            $"{label} must be reported at the store, not at the enclosing statement\n{source}");
+    }
+
+    [Fact]
+    public void CalleeKindMatrix_IsTotalOverItsAxes()
+    {
+        CalleeKinds.Length.Should().Be(CalleeKindCount);
+        CalleeKinds.Select(k => k.Name).Should().OnlyHaveUniqueItems();
+        CalleeKinds.Select(k => k.Row).Should().OnlyContain(r => r == "ArgumentPositional" || r == "ArgumentKeyword",
+            "every kind is a route into one of the two argument positions");
+
+        var accepted = CalleeKinds.Sum(k => Shapes.Count(s => Classify(Pos(k.Row), EffectiveShape(s)) == Verdict.Accepted));
+        accepted.Should().Be(CalleeKindAcceptedCellCount, "13 admitted shapes × 6 kinds — NoneIntoNullable collapses to its non-nullable twin's refusal");
+        (CalleeKinds.Length * Shapes.Length - accepted).Should().Be(CalleeKindRefusedCellCount, "11 refused shapes × 6 kinds");
+
+        InferenceRefusedCells.Count.Should().Be(InferenceRefusedCellCount, "the inference-refused roster is a literal");
+        foreach (var key in InferenceRefusedCells)
+        {
+            var parts = key.Split('×');
+            CalleeKinds.Should().Contain(k => k.Name == parts[0] && k.Name.StartsWith("Inferred"), $"{key} names an inferred kind");
+            Shapes.Should().Contain(sh => sh.Name == parts[1], $"{key} names a shape");
+        }
+    }
+
     // ── Totality ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>

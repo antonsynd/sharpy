@@ -62,6 +62,13 @@ internal partial class TypeChecker
         // Only validate when there's a single __init__ (no overloads) — overloaded
         // constructors have complex resolution that the C# compiler handles.
         var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+        // A generic type constructed WITHOUT written type arguments: its __init__ parameters are
+        // open until inference below closes them, and the arguments are checked against the CLOSED
+        // slots then, once — exactly as a generic def's are after its inference (#1797,
+        // callee-kind axis). Checking them here against the open binding skipped every open slot,
+        // so `Box(xs, 300)` into a `T` inferred as int8 was CS1503 behind SPY0908, and `1` into an
+        // inferred `T?` was admitted where every other route refuses it.
+        List<ParameterSymbol>? deferredInitParams = null;
         if (initMethods.Count == 1)
         {
             var initParams = initMethods[0].Parameters.Skip(1).ToList(); // skip 'self'
@@ -76,11 +83,11 @@ internal partial class TypeChecker
             // constructors the ONLY seam where a wrong argument produced CS1503 behind SPY0908
             // instead of a diagnostic (#1243). IsArgumentAssignable is the authority that models
             // those edge cases, so deferring to Roslyn buys nothing the check does not already
-            // give; both are pinned by fixtures. A generic type constructed without written type
-            // arguments passes no substitution, so its still-open parameters are skipped and
-            // inference below decides them exactly as before.
-            ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
-                UnwrittenTypeParameterBinding(typeSymbol));
+            // give; both are pinned by fixtures.
+            if (typeSymbol.IsGeneric)
+                deferredInitParams = initParams;
+            else
+                ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount);
 
             CheckDeprecatedUsage(initMethods[0], call);
         }
@@ -217,6 +224,17 @@ internal partial class TypeChecker
                 typeArgs = TryInferConstructorTypeArgs(typeSymbol, call, argTypes);
             }
 
+            // The deferred __init__ check, against whatever binding this route closed: the
+            // written/expected/inferred type arguments, or the open binding when nothing closed
+            // (open slots skipped, the non-generic ones still checked).
+            void ValidateDeferredInit(TypeParameterBinding? binding)
+            {
+                if (deferredInitParams == null)
+                    return;
+                RecheckOpenArguments(call, deferredInitParams, binding, argTypes, kwargTypes);
+                ValidateCallArguments(call, deferredInitParams, argTypes, kwargTypes, totalArgCount, binding);
+            }
+
             // If inference failed, fall back to UnknownType args for builtin
             // collections (lets C# compiler report the real error) or emit
             // a diagnostic for user-defined generic types.
@@ -240,9 +258,12 @@ internal partial class TypeChecker
                         call.LineStart, call.ColumnStart,
                         code: DiagnosticCodes.Semantic.CannotInferGenericType,
                         span: call.Span);
+                    ValidateDeferredInit(UnwrittenTypeParameterBinding(typeSymbol));
                     return SemanticType.Unknown;
                 }
             }
+
+            ValidateDeferredInit(WrittenTypeParameterBinding(typeSymbol, typeArgs));
 
             return new GenericType
             {

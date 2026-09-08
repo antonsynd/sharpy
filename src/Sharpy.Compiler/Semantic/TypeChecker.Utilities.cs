@@ -2046,8 +2046,9 @@ internal partial class TypeChecker
                 var parentCtor = currentType.Constructors.FirstOrDefault();
                 if (parentCtor != null)
                 {
-                    return FunctionType.FromParameters(
-                        parentCtor.Parameters, SemanticType.Void, skipLeading: 1);
+                    return CloseOverBaseReference(
+                        FunctionType.FromParameters(parentCtor.Parameters, SemanticType.Void, skipLeading: 1),
+                        currentType);
                 }
                 currentType = GetBaseType(currentType);
             }
@@ -2069,8 +2070,9 @@ internal partial class TypeChecker
                 };
             }
 
-            return FunctionType.FromParameters(
-                parentMethod.Parameters, parentMethod.ReturnType, skipLeading: 1);
+            return CloseOverBaseReference(
+                FunctionType.FromParameters(parentMethod.Parameters, parentMethod.ReturnType, skipLeading: 1),
+                methodOwner);
         }
 
         // Also check properties in the parent hierarchy (e.g. super().age in
@@ -2085,6 +2087,38 @@ internal partial class TypeChecker
             code: DiagnosticCodes.Semantic.UndefinedMember,
             span: memberAccess.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// A base member's signature as the CURRENT class sees it: the direct base reference's written
+    /// type arguments substituted for the base's own parameters, so <c>super().__init__(7)</c> in
+    /// <c>class D(Base[int8])</c> binds <c>7</c> to <c>int8</c> rather than to an open <c>T</c>
+    /// every argument satisfies — the fourth binding source of #1797's callee-kind axis. Only the
+    /// DIRECT base reference is read: a member declared further up an unsubstituted chain keeps its
+    /// own parameters, as before. Source-declared references carry their arguments as annotations
+    /// (the bridge fills <see cref="BaseTypeReference.ResolvedTypeArguments"/> only for CLR bases),
+    /// so they are resolved here through the one annotation seam.
+    /// </summary>
+    private FunctionType CloseOverBaseReference(FunctionType signature, TypeSymbol? owner)
+    {
+        if (_currentClass == null || owner == null || owner.TypeParameters.Count == 0)
+            return signature;
+
+        var baseRef = SemanticBinding.GetBaseTypeReference(_currentClass) ?? _currentClass.BaseTypeRef;
+        if (baseRef == null || !ReferenceEquals(baseRef.Definition, owner))
+            return signature;
+
+        var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
+            ? baseRef.ResolvedTypeArguments.ToList()
+            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a)).ToList();
+        if (typeArgs.Count != owner.TypeParameters.Count || typeArgs.Any(t => t is UnknownType))
+            return signature;
+
+        var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+        for (int i = 0; i < typeArgs.Count; i++)
+            substitution[owner.TypeParameters[i].Name] = typeArgs[i];
+
+        return (FunctionType)TypeSubstitution.Apply(signature, substitution, substituteNamedUserTypes: true);
     }
 
     /// <summary>

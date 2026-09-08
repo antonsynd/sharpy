@@ -418,9 +418,26 @@ internal partial class RoslynEmitter
             // through GenerateExpression so the node-keyed symbol resolves correctly.
             ExpressionSyntax calleeExpr;
             if (funcCSharpName == null || _context.SemanticInfo?.GetNarrowedReadLowering(callee) != null)
+            {
                 calleeExpr = GenerateExpression(callee);
+            }
+            else if (resolvedCalleeSymbol is FunctionSymbol { IsGeneric: true }
+                     && _context.SemanticInfo?.GetInferredTypeArguments(call) is { Count: > 0 } inferredFnTypeArgs
+                     && inferredFnTypeArgs.All(t => t is not UnknownType))
+            {
+                // The binding the checker inferred IS the call's binding (#1797): written out, so
+                // Roslyn binds `F<sbyte>(xs, 7)` exactly as the checker did rather than re-inferring
+                // T from (List<sbyte>, int) and failing (CS0411) where the checker's constant
+                // conversion admitted the literal. The same materialized fact the builtin arm above
+                // already writes; a vector inference left open is not written (Roslyn's own
+                // inference stays the fallback there, as before).
+                calleeExpr = TypeSyntaxMapper.QualifiedGenericName(funcCSharpName,
+                    inferredFnTypeArgs.Select(t => _typeMapper.MapSemanticType(t)).ToArray());
+            }
             else
+            {
                 calleeExpr = ParseQualifiedName(funcCSharpName);
+            }
             return InvocationExpression(calleeExpr)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
@@ -860,6 +877,15 @@ internal partial class RoslynEmitter
     /// </summary>
     private TypeSyntax[] MapTypeReferenceTypeArguments(IndexAccess indexAccess, GenericReference reference)
     {
+        // The checker RESOLVED the written type arguments (reference.TypeArgs); when every one is
+        // closed, that resolution is the vector to emit — the same authority every other type
+        // position reads — rather than a re-derivation from the written spelling, which renders
+        // `f[LiteralString](…)` as `F<LiteralString>` (CS0246 behind SPY0908) where the resolved
+        // type maps to `string` (#1797, callee-kind axis). The spelling path stays for a vector
+        // the checker left open or unresolved.
+        if (reference.TypeArgs.Count > 0 && reference.TypeArgs.All(t => t is not UnknownType))
+            return reference.TypeArgs.Select(t => _typeMapper.MapSemanticType(t)).ToArray();
+
         var written = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
         if (reference.TypeArgs.Count <= written.Length)
             return written;

@@ -61,7 +61,7 @@ public static partial class LambdaInferredMod
 #line (28, 5) - (28, 67) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>(x => ((global::System.Func<int, int>)(y => global::Sharpy.Builtins.FloorMod(y, 3)))(x) == 1, nums)));
 #line (31, 5) - (31, 49) 8 "lambda_inferred_mod.spy"
-        global::Sharpy.Builtins.Print(ApplyAll(v => global::Sharpy.Builtins.FloorMod(v, 3) == 1, nums));
+        global::Sharpy.Builtins.Print(ApplyAll<int>(v => global::Sharpy.Builtins.FloorMod(v, 3) == 1, nums));
 #line (34, 5) - (34, 57) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>((int x) => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
 #line hidden

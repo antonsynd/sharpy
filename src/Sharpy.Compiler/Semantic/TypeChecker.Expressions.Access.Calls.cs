@@ -1234,7 +1234,21 @@ internal partial class TypeChecker
             // and TWO iterables. Nothing validated the value arguments against that narrowing, so a
             // call whose type-argument count matched but whose value arguments did not was accepted
             // here and emitted verbatim, surfacing as CS7036 out of Roslyn instead of a diagnostic.
-            ValidateSelectedGenericOverloadArguments(call, callee, genericFuncType, argTypes, totalArgCount);
+            if (ValidateSelectedGenericOverloadArguments(call, callee, genericFuncType, argTypes, totalArgCount)
+                is { } selectedOverload)
+            {
+                // The written type arguments close every slot, so the arguments bind to them here
+                // — the accepted verdict's facts (a literal retyped to float32) and the keyword
+                // half, which the overload check above never reads (#1797, callee-kind axis).
+                var selfOffset = selectedOverload.Parameters.Count > 0
+                    && selectedOverload.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+                var closedParameters = selfOffset == 0
+                    ? (IReadOnlyList<ParameterSymbol>)selectedOverload.Parameters
+                    : selectedOverload.Parameters.Skip(selfOffset).ToList();
+                ValidateCallArguments(call, closedParameters, argTypes, kwargTypes, totalArgCount,
+                    InferredTypeParameterBinding(selectedOverload, genericFuncType.TypeArguments),
+                    clrParameterNames: selectedOverload.ClrMethodName != null);
+            }
 
             // Substitute type parameters with type arguments in the return type
             var substitutedReturnType = SubstituteTypeParameters(
@@ -1352,7 +1366,12 @@ internal partial class TypeChecker
     /// via <see cref="ReportOverloadError"/>, the same no-match reporting the non-generic overload
     /// paths use (#1013).</para>
     /// </summary>
-    private void ValidateSelectedGenericOverloadArguments(
+    /// <returns>
+    /// The overload codegen emits when the resolver confirms it accepts these arguments — the
+    /// caller binds the arguments to its written slots — or null when the call was refused here,
+    /// when the set is ambiguous, or when the resolver's winner is not the pinned overload.
+    /// </returns>
+    private FunctionSymbol? ValidateSelectedGenericOverloadArguments(
         FunctionCall call, Expression canonicalCallee, GenericFunctionType genericFuncType,
         List<SemanticType> argTypes, int totalArgCount)
     {
@@ -1387,9 +1406,10 @@ internal partial class TypeChecker
         // type arguments already pinned the overload codegen emits. Only "nothing accepts these
         // value arguments" is the #1148 defect.
         if (resolution.Match != null || resolution.IsAmbiguous)
-            return;
+            return ReferenceEquals(resolution.Match, selected) ? selected : null;
 
         ReportOverloadError(calleeName, call, resolution, totalArgCount, argTypes);
+        return null;
     }
 
     /// <summary>
@@ -2408,15 +2428,19 @@ internal partial class TypeChecker
             return true;
         }
 
-        // One distinct type: exactly the seam's own refusal, steer included — the same message the
-        // single-signature twin (`xs.count(n)`) already gives. Several: name them all; the seam's
-        // steer is phrased against ONE slot, so it is omitted rather than made to pick a favourite.
-        var message = expectedTypes.Count == 1
-            // No push created this refusal — the overload set never reached EnterStore — so there is
-            // no context to name, and the LambdaBody arm (the only reader) is not this position.
-            ? FormatStoreError(position, failedArgType, expectedTypes[0], slotName: null, context: null)
-                + DescribeStoreRefusalSteer(position, failedArgType, expectedTypes[0])
-            : $"Cannot pass argument of type '{failedArgType.GetDisplayName()}' to parameter of type "
+        // One distinct type: exactly the seam's own refusal — CODE, message and steer — the same
+        // the single-signature twin (`xs.count(n)`) gives, through the same CheckStore, so a bare
+        // None into `int` is SPY0229 and a bare value into `int?` is SPY0604 here as everywhere
+        // else (#1797, callee-kind axis). Several: name them all; the seam's steer is phrased
+        // against ONE slot, so it is omitted rather than made to pick a favourite.
+        if (expectedTypes.Count == 1)
+        {
+            CheckStore(position, argNode, failedArgType, expectedTypes[0],
+                (Node?)argNode ?? call, argNode?.Span ?? call.Span);
+            return true;
+        }
+
+        var message = $"Cannot pass argument of type '{failedArgType.GetDisplayName()}' to parameter of type "
                 + DescribeAlternativeTypes(expectedTypes);
 
         AddError(message,
@@ -2653,10 +2677,15 @@ internal partial class TypeChecker
         // `json.dumps(x, allowNan=False)` bound silently under a spelling CPython refuses
         // (#1591). The selected overload's parameter list is the binding surface; validate the
         // kwargs against it. Module functions carry no receiver parameter, so no self skip.
-        ValidateKeywordArguments(call, matchingOverload.Parameters, argTypes.Count, kwargTypes,
-            clrParameterNames: matchingOverload.ClrMethodName != null);
+        // A generic overload validates its keywords once its binding is closed, inside
+        // InferGenericReturnType; validating here too would report a refused keyword twice.
+        if (!matchingOverload.IsGeneric)
+        {
+            ValidateKeywordArguments(call, matchingOverload.Parameters, argTypes.Count, kwargTypes,
+                clrParameterNames: matchingOverload.ClrMethodName != null);
+        }
 
-        var returnType = InferGenericReturnType(matchingOverload, argTypes, call);
+        var returnType = InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
 
         if (isNullConditionalCall)
             return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
@@ -2701,7 +2730,7 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen (and check deprecation) — #1438
         RecordResolvedCallTarget(call, matchingOverload);
 
-        return InferGenericReturnType(matchingOverload, argTypes, call);
+        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
     }
 
     /// <summary>
@@ -2748,7 +2777,7 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen (and check deprecation) — #1438
         RecordResolvedCallTarget(call, matchingOverload);
 
-        return InferGenericReturnType(matchingOverload, argTypes, call);
+        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
     }
 
     private string? TryGetDefaultMethodInterfaceName(TypeSymbol typeSymbol, string methodName)
@@ -2862,7 +2891,8 @@ internal partial class TypeChecker
     }
 
     private SemanticType InferGenericReturnType(
-        FunctionSymbol overload, List<SemanticType> argTypes, FunctionCall call)
+        FunctionSymbol overload, List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
+        int totalArgCount, FunctionCall call)
     {
         // A bridged generic builtin (Builtins.Max<T>) carries no own TypeParameters but names T in
         // its return type — the same seam decides whether that T is in scope or an unbound leak.
@@ -2873,6 +2903,16 @@ internal partial class TypeChecker
         if (inferenceResult.Success && inferenceResult.InferredTypes != null)
         {
             _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+
+            // The selected overload's binding closes here, so its arguments bind here — the same
+            // two steps the single-candidate route takes once inference has run (#1797): the
+            // open recordings are re-checked against the closed slots, then every argument is
+            // validated against them (conversions applied, refusals by name).
+            var binding = InferredTypeParameterBinding(overload, inferenceResult.InferredTypes);
+            RecheckOpenArguments(call, overload.Parameters, binding, argTypes, kwargTypes);
+            ValidateCallArguments(call, overload.Parameters, argTypes, kwargTypes, totalArgCount,
+                binding, clrParameterNames: overload.ClrMethodName != null);
+
             var result = SubstituteTypeParameters(
                 overload.ReturnType,
                 overload.TypeParameters,
@@ -2880,6 +2920,9 @@ internal partial class TypeChecker
             return FinalizeCallReturnType(result);
         }
 
+        // No binding to validate against: the keyword NAME rules still apply (#1591).
+        ValidateKeywordArguments(call, overload.Parameters, argTypes.Count, kwargTypes,
+            clrParameterNames: overload.ClrMethodName != null);
         return FinalizeCallReturnType(overload.ReturnType);
     }
 
@@ -3001,11 +3044,15 @@ internal partial class TypeChecker
                 // reads that recording. `None()` in a `T?` slot records `Optional[T]` and emits
                 // `Optional<T>.None` — CS0246 behind SPY0908 — even though inference closed `T` one
                 // line later. Re-check those arguments under the now-CLOSED slot.
-                RecheckOpenPositionalArguments(call, funcSymbol.Parameters, inferredBinding, argTypes);
+                RecheckOpenArguments(call, funcSymbol.Parameters, inferredBinding, argTypes, kwargTypes);
 
-                ValidateKeywordArguments(call, funcSymbol.Parameters, argTypes.Count, kwargTypes,
-                    inferredBinding,
-                    clrParameterNames: funcSymbol.ClrMethodName != null);
+                // ...and VALIDATE every argument against the closed binding — the whole seam, not
+                // the keyword half it used to be: a literal into a slot inference closed to int8 is
+                // retyped (or refused) exactly as at a non-generic callee, and `1` into a slot
+                // closed to Optional[int] is the strict-Optional refusal it is everywhere else
+                // (#1797, callee-kind axis).
+                ValidateCallArguments(call, funcSymbol.Parameters, argTypes, kwargTypes, totalArgCount,
+                    inferredBinding, clrParameterNames: funcSymbol.ClrMethodName != null);
 
                 // Wrap result in optional/nullable for null conditional calls
                 substitutedReturnType = FinalizeCallReturnType(substitutedReturnType);
@@ -3960,36 +4007,98 @@ internal partial class TypeChecker
     /// formal both records the closed type and applies the ordinary store rules to it, so the
     /// diagnosis of a genuinely wrong argument stays SPY0220 naming closed types.</para>
     ///
-    /// <para>Only arguments whose recorded type still contains a type parameter are re-checked, so
-    /// an ordinary call re-enters nothing. Calls with a spread argument are skipped outright: a
-    /// tuple spread contributes several entries for one node, so <c>argTypes[i]</c> and
+    /// <para>Which arguments re-enter is <see cref="IsRecheckedAfterInference"/>'s decision: one
+    /// whose recording still names a type parameter, or a slot-typed construction whose payload may
+    /// narrow against the closed slot — <c>Some(7)</c> under an open <c>T?</c> recorded the natural
+    /// <c>Optional[int32]</c>, closed and wrong for a <c>T</c> bound to int8, and only a re-check
+    /// under <c>Optional[int8]</c> lets the seam narrow the payload as it does at a non-generic
+    /// <c>int8?</c> slot. A closed formal re-enters nothing, so an ordinary call is untouched.
+    /// Positional and keyword arguments alike. Positional re-checks are skipped when a spread is
+    /// present: a tuple spread contributes several entries for one node, so <c>argTypes[i]</c> and
     /// <c>call.Arguments[i]</c> no longer name the same thing.</para>
     /// </summary>
-    private void RecheckOpenPositionalArguments(
+    private void RecheckOpenArguments(
         FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
-        TypeParameterBinding binding, List<SemanticType> argTypes)
+        TypeParameterBinding? binding, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes)
     {
-        if (call.Arguments.Any(a => a is SpreadElement))
-            return;
-
         string? calleeDisplay = null;
-        for (int i = 0; i < argTypes.Count && i < call.Arguments.Length && i < parameters.Count; i++)
+
+        if (!call.Arguments.Any(a => a is SpreadElement))
         {
-            if (!ContainsTypeParameterType(argTypes[i]))
+            for (int i = 0; i < argTypes.Count && i < call.Arguments.Length && i < parameters.Count; i++)
+            {
+                if (!ContainsTypeParameterType(parameters[i].Type)
+                    || !IsRecheckedAfterInference(call.Arguments[i], argTypes[i]))
+                    continue;
+                if (SubstitutedParameterType(parameters[i].Type, binding) is not { } closedFormal)
+                    continue;
+
+                calleeDisplay ??= CalleeDisplayName(UnwrapParenthesized(call.Function));
+                // CheckExpression memoizes per node; forget the open recording or the re-check returns it.
+                _semanticInfo.ClearExpressionType(call.Arguments[i]);
+                using (EnterStore(StorePosition.ArgumentPositional, closedFormal, call.Arguments[i],
+                           calleeDisplay: calleeDisplay, argumentOrdinal: i + 1))
+                {
+                    argTypes[i] = CheckExpression(call.Arguments[i]);
+                }
+            }
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (!kwargTypes.TryGetValue(kwarg.Name, out var kwargType)
+                || !IsRecheckedAfterInference(kwarg.Value, kwargType))
                 continue;
-            if (SubstitutedParameterType(parameters[i].Type, binding) is not { } closedFormal)
+            if (FindKeywordParameter(parameters, kwarg.Name) is not { } param
+                || !ContainsTypeParameterType(param.Type)
+                || SubstitutedParameterType(param.Type, binding) is not { } closedFormal)
                 continue;
 
             calleeDisplay ??= CalleeDisplayName(UnwrapParenthesized(call.Function));
-            // CheckExpression memoizes per node; forget the open recording or the re-check returns it.
-            _semanticInfo.ClearExpressionType(call.Arguments[i]);
-            using (EnterStore(StorePosition.ArgumentPositional, closedFormal, call.Arguments[i],
-                       calleeDisplay: calleeDisplay, argumentOrdinal: i + 1))
+            _semanticInfo.ClearExpressionType(kwarg.Value);
+            using (EnterStore(StorePosition.ArgumentKeyword, closedFormal, kwarg.Value,
+                       calleeDisplay: calleeDisplay, keywordName: kwarg.Name))
             {
-                argTypes[i] = CheckExpression(call.Arguments[i]);
+                kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
             }
         }
     }
+
+    /// <summary>
+    /// Whether <paramref name="argument"/> re-enters the post-inference re-check: its recording
+    /// still names a type parameter (a payload-less <c>None()</c> under an open <c>T?</c>), or it
+    /// is a slot-typed construction whose PAYLOAD may narrow against the closed slot
+    /// (<c>Some(7)</c> into an inferred <c>int8?</c>) — provided the payload introduces no scope.
+    /// <see cref="CheckExpression"/> is not idempotent for a lambda, a comprehension or a walrus:
+    /// a second pass binds a fresh versioned symbol and the emitter then names a variable the
+    /// declaration never made (CS0103 — the <c>all([s &gt;= 60 for s in scores])</c> cell, measured).
+    /// Those keep their first recording; nothing in them narrows anyway.
+    /// </summary>
+    private bool IsRecheckedAfterInference(Expression argument, SemanticType recorded)
+    {
+        if (argument is LambdaExpression)
+            return false;
+        if (ContainsTypeParameterType(recorded))
+            return true;
+        return IsSlotTypedConstruction(argument)
+            && UnwrapParenthesized(argument) is FunctionCall { Arguments: var payload }
+            && payload.All(IsScopeFree);
+    }
+
+    /// <summary>A payload the re-check may type twice: literals, names, operators and calls over them; never a lambda, comprehension or walrus.</summary>
+    private static bool IsScopeFree(Expression expression) => UnwrapParenthesized(expression) switch
+    {
+        IntegerLiteral or FloatLiteral or StringLiteral or BooleanLiteral or NoneLiteral or Identifier => true,
+        UnaryOp unary => IsScopeFree(unary.Operand),
+        BinaryOp binary => IsScopeFree(binary.Left) && IsScopeFree(binary.Right),
+        MemberAccess member => IsScopeFree(member.Object),
+        IndexAccess index => IsScopeFree(index.Object) && IsScopeFree(index.Index),
+        FunctionCall call => IsScopeFree(call.Function)
+            && call.Arguments.All(IsScopeFree)
+            && call.KeywordArguments.All(k => IsScopeFree(k.Value)),
+        _ => false,
+    };
 
     /// <summary>
     /// The binding for a construction that WROTE its type arguments — <c>Slot[int, str](...)</c>.
@@ -5120,6 +5229,12 @@ internal partial class TypeChecker
 
             case MemberAccess memberAccess:
                 {
+                    // `super().m(...)` is validated by ValidateSuperMemberAccess and never denotes
+                    // a set this gate could resolve; checking its object here would type a bare
+                    // `super()` (SPY0287).
+                    if (memberAccess.Object is SuperExpression)
+                        return false;
+
                     // `module.Class(...)` — the qualified spelling of the class arm above.
                     if (TryResolveTypeSymbolFromMemberAccess(memberAccess) is { } qualifiedType
                         && IsUnresolvedSet(InitializerOverloadsOf(qualifiedType), call))
@@ -5262,12 +5377,18 @@ internal partial class TypeChecker
                 return (fs, 0);
             }
         }
-        else if (earlySymbol is TypeSymbol ts && !ts.IsGeneric)
+        else if (earlySymbol is TypeSymbol ts)
         {
             // Constructor call: Person(Some(42)) — look up __init__ for parameter types.
             // __init__ includes 'self' at index 0, but call arguments don't, so offset by 1.
-            var initMethod = ts.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-            if (initMethod != null && !initMethod.IsGeneric)
+            // A GENERIC class constructed without written type arguments contributes the same
+            // symbol: its open formals are shape hints (#1797) — `Box(xs, Some(42))` types the
+            // payload freely under `T?` and inference closes T — and the deferred __init__
+            // validation in CheckConstructorCall checks the arguments against the closed slots.
+            // Without it the argument had no expectation at all (SPY0227 on Some/None()).
+            // Several __init__ overloads stay with the resolver (#1671's rule for sets).
+            var initMethods = ts.Methods.Where(m => m.Name == DunderNames.Init).ToList();
+            if (initMethods is [{ IsGeneric: false } initMethod])
             {
                 return (initMethod, 1); // skip 'self' parameter
             }
