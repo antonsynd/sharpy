@@ -1,0 +1,6 @@
+def f[T](x: T?) -> T?:
+    return x
+
+def main():
+    result: int? = f(None())
+    print(result)

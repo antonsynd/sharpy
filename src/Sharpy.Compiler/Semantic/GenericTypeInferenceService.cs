@@ -154,7 +154,11 @@ internal class GenericTypeInferenceService
         var inferredTypes = new List<SemanticType>();
         foreach (var typeParam in typeParams)
         {
-            if (!substitutions.TryGetValue(typeParam.Name, out var inferredType))
+            if (!substitutions.TryGetValue(typeParam.Name, out var inferredType)
+                // #1797: a self-binding (T bound to TypeParameterType("T")) is vacuous —
+                // it means no argument carried concrete information (e.g. None() into T?).
+                || (inferredType is TypeParameterType selfTp
+                    && string.Equals(selfTp.Name, typeParam.Name, StringComparison.Ordinal)))
             {
                 // PEP 696: try using the type parameter default. Resolved through
                 // ResolveTypeParameterDefault so a default naming an earlier parameter takes that

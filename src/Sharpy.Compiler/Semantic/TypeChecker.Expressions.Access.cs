@@ -2965,16 +2965,27 @@ internal partial class TypeChecker
                         span: call.Span);
                     return _expectedType;
                 }
-                var argType = CheckExpression(call.Arguments[0]);
+                // #1797: an open formal (T?) is a shape hint — type the payload freely so
+                // unification can bind T from the result.
+                if (ContainsTypeParameterType(opt.UnderlyingType))
+                {
+                    SemanticType argType;
+                    using (ClearExpectation(null))
+                    {
+                        argType = CheckExpression(call.Arguments[0]);
+                    }
+                    return new OptionalType { UnderlyingType = argType };
+                }
+                var argType2 = CheckExpression(call.Arguments[0]);
                 // Some(v)'s argument is a store into the Optional's underlying slot, so the seam
                 // decides it — an in-range constant, an unsuffixed float literal and a literal-
                 // derived string are admitted here exactly as they are at a declaration (#1698,
                 // #1688, #1731), and the accepted verdict's facts reach the emitter. The refusal
                 // message stays this site's own.
                 if (!CheckStoreQuietly(
-                        StorePosition.ArgumentPositional, call.Arguments[0], argType, opt.UnderlyingType))
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType2, opt.UnderlyingType))
                 {
-                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Optional underlying type '{opt.UnderlyingType.GetDisplayName()}'",
+                    AddError($"Argument type '{argType2.GetDisplayName()}' is not compatible with Optional underlying type '{opt.UnderlyingType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[0].Span);
                 }
@@ -3008,7 +3019,17 @@ internal partial class TypeChecker
         {
             if (_expectedType is ResultType result)
             {
-                var argType = CheckExpression(call.Arguments[0]);
+                // #1797: open Ok-slot → shape hint; type the payload freely for inference.
+                if (ContainsTypeParameterType(result.OkType))
+                {
+                    SemanticType argType;
+                    using (ClearExpectation(null))
+                    {
+                        argType = CheckExpression(call.Arguments[0]);
+                    }
+                    return new ResultType { OkType = argType, ErrorType = result.ErrorType };
+                }
+                var argType2 = CheckExpression(call.Arguments[0]);
                 // Ok(v)'s argument is a store into the Result's Ok slot, so the SEAM decides it —
                 // an in-range constant, an unsuffixed float literal and a literal-derived string are
                 // admitted here exactly as they are at a declaration, and the accepted verdict's
@@ -3016,9 +3037,9 @@ internal partial class TypeChecker
                 // went through the seam and Ok's did not, so `x: int8? = Some(1)` ran while
                 // `x: int8!str = Ok(1)` was refused. The refusal message stays this site's own.
                 if (!CheckStoreQuietly(
-                        StorePosition.ArgumentPositional, call.Arguments[0], argType, result.OkType))
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType2, result.OkType))
                 {
-                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Ok type '{result.OkType.GetDisplayName()}'",
+                    AddError($"Argument type '{argType2.GetDisplayName()}' is not compatible with Result Ok type '{result.OkType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[0].Span);
                 }
@@ -3047,15 +3068,25 @@ internal partial class TypeChecker
 
         if (name == "Err")
         {
-            if (_expectedType is ResultType result)
+            if (_expectedType is ResultType result2)
             {
-                var argType = CheckExpression(call.Arguments[0]);
+                // #1797: open Error-slot → shape hint; type the payload freely for inference.
+                if (ContainsTypeParameterType(result2.ErrorType))
+                {
+                    SemanticType argType;
+                    using (ClearExpectation(null))
+                    {
+                        argType = CheckExpression(call.Arguments[0]);
+                    }
+                    return new ResultType { OkType = result2.OkType, ErrorType = argType };
+                }
+                var argType2 = CheckExpression(call.Arguments[0]);
                 // Err(e)'s argument is a store into the Result's Error slot — the Ok arm's twin, and
                 // the same seam (Decision 3).
                 if (!CheckStoreQuietly(
-                        StorePosition.ArgumentPositional, call.Arguments[0], argType, result.ErrorType))
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType2, result2.ErrorType))
                 {
-                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Error type '{result.ErrorType.GetDisplayName()}'",
+                    AddError($"Argument type '{argType2.GetDisplayName()}' is not compatible with Result Error type '{result2.ErrorType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: call.Arguments[0].Span);
                 }

@@ -1,0 +1,8 @@
+def f[T](x: T?) -> T?:
+    return x
+
+def main():
+    a: int? = f(Some(5))
+    print(a)
+    b: str? = f(Some("hello"))
+    print(b)
