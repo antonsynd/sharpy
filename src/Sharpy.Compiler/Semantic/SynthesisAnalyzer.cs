@@ -21,8 +21,8 @@ public record SynthesizedInterfaceInfo(
 
 /// <summary>
 /// Single source of truth for computing which interfaces a type should synthesize
-/// based on its dunder methods. Used by both codegen (RoslynEmitter) and validation
-/// (InterfaceConflictValidator) to avoid dual-source-of-truth issues.
+/// based on its dunder methods. Used by codegen (RoslynEmitter) and the interface
+/// instantiation gate (InterfaceInstantiationGate, SPY0607).
 /// Operates on TypeSymbol data (not AST), which has resolved types from the TypeChecker.
 /// </summary>
 internal static class SynthesisAnalyzer

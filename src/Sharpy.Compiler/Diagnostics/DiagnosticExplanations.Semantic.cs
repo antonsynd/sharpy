@@ -707,17 +707,17 @@ public static partial class DiagnosticExplanations
             "class Counter:\n    @staticmethod  # not supported: dropping 'self' is what makes it static\n    def zero() -> int:\n        return 0",
             "Remove the decorator (and the 'self' parameter, if the method has one):\nclass Counter:\n    def zero() -> int:\n        return 0\n\n'@static' declares static FIELDS, not methods.");
 
+        // SPY0323 RETIRED (#1717): superseded by SPY0607 (InterfaceInstantiationGate).
         Add(dict, DiagnosticCodes.Semantic.ConflictingSynthesizedInterface,
-            "Conflicting synthesized interface",
+            "Conflicting synthesized interface (retired)",
             "Semantic",
-            "A class would synthesize a generic interface (e.g., IEquatable<T>, IEnumerator<T>) " +
-            "from a dunder method, but an ancestor class already implements the same generic interface " +
-            "with different type arguments. C# does not allow a type to implement the same generic interface " +
-            "with conflicting type arguments.",
+            "This diagnostic is retired. Conflicting generic interface instantiations — whether " +
+            "from explicit declarations, inherited interfaces, or dunder-synthesized interfaces — " +
+            "are now detected by SPY0607 (InterfaceInstantiationGate), which walks the full " +
+            "interface closure before materialization. SPY0323 is reserved and never reused.",
             "class Base:\n    def __eq__(self, other: str) -> bool:\n        return False\n\n" +
-            "class Derived(Base):\n    def __eq__(self, other: int) -> bool:  # conflicts with Base's IEquatable<str>\n        return False",
-            "Remove the conflicting dunder method from the derived class, or restructure the hierarchy " +
-            "so that both classes use the same type argument for the interface.");
+            "class Derived(Base):\n    def __eq__(self, other: int) -> bool:  # now SPY0607\n        return False",
+            "No action needed — this diagnostic is no longer emitted. See SPY0607.");
 
         Add(dict, DiagnosticCodes.Semantic.WithNotDisposable,
             "Type not usable in with statement",

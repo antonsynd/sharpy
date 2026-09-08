@@ -1,1 +1,3 @@
-would synthesize 'IEquatable<int32>' via '__eq__', but ancestor 'Base' already implements 'IEquatable<str>'
+'IEquatable[int32]'
+'IEquatable[str]'
+one generic interface cannot have conflicting type arguments

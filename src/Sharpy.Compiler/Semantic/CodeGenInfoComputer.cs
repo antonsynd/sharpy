@@ -517,6 +517,62 @@ internal class CodeGenInfoComputer
         }
 
         _semanticBinding.SetSynthesizedInterfaces(typeSymbol, result);
+
+        CheckBclInterfaceConflicts(typeSymbol, result);
+    }
+
+    private void CheckBclInterfaceConflicts(
+        TypeSymbol typeSymbol, List<SynthesizedInterfaceInfo> currentInterfaces)
+    {
+        var currentGeneric = currentInterfaces
+            .Where(i => i.TypeArgs.Length > 0 && i.Namespace != "Sharpy")
+            .ToList();
+        if (currentGeneric.Count == 0)
+            return;
+
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        var ancestor = typeSymbol.BaseType;
+        while (ancestor != null && visited.Add(ancestor))
+        {
+            var ancestorInterfaces = SynthesisAnalyzer.ComputeSynthesizedInterfaces(ancestor);
+            foreach (var current in currentGeneric)
+            {
+                foreach (var ancestorIface in ancestorInterfaces)
+                {
+                    if (current.InterfaceName != ancestorIface.InterfaceName
+                        || ancestorIface.TypeArgs.Length == 0)
+                        continue;
+
+                    bool match = current.TypeArgs.Length == ancestorIface.TypeArgs.Length;
+                    if (match)
+                    {
+                        for (int i = 0; i < current.TypeArgs.Length; i++)
+                        {
+                            if (current.TypeArgs[i].CanonicalKey != ancestorIface.TypeArgs[i].CanonicalKey)
+                            {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (match)
+                        continue;
+
+                    var currentDisplay = $"{current.InterfaceName}[{string.Join(", ", current.TypeArgs.Select(t => t.GetDisplayName()))}]";
+                    var ancestorDisplay = $"{ancestorIface.InterfaceName}[{string.Join(", ", ancestorIface.TypeArgs.Select(t => t.GetDisplayName()))}]";
+                    _diagnostics.AddError(
+                        $"Type '{typeSymbol.Name}' implements '{currentDisplay}' (synthesized via {current.TriggeringDunder}) " +
+                        $"and '{ancestorDisplay}' (inherited from {ancestor.Name}, synthesized via {ancestorIface.TriggeringDunder}) " +
+                        "— one generic interface cannot have conflicting type arguments",
+                        typeSymbol.DeclarationLine,
+                        typeSymbol.DeclarationColumn,
+                        _sourceFilePath,
+                        code: DiagnosticCodes.SemanticOverflow.ConflictingInterfaceInstantiation);
+                    return;
+                }
+            }
+            ancestor = ancestor.BaseType;
+        }
     }
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)

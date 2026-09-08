@@ -1,1 +1,3 @@
-would synthesize 'IEnumerator<int32>' via '__next__', but ancestor 'StringIterator' already implements 'IEnumerator<str>'
+'IEnumerator[int32]'
+'IEnumerator[str]'
+one generic interface cannot have conflicting type arguments

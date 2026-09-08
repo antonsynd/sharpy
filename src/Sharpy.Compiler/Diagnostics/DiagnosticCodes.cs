@@ -391,7 +391,7 @@ public static class DiagnosticCodes
         public const string ProtocolMissingMethod = "SPY0320";      // Active
         public const string InvalidOperatorSignature = "SPY0321";   // Active
         public const string InvalidDecoratorUsage = "SPY0322";      // Active
-        public const string ConflictingSynthesizedInterface = "SPY0323"; // Active
+        public const string ConflictingSynthesizedInterface = "SPY0323"; // Retired — superseded by SPY0607 (#1717)
         public const string WithNotDisposable = "SPY0324";          // Active
         public const string InterfaceMethodNotImplemented = "SPY0325"; // Active
         public const string OptionalRequiresNarrowing = "SPY0326";  // Active

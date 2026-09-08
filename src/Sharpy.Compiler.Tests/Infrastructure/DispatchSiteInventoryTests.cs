@@ -127,7 +127,6 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/FinalFieldValidator.cs::FinalFieldValidator.GetChildStatements"] = "walker-default-contract",
         ["Semantic/Validation/FinalFieldValidator.cs::FinalFieldValidator.ValidateModuleStatement"] = "walker-default-contract",
         ["Semantic/Validation/GeneratorValidator.cs::GeneratorValidator.Validate"] = "walker-default-contract",
-        ["Semantic/Validation/InterfaceConflictValidator.cs::InterfaceConflictValidator.Validate"] = "walker-default-contract",
         ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.CoversItsRecordedType"] = "walker-default-contract",
         ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.GetPatternRecordedType"] = "walker-default-contract",
         ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.IsTypeTotalPattern"] = "walker-default-contract",

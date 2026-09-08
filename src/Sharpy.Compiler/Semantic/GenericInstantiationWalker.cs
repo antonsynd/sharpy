@@ -444,17 +444,20 @@ internal static class GenericInstantiationWalker
     /// Converts an interface type-argument annotation to a SemanticType. References to the
     /// declaring type's own type parameters become <see cref="TypeParameterType"/> so they
     /// participate in substitution; everything else falls back to the TypeResolver.
+    /// Total over annotation modifiers: IsOptional, IsCSharpNullable, and ErrorType are
+    /// preserved so that <c>IA[int?]</c> and <c>IA[int]</c> produce distinct keys.
     /// </summary>
     private static SemanticType? ConvertAnnotation(
         TypeAnnotation annotation, TypeSymbol declaringSymbol, TypeResolver? typeResolver)
     {
+        SemanticType? inner = null;
+
         if (annotation.TypeArguments.Length == 0
             && declaringSymbol.TypeParameters.Any(tp => tp.Name == annotation.Name))
         {
-            return new TypeParameterType { Name = annotation.Name };
+            inner = new TypeParameterType { Name = annotation.Name };
         }
-
-        if (annotation.TypeArguments.Length > 0)
+        else if (annotation.TypeArguments.Length > 0)
         {
             var arguments = new List<SemanticType>(annotation.TypeArguments.Length);
             foreach (var argAnnotation in annotation.TypeArguments)
@@ -464,11 +467,37 @@ internal static class GenericInstantiationWalker
                     return null;
                 arguments.Add(converted);
             }
-            return new GenericType { Name = annotation.Name, TypeArguments = arguments };
+            inner = new GenericType { Name = annotation.Name, TypeArguments = arguments };
+        }
+        else
+        {
+            var resolved = typeResolver?.ResolveTypeAnnotation(annotation);
+            if (resolved is null or UnknownType)
+                return null;
+            return resolved;
         }
 
-        var resolved = typeResolver?.ResolveTypeAnnotation(annotation);
-        return resolved is null or UnknownType ? null : resolved;
+        return WrapModifiers(inner, annotation, declaringSymbol, typeResolver);
+    }
+
+    private static SemanticType? WrapModifiers(
+        SemanticType inner, TypeAnnotation annotation,
+        TypeSymbol declaringSymbol, TypeResolver? typeResolver)
+    {
+        var result = inner;
+        if (annotation.IsOptional)
+            result = new OptionalType { UnderlyingType = result };
+        else if (annotation.IsCSharpNullable)
+            result = new NullableType { UnderlyingType = result };
+
+        if (annotation.ErrorType != null)
+        {
+            var errorType = ConvertAnnotation(annotation.ErrorType, declaringSymbol, typeResolver);
+            if (errorType == null)
+                return null;
+            result = new ResultType { OkType = result, ErrorType = errorType };
+        }
+        return result;
     }
 
     /// <summary>
