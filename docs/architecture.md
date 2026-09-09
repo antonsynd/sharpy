@@ -2,7 +2,7 @@
 
 Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files compile to C# via Roslyn.
 
-> **See also:** [CLAUDE.md](../CLAUDE.md) (rules, workflow, operational contracts), `docs/language_specification/` (authoritative spec). This file is the architecture reference.
+> **See also:** `CLAUDE.md` (rules, workflow, operational contracts), `docs/language_specification/` (authoritative spec). This file is the architecture reference.
 
 ## The Three Axioms (Design Precedence)
 
@@ -23,7 +23,7 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 | Lexer | `Compiler/Lexer/Lexer*.cs` (partials: FStrings, Indentation, Literals), `Token.cs` | Indentation-aware tokenization |
 | Parser | `Compiler/Parser/Parser*.cs` (partials: Definitions, Expressions, Primaries, Statements, Types), `Ast/*.cs` | Immutable AST records; recursive descent with precedence levels |
 | Semantic | `Compiler/Semantic/` | Ordered passes — see below |
-| Lowering | `Compiler/Lowering/LoweringPass*.cs`, `IrPassManager.cs`, `Passes/` | AST + `SemanticInfo` → typed immutable IR (`IrCompilation`), then feature-gated IR→IR passes (`ConstFoldPass`, `ComprehensionFusionPass`, `StackCollectionsPass`); invoked by `Project/ProjectCompiler.CodeGen.cs` (`BuildLoweringIr`) after validation and before emission; the emitter reads the pass side-tables (`FoldedConstants`, optimized comprehensions, stack-allocated literals). Design: [docs/design/lowering-ir.md](../docs/design/lowering-ir.md) |
+| Lowering | `Compiler/Lowering/LoweringPass*.cs`, `IrPassManager.cs`, `Passes/` | AST + `SemanticInfo` → typed immutable IR (`IrCompilation`), then feature-gated IR→IR passes (`ConstFoldPass`, `ComprehensionFusionPass`, `StackCollectionsPass`); invoked by `Project/ProjectCompiler.CodeGen.cs` (`BuildLoweringIr`) after validation and before emission; the emitter reads the pass side-tables (`FoldedConstants`, optimized comprehensions, stack-allocated literals). Design: [docs/design/lowering-ir.md](design/lowering-ir.md) |
 | CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` | **SyntaxFactory only** — no string templating |
 
 ## Semantic Analysis Pipeline
@@ -200,7 +200,7 @@ Assert.Equal("3\n", result.StandardOutput);
 Multi-file: `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()`, then `Compile()`).
 
 ### Standing class-contract harnesses
-Whole defect classes are guarded by conformance sweeps that ratchet against an allowlist next to the test (drain on fix; every entry cites an issue): roster and contracts in [docs/design/gap-discovery-contracts.md](../docs/design/gap-discovery-contracts.md); the process rules a fix must satisfy (class before cell, mutation-tested guards, control runs, `@ sha (measured)` counts) in [docs/design/verification-contract.md](../docs/design/verification-contract.md). CI runs the `InteropConformance`, `MetamorphicCorpus`, and `DifferentialExecution` sweeps as separate steps, excluded from the main Compiler test step.
+Whole defect classes are guarded by conformance sweeps that ratchet against an allowlist next to the test (drain on fix; every entry cites an issue): roster and contracts in [docs/design/gap-discovery-contracts.md](design/gap-discovery-contracts.md); the process rules a fix must satisfy (class before cell, mutation-tested guards, control runs, `@ sha (measured)` counts) in [docs/design/verification-contract.md](design/verification-contract.md). CI runs the `InteropConformance`, `MetamorphicCorpus`, and `DifferentialExecution` sweeps as separate steps, excluded from the main Compiler test step.
 
 A new hand-rolled switch on an AST `Node` or lowering `IrNode` subtype must be rostered in `DispatchSiteInventoryTests` with a justification category; the `*TotalityTests` family pins arm sets against reflection universes so a new kind fails every member site at once.
 
@@ -212,9 +212,9 @@ Emitter code that places a *generated* expression under an operator, cast, membe
 Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 ```
 
-**Experimental features** (default-off, behind a flag) follow [docs/design/feature-lifecycle.md](../docs/design/feature-lifecycle.md): register in `FeatureFlags.KnownFeatures`, gate through the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
+**Experimental features** (default-off, behind a flag) follow [docs/design/feature-lifecycle.md](design/feature-lifecycle.md): register in `FeatureFlags.KnownFeatures`, gate through the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
 
-**SPY0908 policy:** [docs/design/spy0908-policy.md](../docs/design/spy0908-policy.md) — SPY0908 is a net, not an error channel; every fix names its semantic check or lowering.
+**SPY0908 policy:** [docs/design/spy0908-policy.md](design/spy0908-policy.md) — SPY0908 is a net, not an error channel; every fix names its semantic check or lowering.
 
 ## Compiler Subdirectories
 
