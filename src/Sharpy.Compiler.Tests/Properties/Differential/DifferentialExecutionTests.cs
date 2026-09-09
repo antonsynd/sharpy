@@ -448,7 +448,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 """),
             ("bool_none_printing", """
                 print(True, False, None)
-                print([True, None, False])
+                xs: list[bool | None] = [True, None, False]
+                print(xs)
                 print(str(None))
                 """),
             ("list_slice_step", """

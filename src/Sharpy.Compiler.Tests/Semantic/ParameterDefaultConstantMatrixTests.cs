@@ -526,6 +526,41 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             cs => $@"\bconst {Regex.Escape(cs)} A = ",
             cs => $@"^\s+{Regex.Escape(cs)} A = ",
             InsideFunction: true),
+
+        new("StructField",
+            decl => "struct S:\n    x: int\n    " + decl + "\n\n",
+            "S.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("StructFieldOnlyConsts",
+            decl => "struct S:\n    " + decl + "\n\n",
+            "S.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("InterfaceField",
+            decl => "interface I:\n    " + decl + "\n\n",
+            "I.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("NestedStructField",
+            decl => "class Outer:\n    struct S:\n        x: int\n        " + decl + "\n\n",
+            "Outer.S.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("NestedInterfaceField",
+            decl => "class Outer:\n    interface I:\n        " + decl + "\n\n",
+            "Outer.I.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
     };
 
     /// <summary>
@@ -639,10 +674,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // Anchored to literals: 4 hosts × 6 types × 5 initializers = 120, of which the initializer
     // forms that have no spelling at a type (FoldedNative for char/Color; FoldedCallLowered and
     // Call for str/bool/char/Color) are N/A by construction.
-    private const int ConstHostCount = 4;
+    private const int ConstHostCount = 9;
     private const int HostTypeCount = 6;
     private const int InitializerCount = 5;
-    private const int HostCellsNotApplicable = 4 * (2 + 4 + 4); // hosts × (FoldedNative + 2×call arms)
+    private const int HostCellsNotApplicable = 9 * (2 + 4 + 4); // hosts × (FoldedNative + 2×call arms)
 
     [Fact]
     public void ConstHostMatrix_IsTotalOverItsAxes()
@@ -752,6 +787,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         ["NestedClassField×MatchCase"] =
             "a three-part qualified name in a pattern head is SPY0203 'Type Outer has no member Holder' "
             + "at BASE and HEAD alike — nested-type member access in a pattern head, #1799, not this seam",
+        ["NestedStructField×MatchCase"] =
+            "a three-part qualified name in a pattern head is SPY0203 — nested-type member access in a pattern, #1799",
+        ["NestedInterfaceField×MatchCase"] =
+            "a three-part qualified name in a pattern head is SPY0203 — nested-type member access in a pattern, #1799",
     };
 
     private static HostConsumer HC(string name) => HostConsumers.Single(c => c.Name == name);
@@ -763,7 +802,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         select new object[] { h.Name, c.Name };
 
     private const int HostConsumerCount = 5;
-    private const int HostConsumerNotApplicableCount = 2;
+    private const int HostConsumerNotApplicableCount = 4;
 
     [Fact]
     public void HostConsumerMatrix_IsTotalOverItsAxes()
@@ -934,6 +973,34 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             $"the referenced const is compile-time\n{result.GeneratedCSharp}");
         result.GeneratedCSharp.Should().Contain("public const int B = A",
             $"and so is the one that reads it\n{result.GeneratedCSharp}");
+    }
+
+    // ══ Struct constructor roster: consts are excluded (#1794) ════════════════════════════════
+
+    [Theory]
+    [InlineData("StructWithConstAndField",
+        "struct S:\n    x: int\n    const K: int = 7\n\ndef main():\n    s = S(5)\n    print(s.x)\n    print(S.K)\n",
+        "5\n7\n")]
+    [InlineData("StructWithConstAndFieldParameterless",
+        "struct S:\n    x: int = 2\n    const K: int = 7\n\ndef main():\n    s = S()\n    print(s.x)\n    print(S.K)\n",
+        "2\n7\n")]
+    [InlineData("AllConstStruct",
+        "struct S:\n    const A: int = 1\n    const B: str = \"two\"\n\ndef main():\n    print(S.A)\n    print(S.B)\n",
+        "1\ntwo\n")]
+    [InlineData("InterfaceConstReadFromImplementingClass",
+        "interface I:\n    const K: int = 1\n\nclass C(I):\n    def read(self) -> int:\n        return I.K\n\ndef main():\n    print(C().read())\n",
+        "1\n")]
+    public void StructAndInterfaceConst_RosterAndAccess(string label, string source, string expected)
+    {
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
+                || d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError,
+            $"[{label}] must never ICE. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{label}] must compile and run. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(expected, $"[{label}]\n{source}");
     }
 
     // ══ The decorator-argument matrix ════════════════════════════════════════════════════════

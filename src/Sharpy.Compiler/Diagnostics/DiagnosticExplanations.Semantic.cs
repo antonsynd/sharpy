@@ -97,9 +97,12 @@ public static partial class DiagnosticExplanations
             "Add a type annotation:\nx: int = 42");
 
         Add(dict, DiagnosticCodes.Semantic.CannotInferType, "Cannot infer type", "Semantic",
-            "The compiler cannot determine the type of an expression. This may occur with complex expressions or when type information is insufficient.",
-            "x: auto = some_complex_expression()",
-            "Add an explicit type annotation to help the compiler:\n  x: int = some_complex_expression()");
+            "The compiler cannot determine the type of an expression. Common cases: a bare None binding "
+            + "(None has no type on its own — use 'x: T | None = None' or 'x: T? = None()'), a literal "
+            + "with elements of unrelated types (annotate the target: 'xs: list[object] = [1, \"a\"]'), "
+            + "or a conditional whose branches have no best common type.",
+            "x = None",
+            "Annotate the binding with the type it will hold:\n  x: str | None = None\n  xs: list[object] = [1, \"a\"]\n  a: Animal = Dog() if c else Cat()");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidCast, "Invalid cast", "Semantic",
             "A type cast is invalid because the source and target types are not compatible. Only related types can be cast to each other.",

@@ -29,7 +29,7 @@ public class EmittedTreePrecedenceSeamTests
     public void TruthinessSeam_ConditionalOptionalReceiver_IsParenthesized()
     {
         var cs = Emit("    flag: bool = True\n    o1: int? = 42\n    o2: int? = None()\n    if o1 if flag else o2:\n        print(1)\n");
-        cs.Should().Contain("(flag ? o1 : o2).IsSome");
+        cs.Should().Contain("flag ? o1.IsSome : o2.IsSome");
     }
 
     [Fact]
