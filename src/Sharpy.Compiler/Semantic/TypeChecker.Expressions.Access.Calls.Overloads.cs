@@ -19,14 +19,18 @@ internal partial class TypeChecker
         /// <summary>The argument's type is not assignable to the parameter's type.</summary>
         Type,
 
-        /// <summary>The argument does not match a parameterized generic parameter's shape.</summary>
-        GenericShape,
-
         /// <summary>
         /// The candidate has no parameter at this index and no variadic parameter to absorb it —
         /// an arity failure discovered on the type pass rather than the arity pass.
         /// </summary>
         Variadic,
+
+        /// <summary>
+        /// Type inference failed for this generic candidate — a type parameter could not be
+        /// inferred, or different arguments inferred conflicting types for the same parameter
+        /// (#1811).
+        /// </summary>
+        Inference,
     }
 
     /// <summary>
@@ -56,7 +60,16 @@ internal partial class TypeChecker
     internal sealed record CandidateBinding(
         FunctionSymbol Candidate,
         IReadOnlyList<BoundArgument> Arguments,
-        string? InapplicableReason);
+        string? InapplicableReason)
+    {
+        /// <summary>
+        /// The inferred type arguments for a generic candidate, keyed by type-parameter name
+        /// (#1811). Null for non-generic candidates and for generic candidates whose inference
+        /// failed (those carry a non-null <see cref="InapplicableReason"/> instead). Set by
+        /// <see cref="BindCandidate"/> after a successful pair-based inference pass.
+        /// </summary>
+        internal IReadOnlyDictionary<string, SemanticType>? InferredTypeArguments { get; init; }
+    }
 
     /// <summary>
     /// A candidate's FIRST rejected argument — the ref, the (substituted) parameter type it was
@@ -86,6 +99,12 @@ internal partial class TypeChecker
         bool IsAmbiguous,
         IReadOnlyList<OverloadCandidateFailure> CandidateFailures)
     {
+        /// <summary>
+        /// The winning candidate's binding, carrying <see cref="CandidateBinding.InferredTypeArguments"/>
+        /// when the winner is generic (#1811). Null when no candidate was selected.
+        /// </summary>
+        internal CandidateBinding? WinnerBinding { get; init; }
+
         public void Deconstruct(
             out FunctionSymbol? match, out List<FunctionSymbol> arityCandidates, out bool isAmbiguous)
         {
@@ -331,6 +350,45 @@ internal partial class TypeChecker
             }
         }
 
+        // --- Per-candidate inference for generic candidates (#1811) ---
+        // Skip inference when TypeSubstitution is set — that means external type arguments
+        // (explicit written args, receiver type args) already close the candidate's
+        // type parameters. Running inference on already-closed formals would either fail
+        // (no type parameters to bind) or double-substitute.
+        if (candidate.IsGeneric && candidate.TypeParameters.Count > 0
+            && context.TypeSubstitution == null)
+        {
+            var pairs = new List<(SemanticType Formal, SemanticType Actual)>(arguments.Count);
+            foreach (var bound in arguments)
+            {
+                var actual = NoBindingInferenceType(bound.Node) ?? ProjectedArgumentType(bound.Node) ?? bound.ArgType;
+                pairs.Add((bound.Formal, actual));
+            }
+
+            var inferenceResult = _genericInference.InferTypeArguments(candidate, pairs);
+            if (!inferenceResult.Success || inferenceResult.InferredTypes == null)
+            {
+                return new CandidateBinding(candidate, arguments,
+                    inferenceResult.ErrorMessage ?? "Type inference failed");
+            }
+
+            var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+            for (int i = 0; i < candidate.TypeParameters.Count && i < inferenceResult.InferredTypes.Count; i++)
+                substitution[candidate.TypeParameters[i].Name] = inferenceResult.InferredTypes[i];
+
+            var closedArguments = new List<BoundArgument>(arguments.Count);
+            foreach (var bound in arguments)
+            {
+                var closedFormal = GenericTypeInferenceService.SubstituteTypeParameters(bound.Formal, substitution);
+                closedArguments.Add(bound with { Formal = closedFormal });
+            }
+
+            return new CandidateBinding(candidate, closedArguments, InapplicableReason: null)
+            {
+                InferredTypeArguments = substitution
+            };
+        }
+
         return new CandidateBinding(candidate, arguments, InapplicableReason: null);
     }
 
@@ -484,7 +542,10 @@ internal partial class TypeChecker
 
             if (binding.InapplicableReason != null)
             {
-                matchingOverloads.Add(overload);
+                candidateFailures.Add(new OverloadCandidateFailure(
+                    new ArgumentRef(Ordinal: 0, Keyword: null),
+                    SemanticType.Unknown,
+                    OverloadFailureKind.Inference));
                 continue;
             }
 
@@ -498,22 +559,14 @@ internal partial class TypeChecker
                 if (context.SkipUnknownTypes && (expectedType is UnknownType || bound.ArgType is UnknownType))
                     continue;
 
-                // Type parameters act as wildcards during overload resolution —
-                // generic type inference happens later in C# compilation.
-                if (expectedType is TypeParameterType)
-                    continue;
-
-                if (ContainsTypeParameter(expectedType))
+                // When per-candidate inference ran (#1811), all the candidate's own type
+                // parameters are closed in the binding — no wildcard is needed. When
+                // TypeSubstitution closed the parameters externally (explicit type args,
+                // receiver closing) or the candidate is non-generic, unclosed type parameters
+                // may still appear and are treated as wildcards.
+                if (binding.InferredTypeArguments == null
+                    && (expectedType is TypeParameterType || ContainsTypeParameter(expectedType)))
                 {
-                    if (!ArgMatchesGenericShape(bound.ArgType, expectedType)
-                        && !(ProjectedArgumentType(bound.Node) is { } projectedArg
-                             && ArgMatchesGenericShape(projectedArg, expectedType)))
-                    {
-                        typesMatch = false;
-                        firstFailure = new OverloadCandidateFailure(
-                            bound.Ref, expectedType, OverloadFailureKind.GenericShape);
-                        break;
-                    }
                     continue;
                 }
 
@@ -547,6 +600,12 @@ internal partial class TypeChecker
         }
 
         // Disambiguate: prefer exact arity match
+        OverloadResolution Resolve(FunctionSymbol? winner, bool ambiguous) =>
+            new OverloadResolution(winner, arityCandidates, ambiguous, candidateFailures)
+            {
+                WinnerBinding = winner != null && candidateBindings.TryGetValue(winner, out var wb) ? wb : null
+            };
+
         if (matchingOverloads.Count > 1)
         {
             var exactArityMatches = matchingOverloads.Where(o =>
@@ -554,7 +613,7 @@ internal partial class TypeChecker
             ).ToList();
 
             if (exactArityMatches.Count == 1)
-                return new OverloadResolution(exactArityMatches[0], arityCandidates, false, candidateFailures);
+                return Resolve(exactArityMatches[0], false);
 
             // When multiple exact-arity overloads remain, prefer the one with fewer
             // type parameters. This breaks ties between e.g. Merge<T>(a, b, reverse)
@@ -563,21 +622,19 @@ internal partial class TypeChecker
             var minTypeParams = candidates.Min(o => o.TypeParameters.Count);
             var fewerTypeParamMatches = candidates.Where(o => o.TypeParameters.Count == minTypeParams).ToList();
             if (fewerTypeParamMatches.Count == 1)
-                return new OverloadResolution(fewerTypeParamMatches[0], arityCandidates, false, candidateFailures);
+                return Resolve(fewerTypeParamMatches[0], false);
 
             // Specificity tiebreaker: prefer the overload whose parameter types are
             // strictly more specific (e.g., list[int] beats IEnumerable<int>).
             // Follows C#'s "better function member" rule (§12.6.4.3).
             var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context, candidateBindings);
             if (specificityWinner != null)
-                return new OverloadResolution(specificityWinner, arityCandidates, false, candidateFailures);
+                return Resolve(specificityWinner, false);
 
-            return new OverloadResolution(null, arityCandidates, true, candidateFailures);
+            return Resolve(null, true);
         }
 
-        return new OverloadResolution(
-            matchingOverloads.Count == 1 ? matchingOverloads[0] : null,
-            arityCandidates, false, candidateFailures);
+        return Resolve(matchingOverloads.Count == 1 ? matchingOverloads[0] : null, false);
     }
 
     /// <summary>
@@ -642,8 +699,29 @@ internal partial class TypeChecker
             // and Sharpy.List<T> both to list[T]).
             if (paramTypeA.Equals(paramTypeB))
             {
+                // §12.6.4.4: after per-candidate inference (#1811), two candidates may
+                // close to the same concrete type but one's ORIGINAL formal was a bare
+                // type parameter (T) and the other's was a constructed type (list[T]).
+                // The constructed type is more specific.
                 var paramIdxA = boundA.Ref.Ordinal is { } ordA ? ordA + selfOffsetA : -1;
                 var paramIdxB = correspondingB?.Ref.Ordinal is { } ordB ? ordB + selfOffsetB : -1;
+                var origA = paramIdxA >= 0 && paramIdxA < a.Parameters.Count ? a.Parameters[paramIdxA].Type : null;
+                var origB = paramIdxB >= 0 && paramIdxB < b.Parameters.Count ? b.Parameters[paramIdxB].Type : null;
+                if (origA != null && origB != null)
+                {
+                    if (context.TypeSubstitution != null)
+                    {
+                        origA = context.TypeSubstitution(origA);
+                        origB = context.TypeSubstitution(origB);
+                    }
+                    bool aIsTypeParam = origA is TypeParameterType;
+                    bool bIsTypeParam = origB is TypeParameterType;
+                    if (!aIsTypeParam && bIsTypeParam)
+                    { hasStrictlyBetter = true; continue; }
+                    if (aIsTypeParam && !bIsTypeParam)
+                    { return false; }
+                }
+
                 var clrTypeA = paramIdxA >= 0 ? ResolveClrParameterType(a, paramIdxA, paramTypeA) : null;
                 var clrTypeB = paramIdxB >= 0 ? ResolveClrParameterType(b, paramIdxB, paramTypeB) : null;
                 if (clrTypeA != null && clrTypeB != null && clrTypeA != clrTypeB)

@@ -2744,7 +2744,8 @@ internal partial class TypeChecker
                 clrParameterNames: matchingOverload.ClrMethodName != null);
         }
 
-        var returnType = InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
+        var returnType = InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call,
+            resolution.WinnerBinding?.InferredTypeArguments);
 
         if (isNullConditionalCall)
             return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
@@ -2789,7 +2790,8 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen (and check deprecation) — #1438
         RecordResolvedCallTarget(call, matchingOverload);
 
-        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
+        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call,
+            resolution.WinnerBinding?.InferredTypeArguments);
     }
 
     /// <summary>
@@ -2836,7 +2838,8 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen (and check deprecation) — #1438
         RecordResolvedCallTarget(call, matchingOverload);
 
-        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call);
+        return InferGenericReturnType(matchingOverload, argTypes, kwargTypes, totalArgCount, call,
+            resolution.WinnerBinding?.InferredTypeArguments);
     }
 
     private string? TryGetDefaultMethodInterfaceName(TypeSymbol typeSymbol, string methodName)
@@ -2951,23 +2954,48 @@ internal partial class TypeChecker
 
     private SemanticType InferGenericReturnType(
         FunctionSymbol overload, List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
-        int totalArgCount, FunctionCall call)
+        int totalArgCount, FunctionCall call,
+        IReadOnlyDictionary<string, SemanticType>? preInferredTypeArgs = null)
     {
         // A bridged generic builtin (Builtins.Max<T>) carries no own TypeParameters but names T in
         // its return type — the same seam decides whether that T is in scope or an unbound leak.
         if (!overload.IsGeneric)
             return FinalizeCallReturnType(overload.ReturnType);
 
-        var inferenceResult = _genericInference.InferTypeArguments(overload, argTypes);
-        if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+        // When per-candidate inference already ran in BindCandidate (#1811), use its result
+        // instead of re-inferring from scratch.
+        List<SemanticType>? inferredTypes = null;
+        if (preInferredTypeArgs != null)
         {
-            _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+            inferredTypes = new List<SemanticType>(overload.TypeParameters.Count);
+            foreach (var tp in overload.TypeParameters)
+            {
+                if (preInferredTypeArgs.TryGetValue(tp.Name, out var inferred))
+                    inferredTypes.Add(inferred);
+                else
+                    break;
+            }
+
+            if (inferredTypes.Count != overload.TypeParameters.Count)
+                inferredTypes = null;
+        }
+
+        if (inferredTypes == null)
+        {
+            var inferenceResult = _genericInference.InferTypeArguments(overload, argTypes);
+            if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+                inferredTypes = inferenceResult.InferredTypes;
+        }
+
+        if (inferredTypes != null)
+        {
+            _semanticInfo.SetInferredTypeArguments(call, inferredTypes);
 
             // The selected overload's binding closes here, so its arguments bind here — the same
             // two steps the single-candidate route takes once inference has run (#1797): the
             // open recordings are re-checked against the closed slots, then every argument is
             // validated against them (conversions applied, refusals by name).
-            var binding = InferredTypeParameterBinding(overload, inferenceResult.InferredTypes);
+            var binding = InferredTypeParameterBinding(overload, inferredTypes);
             RecheckOpenArguments(call, overload.Parameters, binding, argTypes, kwargTypes);
             ValidateCallArguments(call, overload.Parameters, argTypes, kwargTypes, totalArgCount,
                 binding, clrParameterNames: overload.ClrMethodName != null);
@@ -2975,7 +3003,7 @@ internal partial class TypeChecker
             var result = SubstituteTypeParameters(
                 overload.ReturnType,
                 overload.TypeParameters,
-                inferenceResult.InferredTypes);
+                inferredTypes);
             return FinalizeCallReturnType(result);
         }
 
