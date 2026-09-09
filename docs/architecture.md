@@ -2,7 +2,7 @@
 
 Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files compile to C# via Roslyn.
 
-> **See also:** [CLAUDE.md](../CLAUDE.md) (rules, workflow, operational contracts), [agents.md](agents.md) (domain experts), `docs/language_specification/` (authoritative spec). This file is the architecture reference.
+> **See also:** [CLAUDE.md](../CLAUDE.md) (rules, workflow, operational contracts), `docs/language_specification/` (authoritative spec). This file is the architecture reference.
 
 ## The Three Axioms (Design Precedence)
 
@@ -244,8 +244,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 | `src/*.Tests/` | Unit + integration tests |
 | `docs/language_specification/` | **Authoritative** spec |
 | `build_tools/` | Python-based build automation and dogfooding tools (own CLAUDE.md) |
-| `.claude/agents/` | Claude Code agent definitions (registry: [agents.md](agents.md)) |
-| `.github/instructions/` | Per-component contribution guides |
+| `.claude/agents/` | Claude Code agent definitions |
 
 ## CI/CD
 
