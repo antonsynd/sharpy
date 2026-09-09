@@ -381,7 +381,7 @@ internal partial class TypeChecker
             }
 
             // Special handling for builtin functions with overloads
-            var overloadResult = ResolveBuiltinOverload(id, argTypes, totalArgCount, call);
+            var overloadResult = ResolveBuiltinOverload(id, argTypes, kwargTypes, totalArgCount, call);
             if (overloadResult != null)
                 return overloadResult;
 
@@ -1234,7 +1234,7 @@ internal partial class TypeChecker
             // and TWO iterables. Nothing validated the value arguments against that narrowing, so a
             // call whose type-argument count matched but whose value arguments did not was accepted
             // here and emitted verbatim, surfacing as CS7036 out of Roslyn instead of a diagnostic.
-            if (ValidateSelectedGenericOverloadArguments(call, callee, genericFuncType, argTypes, totalArgCount)
+            if (ValidateSelectedGenericOverloadArguments(call, callee, genericFuncType, argTypes, kwargTypes, totalArgCount)
                 is { } selectedOverload)
             {
                 // The written type arguments close every slot, so the arguments bind to them here
@@ -1373,7 +1373,7 @@ internal partial class TypeChecker
     /// </returns>
     private FunctionSymbol? ValidateSelectedGenericOverloadArguments(
         FunctionCall call, Expression canonicalCallee, GenericFunctionType genericFuncType,
-        List<SemanticType> argTypes, int totalArgCount)
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
         var callee = canonicalCallee as IndexAccess;
         var reference = callee != null ? _semanticInfo.GetGenericReference(callee) : null;
@@ -1400,12 +1400,17 @@ internal partial class TypeChecker
                 t, selected.TypeParameters, genericFuncType.TypeArguments),
             SkipUnknownTypes: true,
             KeywordArgNames: ExtractKeywordArgNames(call),
-            Call: call));
+            Call: call,
+            KwargTypes: kwargTypes));
 
-        // Ambiguity among same-generic-arity candidates is not this check's business: the explicit
-        // type arguments already pinned the overload codegen emits. Only "nothing accepts these
-        // value arguments" is the #1148 defect.
-        if (resolution.Match != null || resolution.IsAmbiguous)
+        // Ambiguity among same-generic-arity candidates: SPY0353 (#1810, R-AF Decision 4).
+        if (resolution.IsAmbiguous)
+        {
+            ReportOverloadError(calleeName, call, resolution, totalArgCount, argTypes);
+            return null;
+        }
+
+        if (resolution.Match != null)
             return ReferenceEquals(resolution.Match, selected) ? selected : null;
 
         ReportOverloadError(calleeName, call, resolution, totalArgCount, argTypes);
@@ -1580,7 +1585,7 @@ internal partial class TypeChecker
             return CheckConstructorCall(call, registryType, argTypes, kwargTypes, totalArgCount);
 
         return overloads!.Count > 1
-            ? ResolveBuiltinOverloadCore(name, id: null, overloads, argTypes, totalArgCount, call)
+            ? ResolveBuiltinOverloadCore(name, id: null, overloads, argTypes, kwargTypes, totalArgCount, call)
             : ValidateFunctionSymbolCall(call, overloads[0], argTypes, kwargTypes, totalArgCount,
                 isNullConditionalCall, isOptionalNullConditional);
     }
@@ -2043,7 +2048,7 @@ internal partial class TypeChecker
     /// or null if no overload resolution is needed.
     /// </summary>
     private SemanticType? ResolveBuiltinOverload(
-        Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+        Identifier id, List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount, FunctionCall call)
     {
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
         var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
@@ -2061,7 +2066,7 @@ internal partial class TypeChecker
         if (lookupSymbol != null && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(lookupSymbol))
             return null;
 
-        return ResolveBuiltinOverloadCore(id.Name, id, overloads!, argTypes, totalArgCount, call);
+        return ResolveBuiltinOverloadCore(id.Name, id, overloads!, argTypes, kwargTypes, totalArgCount, call);
     }
 
     /// <summary>
@@ -2076,7 +2081,7 @@ internal partial class TypeChecker
     /// </remarks>
     private SemanticType? ResolveBuiltinOverloadCore(
         string name, Identifier? id, List<FunctionSymbol> overloads,
-        List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount, FunctionCall call)
     {
         var kwNames = ExtractKeywordArgNames(call);
         // Builtin overloads resolve through the deterministic betterness chain (exact arity → fewer
@@ -2084,7 +2089,7 @@ internal partial class TypeChecker
         // order-independent (#1043). BuiltinRegistry registration order is no longer load-bearing.
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                KeywordArgNames: kwNames, Call: call));
+                KeywordArgNames: kwNames, Call: call, KwargTypes: kwargTypes));
 
         // Order-independence recovery (#1043): the deterministic chain reports ambiguity where the
         // old first-match silently picked one. When the arity-matching overloads all yield the SAME
