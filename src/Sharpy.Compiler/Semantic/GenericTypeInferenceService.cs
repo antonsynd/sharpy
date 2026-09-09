@@ -119,35 +119,44 @@ internal class GenericTypeInferenceService
     public InferenceResult InferTypeArguments(FunctionSymbol genericFunc, List<SemanticType> argumentTypes)
     {
         if (!genericFunc.IsGeneric)
-        {
-            // Not a generic function - nothing to infer
             return InferenceResult.Succeeded(new List<SemanticType>());
-        }
 
-        var typeParams = genericFunc.TypeParameters;
         var parameters = genericFunc.Parameters;
+        var pairs = new List<(SemanticType Formal, SemanticType Actual)>(
+            Math.Min(parameters.Count, argumentTypes.Count));
 
-        // Create substitution map: type parameter name -> inferred type
-        var substitutions = new Dictionary<string, SemanticType>();
-
-        // Process each parameter and argument pair
         int argIndex = 0;
         foreach (var param in parameters)
         {
             if (argIndex >= argumentTypes.Count)
                 break;
-
-            var formalType = param.Type;
-            var actualType = argumentTypes[argIndex];
-
-            // Attempt to unify formal with actual
-            var unifyResult = Unify(formalType, actualType, substitutions);
-            if (!unifyResult.Success)
-            {
-                return unifyResult;
-            }
-
+            pairs.Add((param.Type, argumentTypes[argIndex]));
             argIndex++;
+        }
+
+        return InferTypeArguments(genericFunc, pairs);
+    }
+
+    /// <summary>
+    /// Attempt to infer type arguments from pre-built (formal, actual) pairs (#1811). The pairs
+    /// come from <see cref="TypeChecker"/>'s <c>BindCandidate</c> — each bound argument yields one
+    /// pair — so keyword arguments, defaulted parameters, and receiver offsets are already resolved.
+    /// </summary>
+    internal InferenceResult InferTypeArguments(
+        FunctionSymbol genericFunc,
+        IReadOnlyList<(SemanticType Formal, SemanticType Actual)> pairs)
+    {
+        if (!genericFunc.IsGeneric)
+            return InferenceResult.Succeeded(new List<SemanticType>());
+
+        var typeParams = genericFunc.TypeParameters;
+        var substitutions = new Dictionary<string, SemanticType>();
+
+        foreach (var (formal, actual) in pairs)
+        {
+            var unifyResult = Unify(formal, actual, substitutions);
+            if (!unifyResult.Success)
+                return unifyResult;
         }
 
         // Check that all type parameters were inferred (or have defaults)
@@ -191,9 +200,7 @@ internal class GenericTypeInferenceService
 
             var constraintResult = CheckConstraints(typeParam, inferredType, typeParams);
             if (!constraintResult.Success)
-            {
                 return constraintResult;
-            }
         }
 
         return InferenceResult.Succeeded(inferredTypes);
