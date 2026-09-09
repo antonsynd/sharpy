@@ -5,7 +5,7 @@ def main():
     conn = sqlite3.connect(":memory:")
     cur = conn.cursor()
     cur.execute("CREATE TABLE scores (name TEXT, score INTEGER)")
-    data = [["Alice", 95], ["Bob", 87], ["Charlie", 92]]
+    data: list[list[object]] = [["Alice", 95], ["Bob", 87], ["Charlie", 92]]
     cur.executemany("INSERT INTO scores VALUES (?, ?)", data)
     conn.commit()
     print(cur.rowcount)

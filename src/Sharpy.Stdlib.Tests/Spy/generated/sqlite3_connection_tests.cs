@@ -354,8 +354,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var conn = _Conn();
 #line (188, 5) - (188, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER, name TEXT)");
-#line (190, 5) - (194, 6) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var paramSets = new Sharpy.List<Sharpy.List<object>>()
+#line (190, 5) - (194, 7) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
+                Sharpy.List<Sharpy.List<object>> paramSets = new Sharpy.List<Sharpy.List<object>>()
 #line hidden
                 {
                     new Sharpy.List<object>()

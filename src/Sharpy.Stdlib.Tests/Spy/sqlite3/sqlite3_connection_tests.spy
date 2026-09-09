@@ -187,7 +187,7 @@ def test_executemany_inserts_multiple_rows():
     conn = _conn()
     conn.execute("CREATE TABLE t (id INTEGER, name TEXT)")
 
-    param_sets = [
+    param_sets: list[list[object]] = [
         [1, "Alice"],
         [2, "Bob"],
         [3, "Charlie"],

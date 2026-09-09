@@ -9,7 +9,7 @@ def main():
 
     # Mixed value types unify exactly as the equivalent literal {"a": 1, "b": "x"} does — the two
     # spellings of one construct must not disagree.
-    mixed = dict(a=1, b="x")
+    mixed: dict[str, object] = dict(a=1, b="x")
     print(len(mixed))
 
     # The keyword construct through a PINNED reference rather than the bare name. The alias spelling
