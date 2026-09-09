@@ -1559,6 +1559,17 @@ internal partial class TypeChecker
             _semanticInfo.SetTruthinessLowering(cond.Test, ternaryTruthLowering);
         }
 
+        // R-W/R-AE: the conditional takes the enclosing store's slot when it IS the store's
+        // value node. Each branch is checked under that slot inside its narrowing scope so the
+        // seam refuses at the BRANCH's span, not the conditional's.
+        SemanticType? condSlot = null;
+        StorePosition condPosition = StorePosition.Declaration;
+        if (_storeContext is { Slot: not null and not UnknownType } sc && sc.IsDirectOperand(cond))
+        {
+            condSlot = sc.Slot;
+            condPosition = sc.Position;
+        }
+
         // Expression-level narrowing (#1080): the true arm is evaluated only when the condition holds,
         // so it sees the condition's positive narrowings; the false arm sees the negative narrowings.
         // Reads inside each arm record their accessor lowering via the narrowing context, exactly as
@@ -1570,30 +1581,33 @@ internal partial class TypeChecker
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(thenEntries);
-            thenType = CheckExpression(cond.ThenValue);
+            if (condSlot != null)
+            {
+                using (EnterStore(condPosition, condSlot, cond.ThenValue))
+                    thenType = CheckExpression(cond.ThenValue);
+            }
+            else
+                thenType = CheckExpression(cond.ThenValue);
         }
 
         SemanticType elseType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(elseEntries);
-            elseType = CheckExpression(cond.ElseValue);
+            if (condSlot != null)
+            {
+                using (EnterStore(condPosition, condSlot, cond.ElseValue))
+                    elseType = CheckExpression(cond.ElseValue);
+            }
+            else
+                elseType = CheckExpression(cond.ElseValue);
         }
 
-        // Return common type
-        if (thenType.IsAssignableTo(elseType))
-            return elseType;
-        if (elseType.IsAssignableTo(thenType))
-            return thenType;
-
-        // Intentional Unknown without error: when then/else branch types are incompatible
-        // (e.g., `1 if cond else "str"`), we return Unknown rather than emitting an error
-        // because the LCA (least common ancestor) logic is limited. Mark as error recovery
-        // to suppress SPY0907 — a proper fix would compute LCA or emit a type mismatch error.
-        MarkExpressionAsErrorRecovery(cond,
-            ErrorRecoveryReason.DeliberatelyPermissive(
-                "a conditional whose branch types have no computed LCA is not reported as a mismatch"));
-        return SemanticType.Unknown;
+        // R-W: decide the type through BestCommonType — slot-directed (arm 1), one-accepts-all
+        // (arm 2), or refuse by name (arm 3). The DP mark and data-level comparison are retired.
+        return BestCommonType(
+            new[] { ((Expression?)cond.ThenValue, thenType), ((Expression?)cond.ElseValue, elseType) },
+            condSlot, condPosition, cond, "conditional expression");
     }
 
     /// <summary>
