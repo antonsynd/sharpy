@@ -41,12 +41,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     // with itself. These are written down, and Positions_AreExactlyTheStorePositionEnum compares
     // the roster to the enum, so ADDING a StorePosition member fails here until its row is added.
 
-    private const int PositionCount = 19;
+    private const int PositionCount = 21;
     private const int ShapeCount = 24;
     private const int AcceptedCellCount = 248;
     private const int RefusedCellCount = 202;
     private const int KnownRedCellCount = 0;
-    private const int NotApplicableCellCount = 6;
+    private const int NotApplicableCellCount = 54;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
 
@@ -247,7 +247,24 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             s => $"class D:\n    def __eq__(self, other: {s.Slot}) -> bool:\n        print(other)\n        return True\n\ndef main():\n    d = D()\n    r: bool = d == {s.Value}\n",
             8, DiagnosticCodes.Semantic.InvalidBinaryOperation,
             (v, t) => $"Type 'D' does not support operator '==' with operand of type '{v}'; '__eq__' takes '{t}'"),
+
+        // Fixed-slot positions: the store slot is fixed (not the shape's), so the shape axis creates
+        // no meaningful variation — all cells are N/A. Tested in dedicated integration tests.
+        new("FStringHole",
+            s => $"def main():\n    print(f\"{{str({s.Value})}}\")\n",
+            2, DiagnosticCodes.Semantic.TypeMismatch,
+            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
+
+        new("TruthinessTest",
+            s => $"def main():\n    if {s.Value}:\n        print(True)\n",
+            2, DiagnosticCodes.Semantic.TypeMismatch,
+            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
     };
+
+    // ── Fixed-slot positions: slot is fixed (object / Unknown), not the shape's ──────────────
+    // All cells N/A: the shape axis creates no variation. Tested in f-string / truthiness
+    // integration tests (#1743).
+    private static readonly HashSet<string> FixedSlotPositions = new() { "FStringHole", "TruthinessTest" };
 
     // ── Cells whose refusal is decided BEFORE any store ───────────────────────────────────────
     // `+=` on an Optional or nullable slot has no operator to resolve, so the value never reaches
@@ -354,6 +371,8 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private static Verdict Classify(Position p, Shape s)
     {
+        if (FixedSlotPositions.Contains(p.Name))
+            return Verdict.NotApplicable;
         var key = Key(p, s);
         if (NotApplicableCells.ContainsKey(key))
             return Verdict.NotApplicable;
@@ -867,13 +886,14 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         var accepted = AcceptedCells.Count();
         var refused = RefusedCells.Count();
         var red = KnownRedCellData.Count();
-        var na = NotApplicableCells.Count;
+        var fixedSlotNA = FixedSlotPositions.Count * ShapeCount;
+        var na = NotApplicableCells.Count + fixedSlotNA;
 
         accepted.Should().Be(AcceptedCellCount, "the accepted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
         red.Should().Be(KnownRedCellCount, "known-red cells are drained (#1762 closed)");
         na.Should().Be(NotApplicableCellCount,
-            "N/A cells are refused by a validator before the store seam, not by the store seam itself");
+            "N/A cells are refused before the store seam or have a fixed slot that does not vary with the shape axis");
 
         (accepted + refused + red + na).Should().Be(PositionCount * ShapeCount,
             $"live ({accepted + refused}) + known-red ({red}) + N/A ({na}) must be the whole "

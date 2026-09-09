@@ -194,7 +194,10 @@ internal partial class TypeChecker
         // ── Arm 3: refuse by name ──
         var typeNames = new List<string>();
         foreach (var type in distinctTypes.Values)
-            typeNames.Add($"'{type.GetDisplayName()}'");
+        {
+            var displayName = type.GetDisplayName();
+            typeNames.Add($"'{displayName}'");
+        }
         if (hasNone)
             typeNames.Add("'None'");
 

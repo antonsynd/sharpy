@@ -924,52 +924,6 @@ internal partial class TypeChecker
             : $"the types of parameters {names}";
     }
 
-    /// <summary>
-    /// Refuses a binding whose value has NO type, and reports true when it did (#1516).
-    ///
-    /// <para>Two producers, one rule. A bare <c>None</c> with nothing to take a type from
-    /// (<c>bar = None</c>) and a call to a <c>None</c>-returning function (<c>x = f()</c>) both give
-    /// the binding <see cref="VoidType"/>, which the emitter wrote as <c>var x = null;</c> and
-    /// <c>var x = f();</c> — CS0815 either way, behind SPY0908. That is the #1146 contract failing:
-    /// the front end accepted a program Roslyn refuses.</para>
-    ///
-    /// <para><b>Why refusal and not a lowering.</b> The spec defines <c>None</c> only against a
-    /// declared type — <c>value: str | None = None</c> emits C# <c>null</c>, <c>x: int? = None</c>
-    /// emits <c>default</c> — so bare <c>None</c> is a value whose MEANING comes from its
-    /// destination, and a destination that supplies none has no meaning to give it. Inventing one
-    /// (<c>object?</c>) would make <c>bar</c> hold a type the user never wrote and cannot use, and
-    /// would silently diverge from Axiom 3. CPython's answer (<c>NoneType</c>) is not available to a
-    /// statically typed target, and Axiom 1 &gt; Axiom 3 &gt; Axiom 2 settles it.</para>
-    ///
-    /// <para><b>What must NOT be refused</b>, each measured: <c>x: int? = None</c> and
-    /// <c>x: str | None = None</c> (the destination supplies the type); <c>takes(None)</c> (the
-    /// parameter does); and <c>x: int? = None; x = None</c> (the existing binding does). Only a NEW
-    /// binding with no annotation reaches here.</para>
-    ///
-    /// <para>Note what is NOT in that list: <c>x = None; x = f()</c> — "the type comes from the
-    /// later assignment" — has never worked. It drew SPY0220 ("Cannot assign type 'int' to variable
-    /// of type 'None'") before this change and draws this refusal after it, one statement earlier
-    /// and naming the real problem.</para>
-    /// </summary>
-    private bool RefuseUntypedVoidBinding(
-        string name, Expression? value, SemanticType valueType,
-        int line, int column, Text.TextSpan? span)
-    {
-        if (valueType is not VoidType)
-            return false;
-
-        var reason = value is NoneLiteral
-            ? $"'None' names no type on its own, so '{name}' has nothing to be. Annotate the "
-                + $"binding with the type it will hold ('{name}: T? = None' for a Sharpy optional, "
-                + $"'{name}: T | None = None' for a .NET-nullable reference)"
-            : $"this expression produces no value, so there is nothing for '{name}' to hold. Call "
-                + "it as a statement, or bind the result of an expression that returns one";
-
-        AddError($"cannot infer a type for '{name}': {reason}",
-            line, column, code: DiagnosticCodes.Semantic.CannotInferType, span: span);
-        return true;
-    }
-
     private void CheckVariableDeclaration(VariableDeclaration varDecl)
     {
         // A type body's const fields go into scope BEFORE any initializer is checked, so the body
