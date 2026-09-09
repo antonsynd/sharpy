@@ -26,9 +26,11 @@ internal partial class TypeChecker
             if (type is VoidType && node != null && node is not NoneLiteral)
             {
                 AddError(
-                    $"Expression produces no value, so there is nothing for '{siteNoun}' to be",
-                    node.LineStart, node.ColumnStart,
-                    code: DiagnosticCodes.Semantic.CannotInferType, span: node.Span);
+                    $"cannot infer a type for {siteNoun}: this expression produces no value, " +
+                    "so there is nothing for " + siteNoun + " to hold. Call it as a statement, " +
+                    "or bind the result of an expression that returns one",
+                    host.LineStart, host.ColumnStart,
+                    code: DiagnosticCodes.Semantic.CannotInferType, span: host.Span);
                 return SemanticType.Unknown;
             }
         }
@@ -101,20 +103,20 @@ internal partial class TypeChecker
         // All operands are None/void/unknown — refuse
         if (candidates.Count == 0)
         {
-            var steer = options.AnnotateSteer ?? $"'{siteNoun}: T | None = ...'";
             if (hasNone)
             {
                 AddError(
-                    $"'None' names no type on its own, so '{siteNoun}' has nothing to be. " +
-                    $"Annotate the binding ({steer} for a .NET-nullable reference; " +
-                    $"'{siteNoun}: T? = None()' for a Sharpy optional)",
+                    $"cannot infer a type for {siteNoun}: 'None' names no type on its own, " +
+                    $"so {siteNoun} has nothing to be. Annotate the binding with the type it " +
+                    $"will hold ({siteNoun}: T? = None() for a Sharpy optional, " +
+                    $"{siteNoun}: T | None = None for a .NET-nullable reference)",
                     host.LineStart, host.ColumnStart,
                     code: DiagnosticCodes.Semantic.CannotInferType, span: host.Span);
             }
             else
             {
                 AddError(
-                    $"Cannot infer a type for {siteNoun}",
+                    $"cannot infer a type for {siteNoun}",
                     host.LineStart, host.ColumnStart,
                     code: DiagnosticCodes.Semantic.CannotInferType, span: host.Span);
             }

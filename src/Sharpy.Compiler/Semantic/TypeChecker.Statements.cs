@@ -198,7 +198,7 @@ internal partial class TypeChecker
                     var resolved = BestCommonType(
                         new[] { ((Expression?)assignment.Value, inferredType) },
                         null, StorePosition.PlainStore, assignment,
-                        $"binding '{targetId.Name}'");
+                        $"'{targetId.Name}'");
                     if (resolved is UnknownType)
                         return;
                     inferredType = resolved;
@@ -998,7 +998,7 @@ internal partial class TypeChecker
                 var resolved = BestCommonType(
                     new[] { ((Expression?)varDecl.InitialValue, initType) },
                     null, StorePosition.Declaration, varDecl,
-                    $"binding '{varDecl.Name}'");
+                    $"'{varDecl.Name}'");
                 initType = resolved;
             }
 
