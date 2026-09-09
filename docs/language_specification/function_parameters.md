@@ -180,7 +180,9 @@ greet("Alice")  # Ambiguous - both overloads are applicable to a single string a
 
 ### Named Arguments in Overload Resolution
 
-Named arguments participate in overload resolution by filtering which overloads are candidates. An overload is only considered if it has a parameter matching each named argument's name:
+Named arguments bind to the parameter they name on each candidate and their **types** participate in
+applicability and betterness exactly as positional arguments' types do. An overload is only considered
+if it has a parameter matching each named argument's name:
 
 ```python
 def do_work(num: int, message: str = "Hello") -> None:

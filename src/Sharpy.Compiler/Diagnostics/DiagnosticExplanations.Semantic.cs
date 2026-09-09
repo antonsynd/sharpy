@@ -982,16 +982,20 @@ public static partial class DiagnosticExplanations
             "Provide the correct number of type arguments matching the alias definition.");
 
         Add(dict, DiagnosticCodes.Semantic.AmbiguousOverload, "Ambiguous method overload", "Semantic",
-            "A method call matches multiple overloads equally well and the compiler cannot determine which to use.",
+            "A function, method, or constructor call matches multiple overloads equally well and the "
+            + "compiler cannot determine which to use. This applies to calls with positional arguments, "
+            + "keyword arguments, or a mix of both — keyword-argument types participate in the "
+            + "betterness comparison the same way positional ones do.",
             "class Foo:\n    def bar(self, x: int): ...\n    def bar(self, x: float): ...\nfoo.bar(42)",
             "Add an explicit type annotation or cast to disambiguate the call.");
 
         Add(dict, DiagnosticCodes.Semantic.NoMatchingOverload, "No matching method overload", "Semantic",
-            "A method call matches no overload, and the candidates disagree about why: either the "
-            + "argument COUNT fits none of them, or they reject different arguments. When every "
-            + "candidate rejects the SAME argument for a type reason there is nothing to choose "
-            + "between them, and the call reports that argument's own type mismatch (SPY0220) "
-            + "instead.",
+            "A function, method, or constructor call matches no overload, and the candidates disagree "
+            + "about why: either the argument COUNT fits none of them, they reject different arguments, "
+            + "or every generic candidate's type inference failed (a conflict between two arguments "
+            + "binding different concrete types to the same type parameter). When every candidate "
+            + "rejects the SAME argument for a type reason there is nothing to choose between them, "
+            + "and the call reports that argument's own type mismatch (SPY0220) instead.",
             "class Foo:\n    def bar(self, x: int, y: str): ...\n    def bar(self, x: str, y: int): ...\nfoo.bar(\"a\", \"b\")",
             "Check the argument count first, then the types: the example's first overload rejects "
             + "argument 1 and the second rejects argument 2, so neither is the one you meant.");

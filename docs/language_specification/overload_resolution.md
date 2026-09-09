@@ -68,15 +68,16 @@ is arity-applicable when `required ≤ argCount ≤ total`. For a variadic candi
 (the variadic parameter absorbs any surplus). Defaults widen the applicable range; `self` is excluded
 throughout.
 
-### Keyword-argument names
+### Keyword arguments
 
-Every keyword argument at the call site must name a parameter that exists on the candidate. A candidate
-lacking a matching parameter name is eliminated. Keyword filtering also verifies that the positional
-arguments cover exactly the required parameters *not* supplied by keyword. This is what lets
-`merge(a, b, reverse=True)` choose the overload that declares a `reverse` parameter over a `*args`
-overload that does not. Parameter names are taken from the **static type** of the receiver, so an
-override that renames a parameter is matched against the receiver's declared type, not its runtime type
-(see [Named Arguments in Overload Resolution](function_parameters.md#named-arguments-in-overload-resolution)).
+Every keyword argument at the call site is bound to the parameter it names on each candidate. A candidate
+lacking a matching parameter name, or whose named parameter was already filled by a positional argument,
+is eliminated. The keyword argument's **type** participates in the assignability and betterness checks
+exactly as a positional argument's type does — there is no "name-only filtering" step that discards
+keyword types. This is what lets `g(x=1)` choose `g(x: int)` over `g(x: str)` in the same way that
+`g(1)` chooses the `int` overload positionally. Parameter names are taken from the **static type** of
+the receiver, so an override that renames a parameter is matched against the receiver's declared type,
+not its runtime type (see [Named Arguments in Overload Resolution](function_parameters.md#named-arguments-in-overload-resolution)).
 
 ### Assignability of each argument
 
@@ -99,10 +100,14 @@ overload purposes, is:
   bare literals (`200`) and `const` references (`const LIMIT: int = 200`) participate.
 - **`list[T]` → `array[T]`** at the argument-binding boundary only (element types must match exactly;
   this coercion is deliberately *not* available in ordinary assignment).
-- A **bare type parameter** (`T`) as a parameter type acts as a wildcard — it accepts any argument, and
-  the concrete binding is left to C#'s later generic inference. A *structured* generic parameter
-  (`list[T]`, `list[list[T]]`) must match the argument's shape recursively, with bare parameters acting
-  as wildcards only at their own position.
+- **Per-candidate generic inference.** For a generic candidate without written type arguments, the
+  candidate's type parameters are inferred from its bound `(formal, actual)` pairs before the
+  assignability check. A candidate whose inference fails — a conflict between two arguments binding
+  different concrete types to the same type parameter, or a type parameter no argument binds and no
+  PEP-696 default supplies — is **not applicable** (C# §12.6.3). On success, the candidate's formals
+  are closed (every `T` replaced by its inferred concrete type) and the assignability check runs
+  against those closed types. Explicit type arguments or receiver substitutions close the candidate's
+  formals before inference, not through it.
 
 #### Primitive implicit coercions
 
@@ -155,16 +160,27 @@ order; the first that yields a unique winner selects the target.
    parameter. The pairs are: `int8` beats `uint8`; `int16` beats `uint16`; `int32` beats `uint32`;
    `int64` beats `uint64`. More generally, any signed integer beats any unsigned integer when the
    lattice cannot decide.
-5. **Fewer type parameters.** A less-generic overload beats a more-generic one
-   (`Merge[T](a, b)` beats `Merge[T, TKey](iterables, key)` when both are exact-arity matches).
-6. **Non-variadic over variadic.** A fixed-arity parameter list beats one that binds the argument
-   through a `*args` parameter.
-7. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
+5. **All arguments correspond (C# §12.6.4.3 bullet 3).** A candidate whose declared parameter count
+   matches the argument count (no defaults needed) beats one that needs a default-value substitution.
+   This tie-break applies **without** a sequence-equivalence precondition — it decides even when the two
+   candidates' parameter types differ at every position.
+6. **Fewer type parameters.** Among candidates whose closed parameter sequences are **equivalent** (every
+   bound formal is equal by type), a less-generic overload beats a more-generic one
+   (`Merge[T](a, b)` beats `Merge[T, TKey](iterables, key)` when both produce the same closed types).
+   This tie-break is **gated on sequence equivalence**: when the closed formal types differ, neither
+   candidate wins by type-parameter count alone (C# §12.6.4.3; measured: CS0121 for non-equivalent
+   sequences with a generic vs. non-generic pair).
+7. **Non-variadic over variadic.** Among candidates with equivalent closed parameter sequences, a
+   fixed-arity parameter list beats one that binds arguments through a `*args` parameter. This tie-break
+   is **gated on sequence equivalence** in the same way as criterion 6 (measured: CS0121 for
+   non-equivalent sequences with a normal-form vs. expanded-form pair).
+8. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
    types (e.g. `ClrTypeMapper` maps both `Sharpy.List<T>` and `IEnumerable<T>` to `list[T]`), the more
    derived CLR type wins.
 
-If, after all seven criteria, no single candidate is strictly better than every other, the call is
-**ambiguous** and `SPY0353` is reported. Disambiguate with an explicit `to` conversion at the call site.
+If, after all eight criteria, no single candidate is strictly better than every other, the call is
+**ambiguous** and `SPY0353` is reported. Disambiguate with an explicit type annotation or cast at the
+call site.
 
 ### Conversion-cost ranking
 
@@ -294,16 +310,14 @@ two-pass applicability filter followed by the deterministic betterness chain abo
 walks the base-class chain and then implemented interfaces to gather candidates. Builtin functions
 (`len`, `min`, `max`, `sorted`, …) resolve through the same core.
 
-> **Current implementation status.** The shared core (`ResolveOverloadCore`) implements applicability
-> (including §10.2.11 constant conversions) plus the identity-match → exact-arity → fewer-type-parameters
-> → specificity → signed-beats-unsigned → ambiguous tie-break chain, and it approximates conversion
-> betterness through assignability-directed specificity (an argument that is assignable to a parameter but
-> not vice-versa is treated as more specific). What is missing, pending
-> [#1043](https://github.com/antonsynd/sharpy/issues/1043), is the **explicit, declarative
-> conversion-cost table** (criterion 2). Separately, builtin resolution currently short-circuits on the
-> *first* applicable candidate in `BuiltinRegistry` registration order (the `ReturnFirstMatch` path),
-> which makes a small set of builtin results depend on registration order; #1043 replaces that path with
-> the same order-independent betterness chain.
+> **Current implementation status.** The shared core (`ResolveOverloadCore`) implements the full
+> two-pass pipeline: per-candidate binding with keyword-argument types, per-candidate generic inference,
+> assignability-based applicability, and the deterministic betterness chain (conversion betterness first,
+> then all-arguments-correspond, then sequence-equivalence-gated tie-breaks). Conversion betterness is
+> approximated through assignability-directed specificity (an argument that is assignable to a parameter
+> but not vice-versa is treated as more specific). Method resolution walks the base-class chain and
+> then implemented interfaces to gather candidates. Builtin resolution runs the same order-independent
+> betterness chain ([#1043](https://github.com/antonsynd/sharpy/issues/1043)).
 
 ### 2. Operator dunders and `__getitem__`
 
@@ -324,16 +338,9 @@ applicability and betterness core as ordinary calls.
 
 A class may declare multiple `__init__` overloads. When a class has **exactly one** `__init__`, Sharpy
 type-checks the call against it (arity, positional/keyword kinds, spread-into-non-variadic). When a
-class has **more than one** `__init__`, Sharpy performs only the shape checks and **defers the overload
-selection to Roslyn** — the emitted C# constructor overloads are resolved by the C# compiler using its
-own better-function-member algorithm.
-
-This deferral is a **deliberate Axiom-1 decision**, not a gap: C# already resolves constructor overloads
-by exactly the rules this page specifies, and delegating to it guarantees the selected constructor
-matches what the generated assembly runs, including edge cases (`None` to a nullable parameter, enum
-conversions) that the Sharpy-side checker would have to re-derive. The trade-off is that a
-constructor-overload ambiguity surfaces as a C# diagnostic rather than a `SPY03xx` code; the
-pipeline no-CS-leaks invariant (CLAUDE.md, #1035) constrains where that is acceptable.
+class has **more than one** `__init__`, Sharpy runs the same shared overload-resolution core as ordinary
+calls — per-candidate binding, generic inference, applicability, and betterness — and reports ambiguity
+as `SPY0353` and no-match as `SPY0354`, exactly as it does for function and method calls.
 
 ## Refusal shape: the argument, not the overload set
 
@@ -391,8 +398,8 @@ candidates that fail at **different** argument indices.
 | `SPY0354` | Error | No matching overload — the candidates disagree: an arity mismatch, or candidates that fail at different arguments (a call every candidate rejects at the SAME argument reports `SPY0220` — see above) |
 | `SPY0355` | Error | Duplicate method signature — two overloads have identical parameter signatures (overloads may not differ only by return type) |
 
-Constructor-overload failures on a class with multiple `__init__` methods are reported by the C#
-compiler (see [engine 3](#3-constructors)).
+Constructor-overload ambiguity on a class with multiple `__init__` methods is reported as `SPY0353` by
+the shared resolver (see [engine 3](#3-constructors)).
 
 ## See Also
 
