@@ -1495,6 +1495,17 @@ internal partial class TypeChecker
                     _semanticInfo.SetExpressionType(valueElemNode, declaredSlot);
                 }
 
+                // A fresh element with no declared slot and a void value goes through
+                // BestCommonType: `a, b = None, 1` refuses at `a` (R-AB, #1812).
+                if (existingSymbol == null && declaredSlot is null or UnknownType
+                    && elementType is VoidType)
+                {
+                    elementType = BestCommonType(
+                        new[] { (valueElemNode, elementType) },
+                        null, StorePosition.TupleElement, tupleTargetId,
+                        $"'{tupleTargetId.Name}'");
+                }
+
                 // In Sharpy, tuple unpacking creates new variable versions
                 // Create/redefine with inferred type from tuple element
                 var newSymbol = new VariableSymbol
