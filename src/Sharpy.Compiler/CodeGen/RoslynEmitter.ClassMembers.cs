@@ -454,12 +454,12 @@ internal partial class RoslynEmitter
                     break;
 
                 case VariableDeclaration { IsConst: true } constDecl:
-                {
-                    var constSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == constDecl.Name);
-                    var constCodeGenInfo = constSymbol != null ? GetCodeGenInfo(constSymbol) : null;
-                    members.Add(GenerateField(constDecl, constCodeGenInfo?.CSharpName));
-                    break;
-                }
+                    {
+                        var constSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == constDecl.Name);
+                        var constCodeGenInfo = constSymbol != null ? GetCodeGenInfo(constSymbol) : null;
+                        members.Add(GenerateField(constDecl, constCodeGenInfo?.CSharpName));
+                        break;
+                    }
 
                 case VariableDeclaration varDecl:
                     // Interface properties (get/set accessors)
