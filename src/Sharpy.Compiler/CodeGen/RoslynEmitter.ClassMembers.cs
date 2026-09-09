@@ -283,10 +283,10 @@ internal partial class RoslynEmitter
                 members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
             }
 
-            // Generate auto-constructor(s) for structs with fields but no explicit __init__
+            // Generate auto-constructor(s) for structs with instance fields but no explicit __init__
             if (initMethods.Count == 0
                 && _currentTypeSymbol is { TypeKind: Semantic.TypeKind.Struct }
-                && _currentTypeSymbol.Fields.Count > 0)
+                && body.OfType<VariableDeclaration>().Any(IsSynthesizedConstructorField))
             {
                 members.AddRange(GenerateStructAutoConstructors(className, body));
             }
@@ -452,6 +452,14 @@ internal partial class RoslynEmitter
                         members.Add(GenerateInterfaceEvent(eventGroup));
                     }
                     break;
+
+                case VariableDeclaration { IsConst: true } constDecl:
+                {
+                    var constSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == constDecl.Name);
+                    var constCodeGenInfo = constSymbol != null ? GetCodeGenInfo(constSymbol) : null;
+                    members.Add(GenerateField(constDecl, constCodeGenInfo?.CSharpName));
+                    break;
+                }
 
                 case VariableDeclaration varDecl:
                     // Interface properties (get/set accessors)

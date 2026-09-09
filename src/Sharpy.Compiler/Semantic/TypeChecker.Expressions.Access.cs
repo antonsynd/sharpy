@@ -2109,7 +2109,7 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        if (typeSym.TypeKind is TypeKind.Class or TypeKind.Struct)
+        if (typeSym.TypeKind is TypeKind.Class or TypeKind.Struct or TypeKind.Interface)
         {
             var field = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
             if (field != null && (field.IsConstant || field.IsStatic))

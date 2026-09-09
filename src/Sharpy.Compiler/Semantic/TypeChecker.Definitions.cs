@@ -1660,6 +1660,10 @@ internal partial class TypeChecker
                 // declarations are skipped inside CheckClassProperty (#849)
                 CheckClassProperty(propDef);
             }
+            else if (statement is VariableDeclaration { IsConst: true } varDecl)
+            {
+                CheckVariableDeclaration(varDecl);
+            }
         }
 
         _currentClass = previousClass;

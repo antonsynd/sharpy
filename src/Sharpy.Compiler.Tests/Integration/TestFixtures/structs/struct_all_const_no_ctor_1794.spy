@@ -1,0 +1,9 @@
+# An all-const struct synthesizes no constructor — the caller gate detects
+# no instance fields and skips auto-constructor generation.
+struct S:
+    const A: int = 1
+    const B: str = "hello"
+
+def main():
+    print(S.A)
+    print(S.B)

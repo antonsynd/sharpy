@@ -1002,9 +1002,18 @@ internal partial class RoslynEmitter
             interfaceDecl = interfaceDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
         }
 
-        // Generate interface members (methods only, no implementation)
+        // Set _currentTypeSymbol so GenerateField can read the const fact (#1794).
+        var typeSymbol =
+            _currentTypeSymbol?.NestedTypes.FirstOrDefault(n => n.Name == interfaceDef.Name)
+            ?? _context.LookupSymbol(interfaceDef.Name) as TypeSymbol;
+        var previousTypeSymbol = _currentTypeSymbol;
+        _currentTypeSymbol = typeSymbol;
+
+        // Generate interface members
         var members = GenerateInterfaceMembers(interfaceDef.Body);
         interfaceDecl = interfaceDecl.WithMembers(List(members));
+
+        _currentTypeSymbol = previousTypeSymbol;
 
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(interfaceDef.DocString))

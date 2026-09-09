@@ -234,15 +234,35 @@ internal partial class RoslynEmitter
     /// When all fields have defaults, also generates an explicit parameterless constructor
     /// so that <c>new T()</c> uses the declared defaults rather than zero-initialization.
     /// </summary>
+    private bool IsSynthesizedConstructorField(VariableDeclaration decl)
+    {
+        if (decl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
+            return false;
+
+        var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == decl.Name);
+        if (fieldSymbol != null)
+        {
+            var codeGenInfo = GetCodeGenInfo(fieldSymbol);
+            if (codeGenInfo?.IsConstant == true)
+                return false;
+        }
+        else if (decl.IsConst)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private List<ConstructorDeclarationSyntax> GenerateStructAutoConstructors(
         string className,
         IReadOnlyList<Statement> body)
     {
         var constructors = new List<ConstructorDeclarationSyntax>();
 
-        // Collect instance field declarations in body order
+        // Collect instance field declarations in body order (consts and @static excluded)
         var fieldDecls = body.OfType<VariableDeclaration>()
-            .Where(v => !v.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
+            .Where(IsSynthesizedConstructorField)
             .ToList();
 
         // Partition into required (no default) and optional (with default), preserving order within each group

@@ -1,0 +1,13 @@
+# Struct consts are not synthesized constructor parameters — they emit as const/static readonly.
+# The struct with both a const and an instance field produces a constructor for the instance field
+# only, so S() uses the default and S(5) overrides it.
+struct S:
+    const K: int = 7
+    x: int = 2
+
+def main():
+    s1 = S()
+    print(S.K)
+    print(s1.x)
+    s2 = S(5)
+    print(s2.x)

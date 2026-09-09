@@ -360,6 +360,10 @@ internal partial class NameResolver
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
             }
+            else if (statement is VariableDeclaration { IsConst: true } constField)
+            {
+                ResolveFieldDeclaration(constField, typeSymbol);
+            }
             else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
             {
                 ResolveNestedTypeDeclaration(statement, typeSymbol);

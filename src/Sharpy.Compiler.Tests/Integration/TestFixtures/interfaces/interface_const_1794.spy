@@ -1,0 +1,13 @@
+# Interface consts emit as const or static readonly, not as properties.
+# They are accessible from the interface directly and through an implementing class.
+interface I:
+    const K: int = 1
+
+class C(I):
+    def get_k(self) -> int:
+        return I.K
+
+def main():
+    print(I.K)
+    c = C()
+    print(c.get_k())
