@@ -36,7 +36,10 @@ internal partial class TypeChecker
             SkipSelfParam: true, SkipUnknownTypes: true,
             KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
         if (resolution.IsAmbiguous)
+        {
+            ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);
             return null;
+        }
         if (resolution.Match is not { } init)
         {
             ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);

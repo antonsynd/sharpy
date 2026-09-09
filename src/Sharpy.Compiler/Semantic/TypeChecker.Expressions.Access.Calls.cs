@@ -2184,6 +2184,11 @@ internal partial class TypeChecker
         {
             typeSymbol = udt;
         }
+        else if (objectType is GenericType { GenericDefinition: { } genDef } gt)
+        {
+            typeSymbol = genDef;
+            typeArgs = gt.TypeArguments;
+        }
         else
         {
             var (resolved, resolvedTypeArgs) = ResolveBuiltinTypeInfo(objectType);
