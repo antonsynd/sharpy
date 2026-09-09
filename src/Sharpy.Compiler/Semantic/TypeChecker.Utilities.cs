@@ -2297,49 +2297,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Finds the least common ancestor (most specific common base type) of a list of types.
-    /// Returns SemanticType.Object if no more specific common ancestor exists.
-    /// Returns SemanticType.Unknown only if types list is empty.
-    /// </summary>
-    private SemanticType FindLeastCommonAncestor(List<SemanticType> types)
-    {
-        if (types.Count == 0)
-            return SemanticType.Unknown;
-        if (types.Count == 1)
-            return types[0];
-
-        // Get all ancestors of the first type (including itself)
-        var ancestorChain = GetTypeAncestorChain(types[0]);
-        if (ancestorChain.Count == 0)
-            return SemanticType.Object;
-
-        // For each subsequent type, find common ancestors
-        foreach (var type in types.Skip(1))
-        {
-            var typeAncestors = new HashSet<string>(
-                GetTypeAncestorChain(type).Select(t => GetTypeKey(t)));
-
-            // Filter ancestor chain to only include common ancestors
-            ancestorChain = ancestorChain
-                .Where(a => typeAncestors.Contains(GetTypeKey(a)))
-                .ToList();
-
-            if (ancestorChain.Count == 0)
-                return SemanticType.Object;
-        }
-
-        // Return the most specific common ancestor (first in chain)
-        return ancestorChain.First();
-    }
-
-    /// <summary>
-    /// Gets a unique key for a type to use in LCA comparison.
-    /// </summary>
-    private static string GetTypeKey(SemanticType type)
-    {
-        return type.CanonicalKey;
-    }
-
     /// <summary>
     /// Gets the inheritance chain for a type, from most specific to least specific.
     /// For UserDefinedType: [Type, BaseType, BaseType.BaseType, ..., object]

@@ -5,12 +5,16 @@ def main():
     conn = sqlite3.connect(":memory:")
     cur = conn.cursor()
     cur.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT, price REAL)")
-    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", ["apple", 1.5])
-    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", ["banana", 0.75])
-    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", ["cherry", 3.0])
+    params1: list[object] = ["apple", 1.5]
+    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", params1)
+    params2: list[object] = ["banana", 0.75]
+    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", params2)
+    params3: list[object] = ["cherry", 3.0]
+    cur.execute("INSERT INTO items (name, price) VALUES (?, ?)", params3)
     conn.commit()
     print(cur.lastrowid)
-    cur.execute("UPDATE items SET price = ? WHERE name = ?", [2.0, "banana"])
+    params4: list[object] = [2.0, "banana"]
+    cur.execute("UPDATE items SET price = ? WHERE name = ?", params4)
     conn.commit()
     print(cur.rowcount)
     cur.execute("SELECT name FROM items WHERE price > ? ORDER BY name", [1.0])

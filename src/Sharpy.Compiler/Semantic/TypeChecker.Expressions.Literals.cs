@@ -37,25 +37,6 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Guards against a <see cref="VoidType"/> collection element/value type, which arises when
-    /// every element is the <c>None</c> literal and no contextual element type was available
-    /// (e.g. bare <c>[None]</c>, <c>{None}</c>, <c>{"k": None}</c>). Emitting <c>List&lt;void&gt;</c>
-    /// produces invalid C#, so report <see cref="DiagnosticCodes.Semantic.CannotInferType"/> and fall
-    /// back to <see cref="SemanticType.Unknown"/>. Callers must apply any contextual-type resolution
-    /// before calling this, so a surviving <c>Void</c> is genuinely un-inferable (#950).
-    /// </summary>
-    private SemanticType ResolveVoidElementType(
-        SemanticType elementType, string collectionName, Expression node, string annotationHint)
-    {
-        if (elementType is not VoidType)
-            return elementType;
-
-        AddError(
-            $"Cannot infer element type from a {collectionName} of only 'None'; add a type annotation (e.g., {annotationHint})",
-            node.LineStart, node.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
-            span: node.Span);
-        return SemanticType.Unknown;
-    }
-
     private SemanticType CheckListLiteral(ListLiteral list)
     {
         if (list.Elements.Length == 0)
@@ -89,20 +70,21 @@ internal partial class TypeChecker
             }
         }
 
-        var elementTypes = elements.Select(e => e.Type).ToList();
-        var commonType = FindLeastCommonAncestor(elementTypes);
-
-        // When a contextual element type is available and every element is admitted by the store
-        // seam, record the expected type. This handles covariant assignments
-        // (list[Base] = [Derived()]), depth > 1 contextual inference (#1671), and every value shape
-        // the seam knows — an in-range constant, an unsuffixed float literal into list[float32], a
-        // literal-derived string into list[LiteralString] (#1698, #1688, #1731).
+        // Arm 1 (R-W): the contextual element type is the slot — if every element is admitted,
+        // adopt it. AdmitCollectionElements already calls ClassifyStore per element (#1671, #1698).
+        SemanticType commonType;
         if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
             && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
+        {
             commonType = elementExpectation;
-
-        commonType = ResolveVoidElementType(
-            commonType, BuiltinNames.List, list, "list[object]");
+        }
+        else
+        {
+            // Arms 2-3 (R-W): one element's type accepts all, or refuse by name.
+            commonType = BestCommonType(elements, null, StorePosition.CollectionElement,
+                list, "list element",
+                new BestCommonTypeOptions(AnnotateSteer: "'xs: list[T] = ...'"));
+        }
 
         return new GenericType
         {
@@ -151,22 +133,31 @@ internal partial class TypeChecker
             }
         }
 
-        var commonKeyType = FindLeastCommonAncestor(keys.Select(k => k.Type).ToList());
-        var commonValueType = FindLeastCommonAncestor(values.Select(v => v.Type).ToList());
-
-        // When a contextual key/value type is available and every element is admitted by the store
-        // seam, record the expected type (#1671, #1698).
+        SemanticType commonKeyType;
         if (keyExpectation != null && !ContainsTypeParameterType(keyExpectation)
             && AdmitCollectionElements(keys, keyExpectation) != ElementAdmissionResult.Refused)
+        {
             commonKeyType = keyExpectation;
+        }
+        else
+        {
+            commonKeyType = BestCommonType(keys, null, StorePosition.CollectionElement,
+                dict, "dict key",
+                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[K, V] = ...'"));
+        }
+
+        SemanticType commonValueType;
         if (valueExpectation != null && !ContainsTypeParameterType(valueExpectation)
             && AdmitCollectionElements(values, valueExpectation) != ElementAdmissionResult.Refused)
+        {
             commonValueType = valueExpectation;
-
-        commonKeyType = ResolveVoidElementType(
-            commonKeyType, BuiltinNames.Dict, dict, "dict[str, object]");
-        commonValueType = ResolveVoidElementType(
-            commonValueType, BuiltinNames.Dict, dict, "dict[str, object]");
+        }
+        else
+        {
+            commonValueType = BestCommonType(values, null, StorePosition.CollectionElement,
+                dict, "dict value",
+                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[K, V] = ...'"));
+        }
 
         return new GenericType
         {
@@ -208,14 +199,18 @@ internal partial class TypeChecker
             }
         }
 
-        var commonType = FindLeastCommonAncestor(elements.Select(e => e.Type).ToList());
-
+        SemanticType commonType;
         if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
             && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
+        {
             commonType = elementExpectation;
-
-        commonType = ResolveVoidElementType(
-            commonType, BuiltinNames.Set, set, "set[object]");
+        }
+        else
+        {
+            commonType = BestCommonType(elements, null, StorePosition.CollectionElement,
+                set, "set element",
+                new BestCommonTypeOptions(AnnotateSteer: "'s: set[T] = ...'"));
+        }
 
         return new GenericType
         {

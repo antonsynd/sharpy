@@ -306,20 +306,19 @@ internal partial class TypeChecker
                         // ancestor — not the first alternative's own type: binding `v` as `float`
                         // for `(float() as v) | (list() as v)` while the emitted `var v` is
                         // `object` gave CS1503 behind SPY0908 (#1663).
-                        var alternativeTypes = new List<SemanticType>();
+                        var altOperands = new List<(Expression? Node, SemanticType Type)>();
                         foreach (var alt in orPattern.Alternatives)
                         {
                             var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
                             var asAlt = (AsPattern)effectiveAlt;
                             CheckPattern(asAlt.Inner, scrutineeType);
-                            alternativeTypes.Add(
-                                _semanticInfo.GetPatternType(asAlt.Inner) ?? scrutineeType);
+                            altOperands.Add((null,
+                                _semanticInfo.GetPatternType(asAlt.Inner) ?? scrutineeType));
                         }
                         var firstAs = (AsPattern)(orPattern.Alternatives[0] is GuardPattern gp3
                             ? gp3.Inner : orPattern.Alternatives[0]);
-                        var joinedType = alternativeTypes.All(t => t.Equals(alternativeTypes[0]))
-                            ? alternativeTypes[0]
-                            : FindLeastCommonAncestor(alternativeTypes);
+                        var joinedType = BestCommonType(altOperands, scrutineeType,
+                            StorePosition.Declaration, orPattern, "or-pattern capture");
                         BindAsPatternCapture(firstAs, scrutineeType, capturedTypeOverride: joinedType);
                         break;
                     }

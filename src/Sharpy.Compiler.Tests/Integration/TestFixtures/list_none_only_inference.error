@@ -1,1 +1,1 @@
-Cannot infer element type from a list of only 'None' @4:9
+cannot infer a type for list element @4:9

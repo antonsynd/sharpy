@@ -300,7 +300,7 @@ internal partial class TypeChecker
     ///
     /// <para><c>dict(a=1, b=2)</c> is the one CPython supports: the keyword NAMES are the keys, so
     /// <c>K</c> is <c>str</c> by construction (a kwarg name is identifier-shaped) and <c>V</c>
-    /// unifies the value types through the same <see cref="FindLeastCommonAncestor"/> the equivalent
+    /// unifies the value types through the same <see cref="BestCommonType"/> the equivalent
     /// dict LITERAL uses. That is the pin for mixed values: <c>dict(a=1, b="x")</c> gives
     /// <c>dict[str, object]</c> because <c>{"a": 1, "b": "x"}</c> already does, and the two spellings
     /// of one construct must not disagree. (CPython is dynamically typed and has no static answer to
@@ -338,18 +338,37 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var valueTypes = new List<SemanticType>();
+        SemanticType? valueExpectation = null;
+        if (_expectedType is GenericType { Name: BuiltinNames.Dict, TypeArguments.Count: 2 } expectedDict)
+            valueExpectation = expectedDict.TypeArguments[1];
+
+        var values = new List<(Expression? Node, SemanticType Type)>();
         foreach (var kwarg in call.KeywordArguments)
         {
-            valueTypes.Add(kwargTypes.TryGetValue(kwarg.Name, out var recorded)
+            var type = kwargTypes.TryGetValue(kwarg.Name, out var recorded)
                 ? recorded
-                : CheckExpression(kwarg.Value));
+                : CheckExpression(kwarg.Value);
+            values.Add((kwarg.Value, type));
+        }
+
+        // Arm 1: if all values fit the contextual dict's value type, adopt it.
+        SemanticType commonValueType;
+        if (valueExpectation != null && !ContainsTypeParameterType(valueExpectation)
+            && AdmitCollectionElements(values, valueExpectation) != ElementAdmissionResult.Refused)
+        {
+            commonValueType = valueExpectation;
+        }
+        else
+        {
+            commonValueType = BestCommonType(values, null, StorePosition.CollectionElement,
+                call, "dict value",
+                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[str, V] = ...'"));
         }
 
         return new GenericType
         {
             Name = BuiltinNames.Dict,
-            TypeArguments = new List<SemanticType> { SemanticType.Str, FindLeastCommonAncestor(valueTypes) }
+            TypeArguments = new List<SemanticType> { SemanticType.Str, commonValueType }
         };
     }
 
