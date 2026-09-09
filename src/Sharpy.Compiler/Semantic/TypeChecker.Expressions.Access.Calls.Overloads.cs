@@ -30,7 +30,36 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// A candidate's FIRST rejected argument — the index, the (substituted) parameter type it was
+    /// Identifies a call-site argument by its positional ordinal, its keyword name, or both.
+    /// Positional-only arguments carry <see cref="Ordinal"/> and null <see cref="Keyword"/>;
+    /// keyword-only arguments carry null <see cref="Ordinal"/> and a non-null <see cref="Keyword"/>.
+    /// </summary>
+    internal readonly record struct ArgumentRef(int? Ordinal, string? Keyword)
+    {
+        /// <summary>Whether two refs name the same call-site argument.</summary>
+        public bool SameArgument(ArgumentRef other) =>
+            (Ordinal != null && Ordinal == other.Ordinal) || (Keyword != null && Keyword == other.Keyword);
+    }
+
+    /// <summary>
+    /// One argument bound to one candidate's slot: the call-site reference, the AST node (null for
+    /// defaulted parameters), the argument's type, and the candidate's formal type at that slot.
+    /// </summary>
+    internal sealed record BoundArgument(
+        ArgumentRef Ref, Expression? Node, SemanticType ArgType, SemanticType Formal);
+
+    /// <summary>
+    /// A full binding of all call-site arguments to one candidate's parameter slots. When
+    /// <see cref="InapplicableReason"/> is non-null the candidate was filtered out during the
+    /// keyword-name check (the old keyword filter) and does not participate in the type pass.
+    /// </summary>
+    internal sealed record CandidateBinding(
+        FunctionSymbol Candidate,
+        IReadOnlyList<BoundArgument> Arguments,
+        string? InapplicableReason);
+
+    /// <summary>
+    /// A candidate's FIRST rejected argument — the ref, the (substituted) parameter type it was
     /// measured against, and the reason.
     ///
     /// <para>Recorded inside <see cref="ResolveOverloadCore"/>, at the point the candidate is
@@ -40,7 +69,7 @@ internal partial class TypeChecker
     /// rejected them (#1775).</para>
     /// </summary>
     internal readonly record struct OverloadCandidateFailure(
-        int ArgIndex, SemanticType Expected, OverloadFailureKind Kind);
+        ArgumentRef Ref, SemanticType Expected, OverloadFailureKind Kind);
 
     /// <summary>
     /// The outcome of one overload resolution: the chosen candidate (or null), the arity-surviving
@@ -221,6 +250,91 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Builds a <see cref="CandidateBinding"/> that maps every call-site argument (positional AND
+    /// keyword) to one candidate's parameter slots (#1810). Returns a binding whose
+    /// <see cref="CandidateBinding.InapplicableReason"/> is non-null when the candidate cannot
+    /// accept this call's argument vector at all (an unmatched keyword, a keyword naming a
+    /// positionally-filled slot, etc.).
+    ///
+    /// <para>Defaulted parameters produce no <see cref="BoundArgument"/> — they do not participate
+    /// in applicability or betterness, only in the post-selection binding pass.</para>
+    /// </summary>
+    private CandidateBinding BindCandidate(
+        FunctionSymbol candidate, OverloadResolutionContext context)
+    {
+        var selfOffset = ReceiverOffsetOf(candidate, context);
+        var parameters = candidate.Parameters;
+        var variadic = parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+        var arguments = new List<BoundArgument>();
+
+        // Track which parameter indices are filled by positional arguments.
+        var filledParamIndices = new HashSet<int>();
+
+        // --- Positional arguments ---
+        for (int i = 0; i < context.ArgTypes.Count; i++)
+        {
+            var paramIdx = i + selfOffset;
+            SemanticType formal;
+            if (paramIdx < parameters.Count && !parameters[paramIdx].IsVariadic)
+            {
+                formal = parameters[paramIdx].Type;
+                filledParamIndices.Add(paramIdx);
+            }
+            else if (variadic != null)
+            {
+                formal = variadic.Type;
+            }
+            else
+            {
+                return new CandidateBinding(candidate, arguments,
+                    $"Too many positional arguments (expected {parameters.Count - selfOffset})");
+            }
+
+            if (context.TypeSubstitution != null)
+                formal = context.TypeSubstitution(formal);
+
+            var argNode = ArgumentNodeAt(context.Call, i);
+            arguments.Add(new BoundArgument(
+                new ArgumentRef(Ordinal: i, Keyword: null), argNode, context.ArgTypes[i], formal));
+        }
+
+        // --- Keyword arguments ---
+        if (context.KwargTypes is { } kwargTypes && context.Call?.KeywordArguments.Length > 0)
+        {
+            var paramsAfterSelf = parameters.Skip(selfOffset).ToList();
+            foreach (var kwarg in context.Call.KeywordArguments)
+            {
+                if (!kwargTypes.TryGetValue(kwarg.Name, out var kwargType))
+                    continue;
+
+                var param = FindKeywordParameter(paramsAfterSelf, kwarg.Name);
+                if (param == null)
+                    return new CandidateBinding(candidate, arguments,
+                        $"No parameter named '{kwarg.Name}'");
+
+                // Check if the matched parameter's index was already filled positionally.
+                var matchedParamIdx = parameters.IndexOf(param);
+                if (matchedParamIdx >= 0 && filledParamIndices.Contains(matchedParamIdx))
+                    return new CandidateBinding(candidate, arguments,
+                        $"Parameter '{param.Name}' is already filled by a positional argument");
+
+                if (param.IsPositionalOnly)
+                    return new CandidateBinding(candidate, arguments,
+                        $"Parameter '{param.Name}' is positional-only");
+
+                var formal = param.Type;
+                if (context.TypeSubstitution != null)
+                    formal = context.TypeSubstitution(formal);
+
+                arguments.Add(new BoundArgument(
+                    new ArgumentRef(Ordinal: null, Keyword: kwarg.Name), kwarg.Value, kwargType, formal));
+            }
+        }
+
+        return new CandidateBinding(candidate, arguments, InapplicableReason: null);
+    }
+
+    /// <summary>
     /// Core overload resolution shared by every route that selects among overloads: the pure
     /// selection (<see cref="SelectOverload"/>), then — when a call node is in hand and one
     /// candidate won — the binding of that call's arguments to the WINNER's slots
@@ -266,12 +380,7 @@ internal partial class TypeChecker
     private void BindArgumentsToSelectedOverload(
         OverloadResolutionContext context, FunctionCall call, FunctionSymbol match, bool overloaded)
     {
-        var selfOffset = ReceiverOffsetOf(match, context);
-        var variadic = match.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
         string? calleeDisplay = null;
-
-        SemanticType Substituted(SemanticType formal)
-            => context.TypeSubstitution != null ? context.TypeSubstitution(formal) : formal;
 
         SemanticType Bind(
             StorePosition position, Expression argument, SemanticType argType, SemanticType formal,
@@ -280,7 +389,6 @@ internal partial class TypeChecker
             if (_probedSlotArguments.Remove(argument))
             {
                 calleeDisplay ??= CalleeDisplayName(UnwrapParenthesized(call.Function));
-                // CheckExpression memoizes per node; forget the probe or the re-check returns it.
                 _semanticInfo.ClearExpressionType(argument);
                 using (EnterStore(position, formal, argument, calleeDisplay: calleeDisplay,
                            argumentOrdinal: argumentOrdinal, keywordName: keywordName))
@@ -298,34 +406,26 @@ internal partial class TypeChecker
             return argType;
         }
 
-        if (!call.Arguments.Any(a => a is SpreadElement))
-        {
-            for (int i = 0; i < context.ArgTypes.Count && i < call.Arguments.Length; i++)
-            {
-                var paramIdx = i + selfOffset;
-                var formal = paramIdx < match.Parameters.Count && !match.Parameters[paramIdx].IsVariadic
-                    ? match.Parameters[paramIdx].Type
-                    : variadic?.Type;
-                if (formal == null)
-                    continue;
+        var binding = BindCandidate(match, context);
+        var hasSpread = call.Arguments.Any(a => a is SpreadElement);
 
-                context.ArgTypes[i] = Bind(StorePosition.ArgumentPositional, call.Arguments[i],
-                    context.ArgTypes[i], Substituted(formal), argumentOrdinal: i + 1, keywordName: null);
+        foreach (var bound in binding.Arguments)
+        {
+            if (bound.Node == null)
+                continue;
+
+            if (bound.Ref.Keyword is { } keyword)
+            {
+                if (context.KwargTypes is { } kwargTypes && kwargTypes.TryGetValue(keyword, out _))
+                {
+                    kwargTypes[keyword] = Bind(StorePosition.ArgumentKeyword, bound.Node, bound.ArgType,
+                        bound.Formal, argumentOrdinal: null, keywordName: keyword);
+                }
             }
-        }
-
-        if (context.KwargTypes is { } kwargTypes && call.KeywordArguments.Length > 0)
-        {
-            var parameters = match.Parameters.Skip(selfOffset).ToList();
-            foreach (var kwarg in call.KeywordArguments)
+            else if (bound.Ref.Ordinal is { } ordinal && !hasSpread)
             {
-                if (!kwargTypes.TryGetValue(kwarg.Name, out var kwargType))
-                    continue;
-                if (FindKeywordParameter(parameters, kwarg.Name) is not { } param)
-                    continue;
-
-                kwargTypes[kwarg.Name] = Bind(StorePosition.ArgumentKeyword, kwarg.Value, kwargType,
-                    Substituted(param.Type), argumentOrdinal: null, keywordName: kwarg.Name);
+                context.ArgTypes[ordinal] = Bind(StorePosition.ArgumentPositional, bound.Node, bound.ArgType,
+                    bound.Formal, argumentOrdinal: ordinal + 1, keywordName: null);
             }
         }
     }
@@ -350,93 +450,52 @@ internal partial class TypeChecker
             return context.TotalArgCount >= requiredParams && context.TotalArgCount <= totalParams;
         }).ToList();
 
-        // Filter by keyword argument names: exclude overloads where
-        // (a) any keyword arg name has no matching parameter, or
-        // (b) the positional arg count doesn't cover the remaining required params
-        //     after removing keyword-satisfied ones.
-        // This disambiguates calls like merge(a, b, reverse=True) between a params
-        // overload and one with a named 'reverse' parameter.
-        // Name matching uses the same two arms as FindKeywordParameter — verbatim, then the
-        // camel-cased spelling of a snake-written kwarg — so a Python-spelled kwarg selects
-        // among CLR overloads (verbatim camelCase names) the same way validation later reads
-        // the selected one (#1591).
+        // Build a CandidateBinding for every arity survivor. Candidates whose binding is
+        // inapplicable (an unmatched keyword, a keyword naming a positionally-filled slot, etc.)
+        // are filtered out — replacing the old keyword-name filter. The "fall through when nothing
+        // survives" preserves existing error reporting for unknown keyword arguments (#1810).
+        var candidateBindings = new Dictionary<FunctionSymbol, CandidateBinding>(
+            ReferenceEqualityComparer.Instance);
         if (context.KeywordArgNames is { Count: > 0 })
         {
-            var positionalArgCount = context.TotalArgCount - context.KeywordArgNames.Count;
-            var kwFiltered = arityCandidates.Where(o =>
+            var kwApplicable = new List<FunctionSymbol>();
+            foreach (var o in arityCandidates)
             {
-                var selfOffset = GetSelfOffset(o);
-                var paramsAfterSelf = o.Parameters.Skip(selfOffset).ToList();
-                var paramNames = paramsAfterSelf.Select(p => p.Name).ToHashSet();
-                bool HasParameterFor(string kw) =>
-                    paramNames.Contains(kw) || paramNames.Contains(NameMangler.ToCamelCase(kw));
+                var binding = BindCandidate(o, context);
+                candidateBindings[o] = binding;
+                if (binding.InapplicableReason == null)
+                    kwApplicable.Add(o);
+            }
 
-                // Every keyword arg must have a matching parameter name
-                if (!context.KeywordArgNames.All(HasParameterFor))
-                    return false;
-
-                // For non-variadic overloads, verify that positional args cover
-                // exactly the required parameters NOT supplied by keyword args.
-                if (!paramsAfterSelf.Any(p => p.IsVariadic))
-                {
-                    var kwSet = context.KeywordArgNames
-                        .SelectMany(kw => new[] { kw, NameMangler.ToCamelCase(kw) })
-                        .ToHashSet();
-                    var nonKwRequired = paramsAfterSelf
-                        .Where(p => !p.HasDefault && !kwSet.Contains(p.Name))
-                        .Count();
-                    var nonKwTotal = paramsAfterSelf
-                        .Where(p => !kwSet.Contains(p.Name))
-                        .Count();
-                    if (positionalArgCount < nonKwRequired || positionalArgCount > nonKwTotal)
-                        return false;
-                }
-
-                return true;
-            }).ToList();
-
-            // Only apply the filter if it leaves at least one candidate;
-            // otherwise fall through to normal resolution so existing error
-            // reporting (unknown keyword argument) kicks in.
-            if (kwFiltered.Count > 0)
-                arityCandidates = kwFiltered;
+            if (kwApplicable.Count > 0)
+                arityCandidates = kwApplicable;
         }
 
-        // Second pass: check type compatibility
+        // Second pass: check type compatibility using each candidate's binding.
         var matchingOverloads = new List<FunctionSymbol>();
         var candidateFailures = new List<OverloadCandidateFailure>();
         foreach (var overload in arityCandidates)
         {
-            var selfOffset = GetSelfOffset(overload);
+            if (!candidateBindings.TryGetValue(overload, out var binding))
+            {
+                binding = BindCandidate(overload, context);
+                candidateBindings[overload] = binding;
+            }
+
+            if (binding.InapplicableReason != null)
+            {
+                matchingOverloads.Add(overload);
+                continue;
+            }
+
             bool typesMatch = true;
             OverloadCandidateFailure? firstFailure = null;
-            var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
 
-            for (int i = 0; i < context.ArgTypes.Count; i++)
+            foreach (var bound in binding.Arguments)
             {
-                var argNode = ArgumentNodeAt(context.Call, i);
-                SemanticType expectedType;
-                var paramIdx = i + selfOffset;
-                if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
-                {
-                    expectedType = overload.Parameters[paramIdx].Type;
-                }
-                else if (variadicParam != null)
-                {
-                    expectedType = variadicParam.Type;
-                }
-                else
-                {
-                    typesMatch = false;
-                    firstFailure = new OverloadCandidateFailure(
-                        i, SemanticType.Unknown, OverloadFailureKind.Variadic);
-                    break;
-                }
+                var expectedType = bound.Formal;
 
-                if (context.TypeSubstitution != null)
-                    expectedType = context.TypeSubstitution(expectedType);
-
-                if (context.SkipUnknownTypes && (expectedType is UnknownType || context.ArgTypes[i] is UnknownType))
+                if (context.SkipUnknownTypes && (expectedType is UnknownType || bound.ArgType is UnknownType))
                     continue;
 
                 // Type parameters act as wildcards during overload resolution —
@@ -446,22 +505,13 @@ internal partial class TypeChecker
 
                 if (ContainsTypeParameter(expectedType))
                 {
-                    // For parameterized generics (e.g., list[T], list[list[T]]), the
-                    // argument must structurally match the expected shape (same outer
-                    // name/arity, recursively), with bare type parameters acting as
-                    // wildcards only at their own position. Without the recursion a flat
-                    // list[int] would wildcard-match a nested list[list[T]] (the inner
-                    // int absorbed into T), tying two generic overloads (#957); the outer
-                    // name check also keeps list[int] from matching array[T] (#954).
-                    // A projected argument (one in an iterable position, #1159, #1198) is
-                    // shape-matched on the type codegen will pass as well as on its own.
-                    if (!ArgMatchesGenericShape(context.ArgTypes[i], expectedType)
-                        && !(ProjectedArgumentType(argNode) is { } projectedArg
+                    if (!ArgMatchesGenericShape(bound.ArgType, expectedType)
+                        && !(ProjectedArgumentType(bound.Node) is { } projectedArg
                              && ArgMatchesGenericShape(projectedArg, expectedType)))
                     {
                         typesMatch = false;
                         firstFailure = new OverloadCandidateFailure(
-                            i, expectedType, OverloadFailureKind.GenericShape);
+                            bound.Ref, expectedType, OverloadFailureKind.GenericShape);
                         break;
                     }
                     continue;
@@ -470,18 +520,19 @@ internal partial class TypeChecker
                 // §10.2.11 constant conversions participate in applicability; the resulting ties
                 // are broken by identity-match → better-conversion-target → signed-beats-unsigned
                 // in IsMoreSpecificOverload (#1464).
-                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode, allowConstantConversion: true))
+                if (!IsArgumentAssignable(bound.ArgType, expectedType, bound.Node, allowConstantConversion: true))
                 {
                     if (IsSystemTypeParameter(expectedType)
+                        && bound.Ref.Ordinal is { } ordinal
                         && context.Call != null
-                        && i < context.Call.Arguments.Length
-                        && _semanticInfo.IsTypeReference(context.Call.Arguments[i]))
+                        && ordinal < context.Call.Arguments.Length
+                        && _semanticInfo.IsTypeReference(context.Call.Arguments[ordinal]))
                     {
                         continue;
                     }
                     typesMatch = false;
                     firstFailure = new OverloadCandidateFailure(
-                        i, expectedType, OverloadFailureKind.Type);
+                        bound.Ref, expectedType, OverloadFailureKind.Type);
                     break;
                 }
             }
@@ -517,7 +568,7 @@ internal partial class TypeChecker
             // Specificity tiebreaker: prefer the overload whose parameter types are
             // strictly more specific (e.g., list[int] beats IEnumerable<int>).
             // Follows C#'s "better function member" rule (§12.6.4.3).
-            var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context);
+            var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context, candidateBindings);
             if (specificityWinner != null)
                 return new OverloadResolution(specificityWinner, arityCandidates, false, candidateFailures);
 
@@ -545,44 +596,40 @@ internal partial class TypeChecker
     /// (e.g., <c>list[int]</c> is more specific than <c>IEnumerable&lt;int&gt;</c>).
     /// Mirrors C#'s "better function member" rule (§12.6.4.3).
     /// </summary>
-    private bool IsMoreSpecificOverload(FunctionSymbol a, FunctionSymbol b, OverloadResolutionContext context)
+    private bool IsMoreSpecificOverload(
+        FunctionSymbol a, FunctionSymbol b, OverloadResolutionContext context,
+        Dictionary<FunctionSymbol, CandidateBinding> bindings)
     {
-        int SelfOffset(FunctionSymbol o) => ReceiverOffsetOf(o, context);
-
-        var selfOffsetA = SelfOffset(a);
-        var selfOffsetB = SelfOffset(b);
-        var variadicA = a.Parameters.Skip(selfOffsetA).FirstOrDefault(p => p.IsVariadic);
-        var variadicB = b.Parameters.Skip(selfOffsetB).FirstOrDefault(p => p.IsVariadic);
+        var bindingA = bindings[a];
+        var bindingB = bindings[b];
 
         bool hasStrictlyBetter = false;
 
-        for (int i = 0; i < context.ArgTypes.Count; i++)
+        var selfOffsetA = ReceiverOffsetOf(a, context);
+        var selfOffsetB = ReceiverOffsetOf(b, context);
+
+        foreach (var boundA in bindingA.Arguments)
         {
-            SemanticType GetParamType(FunctionSymbol o, int selfOff, ParameterSymbol? variadic)
-            {
-                var paramIdx = i + selfOff;
-                if (paramIdx < o.Parameters.Count && !o.Parameters[paramIdx].IsVariadic)
-                    return o.Parameters[paramIdx].Type;
-                if (variadic != null)
-                    return variadic.Type;
-                return SemanticType.Unknown;
-            }
+            var paramTypeA = boundA.Formal;
 
-            var paramTypeA = GetParamType(a, selfOffsetA, variadicA);
-            var paramTypeB = GetParamType(b, selfOffsetB, variadicB);
-
-            if (context.TypeSubstitution != null)
+            // Find the corresponding formal in B's binding by matching the argument ref.
+            BoundArgument? correspondingB = null;
+            foreach (var boundB in bindingB.Arguments)
             {
-                paramTypeA = context.TypeSubstitution(paramTypeA);
-                paramTypeB = context.TypeSubstitution(paramTypeB);
+                if (boundA.Ref.SameArgument(boundB.Ref))
+                {
+                    correspondingB = boundB;
+                    break;
+                }
             }
+            var paramTypeB = correspondingB?.Formal ?? SemanticType.Unknown;
 
             // §12.6.4.6: if the argument's natural type exactly matches one parameter
             // type but not the other, the matching type is strictly better. This is
             // what makes f(byte)/f(int) called with an int literal pick f(int) — the
             // argument type IS int, so identity wins over the constant conversion to
             // byte (#1464, measured C# verdict Case 4).
-            var argType = context.ArgTypes[i];
+            var argType = boundA.ArgType;
             bool aMatchesExact = paramTypeA.Equals(argType);
             bool bMatchesExact = paramTypeB.Equals(argType);
             if (aMatchesExact && !bMatchesExact)
@@ -595,8 +642,10 @@ internal partial class TypeChecker
             // and Sharpy.List<T> both to list[T]).
             if (paramTypeA.Equals(paramTypeB))
             {
-                var clrTypeA = ResolveClrParameterType(a, i + selfOffsetA, paramTypeA);
-                var clrTypeB = ResolveClrParameterType(b, i + selfOffsetB, paramTypeB);
+                var paramIdxA = boundA.Ref.Ordinal is { } ordA ? ordA + selfOffsetA : -1;
+                var paramIdxB = correspondingB?.Ref.Ordinal is { } ordB ? ordB + selfOffsetB : -1;
+                var clrTypeA = paramIdxA >= 0 ? ResolveClrParameterType(a, paramIdxA, paramTypeA) : null;
+                var clrTypeB = paramIdxB >= 0 ? ResolveClrParameterType(b, paramIdxB, paramTypeB) : null;
                 if (clrTypeA != null && clrTypeB != null && clrTypeA != clrTypeB)
                 {
                     if (clrTypeB.IsAssignableFrom(clrTypeA) && !clrTypeA.IsAssignableFrom(clrTypeB))
@@ -612,20 +661,14 @@ internal partial class TypeChecker
 
             if (aToB && !bToA)
             {
-                // A's parameter is strictly more specific at this position.
                 hasStrictlyBetter = true;
             }
             else if (bToA && !aToB)
             {
-                // A's parameter is strictly less specific at this position — A cannot win.
                 return false;
             }
             else if (IsMoreSpecificType(paramTypeA, paramTypeB))
             {
-                // Assignability is neutral (e.g. list[T] vs list[list[T]] under open type
-                // parameters), but A is structurally more specific (C# §12.6.4.4: a type
-                // parameter is less specific than a structured type). This lets
-                // Array(list[list[T]]) win over Array(list[T]) for a nested literal (#957).
                 hasStrictlyBetter = true;
             }
             else if (IsMoreSpecificType(paramTypeB, paramTypeA))
@@ -642,7 +685,6 @@ internal partial class TypeChecker
             {
                 return false;
             }
-            // Both assignable or neither, and structurally equal: no preference here.
         }
 
         return hasStrictlyBetter;

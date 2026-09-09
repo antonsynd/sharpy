@@ -1911,7 +1911,9 @@ internal partial class TypeChecker
     /// candidates (the "best" function member).  Returns <see langword="null"/> if no single
     /// candidate dominates or if the list has fewer than two entries.
     /// </summary>
-    private FunctionSymbol? FindMostSpecificOverload(List<FunctionSymbol> candidates, OverloadResolutionContext context)
+    private FunctionSymbol? FindMostSpecificOverload(
+        List<FunctionSymbol> candidates, OverloadResolutionContext context,
+        Dictionary<FunctionSymbol, CandidateBinding> bindings)
     {
         if (candidates.Count < 2)
             return null;
@@ -1924,7 +1926,7 @@ internal partial class TypeChecker
             {
                 if (ReferenceEquals(candidate, other))
                     continue;
-                if (!IsMoreSpecificOverload(candidate, other, context))
+                if (!IsMoreSpecificOverload(candidate, other, context, bindings))
                 {
                     beatsAll = false;
                     break;
@@ -2385,13 +2387,15 @@ internal partial class TypeChecker
         if (candidateFailures.Any(f => f.Kind != OverloadFailureKind.Type))
             return false;
 
-        var argIndex = candidateFailures[0].ArgIndex;
-        if (candidateFailures.Any(f => f.ArgIndex != argIndex))
-            return false;
-        if (argIndex >= argTypes.Count)
+        var firstRef = candidateFailures[0].Ref;
+        if (candidateFailures.Any(f => !f.Ref.SameArgument(firstRef)))
             return false;
 
-        var failedArgType = argTypes[argIndex];
+        SemanticType failedArgType;
+        if (firstRef.Ordinal is { } argIndex && argIndex < argTypes.Count)
+            failedArgType = argTypes[argIndex];
+        else
+            return false;
         if (failedArgType is UnknownType)
             return false;
 
@@ -6972,7 +6976,7 @@ internal partial class TypeChecker
                     if (vocabularyRefused && !ps[i].ParameterType.IsByRef)
                     {
                         recorded.Add(new OverloadCandidateFailure(
-                            i,
+                            new ArgumentRef(Ordinal: i, Keyword: null),
                             MapClrParameterType(ps[i]) ?? SemanticType.Unknown,
                             OverloadFailureKind.Type));
                     }
