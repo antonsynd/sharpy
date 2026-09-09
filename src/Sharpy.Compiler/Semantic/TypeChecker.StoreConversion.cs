@@ -28,12 +28,24 @@ internal partial class TypeChecker
         int? ArgumentOrdinal,
         string? KeywordName,
         string? OperatorSymbol = null,
-        string? OperatorDunder = null)
+        string? OperatorDunder = null,
+        Expression? ValueNode = null)
     {
         /// <summary>Whether this push is a call argument, the only context that names a callee.</summary>
         public bool IsArgument
             => Position is StorePosition.ArgumentPositional or StorePosition.ArgumentKeyword
                 && CalleeDisplay != null;
+
+        /// <summary>
+        /// Whether <paramref name="expr"/> is the direct operand of this store — the value node
+        /// <see cref="EnterStore"/> was given, unwrapped through parentheses. A fresh walrus under
+        /// a direct store slot takes the slot's type (R-AE); an indirect walrus (operand of `or`,
+        /// nested in a call) does not (#1812).
+        /// </summary>
+        public bool IsDirectOperand(Expression expr)
+            => ValueNode != null
+                && ReferenceEquals(Shared.AstHelper.UnwrapParenthesized(ValueNode),
+                    Shared.AstHelper.UnwrapParenthesized(expr));
     }
 
     internal enum StorePosition
@@ -640,7 +652,8 @@ internal partial class TypeChecker
             _ => _parameterTypedArgument,
         };
         _storeContext = new StoreContext(
-            position, targetType, calleeDisplay, argumentOrdinal, keywordName, operatorSymbol, operatorDunder);
+            position, targetType, calleeDisplay, argumentOrdinal, keywordName, operatorSymbol, operatorDunder,
+            valueNode);
 
         return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
     }
