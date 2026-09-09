@@ -126,7 +126,20 @@ struct Bad:
     y: int         # Error: cannot follow a field with a default value
 ```
 
-The compiler auto-generates a constructor with optional parameters for fields that have defaults.
+The compiler auto-generates a constructor with optional parameters for fields that have defaults. Constant fields (`const`) are excluded from the constructor — they are neither parameters nor assignments:
+
+```python
+struct Point:
+    x: float
+    y: float
+    const DIMENSIONS: int = 2
+
+p = Point(2.0, 5.0)  # const is not a parameter
+print(p.x)            # 2
+print(Point.DIMENSIONS)  # 2
+q = Point()           # parameterless: zero-initialized instance fields
+print(q.x)            # 0
+```
 
 **When to Use Structs:**
 - Small data structures (typically < 16 bytes)

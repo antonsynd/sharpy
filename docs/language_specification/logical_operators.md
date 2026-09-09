@@ -24,9 +24,12 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 | `T?` (nullable) | `x != null` | `None` |
 | UDT with `__bool__` | `x.IsTrue` | implementation-defined |
 | UDT with `__len__` | `((ISized)x).Count > 0` | empty |
+| conditional (`x if c else y`) | distributed: `c ? truth(x) : truth(y)` | per-branch |
 | objects, functions, delegates | **refused** (SPY0220) | no falsy case |
 
 **Deviation from Python:** Python makes objects without `__bool__`/`__len__` vacuously truthy. Sharpy refuses them — the check can never do anything useful.
+
+A conditional expression in a truthiness position distributes the test per branch (`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the branches need not share a common type.
 
 ## Return Type
 

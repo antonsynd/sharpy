@@ -66,6 +66,29 @@ def main() -> None:
 2
 ```
 
+**Fresh Walrus Under a Slot (R-AE):**
+
+A fresh walrus (one that creates a new binding) directly under a store slot takes the slot's type. Without a slot, a bare `None` walrus is refused — `None` has no type on its own:
+
+```python
+def g(s: str | None):
+    print(s)
+
+g((q := None))  # q takes str | None from the parameter slot
+print(q)        # None
+```
+
+```
+None
+None
+```
+
+A fresh walrus whose value is a void call (a function that returns nothing) is always refused:
+
+```python
+x = (q := print("hi"))  # error: produces no value
+```
+
 **Type Inference Only:**
 
 The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):

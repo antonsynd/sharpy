@@ -108,7 +108,17 @@ The lexer maintains a stack of modes to handle f-string parsing:
 
 **Nesting depth limit:** The lexer should support at least 3 levels of f-string nesting. Deeper nesting is rarely needed and may be limited for implementation simplicity.
 
+## Interpolation Hole Type
+
+Each interpolation hole in an f-string is typed as an `object` slot. This means any expression is accepted in a hole, including conditional expressions with unrelated branch types:
+
+```python
+c = True
+print(f"{Dog() if c else Cat()}")  # OK — both branches admitted to object
+```
+
 *Implementation*
 - *✅ Native - Maps to C# interpolated strings `$"..."`.*
 - *Nested f-strings require lexer mode stack.*
 - *C# interpolated strings support similar nesting via `$"outer {$"inner"} outer"`.*
+- *Each hole pushes `StorePosition.FStringHole` with slot `object`.*

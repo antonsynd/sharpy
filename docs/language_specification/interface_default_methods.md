@@ -118,6 +118,7 @@ With default implementations available in interfaces, the choice between interfa
 | Feature | Interface | Abstract Class |
 |---------|-----------|----------------|
 | Fields (state) | ❌ Cannot have fields | ✅ Can have fields |
+| Constants | ✅ `const` (C# 8.0+) | ✅ `const` |
 | Multiple inheritance | ✅ A class can implement multiple interfaces | ❌ A class can only extend one class |
 | Constructors | ❌ No constructors | ✅ Can have constructors |
 | Access modifiers on members | ❌ All members implicitly public | ✅ Can have protected/private members |

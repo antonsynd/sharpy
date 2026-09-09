@@ -54,6 +54,36 @@ item: str = items[0]        # "a"
 item: str = items[99]       # IndexError
 ```
 
+## Element Type of a Literal
+
+When a collection literal has no typed slot to direct it, the element type is decided by best-common-type (R-W):
+
+1. **Slot-directed:** when the literal is stored into a typed slot, each element is admitted against the slot's element type individually. This is the common case.
+   ```python
+   xs: list[float] = [1, 2.5]    # both admitted to float
+   d: dict[str, object] = {"a": 1, "b": "x"}  # values admitted to object
+   ```
+
+2. **One-accepts-all:** without a slot, if one element's type accepts all others, that type is the result:
+   ```python
+   xs = [1, 2.5]    # list[float] — int literal converts to float
+   ys = [Dog(), Animal()]  # list[Animal] — Dog is assignable to Animal
+   ```
+
+3. **Refuse by name:** if no element type accepts all others, the compiler refuses:
+   ```python
+   xs = [1, "a"]    # error: no best common type ('int', 'str') — annotate: 'xs: list[object] = ...'
+   ```
+
+**`None` is untyped (R-AB):** a bare `None` in a slot-less literal triggers an arm-3 refusal:
+```python
+xs = [None, 1]    # error: no best common type ('None', 'int') — annotate: 'xs: list[int | None] = ...'
+```
+
+Under a slot, `None` is admitted normally: `xs: list[int | None] = [None, 1]` prints `[None, 1]`.
+
+Tuple literals are per-index — each element is its own seam, so `(None, 1)` refuses at the `None` index while `(Dog(), Cat())` types as `tuple[Dog, Cat]`.
+
 ## Set and Frozenset Operators
 
 `set[T]` and `frozenset[T]` support the same four set operations and the same four subset/superset

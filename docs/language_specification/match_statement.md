@@ -169,7 +169,7 @@ if condition:
 
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*
-- *Or-patterns use C# `or` pattern (`BinaryPattern`). A name bound on only some alternatives is rejected (SPY0359): `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern.*
+- *Or-patterns use C# `or` pattern (`BinaryPattern`). A name bound on only some alternatives is rejected (SPY0359): `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern. The `as` capture is typed through best-common-type with the scrutinee type as the slot, so `case float() | list() as v:` over an `object` scrutinee types `v` as `object`.*
 - *Relational patterns use C# `RelationalPattern` and require numeric scrutinee types.*
 - *Positional patterns are mapped to property patterns using field declaration order (no `Deconstruct` required).*
 

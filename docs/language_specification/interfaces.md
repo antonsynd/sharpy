@@ -284,6 +284,26 @@ See [Context Managers](context_managers.md) for the full protocol, including the
 - *Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
 - *Protocol interfaces (`ISized`, `IBoolConvertible`, `IReverseEnumerable<T>`) are implicitly synthesized by the emitter.*
 
+## Constants
+
+Interfaces can declare compile-time constants, accessed through the interface name:
+
+```python
+interface IConfig:
+    const VERSION: int = 1
+
+class App(IConfig):
+    def show(self):
+        print(IConfig.VERSION)
+
+def main():
+    app = App()
+    app.show()       # 1
+    print(IConfig.VERSION)  # 1
+```
+
+A constant whose initializer is a compile-time expression (`int`, `str`, `float`, `bool` literal or a `const` reference) emits a C# `const`; a non-constant initializer (e.g. a function call) emits `static readonly`. Non-const interface fields remain properties.
+
 ## See Also
 
 - [Generic Variance](generic_variance.md) — Covariance (`out`) and contravariance (`in`) on interface type parameters

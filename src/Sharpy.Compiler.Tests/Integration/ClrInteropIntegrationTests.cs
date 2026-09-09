@@ -71,7 +71,8 @@ def main():
     conn = sqlite3.connect("":memory:"")
     cur = conn.cursor()
     cur.execute(""CREATE TABLE t (a TEXT, b INTEGER)"")
-    cur.execute(""INSERT INTO t VALUES (?, ?)"", [""Alice"", 30])
+    params1: list[object] = [""Alice"", 30]
+    cur.execute(""INSERT INTO t VALUES (?, ?)"", params1)
     conn.commit()
     cur.execute(""SELECT COUNT(*) FROM t"")
     rows = cur.fetchall()
@@ -93,7 +94,7 @@ def main():
     conn = sqlite3.connect("":memory:"")
     cur = conn.cursor()
     cur.execute(""CREATE TABLE t (name TEXT, score INTEGER)"")
-    data = [[""Alice"", 95], [""Bob"", 87]]
+    data: list[list[object]] = [[""Alice"", 95], [""Bob"", 87]]
     cur.executemany(""INSERT INTO t VALUES (?, ?)"", data)
     conn.commit()
     print(cur.rowcount)
@@ -402,7 +403,7 @@ def main():
 import json
 
 def main():
-    data = {""name"": ""test"", ""value"": 42}
+    data: dict[str, object] = {""name"": ""test"", ""value"": 42}
     result = json.dumps(data, sort_keys=True, indent=2)
     print(result)
 ";

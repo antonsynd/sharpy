@@ -261,6 +261,18 @@ def main() -> None:
 Refusals use the store seam's diagnostic codes: `SPY0604` (strict Optional construction),
 `SPY0229` (None into non-nullable), not a generic type-mismatch.
 
+When unpacking creates a **fresh binding** (a new variable, not a re-assignment to an existing one), a `None` element is refused — it has no type on its own:
+
+```python
+a, b = None, 1  # error: cannot infer a type for 'a': 'None' names no type on its own
+```
+
+Annotate the target or use a declared-slot variable:
+```python
+a: str | None = None
+a, b = None, 1  # OK: a is an existing str | None variable
+```
+
 ## Error Cases
 
 | Scenario | Diagnostic |
