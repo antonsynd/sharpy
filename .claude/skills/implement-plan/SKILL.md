@@ -70,7 +70,7 @@ Determine which agents to spawn based on what the plan touches:
 | LSP | `lsp-expert` | Sharpy.Lsp/, handlers, hover/completion/semantic tokens |
 | Tests | `test-expert` | Always spawned — every plan needs tests, and every guard needs its mutation step |
 
-`verification-expert` is **not** a teammate (it has no `SendMessage`/task tools — `agents.md` › Teammate Compatibility). The lead spawns it **standalone** at the end (§Final Verification) and reads its report. For any refutation brief (regression control run, sibling-cell probing) pass `model` explicitly at spawn time — its default `haiku` is for "run this filter and report counts" only.
+`verification-expert` is **not** a teammate (it has no `SendMessage`/task tools per its `.claude/agents/` definition). The lead spawns it **standalone** at the end (§Final Verification) and reads its report. For any refutation brief (regression control run, sibling-cell probing) pass `model` explicitly at spawn time — its default `haiku` is for "run this filter and report counts" only.
 
 Spawn teammates with `run_in_background`; give each its task text, the relevant plan section, and the Agent Instructions block below. Never run more than one agent that needs the same files.
 

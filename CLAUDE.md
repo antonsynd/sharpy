@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Rules and workflow for Claude Code in this repository. Architecture reference lives in [.github/copilot-instructions.md](.github/copilot-instructions.md), the agent registry in [.github/agents.md](.github/agents.md), and the authoritative language spec in `docs/language_specification/`. `build_tools/` has its own CLAUDE.md.
+Rules and workflow for Claude Code in this repository. Architecture reference lives in [docs/architecture.md](docs/architecture.md) and the authoritative language spec in `docs/language_specification/`. `build_tools/` has its own CLAUDE.md.
 
 **GitHub:** `antonsynd/sharpy` · **Pipeline:** `.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → .NET IL`
 
@@ -77,7 +77,7 @@ Lexer (Lexer/) → Parser (Parser/Ast/) → Semantic (Semantic/) → Validation 
 ```
 
 - **Experimental features** are default-off behind a flag ([docs/design/feature-lifecycle.md](docs/design/feature-lifecycle.md)): register in `FeatureFlags.KnownFeatures`, gate via the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
-- **TypeChecker vs. ValidationPipeline**: TypeChecker owns type mismatches and anything needing in-progress inference; validators own self-contained AST analyses. New validators subclass `ValidatingAstWalker` (visitor) or `SemanticValidatorBase` (custom traversal) and set `Order` (full registry in copilot-instructions.md).
+- **TypeChecker vs. ValidationPipeline**: TypeChecker owns type mismatches and anything needing in-progress inference; validators own self-contained AST analyses. New validators subclass `ValidatingAstWalker` (visitor) or `SemanticValidatorBase` (custom traversal) and set `Order` (full registry in docs/architecture.md).
 - **LSP handlers** must use `Symbol.EffectiveNameLine/Column` for text edits and highlight ranges (falls back from name-token position to statement start).
 
 ## Diagnostic Code Allocation

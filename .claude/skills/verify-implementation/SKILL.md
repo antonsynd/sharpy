@@ -68,7 +68,7 @@ Build a **completeness checklist** — every deliverable, each with the evidence
 
 ## Team Formation
 
-**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (see `.github/agents.md` › Teammate Compatibility).
+**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (they lack `SendMessage`/task tools in their `.claude/agents/` definitions).
 
 **Models.** `verification-expert` and `net-axiom-guardian` are defined with `model: haiku`, which is right for "run this filter and report counts" and wrong for a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
 
