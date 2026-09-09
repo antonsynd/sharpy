@@ -2397,15 +2397,44 @@ internal partial class TypeChecker
             return false;
 
         SemanticType failedArgType;
-        if (firstRef.Ordinal is { } argIndex && argIndex < argTypes.Count)
+        Expression? argNode;
+        StorePosition position;
+        string? keywordName = null;
+
+        if (firstRef.Keyword is { } kwName)
+        {
+            var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == kwName);
+            if (kwarg == null)
+                return false;
+            var kwargTypes = new Dictionary<string, SemanticType>();
+            foreach (var ka in call.KeywordArguments)
+            {
+                var kaType = _semanticInfo.GetExpressionType(ka.Value);
+                if (kaType != null)
+                    kwargTypes[ka.Name] = kaType;
+            }
+            if (!kwargTypes.TryGetValue(kwName, out failedArgType!))
+                return false;
+            argNode = kwarg.Value;
+            position = StorePosition.ArgumentKeyword;
+            keywordName = kwName;
+        }
+        else if (firstRef.Ordinal is { } argIndex && argIndex < argTypes.Count)
+        {
             failedArgType = argTypes[argIndex];
+            argNode = argIndex < call.Arguments.Length ? call.Arguments[argIndex] : null;
+            position = StorePosition.ArgumentPositional;
+        }
         else
+        {
             return false;
+        }
+
         if (failedArgType is UnknownType)
             return false;
 
-        // Distinct expected types at that index, in candidate order. An UnknownType or a type that
-        // still carries a type parameter is not a slot the user can be told to satisfy.
+        // Distinct expected types at that position, in candidate order. An UnknownType or a type
+        // that still carries a type parameter is not a slot the user can be told to satisfy.
         var expectedTypes = new List<SemanticType>();
         foreach (var failure in candidateFailures)
         {
@@ -2417,9 +2446,6 @@ internal partial class TypeChecker
 
         if (expectedTypes.Count == 0)
             return false;
-
-        var argNode = argIndex < call.Arguments.Length ? call.Arguments[argIndex] : null;
-        const StorePosition position = StorePosition.ArgumentPositional;
 
         // #1721: a probed `None()` has no type to name — the refusal is the constructor's own
         // (SPY0244), listing every slot the candidates offer, none of which is an Optional.
@@ -2444,19 +2470,43 @@ internal partial class TypeChecker
         // against ONE slot, so it is omitted rather than made to pick a favourite.
         if (expectedTypes.Count == 1)
         {
-            CheckStore(position, argNode, failedArgType, expectedTypes[0],
-                (Node?)argNode ?? call, argNode?.Span ?? call.Span);
+            if (keywordName != null)
+            {
+                var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == keywordName);
+                CheckStoreAt(position, argNode, failedArgType, expectedTypes[0],
+                    kwarg?.LineStart ?? call.LineStart,
+                    kwarg?.ColumnStart ?? call.ColumnStart,
+                    kwarg?.Span ?? argNode?.Span ?? call.Span,
+                    slotName: keywordName);
+            }
+            else
+            {
+                CheckStore(position, argNode, failedArgType, expectedTypes[0],
+                    (Node?)argNode ?? call, argNode?.Span ?? call.Span);
+            }
             return true;
         }
 
         var message = $"Cannot pass argument of type '{failedArgType.GetDisplayName()}' to parameter of type "
                 + DescribeAlternativeTypes(expectedTypes);
 
-        AddError(message,
-            argNode?.LineStart ?? call.LineStart,
-            argNode?.ColumnStart ?? call.ColumnStart,
-            code: DiagnosticCodes.Semantic.TypeMismatch,
-            span: argNode?.Span ?? call.Span);
+        if (keywordName != null)
+        {
+            var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == keywordName);
+            AddError(message,
+                kwarg?.LineStart ?? call.LineStart,
+                kwarg?.ColumnStart ?? call.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: kwarg?.Span ?? argNode?.Span ?? call.Span);
+        }
+        else
+        {
+            AddError(message,
+                argNode?.LineStart ?? call.LineStart,
+                argNode?.ColumnStart ?? call.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: argNode?.Span ?? call.Span);
+        }
         return true;
     }
 
