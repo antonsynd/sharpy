@@ -601,42 +601,129 @@ internal partial class TypeChecker
             }
         }
 
-        // Disambiguate: prefer exact arity match
         OverloadResolution Resolve(FunctionSymbol? winner, bool ambiguous) =>
             new OverloadResolution(winner, arityCandidates, ambiguous, candidateFailures)
             {
                 WinnerBinding = winner != null && candidateBindings.TryGetValue(winner, out var wb) ? wb : null
             };
 
+        // --- Step A: Conversion betterness (C# §12.6.4.3) ---
+        // The primary disambiguation: every bound argument compared by type specificity.
+        // Runs first over ALL matching overloads because it decides most ties without
+        // preconditions (#1820, overload_resolution.md §Betterness criteria 1–4).
         if (matchingOverloads.Count > 1)
         {
+            var specificityWinner = FindMostSpecificOverload(matchingOverloads, context, candidateBindings);
+            if (specificityWinner != null)
+                return Resolve(specificityWinner, false);
+
+            // --- Step B: Tie-breaks (C# §12.6.4.3 criteria 5–7) ---
+
+            // (b1) All-arguments-correspond: prefer the candidate whose declared
+            // parameter count matches the argument count (no defaults needed).
+            // UNGATED — no sequence-equivalence precondition (measured: d2/t3
+            // prints io/2, Roslyn agrees on non-equivalent sequences).
             var exactArityMatches = matchingOverloads.Where(o =>
                 o.Parameters.Count - GetSelfOffset(o) == context.TotalArgCount
             ).ToList();
-
             if (exactArityMatches.Count == 1)
                 return Resolve(exactArityMatches[0], false);
 
-            // When multiple exact-arity overloads remain, prefer the one with fewer
-            // type parameters. This breaks ties between e.g. Merge<T>(a, b, reverse)
-            // and Merge<T, TKey>(iterables[], key, reverse) by choosing the simpler generic.
-            var candidates = exactArityMatches.Count > 1 ? exactArityMatches : matchingOverloads;
-            var minTypeParams = candidates.Min(o => o.TypeParameters.Count);
-            var fewerTypeParamMatches = candidates.Where(o => o.TypeParameters.Count == minTypeParams).ToList();
-            if (fewerTypeParamMatches.Count == 1)
-                return Resolve(fewerTypeParamMatches[0], false);
-
-            // Specificity tiebreaker: prefer the overload whose parameter types are
-            // strictly more specific (e.g., list[int] beats IEnumerable<int>).
-            // Follows C#'s "better function member" rule (§12.6.4.3).
-            var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context, candidateBindings);
-            if (specificityWinner != null)
-                return Resolve(specificityWinner, false);
+            // (b2) fewer type parameters and (b3) non-expanded over expanded are
+            // GATED on sequence equivalence — they apply only between candidates
+            // whose closed bound formals are equal per position (measured: t1,
+            // non-generic-over-generic on non-equivalent sequences is CS0121).
+            var remaining = exactArityMatches.Count > 1 ? exactArityMatches : matchingOverloads;
+            var gatedWinner = FindGatedTieBreakWinner(remaining, context, candidateBindings);
+            if (gatedWinner != null)
+                return Resolve(gatedWinner, false);
 
             return Resolve(null, true);
         }
 
         return Resolve(matchingOverloads.Count == 1 ? matchingOverloads[0] : null, false);
+    }
+
+    /// <summary>
+    /// C# §12.6.4.3 criteria 5–7: the gated tie-breaks that apply only between candidates
+    /// whose closed bound-formal sequences are equal per position. Returns the unique winner
+    /// if one candidate beats all others, otherwise null (ambiguous).
+    ///
+    /// <para>(b2) Fewer type parameters — C#'s non-generic-over-generic generalized to
+    /// "fewer type params" (#1043, Merge&lt;T&gt;/Merge&lt;T,TKey&gt;). Gated on sequence
+    /// equivalence (measured: t1 is CS0121 on non-equivalent sequences).</para>
+    ///
+    /// <para>(b3) Non-expanded over expanded — a candidate without a variadic parameter
+    /// is preferred over one that uses its variadic to match. Gated on sequence
+    /// equivalence (measured: t2/twin-iii is CS0121 on non-equivalent sequences).</para>
+    /// </summary>
+    private FunctionSymbol? FindGatedTieBreakWinner(
+        List<FunctionSymbol> candidates, OverloadResolutionContext context,
+        Dictionary<FunctionSymbol, CandidateBinding> bindings)
+    {
+        if (candidates.Count < 2)
+            return null;
+
+        FunctionSymbol? best = null;
+        foreach (var a in candidates)
+        {
+            bool beatsAll = true;
+            foreach (var b in candidates)
+            {
+                if (ReferenceEquals(a, b))
+                    continue;
+
+                if (!HaveEquivalentBoundSequences(bindings[a], bindings[b]))
+                {
+                    beatsAll = false;
+                    break;
+                }
+
+                // (b2) Fewer type parameters.
+                if (a.TypeParameters.Count < b.TypeParameters.Count)
+                    continue;
+                if (a.TypeParameters.Count > b.TypeParameters.Count)
+                {
+                    beatsAll = false;
+                    break;
+                }
+
+                // (b3) Non-expanded over expanded.
+                bool aExpanded = a.Parameters.Skip(ReceiverOffsetOf(a, context)).Any(p => p.IsVariadic);
+                bool bExpanded = b.Parameters.Skip(ReceiverOffsetOf(b, context)).Any(p => p.IsVariadic);
+                if (!aExpanded && bExpanded)
+                    continue;
+                if (aExpanded && !bExpanded)
+                {
+                    beatsAll = false;
+                    break;
+                }
+
+                beatsAll = false;
+                break;
+            }
+
+            if (beatsAll)
+            {
+                if (best != null)
+                    return null;
+                best = a;
+            }
+        }
+
+        return best;
+    }
+
+    private static bool HaveEquivalentBoundSequences(CandidateBinding a, CandidateBinding b)
+    {
+        if (a.Arguments.Count != b.Arguments.Count)
+            return false;
+        for (int i = 0; i < a.Arguments.Count; i++)
+        {
+            if (!a.Arguments[i].Formal.Equals(b.Arguments[i].Formal))
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
