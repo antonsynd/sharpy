@@ -1,0 +1,10 @@
+# k4: mixed positional + keyword arguments disambiguate overloads (#1810).
+
+def g(x: int, y: str) -> None:
+    print("str")
+
+def g(x: int, y: int) -> None:
+    print("int")
+
+def main() -> None:
+    g(1, y="a")

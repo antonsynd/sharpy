@@ -1,0 +1,12 @@
+# k5: keyword argument types participate in betterness (#1810).
+# int is more specific than float, so g(x=1) picks the int overload.
+
+def g(x: int) -> None:
+    print("int")
+
+def g(x: float) -> None:
+    print("float")
+
+def main() -> None:
+    g(x=1)
+    g(x=2.5)

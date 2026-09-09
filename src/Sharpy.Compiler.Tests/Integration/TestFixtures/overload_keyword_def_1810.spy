@@ -1,0 +1,11 @@
+# k1: keyword arguments participate in overload resolution type checking (#1810).
+
+def g(x: int) -> None:
+    print("int")
+
+def g(x: str) -> None:
+    print("str")
+
+def main() -> None:
+    g(x=1)
+    g(x="a")

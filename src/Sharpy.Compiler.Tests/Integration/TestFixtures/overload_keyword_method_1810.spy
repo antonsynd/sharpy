@@ -1,0 +1,13 @@
+# k2: keyword arguments on a method host participate in overload resolution (#1810).
+
+class C:
+    def m(self, x: int) -> None:
+        print("int")
+
+    def m(self, x: str) -> None:
+        print("str")
+
+def main() -> None:
+    c = C()
+    c.m(x=1)
+    c.m(x="a")

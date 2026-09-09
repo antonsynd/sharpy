@@ -1,0 +1,10 @@
+# k9: out-of-order keyword arguments participate in overload resolution (#1810).
+
+def g(x: int, y: int) -> None:
+    print("int")
+
+def g(x: str, y: str) -> None:
+    print("str")
+
+def main() -> None:
+    g(y=2, x=1)

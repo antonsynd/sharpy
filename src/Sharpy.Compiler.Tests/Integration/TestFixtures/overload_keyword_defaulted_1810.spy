@@ -1,0 +1,10 @@
+# k10: keyword argument naming a defaulted parameter participates in overload resolution (#1810).
+
+def g(x: int, y: int = 0, z: int = 0) -> None:
+    print("int")
+
+def g(x: str) -> None:
+    print("str")
+
+def main() -> None:
+    g(x=1, y=2)

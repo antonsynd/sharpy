@@ -1,0 +1,12 @@
+# k6b: wrong-pick regression — keyword argument types select the correct overload,
+# so `v + 1` compiles and prints 2 (#1810).
+
+def g(x: int, y: int = 0) -> int:
+    return x + y
+
+def g(x: str) -> str:
+    return x
+
+def main() -> None:
+    v = g(x=1)
+    print(v + 1)
