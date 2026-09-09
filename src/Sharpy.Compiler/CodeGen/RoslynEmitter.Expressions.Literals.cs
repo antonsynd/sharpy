@@ -1135,9 +1135,13 @@ internal partial class RoslynEmitter
             // Inline mode: emit a typed pre-declaration (no initializer) and return
             // an inline assignment expression so the value is re-evaluated each iteration.
             var semType = GetExpressionSemanticType(walrus.Value);
-            var typeSyntax = semType != null
-                ? _typeMapper.MapSemanticType(semType)
-                : IdentifierName("var");
+            // R-AE: when the value is None (VoidType), var cannot infer from null — use the
+            // symbol's recorded type, which carries the slot the checker bound (#1812).
+            var typeSyntax = semType is Semantic.VoidType && symbol?.Type != null
+                ? _typeMapper.MapSemanticType(symbol.Type)
+                : semType != null
+                    ? _typeMapper.MapSemanticType(semType)
+                    : IdentifierName("var");
 
             _walrusPreDeclarations.Add(
                 LocalDeclarationStatement(
@@ -1155,9 +1159,15 @@ internal partial class RoslynEmitter
 
         // Hoist: var varName = value; — or the recorded type where var would infer narrower (a
         // union case construction is its case class under var, #1770; see LocalDeclarationType).
+        // R-AE: when the value is None (VoidType), var cannot infer from null — use the symbol's
+        // recorded type, which carries the slot the checker bound (#1812).
+        var hoistValueType = GetExpressionSemanticType(walrus.Value);
+        var hoistDeclType = hoistValueType is Semantic.VoidType && symbol?.Type != null
+            ? _typeMapper.MapSemanticType(symbol.Type)
+            : LocalDeclarationType(symbol, hoistValueType);
         _hoistedStatements.Add(
             LocalDeclarationStatement(
-                VariableDeclaration(LocalDeclarationType(symbol, GetExpressionSemanticType(walrus.Value)))
+                VariableDeclaration(hoistDeclType)
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(value))))));

@@ -193,11 +193,15 @@ internal partial class TypeChecker
                         return;
                     }
                 }
-                else if (RefuseUntypedVoidBinding(
-                    targetId.Name, assignment.Value, inferredType,
-                    assignment.LineStart, assignment.ColumnStart, assignment.Span))
+                else if (inferredType is VoidType)
                 {
-                    return;
+                    var resolved = BestCommonType(
+                        new[] { ((Expression?)assignment.Value, inferredType) },
+                        null, StorePosition.PlainStore, assignment,
+                        $"binding '{targetId.Name}'");
+                    if (resolved is UnknownType)
+                        return;
+                    inferredType = resolved;
                 }
             }
 
@@ -989,12 +993,13 @@ internal partial class TypeChecker
             if (declaredType is UnknownType)
                 initType = CheckLambdaBindingInferable(varDecl.InitialValue, initType);
 
-            if (declaredType is UnknownType
-                && RefuseUntypedVoidBinding(
-                    varDecl.Name, varDecl.InitialValue, initType,
-                    varDecl.LineStart, varDecl.ColumnStart, varDecl.Span))
+            if (declaredType is UnknownType && initType is VoidType)
             {
-                initType = SemanticType.Unknown;
+                var resolved = BestCommonType(
+                    new[] { ((Expression?)varDecl.InitialValue, initType) },
+                    null, StorePosition.Declaration, varDecl,
+                    $"binding '{varDecl.Name}'");
+                initType = resolved;
             }
 
             if (declaredType is UnknownType)

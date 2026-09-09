@@ -750,6 +750,8 @@ internal partial class TypeChecker
         var predecessor = ExpressionRebindingPredecessor(candidate, walrus.IsNameBacktickEscaped);
 
         SemanticType valueType;
+        SemanticType? freshSlot = null;
+        StorePosition freshPosition = StorePosition.Walrus;
         if (predecessor != null)
         {
             var boundExisting = DeclaredBindingType(predecessor);
@@ -758,13 +760,33 @@ internal partial class TypeChecker
         }
         else
         {
-            valueType = CheckExpression(walrus.Value);
+            // R-AE: a fresh walrus directly under a store slot takes the slot's type
+            if (_storeContext is { Slot: not null and not UnknownType } sc && sc.IsDirectOperand(walrus))
+            {
+                freshSlot = sc.Slot;
+                freshPosition = sc.Position;
+                using (EnterStore(freshPosition, freshSlot, walrus.Value))
+                    valueType = CheckExpression(walrus.Value);
+            }
+            else
+            {
+                valueType = CheckExpression(walrus.Value);
+            }
         }
 
         // R-V: the walrus reads as the value's type when directly assignable (the rebinding
         // version), not the declared type. A rebind of `m: int | None` by `5` reads as `int32`.
         // VoidType (None) falls back to the declared type — it has no width of its own.
         var bindingType = valueType;
+        if (predecessor == null)
+        {
+            bindingType = BestCommonType(
+                new[] { ((Expression?)walrus.Value, valueType) },
+                freshSlot,
+                freshPosition,
+                walrus,
+                $"binding '{walrus.Target}'");
+        }
         if (predecessor != null)
         {
             var boundExisting = DeclaredBindingType(predecessor);
