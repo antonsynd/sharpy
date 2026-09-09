@@ -2348,7 +2348,7 @@ internal partial class TypeChecker
     /// still has unsolved type parameters (e.g. <c>(int32) -&gt; TOut</c>): the return-type position
     /// carries <c>TOut</c>, and any concrete candidate return should match.
     /// </summary>
-    private static bool SignatureSatisfiesPartialTarget(FunctionType candidate, FunctionType target)
+    private bool SignatureSatisfiesPartialTarget(FunctionType candidate, FunctionType target)
     {
         var required = candidate.ParameterTypes.Count - candidate.OptionalParameterCount;
         if (target.ParameterTypes.Count < required || target.ParameterTypes.Count > candidate.ParameterTypes.Count)
@@ -2356,17 +2356,15 @@ internal partial class TypeChecker
 
         for (var i = 0; i < target.ParameterTypes.Count; i++)
         {
-            // Unsolved type parameters in the target are wildcards.
             if (target.ParameterTypes[i] is TypeParameterType)
                 continue;
-            if (!target.ParameterTypes[i].IsAssignableTo(candidate.ParameterTypes[i]))
+            if (!IsAssignable(target.ParameterTypes[i], candidate.ParameterTypes[i]))
                 return false;
         }
 
-        // Return type: a type parameter is a wildcard, anything else checks covariance.
         if (target.ReturnType is TypeParameterType or UnknownType)
             return true;
-        if (candidate.ReturnType.IsAssignableTo(target.ReturnType))
+        if (IsAssignable(candidate.ReturnType, target.ReturnType))
             return true;
         if (candidate.ReturnType.ClrType != null && candidate.ReturnType.ClrType == target.ReturnType.ClrType)
             return true;
@@ -2379,7 +2377,7 @@ internal partial class TypeChecker
     /// to the candidate's corresponding parameter (contravariant), and the candidate's return type
     /// assignable to the target's (covariant).
     /// </summary>
-    private static bool SignatureSatisfiesTarget(FunctionType candidate, FunctionType target)
+    private bool SignatureSatisfiesTarget(FunctionType candidate, FunctionType target)
     {
         var required = candidate.ParameterTypes.Count - candidate.OptionalParameterCount;
         if (target.ParameterTypes.Count < required || target.ParameterTypes.Count > candidate.ParameterTypes.Count)
@@ -2387,17 +2385,14 @@ internal partial class TypeChecker
 
         for (var i = 0; i < target.ParameterTypes.Count; i++)
         {
-            if (!target.ParameterTypes[i].IsAssignableTo(candidate.ParameterTypes[i]))
+            if (!IsAssignable(target.ParameterTypes[i], candidate.ParameterTypes[i]))
                 return false;
         }
 
         if (target.ReturnType is UnknownType)
             return true;
-        if (candidate.ReturnType.IsAssignableTo(target.ReturnType))
+        if (IsAssignable(candidate.ReturnType, target.ReturnType))
             return true;
-        // CLR type fallback: `bytes` (BuiltinType) and `Bytes` (UserDefinedType from a
-        // Builtins overload) name the same CLR type. Without this, the constructor-reference
-        // pin for bytes cannot match the overload's return type (#1582).
         if (candidate.ReturnType.ClrType != null && candidate.ReturnType.ClrType == target.ReturnType.ClrType)
             return true;
         return false;

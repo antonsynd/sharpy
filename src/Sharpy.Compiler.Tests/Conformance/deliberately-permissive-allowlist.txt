@@ -20,5 +20,3 @@
 TypeChecker.Expressions.Access.cs 4 #1674 #1678 #1678 #1678
 # Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
 TypeChecker.Expressions.cs 2 #1675 #1676
-# Operators.cs: :1194 conditional without an LCA (#1677)
-TypeChecker.Expressions.Operators.cs 1 #1677

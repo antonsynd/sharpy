@@ -752,7 +752,7 @@ internal partial class TypeChecker
             return targetType;
 
         // Standard implicit conversion — narrow-or-equal width, e.g. `x8 += y8`, `u32 //= v32`.
-        if (valueType.IsAssignableTo(targetType))
+        if (IsAssignable(valueType, targetType))
             return targetType;
 
         // §10.2.11 constant conversion — `x8 += 1`, `x8 %= 2`, `u8 -= 1`. Same helper, same
@@ -1230,8 +1230,7 @@ internal partial class TypeChecker
             {
                 TypeParameterVariance.Covariant => IsAssignable(sourceArg, targetArg),
                 TypeParameterVariance.Contravariant => IsAssignable(targetArg, sourceArg),
-                _ => sourceArg.Equals(targetArg)
-                     || (IsAssignable(sourceArg, targetArg) && IsAssignable(targetArg, sourceArg)),
+                _ => sourceArg.CanonicalKey == targetArg.CanonicalKey,
             };
 
             if (!satisfied)

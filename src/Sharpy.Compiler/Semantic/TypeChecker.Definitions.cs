@@ -2805,8 +2805,8 @@ internal partial class TypeChecker
                         ? defaultConstraints.OfType<Parser.Ast.TypeConstraint>().Any(earlierConstraint =>
                             _typeResolver.ResolveTypeAnnotation(earlierConstraint.Type)
                                 is { } earlierType and not UnknownType
-                            && earlierType.IsAssignableTo(constraintType))
-                        : defaultType.IsAssignableTo(constraintType);
+                            && IsAssignable(earlierType, constraintType))
+                        : IsAssignable(defaultType, constraintType);
 
                     if (!satisfied)
                     {

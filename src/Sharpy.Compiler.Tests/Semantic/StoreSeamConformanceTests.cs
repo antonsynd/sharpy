@@ -307,9 +307,11 @@ public class StoreSeamConformanceTests
     /// (42 pushes + 13 clears, measured by this scan). 55 -> 56 (plan-499995, #1797): the
     /// post-inference re-check (<c>RecheckOpenArguments</c>) pushes the closed slot for a KEYWORD
     /// argument recorded open, the twin of the positional push it already had
-    /// (43 pushes + 13 clears, measured by this scan).
+    /// (43 pushes + 13 clears, measured by this scan). 56 -> 60 (plan-c068ff, #1743, R-W):
+    /// FStringHole (f-string + t-string holes), TruthinessTest (CheckTruthinessTest helper),
+    /// and the conditional's own TruthinessTest push (47 pushes + 13 clears).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 56;
+    private const int ExpectedSeamCallSiteCount = 60;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

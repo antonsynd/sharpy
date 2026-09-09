@@ -905,7 +905,7 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            if (!leftType.IsAssignableTo(ft.ParameterTypes[0]))
+            if (!IsAssignable(leftType, ft.ParameterTypes[0]))
             {
                 AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function expecting '{ft.ParameterTypes[0].GetDisplayName()}'",
                     binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -936,7 +936,7 @@ internal partial class TypeChecker
 
                 // Validate the piped value type matches first parameter
                 var firstParam = funcSymbol.Parameters[0];
-                if (!leftType.IsAssignableTo(firstParam.Type))
+                if (!IsAssignable(leftType, firstParam.Type))
                 {
                     AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function '{id.Name}' expecting '{firstParam.Type.GetDisplayName()}'",
                         binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1072,7 +1072,7 @@ internal partial class TypeChecker
                         break; // Shouldn't happen due to tooMany check
                     }
 
-                    if (!argType.IsAssignableTo(param.Type))
+                    if (!IsAssignable(argType, param.Type))
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
                         var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
@@ -1148,7 +1148,7 @@ internal partial class TypeChecker
             // Validate positional argument types
             for (int i = 0; i < allArgTypes.Count; i++)
             {
-                if (!allArgTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
+                if (!IsAssignable(allArgTypes[i], ft.ParameterTypes[i]))
                 {
                     var argDesc = i == 0 ? "piped value" : $"argument {i}";
                     var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
@@ -1613,9 +1613,9 @@ internal partial class TypeChecker
         // CheckStore/ClassifyStore produce the correct per-branch cast facts (#1698).
         if (condSlot != null)
         {
-            if (thenType.IsAssignableTo(elseType))
+            if (IsAssignable(thenType, elseType))
                 return elseType;
-            if (elseType.IsAssignableTo(thenType))
+            if (IsAssignable(elseType, thenType))
                 return thenType;
             return thenType; // the outer store seam decides
         }
