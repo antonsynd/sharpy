@@ -1574,6 +1574,9 @@ internal partial class TypeChecker
         // so it sees the condition's positive narrowings; the false arm sees the negative narrowings.
         // Reads inside each arm record their accessor lowering via the narrowing context, exactly as
         // `and`-RHS does — codegen needs no special handling. The narrowings do not leak past the arm.
+        // Branches see the OUTER store's _expectedType naturally (the assignment/argument push is still
+        // on the stack), so constants narrow to int8 etc. without an explicit per-branch EnterStore.
+        // The outer store's ClassifyConditionalBranch handles the emitter cast facts (#1698).
         var thenEntries = ExtractNarrowedTypes(cond.Test, true);
         var elseEntries = ExtractNarrowedTypes(cond.Test, false);
 
@@ -1581,33 +1584,33 @@ internal partial class TypeChecker
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(thenEntries);
-            if (condSlot != null)
-            {
-                using (EnterStore(condPosition, condSlot, cond.ThenValue))
-                    thenType = CheckExpression(cond.ThenValue);
-            }
-            else
-                thenType = CheckExpression(cond.ThenValue);
+            thenType = CheckExpression(cond.ThenValue);
         }
 
         SemanticType elseType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(elseEntries);
-            if (condSlot != null)
-            {
-                using (EnterStore(condPosition, condSlot, cond.ElseValue))
-                    elseType = CheckExpression(cond.ElseValue);
-            }
-            else
-                elseType = CheckExpression(cond.ElseValue);
+            elseType = CheckExpression(cond.ElseValue);
         }
 
-        // R-W: decide the type through BestCommonType — slot-directed (arm 1), one-accepts-all
-        // (arm 2), or refuse by name (arm 3). The DP mark and data-level comparison are retired.
+        // Slot-directed conditionals: the outer store seam + ClassifyConditionalBranch already
+        // handles typing and emitter narrowing facts. Return the branch types and let the outer
+        // CheckStore/ClassifyStore produce the correct per-branch cast facts (#1698).
+        if (condSlot != null)
+        {
+            if (thenType.IsAssignableTo(elseType))
+                return elseType;
+            if (elseType.IsAssignableTo(thenType))
+                return thenType;
+            return thenType; // the outer store seam decides
+        }
+
+        // R-W: slot-less → BestCommonType arm 2 (one-accepts-all) or arm 3 (refuse by name).
+        // The DP mark and data-level comparison are retired.
         return BestCommonType(
             new[] { ((Expression?)cond.ThenValue, thenType), ((Expression?)cond.ElseValue, elseType) },
-            condSlot, condPosition, cond, "conditional expression");
+            null, condPosition, cond, "conditional expression");
     }
 
     /// <summary>

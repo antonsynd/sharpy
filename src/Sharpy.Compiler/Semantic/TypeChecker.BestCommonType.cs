@@ -20,11 +20,21 @@ internal partial class TypeChecker
         if (operands.Count == 0)
             return slot ?? SemanticType.Unknown;
 
-        // ── Void-call refusal (R-AE): a void-call operand is refused everywhere ──
+        // ── Void-call handling (R-AE) ──
+        // A void-call operand (VoidType from a None-returning function, not a bare NoneLiteral)
+        // is refused in a binding context (single operand → SPY0227 "produces no value"). In a
+        // multi-operand context (conditional with two void arms), ALL void calls → VoidType (the
+        // caller decides: an expression statement checker produces SPY0603, #1603).
         foreach (var (node, type) in operands)
         {
             if (type is VoidType && node != null && node is not NoneLiteral)
             {
+                // Check if ALL operands are void calls (multi-operand → VoidType passthrough)
+                bool allVoidCalls = operands.Count > 1
+                    && operands.All(o => o.Type is VoidType or UnknownType);
+                if (allVoidCalls)
+                    return SemanticType.Void;
+
                 AddError(
                     $"cannot infer a type for {siteNoun}: this expression produces no value, " +
                     "so there is nothing for " + siteNoun + " to hold. Call it as a statement, " +
