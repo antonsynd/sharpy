@@ -2359,9 +2359,27 @@ internal partial class TypeChecker
             return;
         }
 
-        AddError($"No matching overload for '{calleeName}' with the given argument types",
-            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-            span: call.Span);
+        // When every candidate failed inference (#1811), name the conflict so the user knows
+        // WHY no overload matched rather than just THAT none matched.
+        var inferenceReasons = resolution.CandidateFailures
+            .Where(f => f.Kind == OverloadFailureKind.Inference && f.Reason != null)
+            .Select(f => f.Reason!)
+            .Distinct()
+            .ToList();
+
+        if (inferenceReasons.Count > 0)
+        {
+            var reasons = string.Join("; ", inferenceReasons);
+            AddError($"No matching overload for '{calleeName}' with the given argument types ({reasons})",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                span: call.Span);
+        }
+        else
+        {
+            AddError($"No matching overload for '{calleeName}' with the given argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                span: call.Span);
+        }
     }
 
     /// <summary>
@@ -2433,12 +2451,15 @@ internal partial class TypeChecker
         if (failedArgType is UnknownType)
             return false;
 
-        // Distinct expected types at that position, in candidate order. An UnknownType or a type
-        // that still carries a type parameter is not a slot the user can be told to satisfy.
+        // Distinct expected types at that position, in candidate order. An UnknownType is
+        // not a slot the user can be told to satisfy. After per-candidate inference (#1811),
+        // no recorded Expected should contain an open type parameter — inference closes them.
         var expectedTypes = new List<SemanticType>();
         foreach (var failure in candidateFailures)
         {
-            if (failure.Expected is UnknownType || ContainsTypeParameter(failure.Expected))
+            Debug.Assert(!ContainsTypeParameter(failure.Expected),
+                $"Expected type '{failure.Expected.GetDisplayName()}' still contains a type parameter after inference");
+            if (failure.Expected is UnknownType)
                 return false;
             if (!expectedTypes.Any(t => t.Equals(failure.Expected)))
                 expectedTypes.Add(failure.Expected);

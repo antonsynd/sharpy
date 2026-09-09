@@ -82,7 +82,8 @@ internal partial class TypeChecker
     /// rejected them (#1775).</para>
     /// </summary>
     internal readonly record struct OverloadCandidateFailure(
-        ArgumentRef Ref, SemanticType Expected, OverloadFailureKind Kind);
+        ArgumentRef Ref, SemanticType Expected, OverloadFailureKind Kind,
+        string? Reason = null);
 
     /// <summary>
     /// The outcome of one overload resolution: the chosen candidate (or null), the arity-surviving
@@ -545,7 +546,8 @@ internal partial class TypeChecker
                 candidateFailures.Add(new OverloadCandidateFailure(
                     new ArgumentRef(Ordinal: 0, Keyword: null),
                     SemanticType.Unknown,
-                    OverloadFailureKind.Inference));
+                    OverloadFailureKind.Inference,
+                    Reason: binding.InapplicableReason));
                 continue;
             }
 
