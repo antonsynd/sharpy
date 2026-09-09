@@ -1053,8 +1053,28 @@ internal partial class RoslynEmitter
                 Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
                 IdentifierName("IsTrue")),
             TruthinessLowering.AlwaysFalse => LiteralExpression(SyntaxKind.FalseLiteralExpression),
+            TruthinessLowering.Distributed
+                when Shared.AstHelper.UnwrapParenthesized(astExpr) is ConditionalExpression condExpr =>
+                WrapDistributedTruthiness(condExpr),
             _ => expr
         };
+    }
+
+    /// <summary>
+    /// Emits a conditional expression whose truthiness distributes per branch (R-K, #1743).
+    /// Each branch has its own <see cref="TruthinessLowering"/> fact recorded by the checker;
+    /// the emitter wraps each branch individually instead of wrapping the whole ternary.
+    /// </summary>
+    private ExpressionSyntax WrapDistributedTruthiness(ConditionalExpression condExpr)
+    {
+        var test = WrapTruthinessIfNeeded(GenerateExpression(condExpr.Test), condExpr.Test);
+        var whenTrue = WrapTruthinessIfNeeded(
+            ApplyConditionalBranchNarrowing(condExpr.ThenValue, GenerateExpression(condExpr.ThenValue)),
+            condExpr.ThenValue);
+        var whenFalse = WrapTruthinessIfNeeded(
+            ApplyConditionalBranchNarrowing(condExpr.ElseValue, GenerateExpression(condExpr.ElseValue)),
+            condExpr.ElseValue);
+        return Conditional(test, whenTrue, whenFalse);
     }
 
     /// <summary>

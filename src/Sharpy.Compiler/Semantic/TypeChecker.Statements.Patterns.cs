@@ -93,18 +93,13 @@ internal partial class TypeChecker
 
                 if (matchCase.Guard != null)
                 {
-                    var guardType = CheckExpression(matchCase.Guard);
-                    var (mcGuardTestable, mcGuardLowering) = ClassifyTruthiness(guardType);
+                    var (mcGuardTestable, _) = CheckTruthinessTest(matchCase.Guard);
                     if (!mcGuardTestable)
                     {
                         AddError("Guard condition must be a boolean expression",
                             matchCase.Guard.LineStart, matchCase.Guard.ColumnStart,
                             code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                             span: matchCase.Guard.Span);
-                    }
-                    else
-                    {
-                        _semanticInfo.SetTruthinessLowering(matchCase.Guard, mcGuardLowering);
                     }
                 }
 

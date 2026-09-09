@@ -90,6 +90,22 @@ internal partial class TypeChecker
         /// decision. Also the key of a <c>dict</c> index READ, whose slot is the key type (#1807).
         /// </summary>
         OperatorOperand,
+
+        /// <summary>
+        /// An f-string interpolation hole — the expression inside <c>{…}</c>. The slot is
+        /// <c>object</c>: Python formats any object, and C# interpolation target-types each hole to
+        /// <c>object</c> via <c>FormattableString</c> (#1743, R-W Design Decision 3).
+        /// </summary>
+        FStringHole,
+
+        /// <summary>
+        /// A truthiness test position — <c>if</c>, <c>elif</c>, <c>while</c>, <c>assert</c>,
+        /// <c>not</c>, <c>and</c>/<c>or</c> operand, ternary test, comprehension condition,
+        /// match guard. The slot is <c>Unknown</c> (no store; the seam classifies nothing here).
+        /// A conditional expression under this position distributes the truthiness test per
+        /// branch rather than requiring a type (#1743, R-K Design Decision 5).
+        /// </summary>
+        TruthinessTest,
     }
 
     internal enum StoreVerdict
@@ -609,6 +625,12 @@ internal partial class TypeChecker
 
             StorePosition.CollectionElement
                 => $"Cannot assign type '{value}' to '{target}'",
+
+            StorePosition.FStringHole
+                => $"Cannot use type '{value}' in f-string interpolation hole expecting '{target}'",
+
+            StorePosition.TruthinessTest
+                => $"Cannot test truthiness of type '{value}'",
 
             _ => $"Cannot assign type '{value}' to '{target}'",
         };

@@ -919,8 +919,7 @@ internal partial class TypeChecker
 
                 if (arm.Guard != null)
                 {
-                    var guardType = CheckExpression(arm.Guard);
-                    var (guardTruthTestable, guardTruthLowering) = ClassifyTruthiness(guardType);
+                    var (guardTruthTestable, _) = CheckTruthinessTest(arm.Guard);
                     if (!guardTruthTestable)
                     {
                         AddError(
@@ -928,10 +927,6 @@ internal partial class TypeChecker
                             arm.Guard.LineStart, arm.Guard.ColumnStart,
                             code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                             span: arm.Guard.Span);
-                    }
-                    else
-                    {
-                        _semanticInfo.SetTruthinessLowering(arm.Guard, guardTruthLowering);
                     }
                 }
 

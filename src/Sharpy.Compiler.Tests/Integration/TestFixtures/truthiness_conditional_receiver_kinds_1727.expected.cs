@@ -19,7 +19,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (13, 5) - (13, 17) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         string t = "";
 #line (14, 5) - (17, 41) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? s : t).Length > 0)
+        if (flag ? s.Length > 0 : t.Length > 0)
 #line hidden
         {
 #line (15, 9) - (15, 42) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -34,7 +34,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (18, 5) - (21, 40) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? t : s).Length > 0)
+        if (flag ? t.Length > 0 : s.Length > 0)
 #line hidden
         {
 #line (19, 9) - (19, 41) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -55,7 +55,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (26, 5) - (26, 16) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         int m = 0;
 #line (27, 5) - (30, 41) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? m : n) != 0)
+        if (flag ? m != 0 : n != 0)
 #line hidden
         {
 #line (28, 9) - (28, 42) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -70,7 +70,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (31, 5) - (34, 40) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? n : m) != 0)
+        if (flag ? n != 0 : m != 0)
 #line hidden
         {
 #line (32, 9) - (32, 41) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -91,7 +91,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (39, 5) - (39, 20) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         double g = 0.0d;
 #line (40, 5) - (43, 43) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? f : g) != 0)
+        if (flag ? f != 0 : g != 0)
 #line hidden
         {
 #line (41, 9) - (41, 44) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -106,7 +106,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (44, 5) - (47, 42) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? g : f) != 0)
+        if (flag ? g != 0 : f != 0)
 #line hidden
         {
 #line (45, 9) - (45, 43) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -127,7 +127,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (52, 5) - (52, 18) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         long lm = 0;
 #line (53, 5) - (56, 42) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? lm : ln) != 0L)
+        if (flag ? lm != 0L : ln != 0L)
 #line hidden
         {
 #line (54, 9) - (54, 43) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -142,7 +142,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (57, 5) - (60, 41) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? ln : lm) != 0L)
+        if (flag ? ln != 0L : lm != 0L)
 #line hidden
         {
 #line (58, 9) - (58, 42) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -163,7 +163,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (65, 5) - (65, 21) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         Sharpy.Bytes cs = new Sharpy.Bytes(new byte[] { });
 #line (66, 5) - (69, 43) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? bs : cs)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)bs).Count > 0 : ((global::Sharpy.ISized)cs).Count > 0)
 #line hidden
         {
 #line (67, 9) - (67, 44) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -178,7 +178,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (70, 5) - (73, 42) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? cs : bs)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)cs).Count > 0 : ((global::Sharpy.ISized)bs).Count > 0)
 #line hidden
         {
 #line (71, 9) - (71, 43) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -207,7 +207,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         {
         };
 #line (79, 5) - (82, 42) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? ys : xs)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)ys).Count > 0 : ((global::Sharpy.ISized)xs).Count > 0)
 #line hidden
         {
 #line (80, 9) - (80, 43) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -222,7 +222,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (83, 5) - (86, 41) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? xs : ys)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)xs).Count > 0 : ((global::Sharpy.ISized)ys).Count > 0)
 #line hidden
         {
 #line (84, 9) - (84, 42) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -253,7 +253,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         {
         };
 #line (92, 5) - (95, 42) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? d1 : d2)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)d1).Count > 0 : ((global::Sharpy.ISized)d2).Count > 0)
 #line hidden
         {
 #line (93, 9) - (93, 43) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -268,7 +268,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (96, 5) - (99, 41) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if (((global::Sharpy.ISized)(flag ? d2 : d1)).Count > 0)
+        if (flag ? ((global::Sharpy.ISized)d2).Count > 0 : ((global::Sharpy.ISized)d1).Count > 0)
 #line hidden
         {
 #line (97, 9) - (97, 42) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -289,7 +289,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (104, 5) - (104, 27) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         string? nt = null;
 #line (105, 5) - (108, 46) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? nt : ns) != null)
+        if (flag ? nt != null : ns != null)
 #line hidden
         {
 #line (106, 9) - (106, 47) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -304,7 +304,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (109, 5) - (112, 45) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? ns : nt) != null)
+        if (flag ? ns != null : nt != null)
 #line hidden
         {
 #line (110, 9) - (110, 46) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -325,7 +325,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (117, 5) - (117, 23) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         Optional<int> o2 = Optional<int>.None;
 #line (118, 5) - (121, 46) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? o1 : o2).IsSome)
+        if (flag ? o1.IsSome : o2.IsSome)
 #line hidden
         {
 #line (119, 9) - (119, 47) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -340,7 +340,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (122, 5) - (125, 45) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? o2 : o1).IsSome)
+        if (flag ? o2.IsSome : o1.IsSome)
 #line hidden
         {
 #line (123, 9) - (123, 46) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -361,7 +361,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (130, 5) - (130, 36) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         BoolFlag fv = new BoolFlag(false);
 #line (131, 5) - (134, 47) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? fv : tv).IsTrue)
+        if (flag ? fv.IsTrue : tv.IsTrue)
 #line hidden
         {
 #line (132, 9) - (132, 48) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -376,7 +376,7 @@ public static partial class TruthinessConditionalReceiverKinds1727
         }
 
 #line (135, 5) - (138, 46) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        if ((flag ? tv : fv).IsTrue)
+        if (flag ? tv.IsTrue : fv.IsTrue)
 #line hidden
         {
 #line (136, 9) - (136, 47) 12 "truthiness_conditional_receiver_kinds_1727.spy"

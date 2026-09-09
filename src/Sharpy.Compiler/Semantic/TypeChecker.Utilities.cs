@@ -108,6 +108,47 @@ internal partial class TypeChecker
     private bool IsTruthTestable(SemanticType type) => ClassifyTruthiness(type).isTruthTestable;
 
     /// <summary>
+    /// Checks a test expression in a truthiness position (if/elif/while/assert/not/and/or/
+    /// ternary test/comprehension condition/match guard). Pushes
+    /// <see cref="StorePosition.TruthinessTest"/> so a conditional expression under the test
+    /// distributes the truthiness check per branch (R-K, #1743). Classifies the result's
+    /// truthiness and records the lowering when testable.
+    /// </summary>
+    /// <returns>
+    /// A tuple of (isTruthTestable, testType): whether the expression's type is truth-testable,
+    /// and the expression's type. The lowering is recorded on <paramref name="test"/> when
+    /// testable. The caller emits the truthiness error when <c>isTruthTestable</c> is false.
+    /// </returns>
+    private (bool isTruthTestable, SemanticType testType) CheckTruthinessTest(Expression test)
+    {
+        SemanticType testType;
+        using (EnterStore(StorePosition.TruthinessTest, SemanticType.Unknown, test))
+        {
+            testType = CheckExpression(test);
+        }
+
+        // A conditional expression in a truthiness position records TruthinessLowering.Distributed
+        // on itself during CheckConditionalExpression and returns Bool. The lowering may be on
+        // the inner conditional (when test is parenthesized) — propagate it to test so the emitter
+        // finds it on the node it looks up.
+        var inner = Shared.AstHelper.UnwrapParenthesized(test);
+        var existingLowering = _semanticInfo.GetTruthinessLowering(inner);
+        if (existingLowering != null)
+        {
+            if (!ReferenceEquals(inner, test))
+                _semanticInfo.SetTruthinessLowering(test, existingLowering.Value);
+            return (true, testType);
+        }
+
+        var (isTruthTestable, lowering) = ClassifyTruthiness(testType);
+        if (isTruthTestable)
+        {
+            _semanticInfo.SetTruthinessLowering(test, lowering);
+        }
+        return (isTruthTestable, testType);
+    }
+
+    /// <summary>
     /// Interprets a condition into the per-key type narrowings it implies for the given branch polarity,
     /// each paired with the accessor codegen must apply at a read site (#1081). This is the expression-
     /// level condition interpreter used by <c>and</c>-RHS (and, in Phase 5, ternary/or) scopes; the

@@ -660,17 +660,12 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckComprehensionIfClause(IfClause ifClause)
     {
-        var condType = CheckExpression(ifClause.Condition);
-        var (compTruthTestable, compTruthLowering) = ClassifyTruthiness(condType);
+        var (compTruthTestable, condType) = CheckTruthinessTest(ifClause.Condition);
         if (!compTruthTestable)
         {
             AddError($"Comprehension filter must be truth-testable, got '{condType.GetDisplayName()}'",
                 ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                 span: ifClause.Condition.Span);
-        }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(ifClause.Condition, compTruthLowering);
         }
     }
 
@@ -682,12 +677,15 @@ internal partial class TypeChecker
 
     private SemanticType CheckFStringLiteral(FStringLiteral fstr)
     {
-        // Type-check all interpolated expressions within the f-string
         foreach (var part in fstr.Parts)
         {
             if (part.Expression != null)
             {
-                var partType = CheckExpression(part.Expression);
+                SemanticType partType;
+                using (EnterStore(StorePosition.FStringHole, SemanticType.Object, part.Expression))
+                {
+                    partType = CheckExpression(part.Expression);
+                }
                 RecordInterpolationStrWrapping(part, partType);
             }
         }
@@ -733,7 +731,10 @@ internal partial class TypeChecker
         {
             if (part.Expression != null)
             {
-                CheckExpression(part.Expression);
+                using (EnterStore(StorePosition.FStringHole, SemanticType.Object, part.Expression))
+                {
+                    CheckExpression(part.Expression);
+                }
             }
         }
         return TemplateType.Instance;

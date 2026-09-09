@@ -752,7 +752,7 @@ internal partial class TypeChecker
 
     private SemanticType CheckBooleanAndOp(BinaryOp andOp)
     {
-        var leftType = CheckExpression(andOp.Left);
+        var (leftTruthTestable, leftType) = CheckTruthinessTest(andOp.Left);
 
         if (leftType is UnknownType)
         {
@@ -760,7 +760,6 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var (leftTruthTestable, leftTruthLowering) = ClassifyTruthiness(leftType);
         if (!leftTruthTestable)
         {
             AddError(
@@ -769,24 +768,20 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: andOp.Left.Span);
         }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(andOp.Left, leftTruthLowering);
-        }
 
         var leftNarrowed = ExtractNarrowedTypes(andOp.Left, true);
 
+        bool rightTruthTestable;
         SemanticType rightType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(leftNarrowed);
-            rightType = CheckExpression(andOp.Right);
+            (rightTruthTestable, rightType) = CheckTruthinessTest(andOp.Right);
         }
 
         if (rightType is UnknownType)
             return SemanticType.Unknown;
 
-        var (rightTruthTestable, rightTruthLowering) = ClassifyTruthiness(rightType);
         if (!rightTruthTestable)
         {
             AddError(
@@ -795,17 +790,13 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: andOp.Right.Span);
         }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(andOp.Right, rightTruthLowering);
-        }
 
         return SemanticType.Bool;
     }
 
     private SemanticType CheckBooleanOrOp(BinaryOp orOp)
     {
-        var leftType = CheckExpression(orOp.Left);
+        var (leftTruthTestable, leftType) = CheckTruthinessTest(orOp.Left);
 
         if (leftType is UnknownType)
         {
@@ -813,7 +804,6 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var (leftTruthTestable, leftTruthLowering) = ClassifyTruthiness(leftType);
         if (!leftTruthTestable)
         {
             AddError(
@@ -822,27 +812,23 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: orOp.Left.Span);
         }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(orOp.Left, leftTruthLowering);
-        }
 
         // Expression-level narrowing (#1080): the right operand is evaluated only when the left is
         // falsy, so the left's NEGATIVE narrowings hold inside it (e.g. `x is None or use(x + 1)` —
         // the RHS sees x non-None). The narrowings do not leak past the operand.
         var leftNegativeNarrowed = ExtractNarrowedTypes(orOp.Left, false);
 
+        bool rightTruthTestable;
         SemanticType rightType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(leftNegativeNarrowed);
-            rightType = CheckExpression(orOp.Right);
+            (rightTruthTestable, rightType) = CheckTruthinessTest(orOp.Right);
         }
 
         if (rightType is UnknownType)
             return SemanticType.Unknown;
 
-        var (rightTruthTestable, rightTruthLowering) = ClassifyTruthiness(rightType);
         if (!rightTruthTestable)
         {
             AddError(
@@ -850,10 +836,6 @@ internal partial class TypeChecker
                 orOp.Right.LineStart, orOp.Right.ColumnStart,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: orOp.Right.Span);
-        }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(orOp.Right, rightTruthLowering);
         }
 
         return SemanticType.Bool;
@@ -1218,29 +1200,30 @@ internal partial class TypeChecker
             return result.Type;
         }
 
+        // `not` operands go through truthiness, not generic operator inference (#1558, #1570)
+        if (unOp.Operator == UnaryOperator.Not)
+        {
+            var (notTruthTestable, notOperandType) = CheckTruthinessTest(unOp.Operand);
+            if (notOperandType is UnknownType)
+                return SemanticType.Unknown;
+            if (!notTruthTestable)
+            {
+                AddError(
+                    $"Operand of 'not' must be truth-testable, got '{notOperandType.GetDisplayName()}'",
+                    unOp.Operand.LineStart, unOp.Operand.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: unOp.Operand.Span);
+                return SemanticType.Unknown;
+            }
+            return SemanticType.Bool;
+        }
+
         var operandType = CheckExpression(unOp.Operand);
 
         // If operand is Unknown, return Unknown to avoid cascading errors
         if (operandType is UnknownType)
         {
             return SemanticType.Unknown;
-        }
-
-        // `not` operands go through truthiness, not generic operator inference (#1558, #1570)
-        if (unOp.Operator == UnaryOperator.Not)
-        {
-            var (notTruthTestable, notTruthLowering) = ClassifyTruthiness(operandType);
-            if (!notTruthTestable)
-            {
-                AddError(
-                    $"Operand of 'not' must be truth-testable, got '{operandType.GetDisplayName()}'",
-                    unOp.Operand.LineStart, unOp.Operand.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: unOp.Operand.Span);
-                return SemanticType.Unknown;
-            }
-            _semanticInfo.SetTruthinessLowering(unOp.Operand, notTruthLowering);
-            return SemanticType.Bool;
         }
 
         // Use TypeInferenceService for type inference
@@ -1543,28 +1526,27 @@ internal partial class TypeChecker
 
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)
     {
-        var testType = CheckExpression(cond.Test);
-
-        // The ternary's condition is a truthiness position like if/while/assert (#1603):
-        // without this check a non-bool condition reaches Roslyn as `5 ? … : …`.
-        var (ternaryTruthTestable, ternaryTruthLowering) = ClassifyTruthiness(testType);
+        // The ternary's condition is a truthiness position like if/while/assert (#1603).
+        var (ternaryTruthTestable, testType) = CheckTruthinessTest(cond.Test);
         if (!ternaryTruthTestable)
         {
             AddError($"Conditional expression condition must be boolean, got '{testType.GetDisplayName()}'",
                 cond.LineStart, cond.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: cond.Test.Span);
         }
-        else
-        {
-            _semanticInfo.SetTruthinessLowering(cond.Test, ternaryTruthLowering);
-        }
+
+        // R-K: a conditional in a truthiness position distributes the test per branch —
+        // each branch's own truthiness is classified and recorded, and the conditional gets
+        // TruthinessLowering.Distributed so the emitter wraps each branch individually.
+        bool isTruthinessPosition = _storeContext is { Position: StorePosition.TruthinessTest } tsc
+            && tsc.IsDirectOperand(cond);
 
         // R-W/R-AE: the conditional takes the enclosing store's slot when it IS the store's
         // value node. Each branch is checked under that slot inside its narrowing scope so the
         // seam refuses at the BRANCH's span, not the conditional's.
         SemanticType? condSlot = null;
         StorePosition condPosition = StorePosition.Declaration;
-        if (_storeContext is { Slot: not null and not UnknownType } sc && sc.IsDirectOperand(cond))
+        if (!isTruthinessPosition && _storeContext is { Slot: not null and not UnknownType } sc && sc.IsDirectOperand(cond))
         {
             condSlot = sc.Slot;
             condPosition = sc.Position;
@@ -1592,6 +1574,38 @@ internal partial class TypeChecker
         {
             _narrowingContext.ApplyNarrowings(elseEntries);
             elseType = CheckExpression(cond.ElseValue);
+        }
+
+        // R-K: distribute truthiness per branch. Each branch gets its own TruthinessLowering
+        // fact; the conditional itself records Distributed so the emitter wraps each branch.
+        if (isTruthinessPosition)
+        {
+            var (thenTruthTestable, thenTruthLowering) = ClassifyTruthiness(thenType);
+            if (!thenTruthTestable)
+            {
+                AddError($"Conditional expression branch must be truth-testable, got '{thenType.GetDisplayName()}'",
+                    cond.ThenValue.LineStart, cond.ThenValue.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch, span: cond.ThenValue.Span);
+            }
+            else
+            {
+                _semanticInfo.SetTruthinessLowering(cond.ThenValue, thenTruthLowering);
+            }
+
+            var (elseTruthTestable, elseTruthLowering) = ClassifyTruthiness(elseType);
+            if (!elseTruthTestable)
+            {
+                AddError($"Conditional expression branch must be truth-testable, got '{elseType.GetDisplayName()}'",
+                    cond.ElseValue.LineStart, cond.ElseValue.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch, span: cond.ElseValue.Span);
+            }
+            else
+            {
+                _semanticInfo.SetTruthinessLowering(cond.ElseValue, elseTruthLowering);
+            }
+
+            _semanticInfo.SetTruthinessLowering(cond, TruthinessLowering.Distributed);
+            return SemanticType.Bool;
         }
 
         // Slot-directed conditionals: the outer store seam + ClassifyConditionalBranch already

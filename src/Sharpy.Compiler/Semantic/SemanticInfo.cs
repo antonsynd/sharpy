@@ -2623,7 +2623,14 @@ public enum TruthinessLowering
     SizedNotEmpty,
 
     /// <summary><c>NoneType</c>: always false (emit <c>false</c>).</summary>
-    AlwaysFalse
+    AlwaysFalse,
+
+    /// <summary>
+    /// A conditional expression in a truthiness position — the test distributes per branch
+    /// (R-K). The emitter wraps each branch with its own <see cref="TruthinessLowering"/> fact
+    /// rather than wrapping the whole ternary (#1743).
+    /// </summary>
+    Distributed
 }
 
 /// <summary>
