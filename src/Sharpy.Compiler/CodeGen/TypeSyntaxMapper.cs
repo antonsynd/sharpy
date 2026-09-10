@@ -596,6 +596,14 @@ internal class TypeSyntaxMapper
                 return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
             }
 
+            // CLR-backed types without a defining module/file (builtins like Exception)
+            // emit the global::-qualified name so no using set can make them ambiguous (#1765).
+            if (typeSymbol.ClrType != null
+                && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
+            {
+                return $"global::{ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!)}";
+            }
+
             // Type is in current scope (user-defined in current file) - use simple name
             // This takes priority over builtin registry to allow shadowing.
             // The escape flag comes from the SYMBOL, not the caller's argument: this route is
