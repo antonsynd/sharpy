@@ -1419,7 +1419,8 @@ internal class TypeInferenceService
                         break;
                     }
                 }
-                if (acceptsAll) return candidate;
+                if (acceptsAll)
+                    return candidate;
             }
 
             return null;

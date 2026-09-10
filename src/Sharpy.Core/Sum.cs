@@ -452,7 +452,8 @@ namespace Sharpy
                 {
                     int result = 0;
                     foreach (var b in iterable)
-                        if (b) result++;
+                        if (b)
+                            result++;
                     return result;
                 }
             }
@@ -478,7 +479,8 @@ namespace Sharpy
                 {
                     int result = start;
                     foreach (var b in iterable)
-                        if (b) result++;
+                        if (b)
+                            result++;
                     return result;
                 }
             }
@@ -500,7 +502,8 @@ namespace Sharpy
 
             double result = start;
             foreach (var b in iterable)
-                if (b) result += 1.0;
+                if (b)
+                    result += 1.0;
             return result;
         }
 
@@ -516,7 +519,8 @@ namespace Sharpy
 
             decimal result = start;
             foreach (var b in iterable)
-                if (b) result += 1m;
+                if (b)
+                    result += 1m;
             return result;
         }
 
@@ -527,9 +531,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<sbyte> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -538,9 +544,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<byte> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -549,9 +557,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<short> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -560,9 +570,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<ushort> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -571,9 +583,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<int> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -582,9 +596,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<uint> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -593,9 +609,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<long> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -604,9 +622,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<ulong> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -615,9 +635,11 @@ namespace Sharpy
         /// </summary>
         public static double Sum(IEnumerable<float> iterable, double start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             double result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -628,9 +650,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<sbyte> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -639,9 +663,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<byte> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -650,9 +676,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<short> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -661,9 +689,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<ushort> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -672,9 +702,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<int> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -683,9 +715,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<uint> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -694,9 +728,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<long> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
 
@@ -705,9 +741,11 @@ namespace Sharpy
         /// </summary>
         public static decimal Sum(IEnumerable<ulong> iterable, decimal start)
         {
-            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            if (iterable is null)
+                throw TypeError.ArgNone("sum", "iterable");
             decimal result = start;
-            foreach (var x in iterable) result += x;
+            foreach (var x in iterable)
+                result += x;
             return result;
         }
     }
