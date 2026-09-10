@@ -1,0 +1,21 @@
+# Tuple membership: tuples are membership containers (#1771).
+# The element type decides the needle slot through BestCommonType —
+# `2 in (1, 2)` → True (int needle, int element), `2 in (1, 2.5)` → False
+# (int converts to float, 2.0 ≠ 2.5).
+
+def main() -> None:
+    # Literal tuple membership
+    print(2 in (1, 2, 3))
+    print(7 in (1, 2, 3))
+    print(2 not in (1, 2, 3))
+    print(7 not in (1, 2, 3))
+
+    # Variable tuple membership
+    t: tuple[int, int, int] = (1, 2, 3)
+    print(2 in t)
+    print(7 not in t)
+
+    # Float-mix: 2 converts to 2.0, not equal to 2.5
+    print(2 in (1, 2.5))
+    print(1 in (1, 2.5))
+    print(2.5 in (1, 2.5))

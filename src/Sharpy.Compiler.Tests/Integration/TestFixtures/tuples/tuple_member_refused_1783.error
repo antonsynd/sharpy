@@ -1,0 +1,3 @@
+# .count() and .index() are refused with the list(t) steer.
+has no member 'count' — a tuple is not a list; use 'list(t).count(...)' @6:5
+has no member 'index' — a tuple is not a list; use 'list(t).index(...)' @7:5

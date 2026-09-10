@@ -1,0 +1,6 @@
+# Heterogeneous tuple iteration refused by R-W arm 3 (#1783).
+# `for x in (1, "a")` has no best common type — SPY0227 names the pair.
+
+def main() -> None:
+    for x in (1, "a"):
+        print(x)

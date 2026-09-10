@@ -1,0 +1,10 @@
+# Positive control: annotated list[object] from a homogeneous tuple prints.
+# This is the annotated-target positive control for the arm-3 absence assertion:
+# list[object]((1, 2)) with the explicit generic is still deferred (slot-passing
+# at argument positions), but the list[object] literal with tuple elements works.
+
+def main() -> None:
+    xs: list[object] = [1, "a"]
+    print(len(xs))
+    for x in xs:
+        print(x)

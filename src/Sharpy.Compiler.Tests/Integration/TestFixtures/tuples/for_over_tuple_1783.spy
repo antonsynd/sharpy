@@ -1,0 +1,22 @@
+# Tuple iteration: a tuple is iterable in a for loop (#1783).
+# The element type is decided by BestCommonType — a homogeneous int tuple
+# iterates as int, a float-mix tuple iterates as float, and a nested tuple
+# of pairs unpacks into two variables.
+
+def main() -> None:
+    # Literal tuple
+    for x in (1, 2, 3):
+        print(x)
+
+    # Variable tuple
+    t: tuple[int, int, int] = (4, 5, 6)
+    for x in t:
+        print(x)
+
+    # Float-mix tuple (element type = float by arm 2)
+    for x in (1, 2.5):
+        print(x)
+
+    # Nested tuple with unpacking target
+    for a, b in ((10, 20), (30, 40)):
+        print(a, b)

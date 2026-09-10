@@ -1,0 +1,7 @@
+# Tuple member refusal: .count() and .index() are refused with the list(t) steer (#1783).
+# t.item1 resolves to the element (positive control in for_over_tuple_1783).
+
+def main() -> None:
+    t: tuple[int, int, int] = (1, 2, 3)
+    t.count(1)
+    t.index(2)

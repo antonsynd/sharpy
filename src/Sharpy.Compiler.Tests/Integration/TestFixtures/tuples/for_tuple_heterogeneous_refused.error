@@ -1,0 +1,2 @@
+# Heterogeneous tuple has no best common type — SPY0227 with the steer.
+no best common type ('int32', 'str') @5:14
