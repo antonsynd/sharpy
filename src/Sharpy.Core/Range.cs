@@ -78,6 +78,27 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// O(1) arithmetic membership test matching CPython's <c>range.__contains__</c> for
+        /// <c>int</c> needles. Returns <see langword="true"/> when <paramref name="value"/> is
+        /// within the half-open interval and lies on a step boundary.
+        /// </summary>
+        public bool Contains(int value)
+        {
+            if (_step > 0)
+            {
+                if (value < _start || value >= _stop)
+                    return false;
+            }
+            else
+            {
+                if (value > _start || value <= _stop)
+                    return false;
+            }
+
+            return ((long)value - _start) % _step == 0;
+        }
+
+        /// <summary>
         /// Renders as CPython's <c>range(start, stop[, step])</c>.
         /// </summary>
         /// <remarks>

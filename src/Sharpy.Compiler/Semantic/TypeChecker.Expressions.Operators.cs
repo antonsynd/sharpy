@@ -1486,6 +1486,20 @@ internal partial class TypeChecker
         if (containerType is GenericType generic && generic.TypeArguments.Count > 0)
             return generic.TypeArguments[0];
 
+        // BuiltinType with a CLR Contains(T) method: read the parameter type (#1778).
+        if (containerType is BuiltinType builtin && builtin.ClrType != null)
+        {
+            var containsMethod = builtin.ClrType
+                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "Contains" && m.GetParameters().Length == 1);
+            if (containsMethod != null)
+            {
+                var paramType = TypeResolver.ClrTypeToSemanticType(containsMethod.GetParameters()[0].ParameterType);
+                if (paramType != null)
+                    return paramType;
+            }
+        }
+
         // User-defined types: look for __contains__ parameter type
         TypeSymbol? typeSymbol = containerType switch
         {

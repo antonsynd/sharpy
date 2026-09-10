@@ -1,0 +1,19 @@
+# range.__contains__ — O(1) arithmetic membership (#1778)
+def main() -> None:
+    # Positive step
+    print(3 in range(10))
+    print(10 in range(10))
+    print(-1 in range(10))
+    print(4 in range(0, 10, 2))
+    print(5 in range(0, 10, 2))
+    # Negative step
+    print(5 in range(10, 0, -1))
+    print(0 in range(10, 0, -1))
+    print(10 in range(10, 0, -3))
+    print(8 in range(10, 0, -3))
+    # not in
+    print(3 not in range(10))
+    print(10 not in range(10))
+    # Empty range
+    print(5 in range(0))
+    print(5 in range(5, 5))

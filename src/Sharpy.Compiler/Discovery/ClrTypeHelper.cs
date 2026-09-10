@@ -573,6 +573,16 @@ internal static class ClrTypeHelper
     /// Gets the element type if the given type is <c>Sharpy.Iterator&lt;T&gt;</c>
     /// or extends <c>Sharpy.Iterator&lt;T&gt;</c>. Returns <c>null</c> otherwise.
     /// </summary>
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="clrType"/> has a public instance
+    /// method named <c>Contains</c>, proving <c>__contains__</c>. Shared between
+    /// <c>OverloadIndexBuilder.DiscoverTypeProtocols</c> and <c>ProtocolValidator.HasClrProtocol</c>
+    /// so the two cannot diverge.
+    /// </summary>
+    internal static bool HasPublicContainsMethod(Type clrType)
+        => clrType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Any(m => m.Name == "Contains");
+
     public static Type? GetIteratorElementType(Type clrType)
     {
         var currentType = clrType;

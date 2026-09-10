@@ -422,9 +422,7 @@ internal class OverloadIndexBuilder
             AddProtocolStub(typeInfo, "__setitem__");
 
         // Contains method -> __contains__
-        var containsMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .Any(m => m.Name == "Contains");
-        if (containsMethods)
+        if (ClrTypeHelper.HasPublicContainsMethod(type))
             AddProtocolStub(typeInfo, "__contains__");
     }
 

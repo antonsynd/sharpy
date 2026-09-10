@@ -123,4 +123,41 @@ public class Range_Tests
         range.Next().Should().Be(0);
         range.Next().Should().Be(1);
     }
+
+    // ── Contains: O(1) arithmetic membership matching CPython (#1778) ──
+
+    [Theory]
+    [InlineData(0, 10, 1, 3, true)]
+    [InlineData(0, 10, 1, 0, true)]
+    [InlineData(0, 10, 1, 9, true)]
+    [InlineData(0, 10, 1, 10, false)]   // exclusive stop
+    [InlineData(0, 10, 1, -1, false)]
+    [InlineData(0, 10, 2, 4, true)]     // on step
+    [InlineData(0, 10, 2, 5, false)]    // not on step
+    [InlineData(0, 10, 3, 6, true)]
+    [InlineData(0, 10, 3, 9, true)]
+    [InlineData(0, 10, 3, 7, false)]
+    [InlineData(10, 0, -1, 5, true)]    // negative step
+    [InlineData(10, 0, -1, 10, true)]
+    [InlineData(10, 0, -1, 0, false)]   // exclusive stop
+    [InlineData(10, 0, -3, 10, true)]
+    [InlineData(10, 0, -3, 7, true)]
+    [InlineData(10, 0, -3, 4, true)]
+    [InlineData(10, 0, -3, 1, true)]
+    [InlineData(10, 0, -3, 8, false)]   // not on step
+    [InlineData(0, 0, 1, 0, false)]     // empty range
+    [InlineData(5, 5, 1, 5, false)]
+    [InlineData(10, 0, 1, 5, false)]    // empty: wrong direction
+    public void Range_Contains_MatchesCPython(int start, int stop, int step, int value, bool expected)
+    {
+        new RangeIterator(start, stop, step).Contains(value).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Range_Contains_DoesNotConsumeIterator()
+    {
+        var range = Range(5);
+        range.Contains(3).Should().BeTrue();
+        range.Next().Should().Be(0, "Contains must not advance the iterator");
+    }
 }

@@ -491,6 +491,14 @@ internal class ProtocolValidator : ValidatingAstWalker
                 return true;
         }
 
+        // A public instance Contains(T) method proves __contains__ — shared predicate with
+        // OverloadIndexBuilder.DiscoverTypeProtocols so the two cannot diverge (#1778).
+        if (dunderName == DunderNames.Contains)
+        {
+            if (Discovery.ClrTypeHelper.HasPublicContainsMethod(clrType))
+                return true;
+        }
+
         // Check Sharpy protocol interfaces (mirrors OverloadIndexBuilder.DiscoverTypeProtocols)
         var interfaces = clrType.GetInterfaces();
 

@@ -1,0 +1,3 @@
+# A str needle into range(int) is refused by name (#1778)
+def main() -> None:
+    print("a" in range(3))
