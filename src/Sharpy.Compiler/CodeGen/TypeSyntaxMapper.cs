@@ -596,9 +596,14 @@ internal class TypeSyntaxMapper
                 return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
             }
 
-            // CLR-backed types without a defining module/file (builtins like Exception)
-            // emit the global::-qualified name so no using set can make them ambiguous (#1765).
+            // CLR-backed NON-GENERIC types without a defining module/file (builtins like
+            // Exception) emit the global::-qualified name so no using set can make them
+            // ambiguous (#1765). Generic types are excluded because the registered ClrType
+            // may be a different arity or namespace than the Sharpy mapping (e.g.,
+            // IEnumerable is registered as System.Collections.IEnumerable but Sharpy maps
+            // it to System.Collections.Generic.IEnumerable<T>).
             if (typeSymbol.ClrType != null
+                && !typeSymbol.IsGeneric
                 && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
             {
                 return $"global::{ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!)}";
