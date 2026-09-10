@@ -131,7 +131,8 @@ internal partial class TypeChecker
         // position is exempt throughout — for the same reason as the #1138 arm above, the call path
         // resolves the target against the arguments — and parentheses do not make a callee a value
         // (IsCurrentCallCallee compares through them).
-        if (expr is Identifier or MemberAccess && !IsCurrentCallCallee(expr))
+        if (expr is Identifier or MemberAccess && !IsCurrentCallCallee(expr)
+            && !IsCurrentMemberAccessQualifier(expr))
         {
             // #1593: a function reference in value position (f = deprecated_add) is the deprecation
             // surface — the call site (f(1, 2)) invokes a delegate with no Symbol. Fire SPY0466 here.

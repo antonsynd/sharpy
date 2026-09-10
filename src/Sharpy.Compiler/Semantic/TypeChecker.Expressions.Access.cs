@@ -119,6 +119,7 @@ internal partial class TypeChecker
         if (memberAccess.Object is Identifier typeId
             && _semanticInfo.GetIdentifierSymbol(typeId) is TypeSymbol typeSym)
         {
+            _semanticInfo.MarkTypeReference(typeId);
             var resolved = TryResolveTypeMemberAccess(memberAccess, typeId.Name, typeSym);
             if (resolved != null)
                 return resolved;
@@ -3284,6 +3285,7 @@ internal partial class TypeChecker
                 if (typeSymbol != null)
                 {
                     moduleSymbol.Exports.Add(memberAccess.Member, typeSymbol);
+                    _semanticInfo.MarkTypeReference(memberAccess);
                     return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
                 }
             }

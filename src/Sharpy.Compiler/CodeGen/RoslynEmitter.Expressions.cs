@@ -338,7 +338,10 @@ internal partial class RoslynEmitter
 
             // Type-name builtin function references (e.g., map(int, items) → Builtins.Int)
             // C# method group conversion handles overload selection automatically.
-            if (symbol is TypeSymbol && _context.IsBuiltinFunction(name.Name))
+            // Skip when the identifier is marked as a type reference — in receiver
+            // position (int.max_value), the CLR type name is emitted, not a callable (#1686).
+            if (symbol is TypeSymbol && _context.IsBuiltinFunction(name.Name)
+                && _context.SemanticInfo?.IsTypeReference(name) != true)
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
                     NameCasing.ResolveMethod(name.Name, name.IsNameBacktickEscaped));
