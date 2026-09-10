@@ -1,0 +1,13 @@
+# g1: bare value into an open T? at an overloaded callee —
+# inference closes T=int from the sibling list[T], then 1 into int?
+# is SPY0604 (R-G: bare value → Optional).
+
+def f[T](xs: list[T], x: T?) -> None:
+    print(x)
+
+def f[T](x: T) -> None:
+    print(x)
+
+def main():
+    xs: list[int] = [0]
+    f(xs, 1)

@@ -1,0 +1,12 @@
+# k14b: true ctor ambiguity by keyword —
+# both candidates accept x: int, tie on defaults → SPY0353.
+
+class C:
+    def __init__(self, x: int, y: str = "") -> None:
+        print("first")
+
+    def __init__(self, x: int, z: float = 0.0) -> None:
+        print("second")
+
+def main():
+    C(x=1)

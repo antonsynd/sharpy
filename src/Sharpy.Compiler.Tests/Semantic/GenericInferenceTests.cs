@@ -302,6 +302,60 @@ def main():
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
+    /// <summary>
+    /// #1811: when a generic candidate's inference conflicts at an overloaded callee,
+    /// the candidate is inapplicable (not an ICE). SPY0354 names the reason.
+    /// </summary>
+    [Fact]
+    public void OverloadedCallee_InferenceConflict_InapplicableNotICE()
+    {
+        var source = @"
+def f[T](xs: list[T], y: T) -> None:
+    print(y)
+
+def f[T](x: T) -> None:
+    print(x)
+
+def main():
+    xs: list[int] = [0]
+    f(xs, ""a"")
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var errors = typeChecker.Diagnostics.GetErrors();
+        errors.Should().Contain(e => e.Code == DiagnosticCodes.Semantic.NoMatchingOverload,
+            "inference conflict makes the two-arg candidate inapplicable → SPY0354");
+        errors.Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "the conflict is decided by Sharpy, not leaked to Roslyn as CS0411");
+    }
+
+    /// <summary>
+    /// #1811: a keyword argument that drives inference into a generic overload —
+    /// inference succeeds from the binding that includes the keyword, the candidate wins.
+    /// </summary>
+    [Fact]
+    public void OverloadedCallee_KeywordDrivenInference_Succeeds()
+    {
+        var source = @"
+def f[T](xs: list[T], x: T) -> T:
+    return x
+
+def f(xs: list[int], x: str) -> str:
+    return x
+
+def main():
+    xs: list[int] = [0]
+    v: int = f(xs, x=1)
+    print(v + 1)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "the generic candidate wins: T=int from both xs and x=1; the non-generic's x: str refuses 1");
+    }
+
     #endregion
 
     #region Inference with Constraints

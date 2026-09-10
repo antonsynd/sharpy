@@ -1,0 +1,13 @@
+# g4: inference conflict at an overloaded callee —
+# T=int from xs (list[T]) and T=str from "a" (T).
+# Per-candidate inference fails → candidate inapplicable → SPY0354.
+
+def f[T](xs: list[T], y: T) -> None:
+    print(y)
+
+def f[T](x: T) -> None:
+    print(x)
+
+def main():
+    xs: list[int] = [0]
+    f(xs, "a")

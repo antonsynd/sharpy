@@ -1,0 +1,20 @@
+# k16c: generic user receiver overloads —
+# Box[int].put has {put(x: T=int), put(x: str)}.
+# put("a") → str overload (prints "a!"), put(2) → int overload (prints 2).
+
+class Box[T]:
+    _val: T
+
+    def __init__(self, val: T) -> None:
+        self._val = val
+
+    def put(self, x: T) -> None:
+        print(x)
+
+    def put(self, x: str) -> None:
+        print(x + "!")
+
+def main():
+    b = Box[int](0)
+    b.put("a")
+    b.put(2)

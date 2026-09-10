@@ -1,0 +1,14 @@
+# k20: conversion betterness before tie-breaks —
+# {g(x: object) -> str, g(x: int, y: int = 0) -> int}
+# g(1): C# §12.6.4.3 picks int (identity beats widening);
+# old code picked object (exact arity first). Prints 2.
+
+def g(x: object) -> str:
+    return "obj"
+
+def g(x: int, y: int = 0) -> int:
+    return x + 1
+
+def main():
+    v: int = g(1)
+    print(v)

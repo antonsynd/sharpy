@@ -346,6 +346,47 @@ def main():
         string.Join(" ", result.CompilationErrors).Should().Contain("Ambiguous");
     }
 
+    /// <summary>
+    /// #1820: C# §12.6.4.3 — conversion betterness over every bound argument decides first;
+    /// tie-breaks (all-arguments-correspond, non-generic, non-expanded) apply only afterwards.
+    /// Each cell is a discriminating pair: one wrong order gives the wrong pick or a false
+    /// ambiguity. Measured against Roslyn: d2/t3 confirm the all-arguments-correspond tie-break
+    /// is UNGATED; t1 confirms the non-generic tie-break IS gated on sequence equivalence.
+    /// </summary>
+    [Theory]
+    [InlineData(
+        "conversion betterness before exact arity (k20, C# §12.6.4.3)",
+        "def g(x: object) -> str:\n    return \"obj\"\n\ndef g(x: int, y: int = 0) -> int:\n    return x + 1\n\ndef main():\n    v: int = g(1)\n    print(v)\n",
+        true, "2\n")]
+    [InlineData(
+        "generic vs object: conversion betterness picks identity (b1)",
+        "def f[T](x: T) -> int:\n    return 1\n\ndef f(x: object) -> str:\n    return \"obj\"\n\ndef main():\n    v: int = f(1)\n    print(v + 1)\n",
+        true, "2\n")]
+    [InlineData(
+        "all-arguments-correspond over default-substituted is UNGATED (d2 regression control)",
+        "def f(x: int, y: object) -> str:\n    return \"io\"\n\ndef f(x: object, y: int, z: int = 0) -> str:\n    return \"oiz\"\n\ndef main():\n    print(f(1, 2))\n",
+        true, "io\n")]
+    [InlineData(
+        "non-generic over generic IS gated on sequence equivalence (t1 → SPY0353)",
+        "def f[T](x: T, y: object) -> int:\n    return 1\n\ndef f(x: object, y: int) -> str:\n    return \"nongeneric\"\n\ndef main():\n    f(1, 2)\n",
+        false, null)]
+    public void BetternessOrder_MatchesCSharp(string cell, string source, bool succeeds, string? expectedOutput)
+    {
+        var result = CompileAndExecute(source);
+        if (succeeds)
+        {
+            result.Success.Should().BeTrue($"{cell}: {string.Join(", ", result.CompilationErrors)}");
+            result.StandardOutput.Should().Be(expectedOutput, cell);
+        }
+        else
+        {
+            result.Success.Should().BeFalse($"{cell}: should have been refused");
+            var errors = string.Join(" ", result.CompilationErrors);
+            (errors.Contains("Ambiguous") || errors.Contains("No matching overload")).Should().BeTrue(
+                $"{cell}: expected SPY0353 or SPY0354, got: {errors}");
+        }
+    }
+
     [Fact]
     public void GenericOverloads_StructuredArgBeatsBareTypeParameter_NoLongerAmbiguous()
     {

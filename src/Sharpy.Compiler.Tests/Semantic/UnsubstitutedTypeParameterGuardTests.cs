@@ -471,6 +471,12 @@ def main():
         "SPY0220", "inferred def: out-of-range constant into T bound to int8 by a sibling")]
     [InlineData("def f[T](xs: list[T], x: T) -> None:\n    print(x)\n\ndef f[T](x: T) -> None:\n    print(x)\n\ndef main():\n    xs: list[int8] = [0]\n    f(xs, 300)\n",
         "SPY0220", "overloaded inferred def: out-of-range constant into T bound to int8 by a sibling")]
+    [InlineData("def f[T](x: T?) -> None:\n    print(x)\n\ndef f[T](x: T, y: int) -> None:\n    print(x)\n\ndef main():\n    f[int](1)\n",
+        "SPY0604", "overloaded explicit def: bare value into T? closed at int")]
+    [InlineData("def f[T](x: T?) -> None:\n    print(x)\n\ndef f[T](x: T, y: int) -> None:\n    print(x)\n\ndef main():\n    f[int](x=1)\n",
+        "SPY0604", "overloaded keyword into T? closed at int")]
+    [InlineData("class Box[T]:\n    def __init__(self, x: T?) -> None:\n        print(x)\n\n    def __init__(self, x: T, y: int) -> None:\n        print(x)\n\ndef main():\n    Box[int](1)\n",
+        "SPY0604", "overloaded explicit ctor: bare value into T? closed at int")]
     public void ArgumentAtAGenericSlot_IsRefusedAgainstTheClosedSlot_NeverT(string program, string code, string cell)
     {
         var result = CompileAndExecute(program);

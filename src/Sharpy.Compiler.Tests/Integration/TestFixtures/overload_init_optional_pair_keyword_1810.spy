@@ -1,0 +1,13 @@
+# k13: ctor {int?, int | None} by keyword —
+# both candidates are applicable (IsArgumentAssignable accepts int → int?
+# and int → Optional<int>); the resolver picks the second by ordering.
+
+class C:
+    def __init__(self, x: int?) -> None:
+        print("nullable")
+
+    def __init__(self, x: int | None) -> None:
+        print("opt")
+
+def main():
+    C(x=1)

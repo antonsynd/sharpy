@@ -1,0 +1,14 @@
+# g10b: keyword-driven inference picks the generic overload —
+# T=int from xs (list[T]), x=1 (keyword) matches T=int;
+# the non-generic's x: str refuses 1, so the generic wins.
+
+def f[T](xs: list[T], x: T) -> T:
+    return x
+
+def f(xs: list[int], x: str) -> str:
+    return x
+
+def main():
+    xs: list[int] = [0]
+    v: int = f(xs, x=1)
+    print(v + 1)
