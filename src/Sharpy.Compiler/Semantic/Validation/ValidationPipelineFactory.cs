@@ -38,6 +38,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new ExhaustivenessValidator())    // Order: 405 (match exhaustiveness)
             .AddValidator(new MatchArmOrderValidator())    // Order: 406 (irrefutable arm not last — #1624)
             .AddValidator(new DunderSignatureValidator())    // Order: 407 (duplicate CLR-mapped dunder signatures — SPY0701)
+            .AddValidator(new WalrusPositionValidator())    // Order: 408 (PEP 572 prohibited walrus positions — SPY0704)
             .AddValidator(new PropertyValidator())           // Order: 410 (property declaration rules)
             .AddValidator(new FinalFieldValidator())        // Order: 411 (@final field assignment restrictions)
             .AddValidator(new EventValidator())             // Order: 412 (event declaration rules)

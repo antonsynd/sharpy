@@ -956,6 +956,7 @@ public static class DiagnosticCodes
         public const string DuplicateDunderSignature = "SPY0701"; // Active (#1654)
         public const string FinallyControlTransfer = "SPY0702"; // Active (#1690)
         public const string YieldInSuppressingWith = "SPY0703"; // Active (#1745)
-        // SPY0704-SPY0799: Available for new validation diagnostics
+        public const string WalrusInProhibitedPosition = "SPY0704"; // Active (#1724)
+        // SPY0705-SPY0799: Available for new validation diagnostics
     }
 }

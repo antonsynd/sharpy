@@ -1,0 +1,4 @@
+# Walrus in comprehension iterable position is refused (PEP 572, #1724)
+def main() -> None:
+    xs: list[int] = [x for x in (y := range(5))]
+    print(xs)

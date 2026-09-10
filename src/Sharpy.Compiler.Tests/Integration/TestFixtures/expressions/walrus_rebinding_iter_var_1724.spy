@@ -1,0 +1,4 @@
+# Walrus rebinding comprehension iteration variable is refused (PEP 572, #1724)
+def main() -> None:
+    xs: list[int] = [x := x for x in range(5)]
+    print(xs)

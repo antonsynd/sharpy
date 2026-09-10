@@ -1002,5 +1002,15 @@ public static partial class DiagnosticExplanations
             "class CM:\n    def __exit__(self, t: object?, v: Exception?, tb: object?) -> bool:\n        return False\ndef gen() -> Iterator[int]:\n    with CM():\n        yield 1  # SPY0703",
             "Use a 1-parameter `__exit__(self) -> None` if suppression is not needed, or " +
             "collect values into a list and yield from it outside the `with` block.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.WalrusInProhibitedPosition,
+            "Walrus operator in a prohibited position", "Validation",
+            "PEP 572 prohibits the walrus operator (`:=`) in certain positions within " +
+            "comprehensions: as part of the iterable expression, rebinding the iteration " +
+            "variable, or inside a class-body comprehension.",
+            "[x for x in (y := range(5))]  # SPY0704: walrus in iterable\n" +
+            "[x := x for x in range(5)]    # SPY0704: rebinding iteration variable",
+            "Move the walrus assignment outside the comprehension, or use a regular " +
+            "assignment before the comprehension.");
     }
 }
