@@ -274,6 +274,14 @@ public static partial class DiagnosticExplanations
             "Write the branch as an if statement (if flag: a() else: b()), call the value, or bind it " +
             "to a name.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.QualifiedTaggedUnionConstructor,
+            "qualified tagged-union constructor", "Semantic",
+            "The qualified form of a builtin tagged-union constructor (Optional.Some, Result.Ok, " +
+            "Result.Err, Optional.None) is not supported. The bare form infers its type from the " +
+            "assignment target or expected type context.",
+            "v: int? = Optional.Some(42)  # use Some(42) instead",
+            "Use the bare form: Some(value), None(), Ok(value), or Err(error).");
+
         return dict;
     }
 

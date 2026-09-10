@@ -190,8 +190,17 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
     private void Warn(string name, bool isNameBacktickEscaped, int line, int column,
         Text.TextSpan? span, bool isTypeDeclaration)
     {
-        if (BuiltinNameShadowing.Classify(Context.Builtins, name, isNameBacktickEscaped,
-                isTypeDeclaration) != BuiltinShadowVerdict.Warned)
+        var verdict = BuiltinNameShadowing.Classify(Context.Builtins, name, isNameBacktickEscaped,
+            isTypeDeclaration);
+
+        if (verdict == BuiltinShadowVerdict.Refused && !isTypeDeclaration)
+        {
+            AddError(BuiltinNameShadowing.RefusalMessage(name), line, column,
+                code: BuiltinNameShadowing.RefusalCode, span: span);
+            return;
+        }
+
+        if (verdict != BuiltinShadowVerdict.Warned)
             return;
 
         AddWarning(BuiltinNameShadowing.WarningMessage(name), line, column,

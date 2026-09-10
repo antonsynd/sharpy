@@ -6569,6 +6569,19 @@ internal partial class TypeChecker
             return null;
         }
 
+        if (_symbolTable.BuiltinRegistry.IsBuiltinSymbol(receiverTypeSymbol)
+            && receiverTypeSymbol.Name is "Optional" or "Result"
+            && memberAccess.Member is "Some" or "None" or "Ok" or "Err")
+        {
+            AddError(
+                $"'{receiverTypeSymbol.Name}.{memberAccess.Member}' is not supported; use the bare form "
+                + $"'{memberAccess.Member}(...)' instead, which infers its type from the assignment target",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.QualifiedTaggedUnionConstructor,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
         var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
         if (methodName == null)
             return null;

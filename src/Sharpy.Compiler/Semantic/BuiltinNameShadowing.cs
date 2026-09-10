@@ -74,6 +74,9 @@ internal static class BuiltinNameShadowing
         if (isTypeDeclaration && registry.IsReservedBuiltinTypeName(name))
             return BuiltinShadowVerdict.Refused;
 
+        if (registry.IsTaggedUnionConstructor(name) || name == "None")
+            return BuiltinShadowVerdict.Refused;
+
         return registry.IsReservedBuiltinName(name)
             ? BuiltinShadowVerdict.Warned
             : BuiltinShadowVerdict.Allowed;
@@ -89,10 +92,17 @@ internal static class BuiltinNameShadowing
     /// TypeChecker carry different phase and file-path plumbing. What must not diverge is the
     /// decision and the wording, and both live here.
     /// </remarks>
-    public static string RefusalMessage(string name) =>
-        $"'{name}' is a builtin type name; a type declaration with this spelling would make "
-        + $"annotation position ambiguous. To declare a user type with this spelling, write it "
-        + $"backtick-escaped: `{name}`";
+    public static string RefusalMessage(string name)
+    {
+        if (name is "Some" or "None" or "Ok" or "Err")
+            return $"'{name}' is a builtin tagged-union constructor; rebinding this name would "
+                + $"shadow the builtin form. Use the bare form (e.g. '{name}(value)') instead. "
+                + $"To use this spelling for a user declaration, write it backtick-escaped: `{name}`";
+
+        return $"'{name}' is a builtin type name; a type declaration with this spelling would make "
+            + $"annotation position ambiguous. To declare a user type with this spelling, write it "
+            + $"backtick-escaped: `{name}`";
+    }
 
     /// <summary>
     /// True when binding <paramref name="name"/> would displace a builtin, in either namespace.
