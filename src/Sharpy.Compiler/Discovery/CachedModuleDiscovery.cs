@@ -833,6 +833,15 @@ internal class CachedModuleDiscovery
                 };
             }
 
+            // Handle reference-type declared nullable (string?) -> NullableType (#1705)
+            if (signature.Name == Caching.TypeSignature.NullableReferenceSentinel && signature.TypeArguments.Count == 1)
+            {
+                return new NullableType
+                {
+                    UnderlyingType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams)
+                };
+            }
+
             // Handle value-type Nullable<T> (C# T?) -> NullableType (#890)
             if (signature.Name == Caching.TypeSignature.NullableSentinel && signature.TypeArguments.Count == 1)
             {

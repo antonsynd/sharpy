@@ -451,7 +451,7 @@ internal class OverloadIndexBuilder
                 var propertyInfo = new DiscoveredPropertyInfo
                 {
                     Name = property.Name,
-                    PropertyType = CreateTypeSignature(property.PropertyType),
+                    PropertyType = CreateTypeSignature(property),
                     HasGetter = property.GetGetMethod() != null,
                     HasSetter = property.GetSetMethod() != null,
                     Documentation = propDoc
@@ -616,7 +616,7 @@ internal class OverloadIndexBuilder
                 var fieldSignature = new FieldSignature
                 {
                     Name = sharpyName,
-                    FieldType = CreateTypeSignature(field.FieldType),
+                    FieldType = CreateTypeSignature(field),
                     IsConst = field.IsLiteral,
                     ClrName = field.Name,
                     RecordedPythonName = recordedName
@@ -651,7 +651,7 @@ internal class OverloadIndexBuilder
                 var propertyFieldSignature = new FieldSignature
                 {
                     Name = sharpyPropertyName,
-                    FieldType = CreateTypeSignature(property.PropertyType),
+                    FieldType = CreateTypeSignature(property),
                     IsConst = false,
                     ClrName = property.Name,
                     RecordedPythonName = recordedPropertyName
@@ -679,7 +679,7 @@ internal class OverloadIndexBuilder
         {
             Name = GetFunctionName(method),
             ClrName = method.Name,
-            ReturnType = CreateTypeSignature(method.ReturnType),
+            ReturnType = CreateReturnTypeSignature(method),
             MethodToken = CreateMethodToken(method),
             IsVirtual = method.IsVirtual && !method.IsFinal,
             IsAbstract = method.IsAbstract,
@@ -734,7 +734,7 @@ internal class OverloadIndexBuilder
         return new ParameterSignature
         {
             Name = param.Name ?? "arg",
-            Type = CreateTypeSignature(param.ParameterType),
+            Type = CreateParameterTypeSignature(param),
             HasDefault = param.HasDefaultValue,
             DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
             IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
@@ -748,6 +748,30 @@ internal class OverloadIndexBuilder
     /// <c>CachedModuleDiscovery.ConvertTypeSignature</c> derives <see cref="GenericType.ClrOriginTypeName"/>,
     /// and that stamp must match the one <see cref="ClrTypeBridge"/> applies (#1294).
     /// </remarks>
+    internal TypeSignature CreateTypeSignature(PropertyInfo property)
+        => WrapIfNullableReference(CreateTypeSignature(property.PropertyType), ClrDeclaredNullability.DeclaresNullable(property));
+
+    internal TypeSignature CreateTypeSignature(FieldInfo field)
+        => WrapIfNullableReference(CreateTypeSignature(field.FieldType), ClrDeclaredNullability.DeclaresNullable(field));
+
+    internal TypeSignature CreateReturnTypeSignature(MethodInfo method)
+        => WrapIfNullableReference(CreateTypeSignature(method.ReturnType), ClrDeclaredNullability.DeclaresNullableReturn(method));
+
+    internal TypeSignature CreateParameterTypeSignature(ParameterInfo parameter)
+        => WrapIfNullableReference(CreateTypeSignature(parameter.ParameterType), ClrDeclaredNullability.DeclaresNullableArgument(parameter));
+
+    private static TypeSignature WrapIfNullableReference(TypeSignature inner, bool declaredNullable)
+    {
+        if (!declaredNullable || inner.Name == TypeSignature.NullableSentinel)
+            return inner;
+        return new TypeSignature
+        {
+            Name = TypeSignature.NullableReferenceSentinel,
+            IsGeneric = true,
+            TypeArguments = new List<TypeSignature> { inner }
+        };
+    }
+
     internal TypeSignature CreateTypeSignature(Type clrType)
     {
         // Handle generic type parameters (e.g., T in Min<T>(T[] items))
