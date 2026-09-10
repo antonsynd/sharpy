@@ -334,8 +334,10 @@ internal partial class RoslynEmitter
                 continue;
 
             // Convert Python module name to C# namespace/class path
-            var namespaceName = ConvertModuleNameToNamespace(alias.Name);
             var isNetFramework = IsNetFrameworkNamespace(alias.Name);
+            var namespaceName = isNetFramework
+                ? ResolveClrNamespace(alias.Name)
+                : ConvertModuleNameToNamespace(alias.Name);
 
             if (alias.AsName != null)
             {
@@ -439,7 +441,7 @@ internal partial class RoslynEmitter
 
         if (isNetFramework)
         {
-            var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
+            var namespaceName = ResolveClrNamespace(fromImport.Module);
 
             if (fromImport.ImportAll || fromImport.Names.Length == 0)
             {
@@ -457,19 +459,16 @@ internal partial class RoslynEmitter
                 // (e.g., Sharpy.Math would shadow a using Math = global::System.Math alias).
                 foreach (var importedName in fromImport.Names)
                 {
-                    // Skip generic types — C# cannot alias open generic types (e.g., IEquatable<T>).
-                    // We check both the symbol's TypeParameters AND query the CLR type
-                    // from the target namespace directly, because the symbol table lookup
-                    // may return a Sharpy type that shadows the CLR import name
-                    // (e.g., Sharpy.IList shadows System.Collections.Generic.IList<T>).
                     var symbol = _context.LookupSymbol(importedName.Name);
                     if (symbol is TypeSymbol { IsGeneric: true })
                         continue;
-                    if (IsClrTypeGenericInNamespace(namespaceName, NameMangler.ToNamespacePart(importedName.Name)))
+
+                    var clrTypeName = ResolveClrTypeName(symbol, importedName.Name);
+                    if (IsClrTypeGenericInNamespace(namespaceName, clrTypeName))
                         continue;
 
-                    var csharpName = importedName.AsName ?? NameMangler.ToNamespacePart(importedName.Name);
-                    var qualifiedName = $"global::{namespaceName}.{NameMangler.ToNamespacePart(importedName.Name)}";
+                    var csharpName = importedName.AsName ?? clrTypeName;
+                    var qualifiedName = $"global::{namespaceName}.{clrTypeName}";
                     yield return UsingDirective(
                         NameEquals(csharpName),
                         ParseQualifiedName(qualifiedName));
@@ -586,6 +585,24 @@ internal partial class RoslynEmitter
 
         var firstPart = moduleName.Split('.')[0].ToLowerInvariant();
         return netPrefixes.Contains(firstPart);
+    }
+
+    private string ResolveClrNamespace(string moduleName)
+    {
+        var symbol = _context.LookupSymbol(moduleName);
+        if (symbol is ModuleSymbol { NetNamespaceName: { } ns })
+            return ns;
+
+        var segments = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(".", segments.Select(s =>
+            NameMangler.ToModuleIdentifier(s, Shared.AcronymPolicy.IoOnly)));
+    }
+
+    private static string ResolveClrTypeName(Symbol? symbol, string fallbackName)
+    {
+        if (symbol is TypeSymbol { ClrType: { } clrType })
+            return clrType.Name;
+        return NameMangler.ToNamespacePart(fallbackName);
     }
 
     /// <summary>

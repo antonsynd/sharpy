@@ -213,7 +213,7 @@ internal partial class ImportResolver
         {
             _semanticBinding.SetCodeGenInfo(reExported, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(originalType.Name),
+                CSharpName = originalType.ClrType?.Name ?? NameMangler.ToPascalCase(originalType.Name),
                 OriginalName = effectiveName,
                 ImportKind = ImportKind.FromImportWithAlias,
                 OriginalImportName = originalType.Name
