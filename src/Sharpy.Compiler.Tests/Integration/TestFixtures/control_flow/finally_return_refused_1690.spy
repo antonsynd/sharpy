@@ -1,0 +1,7 @@
+# return inside a finally body is refused by name (SPY0702, #1690).
+# Positive control: finally_inner_loop_break_1690 (break inside a loop IN the finally).
+def f1() -> int:
+    try:
+        return 1
+    finally:
+        return 2

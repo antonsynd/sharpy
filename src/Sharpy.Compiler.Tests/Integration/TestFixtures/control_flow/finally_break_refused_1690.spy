@@ -1,0 +1,7 @@
+# break out of enclosing loop inside finally is refused (SPY0702, #1690).
+def f2() -> None:
+    for i in range(3):
+        try:
+            print(i)
+        finally:
+            break

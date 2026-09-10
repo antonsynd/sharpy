@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
 /// Totality guard for <see cref="Sharpy.Compiler.Semantic.TypeChecker"/>'s
-/// CheckDeferBodyControlFlow switch over Statement kinds. Every concrete Statement
+/// ReportEscapingControlTransfer switch over Statement kinds. Every concrete Statement
 /// subtype must be classified. A new subtype fails this test, forcing classification.
 /// </summary>
 public class DeferBodyControlFlowTotalityTests
@@ -99,13 +99,13 @@ public class DeferBodyControlFlowTotalityTests
     {
         var switchArms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs",
-            "CheckDeferBodyControlFlow");
+            "ReportEscapingControlTransfer");
 
         var expected = new HashSet<string>(Escapes);
         expected.UnionWith(Recurses);
 
         Assert.True(switchArms.SetEquals(expected),
-            $"CheckDeferBodyControlFlow switch arms differ from Escapes + Recurses.\n" +
+            $"ReportEscapingControlTransfer switch arms differ from Escapes + Recurses.\n" +
             $"  Extra in switch: {string.Join(", ", switchArms.Except(expected))}\n" +
             $"  Missing from switch: {string.Join(", ", expected.Except(switchArms))}");
     }
@@ -123,7 +123,7 @@ public class DeferBodyControlFlowTotalityTests
     {
         var armTexts = SwitchArmScan.ArmPatternTexts(
             "src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs",
-            "CheckDeferBodyControlFlow");
+            "ReportEscapingControlTransfer");
 
         Assert.Contains(armTexts, t => t.Contains("BreakStatement"));
         Assert.Contains(armTexts, t => t.Contains("ContinueStatement"));

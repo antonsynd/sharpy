@@ -954,6 +954,8 @@ public static class DiagnosticCodes
     {
         public const string IrrefutablePatternNotLast = "SPY0700"; // Active (#1624)
         public const string DuplicateDunderSignature = "SPY0701"; // Active (#1654)
-        // SPY0702-SPY0799: Available for new validation diagnostics
+        public const string FinallyControlTransfer = "SPY0702"; // Active (#1690)
+        public const string YieldInSuppressingWith = "SPY0703"; // Active (#1745)
+        // SPY0704-SPY0799: Available for new validation diagnostics
     }
 }

@@ -983,5 +983,24 @@ public static partial class DiagnosticExplanations
             "that the .NET runtime cannot distinguish.",
             "class MyMap:\n    def __getitem__(self, key: int) -> str:\n        ...\n    def __getitem__(self, key: int) -> int:  # SPY0701\n        ...",
             "Use different parameter types for each overload, or merge the overloads into one.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.FinallyControlTransfer,
+            "Control transfer out of finally body", "Semantic",
+            "A `return`, `break` or `continue` inside a `finally` block would bypass the " +
+            "exception-propagation guarantee that `finally` provides. Sharpy refuses the transfer " +
+            "because C# does not allow it (CS0157) and the behavior is undefined in Python too " +
+            "(it silently swallows the pending exception).",
+            "try:\n    raise ValueError(\"oops\")\nfinally:\n    return 0  # SPY0702",
+            "Move the control transfer outside the `finally` block.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.YieldInSuppressingWith,
+            "Yield inside a suppression-capable with", "Validation",
+            "A `yield` inside a `with` block whose `__exit__` can suppress exceptions " +
+            "(4-parameter form) would require the iterator to hold the suppression state across " +
+            "resumption points. C# does not allow `yield` inside a `try` with a `catch` (CS1626). " +
+            "Use a 1-parameter `__exit__` or collect the values before yielding.",
+            "class CM:\n    def __exit__(self, t: object?, v: Exception?, tb: object?) -> bool:\n        return False\ndef gen() -> Iterator[int]:\n    with CM():\n        yield 1  # SPY0703",
+            "Use a 1-parameter `__exit__(self) -> None` if suppression is not needed, or " +
+            "collect values into a list and yield from it outside the `with` block.");
     }
 }

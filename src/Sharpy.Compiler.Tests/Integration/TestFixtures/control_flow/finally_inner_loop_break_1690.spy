@@ -1,0 +1,15 @@
+# break inside a loop declared inside finally is legal (#1690).
+# Positive control for finally_break_refused_1690.
+def f3() -> None:
+    try:
+        pass
+    finally:
+        xs: list[int] = []
+        for i in range(5):
+            if i == 3:
+                break
+            xs.append(i)
+        print(xs)
+
+def main() -> None:
+    f3()

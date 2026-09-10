@@ -1790,6 +1790,11 @@ internal partial class TypeChecker
         // Finally block has its own scope
         if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {
+            foreach (var stmt in tryStmt.FinallyBody)
+                ReportEscapingControlTransfer(stmt, insideLoop: false,
+                    "finally", DiagnosticCodes.ValidationOverflow.FinallyControlTransfer,
+                    reportYield: false);
+
             var previousInFinally = _inFinally;
             _inFinally = true;
             _symbolTable.EnterScope("finally");
@@ -2090,7 +2095,8 @@ internal partial class TypeChecker
         // leaves a finally (CS0157). Reject return/yield/break/continue that would escape,
         // matching issue #1023's rule that "deferred blocks must not return a value".
         foreach (var stmt in deferStmt.Body)
-            CheckDeferBodyControlFlow(stmt, insideLoop: false);
+            ReportEscapingControlTransfer(stmt, insideLoop: false,
+                "defer", DiagnosticCodes.Semantic.DeferControlFlowEscape, reportYield: true);
 
         _symbolTable.EnterScope("defer");
         _controlFlowDepth++;
@@ -2103,99 +2109,100 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Reports control-flow statements that would escape a deferred block once it is lowered
-    /// to a <c>finally</c>. <c>return</c> and <c>yield</c> always escape; <c>break</c> and
-    /// <c>continue</c> escape only when they are not enclosed by a loop declared inside the
-    /// deferred body. Nested function/lambda bodies open a new scope and are not traversed.
+    /// Reports control-flow statements that would escape a restricted block (<c>defer</c> or
+    /// <c>finally</c>). <c>return</c> always escapes; <c>break</c> and <c>continue</c> escape
+    /// only when not enclosed by a loop declared inside the body. For <c>defer</c>, <c>yield</c>
+    /// also escapes. Nested function/lambda bodies are not traversed.
     /// </summary>
-    private void CheckDeferBodyControlFlow(Statement stmt, bool insideLoop)
+    private void ReportEscapingControlTransfer(Statement stmt, bool insideLoop,
+        string hostName, string code, bool reportYield)
     {
         switch (stmt)
         {
             case ReturnStatement ret:
                 AddError(
-                    "a deferred statement must not 'return' — control cannot leave a defer block",
+                    $"'{hostName}' block must not contain 'return' — control cannot leave a {hostName} block",
                     ret.LineStart, ret.ColumnStart,
-                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: ret.Span);
+                    code: code, span: ret.Span);
                 return;
 
-            case YieldStatement y:
+            case YieldStatement y when reportYield:
                 AddError(
-                    "a deferred statement must not 'yield' — control cannot leave a defer block",
+                    $"'{hostName}' block must not contain 'yield' — control cannot leave a {hostName} block",
                     y.LineStart, y.ColumnStart,
-                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: y.Span);
+                    code: code, span: y.Span);
                 return;
 
             case BreakStatement brk when !insideLoop:
                 AddError(
-                    "a deferred statement must not 'break' out of its enclosing loop",
+                    $"'{hostName}' block must not contain 'break' that exits the enclosing loop",
                     brk.LineStart, brk.ColumnStart,
-                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: brk.Span);
+                    code: code, span: brk.Span);
                 return;
 
             case ContinueStatement cont when !insideLoop:
                 AddError(
-                    "a deferred statement must not 'continue' its enclosing loop",
+                    $"'{hostName}' block must not contain 'continue' that exits the enclosing loop",
                     cont.LineStart, cont.ColumnStart,
-                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: cont.Span);
+                    code: code, span: cont.Span);
                 return;
 
             // Loops introduce a new break/continue target, so break/continue inside them
             // stay within the deferred body. return/yield still escape, so keep descending.
             case WhileStatement w:
                 foreach (var s in w.Body)
-                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                    ReportEscapingControlTransfer(s, insideLoop: true, hostName, code, reportYield);
                 foreach (var s in w.ElseBody)
-                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                    ReportEscapingControlTransfer(s, insideLoop: true, hostName, code, reportYield);
                 return;
 
             case ForStatement f:
                 foreach (var s in f.Body)
-                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                    ReportEscapingControlTransfer(s, insideLoop: true, hostName, code, reportYield);
                 foreach (var s in f.ElseBody)
-                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                    ReportEscapingControlTransfer(s, insideLoop: true, hostName, code, reportYield);
                 return;
 
             case IfStatement ifs:
                 foreach (var s in ifs.ThenBody)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 foreach (var elif in ifs.ElifClauses)
                     foreach (var s in elif.Body)
-                        CheckDeferBodyControlFlow(s, insideLoop);
+                        ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 foreach (var s in ifs.ElseBody)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 return;
 
             case WithStatement with:
                 foreach (var s in with.Body)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 return;
 
             case TryStatement t:
                 foreach (var s in t.Body)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 foreach (var h in t.Handlers)
                     foreach (var s in h.Body)
-                        CheckDeferBodyControlFlow(s, insideLoop);
+                        ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 foreach (var s in t.ElseBody)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 foreach (var s in t.FinallyBody)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 return;
 
             case DeferStatement nested:
                 foreach (var s in nested.Body)
-                    CheckDeferBodyControlFlow(s, insideLoop);
+                    ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 return;
 
             case MatchStatement matchStmt:
                 foreach (var matchCase in matchStmt.Cases)
                     foreach (var s in matchCase.Body)
-                        CheckDeferBodyControlFlow(s, insideLoop);
+                        ReportEscapingControlTransfer(s, insideLoop, hostName, code, reportYield);
                 return;
 
             case DecoratedStatement decorated:
-                CheckDeferBodyControlFlow(decorated.Statement, insideLoop);
+                ReportEscapingControlTransfer(decorated.Statement, insideLoop, hostName, code, reportYield);
                 return;
 
             // FunctionDef / ClassDef / lambdas open their own scope: a return inside them

@@ -302,7 +302,7 @@ public class DispatchSiteScanTests
         {
             "Parser/Ast/AstVisitor.cs::AstVisitor.Visit",
             "CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore",
-            "Semantic/TypeChecker.Statements.cs::TypeChecker.CheckDeferBodyControlFlow",
+            "Semantic/TypeChecker.Statements.cs::TypeChecker.ReportEscapingControlTransfer",
         };
 
         foreach (var existingKey in sampleExistingKeys)
