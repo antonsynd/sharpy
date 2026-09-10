@@ -37,13 +37,43 @@ internal static class MustAssignDataflow
         HashSet<string> universe,
         IReadOnlyDictionary<BasicBlock, HashSet<string>> inSets,
         IReadOnlyDictionary<BasicBlock, HashSet<string>> outSets)
+        => ComputeInSet(block, universe, inSets, outSets, edgeWalrus: null);
+
+    /// <summary>
+    /// Overload with per-edge walrus assignment sets for conditional branch terminators.
+    /// When a predecessor has a <see cref="ConditionalBranchTerminator"/> and an entry in
+    /// <paramref name="edgeWalrus"/>, its contribution to the in-set is augmented with the
+    /// when-true or when-false walrus set depending on which successor this block is.
+    /// </summary>
+    public static HashSet<string>? ComputeInSet(
+        BasicBlock block,
+        HashSet<string> universe,
+        IReadOnlyDictionary<BasicBlock, HashSet<string>> inSets,
+        IReadOnlyDictionary<BasicBlock, HashSet<string>> outSets,
+        IReadOnlyDictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>? edgeWalrus)
     {
         if (block.Predecessors.Count == 0 && block.ExceptionPredecessors.Count == 0)
             return null;
 
         var inSet = new HashSet<string>(universe);
         foreach (var pred in block.Predecessors)
-            inSet.IntersectWith(outSets[pred]);
+        {
+            if (edgeWalrus != null
+                && pred.Terminator is ConditionalBranchTerminator cbt
+                && edgeWalrus.TryGetValue(pred, out var walrusSets))
+            {
+                var adjusted = new HashSet<string>(outSets[pred]);
+                if (ReferenceEquals(block, cbt.TrueTarget))
+                    adjusted.UnionWith(walrusSets.WhenTrue);
+                else if (ReferenceEquals(block, cbt.FalseTarget))
+                    adjusted.UnionWith(walrusSets.WhenFalse);
+                inSet.IntersectWith(adjusted);
+            }
+            else
+            {
+                inSet.IntersectWith(outSets[pred]);
+            }
+        }
         foreach (var pred in block.ExceptionPredecessors)
             inSet.IntersectWith(inSets[pred]);
 

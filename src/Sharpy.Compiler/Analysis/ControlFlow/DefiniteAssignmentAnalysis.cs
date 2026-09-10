@@ -46,6 +46,8 @@ internal static class DefiniteAssignmentAnalysis
         // assignment (`f = lambda: x; x = 7; f()` is legal Python). They are judged once, at the
         // end, against "is this local assigned ANYWHERE in the function" (#1635).
         var lambdaReads = new List<(string Name, Identifier Node)>();
+        var edgeWalrus = new Dictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>();
+        var declaredNames = new HashSet<string>();
 
         foreach (var block in cfg.Blocks)
         {
@@ -61,9 +63,11 @@ internal static class DefiniteAssignmentAnalysis
             {
                 var stmt = block.Statements[i];
 
-                if (stmt is VariableDeclaration vd && vd.InitialValue == null && vd.Type != null)
+                if (stmt is VariableDeclaration vd)
                 {
-                    bareDecls.TryAdd(vd.Name, vd);
+                    declaredNames.Add(vd.Name);
+                    if (vd.InitialValue == null && vd.Type != null)
+                        bareDecls.TryAdd(vd.Name, vd);
                 }
 
                 if (stmt is Assignment { Operator: AssignmentOperator.Assign } assignment)
@@ -71,19 +75,28 @@ internal static class DefiniteAssignmentAnalysis
                     CollectAssignedNames(assignment.Target, blockAssigned);
                 }
 
+                CollectWalrusBareDecls(stmt, bareDecls, declaredNames);
                 CollectWalrusTargets(stmt, blockAssigned);
                 CollectReads(stmt, blockReads, i, lambdaReads);
             }
 
             foreach (var expr in block.Expressions)
             {
+                CollectWalrusBareDecls(expr, bareDecls, declaredNames);
                 CollectWalrusTargets(expr, blockAssigned);
                 CollectReadsFromExpr(expr, blockReads, block.Statements.Count, lambdaReads);
             }
 
             if (block.Terminator is ConditionalBranchTerminator cbt)
             {
-                CollectWalrusTargets(cbt.Condition, blockAssigned);
+                CollectWalrusBareDecls(cbt.Condition, bareDecls, declaredNames);
+                var (wTrue, wFalse) = ComputeWalrusWhenTrueFalse(cbt.Condition);
+                var unconditional = new HashSet<string>(wTrue);
+                unconditional.IntersectWith(wFalse);
+                blockAssigned.UnionWith(unconditional);
+                if (wTrue.Count > unconditional.Count || wFalse.Count > unconditional.Count)
+                    edgeWalrus[block] = (wTrue, wFalse);
+
                 CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, lambdaReads);
             }
 
@@ -109,7 +122,8 @@ internal static class DefiniteAssignmentAnalysis
                 if (block == cfg.Entry)
                     continue;
 
-                var inSet = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets);
+                var inSet = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets,
+                    edgeWalrus.Count > 0 ? edgeWalrus : null);
                 if (inSet == null)
                     continue;
 
@@ -138,7 +152,8 @@ internal static class DefiniteAssignmentAnalysis
             if (block == cfg.Entry)
                 continue;
 
-            var definitelyAssigned = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets)
+            var definitelyAssigned = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets,
+                edgeWalrus.Count > 0 ? edgeWalrus : null)
                 ?? new HashSet<string>();
 
             var localAssigned = new HashSet<string>(definitelyAssigned);
@@ -198,6 +213,33 @@ internal static class DefiniteAssignmentAnalysis
         }
 
         return violations;
+    }
+
+    /// <summary>
+    /// Registers every walrus target as a bare declaration so the DA analysis can track
+    /// reads of walrus-introduced variables that might not be assigned on all paths.
+    /// Only registers names not already declared via <c>VariableDeclaration</c> (a walrus
+    /// that rebinds an existing variable is not a new declaration).
+    /// </summary>
+    private static void CollectWalrusBareDecls(
+        Node node, Dictionary<string, VariableDeclaration> bareDecls, HashSet<string> declaredNames)
+    {
+        if (node is LambdaExpression)
+            return;
+        if (node is WalrusExpression walrus)
+        {
+            if (!declaredNames.Contains(walrus.Target) && !bareDecls.ContainsKey(walrus.Target))
+            {
+                bareDecls[walrus.Target] = new VariableDeclaration
+                {
+                    Name = walrus.Target,
+                    LineStart = walrus.LineStart,
+                    ColumnStart = walrus.ColumnStart,
+                };
+            }
+        }
+        foreach (var child in node.GetChildNodes())
+            CollectWalrusBareDecls(child, bareDecls, declaredNames);
     }
 
     /// <summary>
@@ -307,5 +349,56 @@ internal static class DefiniteAssignmentAnalysis
         }
         foreach (var child in node.GetChildNodes())
             CollectLambdaReads(child, lambdaReads);
+    }
+
+    /// <summary>
+    /// Computes the when-true and when-false walrus assignment sets for an expression,
+    /// following C# §9.4.4.26-.28. A walrus <c>n := v</c> adds <c>n</c> to both sets
+    /// (it always assigns when evaluated). Short-circuit <c>and</c>/<c>or</c> and <c>not</c>
+    /// split or swap the sets so that a walrus in a short-circuited branch is credited
+    /// only on the path where it actually evaluates.
+    /// </summary>
+    private static (HashSet<string> WhenTrue, HashSet<string> WhenFalse) ComputeWalrusWhenTrueFalse(
+        Expression expr)
+    {
+        if (expr is BinaryOp { Operator: BinaryOperator.And } andExpr)
+        {
+            var (ta, fa) = ComputeWalrusWhenTrueFalse(andExpr.Left);
+            var (tb, fb) = ComputeWalrusWhenTrueFalse(andExpr.Right);
+            // T(a and b) = T(a) ∪ T(b)
+            var t = new HashSet<string>(ta);
+            t.UnionWith(tb);
+            // F(a and b) = F(a) ∩ (T(a) ∪ F(b))
+            var taUnionFb = new HashSet<string>(ta);
+            taUnionFb.UnionWith(fb);
+            var f = new HashSet<string>(fa);
+            f.IntersectWith(taUnionFb);
+            return (t, f);
+        }
+
+        if (expr is BinaryOp { Operator: BinaryOperator.Or } orExpr)
+        {
+            var (ta, fa) = ComputeWalrusWhenTrueFalse(orExpr.Left);
+            var (tb, fb) = ComputeWalrusWhenTrueFalse(orExpr.Right);
+            // T(a or b) = T(a) ∩ (F(a) ∪ T(b))
+            var faUnionTb = new HashSet<string>(fa);
+            faUnionTb.UnionWith(tb);
+            var t = new HashSet<string>(ta);
+            t.IntersectWith(faUnionTb);
+            // F(a or b) = F(a) ∪ F(b)
+            var f = new HashSet<string>(fa);
+            f.UnionWith(fb);
+            return (t, f);
+        }
+
+        if (expr is UnaryOp { Operator: UnaryOperator.Not } notExpr)
+        {
+            var (te, fe) = ComputeWalrusWhenTrueFalse(notExpr.Operand);
+            return (fe, te);
+        }
+
+        var all = new HashSet<string>();
+        CollectWalrusTargets(expr, all);
+        return (all, new HashSet<string>(all));
     }
 }
