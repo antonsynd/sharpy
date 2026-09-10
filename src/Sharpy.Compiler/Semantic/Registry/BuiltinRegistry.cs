@@ -1078,8 +1078,6 @@ internal class BuiltinRegistry
         });
     }
 
-    // TODO(#1625): namespace priority is broken for arity > 0 — Type.GetType can't see
-    // Sharpy.Core.dll, so Sharpy.List`1 loses to System.Collections.Generic.List`1.
     private static Type? TryFindClrType(string name, int arity)
     {
         // #1613: for arity > 0, probe `Name`N (e.g. Action`1, Func`3)
@@ -1087,7 +1085,6 @@ internal class BuiltinRegistry
 
         string[] namespaces =
         {
-            "Sharpy",
             "System",
             "System.Collections.Generic",
             "System.IO",
@@ -1105,20 +1102,18 @@ internal class BuiltinRegistry
             "System.Linq"
         };
 
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         foreach (var ns in namespaces)
         {
             var fullName = $"{ns}.{clrName}";
             var type = Type.GetType(fullName);
-            if (type != null)
+            if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
                 return type;
-        }
 
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            foreach (var ns in namespaces)
+            foreach (var assembly in assemblies)
             {
-                var type = assembly.GetType($"{ns}.{clrName}");
-                if (type != null)
+                type = assembly.GetType(fullName);
+                if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
                     return type;
             }
         }
