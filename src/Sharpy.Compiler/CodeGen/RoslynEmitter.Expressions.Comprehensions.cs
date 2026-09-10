@@ -28,12 +28,10 @@ internal partial class RoslynEmitter
     /// </summary>
     private List<StatementSyntax> CaptureHoisted(System.Action generate)
     {
-        var saved = new List<StatementSyntax>(_hoistedStatements);
-        _hoistedStatements.Clear();
-        generate();
-        var captured = new List<StatementSyntax>(_hoistedStatements);
-        _hoistedStatements.Clear();
-        _hoistedStatements.AddRange(saved);
+        var (decls, evals) = WithSink(generate);
+        var captured = new List<StatementSyntax>(decls.Count + evals.Count);
+        captured.AddRange(decls);
+        captured.AddRange(evals);
         return captured;
     }
 
@@ -391,8 +389,8 @@ internal partial class RoslynEmitter
         // Comprehension variables were scoped to the comprehension; drop them from the enclosing
         // scope. Mirrors GenerateImperativeComprehension's own restore.
 
-        _hoistedStatements.Add(tempDecl);
-        _hoistedStatements.AddRange(currentBody);
+        HoistEvaluation(tempDecl);
+        foreach (var s in currentBody) HoistEvaluation(s);
 
         return IdentifierName(tempName);
     }
@@ -400,7 +398,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates imperative codegen for a list/set/dict comprehension: a temp collection, nested
     /// <c>foreach</c> loops with <c>.Add()</c>/<c>[key] = value</c> calls, hoisted via
-    /// <c>_hoistedStatements</c>, returning the temp identifier. Used for every comprehension —
+    /// the sink stack, returning the temp identifier. Used for every comprehension —
     /// single-<c>for</c> included, replacing the former LINQ <c>Where</c>/<c>Select</c> chain — so a
     /// comprehension allocates no intermediate LINQ iterators or delegates.
     ///
@@ -655,12 +653,12 @@ internal partial class RoslynEmitter
         // Hoist: presized source temp (single-for) + temp declaration + outermost loop
         if (sourceDecl != null)
         {
-            _hoistedStatements.AddRange(sourceHoisted!);
-            _hoistedStatements.Add(sourceDecl);
+            foreach (var s in sourceHoisted!) HoistEvaluation(s);
+            HoistEvaluation(sourceDecl);
         }
 
-        _hoistedStatements.Add(tempDecl);
-        _hoistedStatements.AddRange(currentBody);
+        HoistEvaluation(tempDecl);
+        foreach (var s in currentBody) HoistEvaluation(s);
 
         return IdentifierName(tempName);
     }

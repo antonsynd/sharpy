@@ -862,7 +862,7 @@ internal partial class RoslynEmitter
         var tempName = $"__qm_{_tempVarCounter++}";
 
         // Hoist: var __qm_N = operandExpr;
-        _hoistedStatements.Add(
+        HoistEvaluation(
             LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
@@ -898,7 +898,7 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(unwrapErrCall))));
 
             // Hoist: if (__qm_N.IsErr) return Result<RetOk, RetErr>.Err(__qm_N.UnwrapErr());
-            _hoistedStatements.Add(
+            HoistEvaluation(
                 IfStatement(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
@@ -925,7 +925,7 @@ internal partial class RoslynEmitter
                 IdentifierName("None"));
 
             // Hoist: if (__qm_N.IsNone) return Optional<RetT>.None;
-            _hoistedStatements.Add(
+            HoistEvaluation(
                 IfStatement(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,

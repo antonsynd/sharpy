@@ -201,7 +201,7 @@ internal partial class RoslynEmitter
                     {
                         // Hoist the spread expression into a temp to avoid duplicate evaluation
                         var tempName = GenerateTempVarName("tspread");
-                        _hoistedStatements.Add(LocalDeclarationStatement(
+                        HoistEvaluation(LocalDeclarationStatement(
                             VariableDeclaration(IdentifierName("var"))
                                 .WithVariables(SingletonSeparatedList(
                                     VariableDeclarator(EscapedIdentifier(tempName))
@@ -1165,7 +1165,7 @@ internal partial class RoslynEmitter
         var hoistDeclType = hoistValueType is Semantic.VoidType && symbol?.Type != null
             ? _typeMapper.MapSemanticType(symbol.Type)
             : LocalDeclarationType(symbol, hoistValueType);
-        _hoistedStatements.Add(
+        HoistEvaluation(
             LocalDeclarationStatement(
                 VariableDeclaration(hoistDeclType)
                     .WithVariables(SingletonSeparatedList(
@@ -1194,7 +1194,7 @@ internal partial class RoslynEmitter
         var tempName = GenerateTempVarName("spread");
 
         // var __spread_N = new CollectionType();
-        _hoistedStatements.Add(LocalDeclarationStatement(
+        HoistEvaluation(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(tempName))
@@ -1211,14 +1211,14 @@ internal partial class RoslynEmitter
                 {
                     // Tuple spread: expand to individual .Add(tup.ItemN) calls
                     var tupTemp = GenerateTempVarName("tspread");
-                    _hoistedStatements.Add(LocalDeclarationStatement(
+                    HoistEvaluation(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
                                 VariableDeclarator(EscapedIdentifier(tupTemp))
                                     .WithInitializer(EqualsValueClause(GenerateExpression(spread.Value)))))));
                     for (int i = 0; i < tupleType.ElementTypes.Count; i++)
                     {
-                        _hoistedStatements.Add(ExpressionStatement(
+                        HoistEvaluation(ExpressionStatement(
                             InvocationExpression(
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
@@ -1234,7 +1234,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // __spread_N.Extend(spreadValue) or __spread_N.UnionWith(spreadValue)
-                    _hoistedStatements.Add(ExpressionStatement(
+                    HoistEvaluation(ExpressionStatement(
                         InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -1246,7 +1246,7 @@ internal partial class RoslynEmitter
             else
             {
                 // __spread_N.Add(element)
-                _hoistedStatements.Add(ExpressionStatement(
+                HoistEvaluation(ExpressionStatement(
                     InvocationExpression(
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
@@ -1272,7 +1272,7 @@ internal partial class RoslynEmitter
         var tempName = GenerateTempVarName("spread");
 
         // var __spread_N = new DictType();
-        _hoistedStatements.Add(LocalDeclarationStatement(
+        HoistEvaluation(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(tempName))
@@ -1285,7 +1285,7 @@ internal partial class RoslynEmitter
             if (entry.Key == null)
             {
                 // __spread_N.{spreadMethodName}(spreadDict)
-                _hoistedStatements.Add(ExpressionStatement(
+                HoistEvaluation(ExpressionStatement(
                     InvocationExpression(
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
@@ -1296,7 +1296,7 @@ internal partial class RoslynEmitter
             else
             {
                 // __spread_N[key] = value
-                _hoistedStatements.Add(ExpressionStatement(
+                HoistEvaluation(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         ElementAccessExpression(IdentifierName(tempName))

@@ -177,14 +177,11 @@ internal partial class RoslynEmitter
         if (stmt is DecoratedStatement decorated)
             stmt = decorated.Statement;
 
-        // Save any walrus declarations from an outer scope so they aren't
-        // accidentally consumed by inner body statement generation.
-        List<StatementSyntax>? savedWalrus = null;
-        if (_hoistedStatements.Count > 0)
-        {
-            savedWalrus = new List<StatementSyntax>(_hoistedStatements);
-            _hoistedStatements.Clear();
-        }
+        // Push a statement-boundary sink. All hoisted declarations and evaluations
+        // produced while generating this statement are captured here and flushed as
+        // flat siblings before the statement itself.
+        var sink = new HoistSink();
+        _sinks.Push(sink);
 
         // assert_raises lowers to several flat statements — a raised flag, a try/catch, and the
         // checks that read the flag — so that an `as` capture remains visible to statements after
@@ -194,16 +191,11 @@ internal partial class RoslynEmitter
             && TryGenerateAssertRaises(matchWith, out var matchStatements))
         {
             var matchOutput = new List<StatementSyntax>();
-            if (_hoistedStatements.Count > 0)
-            {
-                matchOutput.AddRange(_hoistedStatements);
-                _hoistedStatements.Clear();
-            }
+            matchOutput.AddRange(sink.Drain());
             if (matchStatements.Count > 0)
                 matchStatements[0] = AttachLineDirective(matchStatements[0], stmt);
             matchOutput.AddRange(matchStatements);
-            if (savedWalrus != null)
-                _hoistedStatements.AddRange(savedWalrus);
+            _sinks.Pop();
             return matchOutput;
         }
 
@@ -225,16 +217,13 @@ internal partial class RoslynEmitter
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
             WithStatement withStmt => GenerateWith(withStmt),
-            // A defer normally wraps the remainder of its suite (handled in GenerateSuite, which
-            // every block-emitting call site now routes through — constructor and test-fixture
-            // bodies included, #1065). This defensive arm handles a defer reaching the per-statement
-            // dispatcher directly: emit try {} finally { body } so the deferred body still runs, even
-            // though there is no enclosing suite here to wrap later statements into.
             DeferStatement deferStmt => GenerateScopeGuard(deferStmt, new[] { (Statement)deferStmt }, 0),
             MatchStatement matchStmt => GenerateMatch(matchStmt),
             FunctionDef funcDef => GenerateLocalFunction(funcDef),
             _ => null
         };
+
+        _sinks.Pop();
 
         if (result == null && stmt is not ImportStatement and not FromImportStatement and not TypeAlias and not PropertyDef)
         {
@@ -248,28 +237,16 @@ internal partial class RoslynEmitter
         var output = new List<StatementSyntax>();
 
         if (result == null)
-        {
-            // Restore saved walrus declarations
-            if (savedWalrus != null)
-                _hoistedStatements.AddRange(savedWalrus);
             return output;
-        }
 
         result = AttachLineDirective(result, stmt);
 
-        // If any walrus declarations were accumulated during this statement's
-        // expression generation, prepend them as flat siblings.
-        if (_hoistedStatements.Count > 0)
-        {
-            output.AddRange(_hoistedStatements);
-            _hoistedStatements.Clear();
-        }
+        // Flush any hoisted declarations and evaluations before the statement.
+        var drained = sink.Drain();
+        if (drained.Count > 0)
+            output.AddRange(drained);
 
         output.Add(result);
-
-        // Restore saved walrus declarations from outer scope
-        if (savedWalrus != null)
-            _hoistedStatements.AddRange(savedWalrus);
 
         return output;
     }

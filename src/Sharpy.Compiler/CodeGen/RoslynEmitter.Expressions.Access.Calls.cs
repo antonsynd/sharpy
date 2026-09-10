@@ -26,7 +26,7 @@ internal partial class RoslynEmitter
         if (HasDefaultParameters(lambda))
         {
             var tempName = $"__lambda_{_tempVarCounter++}";
-            _hoistedStatements.Add(GenerateLambdaAsLocalFunction(lambda, tempName));
+            HoistEvaluation(GenerateLambdaAsLocalFunction(lambda, tempName));
             return IdentifierName(tempName);
         }
 
@@ -1078,7 +1078,7 @@ internal partial class RoslynEmitter
         if (operand is not IdentifierNameSyntax)
         {
             var tempName = GenerateTempVarName("tuple_iter");
-            _hoistedStatements.Add(LocalDeclarationStatement(
+            HoistEvaluation(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(Identifier(tempName))
@@ -1132,7 +1132,7 @@ internal partial class RoslynEmitter
                     // f(*(a, b, c)) → f(tuple.Item1, tuple.Item2, tuple.Item3)
                     // Use a temp var to avoid evaluating spread.Value multiple times
                     var tempName = GenerateTempVarName("spread");
-                    _hoistedStatements.Add(LocalDeclarationStatement(
+                    HoistEvaluation(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
                                 VariableDeclarator(Identifier(tempName))
@@ -1418,7 +1418,7 @@ internal partial class RoslynEmitter
         }
 
         var tempName = GenerateTempVarName("partialArg");
-        _hoistedStatements.Add(LocalDeclarationStatement(
+        HoistEvaluation(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(Identifier(tempName))

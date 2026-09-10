@@ -68,12 +68,47 @@ internal partial class RoslynEmitter : ICodeEmitter
         => _generationRecorder = recorder;
 
     /// <summary>
-    /// Tracks statements that need to be hoisted before the containing statement.
-    /// Used by walrus operator (:=) for variable declarations and by multi-for
-    /// comprehensions for imperative loop codegen. Populated during expression
-    /// generation, consumed and cleared during statement generation.
+    /// A sink captures hoisted declarations and evaluation statements. The emitter
+    /// maintains a stack of sinks; producers push to the innermost sink via
+    /// <see cref="HoistDeclaration"/> and <see cref="HoistEvaluation"/>. Statement
+    /// boundaries and manufactured sinks (while, elif, and/or, ternary, …) push and
+    /// pop via <see cref="WithSink"/>.
     /// </summary>
-    private readonly List<StatementSyntax> _hoistedStatements = new();
+    private sealed class HoistSink
+    {
+        public readonly List<StatementSyntax> Declarations = new();
+        public readonly List<StatementSyntax> Evaluations = new();
+
+        public bool IsEmpty => Declarations.Count == 0 && Evaluations.Count == 0;
+
+        public List<StatementSyntax> Drain()
+        {
+            var result = new List<StatementSyntax>(Declarations.Count + Evaluations.Count);
+            result.AddRange(Declarations);
+            result.AddRange(Evaluations);
+            Declarations.Clear();
+            Evaluations.Clear();
+            return result;
+        }
+    }
+
+    private readonly Stack<HoistSink> _sinks = new();
+
+    private void HoistDeclaration(StatementSyntax stmt)
+        => _sinks.Peek().Declarations.Add(stmt);
+
+    private void HoistEvaluation(StatementSyntax stmt)
+        => _sinks.Peek().Evaluations.Add(stmt);
+
+    private (List<StatementSyntax> Declarations, List<StatementSyntax> Evaluations)
+        WithSink(System.Action generate)
+    {
+        var sink = new HoistSink();
+        _sinks.Push(sink);
+        generate();
+        _sinks.Pop();
+        return (sink.Declarations, sink.Evaluations);
+    }
 
     /// <summary>
     /// Pool of scratch statement buffers reused by <see cref="GenerateSuiteBlock"/> when
@@ -85,13 +120,15 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// <summary>
     /// When true, walrus expressions emit inline assignment expressions (varName = value)
     /// instead of hoisted declarations. Used in while-loop conditions where the assignment
-    /// must be re-evaluated on each iteration.
+    /// must be re-evaluated on each iteration. Temporary — deleted when manufactured sinks
+    /// replace the while-loop walrus path.
     /// </summary>
     private bool _walrusInlineMode;
 
     /// <summary>
     /// Typed variable declarations (no initializer) for walrus variables used in inline mode.
-    /// These are emitted before the while loop: <c>int val;</c>
+    /// These are emitted before the while loop. Temporary — deleted when manufactured sinks
+    /// replace the while-loop walrus path.
     /// </summary>
     private readonly List<LocalDeclarationStatementSyntax> _walrusPreDeclarations = new();
 
@@ -396,6 +433,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         _nameResolutionService = new NameResolutionService(context.Logger);
         _cancellationToken = cancellationToken;
         _dunderRegistry = BuildDunderRegistry();
+        _sinks.Push(new HoistSink());
     }
 
     /// <summary>

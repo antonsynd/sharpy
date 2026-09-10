@@ -391,7 +391,7 @@ internal partial class RoslynEmitter
                 GenerateStarUnpacking(tuple.Elements, starTempVar, valueType, starStmts);
 
                 for (int i = 0; i < starStmts.Count - 1; i++)
-                    _hoistedStatements.Add(starStmts[i]);
+                    HoistEvaluation(starStmts[i]);
                 return starStmts[^1];
             }
 
@@ -564,7 +564,7 @@ internal partial class RoslynEmitter
 
                     // Hoist all but the last statement
                     for (int i = 0; i < stmts.Count - 1; i++)
-                        _hoistedStatements.Add(stmts[i]);
+                        HoistEvaluation(stmts[i]);
                     return stmts[^1];
                 }
             }
@@ -583,7 +583,7 @@ internal partial class RoslynEmitter
 
             // Hoist all but the last statement; return the last as the result
             for (int i = 0; i < unpackStmts.Count - 1; i++)
-                _hoistedStatements.Add(unpackStmts[i]);
+                HoistEvaluation(unpackStmts[i]);
             return unpackStmts[^1];
         }
 
@@ -782,7 +782,7 @@ internal partial class RoslynEmitter
         }
 
         var tempName = $"__aug{_tempVarCounter++}";
-        _hoistedStatements.Add(LocalDeclarationStatement(
+        HoistEvaluation(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(tempName))
@@ -1568,7 +1568,7 @@ internal partial class RoslynEmitter
                         GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
 
                     for (int i = 0; i < stmts.Count - 1; i++)
-                        _hoistedStatements.Add(stmts[i]);
+                        HoistEvaluation(stmts[i]);
                     return stmts[^1];
                 }
 

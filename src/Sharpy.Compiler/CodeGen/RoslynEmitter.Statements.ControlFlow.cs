@@ -1059,17 +1059,13 @@ internal partial class RoslynEmitter
     /// </summary>
     private List<StatementSyntax> GenerateWithTargetStore(Expression target, ExpressionSyntax value)
     {
-        var mark = _hoistedStatements.Count;
-        var store = GenerateStore(target, value);
+        StatementSyntax? store = null;
+        var (decls, evals) = WithSink(() => store = GenerateStore(target, value));
 
         var statements = new List<StatementSyntax>();
-        if (_hoistedStatements.Count > mark)
-        {
-            statements.AddRange(_hoistedStatements.GetRange(mark, _hoistedStatements.Count - mark));
-            _hoistedStatements.RemoveRange(mark, _hoistedStatements.Count - mark);
-        }
-
-        statements.Add(store);
+        statements.AddRange(decls);
+        statements.AddRange(evals);
+        statements.Add(store!);
         return statements;
     }
 
