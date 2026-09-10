@@ -1,5 +1,4 @@
 # Walrus in comprehension element position is OK (PEP 572 positive control, #1724)
 def main() -> None:
-    xs: list[int] = [(y := x) for x in range(5)]
+    xs: list[int] = [(y := x * 2) for x in range(5)]
     print(xs)
-    print(y)
