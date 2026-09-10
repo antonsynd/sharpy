@@ -1,4 +1,4 @@
 # A comprehension inside a lambda reads the lambda parameter (#1725)
 def main() -> None:
-    f = lambda n: [i * n for i in [1, 2, 3]]
+    f = lambda n: int: [i * n for i in [1, 2, 3]]
     print(f(3))

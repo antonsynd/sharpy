@@ -847,8 +847,6 @@ internal class ControlFlowGraphBuilder
         foreach (var item in stmt.Items)
         {
             _currentBlock.Expressions.Add(item.ContextExpression);
-            if (item.Target != null)
-                _currentBlock.Expressions.Add(item.Target);
 
             if (_semanticInfo != null)
             {
@@ -884,7 +882,8 @@ internal class ControlFlowGraphBuilder
         // Suppression-capable: the __exit__ can swallow the exception, so the
         // successor is reachable even when the body always exits. Model this as
         // an exception edge from the body entry to the exit block (same pattern
-        // as assert_raises, :830).
+        // as assert_raises). DA sees the binding as assigned because the `as`
+        // target is recorded via EntryRebinds, not as a read expression (#1635).
         if (hasSuppressionCapableItem)
             ConnectException(withBodyBlock, withExitBlock);
 
