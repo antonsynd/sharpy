@@ -1,0 +1,7 @@
+# Lambda body walrus is evaluated inside the lambda, not eagerly (#1725)
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    f = lambda: (w := xs.pop(0))
+    a: int = f()
+    b: int = f()
+    print("a", a, "left", len(xs))

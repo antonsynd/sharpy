@@ -1,0 +1,6 @@
+# A walrus in a short-circuited and-rhs may not be bound — SPY0600 on read (#1680)
+def main() -> None:
+    x: int = 0
+    if x > 0 and (w := x + 1) > 0:
+        pass
+    print("after", w)

@@ -1,0 +1,7 @@
+# Arguments with side effects are evaluated left-to-right (#1739)
+def f(a: int, b: list[int]) -> None:
+    print(a, b)
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    f(xs.pop(0), [v for v in xs])

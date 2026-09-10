@@ -65,10 +65,27 @@ internal partial class RoslynEmitter
 
         // A lambda parameter re-binds its name: an accessor-parameter rewrite in force outside
         // must not reach into the body (#1500).
-        ExpressionSyntax body;
+        ExpressionSyntax body = null!;
+        List<StatementSyntax> capturedHoists;
         using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
         {
-            body = GenerateExpression(lambda.Body);
+            var (decls, evals) = WithSink(() => { body = GenerateExpression(lambda.Body); });
+            capturedHoists = new List<StatementSyntax>(decls.Count + evals.Count);
+            capturedHoists.AddRange(decls);
+            capturedHoists.AddRange(evals);
+        }
+
+        if (capturedHoists.Count > 0)
+        {
+            capturedHoists.Add(ReturnStatement(body));
+            var block = Block(capturedHoists);
+            if (parameters.Length == 0)
+                return ParenthesizedLambdaExpression().WithBlock(block);
+            if (parameters.Length == 1)
+                return SimpleLambdaExpression(parameters[0]).WithBlock(block);
+            return ParenthesizedLambdaExpression()
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBlock(block);
         }
 
         if (parameters.Length == 0)
@@ -113,10 +130,25 @@ internal partial class RoslynEmitter
         }
 
         // See GenerateLambdaExpression: the parameter list re-binds these names (#1500).
-        ExpressionSyntax body;
+        ExpressionSyntax body = null!;
+        List<StatementSyntax> capturedHoists;
         using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
         {
-            body = GenerateExpression(lambda.Body);
+            var (decls, evals) = WithSink(() => { body = GenerateExpression(lambda.Body); });
+            capturedHoists = new List<StatementSyntax>(decls.Count + evals.Count);
+            capturedHoists.AddRange(decls);
+            capturedHoists.AddRange(evals);
+        }
+
+        if (capturedHoists.Count > 0)
+        {
+            capturedHoists.Add(ReturnStatement(body));
+            var block = Block(capturedHoists);
+            if (parameters.Count == 0)
+                return ParenthesizedLambdaExpression().WithBlock(block);
+            return ParenthesizedLambdaExpression()
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBlock(block);
         }
 
         if (parameters.Count == 0)
