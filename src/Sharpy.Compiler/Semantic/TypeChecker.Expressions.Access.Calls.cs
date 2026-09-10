@@ -6452,14 +6452,12 @@ internal partial class TypeChecker
         if (surface.Candidates.Length == 0)
             return;
 
-        // The permissive extension clause, for the same reason the absence proof has it: an extension
-        // method binds when no instance overload is applicable, so `xs.contains(v, comparer)` is a
-        // legal call to Enumerable.Contains that no instance candidate accounts for. Refusing on the
-        // instance surface alone would reject it — and its parameter names could answer a keyword
-        // name the instance candidates cannot, so the name validation below stays behind this bail
-        // too.
-        if (surface.ExtensionNameReachable)
-            return;
+        // An extension method of this name is reachable, so the instance surface is not the only
+        // possible binding. Instead of bailing wholesale (#1798): check the instance candidates first;
+        // if NONE is applicable (arity or types reject all of them), fall through to Roslyn — the
+        // extension resolver "cannot decide" counts as accept. Only when at least one instance
+        // candidate is applicable does the seam report a mismatch.
+        var extensionFallback = surface.ExtensionNameReachable;
 
         // Keyword NAMES validate against the union of every candidate's parameters — permissive
         // across overloads on purpose: which overload the call means is CLR overload resolution's
@@ -6485,6 +6483,8 @@ internal partial class TypeChecker
 
         if (fitting.Count == 0)
         {
+            if (extensionFallback)
+                return;
             AddError(
                 $"'{memberDisplay}' expects {DescribeClrArities(surface.Candidates)} but got {argTypes.Count}",
                 call.LineStart, call.ColumnStart,
@@ -6493,15 +6493,60 @@ internal partial class TypeChecker
             return;
         }
 
-        // Two overloads of this arity: which one the call means is CLR overload resolution's answer,
-        // not this seam's (#1243). Reporting against a guess would be worse than the silence — but
-        // when every one of them rejects the SAME argument for a reason the Sharpy vocabulary states,
-        // there is nothing to guess between, and that argument's own type mismatch is reported
-        // through the shared helper instead of reaching Roslyn as CS1503 (#1775).
+        // Two or more overloads of this arity: filter by argument types to find the applicable
+        // candidates, then decide. When every candidate rejects the SAME argument, that argument's
+        // type mismatch is reported (#1775); when none survives, SPY0354; when several survive,
+        // SPY0601 with the cast steer — the instance route gains the same outcomes as the static
+        // route (#1798).
         if (fitting.Count > 1)
         {
-            FilterClrCandidatesByArguments(call, fitting, argTypes, out var overloadFailures);
-            TryReportSameArgumentRefusal(call, argTypes, fitting.Count, overloadFailures);
+            var argumentCompatible = FilterClrCandidatesByArguments(
+                call, fitting, argTypes, out var overloadFailures);
+
+            if (argumentCompatible.Count == 1)
+            {
+                CheckClrCallArgumentTypes(call, argumentCompatible[0], argTypes, memberDisplay);
+                return;
+            }
+
+            // An unadjudicable argument (Unknown, unresolved lambda) leaves the call to Roslyn.
+            var cannotAdjudicate = argTypes.Any(a =>
+                a is UnknownType || (a is FunctionType argFn && argFn.HasUnresolvedTypes()));
+            if (cannotAdjudicate)
+                return;
+
+            if (argumentCompatible.Count == 0)
+            {
+                if (extensionFallback)
+                    return;
+                if (TryReportSameArgumentRefusal(call, argTypes, fitting.Count, overloadFailures))
+                    return;
+
+                AddError(
+                    $"No matching overload for '{memberDisplay}' with the given argument types",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                    span: call.Span);
+                return;
+            }
+
+            if (extensionFallback)
+                return;
+
+            var candidateDescriptions = string.Join(", ",
+                argumentCompatible.Select(c =>
+                {
+                    var ps = c.GetParameters();
+                    var paramDisplay = string.Join(", ", ps.Select(p => Shared.ClrNameHelper.StripArity(p.ParameterType.Name)));
+                    return $"{c.Name}({paramDisplay})";
+                }));
+
+            AddError(
+                $"Call to '{memberDisplay}' is ambiguous between {argumentCompatible.Count} overloads: " +
+                $"{candidateDescriptions}. {DescribeDisambiguatingCast(argumentCompatible, argTypes.Count)}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
+                span: call.Span);
             return;
         }
 
@@ -6865,7 +6910,18 @@ internal partial class TypeChecker
     /// governed by the single-character-literal rule and would otherwise be reported a second time
     /// here as a plain <c>str</c>/<c>char</c> mismatch.</param>
     private void CheckClrCallArgumentTypes(
+        FunctionCall call, System.Reflection.ConstructorInfo ctor,
+        List<SemanticType> argTypes, string memberDisplay)
+        => CheckClrCallArgumentTypesCore(call, ctor, argTypes, memberDisplay);
+
+    private void CheckClrCallArgumentTypes(
         FunctionCall call, System.Reflection.MethodInfo method,
+        List<SemanticType> argTypes, string memberDisplay,
+        HashSet<int>? skipArgumentIndices = null)
+        => CheckClrCallArgumentTypesCore(call, method, argTypes, memberDisplay, skipArgumentIndices);
+
+    private void CheckClrCallArgumentTypesCore(
+        FunctionCall call, System.Reflection.MethodBase method,
         List<SemanticType> argTypes, string memberDisplay,
         HashSet<int>? skipArgumentIndices = null)
     {
@@ -7181,6 +7237,41 @@ internal partial class TypeChecker
 
     private static bool IsClrParamsArray(System.Reflection.ParameterInfo parameter)
         => parameter.IsDefined(typeof(ParamArrayAttribute), inherit: false);
+
+    private static bool ClrConstructorArityFits(System.Reflection.ConstructorInfo ctor, int argCount)
+    {
+        var parameters = ctor.GetParameters();
+        var required = parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p));
+        if (argCount < required)
+            return false;
+
+        return (parameters.Length > 0 && IsClrParamsArray(parameters[^1]))
+               || argCount <= parameters.Length;
+    }
+
+    private static string DescribeClrConstructorArities(System.Reflection.ConstructorInfo[] ctors)
+    {
+        var fewest = int.MaxValue;
+        var most = 0;
+        var unbounded = false;
+
+        foreach (var ctor in ctors)
+        {
+            var parameters = ctor.GetParameters();
+            var required = parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p));
+            if (required < fewest) fewest = required;
+            if (parameters.Any(p => IsClrParamsArray(p)))
+                unbounded = true;
+            else if (parameters.Length > most)
+                most = parameters.Length;
+        }
+
+        if (unbounded)
+            return $"at least {fewest} argument{(fewest == 1 ? "" : "s")}";
+        if (fewest == most)
+            return $"{fewest} argument{(fewest == 1 ? "" : "s")}";
+        return $"{fewest} to {most} arguments";
+    }
 
     /// <summary>
     /// The argument counts a member's CLR overloads accept, as a phrase — "1 argument",

@@ -108,14 +108,43 @@ internal partial class TypeChecker
             if (resolvedInit != null)
                 CheckDeprecatedUsage(resolvedInit, call);
         }
-        else if (SoleArityMatchingConstructor(typeSymbol, totalArgCount) is { } clrConstructorParameters)
+        else if (typeSymbol.ClrType is { } ctorClrType)
         {
-            // A CLR-bridged type's constructors live in TypeSymbol.Constructors, never in Methods,
-            // so neither branch above sees them and the arguments reached codegen undecided —
-            // `Vector2(1.0, 2.0)` emitted two unsuffixed doubles (#1688). Apply the seam's verdict
-            // for the one constructor this argument count can mean; nothing is refused here.
-            ApplyResolvedArgumentConversions(call, clrConstructorParameters, argTypes,
-                UnwrittenTypeParameterBinding(typeSymbol));
+            // CLR-bridged constructors: check arity and argument types against the reflected
+            // ConstructorInfo parameters — the same check the instance/static call seams perform
+            // (#1753). When exactly one constructor matches, its argument types are checked;
+            // when none matches, SPY0354; when several survive, SPY0601.
+            var ctors = ctorClrType.GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .Where(c => !c.IsGenericMethodDefinition)
+                .ToArray();
+            if (ctors.Length > 0 && !call.Arguments.Any(a => a is SpreadElement)
+                && call.KeywordArguments.Length == 0 && call.Arguments.Length == argTypes.Count)
+            {
+                var fittingCtors = ctors
+                    .Where(c => ClrConstructorArityFits(c, argTypes.Count))
+                    .ToList();
+                var ctorDisplay = Shared.ClrNameHelper.StripArity(ctorClrType.Name);
+
+                if (fittingCtors.Count == 0)
+                {
+                    AddError(
+                        $"'{ctorDisplay}' constructor expects {DescribeClrConstructorArities(ctors)} but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart,
+                        code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
+                }
+                else if (fittingCtors.Count == 1)
+                {
+                    CheckClrCallArgumentTypes(call, fittingCtors[0], argTypes, ctorDisplay);
+                }
+            }
+
+            // Apply conversions for the bridged parameter symbols (the existing path).
+            if (SoleArityMatchingConstructor(typeSymbol, totalArgCount) is { } clrConstructorParameters)
+            {
+                ApplyResolvedArgumentConversions(call, clrConstructorParameters, argTypes,
+                    UnwrittenTypeParameterBinding(typeSymbol));
+            }
         }
 
         // A type with no construction cannot be constructed. Reads the same authority as the
