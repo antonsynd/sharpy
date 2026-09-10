@@ -14,8 +14,10 @@ internal class WalrusPositionValidator : ValidatingAstWalker
     public override string Name => "WalrusPositionValidator";
     public override int Order => 408;
 
-    private void CheckComprehensionClauses(ImmutableArray<ComprehensionClause> clauses)
+    private void CheckComprehension(ImmutableArray<ComprehensionClause> clauses, params Expression[] elements)
     {
+        var allTargetNames = new HashSet<string>();
+
         foreach (var clause in clauses)
         {
             if (clause is ForClause forClause)
@@ -28,17 +30,18 @@ internal class WalrusPositionValidator : ValidatingAstWalker
                         DiagnosticCodes.ValidationOverflow.WalrusInProhibitedPosition);
                 }
 
-                var targetNames = CollectTargetNames(forClause.Target);
-                CheckWalrusRebindingInNode(forClause, targetNames);
+                CollectTargetNamesRecursive(forClause.Target, allTargetNames);
             }
         }
-    }
 
-    private static HashSet<string> CollectTargetNames(Expression target)
-    {
-        var names = new HashSet<string>();
-        CollectTargetNamesRecursive(target, names);
-        return names;
+        if (allTargetNames.Count > 0)
+        {
+            foreach (var element in elements)
+                CheckWalrusRebindingInNode(element, allTargetNames);
+
+            foreach (var clause in clauses)
+                CheckWalrusRebindingInNode(clause, allTargetNames);
+        }
     }
 
     private static void CollectTargetNamesRecursive(Expression target, HashSet<string> names)
@@ -56,22 +59,20 @@ internal class WalrusPositionValidator : ValidatingAstWalker
 
     private void CheckWalrusRebindingInNode(Node node, HashSet<string> targetNames)
     {
-        foreach (var child in node.GetChildNodes())
+        if (node is WalrusExpression walrus && targetNames.Contains(walrus.Target))
         {
-            if (child is WalrusExpression walrus && targetNames.Contains(walrus.Target))
-            {
-                AddError(
-                    $"Assignment expression cannot rebind comprehension iteration variable '{walrus.Target}'",
-                    walrus.LineStart, walrus.ColumnStart,
-                    DiagnosticCodes.ValidationOverflow.WalrusInProhibitedPosition);
-                continue;
-            }
-
-            if (child is ForClause)
-                continue;
-
-            CheckWalrusRebindingInNode(child, targetNames);
+            AddError(
+                $"Assignment expression cannot rebind comprehension iteration variable '{walrus.Target}'",
+                walrus.LineStart, walrus.ColumnStart,
+                DiagnosticCodes.ValidationOverflow.WalrusInProhibitedPosition);
+            return;
         }
+
+        if (node is ForClause)
+            return;
+
+        foreach (var child in node.GetChildNodes())
+            CheckWalrusRebindingInNode(child, targetNames);
     }
 
     private static bool ContainsWalrus(Expression expr)
@@ -89,25 +90,25 @@ internal class WalrusPositionValidator : ValidatingAstWalker
 
     public override void VisitListComprehension(ListComprehension node)
     {
-        CheckComprehensionClauses(node.Clauses);
+        CheckComprehension(node.Clauses, node.Element);
         base.VisitListComprehension(node);
     }
 
     public override void VisitSetComprehension(SetComprehension node)
     {
-        CheckComprehensionClauses(node.Clauses);
+        CheckComprehension(node.Clauses, node.Element);
         base.VisitSetComprehension(node);
     }
 
     public override void VisitDictComprehension(DictComprehension node)
     {
-        CheckComprehensionClauses(node.Clauses);
+        CheckComprehension(node.Clauses, node.Key, node.Value);
         base.VisitDictComprehension(node);
     }
 
     public override void VisitGeneratorExpression(GeneratorExpression node)
     {
-        CheckComprehensionClauses(node.Clauses);
+        CheckComprehension(node.Clauses, node.Element);
         base.VisitGeneratorExpression(node);
     }
 }
