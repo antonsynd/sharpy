@@ -1914,6 +1914,12 @@ Handles negative bases correctly.
 
 - `OverflowError` -- The result does not fit in a `long`.
 
+### `contains(value: int) -> bool`
+
+O(1) arithmetic membership test matching CPython's `range.__contains__` for
+`int` needles. Returns  when *value* is
+within the half-open interval and lies on a step boundary.
+
 ### `range(stop: int) -> RangeIterator`
 
 Return an iterator that produces integers from 0 up to (but not including) stop.
@@ -2482,6 +2488,90 @@ Sums a sequence of unsigned long integers with a start value.
 
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint64`
+
+### `sum(iterable: Iterable[bool]) -> int`
+
+Sums a sequence of booleans, counting  as 1.
+
+### `sum(iterable: Iterable[bool], start: int) -> int`
+
+Sums a sequence of booleans with an integer start value.
+
+### `sum(iterable: Iterable[bool], start: float) -> float`
+
+Sums a sequence of booleans with a double start value.
+
+### `sum(iterable: Iterable[bool], start: decimal) -> decimal`
+
+Sums a sequence of booleans with a decimal start value.
+
+### `sum(iterable: Iterable[sbyte], start: float) -> float`
+
+Sums a sequence of signed bytes with a double start value.
+
+### `sum(iterable: Iterable[byte], start: float) -> float`
+
+Sums a sequence of bytes with a double start value.
+
+### `sum(iterable: Iterable[short], start: float) -> float`
+
+Sums a sequence of short integers with a double start value.
+
+### `sum(iterable: Iterable[ushort], start: float) -> float`
+
+Sums a sequence of unsigned short integers with a double start value.
+
+### `sum(iterable: Iterable[int], start: float) -> float`
+
+Sums a sequence of integers with a double start value.
+
+### `sum(iterable: Iterable[uint], start: float) -> float`
+
+Sums a sequence of unsigned integers with a double start value.
+
+### `sum(iterable: Iterable[long], start: float) -> float`
+
+Sums a sequence of long integers with a double start value.
+
+### `sum(iterable: Iterable[ulong], start: float) -> float`
+
+Sums a sequence of unsigned long integers with a double start value.
+
+### `sum(iterable: Iterable[float32], start: float) -> float`
+
+Sums a sequence of floats with a double start value.
+
+### `sum(iterable: Iterable[sbyte], start: decimal) -> decimal`
+
+Sums a sequence of signed bytes with a decimal start value.
+
+### `sum(iterable: Iterable[byte], start: decimal) -> decimal`
+
+Sums a sequence of bytes with a decimal start value.
+
+### `sum(iterable: Iterable[short], start: decimal) -> decimal`
+
+Sums a sequence of short integers with a decimal start value.
+
+### `sum(iterable: Iterable[ushort], start: decimal) -> decimal`
+
+Sums a sequence of unsigned short integers with a decimal start value.
+
+### `sum(iterable: Iterable[int], start: decimal) -> decimal`
+
+Sums a sequence of integers with a decimal start value.
+
+### `sum(iterable: Iterable[uint], start: decimal) -> decimal`
+
+Sums a sequence of unsigned integers with a decimal start value.
+
+### `sum(iterable: Iterable[long], start: decimal) -> decimal`
+
+Sums a sequence of long integers with a decimal start value.
+
+### `sum(iterable: Iterable[ulong], start: decimal) -> decimal`
+
+Sums a sequence of unsigned long integers with a decimal start value.
 
 ### `type(obj: object | None) -> Type`
 
