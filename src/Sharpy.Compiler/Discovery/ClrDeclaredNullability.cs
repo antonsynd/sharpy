@@ -65,6 +65,19 @@ internal static class ClrDeclaredNullability
             && Create(() => Context.Create(parameter))?.WriteState == NullabilityState.Nullable;
 
     /// <summary>
+    /// Whether the parameter explicitly declares it does NOT accept null (NRT-annotated non-nullable).
+    /// Oblivious/un-annotated parameters return false — they accept <c>None</c> conservatively.
+    /// </summary>
+    internal static bool DeclaresNonNullableArgument(ParameterInfo parameter)
+    {
+        if (parameter.Member is MethodBase method
+            && DeclaredAsGenericParameter(method, m => ((MethodBase)m).GetParameters()[parameter.Position].ParameterType))
+            return false;
+        var info = Create(() => Context.Create(parameter));
+        return info?.WriteState == NullabilityState.NotNull;
+    }
+
+    /// <summary>
     /// Whether the member's type, as DECLARED on its generic type or method definition, is or contains
     /// a generic parameter (<c>T Peek()</c> on <c>Stack&lt;T&gt;</c>). Such a member's nullability is
     /// the type ARGUMENT's annotation, which a runtime-constructed <see cref="System.Type"/> does not

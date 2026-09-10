@@ -6897,8 +6897,7 @@ internal partial class TypeChecker
             // FunctionType argument is now checked like any other — the last shape of #1290's gap
             // (#1501). `calendar_module.spy` stays the regression pin for the unresolved-lambda case.
             if (argTypes[i] is UnknownType or TypeParameterType
-                || (argTypes[i] is FunctionType argFn && argFn.HasUnresolvedTypes())
-                || call.Arguments[i] is NoneLiteral)
+                || (argTypes[i] is FunctionType argFn && argFn.HasUnresolvedTypes()))
             {
                 continue;
             }
@@ -6918,17 +6917,24 @@ internal partial class TypeChecker
 
                 if (ClrParameterAccepts(parameter, argTypes[i], argumentNode))
                 {
-                    // A CLR formal is a typed slot like any other: an argument admitted by a value
-                    // shape must carry that shape's fact to the emitter. Without this,
-                    // `Vector2(1.0, 2.0)` and `xs.append(0.0)` into a `float` formal were accepted
-                    // and then emitted as unsuffixed doubles — CS1503 behind SPY0908 (#1688).
                     ApplyArgumentConversion(
                         StorePosition.ArgumentPositional, argumentNode, argTypes[i], expected);
                     continue;
                 }
 
-                // A lossy mapping refused by .NET is reported in .NET's words: the user wrote an
-                // `int` where the formal is an enum, and "expects 'int'" would send them in circles.
+                if (argumentNode != null && UnwrapParenthesized(argumentNode) is NoneLiteral
+                    && !parameter.ParameterType.IsValueType
+                    && Discovery.ClrDeclaredNullability.DeclaresNonNullableArgument(parameter))
+                {
+                    AddError(
+                        $"Cannot pass 'None' to parameter '{parameter.Name}' of '{memberDisplay}' — "
+                        + $"it is declared non-nullable ('{expected.GetDisplayName()}')",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                        code: DiagnosticCodes.Semantic.NullabilityViolation,
+                        span: call.Arguments[i].Span);
+                    continue;
+                }
+
                 expectedDisplay = IsLossyClrMapping(parameter.ParameterType, expected)
                     ? Shared.ClrNameHelper.StripArity(parameter.ParameterType.Name)
                     : expected.GetDisplayName();
@@ -7083,7 +7089,9 @@ internal partial class TypeChecker
         if (argumentNode != null && UnwrapParenthesized(argumentNode) is NoneLiteral)
         {
             var parameterType = parameter.ParameterType;
-            return !parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) != null;
+            if (parameterType.IsValueType)
+                return Nullable.GetUnderlyingType(parameterType) != null;
+            return !Discovery.ClrDeclaredNullability.DeclaresNonNullableArgument(parameter);
         }
 
         var mapped = MapClrParameterType(parameter);
