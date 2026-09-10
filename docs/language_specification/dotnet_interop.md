@@ -314,6 +314,32 @@ n3 = Convert.to_int32(True)        # ToInt32(bool)
 
 If the compiler cannot unambiguously resolve an overload, it reports a compile-time error listing the candidate overloads.
 
+## Declared Nullability
+
+Sharpy reads the nullable reference type (NRT) annotations that .NET members declare. A member returning `string?` is typed `str | None`; a member returning `string` is typed `str`. This applies to properties, fields, method returns, and parameters through one projection.
+
+```python
+import system.io
+
+def main():
+    # Path.get_directory_name returns string? — typed str | None
+    d: str | None = system.io.Path.get_directory_name("/usr/bin/ls")
+    print(d)  # /usr/bin
+```
+
+Passing `None` to a parameter declared non-nullable is refused:
+
+```python
+import system.io
+
+def main():
+    # error SPY0229: Cannot pass 'None' to parameter 'path1' of
+    # 'combine' — it is declared non-nullable ('str')
+    system.io.Path.combine(None, "b")
+```
+
+Parameters from assemblies without NRT annotations (`NullabilityState.Unknown`) accept `None` conservatively — the same behavior as before NRT support.
+
 ## IDisposable Pattern
 
 .NET's `IDisposable` integrates with `with`:
