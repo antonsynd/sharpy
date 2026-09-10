@@ -876,7 +876,7 @@ internal class ClrTypeBridge
             parameters.Add(new ParameterSymbol
             {
                 Name = param.Name ?? $"arg{param.Position}",
-                Type = MapClrParameterTypeToSemanticType(param.ParameterType),
+                Type = MapParameterType(param),
                 HasDefault = param.HasDefaultValue
             });
         }
@@ -887,7 +887,7 @@ internal class ClrTypeBridge
             Kind = SymbolKind.Function,
             ReturnType = invokeMethod.ReturnType == typeof(void)
                 ? SemanticType.Void
-                : MapClrTypeToSemanticType(invokeMethod.ReturnType),
+                : MapReturnType(invokeMethod),
             Parameters = parameters,
             AccessLevel = AccessLevel.Public,
             ClrMethod = invokeMethod

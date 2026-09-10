@@ -249,7 +249,7 @@ internal class TypeInferenceService
             if (rightClrType != null && !parameters[0].ParameterType.IsAssignableFrom(rightClrType))
                 continue;
 
-            return _clrTypeMapper.Value.MapClrTypeToSemanticType(method.ReturnType);
+            return _clrTypeMapper.Value.MapReturnType(method);
         }
 
         return null;
@@ -907,7 +907,7 @@ internal class TypeInferenceService
         // numeric widening (int → long, …), then user-defined op_Implicit (int → Fraction, …).
         var resolved = ResolveClrBinaryOperator(candidates, leftClrType, rightClrType);
         if (resolved != null)
-            return _clrTypeMapper.Value.MapClrTypeToSemanticType(resolved.ReturnType);
+            return _clrTypeMapper.Value.MapReturnType(resolved);
 
         // Equality fallback: CLR types that implement IEquatable<self>, override Equals(object),
         // or are value types/enums but define no op_Equality still support ==/!=. The result is
@@ -1302,7 +1302,7 @@ internal class TypeInferenceService
                 var parameters = method.GetParameters();
                 if (parameters.Length == 1 && parameters[0].ParameterType == clrType)
                 {
-                    return _clrTypeMapper.Value.MapClrTypeToSemanticType(method.ReturnType);
+                    return _clrTypeMapper.Value.MapReturnType(method);
                 }
             }
         }
@@ -1722,7 +1722,7 @@ internal class TypeInferenceService
             indexer = indexers[0];
         }
 
-        var mapped = _clrTypeMapper.Value.MapClrTypeToSemanticType(indexer.PropertyType);
+        var mapped = _clrTypeMapper.Value.MapPropertyType(indexer);
         return mapped is UnknownType ? null : mapped;
     }
 

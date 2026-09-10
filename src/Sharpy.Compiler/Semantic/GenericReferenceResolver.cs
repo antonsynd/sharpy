@@ -595,9 +595,9 @@ internal partial class TypeChecker
         var closedParameters = resolution.ClosedMethod.GetParameters();
         var closedParameterTypes = new List<SemanticType>(Math.Max(0, closedParameters.Length - 1));
         for (int i = 1; i < closedParameters.Length; i++)
-            closedParameterTypes.Add(_clrTypeBridge.Value.MapClrTypeToSemanticType(closedParameters[i].ParameterType));
+            closedParameterTypes.Add(_clrTypeBridge.Value.MapParameterType(closedParameters[i]));
 
-        var closedReturnType = _clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType);
+        var closedReturnType = _clrTypeBridge.Value.MapReturnType(resolution.ClosedMethod);
 
         _semanticInfo.SetGenericReference(key, new GenericReference
         {
@@ -926,7 +926,7 @@ internal partial class TypeChecker
 
         // A return type that maps to `object` means the bridge could not represent the real one.
         // Recording it would type the call `object`, which is strictly WORSE than Unknown.
-        if (IsObjectType(_clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType)))
+        if (IsObjectType(_clrTypeBridge.Value.MapReturnType(resolution.ClosedMethod)))
             return;
 
         // Verify closed parameter types match actual arguments before recording (#1332).
@@ -935,7 +935,7 @@ internal partial class TypeChecker
         var closedParams = resolution.ClosedMethod.GetParameters();
         for (int i = 0; i < argTypes.Count && i + 1 < closedParams.Length; i++)
         {
-            var closedParamType = _clrTypeBridge.Value.MapClrTypeToSemanticType(closedParams[i + 1].ParameterType);
+            var closedParamType = _clrTypeBridge.Value.MapParameterType(closedParams[i + 1]);
             if (argTypes[i] is not UnknownType && closedParamType is not UnknownType
                 && !IsAssignable(argTypes[i], closedParamType))
             {

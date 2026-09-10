@@ -1417,9 +1417,7 @@ internal partial class TypeChecker
             return null;
         }
 
-        var returnType = Discovery.ClrDeclaredNullability.Apply(
-            _bclGenericMethodBridge.MapClrTypeToSemanticType(candidates[0].ReturnType),
-            Discovery.ClrDeclaredNullability.DeclaresNullableReturn(candidates[0]));
+        var returnType = _bclGenericMethodBridge.MapReturnType(candidates[0]);
         if (returnType is UnknownType)
         {
             return null;

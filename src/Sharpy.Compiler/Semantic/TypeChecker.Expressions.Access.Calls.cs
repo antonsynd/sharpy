@@ -6807,9 +6807,7 @@ internal partial class TypeChecker
         // char-returning static is the same one-character str every other seam in the family
         // projects it to, which is what keeps `x: str = Char.to_upper("a")` from handing Roslyn a
         // `char` for a `string` slot.
-        var returnType = Discovery.ClrDeclaredNullability.Apply(
-            _bclGenericMethodBridge.MapClrTypeToSemanticType(candidates[0].ReturnType),
-            Discovery.ClrDeclaredNullability.DeclaresNullableReturn(candidates[0]));
+        var returnType = _bclGenericMethodBridge.MapReturnType(candidates[0]);
         return StaticCallResultTypeOrNull(call, returnType);
     }
 
@@ -6992,12 +6990,9 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType? MapClrParameterType(System.Reflection.ParameterInfo parameter)
     {
-        var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
+        var mapped = _bclGenericMethodBridge.MapParameterType(parameter);
         if (mapped is UnknownType || IsObjectType(mapped))
             return null;
-
-        // `string? value` accepts None by declaration; the reflected Type cannot say so (#1705).
-        mapped = Discovery.ClrDeclaredNullability.Apply(mapped, Discovery.ClrDeclaredNullability.DeclaresNullableArgument(parameter));
 
         // A delegate parameter (Converter<T,U>, Func<>, Action<>, Predicate<>) maps to GenericType
         // after #1640 (was UnmappedClrType → IsObjectType → null). The bridge cannot match a Sharpy
