@@ -379,7 +379,7 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (type is UserDefinedType { Symbol.TypeKind: TypeKind.Enum } && dunderName == DunderNames.Iter)
             return true;
 
-        // Check Sharpy user-defined types
+        // Check Sharpy user-defined types — walk the base chain for inherited dunders (#1808)
         if (type is UserDefinedType udt)
         {
             // If Symbol is null (e.g., return type from CLR module discovery),
@@ -387,10 +387,7 @@ internal class ProtocolValidator : ValidatingAstWalker
             var symbol = udt.Symbol ?? Context.SymbolTable.Lookup(udt.Name) as TypeSymbol;
             if (symbol != null)
             {
-                if (symbol.ProtocolMethods.ContainsKey(dunderName))
-                    return true;
-
-                if (symbol.Methods.Any(m => m.Name == dunderName))
+                if (TypeChecker.HasDunderInChain(symbol, dunderName))
                     return true;
 
                 // Check CLR type if available
@@ -499,24 +496,30 @@ internal class ProtocolValidator : ValidatingAstWalker
                 return true;
         }
 
-        // Check Sharpy protocol interfaces (mirrors OverloadIndexBuilder.DiscoverTypeProtocols)
-        var interfaces = clrType.GetInterfaces();
-
+        // #1808: Sharpy protocol interfaces — check both the type's own identity AND its
+        // implemented interfaces. The original GetInterfaces() missed interface-typed receivers
+        // because an interface's GetInterfaces() never contains itself. By checking FullName
+        // on the type itself too, ISized-typed receivers resolve correctly.
         if (dunderName == DunderNames.Len)
         {
-            if (interfaces.Any(i => i.FullName == "Sharpy.ISized"))
+            if (clrType.FullName == "Sharpy.ISized"
+                || clrType.GetInterfaces().Any(i => i.FullName == "Sharpy.ISized"))
                 return true;
         }
 
         if (dunderName == DunderNames.Bool)
         {
-            if (interfaces.Any(i => i.FullName == "Sharpy.IBoolConvertible"))
+            if (clrType.FullName == "Sharpy.IBoolConvertible"
+                || clrType.GetInterfaces().Any(i => i.FullName == "Sharpy.IBoolConvertible"))
                 return true;
         }
 
         if (dunderName == DunderNames.Reversed)
         {
-            if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.IReverseEnumerable`1"))
+            bool IsReverseEnumerable(System.Type t)
+                => t.IsGenericType && t.GetGenericTypeDefinition().FullName == "Sharpy.IReverseEnumerable`1";
+
+            if (IsReverseEnumerable(clrType) || clrType.GetInterfaces().Any(IsReverseEnumerable))
                 return true;
         }
 

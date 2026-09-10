@@ -2601,23 +2601,26 @@ internal partial class TypeChecker
     private IndexAccessLowering ComputeIndexAccessLowering(
         SemanticType objectType, Expression objectExpr, Expression index)
     {
-        if (objectType is TupleType && TryGetConstantIntIndex(index, out _))
+        // #1792: unwrap T | None so str | None dispatches like str
+        var viewType = ProtocolReceiverView(objectType);
+
+        if (viewType is TupleType && TryGetConstantIntIndex(index, out _))
             return IndexAccessLowering.TupleItem;
 
-        if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(objectType))
+        if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(viewType))
             return IndexAccessLowering.ParamsSpread;
 
-        if (OperandView(objectType) == SemanticType.Str)
+        if (viewType == SemanticType.Str)
             return IndexAccessLowering.String;
 
-        if (objectType is GenericType { Name: BuiltinNames.Array })
+        if (viewType is GenericType { Name: BuiltinNames.Array })
             return IndexAccessLowering.Array;
 
         // Non-negative access into a genuine Sharpy.List<T> skips the ordinary indexer's negative-index
         // Normalize (#1052). Both conditions are required: only a SharpyList backing exposes the
         // GetItemUnchecked accessor; a ClrArray (*args) or narrowed IList backing lacks it, so tagging
         // those would not compile — they stay on the ordinary indexer (#1089).
-        if (objectType is GenericType { Name: BuiltinNames.List }
+        if (viewType is GenericType { Name: BuiltinNames.List }
             && IsProvablyNonNegativeIndex(index)
             && ClassifyListBacking(objectExpr) == ListBackingKind.SharpyList)
         {

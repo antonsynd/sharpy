@@ -1,0 +1,19 @@
+# Inherited dunders work for len and truthiness (#1808)
+class Bag:
+    items: list[int]
+    def __init__(self) -> None:
+        self.items = [1, 2, 3]
+    def __len__(self) -> int:
+        return len(self.items)
+    def __bool__(self) -> bool:
+        return len(self.items) > 0
+
+class Sack(Bag):
+    pass
+
+def main() -> None:
+    s: Sack = Sack()
+    print(len(s))
+    print(bool(s))
+    if s:
+        print("truthy")

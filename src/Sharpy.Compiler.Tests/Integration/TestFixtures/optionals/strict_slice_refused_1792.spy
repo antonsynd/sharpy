@@ -1,0 +1,4 @@
+# T? slicing is refused with SPY0326 (#1792)
+def main() -> None:
+    s: str? = Some("hello")
+    print(s[0:2])

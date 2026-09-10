@@ -1,0 +1,8 @@
+# T | None index and slice dispatch like T (#1792)
+def main() -> None:
+    s: str | None = "hello"
+    print(s[0])
+    print(s[0:2])
+    xs: list[int] | None = [10, 20, 30]
+    print(xs[1])
+    print(xs[0:2])

@@ -782,23 +782,38 @@ internal partial class TypeChecker
         CheckSliceBound(sliceAccess.Stop);
         CheckSliceBound(sliceAccess.Step);
 
+        // #1792: T? (strict Optional) is refused at the slice route with SPY0326,
+        // matching the index route's existing ReportOptionalProtocol twin.
+        if (objType is OptionalType)
+        {
+            AddError(
+                $"Optional type '{objType.GetDisplayName()}' does not support slicing directly. " +
+                "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
+                sliceAccess.LineStart, sliceAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: sliceAccess.Span);
+            return objType;
+        }
+
+        // #1792: unwrap T | None so str | None dispatches like str
+        var viewType = ProtocolReceiverView(objType);
+
         // Classify the receiver and record the lowering fact
-        if (objType is GenericType gt && gt.Name == BuiltinNames.List)
+        if (viewType is GenericType gt && gt.Name == BuiltinNames.List)
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.List));
             return objType;
         }
-        if (OperandView(objType) == SemanticType.Str)
+        if (viewType == SemanticType.Str)
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Str));
             return SemanticType.Str;
         }
-        if (objType is UserDefinedType { Name: "bytes" })
+        if (viewType is UserDefinedType { Name: "bytes" })
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Bytes));
             return objType;
         }
-        if (objType is GenericType { Name: BuiltinNames.Array } arrayType
+        if (viewType is GenericType { Name: BuiltinNames.Array } arrayType
             && arrayType.TypeArguments.Count == 1)
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Array));
@@ -812,7 +827,7 @@ internal partial class TypeChecker
         // CheckMultiAxisAccess's hasSlice arm applies). Lowered to NdArray.Slice(SliceSpec):
         // Sharpy.Slice.GetSlice has no NdArray overload, which is what made a[1:4] fail as
         // CS1503 behind SPY0908 before this arm existed.
-        if (IsNdArrayType(objType))
+        if (IsNdArrayType(viewType))
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.NdArray));
             return objType;
@@ -820,7 +835,7 @@ internal partial class TypeChecker
 
         // #1610: user-defined __getitem__(self, s: slice) protocol
         {
-            TypeSymbol? receiverSymbol = objType switch
+            TypeSymbol? receiverSymbol = viewType switch
             {
                 UserDefinedType receiverUdt => receiverUdt.Symbol,
                 GenericType receiverGt => receiverGt.GenericDefinition,
@@ -854,7 +869,7 @@ internal partial class TypeChecker
         }
 
         // #1609: tuple constant-bound slicing — v1: positive constants only, step absent or 1
-        if (objType is TupleType tupleType)
+        if (viewType is TupleType tupleType)
         {
             var arity = tupleType.ElementTypes.Count;
 
@@ -908,7 +923,7 @@ internal partial class TypeChecker
 
             return new TupleType { ElementTypes = resultElements };
         }
-        else if (objType is not UnknownType)
+        else if (viewType is not UnknownType)
         {
             AddError(
                 $"Type '{objType.GetDisplayName()}' does not support slicing",

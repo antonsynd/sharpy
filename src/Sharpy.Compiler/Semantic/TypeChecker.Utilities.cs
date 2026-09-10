@@ -41,6 +41,47 @@ internal partial class TypeChecker
         => type is LiteralStringType ? SemanticType.Str : type;
 
     /// <summary>
+    /// The loose family's payload view: unwrap <c>T | None</c> (NullableType), then apply
+    /// <see cref="OperandView"/>. Used by every protocol route (index, slice, len, membership,
+    /// truthiness) so that <c>str | None</c> dispatches the same as <c>str</c> (#1792).
+    /// OptionalType (<c>T?</c>) is NOT unwrapped — it is the strict family (SPY0326).
+    /// </summary>
+    internal static SemanticType ProtocolReceiverView(SemanticType type)
+    {
+        if (type is NullableType nullable)
+            type = nullable.UnderlyingType;
+        return OperandView(type);
+    }
+
+    /// <summary>
+    /// Walks the type symbol's own methods and its base chain (TypeSymbol.BaseType) to find
+    /// a dunder method (#1808). Handles inherited dunders so <c>class Sack(Bag)</c> where
+    /// <c>Bag</c> declares <c>__len__</c> makes <c>Sack</c> sized.
+    /// </summary>
+    internal static bool HasDunderInChain(TypeSymbol symbol, string dunderName)
+    {
+        var current = symbol;
+        while (current != null)
+        {
+            if (current.ProtocolMethods.ContainsKey(dunderName))
+                return true;
+            if (current.Methods.Any(m => m.Name == dunderName))
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a CLR type is or implements a protocol interface by full name (#1808).
+    /// Checks the type's own FullName AND its GetInterfaces() so an interface-typed
+    /// receiver (e.g. ISized) resolves as its own implementor.
+    /// </summary>
+    internal static bool HasClrProtocolInterface(System.Type clrType, string interfaceFullName)
+        => clrType.FullName == interfaceFullName
+           || clrType.GetInterfaces().Any(i => i.FullName == interfaceFullName);
+
+    /// <summary>
     /// Returns whether the type can be used in a truthiness context and, when true, the lowering
     /// tag codegen must apply (#1558). A type is truth-testable when it has a falsy case — types
     /// with no falsy case (objects, functions, delegates) are refused.
@@ -76,18 +117,31 @@ internal partial class TypeChecker
         if (type is NullableType)
             return (true, TruthinessLowering.NullableNotNull);
 
-        if (type is UserDefinedType udt && udt.Symbol != null)
+        if (type is UserDefinedType udt)
         {
-            if (udt.Symbol.Methods.Any(m => m.Name == DunderNames.Bool))
-                return (true, TruthinessLowering.BoolConvertible);
+            var symbol = udt.Symbol ?? _symbolTable?.Lookup(udt.Name) as TypeSymbol;
+            if (symbol != null)
+            {
+                if (udt.Name == BuiltinNames.Bytes)
+                    return (true, TruthinessLowering.BytesNotEmpty);
 
-            if (udt.Symbol.Methods.Any(m => m.Name == DunderNames.Len))
-                return (true, TruthinessLowering.SizedNotEmpty);
+                if (HasDunderInChain(symbol, DunderNames.Bool))
+                    return (true, TruthinessLowering.BoolConvertible);
 
-            if (udt.Name == BuiltinNames.Bytes)
-                return (true, TruthinessLowering.BytesNotEmpty);
+                if (HasDunderInChain(symbol, DunderNames.Len))
+                    return (true, TruthinessLowering.SizedNotEmpty);
 
-            return (false, default);
+                // #1808: check CLR type for protocol interfaces (ISized, IBoolConvertible)
+                if (symbol.ClrType != null)
+                {
+                    if (HasClrProtocolInterface(symbol.ClrType, "Sharpy.IBoolConvertible"))
+                        return (true, TruthinessLowering.BoolConvertible);
+                    if (HasClrProtocolInterface(symbol.ClrType, "Sharpy.ISized"))
+                        return (true, TruthinessLowering.SizedNotEmpty);
+                }
+
+                return (false, default);
+            }
         }
 
         if (type is GenericType gt)
