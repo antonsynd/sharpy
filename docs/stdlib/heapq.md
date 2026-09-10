@@ -36,14 +36,6 @@ Merge two sorted inputs into a single sorted output, with optional reverse order
 
 Merge three sorted inputs into a single sorted output, with optional reverse ordering.
 
-### `heapq.nlargest(n: int, iterable: IList[T]) -> list[T]`
-
-Find the n largest elements in a dataset, accepting any IList.
-
-### `heapq.nsmallest(n: int, iterable: IList[T]) -> list[T]`
-
-Find the n smallest elements in a dataset, accepting any IList.
-
 ### `heapq.heappush(heap: list[T], item: T)`
 
 Push item onto heap, maintaining the heap invariant.

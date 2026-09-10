@@ -8,10 +8,6 @@ import functools
 
 ## Functions
 
-### `functools.reduce(func: (T, T) -> T, iterable: Iterable[T], initial: T) -> T`
-
-Apply function of two arguments cumulatively to the items of iterable, with an initial value.
-
 ### `functools.reduce(func: (T, T) -> T, iterable: list[T]) -> T`
 
 Apply function of two arguments cumulatively to the items of iterable, so as to reduce the iterable to a single value.
