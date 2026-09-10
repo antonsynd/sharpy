@@ -1,0 +1,18 @@
+# Positive control for exit_order_dunder4_sole_return (#1691):
+# return AFTER the with block, not inside it — all paths return.
+class Tracked:
+    def __enter__(self) -> int:
+        print("enter")
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        print("exit " + str(exc_val is not None))
+        return False
+
+def sole() -> int:
+    with Tracked() as v:
+        print("inside " + str(v))
+    return 9
+
+def main() -> None:
+    print(sole())

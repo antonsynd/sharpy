@@ -38,6 +38,22 @@ internal sealed class ControlFlowGraphCache
     private readonly Dictionary<FunctionDef, ControlFlowGraph> _prunedFunctionGraphs =
         new(ReferenceEqualityComparer.Instance);
 
+    private SemanticInfo? _semanticInfo;
+
+    /// <summary>
+    /// Injects the semantic info so every CFG builder sees the recorded exit shapes.
+    /// Called once after type-checking completes, before any validator builds a graph.
+    /// Clears any graphs cached during narrowing (built fact-less) so validators get
+    /// fresh builds with the suppression edges.
+    /// </summary>
+    public void SetSemanticInfo(SemanticInfo semanticInfo)
+    {
+        _semanticInfo = semanticInfo;
+        _functionGraphs.Clear();
+        _statementGraphs.Clear();
+        _prunedFunctionGraphs.Clear();
+    }
+
     /// <summary>
     /// Returns the pure CFG for a function body, building and caching it on first request.
     /// </summary>
@@ -46,7 +62,7 @@ internal sealed class ControlFlowGraphCache
         if (_functionGraphs.TryGetValue(function, out var cached))
             return cached;
 
-        var cfg = new ControlFlowGraphBuilder().Build(function);
+        var cfg = new ControlFlowGraphBuilder(null, _semanticInfo).Build(function);
         _functionGraphs[function] = cfg;
         return cfg;
     }
@@ -60,7 +76,7 @@ internal sealed class ControlFlowGraphCache
         if (_statementGraphs.TryGetValue(statements, out var cached))
             return cached;
 
-        var cfg = new ControlFlowGraphBuilder().Build(statements);
+        var cfg = new ControlFlowGraphBuilder(null, _semanticInfo).Build(statements);
         _statementGraphs[statements] = cfg;
         return cfg;
     }

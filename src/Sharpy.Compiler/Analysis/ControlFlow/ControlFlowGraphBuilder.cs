@@ -842,40 +842,59 @@ internal class ControlFlowGraphBuilder
             return;
         }
 
-        // With statement is a straight-through block (like try without handlers). The body executes
-        // linearly; disposal happens at the end. When there is an `as` binding, the body runs in a
-        // dedicated block so the narrowing analysis can kill facts about the rebound name on entry
-        // (#1042); without a binding no extra block is created, so ordinary `with` CFGs are unchanged.
+        // Check if any item has a suppression-capable exit shape (4-param __exit__).
+        bool hasSuppressionCapableItem = false;
         foreach (var item in stmt.Items)
+        {
             _currentBlock.Expressions.Add(item.ContextExpression);
+            if (item.Target != null)
+                _currentBlock.Expressions.Add(item.Target);
+
+            if (_semanticInfo != null)
+            {
+                var lowering = _semanticInfo.GetContextManagerLoweringForIr(item.ContextExpression);
+                if (lowering?.ExitShape == ContextManagerExitShape.SuppressionCapable)
+                    hasSuppressionCapableItem = true;
+            }
+        }
 
         var withBindings = CollectWithBindingKeys(stmt);
-        if (withBindings.Count == 0)
+
+        // A suppression-capable with always needs a body block and exit block so
+        // reachability and DA model the exception-suppression edge correctly.
+        if (!hasSuppressionCapableItem && withBindings.Count == 0)
         {
             BuildStatements(stmt.Body);
             return;
         }
 
         var withBodyBlock = CreateBlock("with_body");
-        withBodyBlock.EntryRebinds = withBindings;
+        if (withBindings.Count > 0)
+            withBodyBlock.EntryRebinds = withBindings;
         Connect(_currentBlock, withBodyBlock);
         _currentBlock.Terminator = new BranchTerminator(withBodyBlock);
         _currentBlock = withBodyBlock;
 
         BuildStatements(stmt.Body);
 
-        // The `as` binder is block-scoped (#1647): the statements after the `with` run in a block
-        // that restores the pre-binding state for those names, so a must-assign analysis neither
-        // credits the binder to an outer bare local of the same name nor loses an outer local that
-        // was assigned before the statement (#1635).
+        var withExitBlock = CreateBlock("with_exit");
+        if (withBindings.Count > 0)
+            withExitBlock.RebindScopeEntries = new[] { withBodyBlock };
+
+        // Suppression-capable: the __exit__ can swallow the exception, so the
+        // successor is reachable even when the body always exits. Model this as
+        // an exception edge from the body entry to the exit block (same pattern
+        // as assert_raises, :830).
+        if (hasSuppressionCapableItem)
+            ConnectException(withBodyBlock, withExitBlock);
+
         if (_currentBlock.Terminator == null)
         {
-            var withExitBlock = CreateBlock("with_exit");
-            withExitBlock.RebindScopeEntries = new[] { withBodyBlock };
             Connect(_currentBlock, withExitBlock);
             _currentBlock.Terminator = new BranchTerminator(withExitBlock);
-            _currentBlock = withExitBlock;
         }
+
+        _currentBlock = withExitBlock;
     }
 
     /// <summary>

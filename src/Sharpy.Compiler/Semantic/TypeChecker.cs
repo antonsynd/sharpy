@@ -396,7 +396,9 @@ internal partial class TypeChecker
         context.SemanticBinding = SemanticBinding;
         // Share the inference service so validators resolve operators with identical rules
         context.TypeInference = _typeInference;
-        // Share the CFG cache so validators reuse graphs (and P5.2 can reach the same instance)
+        // Share the CFG cache so validators reuse graphs (and P5.2 can reach the same instance).
+        // Inject SemanticInfo so the CFG builder sees recorded exit shapes for suppression edges.
+        _controlFlowGraphs.SetSemanticInfo(_semanticInfo);
         context.ControlFlowGraphs = _controlFlowGraphs;
         context.DeferredCycleSymbols = DeferredCycleSymbols;
         context.DeferredCycleFiles = DeferredCycleFiles;
