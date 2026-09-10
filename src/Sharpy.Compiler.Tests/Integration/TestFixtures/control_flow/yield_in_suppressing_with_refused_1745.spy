@@ -1,0 +1,11 @@
+# yield inside a suppression-capable with is refused (SPY0703, #1745).
+# Positive control: yield_in_simple_with_1745 (1-param __exit__).
+class CM:
+    def __enter__(self) -> None:
+        pass
+    def __exit__(self, t: object?, v: Exception?, tb: object?) -> bool:
+        return False
+
+def gen() -> Iterator[int]:
+    with CM():
+        yield 1

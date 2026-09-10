@@ -153,6 +153,18 @@ internal class GeneratorValidator : SemanticValidatorBase
                 code: DiagnosticCodes.Semantic.YieldInFinallyBlock,
                 span: yieldInFinally.Span);
         }
+
+        // Guard 7: yield in a suppression-capable with (SPY0703, #1745)
+        var yieldInSuppWith = FindYieldInSuppressingWith(funcDef.Body, context.SemanticInfo);
+        if (yieldInSuppWith != null)
+        {
+            AddError(context,
+                "'yield' cannot be used inside a 'with' block whose '__exit__' can suppress exceptions (4-parameter form); " +
+                "use a 1-parameter '__exit__' or collect values before yielding",
+                yieldInSuppWith.LineStart, yieldInSuppWith.ColumnStart,
+                code: DiagnosticCodes.ValidationOverflow.YieldInSuppressingWith,
+                span: yieldInSuppWith.Span);
+        }
     }
 
     private static ReturnStatement? FindReturnWithValue(ImmutableArray<Statement> statements)
@@ -198,6 +210,33 @@ internal class GeneratorValidator : SemanticValidatorBase
             {
                 return StatementWalker.FirstOrDefault(tryStmt.FinallyBody,
                     inner => inner is YieldStatement ys ? ys : null);
+            }
+            return null;
+        });
+    }
+
+    private static YieldStatement? FindYieldInSuppressingWith(
+        ImmutableArray<Statement> statements, SemanticInfo semanticInfo)
+    {
+        return StatementWalker.FirstOrDefault(statements, stmt =>
+        {
+            if (stmt is WithStatement withStmt)
+            {
+                bool isSuppressingWith = false;
+                foreach (var item in withStmt.Items)
+                {
+                    var lowering = semanticInfo.GetContextManagerLoweringForIr(item.ContextExpression);
+                    if (lowering?.ExitShape == ContextManagerExitShape.SuppressionCapable)
+                    {
+                        isSuppressingWith = true;
+                        break;
+                    }
+                }
+                if (isSuppressingWith)
+                {
+                    return StatementWalker.FirstOrDefault(withStmt.Body,
+                        inner => inner is YieldStatement ys ? ys : null);
+                }
             }
             return null;
         });
