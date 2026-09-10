@@ -199,9 +199,14 @@ internal static class AstHelper
             {
                 Elements = tuple.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray()
             },
-            ListLiteral list => list with
+            ListLiteral list => new TupleLiteral
             {
-                Elements = list.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray()
+                Elements = list.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray(),
+                IsListDisplay = true,
+                LineStart = list.LineStart,
+                ColumnStart = list.ColumnStart,
+                LineEnd = list.LineEnd,
+                ColumnEnd = list.ColumnEnd,
             },
             StarExpression star => star with { Operand = CanonicalizeStoreTarget(star.Operand) },
             _ => target,

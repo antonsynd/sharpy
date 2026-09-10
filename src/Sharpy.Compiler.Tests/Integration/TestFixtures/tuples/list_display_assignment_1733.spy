@@ -1,0 +1,8 @@
+# List-display targets normalize to tuple targets (#1733)
+def main() -> None:
+    xs: tuple[int, int] = (5, 6)
+    [a, b] = xs
+    print(a, b)
+    ys: tuple[int, int, int] = (1, 2, 3)
+    [p, q, r] = ys
+    print(p, q, r)

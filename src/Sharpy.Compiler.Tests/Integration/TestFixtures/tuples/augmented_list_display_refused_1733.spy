@@ -1,0 +1,5 @@
+# Augmented assignment onto a list display is refused (#1733)
+def main() -> None:
+    a: int = 1
+    b: int = 2
+    [a, b] += [3, 4]

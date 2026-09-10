@@ -18,8 +18,8 @@ namespace Sharpy.Compiler.Tests.Analysis;
 /// <c>(*a)</c> shape, which reaches the authority's default arm. A <c>Parenthesized</c> arm in
 /// any member site is therefore dead code and <c>NoMemberSite_HasParenthesizedArm</c> fails on it;
 /// the parser seam itself is pinned by <c>StoreTargetCanonicalizationTests</c>.
-/// <c>ListLiteral</c> appears in two sites defensively (Python admits <c>[a, b] = t</c>;
-/// Sharpy's parser may produce it in error recovery).
+/// <c>ListLiteral</c> store targets are canonicalized to <c>TupleLiteral{IsListDisplay=true}</c>
+/// by <c>CanonicalizeStoreTarget</c> (#1733), so no member site sees a <c>ListLiteral</c>.
 ///
 /// A new assignment-target kind must be added to <c>IsValidAssignmentTarget</c>
 /// first, which causes <c>Universe_MatchesAuthority</c> to fail, then to every
@@ -173,9 +173,9 @@ public class AssignmentTargetDispatchTotalityTests
     }
 
     // --- ReassignmentFinder.TargetBindsName ---
-    // Arms: {Identifier, StarExpression, TupleLiteral, ListLiteral}; default returns
-    // false. MemberAccess/IndexAccess in the default — correct, they don't rebind names.
-    // ListLiteral is defensive (Python admits [a,b] = t; parser may produce it).
+    // Arms: {Identifier, StarExpression, TupleLiteral}; default returns false.
+    // MemberAccess/IndexAccess in the default — correct, they don't rebind names.
+    // ListLiteral canonicalized to TupleLiteral{IsListDisplay} by the parser seam (#1733).
     // Targets are canonical: no Parenthesized arm.
 
     [Fact]
@@ -187,8 +187,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"TargetBindsName arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        // MemberAccess/IndexAccess → default (false: they mutate, not rebind); ListLiteral extra (defensive, #1733).
-        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) }, nameof(ListLiteral));
+        // MemberAccess/IndexAccess → default (false: they mutate, not rebind).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -196,9 +196,9 @@ public class AssignmentTargetDispatchTotalityTests
     }
 
     // --- SelectionVisitor.CollectAssignmentTargets (LSP) ---
-    // Arms: {Identifier, TupleLiteral, ListLiteral, StarExpression}; default walks
-    // sub-expressions as reads. MemberAccess/IndexAccess in the default (they are
-    // reads, not local variable assignments). ListLiteral defensive as above.
+    // Arms: {Identifier, TupleLiteral, StarExpression}; default walks sub-expressions
+    // as reads. MemberAccess/IndexAccess in the default (they are reads, not local
+    // variable assignments). ListLiteral canonicalized to TupleLiteral{IsListDisplay} (#1733).
 
     [Fact]
     public void CollectAssignmentTargets_Arms_AreKnown()
@@ -209,8 +209,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectAssignmentTargets arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        // MemberAccess/IndexAccess → default (walked as reads); ListLiteral extra (defensive, #1733).
-        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) }, nameof(ListLiteral));
+        // MemberAccess/IndexAccess → default (walked as reads).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +

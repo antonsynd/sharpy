@@ -192,8 +192,10 @@ internal sealed partial class UnparseVisitor
         // the parser accepts for an unpacking target. In operand position the precedence table
         // ranks it below every operator so the operand helpers parenthesize it instead (#1172).
         bool hasStarUnpack = RendersAsBareTuple(node);
+        string open = node.IsListDisplay ? "[" : "(";
+        string close = node.IsListDisplay ? "]" : ")";
         if (!hasStarUnpack)
-            _w.Write("(");
+            _w.Write(open);
         for (int i = 0; i < node.Elements.Length; i++)
         {
             if (i > 0)
@@ -208,6 +210,6 @@ internal sealed partial class UnparseVisitor
         if (!hasStarUnpack && node.Elements.Length == 1 && (node.ElementNames.IsEmpty || node.ElementNames[0] == null))
             _w.Write(",");
         if (!hasStarUnpack)
-            _w.Write(")");
+            _w.Write(close);
     }
 }

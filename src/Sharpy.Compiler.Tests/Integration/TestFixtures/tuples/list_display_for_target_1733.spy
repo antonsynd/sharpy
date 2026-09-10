@@ -1,0 +1,5 @@
+# List-display for-loop targets normalize to tuple targets (#1733)
+def main() -> None:
+    items: list[tuple[int, int]] = [(1, 2), (3, 4)]
+    for [p, q] in items:
+        print(p, q)

@@ -213,6 +213,13 @@ public record TupleLiteral : Expression
     /// </summary>
     public ImmutableArray<string?> ElementNames { get; init; } = ImmutableArray<string?>.Empty;
 
+    /// <summary>
+    /// True when this node was canonicalized from a list-display store target (<c>[a, b] = t</c>).
+    /// Used only by the unparser to print brackets back; the semantic and codegen layers
+    /// treat it identically to a parenthesized tuple target.
+    /// </summary>
+    public bool IsListDisplay { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {

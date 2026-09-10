@@ -275,13 +275,6 @@ internal static class ScopeAnalyzer
                     }
 
                     break;
-                case ListLiteral list:
-                    foreach (var element in list.Elements)
-                    {
-                        CollectAssignmentTargets(element);
-                    }
-
-                    break;
                 case StarExpression star:
                     CollectAssignmentTargets(star.Operand);
                     break;

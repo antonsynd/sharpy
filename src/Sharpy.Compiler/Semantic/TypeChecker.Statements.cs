@@ -377,6 +377,16 @@ internal partial class TypeChecker
         // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
         if (assignment.Operator != AssignmentOperator.Assign)
         {
+            if (assignment.Target is TupleLiteral augTuple)
+            {
+                var kind = augTuple.IsListDisplay ? "list display" : "tuple";
+                AddError($"Augmented assignment is not supported on a {kind} target",
+                    assignment.Target.LineStart, assignment.Target.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                    span: assignment.Span);
+                return;
+            }
+
             // Check if trying to use augmented assignment on a constant
             if (assignment.Target is Identifier augTargetId)
             {
@@ -1546,8 +1556,6 @@ internal partial class TypeChecker
                     return TargetBindsName(star.Operand, name);
                 case TupleLiteral tuple:
                     return tuple.Elements.Any(e => TargetBindsName(e, name));
-                case ListLiteral list:
-                    return list.Elements.Any(e => TargetBindsName(e, name));
                 // Index/member targets mutate a container; they do not rebind the simple name.
                 default:
                     return false;
