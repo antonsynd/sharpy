@@ -91,6 +91,7 @@ public class HoverDispatchTotalityTests
         [nameof(EllipsisLiteral)] = ExpressionBaseArm,
         [nameof(FloatLiteral)] = ExpressionBaseArm,
         [nameof(FStringLiteral)] = ExpressionBaseArm,
+        [nameof(GeneratorExpression)] = ExpressionBaseArm,
         [nameof(IndexAccess)] = ExpressionBaseArm,
         [nameof(IntegerLiteral)] = ExpressionBaseArm,
         [nameof(ListComprehension)] = ExpressionBaseArm,

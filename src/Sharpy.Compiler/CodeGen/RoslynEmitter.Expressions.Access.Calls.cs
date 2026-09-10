@@ -956,7 +956,9 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    orderedResult.Add(Argument(GenerateExpression(argExpr)));
+                    var generated = GenerateExpression(argExpr);
+                    generated = ApplyIterableProjection(argExpr, generated);
+                    orderedResult.Add(Argument(generated));
                 }
             }
         }
@@ -996,7 +998,9 @@ internal partial class RoslynEmitter
             }
             else
             {
-                positionalBuffer.Add(GenerateExpression(arg));
+                var generated = GenerateExpression(arg);
+                generated = ApplyIterableProjection(arg, generated);
+                positionalBuffer.Add(generated);
             }
         }
 

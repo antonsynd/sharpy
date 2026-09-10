@@ -190,6 +190,10 @@ public sealed class InlayHintCoverageConformanceTests : IDisposable
             d: dict[str, int] = {**probe(i) for i in [1, 2]}
             print(d)
         """)),
+        ("GeneratorExpression", Program(IntProbe, """
+            n = sum(probe(x) for x in [1, 2, 3])
+            print(n)
+        """)),
 
         // Primaries
         ("MemberAccess", Program(StrProbe, """

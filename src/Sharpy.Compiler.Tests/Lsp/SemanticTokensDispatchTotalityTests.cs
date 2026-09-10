@@ -117,6 +117,7 @@ public class SemanticTokensDispatchTotalityTests
         nameof(AwaitExpression),
         nameof(MatchExpression),
         nameof(DictSpreadComprehension),
+        nameof(GeneratorExpression),
     };
 
     /// <summary>

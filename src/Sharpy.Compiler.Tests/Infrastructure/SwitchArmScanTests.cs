@@ -36,26 +36,26 @@ public class SwitchArmScanTests
     }
 
     [Fact]
-    public void CaseTypeNames_PerContainingType_AstVisitorVoid_Returns93Arms()
+    public void CaseTypeNames_PerContainingType_AstVisitorVoid_Returns94Arms()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs",
             "Visit",
             "AstVisitor");
 
-        Assert.Equal(93, arms.Count);
+        Assert.Equal(94, arms.Count);
         Assert.Contains("FStringLiteral", arms);
     }
 
     [Fact]
-    public void CaseTypeNames_PerContainingType_AstVisitorGeneric_Returns93Arms()
+    public void CaseTypeNames_PerContainingType_AstVisitorGeneric_Returns94Arms()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs",
             "Visit",
             "AstVisitor`1");
 
-        Assert.Equal(93, arms.Count);
+        Assert.Equal(94, arms.Count);
         Assert.Contains("FStringLiteral", arms);
     }
 
@@ -99,7 +99,7 @@ public class SwitchArmScanTests
             "AstVisitor`1");
 
         Assert.True(voidArms.SetEquals(genericArms),
-            "Both overloads should match the same 93 types today");
+            "Both overloads should match the same 94 types today");
     }
 
     [Fact]

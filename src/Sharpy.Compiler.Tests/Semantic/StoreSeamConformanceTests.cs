@@ -311,7 +311,7 @@ public class StoreSeamConformanceTests
     /// FStringHole (f-string + t-string holes), TruthinessTest (CheckTruthinessTest helper),
     /// and the conditional's own TruthinessTest push (47 pushes + 13 clears).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 60;
+    private const int ExpectedSeamCallSiteCount = 61;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

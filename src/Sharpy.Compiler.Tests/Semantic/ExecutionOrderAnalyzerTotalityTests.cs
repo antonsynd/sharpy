@@ -41,6 +41,7 @@ public class ExecutionOrderAnalyzerTotalityTests
         nameof(SetComprehension),
         nameof(DictComprehension),
         nameof(DictSpreadComprehension),
+        nameof(GeneratorExpression),
         nameof(ComparisonChain),
         nameof(FStringLiteral),
         nameof(TStringLiteral),

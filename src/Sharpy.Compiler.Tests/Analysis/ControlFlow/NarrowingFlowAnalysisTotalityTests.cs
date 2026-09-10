@@ -58,6 +58,7 @@ public class NarrowingFlowAnalysisTotalityTests
         nameof(SetComprehension),
         nameof(DictComprehension),
         nameof(DictSpreadComprehension),
+        nameof(GeneratorExpression),
         nameof(Identifier),
         nameof(MemberAccess),
         nameof(IndexAccess),

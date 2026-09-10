@@ -246,7 +246,8 @@ public class SymbolTable : IGlobalSymbolTable
             "with" => "with",
             "match-case" or "match-arm" => "match",
             "list-comprehension" or "set-comprehension"
-                or "dict-comprehension" or "dict-spread-comprehension" => "comprehension",
+                or "dict-comprehension" or "dict-spread-comprehension"
+                or "generator-expression" => "comprehension",
             _ => null,
         };
     }
@@ -343,7 +344,8 @@ public class SymbolTable : IGlobalSymbolTable
                 or "with" or "defer"
                 or "match-case" or "match-arm"
                 or "list-comprehension" or "set-comprehension"
-                or "dict-comprehension" or "dict-spread-comprehension" => ScopeKind.Block,
+                or "dict-comprehension" or "dict-spread-comprehension"
+                or "generator-expression" => ScopeKind.Block,
             _ => null,
         };
     }

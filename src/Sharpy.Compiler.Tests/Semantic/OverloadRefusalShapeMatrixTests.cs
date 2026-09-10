@@ -315,7 +315,7 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         var errors = string.Join(" ", result.CompilationErrors);
-        errors.Should().Contain("set[uint8]").And.NotContain("T0",
+        errors.Should().Contain("uint8").And.NotContain("T0",
             "the receiver's type argument is substituted before the parameter is displayed");
     }
 

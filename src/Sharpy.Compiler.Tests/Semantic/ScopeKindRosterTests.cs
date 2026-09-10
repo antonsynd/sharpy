@@ -33,10 +33,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class ScopeKindRosterTests
 {
     /// <summary>Distinct scope-name families reachable from <c>EnterScope(</c>, measured @ fb728b9be.</summary>
-    private const int ScopeNameFamilyCensus = 34;
+    private const int ScopeNameFamilyCensus = 35;
 
     /// <summary><c>EnterScope(</c> call sites in the semantic pipeline, measured @ fb728b9be.</summary>
-    private const int EnterScopeCallSiteCensus = 40;
+    private const int EnterScopeCallSiteCensus = 41;
 
     /// <summary>
     /// Families the pipeline never reaches through an <c>EnterScope(</c> literal because they are

@@ -39,6 +39,7 @@ public class AstExhaustivenessTests
             "ListLiteral", "DictLiteral", "SetLiteral", "TupleLiteral",
             // Comprehensions
             "ListComprehension", "SetComprehension", "DictComprehension", "DictSpreadComprehension",
+            "GeneratorExpression",
             // Primary
             "Identifier", "MemberAccess", "IndexAccess", "SliceAccess", "MultiAxisAccess",
             "FunctionCall", "SuperExpression",
