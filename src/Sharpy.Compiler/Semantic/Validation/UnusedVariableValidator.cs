@@ -255,6 +255,10 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                         defined[id.Name] = new VariableInfo(
                             item.LineStart, item.ColumnStart, item.Span, false);
                     }
+                    else if (item.Target != null)
+                    {
+                        readCollector.Visit(item.Target);
+                    }
                 }
                 foreach (var s in withStmt.Body)
                     CollectFromStatement(s, defined, read, parameters, readCollector);
