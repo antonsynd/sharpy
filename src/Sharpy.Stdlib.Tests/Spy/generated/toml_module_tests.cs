@@ -441,9 +441,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (207, 5) - (207, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (208, 5) - (208, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>((object?)value);
 #line (209, 5) - (214, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if (value is global::Sharpy.DateTime)
+                if ((object?)value is global::Sharpy.DateTime)
 #line hidden
                 {
 #line (210, 9) - (210, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -468,7 +468,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (219, 5) - (219, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (220, 5) - (220, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>((object?)value);
 #line hidden
             }
 
@@ -480,9 +480,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (225, 5) - (225, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["d"];
 #line (226, 5) - (226, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>(value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>((object?)value);
 #line (227, 5) - (230, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if (value is global::Sharpy.Date)
+                if ((object?)value is global::Sharpy.Date)
 #line hidden
                 {
 #line (228, 9) - (228, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -503,9 +503,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (235, 5) - (235, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["t"];
 #line (236, 5) - (236, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>(value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>((object?)value);
 #line (237, 5) - (239, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if (value is global::Sharpy.Time)
+                if ((object?)value is global::Sharpy.Time)
 #line hidden
                 {
 #line (238, 9) - (238, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -529,7 +529,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (247, 5) - (247, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["count"] = 42L;
 #line (248, 5) - (248, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                string result = toml.Dumps(d);
+                string result = toml.Dumps((object?)d);
 #line (249, 5) - (249, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("name = \"test\"", result);
 #line (250, 5) - (250, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -555,7 +555,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (257, 5) - (257, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["section"] = inner;
 #line (258, 5) - (258, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                string result = toml.Dumps(d);
+                string result = toml.Dumps((object?)d);
 #line (259, 5) - (259, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("[section]", result);
 #line (260, 5) - (260, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -583,7 +583,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (268, 5) - (268, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["tags"] = items;
 #line (269, 5) - (269, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                string result = toml.Dumps(d);
+                string result = toml.Dumps((object?)d);
 #line (270, 5) - (270, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("tags", result);
 #line (271, 5) - (271, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -621,7 +621,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (285, 9) - (285, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    toml.Dumps("not a dict");
+                    toml.Dumps((object?)"not a dict");
 #line hidden
                 }
                 catch (TypeError)
@@ -642,7 +642,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (290, 9) - (290, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    toml.Dumps(null);
+                    toml.Dumps((object?)null);
 #line hidden
                 }
                 catch (TypeError)
@@ -671,7 +671,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (300, 5) - (300, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["ratio"] = 3.14d;
 #line (301, 5) - (301, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                var result = toml.Loads(toml.Dumps(d));
+                var result = toml.Loads(toml.Dumps((object?)d));
 #line (302, 5) - (302, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (303, 5) - (303, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -703,7 +703,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (313, 5) - (313, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["server"] = inner;
 #line (314, 5) - (314, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                var result = toml.Loads(toml.Dumps(d));
+                var result = toml.Loads(toml.Dumps((object?)d));
 #line (315, 5) - (320, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["server"])
 #line hidden
@@ -766,7 +766,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 if (!__raised_3)
                     throw new global::Sharpy.AssertionError("Expected TOMLDecodeError to be raised, but no exception was raised");
 #line (333, 5) - (333, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>((object?)ex);
 #line hidden
             }
 
@@ -842,7 +842,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (360, 5) - (360, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["count"] = 42L;
 #line (361, 5) - (361, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                toml.DumpFile(d, path);
+                toml.DumpFile((object?)d, path);
 #line (362, 5) - (362, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.LoadFile(path);
 #line (363, 5) - (363, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"

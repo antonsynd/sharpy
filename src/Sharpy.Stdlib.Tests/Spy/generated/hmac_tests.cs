@@ -31,7 +31,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestHmacSha256KnownValue()
             {
 #line (8, 5) - (8, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                global::Sharpy.HmacObject h = hmac.New("secret", "message", "sha256");
+                global::Sharpy.HmacObject h = hmac.New("secret", (string?)"message", "sha256");
 #line (9, 5) - (9, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 Xunit.Assert.Equal("8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b", h.Hexdigest());
 #line hidden
@@ -67,7 +67,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCopyProducesIndependentClone()
             {
 #line (26, 5) - (26, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                global::Sharpy.HmacObject h1 = hmac.New("key", "hello", "sha256");
+                global::Sharpy.HmacObject h1 = hmac.New("key", (string?)"hello", "sha256");
 #line (27, 5) - (27, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 global::Sharpy.HmacObject h2 = h1.Copy();
 #line (28, 5) - (28, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"

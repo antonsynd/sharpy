@@ -463,7 +463,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (234, 5) - (234, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 var err = new global::Sharpy.MessageError("test");
 #line (235, 5) - (235, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::System.Exception>(err);
+                Xunit.Assert.IsAssignableFrom<global::System.Exception>((object?)err);
 #line hidden
             }
 
@@ -473,7 +473,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (239, 5) - (239, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 var err = new global::Sharpy.MessageParseError("test");
 #line (240, 5) - (240, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.MessageError>(err);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.MessageError>((object?)err);
 #line hidden
             }
 
@@ -483,7 +483,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (244, 5) - (244, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 var err = new global::Sharpy.HeaderParseError("test");
 #line (245, 5) - (245, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.MessageError>(err);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.MessageError>((object?)err);
 #line hidden
             }
         }

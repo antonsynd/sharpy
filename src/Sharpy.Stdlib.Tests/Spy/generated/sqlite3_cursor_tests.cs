@@ -474,11 +474,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (264, 5) - (264, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(cursor.Description));
 #line (265, 5) - (265, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(@operator.Eq(cursor.Description[0][0], "id"));
+                Xunit.Assert.True(@operator.Eq(cursor.Description[0][0], (string?)"id"));
 #line (266, 5) - (266, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(@operator.Eq(cursor.Description[1][0], "name"));
+                Xunit.Assert.True(@operator.Eq(cursor.Description[1][0], (string?)"name"));
 #line (267, 5) - (267, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(@operator.Eq(cursor.Description[2][0], "score"));
+                Xunit.Assert.True(@operator.Eq(cursor.Description[2][0], (string?)"score"));
 #line (268, 5) - (268, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden

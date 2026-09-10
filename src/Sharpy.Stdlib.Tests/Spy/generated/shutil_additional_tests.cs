@@ -353,7 +353,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (153, 9) - (153, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
-                    Xunit.Assert.True(Isfile(result));
+                    Xunit.Assert.True(Isfile(result!));
 #line hidden
                 }
             }
@@ -368,7 +368,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (161, 9) - (161, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
-                    var result = shutil.Which(lsPath);
+                    var result = shutil.Which(lsPath!);
 #line (162, 9) - (162, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                     Xunit.Assert.NotNull(result);
 #line hidden

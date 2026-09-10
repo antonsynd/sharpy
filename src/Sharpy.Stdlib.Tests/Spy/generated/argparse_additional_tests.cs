@@ -210,7 +210,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (101, 5) - (101, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (102, 5) - (102, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-                parser.AddOptionalArgument("--name", shortName: "-n");
+                parser.AddOptionalArgument("--name", shortName: (string?)"-n");
 #line (103, 5) - (104, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden

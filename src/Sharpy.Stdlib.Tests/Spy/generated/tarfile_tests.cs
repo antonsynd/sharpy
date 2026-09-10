@@ -51,7 +51,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (30, 9) - (30, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "hello.txt");
+                    tw.Add(fp, (string?)"hello.txt");
 #line hidden
                 }
 
@@ -91,7 +91,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (44, 9) - (44, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "data.txt");
+                    tw.Add(fp, (string?)"data.txt");
 #line hidden
                 }
 
@@ -131,7 +131,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (58, 9) - (58, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "auto.txt");
+                    tw.Add(fp, (string?)"auto.txt");
 #line hidden
                 }
 
@@ -173,7 +173,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (75, 9) - (75, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "source.txt");
+                    tw.Add(fp, (string?)"source.txt");
 #line hidden
                 }
 
@@ -182,7 +182,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (77, 9) - (77, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tr.Extractall(outDir);
+                    tr.Extractall((string?)outDir);
 #line hidden
                 }
 
@@ -226,7 +226,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (92, 9) - (92, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "content.txt");
+                    tw.Add(fp, (string?)"content.txt");
 #line hidden
                 }
 
@@ -271,7 +271,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (109, 9) - (109, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "info.txt");
+                    tw.Add(fp, (string?)"info.txt");
 #line hidden
                 }
 
@@ -317,7 +317,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (126, 9) - (126, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "a.txt");
+                    tw.Add(fp, (string?)"a.txt");
 #line hidden
                 }
 
@@ -355,7 +355,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (139, 9) - (139, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "a.txt");
+                    tw.Add(fp, (string?)"a.txt");
 #line hidden
                 }
 
@@ -404,7 +404,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (152, 9) - (152, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "renamed.txt");
+                    tw.Add(fp, (string?)"renamed.txt");
 #line hidden
                 }
 
@@ -444,7 +444,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (168, 9) - (168, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "x.txt");
+                    tw.Add(fp, (string?)"x.txt");
 #line hidden
                 }
 
@@ -504,7 +504,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (192, 9) - (192, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "y.txt");
+                    tw.Add(fp, (string?)"y.txt");
 #line hidden
                 }
 
@@ -623,7 +623,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (231, 9) - (231, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(fp, "c.txt");
+                    tw.Add(fp, (string?)"c.txt");
 #line hidden
                 }
 
@@ -667,13 +667,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestErrorHierarchy()
             {
 #line (250, 5) - (250, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.ReadError("test"));
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>((object?)new global::Sharpy.ReadError("test"));
 #line (251, 5) - (251, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.CompressionError("test"));
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>((object?)new global::Sharpy.CompressionError("test"));
 #line (252, 5) - (252, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.ExtractError("test"));
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>((object?)new global::Sharpy.ExtractError("test"));
 #line (253, 5) - (253, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::System.Exception>(new global::Sharpy.TarError("test"));
+                Xunit.Assert.IsAssignableFrom<global::System.Exception>((object?)new global::Sharpy.TarError("test"));
 #line hidden
             }
 
@@ -706,9 +706,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (266, 9) - (266, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(tmpPath + "/a.txt", "a.txt");
+                    tw.Add(tmpPath + "/a.txt", (string?)"a.txt");
 #line (267, 9) - (267, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    tw.Add(tmpPath + "/b.txt", "b.txt");
+                    tw.Add(tmpPath + "/b.txt", (string?)"b.txt");
 #line hidden
                 }
 

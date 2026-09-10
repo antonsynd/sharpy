@@ -121,7 +121,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (61, 13) - (61, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(m["version"]);
 #line (62, 13) - (62, 51) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(((string)m["version"]!), "3"));
+                        Xunit.Assert.True(@operator.Eq(((string)m["version"]!), (string?)"3"));
 #line hidden
                         break;
                     default:
@@ -175,11 +175,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (86, 13) - (86, 40) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(comment);
 #line (87, 13) - (87, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        var before = comment.BeforeComment;
+                        var before = comment!.BeforeComment;
 #line (88, 13) - (88, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(before);
 #line (89, 13) - (89, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        Xunit.Assert.Contains("this is a comment", before);
+                        Xunit.Assert.Contains("this is a comment", before!);
 #line hidden
                         break;
                     default:
@@ -205,11 +205,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (99, 13) - (99, 40) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(comment);
 #line (100, 13) - (100, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        var inline = comment.InlineComment;
+                        var inline = comment!.InlineComment;
 #line (101, 13) - (101, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(inline);
 #line (102, 13) - (102, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        Xunit.Assert.Contains("trailing note", inline);
+                        Xunit.Assert.Contains("trailing note", inline!);
 #line hidden
                         break;
                     default:
@@ -257,11 +257,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (123, 13) - (123, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(hostComment);
 #line (124, 13) - (124, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        var inline = hostComment.InlineComment;
+                        var inline = hostComment!.InlineComment;
 #line (125, 13) - (125, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.NotNull(inline);
 #line (126, 13) - (126, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        Xunit.Assert.Contains("the host", inline);
+                        Xunit.Assert.Contains("the host", inline!);
 #line hidden
                         break;
                     default:
@@ -568,7 +568,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (271, 5) - (271, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 Xunit.Assert.NotNull(comment);
 #line (272, 5) - (272, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                Xunit.Assert.Equal("b-comment", comment.InlineComment);
+                Xunit.Assert.Equal("b-comment", comment!.InlineComment);
 #line hidden
             }
 
@@ -590,7 +590,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (285, 5) - (285, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 Xunit.Assert.NotNull(stored);
 #line (286, 5) - (286, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                Xunit.Assert.Equal("hi", stored.BeforeComment);
+                Xunit.Assert.Equal("hi", stored!.BeforeComment);
 #line hidden
             }
         }

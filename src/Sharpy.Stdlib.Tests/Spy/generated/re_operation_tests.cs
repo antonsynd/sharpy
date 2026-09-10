@@ -322,7 +322,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (169, 5) - (169, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (170, 5) - (170, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
-                Xunit.Assert.Equal(literal, m.Group());
+                Xunit.Assert.Equal(literal, m!.Group());
 #line hidden
             }
 

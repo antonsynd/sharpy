@@ -316,7 +316,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (146, 9) - (146, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
-                    Xunit.Assert.True(pathVal.Length > 0);
+                    Xunit.Assert.True(pathVal!.Length > 0);
 #line hidden
                 }
             }

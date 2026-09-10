@@ -358,7 +358,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (157, 5) - (157, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
 #line (158, 5) - (158, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Equal("default", config.Get("section", "missing", fallback: "default"));
+                Xunit.Assert.Equal("default", config.Get("section", "missing", fallback: (string?)"default"));
 #line hidden
             }
 

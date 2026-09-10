@@ -371,7 +371,7 @@ def test_sub_callable_with_count_limits_replacements():
 def test_sub_callable_match_object_has_correct_group():
     # Each replacement embeds the matched group, verifying the callable
     # receives a MatchResult positioned at the correct match.
-    result: str = re.sub(r"(\w+)", lambda m: m.group() + "|", "hello world")
+    result: str = re.sub(r"(\w+)", lambda m: str(m.group()) + "|", "hello world")
     assert result == "hello| world|"
 
 @test

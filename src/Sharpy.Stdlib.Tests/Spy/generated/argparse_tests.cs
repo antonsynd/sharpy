@@ -120,7 +120,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (50, 5) - (50, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (51, 5) - (51, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                parser.AddOptionalArgument("--name", shortName: "-n");
+                parser.AddOptionalArgument("--name", shortName: (string?)"-n");
 #line (52, 5) - (52, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 global::Sharpy.Namespace ns = parser.ParseArgs(new Sharpy.List<string>() { "-n", "test" });
 #line (53, 5) - (53, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"

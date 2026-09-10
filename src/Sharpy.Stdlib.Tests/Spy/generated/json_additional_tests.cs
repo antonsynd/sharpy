@@ -34,7 +34,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (13, 5) - (13, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 object r = json.Loads("2147483647");
 #line (14, 5) - (14, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.IsAssignableFrom<int>(r);
+                Xunit.Assert.IsAssignableFrom<int>((object?)r);
 #line (15, 5) - (15, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((int)r!), 2147483647));
 #line hidden
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (20, 5) - (20, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 object r = json.Loads("2147483648");
 #line (21, 5) - (21, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.IsAssignableFrom<long>(r);
+                Xunit.Assert.IsAssignableFrom<long>((object?)r);
 #line (22, 5) - (22, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 long value = 2147483648L;
 #line (23, 5) - (23, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
@@ -60,7 +60,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (27, 5) - (27, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 object r = json.Loads("-3.14");
 #line (31, 5) - (31, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.IsAssignableFrom<double>(r);
+                Xunit.Assert.IsAssignableFrom<double>((object?)r);
 #line (32, 5) - (36, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 switch (r)
 #line hidden
@@ -84,7 +84,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (40, 5) - (40, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 object r = json.Loads("-1.5e2");
 #line (41, 5) - (41, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.IsAssignableFrom<double>(r);
+                Xunit.Assert.IsAssignableFrom<double>((object?)r);
 #line (42, 5) - (42, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((double)r!), -150.0d));
 #line hidden
@@ -143,7 +143,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     42
                 };
 #line (65, 5) - (65, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.Equal("[42]", json.Dumps(s));
+                Xunit.Assert.Equal("[42]", json.Dumps((object?)s));
 #line hidden
             }
 
@@ -158,7 +158,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     "world"
                 };
 #line (70, 5) - (70, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                Xunit.Assert.Equal("[\"hello\", \"world\"]", json.Dumps(l));
+                Xunit.Assert.Equal("[\"hello\", \"world\"]", json.Dumps((object?)l));
 #line hidden
             }
 
@@ -217,7 +217,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (98, 5) - (98, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 long value = 9876543210L;
 #line (99, 5) - (99, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                object parsed = json.Loads(json.Dumps(value));
+                object parsed = json.Loads(json.Dumps((object?)value));
 #line (100, 5) - (100, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.True(@operator.Eq(parsed, value));
 #line hidden
@@ -227,7 +227,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRoundTripNegativeIntPreservesValue()
             {
 #line (104, 5) - (104, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                object parsed = json.Loads(json.Dumps(-999));
+                object parsed = json.Loads(json.Dumps((object?)-999));
 #line (105, 5) - (105, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.True(@operator.Eq(parsed, -999));
 #line hidden
@@ -237,7 +237,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRoundTripEmptyStringPreservesValue()
             {
 #line (109, 5) - (109, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                object parsed = json.Loads(json.Dumps(""));
+                object parsed = json.Loads(json.Dumps((object?)""));
 #line (110, 5) - (110, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.True(@operator.Eq(parsed, ""));
 #line hidden

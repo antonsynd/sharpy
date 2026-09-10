@@ -381,7 +381,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (161, 9) - (161, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                    Xunit.Assert.True(Isfile(result));
+                    Xunit.Assert.True(Isfile(result!));
 #line hidden
                 }
             }

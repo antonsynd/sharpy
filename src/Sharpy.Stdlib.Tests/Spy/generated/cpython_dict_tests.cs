@@ -69,9 +69,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (34, 5) - (34, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.False(global::Sharpy.Builtins.Bool(empty));
+                Xunit.Assert.False(global::Sharpy.Builtins.Bool((object?)empty));
 #line (35, 5) - (35, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Builtins.Bool(new Sharpy.Dict<int, int>() { { 1, 2 } }));
+                Xunit.Assert.True(global::Sharpy.Builtins.Bool((object?)new Sharpy.Dict<int, int>() { { 1, 2 } }));
 #line (36, 5) - (36, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
 #line hidden

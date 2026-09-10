@@ -511,7 +511,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (258, 5) - (258, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(found);
 #line (259, 5) - (259, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("a", found.Tag);
+                Xunit.Assert.Equal("a", found!.Tag);
 #line hidden
             }
 
@@ -559,7 +559,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (282, 5) - (282, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Null(root.FindText("missing"));
 #line (283, 5) - (283, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("default", root.FindText("missing", "default"));
+                Xunit.Assert.Equal("default", root.FindText("missing", (string?)"default"));
 #line hidden
             }
 
@@ -660,7 +660,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (324, 5) - (324, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(found);
 #line (325, 5) - (325, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("root", found.Tag);
+                Xunit.Assert.Equal("root", found!.Tag);
 #line hidden
             }
 
@@ -924,9 +924,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (462, 5) - (462, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(root);
 #line (463, 5) - (463, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("root", root.Tag);
+                Xunit.Assert.Equal("root", root!.Tag);
 #line (464, 5) - (464, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("child", root[0].Tag);
+                Xunit.Assert.Equal("child", root![0].Tag);
 #line (465, 5) - (465, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 os.Remove(tempFile);
 #line hidden
@@ -1094,7 +1094,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (538, 5) - (538, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(found);
 #line (539, 5) - (539, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("{http://example.com}child", found.Tag);
+                Xunit.Assert.Equal("{http://example.com}child", found!.Tag);
 #line hidden
             }
 
@@ -1237,7 +1237,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (612, 5) - (612, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(result);
 #line (613, 5) - (613, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("found", result.Text);
+                Xunit.Assert.Equal("found", result!.Text);
 #line hidden
             }
 

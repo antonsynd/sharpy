@@ -354,7 +354,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpsThenLoadsTRoundTripsNonFinite()
             {
 #line (201, 5) - (201, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var text = json.Dumps(new Sharpy.List<double>() { 1.0d, math.Inf, math.Nan, -math.Inf });
+                var text = json.Dumps((object?)new Sharpy.List<double>() { 1.0d, math.Inf, math.Nan, -math.Inf });
 #line (202, 5) - (202, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("[1.0, Infinity, NaN, -Infinity]", text);
 #line (203, 5) - (203, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"

@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (14, 5) - (14, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (15, 5) - (15, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("123", m.Group());
+                Xunit.Assert.Equal("123", m!.Group());
 #line hidden
             }
 
@@ -63,7 +63,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (28, 5) - (28, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (29, 5) - (29, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("123", m.Group());
+                Xunit.Assert.Equal("123", m!.Group());
 #line hidden
             }
 
@@ -77,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (36, 5) - (36, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("", m.Group());
+                Xunit.Assert.Equal("", m!.Group());
 #line hidden
             }
 
@@ -91,7 +91,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (44, 5) - (44, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (45, 5) - (45, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("hello", m.Group());
+                Xunit.Assert.Equal("hello", m!.Group());
 #line hidden
             }
 
@@ -117,11 +117,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (57, 5) - (57, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (58, 5) - (58, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("2024", m.Group(1));
+                Xunit.Assert.Equal("2024", m!.Group(1));
 #line (59, 5) - (59, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("01", m.Group(2));
+                Xunit.Assert.Equal("01", m!.Group(2));
 #line (60, 5) - (60, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("15", m.Group(3));
+                Xunit.Assert.Equal("15", m!.Group(3));
 #line hidden
             }
 
@@ -323,7 +323,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (171, 5) - (171, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (172, 5) - (172, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("HELLO", m.Group());
+                Xunit.Assert.Equal("HELLO", m!.Group());
 #line hidden
             }
 
@@ -352,7 +352,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (187, 9) - (187, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                    m.Group(99);
+                    m!.Group(99);
 #line hidden
                 }
                 catch (IndexError)
@@ -377,7 +377,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (194, 9) - (194, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                    m.Group(-1);
+                    m!.Group(-1);
 #line hidden
                 }
                 catch (IndexError)
@@ -397,7 +397,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (199, 5) - (199, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (200, 5) - (200, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("hello world", m.Group(0));
+                Xunit.Assert.Equal("hello world", m!.Group(0));
 #line hidden
             }
 
@@ -409,7 +409,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (207, 5) - (207, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (208, 5) - (208, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(6, m.Start(2));
+                Xunit.Assert.Equal(6, m!.Start(2));
 #line hidden
             }
 
@@ -421,7 +421,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (213, 5) - (213, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (214, 5) - (214, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(11, m.End(2));
+                Xunit.Assert.Equal(11, m!.End(2));
 #line hidden
             }
 
@@ -433,7 +433,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (219, 5) - (219, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (220, 5) - (220, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal((6, 11), m.Span(2));
+                Xunit.Assert.Equal((6, 11), m!.Span(2));
 #line hidden
             }
 
@@ -445,7 +445,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (225, 5) - (225, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (226, 5) - (226, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(6, m.Start(0));
+                Xunit.Assert.Equal(6, m!.Start(0));
 #line hidden
             }
 
@@ -459,11 +459,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (234, 5) - (234, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (235, 5) - (235, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("2024", m.Group("year"));
+                Xunit.Assert.Equal("2024", m!.Group("year"));
 #line (236, 5) - (236, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("03", m.Group("month"));
+                Xunit.Assert.Equal("03", m!.Group("month"));
 #line (237, 5) - (237, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("15", m.Group("day"));
+                Xunit.Assert.Equal("15", m!.Group("day"));
 #line hidden
             }
 
@@ -477,7 +477,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (243, 5) - (243, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (244, 5) - (244, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                var gd = m.Groupdict();
+                var gd = m!.Groupdict();
 #line (245, 5) - (245, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.Equal("Jane", gd["first"]);
 #line (246, 5) - (246, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
@@ -495,7 +495,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (254, 5) - (254, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (255, 5) - (255, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("", m.Group());
+                Xunit.Assert.Equal("", m!.Group());
 #line hidden
             }
 
@@ -533,7 +533,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (275, 5) - (275, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (276, 5) - (276, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Same(pattern, m.Re);
+                Xunit.Assert.Same(pattern, m!.Re);
 #line hidden
             }
 
@@ -545,7 +545,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (281, 5) - (281, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (282, 5) - (282, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.NotNull(m.Re);
+                Xunit.Assert.NotNull(m!.Re);
 #line hidden
             }
 
@@ -557,7 +557,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (289, 5) - (289, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (290, 5) - (290, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(2, m.Lastindex);
+                Xunit.Assert.Equal(2, m!.Lastindex);
 #line hidden
             }
 
@@ -569,7 +569,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (295, 5) - (295, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (296, 5) - (296, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Null(m.Lastindex);
+                Xunit.Assert.Null(m!.Lastindex);
 #line hidden
             }
 
@@ -581,7 +581,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (302, 5) - (302, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (303, 5) - (303, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(1, m.Lastindex);
+                Xunit.Assert.Equal(1, m!.Lastindex);
 #line hidden
             }
 
@@ -595,7 +595,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (309, 5) - (309, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (310, 5) - (310, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("last", m.Lastgroup);
+                Xunit.Assert.Equal("last", m!.Lastgroup);
 #line hidden
             }
 
@@ -609,7 +609,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (316, 5) - (316, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (317, 5) - (317, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Null(m.Lastgroup);
+                Xunit.Assert.Null(m!.Lastgroup);
 #line hidden
             }
 
@@ -623,7 +623,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (323, 5) - (323, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (324, 5) - (324, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Null(m.Lastgroup);
+                Xunit.Assert.Null(m!.Lastgroup);
 #line hidden
             }
 
@@ -635,7 +635,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (331, 5) - (331, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (332, 5) - (332, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                string result = m.Expand("\\2 \\1");
+                string result = m!.Expand("\\2 \\1");
 #line (333, 5) - (333, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.Equal("world hello", result);
 #line hidden
@@ -651,7 +651,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (339, 5) - (339, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (340, 5) - (340, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                string result = m.Expand("\\g<last> \\g<first>");
+                string result = m!.Expand("\\g<last> \\g<first>");
 #line (341, 5) - (341, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.Equal("world hello", result);
 #line hidden
@@ -665,7 +665,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (346, 5) - (346, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (347, 5) - (347, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                string result = m.Expand("\\g<2> \\g<1>");
+                string result = m!.Expand("\\g<2> \\g<1>");
 #line (348, 5) - (348, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.Equal("world hello", result);
 #line hidden
@@ -679,7 +679,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (353, 5) - (353, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (354, 5) - (354, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                string result = m.Expand("result: \\0");
+                string result = m!.Expand("result: \\0");
 #line (355, 5) - (355, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.Equal("result: hello", result);
 #line hidden
@@ -698,7 +698,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (369, 9) - (369, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                    m.Group("nonexistent");
+                    m!.Group("nonexistent");
 #line hidden
                 }
                 catch (IndexError)
@@ -882,7 +882,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (476, 5) - (476, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (477, 5) - (477, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("HELLO", m.Group());
+                Xunit.Assert.Equal("HELLO", m!.Group());
 #line hidden
             }
 
@@ -894,7 +894,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (483, 5) - (483, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (484, 5) - (484, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("hello", m.Group());
+                Xunit.Assert.Equal("hello", m!.Group());
 #line hidden
             }
 
@@ -906,7 +906,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (490, 5) - (490, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (491, 5) - (491, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("hello", m.Group());
+                Xunit.Assert.Equal("hello", m!.Group());
 #line hidden
             }
 
@@ -918,7 +918,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (497, 5) - (497, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (498, 5) - (498, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("HELLO world", m.Group());
+                Xunit.Assert.Equal("HELLO world", m!.Group());
 #line hidden
             }
 
@@ -930,7 +930,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (504, 5) - (504, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (505, 5) - (505, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("hello world", m.Group());
+                Xunit.Assert.Equal("hello world", m!.Group());
 #line hidden
             }
 
@@ -942,7 +942,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (511, 5) - (511, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (512, 5) - (512, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal("HELLO", m.Group());
+                Xunit.Assert.Equal("HELLO", m!.Group());
 #line hidden
             }
         }
