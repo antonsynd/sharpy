@@ -36,3 +36,6 @@ ParensWrapCallee::interop/clr_static_call_ambiguous_arity_1451 #1678
 ParensWrapCallee::interop/clr_enum_as_argument #1678
 ParensWrapCallee::basics/backtick_dotted_import #1678
 ParensWrapCallee::decorators/bracket_attr_custom_reflection #1678
+ParensWrapCallee::interop/clr_call_conversions_still_bind #1678
+ParensWrapCallee::builtins/constructor_reference_tripwire #1678
+ParensWrapCallee::dict_fromkeys #1678
