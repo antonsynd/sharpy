@@ -433,5 +433,282 @@ namespace Sharpy
                 throw SumOverflow("uint64", ex);
             }
         }
+
+        // ── bool (#1772) ──
+
+        /// <summary>
+        /// Sums a sequence of booleans, counting <see langword="true"/> as 1.
+        /// </summary>
+        public static int Sum(IEnumerable<bool> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            try
+            {
+                checked
+                {
+                    int result = 0;
+                    foreach (var b in iterable)
+                        if (b) result++;
+                    return result;
+                }
+            }
+            catch (System.OverflowException ex)
+            {
+                throw SumOverflow("int32", ex);
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of booleans with an integer start value.
+        /// </summary>
+        public static int Sum(IEnumerable<bool> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            try
+            {
+                checked
+                {
+                    int result = start;
+                    foreach (var b in iterable)
+                        if (b) result++;
+                    return result;
+                }
+            }
+            catch (System.OverflowException ex)
+            {
+                throw SumOverflow("int32", ex);
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of booleans with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<bool> iterable, double start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            double result = start;
+            foreach (var b in iterable)
+                if (b) result += 1.0;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of booleans with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<bool> iterable, decimal start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            decimal result = start;
+            foreach (var b in iterable)
+                if (b) result += 1m;
+            return result;
+        }
+
+        // ── cross-family double starts (#1780) ──
+
+        /// <summary>
+        /// Sums a sequence of signed bytes with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<sbyte> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of bytes with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<byte> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of short integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<short> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned short integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<ushort> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<int> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<uint> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of long integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<long> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned long integers with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<ulong> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of floats with a double start value.
+        /// </summary>
+        public static double Sum(IEnumerable<float> iterable, double start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            double result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        // ── cross-family decimal starts (#1780) ──
+
+        /// <summary>
+        /// Sums a sequence of signed bytes with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<sbyte> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of bytes with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<byte> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of short integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<short> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned short integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<ushort> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<int> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<uint> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of long integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<long> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned long integers with a decimal start value.
+        /// </summary>
+        public static decimal Sum(IEnumerable<ulong> iterable, decimal start)
+        {
+            if (iterable is null) throw TypeError.ArgNone("sum", "iterable");
+            decimal result = start;
+            foreach (var x in iterable) result += x;
+            return result;
+        }
     }
 }

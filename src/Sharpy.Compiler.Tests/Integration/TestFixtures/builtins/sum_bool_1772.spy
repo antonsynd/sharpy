@@ -1,0 +1,6 @@
+# sum counts booleans as integers (#1772)
+def main() -> None:
+    print(sum([True, True, False]))
+    print(sum([False, False]))
+    print(sum([True, True, True]))
+    print(sum([True, False], 5))

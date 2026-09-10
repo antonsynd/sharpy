@@ -123,4 +123,109 @@ public class SumStart_Tests
         List<int> list = [10, 20];
         Sum(list, -5).Should().Be(25);
     }
+
+    // ── bool (#1772) ──
+
+    [Fact]
+    public void Sum_BoolList_CountsTrues()
+    {
+        List<bool> list = [true, true, false];
+        Sum(list).Should().Be(2);
+    }
+
+    [Fact]
+    public void Sum_EmptyBoolList_ReturnsZero()
+    {
+        Sum(new List<bool>()).Should().Be(0);
+    }
+
+    [Fact]
+    public void Sum_BoolList_WithIntStart()
+    {
+        List<bool> list = [true, false];
+        Sum(list, 5).Should().Be(6);
+    }
+
+    [Fact]
+    public void Sum_BoolList_WithDoubleStart()
+    {
+        List<bool> list = [true, true];
+        Sum(list, 1.5).Should().Be(3.5);
+    }
+
+    [Fact]
+    public void Sum_BoolList_WithDecimalStart()
+    {
+        List<bool> list = [true, false, true];
+        Sum(list, 0.5m).Should().Be(2.5m);
+    }
+
+    // ── cross-family double starts (#1780) ──
+
+    [Fact]
+    public void Sum_IntList_WithDoubleStart()
+    {
+        List<int> list = [1, 2];
+        Sum(list, 1.5).Should().Be(4.5);
+    }
+
+    [Fact]
+    public void Sum_LongList_WithDoubleStart()
+    {
+        List<long> list = [1L, 2L];
+        Sum(list, 1.5).Should().Be(4.5);
+    }
+
+    [Fact]
+    public void Sum_FloatList_WithDoubleStart()
+    {
+        List<float> list = [1.0f, 2.0f];
+        Sum(list, 0.5).Should().Be(3.5);
+    }
+
+    [Fact]
+    public void Sum_SByteList_WithDoubleStart()
+    {
+        var list = new List<sbyte> { 1, 2, 3 };
+        Sum(list, 0.5).Should().Be(6.5);
+    }
+
+    // ── cross-family decimal starts (#1780) ──
+
+    [Fact]
+    public void Sum_IntList_WithDecimalStart()
+    {
+        List<int> list = [1, 2];
+        Sum(list, 1.5m).Should().Be(4.5m);
+    }
+
+    [Fact]
+    public void Sum_LongList_WithDecimalStart()
+    {
+        List<long> list = [1L, 2L];
+        Sum(list, 1.5m).Should().Be(4.5m);
+    }
+
+    // ── null checks for new overloads ──
+
+    [Fact]
+    public void Sum_NullBoolIterable_ThrowsTypeError()
+    {
+        FluentActions.Invoking(() => Sum((IEnumerable<bool>)null!))
+            .Should().Throw<TypeError>();
+    }
+
+    [Fact]
+    public void Sum_NullBoolIterable_WithIntStart_ThrowsTypeError()
+    {
+        FluentActions.Invoking(() => Sum((IEnumerable<bool>)null!, 0))
+            .Should().Throw<TypeError>();
+    }
+
+    [Fact]
+    public void Sum_NullIntIterable_WithDoubleStart_ThrowsTypeError()
+    {
+        FluentActions.Invoking(() => Sum((IEnumerable<int>)null!, 0.0))
+            .Should().Throw<TypeError>();
+    }
 }

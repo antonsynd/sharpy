@@ -1,0 +1,4 @@
+# sum with a start of another family per the C# binary table (#1780)
+def main() -> None:
+    print(sum([1, 2], 1.5))
+    print(sum([1, 2], 1))
