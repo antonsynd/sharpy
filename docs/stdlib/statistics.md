@@ -8,10 +8,6 @@ import statistics
 
 ## Functions
 
-### `statistics.mode(notnull: IEnumerable<T> data) where T : = > Mode(new Sharpy.List<T>(data)) -> T`
-
-Return the most common data point from discrete or nominal data.
-
 ### `statistics.mean(data: list[float]) -> float`
 
 Return the sample arithmetic mean of data.
