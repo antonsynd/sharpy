@@ -89,6 +89,17 @@ internal static class ClrDeclaredNullability
     {
         try
         {
+            // The member's type AS REFLECTED HERE is itself a free type parameter. That is the shape
+            // discovery and the overload index see, because they reflect over the generic type
+            // DEFINITION (`List<T>.Pop` returns `T`, never `string`) and over generic method
+            // definitions. `NullabilityInfoContext` answers Nullable for an unconstrained `T`, so
+            // without this arm every bare-`T` member is typed nullable: `list[str].pop(0)` came back
+            // `str | None` and `list.append`'s `T` slot became `Box[int] | None`, which broke the
+            // union constructor's inference (#1705 B1). The constructed-declaring-type arm below
+            // cannot answer this case — `IsConstructedGenericType` is false for a definition.
+            if (declaredTypeOf(member).ContainsGenericParameters)
+                return true;
+
             if (member is MethodInfo { IsGenericMethod: true, IsGenericMethodDefinition: false } constructedMethod
                 && declaredTypeOf(constructedMethod.GetGenericMethodDefinition()).ContainsGenericParameters)
                 return true;

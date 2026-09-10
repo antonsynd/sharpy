@@ -801,6 +801,18 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Drops a recorded char-to-str conversion, because the value is handed straight back to a CLR
+    /// <c>char</c> slot and the emitted form must stay the char it already is (#1402). The
+    /// projection is recorded by the seam that PRODUCES the value, which cannot see where the value
+    /// goes; the call seam that binds the argument is the one that knows, so it withdraws the
+    /// conversion there rather than each producer guessing at its consumer.
+    /// </summary>
+    public void ClearCharMaterialization(Expression expr)
+    {
+        _charMaterializations.TryRemove(expr, out _);
+    }
+
+    /// <summary>
     /// The char-to-str conversion an expression must be wrapped in, or <c>null</c> when its emitted
     /// type already matches its semantic type — which is every expression that did not come from a
     /// CLR char.

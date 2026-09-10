@@ -6833,6 +6833,12 @@ internal partial class TypeChecker
                 continue;
             }
 
+            // A value that IS a CLR char (a char-typed member read, a char-returning call) needs no
+            // conversion at all: its str-ness is a surface projection, withdrawn for this slot by
+            // the shared argument seam below (#1291/#1402).
+            if (IsClrCharOriginValue(argument))
+                continue;
+
             AddError(
                 $"Argument {i + 1} of '{memberDisplay}' takes a CLR 'char', which only a "
                 + "single-character str literal converts to — Sharpy will not truncate a longer or "
@@ -6927,9 +6933,15 @@ internal partial class TypeChecker
     {
         var parameters = method.GetParameters();
 
+        // A char-origin value bound to a reflected `char` slot keeps its emitted char form: the
+        // projection its producer recorded is withdrawn here, at the one seam every CLR route
+        // (instance, static, constructor) passes through, and those positions need no further
+        // acceptance question (#1291/#1402).
+        var charSlots = WithdrawCharProjectionAtClrCharSlots(call, method, argTypes.Count);
+
         for (int i = 0; i < argTypes.Count && i < parameters.Length; i++)
         {
-            if (skipArgumentIndices?.Contains(i) == true)
+            if (skipArgumentIndices?.Contains(i) == true || charSlots.Contains(i))
                 continue;
 
             var parameter = parameters[i];

@@ -309,10 +309,22 @@ internal class ClrTypeBridge
             return MapGenericType(clrType);
         }
 
-        // Handle enums
+        // Handle enums. A CLR enum IS its own type at the Sharpy surface — the same
+        // UserDefinedType a `DayOfWeek` annotation and a `DayOfWeek.Monday` value already resolve
+        // to, so a member read of one (`DateTime.now.day_of_week`) compares and binds against
+        // them (#1705). Mapping it onto its underlying `int32` instead described the value as
+        // something it is not: the member seam then had to DECLINE enums to stay honest, and the
+        // decline surfaced as `object` in value position (SPY0222/SPY0220 on programs that ran).
+        // The symbol is the bridge's cached per-CLR-type one, so every enum member read shares one
+        // symbol; assignability against the registry's own symbol for the same enum holds through
+        // the ClrType identity arm in UserDefinedType.IsAssignableTo.
         if (clrType.IsEnum)
         {
-            return SemanticType.Int;
+            return new UserDefinedType
+            {
+                Name = clrType.Name,
+                Symbol = GetOrCreateClrDefinitionSymbol(clrType)
+            };
         }
 
         // Non-generic CLR class/struct/delegate: map to UserDefinedType with CLR type info
