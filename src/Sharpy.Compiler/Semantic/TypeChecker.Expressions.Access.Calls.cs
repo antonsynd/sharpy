@@ -2357,9 +2357,8 @@ internal partial class TypeChecker
 
         // #1775: same-argument rule — if every arity candidate rejected the same argument for a
         // type reason, report the concrete type mismatch instead of the generic overload error.
-        if (argTypes is { Count: > 0 }
-            && TryReportSameArgumentRefusal(
-                call, argTypes, arityCandidates.Count, resolution.CandidateFailures))
+        if (TryReportSameArgumentRefusal(
+                call, (IReadOnlyList<SemanticType>?)argTypes ?? Array.Empty<SemanticType>(), arityCandidates.Count, resolution.CandidateFailures))
         {
             return;
         }
