@@ -177,14 +177,8 @@ internal class TypeSyntaxMapper
         if (!string.IsNullOrEmpty(symbol.DefiningModule))
             return true;
 
-        // A raw generic BCL / external CLR type imported by namespace (e.g.
-        // system.collections.generic.List) must qualify via its ClrType full name; such symbols may
-        // carry neither DefiningModule nor DefiningFilePath (#1139). The ClrType must itself be generic:
-        // an interface Sharpy models via a non-generic CLR type (e.g. IEnumerable[T] whose genDef.ClrType
-        // is the non-generic System.Collections.IEnumerable) is unreliable here and stays on the
-        // name-based path. Sharpy-namespace CLR types are excluded (they keep name-based resolution).
-        if (symbol.ClrType is { IsGenericType: true } clrType
-            && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace))
+        // Every CLR-backed type requires qualification — QualifyFromSymbol emits global:: (#1765).
+        if (symbol.ClrType != null)
             return true;
 
         return !string.IsNullOrEmpty(symbol.DefiningFilePath)
@@ -510,6 +504,13 @@ internal class TypeSyntaxMapper
         => GetMappedTypeName(sharpyName, isBacktickEscaped);
 
     /// <summary>
+    /// Returns the <c>global::</c>-qualified C# name for a reflected CLR type.
+    /// This is the single public entry point for CLR type naming (#1765, Decision 2).
+    /// </summary>
+    internal string GlobalClrTypeName(System.Type clrType)
+        => $"global::{ClrNameHelper.ToCSharpQualifiedName(clrType.FullName!)}";
+
+    /// <summary>
     /// The symbol-driven naming seam for a <em>construction</em> position: the name the RoslynEmitter
     /// emits where a resolved <see cref="TypeSymbol"/> — not a written annotation — names the type
     /// (<c>X(...)</c>, <c>isinstance(x, X)</c>, <c>except mod.Error</c>, module-qualified base names).
@@ -611,19 +612,7 @@ internal class TypeSyntaxMapper
         {
             if (builtinTypeSymbol.ClrType != null)
             {
-                var ns = builtinTypeSymbol.ClrType.Namespace ?? string.Empty;
-                // System namespace types are always available in C# without qualification
-                if (ns == "System" || ns.StartsWith("System."))
-                {
-                    // When inside a user-defined namespace, use global:: to avoid ambiguity
-                    // (e.g., inside namespace MyApp, "System" could resolve to "MyApp.System").
-                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                        return $"global::{ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!)}";
-                    return builtinTypeSymbol.ClrType.Name;
-                }
-                // Sharpy types need global:: qualification
-                var fullName = ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!);
-                return $"global::{fullName}";
+                return $"global::{ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!)}";
             }
             return sharpyTypeName;
         }
@@ -671,30 +660,9 @@ internal class TypeSyntaxMapper
             // Type arguments are added separately by the caller via QualifiedGenericName.
             var fullName = ClrNameHelper.ToCSharpQualifiedName(clrType.FullName!);
 
-            // Always use global:: for Sharpy namespace CLR types (including sub-namespaces
-            // such as Sharpy.Generators) to avoid Sharpy.Sharpy.X when code is inside
-            // namespace Sharpy. Uses the prefix-aware IsSharpyNamespace rule so module types
-            // like sharpy.generators.GeneratorOutput round-trip (#1090). Sharpy.Core CLR types
-            // carrying [SharpyModuleType] land here too: their CLR namespace (Sharpy) differs from
-            // the module name (argparse -> Sharpy.ArgumentParser), so the CLR name must win.
-            if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace))
-                return $"global::{fullName}";
-
-            // When inside a user-defined namespace, use global:: for all CLR types
-            // to avoid ambiguity (e.g., inside namespace Sharpy, "System.IComparable"
-            // could resolve to "Sharpy.System.IComparable").
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                return $"global::{fullName}";
-
-            // A raw generic BCL type imported by namespace (e.g. system.collections.generic.List)
-            // carries a ClrType but neither DefiningModule nor DefiningFilePath, so without this it
-            // fell through to the bare short name below and collided with Sharpy.List → CS0104 (#1139).
-            // Position-dependent: a reference position qualifies every remaining CLR type from its CLR
-            // name, while a construction position keeps non-generic CLR types on the name path below —
-            // `raise Exception(...)` stays `Exception`, already reachable via `using System;`, so the
-            // #1139 fix does not broadly re-qualify them.
-            if (position == NamePosition.Reference || clrType.IsGenericType)
-                return fullName;
+            // Every CLR-backed type is emitted global::-qualified from the reflected type
+            // so no `using` set can make it ambiguous (#1765, Decision 2).
+            return $"global::{fullName}";
         }
 
         string moduleNamespace;

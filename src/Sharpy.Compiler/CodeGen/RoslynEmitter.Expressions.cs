@@ -344,28 +344,14 @@ internal partial class RoslynEmitter
                     NameCasing.ResolveMethod(name.Name, name.IsNameBacktickEscaped));
             }
 
-            // Discovered TypeSymbols with CLR type info must resolve through the CLR type name.
-            // Sharpy namespace: datetime → global::Sharpy.DateTime
-            // System namespace (when inside a user namespace): Math → global::System.Math
+            // Every CLR-backed TypeSymbol in expression position is emitted global::-qualified
+            // from the reflected type so no `using` set can make it ambiguous (#1765).
             {
                 var ts = (resolvedSymbol as TypeSymbol) ?? (symbol as TypeSymbol);
                 if (ts?.ClrType != null)
                 {
-                    // Sharpy namespace (or a sub-namespace such as Sharpy.Generators): emit the
-                    // full CLR namespace path so a Sharpy.Sub.X type binds rather than being
-                    // mis-qualified to global::Sharpy.X (#1090). For types directly in "Sharpy"
-                    // this is byte-identical to the previous two-part emission.
-                    if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(ts.ClrType.Namespace))
-                    {
-                        var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
-                        return MakeGlobalQualifiedName(fullName.Split('.'));
-                    }
-
-                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                    {
-                        var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
-                        return MakeGlobalQualifiedName(fullName.Split('.'));
-                    }
+                    var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
+                    return MakeGlobalQualifiedName(fullName.Split('.'));
                 }
             }
         }
