@@ -1,0 +1,4 @@
+# A slice inside brackets in an f-string hole (#1726)
+def main() -> None:
+    xs: list[int] = [1, 2, 3, 4, 5]
+    print(f"{xs[0:3]}")

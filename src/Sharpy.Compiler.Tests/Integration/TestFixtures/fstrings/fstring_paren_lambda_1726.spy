@@ -1,0 +1,3 @@
+# A lambda call inside parentheses in an f-string hole (#1726)
+def main() -> None:
+    print(f"{(lambda: 42)()}")

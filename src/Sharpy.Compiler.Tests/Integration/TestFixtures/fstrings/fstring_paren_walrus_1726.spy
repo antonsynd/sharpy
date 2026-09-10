@@ -1,0 +1,5 @@
+# A walrus inside parentheses in an f-string hole is not a format spec (#1726)
+def main() -> None:
+    def f() -> str:
+        return "hello"
+    print(f"{(s := f())} {s}")

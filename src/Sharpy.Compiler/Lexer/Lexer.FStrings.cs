@@ -459,7 +459,7 @@ public partial class Lexer
             }
 
             // Check for format specification start (: at BraceDepth == 1)
-            if (current == ':' && context.BraceDepth == 1 && !context.InFormatSpec)
+            if (current == ':' && context.BraceDepth == 1 && context.ParenDepth == 0 && !context.InFormatSpec)
             {
                 // Consume the colon
                 _position++;
