@@ -130,6 +130,14 @@ namespace Sharpy
             return _set.IsSubsetOf(other._set);
         }
 
+        /// <summary>Returns whether this set is a subset of the given iterable.</summary>
+        public bool IsSubset(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            return _set.IsSubsetOf(other);
+        }
+
         /// <summary>
         /// Returns whether this set is a proper superset of other (superset but not equal).
         /// </summary>
@@ -167,6 +175,14 @@ namespace Sharpy
             return _set.IsSupersetOf(other._set);
         }
 
+        /// <summary>Returns whether this set is a superset of the given iterable.</summary>
+        public bool IsSuperset(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            return _set.IsSupersetOf(other);
+        }
+
         /// <summary>
         /// Returns a new set with elements from both sets.
         /// </summary>
@@ -193,6 +209,31 @@ namespace Sharpy
                 result._set.Add(item);
             }
 
+            return result;
+        }
+
+        /// <summary>Return a new set with elements from this set and the iterable.</summary>
+        public Set<T> Union(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            var result = new Set<T>(_set);
+            foreach (var item in other)
+                result._set.Add(item);
+            return result;
+        }
+
+        /// <summary>Return a new set with elements from this set and all others.</summary>
+        public Set<T> Union(params IEnumerable<T>[] others)
+        {
+            var result = new Set<T>(_set);
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                foreach (var item in other)
+                    result._set.Add(item);
+            }
             return result;
         }
 
@@ -228,6 +269,34 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Return a new set with elements common to this set and the iterable.</summary>
+        public Set<T> Intersection(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            var otherSet = new HashSet<T>(other);
+            var result = new Set<T>();
+            foreach (var item in _set)
+            {
+                if (otherSet.Contains(item))
+                    result._set.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>Return a new set with elements common to this set and all others.</summary>
+        public Set<T> Intersection(params IEnumerable<T>[] others)
+        {
+            var result = new Set<T>(_set);
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                result._set.IntersectWith(other);
+            }
+            return result;
+        }
+
         /// <summary>
         /// Returns a new set with elements in this set but not in other.
         /// </summary>
@@ -257,6 +326,34 @@ namespace Sharpy
                 }
             }
 
+            return result;
+        }
+
+        /// <summary>Return a new set with elements in this set but not in the iterable.</summary>
+        public Set<T> Difference(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            var otherSet = new HashSet<T>(other);
+            var result = new Set<T>();
+            foreach (var item in _set)
+            {
+                if (!otherSet.Contains(item))
+                    result._set.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>Return a new set with elements in this set but not in any of the others.</summary>
+        public Set<T> Difference(params IEnumerable<T>[] others)
+        {
+            var result = new Set<T>(_set);
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                result._set.ExceptWith(other);
+            }
             return result;
         }
 
@@ -297,6 +394,16 @@ namespace Sharpy
                 }
             }
 
+            return result;
+        }
+
+        /// <summary>Return a new set with elements in either this set or the iterable but not both.</summary>
+        public Set<T> SymmetricDifference(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            var result = new Set<T>(_set);
+            result._set.SymmetricExceptWith(other);
             return result;
         }
 

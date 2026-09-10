@@ -302,7 +302,10 @@ internal partial class TypeChecker
             }
             else if (variadic != null)
             {
-                formal = variadic.Type;
+                formal = variadic.Type is GenericType { Name: "array" } varArray
+                    && varArray.TypeArguments.Count == 1
+                    ? varArray.TypeArguments[0]
+                    : variadic.Type;
             }
             else
             {

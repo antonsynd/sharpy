@@ -149,11 +149,55 @@ namespace Sharpy
         public FrozenSet<T> SymmetricDifference(IEnumerable<T> other) => new(_set.SymmetricExcept(other));
         /// <summary>Returns whether this frozenset is a subset of other.</summary>
         public bool IsSubset(FrozenSet<T> other) => this <= other;
+        /// <summary>Returns whether this frozenset is a subset of the given iterable.</summary>
+        public bool IsSubset(IEnumerable<T> other) => _set.IsSubsetOf(other);
         /// <summary>Returns whether this frozenset is a superset of other.</summary>
         public bool IsSuperset(FrozenSet<T> other) => this >= other;
+        /// <summary>Returns whether this frozenset is a superset of the given iterable.</summary>
+        public bool IsSuperset(IEnumerable<T> other) => _set.IsSupersetOf(other);
         /// <summary>Returns whether this frozenset has no elements in common with other.</summary>
         public bool IsDisjoint(FrozenSet<T> other) => !_set.Overlaps(other._set);
         /// <summary>Returns whether this frozenset has no elements in common with other.</summary>
         public bool IsDisjoint(IEnumerable<T> other) => !_set.Overlaps(other);
+
+        /// <summary>Return a new frozenset with elements from this set and all others.</summary>
+        public FrozenSet<T> Union(params IEnumerable<T>[] others)
+        {
+            var builder = _set.ToBuilder();
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                foreach (var item in other)
+                    builder.Add(item);
+            }
+            return new FrozenSet<T>(builder.ToImmutable());
+        }
+
+        /// <summary>Return a new frozenset with elements common to this set and all others.</summary>
+        public FrozenSet<T> Intersection(params IEnumerable<T>[] others)
+        {
+            var result = new HashSet<T>(_set);
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                result.IntersectWith(other);
+            }
+            return new FrozenSet<T>(result);
+        }
+
+        /// <summary>Return a new frozenset with elements in this set but not in any of the others.</summary>
+        public FrozenSet<T> Difference(params IEnumerable<T>[] others)
+        {
+            var result = new HashSet<T>(_set);
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                result.ExceptWith(other);
+            }
+            return new FrozenSet<T>(result);
+        }
     }
 }

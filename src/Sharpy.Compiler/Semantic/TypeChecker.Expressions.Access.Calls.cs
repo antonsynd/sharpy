@@ -5201,9 +5201,6 @@ internal partial class TypeChecker
     private IReadOnlyList<int>? GetMemberIterableKeyPositions(
         MemberAccess memberAccess, IReadOnlyList<Expression> arguments)
     {
-        if (arguments.Count != 1)
-            return null;
-
         var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
         if (receiverType == null)
             return null;
@@ -5213,16 +5210,17 @@ internal partial class TypeChecker
         switch (memberAccess.Member)
         {
             case BuiltinNames.Join:
-                return receiver == SemanticType.Str ? IterablePositionZero : null;
+                return arguments.Count == 1 && receiver == SemanticType.Str
+                    ? IterablePositionZero : null;
 
             case "extend":
-                return receiver is GenericType { Name: BuiltinNames.List }
+                return arguments.Count == 1 && receiver is GenericType { Name: BuiltinNames.List }
                     ? IterablePositionZero : null;
 
             case "update":
                 if (receiver is GenericType { Name: BuiltinNames.Set })
-                    return IterablePositionZero;
-                if (receiver is GenericType { Name: BuiltinNames.Dict })
+                    return AllPositions(arguments.Count);
+                if (arguments.Count == 1 && receiver is GenericType { Name: BuiltinNames.Dict })
                 {
                     var argType = _semanticInfo.GetExpressionType(arguments[0]);
                     if (argType != null && OperandView(argType) is GenericType { Name: BuiltinNames.Dict })
@@ -5233,13 +5231,24 @@ internal partial class TypeChecker
 
             case "intersection_update":
             case "difference_update":
-            case "symmetric_difference_update":
                 return receiver is GenericType { Name: BuiltinNames.Set }
+                    ? AllPositions(arguments.Count) : null;
+
+            case "symmetric_difference_update":
+                return arguments.Count == 1 && receiver is GenericType { Name: BuiltinNames.Set }
                     ? IterablePositionZero : null;
 
             default:
                 return null;
         }
+    }
+
+    private static IReadOnlyList<int> AllPositions(int count)
+    {
+        var positions = new int[count];
+        for (int i = 0; i < count; i++)
+            positions[i] = i;
+        return positions;
     }
 
     /// <summary>

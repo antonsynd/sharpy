@@ -1,0 +1,4 @@
+# symmetric_difference(_update) stays single-only — Python TypeError at arity != 1 (#1773)
+def main() -> None:
+    s: set[int] = {1, 2, 3}
+    s.symmetric_difference_update({1}, {2})

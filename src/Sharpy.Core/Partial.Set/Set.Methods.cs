@@ -137,106 +137,81 @@ namespace Sharpy
             return !_set.Overlaps(other._set);
         }
 
+        /// <summary>Returns whether this set has no elements in common with the given iterable.</summary>
+        public bool IsDisjoint(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            return !_set.Overlaps(other);
+        }
+
         /// <summary>
-        /// Update the set, adding elements from the other set.
+        /// Update the set, adding elements from the given iterables.
         /// </summary>
-        /// <param name="other">The set of elements to add.</param>
+        /// <param name="others">The iterables of elements to add.</param>
         /// <example>
         /// <code>
         /// s = {1, 2, 3}
-        /// s.update({3, 4})    # {1, 2, 3, 4}
+        /// s.update({3, 4})          # {1, 2, 3, 4}
+        /// s.update({5}, {6}, {7})   # {1, 2, 3, 4, 5, 6, 7}
         /// </code>
         /// </example>
-        public void Update(Set<T> other)
+        public void Update(params IEnumerable<T>[] others)
         {
-            if (other is null)
-            {
+            if (others is null)
                 throw TypeError.IsNotInterface("NoneType", "iterable");
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                _set.UnionWith(other);
             }
-
-            _set.UnionWith(other._set);
         }
 
         /// <summary>
-        /// Update the set, adding elements from the given iterable.
+        /// Update the set, removing elements found in any of the given iterables.
         /// </summary>
-        /// <param name="other">The iterable of elements to add.</param>
-        public void Update(IEnumerable<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            _set.UnionWith(other);
-        }
-
-        /// <summary>
-        /// Update the set, removing elements found in the other set.
-        /// </summary>
-        /// <param name="other">The set of elements to remove.</param>
+        /// <param name="others">The iterables of elements to remove.</param>
         /// <example>
         /// <code>
         /// s = {1, 2, 3}
-        /// s.difference_update({2})    # {1, 3}
+        /// s.difference_update({2})      # {1, 3}
+        /// s.difference_update({1}, {3}) # set()
         /// </code>
         /// </example>
-        public void DifferenceUpdate(Set<T> other)
+        public void DifferenceUpdate(params IEnumerable<T>[] others)
         {
-            if (other is null)
-            {
+            if (others is null)
                 throw TypeError.IsNotInterface("NoneType", "iterable");
+            foreach (var other in others)
+            {
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                _set.ExceptWith(other);
             }
-
-            _set.ExceptWith(other._set);
         }
 
         /// <summary>
-        /// Update the set, removing elements found in the given iterable.
+        /// Update the set, keeping only elements found in all given iterables.
         /// </summary>
-        /// <param name="other">The iterable of elements to remove.</param>
-        public void DifferenceUpdate(IEnumerable<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            _set.ExceptWith(other);
-        }
-
-        /// <summary>
-        /// Update the set, keeping only elements found in both sets.
-        /// </summary>
-        /// <param name="other">The set to intersect with.</param>
+        /// <param name="others">The iterables to intersect with.</param>
         /// <example>
         /// <code>
         /// s = {1, 2, 3}
-        /// s.intersection_update({2, 3, 4})    # {2, 3}
+        /// s.intersection_update({2, 3, 4})          # {2, 3}
+        /// s.intersection_update({1, 2, 3}, {2, 3})  # {2, 3}
         /// </code>
         /// </example>
-        public void IntersectionUpdate(Set<T> other)
+        public void IntersectionUpdate(params IEnumerable<T>[] others)
         {
-            if (other is null)
-            {
+            if (others is null)
                 throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            _set.IntersectWith(other._set);
-        }
-
-        /// <summary>
-        /// Update the set, keeping only elements found in the given iterable.
-        /// </summary>
-        /// <param name="other">The iterable to intersect with.</param>
-        public void IntersectionUpdate(IEnumerable<T> other)
-        {
-            if (other is null)
+            foreach (var other in others)
             {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
+                if (other is null)
+                    throw TypeError.IsNotInterface("NoneType", "iterable");
+                _set.IntersectWith(other);
             }
-
-            _set.IntersectWith(other);
         }
 
         /// <summary>

@@ -1,0 +1,42 @@
+# Set *others methods accept 0..n iterables (#1773)
+def main() -> None:
+    s: set[int] = {1, 2, 3}
+
+    # union with multiple args
+    print(sorted(list(s.union({4}, {5}))))
+
+    # intersection with multiple args
+    print(sorted(list(s.intersection({1, 2, 3, 4}, {2, 3}))))
+
+    # difference with multiple args
+    print(sorted(list(s.difference({1}, {2}))))
+
+    # update with multiple args
+    s2: set[int] = {1, 2}
+    s2.update({3}, {4})
+    print(sorted(list(s2)))
+
+    # intersection_update with multiple args
+    s3: set[int] = {1, 2, 3, 4}
+    s3.intersection_update({1, 2, 3}, {2, 3})
+    print(sorted(list(s3)))
+
+    # difference_update with multiple args
+    s4: set[int] = {1, 2, 3}
+    s4.difference_update({1}, {2})
+    print(sorted(list(s4)))
+
+    # 0-arg update (no-op)
+    s5: set[int] = {1, 2}
+    s5.update()
+    print(sorted(list(s5)))
+
+    # frozenset union with multiple
+    fs: frozenset[int] = frozenset({1, 2, 3})
+    print(sorted(list(fs.union({4}, {5}))))
+
+    # frozenset intersection with multiple
+    print(sorted(list(fs.intersection({1, 2, 3, 4}, {2, 3}))))
+
+    # frozenset difference with multiple
+    print(sorted(list(fs.difference({1}, {2}))))
