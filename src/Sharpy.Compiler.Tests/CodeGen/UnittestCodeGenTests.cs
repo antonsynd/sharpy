@@ -230,7 +230,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Box<int>>(b)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Box<int>>((object?)b)");
     }
 
     [Fact]
@@ -1082,7 +1082,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False((object?)x is global::System.ValueTuple<int, string>)");
+        code.Should().Contain("Xunit.Assert.False(x is global::System.ValueTuple<int, string>)");
     }
 
     #endregion

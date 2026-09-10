@@ -747,7 +747,8 @@ internal class TypeResolver
         // a true alias of the lowercase spelling for type-checking, protocols, and codegen alike.
         // The static-shadow gate keeps `List`/`Set` (no companion) resolving as before.
         var normalizedToBuiltin = false;
-        if (BuiltinCamelCaseAliases.TryGetValue(annotation.Name, out var builtinAlias)
+        if ((typeSymbol == null || typeSymbol is { ClrType: { IsAbstract: true, IsSealed: true, IsInterface: false } })
+            && BuiltinCamelCaseAliases.TryGetValue(annotation.Name, out var builtinAlias)
             && _symbolTable.BuiltinRegistry.GetType(builtinAlias) is { } aliasedBuiltin)
         {
             typeSymbol = aliasedBuiltin;

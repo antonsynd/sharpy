@@ -1099,8 +1099,7 @@ internal class BuiltinRegistry
             "System.Text.RegularExpressions",
             "System.Security.Cryptography",
             "System.Diagnostics",
-            "System.Linq",
-            "Sharpy"
+            "System.Linq"
         };
 
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -1108,13 +1107,13 @@ internal class BuiltinRegistry
         {
             var fullName = $"{ns}.{clrName}";
             var type = Type.GetType(fullName);
-            if (type != null)
+            if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
                 return type;
 
             foreach (var assembly in assemblies)
             {
                 type = assembly.GetType(fullName);
-                if (type != null)
+                if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
                     return type;
             }
         }

@@ -151,7 +151,7 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("throw new Exception(\"error\");", result);
+        Assert.Equal("throw new global::System.Exception(\"error\");", result);
     }
 
     [Fact]
@@ -738,7 +738,7 @@ public class RoslynEmitterStatementTests
 
         Assert.Contains("try", result);
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("catch (Exception)", result);
+        Assert.Contains("catch (global::System.Exception)", result);
     }
 
     [Fact]
@@ -782,7 +782,7 @@ public class RoslynEmitterStatementTests
         var result = GenerateStatementCodeWithSemantics(stmt, System.Array.Empty<string>());
 
         Assert.Contains("try", result);
-        Assert.Contains("catch (Exception", result);
+        Assert.Contains("catch (global::System.Exception", result);
         Assert.Contains("Sharpy.Builtins.Print", result);
     }
 
@@ -863,7 +863,7 @@ public class RoslynEmitterStatementTests
 
         Assert.Contains("try", result);
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("catch (Exception)", result);
+        Assert.Contains("catch (global::System.Exception)", result);
         Assert.Contains("finally", result);
         Assert.Contains("Cleanup();", result);
     }
@@ -957,7 +957,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("= true", result);
         // Check for try-catch
         Assert.Contains("try", result);
-        Assert.Contains("catch (Exception)", result);
+        Assert.Contains("catch (global::System.Exception)", result);
         // Check for else execution: if (__trySucceeded_N) { Success(); }
         Assert.Contains("if (__trySucceeded_", result);
         Assert.Contains("Success();", result);
@@ -1018,7 +1018,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("bool __trySucceeded_", result);
         // Check for try-catch-finally
         Assert.Contains("try", result);
-        Assert.Contains("catch (Exception)", result);
+        Assert.Contains("catch (global::System.Exception)", result);
         Assert.Contains("finally", result);
         Assert.Contains("Cleanup();", result);
         // Else runs BEFORE finally (Python ordering): the if(__trySucceeded_) block
