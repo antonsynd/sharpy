@@ -247,6 +247,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.RecordIterableArgumentMarks"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.TakesContextualCollectionType"] = "walker-default-contract",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.TryResolveGenericTypeSymbolFromIndexObject"] = "refusal-net:FileBasedIntegrationTests",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ClrStaticCallType"] = "refusal-net:InteropConformanceTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ValidateClosedExtensionArguments"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.ValidateSelectedGenericOverloadArguments"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.Overloads.cs::TypeChecker.DescribeMemberPath"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.Overloads.cs:DescribeMemberPath",
