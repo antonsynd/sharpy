@@ -210,7 +210,8 @@ def test_rowcount_initial_value_is_minus_one():
 def test_execute_parameterized_insert_binds_values():
     conn = _conn()
     conn.execute("CREATE TABLE t (a TEXT, b INTEGER, c REAL)")
-    conn.execute("INSERT INTO t VALUES (?, ?, ?)", ["hello", 42, 3.14])
+    params: list[object] = ["hello", 42, 3.14]
+    conn.execute("INSERT INTO t VALUES (?, ?, ?)", params)
     conn.commit()
 
     cursor = conn.execute("SELECT a, b, c FROM t")

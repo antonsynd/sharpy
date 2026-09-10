@@ -77,7 +77,8 @@ def test_execute_insert_and_select_returns_data():
 def test_execute_with_parameters_binds_correctly():
     conn = _conn()
     conn.execute("CREATE TABLE t (id INTEGER, name TEXT)")
-    conn.execute("INSERT INTO t VALUES (?, ?)", [1, "Bob"])
+    params: list[object] = [1, "Bob"]
+    conn.execute("INSERT INTO t VALUES (?, ?)", params)
     conn.commit()
 
     cursor = conn.execute("SELECT name FROM t WHERE id = ?", [1])

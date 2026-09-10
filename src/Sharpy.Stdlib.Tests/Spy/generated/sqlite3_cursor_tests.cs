@@ -355,33 +355,41 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var conn = _Conn();
 #line (212, 5) - (212, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (a TEXT, b INTEGER, c REAL)");
-#line (213, 5) - (213, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                conn.Execute("INSERT INTO t VALUES (?, ?, ?)", new Sharpy.List<object>() { "hello", 42, 3.14d });
-#line (214, 5) - (214, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (213, 5) - (213, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                Sharpy.List<object> @params = new Sharpy.List<object>()
+#line hidden
+                {
+                    "hello",
+                    42,
+                    3.14d
+                };
+#line (214, 5) - (214, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                conn.Execute("INSERT INTO t VALUES (?, ?, ?)", @params);
+#line (215, 5) - (215, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (216, 5) - (216, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (217, 5) - (217, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT a, b, c FROM t");
-#line (217, 5) - (223, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (218, 5) - (224, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (219, 13) - (219, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (220, 13) - (220, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(r, 0), "hello"));
-#line (220, 13) - (220, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (221, 13) - (221, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(_EqInt(global::Sharpy.ArrayHelpers.GetItem(r, 1), 42));
-#line (221, 13) - (221, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (222, 13) - (222, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(r, 2), 3.14d));
 #line hidden
                         break;
                     default:
-#line (223, 13) - (223, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (224, 13) - (224, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (224, 5) - (224, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (225, 5) - (225, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -389,27 +397,27 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteParameterizedSelectFiltersCorrectly()
             {
-#line (229, 5) - (229, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (230, 5) - (230, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _PopulatedConn();
-#line (230, 5) - (230, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (231, 5) - (231, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT name FROM t WHERE id = ?", new Sharpy.List<int>() { 2 });
-#line (231, 5) - (235, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (232, 5) - (236, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (233, 13) - (233, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (234, 13) - (234, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(r, 0), "Bob"));
 #line hidden
                         break;
                     default:
-#line (235, 13) - (235, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (236, 13) - (236, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (236, 5) - (236, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (237, 5) - (237, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -417,39 +425,39 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteNullParameterInsertsNull()
             {
-#line (241, 5) - (241, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (242, 5) - (242, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (242, 5) - (242, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (243, 5) - (243, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val TEXT)");
-#line (243, 5) - (243, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (244, 5) - (244, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Sharpy.List<object> nullParams = new Sharpy.List<object>()
 #line hidden
                 {
                     null
                 };
-#line (244, 5) - (244, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (245, 5) - (245, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (?)", nullParams);
-#line (245, 5) - (245, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (246, 5) - (246, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (247, 5) - (247, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (248, 5) - (248, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t");
-#line (248, 5) - (252, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (249, 5) - (253, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (250, 13) - (250, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (251, 13) - (251, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.Null(global::Sharpy.ArrayHelpers.GetItem(r, 0));
 #line hidden
                         break;
                     default:
-#line (252, 13) - (252, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (253, 13) - (253, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (253, 5) - (253, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (254, 5) - (254, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -457,21 +465,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDescriptionAfterSelectContainsColumnInfo()
             {
-#line (260, 5) - (260, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (261, 5) - (261, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _PopulatedConn();
-#line (261, 5) - (261, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (262, 5) - (262, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT id, name, score FROM t");
-#line (262, 5) - (262, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (263, 5) - (263, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.NotNull(cursor.Description);
-#line (263, 5) - (263, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (264, 5) - (264, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(cursor.Description));
-#line (264, 5) - (264, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (265, 5) - (265, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.True(@operator.Eq(cursor.Description[0][0], "id"));
-#line (265, 5) - (265, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (266, 5) - (266, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.True(@operator.Eq(cursor.Description[1][0], "name"));
-#line (266, 5) - (266, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (267, 5) - (267, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.True(@operator.Eq(cursor.Description[2][0], "score"));
-#line (267, 5) - (267, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (268, 5) - (268, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -479,15 +487,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDescriptionAfterInsertIsNone()
             {
-#line (272, 5) - (272, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (273, 5) - (273, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (273, 5) - (273, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (274, 5) - (274, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
-#line (274, 5) - (274, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (275, 5) - (275, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("INSERT INTO t VALUES (1)");
-#line (275, 5) - (275, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (276, 5) - (276, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Null(cursor.Description);
-#line (276, 5) - (276, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (277, 5) - (277, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -495,15 +503,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDescriptionSevenElementTuples()
             {
-#line (281, 5) - (281, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (282, 5) - (282, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _PopulatedConn();
-#line (282, 5) - (282, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (283, 5) - (283, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT id FROM t");
-#line (283, 5) - (283, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (284, 5) - (284, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.NotNull(cursor.Description);
-#line (284, 5) - (284, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (285, 5) - (285, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(7, global::Sharpy.Builtins.Len(cursor.Description[0]));
-#line (285, 5) - (285, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (286, 5) - (286, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -511,15 +519,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLastrowidAfterInsertReturnsRowId()
             {
-#line (292, 5) - (292, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (293, 5) - (293, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (293, 5) - (293, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (294, 5) - (294, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT)");
-#line (294, 5) - (294, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (295, 5) - (295, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("INSERT INTO t (val) VALUES ('test')");
-#line (295, 5) - (295, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (296, 5) - (296, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.True(cursor.Lastrowid > 0);
-#line (296, 5) - (296, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (297, 5) - (297, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -527,17 +535,17 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLastrowidAfterMultipleInsertsReturnsLastId()
             {
-#line (301, 5) - (301, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (302, 5) - (302, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (302, 5) - (302, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (303, 5) - (303, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT)");
-#line (303, 5) - (303, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (304, 5) - (304, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t (val) VALUES ('first')");
-#line (304, 5) - (304, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (305, 5) - (305, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("INSERT INTO t (val) VALUES ('second')");
-#line (305, 5) - (305, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (306, 5) - (306, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(2, cursor.Lastrowid);
-#line (306, 5) - (306, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (307, 5) - (307, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -545,13 +553,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLastrowidInitialValueIsMinusOne()
             {
-#line (311, 5) - (311, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (312, 5) - (312, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (312, 5) - (312, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (313, 5) - (313, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (313, 5) - (313, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (314, 5) - (314, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(-1, cursor.Lastrowid);
-#line (314, 5) - (314, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (315, 5) - (315, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -559,11 +567,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecutemanyInsertsAllParameterSets()
             {
-#line (321, 5) - (321, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (322, 5) - (322, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (322, 5) - (322, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (323, 5) - (323, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (name TEXT)");
-#line (324, 5) - (328, 6) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (325, 5) - (329, 6) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var paramSets = new Sharpy.List<Sharpy.List<string>>()
 #line hidden
                 {
@@ -580,33 +588,33 @@ namespace Sharpy.Stdlib.Tests.Spy
                         "Charlie"
                     }
                 };
-#line (329, 5) - (329, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (330, 5) - (330, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (330, 5) - (330, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (331, 5) - (331, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Executemany("INSERT INTO t VALUES (?)", paramSets);
-#line (331, 5) - (331, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (332, 5) - (332, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(3, cursor.Rowcount);
-#line (332, 5) - (332, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (333, 5) - (333, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (334, 5) - (334, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (335, 5) - (335, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var selectCursor = conn.Execute("SELECT COUNT(*) FROM t");
-#line (335, 5) - (339, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (336, 5) - (340, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])selectCursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (337, 13) - (337, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (338, 13) - (338, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(_EqInt(global::Sharpy.ArrayHelpers.GetItem(r, 0), 3));
 #line hidden
                         break;
                     default:
-#line (339, 13) - (339, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (340, 13) - (340, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (340, 5) - (340, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (341, 5) - (341, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -614,22 +622,22 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecutemanyEmptySequenceRowcountIsZero()
             {
-#line (345, 5) - (345, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (346, 5) - (346, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (346, 5) - (346, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (347, 5) - (347, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
-#line (347, 5) - (347, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (348, 5) - (348, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (348, 5) - (348, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (349, 5) - (349, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Sharpy.List<Sharpy.List<int>> empty = new Sharpy.List<Sharpy.List<int>>()
 #line hidden
                 {
                 };
-#line (349, 5) - (349, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (350, 5) - (350, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Executemany("INSERT INTO t VALUES (?)", empty);
-#line (350, 5) - (350, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (351, 5) - (351, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(0, cursor.Rowcount);
-#line (351, 5) - (351, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (352, 5) - (352, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -637,46 +645,46 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestForeachIteratesAllRows()
             {
-#line (358, 5) - (358, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (359, 5) - (359, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _PopulatedConn();
-#line (359, 5) - (359, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (360, 5) - (360, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT id FROM t ORDER BY id");
-#line (361, 5) - (361, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (362, 5) - (362, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Sharpy.List<object> ids = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (362, 5) - (367, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (363, 5) - (368, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 foreach (var __loopVar_0 in cursor)
 #line hidden
                 {
                     var row = __loopVar_0;
-#line (363, 9) - (367, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (364, 9) - (368, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     switch ((object[])row)
 #line hidden
                     {
                         case object[] r:
-#line (365, 17) - (365, 33) 28 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (366, 17) - (366, 33) 28 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                             ids.Append(global::Sharpy.ArrayHelpers.GetItem(r, 0));
 #line hidden
                             break;
                         default:
-#line (367, 17) - (367, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (368, 17) - (368, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                             Xunit.Assert.True(false);
 #line hidden
                             break;
                     }
                 }
 
-#line (369, 5) - (369, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (370, 5) - (370, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(ids));
-#line (370, 5) - (370, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(0), 1));
 #line (371, 5) - (371, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(1), 2));
+                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(0), 1));
 #line (372, 5) - (372, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(1), 2));
+#line (373, 5) - (373, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(2), 3));
-#line (373, 5) - (373, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (374, 5) - (374, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -684,33 +692,33 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTypeMappingIntegerReturnsLong()
             {
-#line (380, 5) - (380, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (381, 5) - (381, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (381, 5) - (381, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (382, 5) - (382, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
-#line (382, 5) - (382, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (383, 5) - (383, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (42)");
-#line (383, 5) - (383, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (384, 5) - (384, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (385, 5) - (385, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (386, 5) - (386, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t");
-#line (386, 5) - (390, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (387, 5) - (391, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (388, 13) - (388, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (389, 13) - (389, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(_EqInt(global::Sharpy.ArrayHelpers.GetItem(r, 0), 42));
 #line hidden
                         break;
                     default:
-#line (390, 13) - (390, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (391, 13) - (391, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (391, 5) - (391, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (392, 5) - (392, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -718,33 +726,33 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTypeMappingTextReturnsString()
             {
-#line (396, 5) - (396, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (397, 5) - (397, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (397, 5) - (397, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (398, 5) - (398, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val TEXT)");
-#line (398, 5) - (398, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (399, 5) - (399, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES ('hello')");
-#line (399, 5) - (399, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (400, 5) - (400, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (401, 5) - (401, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (402, 5) - (402, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t");
-#line (402, 5) - (406, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (403, 5) - (407, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (404, 13) - (404, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (405, 13) - (405, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(r, 0), "hello"));
 #line hidden
                         break;
                     default:
-#line (406, 13) - (406, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (407, 13) - (407, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (407, 5) - (407, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (408, 5) - (408, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -752,33 +760,33 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTypeMappingRealReturnsDouble()
             {
-#line (412, 5) - (412, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (413, 5) - (413, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (413, 5) - (413, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (414, 5) - (414, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val REAL)");
-#line (414, 5) - (414, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (415, 5) - (415, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (3.14)");
-#line (415, 5) - (415, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (416, 5) - (416, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (417, 5) - (417, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (418, 5) - (418, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t");
-#line (418, 5) - (422, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (419, 5) - (423, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (420, 13) - (420, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (421, 13) - (421, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(r, 0), 3.14d));
 #line hidden
                         break;
                     default:
-#line (422, 13) - (422, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (423, 13) - (423, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (423, 5) - (423, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (424, 5) - (424, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -786,38 +794,38 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTypeMappingBlobReturnsBytes()
             {
-#line (428, 5) - (428, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (429, 5) - (429, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _Conn();
-#line (429, 5) - (429, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (430, 5) - (430, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (val BLOB)");
-#line (430, 5) - (430, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (431, 5) - (431, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 global::Sharpy.Bytes blobData = new Sharpy.Bytes(new byte[] { 1, 2, 3 });
-#line (431, 5) - (431, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (432, 5) - (432, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (?)", new Sharpy.List<global::Sharpy.Bytes>() { blobData });
-#line (432, 5) - (432, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (433, 5) - (433, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Commit();
-#line (434, 5) - (434, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (435, 5) - (435, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t");
-#line (435, 5) - (445, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (436, 5) - (446, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cursor.Fetchone())
 #line hidden
                 {
                     case object[] r:
-#line (437, 13) - (443, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (438, 13) - (444, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         switch (global::Sharpy.ArrayHelpers.GetItem(r, 0))
 #line hidden
                         {
                             case global::Sharpy.Bytes result:
-#line (439, 21) - (439, 43) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                                Xunit.Assert.Equal(1, result[0]);
 #line (440, 21) - (440, 43) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                                Xunit.Assert.Equal(2, result[1]);
+                                Xunit.Assert.Equal(1, result[0]);
 #line (441, 21) - (441, 43) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                                Xunit.Assert.Equal(2, result[1]);
+#line (442, 21) - (442, 43) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                                 Xunit.Assert.Equal(3, result[2]);
 #line hidden
                                 break;
                             default:
-#line (443, 21) - (443, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (444, 21) - (444, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
@@ -825,13 +833,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                         break;
                     default:
-#line (445, 13) - (445, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (446, 13) - (446, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (446, 5) - (446, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (447, 5) - (447, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -839,14 +847,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteBadSqlThrowsOperationalError()
             {
-#line (453, 5) - (453, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (454, 5) - (454, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (454, 5) - (455, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (455, 5) - (456, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
                 {
-#line (455, 9) - (455, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (456, 9) - (456, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INVALID SQL STATEMENT");
 #line hidden
                 }
@@ -857,7 +865,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_1)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3OperationalError to be raised, but no exception was raised");
-#line (456, 5) - (456, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (457, 5) - (457, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -865,18 +873,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteConstraintViolationThrowsIntegrityError()
             {
-#line (461, 5) - (461, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (462, 5) - (462, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (462, 5) - (462, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (463, 5) - (463, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY)");
-#line (463, 5) - (463, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (464, 5) - (464, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (1)");
-#line (464, 5) - (465, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (465, 5) - (466, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
                 {
-#line (465, 9) - (465, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (466, 9) - (466, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES (1)");
 #line hidden
                 }
@@ -887,7 +895,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_2)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
-#line (466, 5) - (466, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (467, 5) - (467, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -895,18 +903,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteUniqueConstraintViolationThrowsIntegrityError()
             {
-#line (471, 5) - (471, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (472, 5) - (472, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (472, 5) - (472, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (473, 5) - (473, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (name TEXT UNIQUE)");
-#line (473, 5) - (473, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (474, 5) - (474, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES ('Alice')");
-#line (474, 5) - (475, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (475, 5) - (476, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
                 {
-#line (475, 9) - (475, 55) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (476, 9) - (476, 55) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES ('Alice')");
 #line hidden
                 }
@@ -917,7 +925,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_3)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
-#line (476, 5) - (476, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (477, 5) - (477, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -925,16 +933,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecuteNotNullViolationThrowsIntegrityError()
             {
-#line (481, 5) - (481, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (482, 5) - (482, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (482, 5) - (482, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (483, 5) - (483, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (name TEXT NOT NULL)");
-#line (483, 5) - (484, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (484, 5) - (485, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
                 {
-#line (484, 9) - (484, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (485, 9) - (485, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES (NULL)");
 #line hidden
                 }
@@ -945,7 +953,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_4)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
-#line (485, 5) - (485, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (486, 5) - (486, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -953,18 +961,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCursorCloseThenExecuteThrowsProgrammingError()
             {
-#line (492, 5) - (492, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (493, 5) - (493, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (493, 5) - (493, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (494, 5) - (494, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (494, 5) - (494, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (495, 5) - (495, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
-#line (495, 5) - (496, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (496, 5) - (497, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
                 {
-#line (496, 9) - (496, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (497, 9) - (497, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Execute("SELECT 1");
 #line hidden
                 }
@@ -975,7 +983,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_5)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
-#line (497, 5) - (497, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (498, 5) - (498, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -983,18 +991,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCursorCloseThenFetchoneThrowsProgrammingError()
             {
-#line (502, 5) - (502, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (503, 5) - (503, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (503, 5) - (503, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (504, 5) - (504, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (504, 5) - (504, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (505, 5) - (505, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
-#line (505, 5) - (506, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (506, 5) - (507, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
                 {
-#line (506, 9) - (506, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (507, 9) - (507, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchone();
 #line hidden
                 }
@@ -1005,7 +1013,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_6)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
-#line (507, 5) - (507, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (508, 5) - (508, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1013,18 +1021,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCursorCloseThenFetchallThrowsProgrammingError()
             {
-#line (512, 5) - (512, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (513, 5) - (513, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (513, 5) - (513, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (514, 5) - (514, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (514, 5) - (514, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (515, 5) - (515, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
-#line (515, 5) - (516, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (516, 5) - (517, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
                 {
-#line (516, 9) - (516, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (517, 9) - (517, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchall();
 #line hidden
                 }
@@ -1035,7 +1043,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_7)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
-#line (517, 5) - (517, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (518, 5) - (518, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1043,18 +1051,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCursorCloseThenFetchmanyThrowsProgrammingError()
             {
-#line (522, 5) - (522, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (523, 5) - (523, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (523, 5) - (523, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (524, 5) - (524, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (524, 5) - (524, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (525, 5) - (525, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
-#line (525, 5) - (526, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (526, 5) - (527, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try
                 {
-#line (526, 9) - (526, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (527, 9) - (527, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchmany(5);
 #line hidden
                 }
@@ -1065,7 +1073,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_8)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
-#line (527, 5) - (527, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (528, 5) - (528, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1073,13 +1081,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestArraysizeDefaultIsOne()
             {
-#line (534, 5) - (534, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (535, 5) - (535, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (535, 5) - (535, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (536, 5) - (536, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (536, 5) - (536, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (537, 5) - (537, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(1, cursor.Arraysize);
-#line (537, 5) - (537, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (538, 5) - (538, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1087,15 +1095,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestArraysizeCanBeSet()
             {
-#line (542, 5) - (542, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (543, 5) - (543, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (543, 5) - (543, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (544, 5) - (544, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (544, 5) - (544, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (545, 5) - (545, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Arraysize = 10;
-#line (545, 5) - (545, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (546, 5) - (546, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(10, cursor.Arraysize);
-#line (546, 5) - (546, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (547, 5) - (547, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1103,16 +1111,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExecutescriptBadSqlThrowsOperationalError()
             {
-#line (553, 5) - (553, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (554, 5) - (554, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (554, 5) - (554, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (555, 5) - (555, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
-#line (555, 5) - (556, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (556, 5) - (557, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
                 {
-#line (556, 9) - (556, 51) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (557, 9) - (557, 51) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Executescript("INVALID; SQL; HERE");
 #line hidden
                 }
@@ -1123,7 +1131,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_9)
                     throw new global::Sharpy.AssertionError("Expected Sqlite3OperationalError to be raised, but no exception was raised");
-#line (557, 5) - (557, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (558, 5) - (558, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
@@ -1131,53 +1139,53 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestMultipleCursorsOnSameConnectionWorkIndependently()
             {
-#line (564, 5) - (564, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (565, 5) - (565, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = _PopulatedConn();
-#line (566, 5) - (566, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (567, 5) - (567, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cur1 = conn.Execute("SELECT id FROM t ORDER BY id");
-#line (567, 5) - (567, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (568, 5) - (568, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cur2 = conn.Execute("SELECT name FROM t ORDER BY name");
-#line (569, 5) - (573, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (570, 5) - (574, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cur1.Fetchone())
 #line hidden
                 {
                     case object[] row1:
-#line (571, 13) - (571, 40) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (572, 13) - (572, 40) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(_EqInt(global::Sharpy.ArrayHelpers.GetItem(row1, 0), 1));
 #line hidden
                         break;
                     default:
-#line (573, 13) - (573, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (574, 13) - (574, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (575, 5) - (579, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (576, 5) - (580, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 switch ((object[])cur2.Fetchone())
 #line hidden
                 {
                     case object[] row2:
-#line (577, 13) - (577, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (578, 13) - (578, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(@operator.Eq(global::Sharpy.ArrayHelpers.GetItem(row2, 0), "Alice"));
 #line hidden
                         break;
                     default:
-#line (579, 13) - (579, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (580, 13) - (580, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
                 }
 
-#line (581, 5) - (581, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                var remaining1 = cur1.Fetchall();
 #line (582, 5) - (582, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                var remaining1 = cur1.Fetchall();
+#line (583, 5) - (583, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(remaining1));
-#line (584, 5) - (584, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                var remaining2 = cur2.Fetchall();
 #line (585, 5) - (585, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+                var remaining2 = cur2.Fetchall();
+#line (586, 5) - (586, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(remaining2));
-#line (586, 5) - (586, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
+#line (587, 5) - (587, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
             }
