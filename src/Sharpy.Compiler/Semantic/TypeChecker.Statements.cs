@@ -1366,31 +1366,41 @@ internal partial class TypeChecker
         // This ensures loop variables are scoped to the loop
         _symbolTable.EnterScope("for-body");
 
-        // Handle tuple unpacking: for x, y in items
+        // Handle tuple unpacking: for x, y in items  or  for a, *rest in items
         if (forStmt.Target is TupleLiteral targetTuple)
         {
-            // Element type must be a tuple type
-            if (elementType is not TupleType tupleType)
+            bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
+
+            // Element type must be a tuple type (or list[T] for starred targets)
+            if (elementType is TupleType tupleType)
             {
-                AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}' in for loop",
-                    forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                    span: forStmt.Target.Span);
-            }
-            else
-            {
-                // Check element count matches
-                if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+                if (hasStar)
                 {
-                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in for loop",
+                    BindStarredUnpackingTargets(targetTuple, tupleType,
+                        forStmt.LineStart, forStmt.ColumnStart, forStmt.Target.Span);
+                }
+                else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
                         forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: forStmt.Target.Span);
                 }
                 else
                 {
-                    // Define loop variables with inferred types INSIDE the for-body scope
-                    // (supports nested tuple targets like (x, y), name)
                     DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
                 }
+            }
+            else if (hasStar && elementType is GenericType { Name: BuiltinNames.List } listType
+                     && listType.TypeArguments.Count > 0)
+            {
+                BindStarredListUnpackingTargets(targetTuple, listType.TypeArguments[0],
+                    forStmt.LineStart, forStmt.ColumnStart, forStmt.Target.Span);
+            }
+            else
+            {
+                AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}'",
+                    forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: forStmt.Target.Span);
             }
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
@@ -2054,22 +2064,40 @@ internal partial class TypeChecker
             // recovery behave identically.
             else if (item.Target is TupleLiteral withTuple && !IsAssertRaisesExpression(item.ContextExpression))
             {
-                if (asVarType is not TupleType asTupleType)
+                bool hasStar = withTuple.Elements.Any(e => e is StarExpression);
+
+                if (asVarType is TupleType asTupleType)
                 {
-                    AddError($"Cannot unpack non-tuple type '{asVarType.GetDisplayName()}' into tuple target in with statement",
-                        withTuple.LineStart, withTuple.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
+                    if (hasStar)
+                    {
+                        BindStarredUnpackingTargets(withTuple, asTupleType,
+                            withTuple.LineStart, withTuple.ColumnStart, withTuple.Span);
+                    }
+                    else if (withTuple.Elements.Length != asTupleType.ElementTypes.Count)
+                    {
+                        AddError($"Cannot unpack {asTupleType.ElementTypes.Count} values into {withTuple.Elements.Length} variables",
+                            withTuple.LineStart, withTuple.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
+                    }
+                    else
+                    {
+                        DefineForLoopTupleTargets(withTuple.Elements, asTupleType.ElementTypes);
+                    }
+
+                    _semanticInfo.SetExpressionType(withTuple, asVarType);
                 }
-                else if (withTuple.Elements.Length != asTupleType.ElementTypes.Count)
+                else if (hasStar && asVarType is GenericType { Name: BuiltinNames.List } listType
+                         && listType.TypeArguments.Count > 0)
                 {
-                    AddError($"Cannot unpack {asTupleType.ElementTypes.Count} values into {withTuple.Elements.Length} variables in with statement",
-                        withTuple.LineStart, withTuple.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
+                    BindStarredListUnpackingTargets(withTuple, listType.TypeArguments[0],
+                        withTuple.LineStart, withTuple.ColumnStart, withTuple.Span);
+                    _semanticInfo.SetExpressionType(withTuple, asVarType);
                 }
                 else
                 {
-                    DefineForLoopTupleTargets(withTuple.Elements, asTupleType.ElementTypes);
-                    _semanticInfo.SetExpressionType(withTuple, asTupleType);
+                    AddError($"Cannot unpack non-tuple type '{asVarType.GetDisplayName()}'",
+                        withTuple.LineStart, withTuple.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
                 }
             }
             else if (item.Target != null && !IsAssertRaisesExpression(item.ContextExpression))
@@ -2466,6 +2494,118 @@ internal partial class TypeChecker
             {
                 CheckExpression(targetElem);
             }
+        }
+    }
+
+    private void BindStarredUnpackingTargets(
+        TupleLiteral targetTuple, TupleType sourceType,
+        int errLine, int errCol, Text.TextSpan? errSpan)
+    {
+        int starIndex = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
+        int targetsBefore = starIndex;
+        int targetsAfter = targetTuple.Elements.Length - starIndex - 1;
+        int sourceArity = sourceType.ElementTypes.Count;
+
+        if (sourceArity < targetsBefore + targetsAfter)
+        {
+            AddError($"Cannot unpack {sourceArity} values into {targetTuple.Elements.Length} variables",
+                errLine, errCol, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                span: errSpan);
+            return;
+        }
+
+        var restTypes = new List<SemanticType>();
+        for (int ri = targetsBefore; ri < sourceArity - targetsAfter; ri++)
+            restTypes.Add(sourceType.ElementTypes[ri]);
+
+        var restElemType = restTypes.Count == 0
+            ? (sourceType.ElementTypes.Count > 0 ? sourceType.ElementTypes[0] : SemanticType.Unknown)
+            : restTypes.All(t => t.Equals(restTypes[0]))
+                ? restTypes[0]
+                : BuiltinType.Object;
+
+        for (int i = 0; i < targetTuple.Elements.Length; i++)
+        {
+            var target = targetTuple.Elements[i];
+            SemanticType elemType;
+
+            if (i < targetsBefore)
+                elemType = sourceType.ElementTypes[i];
+            else if (i == starIndex)
+                elemType = new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { restElemType } };
+            else
+                elemType = sourceType.ElementTypes[sourceArity - targetsAfter + (i - starIndex - 1)];
+
+            DefineUnpackingTarget(target, elemType);
+        }
+    }
+
+    private void DefineUnpackingTarget(Expression target, SemanticType elemType)
+    {
+        if (target is StarExpression star && star.Operand is Identifier starId)
+        {
+            var sym = new VariableSymbol
+            {
+                Name = starId.Name,
+                Kind = SymbolKind.Variable,
+                Type = elemType,
+                DeclarationLine = starId.LineStart,
+                DeclarationColumn = starId.ColumnStart,
+                NameDeclarationLine = starId.LineStart,
+                NameDeclarationColumn = starId.ColumnStart,
+                AccessLevel = AccessLevel.Public,
+                DeclaringFilePath = _currentFilePath
+            };
+            _symbolTable.Define(sym);
+            SemanticBinding.SetVariableType(sym, elemType);
+            _semanticInfo.SetIdentifierSymbol(starId, sym);
+            _semanticInfo.SetTargetBinding(starId, new TargetBinding(TargetBindingKind.Declares));
+            _semanticInfo.SetExpressionType(starId, elemType);
+            _semanticInfo.SetExpressionType(star, elemType);
+        }
+        else if (target is Identifier id)
+        {
+            var sym = new VariableSymbol
+            {
+                Name = id.Name,
+                Kind = SymbolKind.Variable,
+                Type = elemType,
+                DeclarationLine = id.LineStart,
+                DeclarationColumn = id.ColumnStart,
+                NameDeclarationLine = id.LineStart,
+                NameDeclarationColumn = id.ColumnStart,
+                DeclarationSpan = id.Span,
+                AccessLevel = AccessLevel.Public,
+                DeclaringFilePath = _currentFilePath
+            };
+            _symbolTable.Define(sym);
+            SemanticBinding.SetVariableType(sym, elemType);
+            _semanticInfo.SetIdentifierSymbol(id, sym);
+            _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
+            _semanticInfo.SetExpressionType(id, elemType);
+        }
+        else if (target is TupleLiteral nestedTuple)
+        {
+            if (elemType is TupleType nestedTupleType)
+                DefineForLoopTupleTargets(nestedTuple.Elements, nestedTupleType.ElementTypes);
+        }
+        else
+        {
+            CheckExpression(target);
+        }
+    }
+
+    private void BindStarredListUnpackingTargets(
+        TupleLiteral targetTuple, SemanticType listElemType,
+        int errLine, int errCol, Text.TextSpan? errSpan)
+    {
+        var listType = new GenericType { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { listElemType } };
+
+        for (int i = 0; i < targetTuple.Elements.Length; i++)
+        {
+            var target = targetTuple.Elements[i];
+            var elemType = target is StarExpression ? listType : listElemType;
+            DefineUnpackingTarget(target, elemType);
         }
     }
 

@@ -720,6 +720,12 @@ internal partial class RoslynEmitter
                     IdentifierName(sourceVar)));
                 break;
 
+            case TupleLiteral tuple when tuple.Elements.Any(e => e is StarExpression):
+                // Starred target: for a, *rest in items — use star unpacking
+                var starValueType = GetExpressionSemanticType(target);
+                GenerateStarUnpacking(tuple.Elements, sourceVar, starValueType, statements);
+                break;
+
             case TupleLiteral tuple when tuple.Elements.All(e => e is Identifier):
                 // var (a, b, ...) = src;
                 var designations = new List<VariableDesignationSyntax>();

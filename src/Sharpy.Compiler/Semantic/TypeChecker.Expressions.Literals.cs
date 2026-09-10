@@ -641,23 +641,37 @@ internal partial class TypeChecker
         }
         else if (forClause.Target is TupleLiteral targetTuple)
         {
-            // Tuple unpacking: for a, b in iterable
-            if (elemType is not TupleType tupleType)
+            bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
+
+            if (elemType is TupleType tupleType)
             {
-                AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}' in comprehension",
-                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                    span: forClause.Target.Span);
+                if (hasStar)
+                {
+                    BindStarredUnpackingTargets(targetTuple, tupleType,
+                        forClause.LineStart, forClause.ColumnStart, forClause.Target.Span);
+                }
+                else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: forClause.Target.Span);
+                }
+                else
+                {
+                    DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
+                }
             }
-            else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+            else if (hasStar && elemType is GenericType { Name: BuiltinNames.List } listType
+                     && listType.TypeArguments.Count > 0)
             {
-                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in comprehension",
-                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                    span: forClause.Target.Span);
+                BindStarredListUnpackingTargets(targetTuple, listType.TypeArguments[0],
+                    forClause.LineStart, forClause.ColumnStart, forClause.Target.Span);
             }
             else
             {
-                // Define loop variables (supports nested tuple targets)
-                DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
+                AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}'",
+                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: forClause.Target.Span);
             }
 
             _semanticInfo.SetExpressionType(forClause.Target, elemType);

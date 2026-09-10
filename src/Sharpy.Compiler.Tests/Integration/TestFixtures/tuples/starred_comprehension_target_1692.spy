@@ -1,0 +1,5 @@
+# Starred targets in comprehension for-clause (#1692)
+def main() -> None:
+    items: list[tuple[int, int, int]] = [(1, 2, 3), (4, 5, 6)]
+    result: list[list[int]] = [rest for a, *rest in items]
+    print(result)

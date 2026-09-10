@@ -574,6 +574,28 @@ internal partial class RoslynEmitter
         }
 
         // Handle tuple unpacking in for loops: for x, y in items
+        if (target is TupleLiteral starTuple && starTuple.Elements.Any(e => e is StarExpression))
+        {
+            // Starred targets: for a, *rest in items
+            var tempLoopVar = GenerateTempVarName("loopVar");
+            var unpackStatements = new List<StatementSyntax>();
+            var valueType = GetExpressionSemanticType(target);
+            GenerateStarUnpacking(starTuple.Elements, tempLoopVar, valueType, unpackStatements);
+
+            var loopBody = GenerateSuiteBlock(bodyStatements);
+            var combinedStatements = new List<StatementSyntax>(unpackStatements);
+            combinedStatements.AddRange(loopBody.Statements);
+
+            var starForeachStmt = ForEachStatement(
+                IdentifierName("var"),
+                Identifier(tempLoopVar),
+                iterator,
+                Block(combinedStatements));
+            return isAsync
+                ? starForeachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : starForeachStmt;
+        }
+
         if (target is TupleLiteral tuple)
         {
             // Check if all elements are identifiers

@@ -1555,12 +1555,17 @@ internal partial class RoslynEmitter
                 {
                     var stmts = new List<StatementSyntax>();
                     var tempVarName = $"__t{_tempVarCounter++}";
+                    var tupleTargetType = GetExpressionSemanticType(target);
                     stmts.Add(LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
+                        VariableDeclaration(LocalDeclarationType(target: null, tupleTargetType))
                             .WithVariables(SingletonSeparatedList(
                                 VariableDeclarator(EscapedIdentifier(tempVarName))
                                     .WithInitializer(EqualsValueClause(value))))));
-                    GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
+
+                    if (tuple.Elements.Any(e => e is StarExpression))
+                        GenerateStarUnpacking(tuple.Elements, tempVarName, tupleTargetType, stmts);
+                    else
+                        GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
 
                     for (int i = 0; i < stmts.Count - 1; i++)
                         _hoistedStatements.Add(stmts[i]);
