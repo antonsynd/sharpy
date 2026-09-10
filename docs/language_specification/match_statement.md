@@ -167,6 +167,39 @@ if condition:
 | Positional | `case Point(0, y):` | `case Point { X: 0 }:` (mapped via fields) | ✅ Implemented |
 | Relational | `case > 0:` | Direct support (C# 9) | ✅ Implemented |
 
+### Guard Evaluation Order
+
+Guards evaluate **per arm, in order, only for arms whose pattern matched**. A guard with a
+side-effecting expression (a comprehension, a `?` operator, a walrus, or any call) runs only
+when its arm's pattern matches the scrutinee. Unmatched arms' guards are never evaluated:
+
+```python
+def probe(label: str) -> bool:
+    print(f"guard {label}")
+    return True
+
+def main() -> None:
+    m: int = 1
+    match m:
+        case 0 if probe("zero"):
+            print("matched zero")
+        case 1 if probe("one"):
+            print("matched one")
+        case _:
+            print("other")
+```
+
+```
+guard one
+matched one
+```
+
+Only case 1's guard evaluates; case 0's guard is skipped because the pattern does not match.
+
+When a guard contains a hoist-producing expression (a comprehension, spread, or `?`), the
+compiler lowers the guarded match to an `is`-chain block so that each guard's side effects
+execute exactly once, only when the pattern matches.
+
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*
 - *Or-patterns use C# `or` pattern (`BinaryPattern`). A name bound on only some alternatives is rejected (SPY0359): `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern. The `as` capture is typed through best-common-type with the scrutinee type as the slot, so `case float() | list() as v:` over an `object` scrutinee types `v` as `object`.*

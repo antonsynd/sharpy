@@ -233,6 +233,48 @@ except* TypeError:     # Cannot mix 'except' and 'except*'
 - *✅ Implemented — `ExceptHandler.IsExceptStar` property in AST*
 - *Parser validates: bare `except*` rejected, mixing `except`/`except*` rejected*
 
+## Control Transfer in `finally` (SPY0702)
+
+Unlike Python, Sharpy refuses `return`, `break`, and `continue` inside a `finally` block (Axiom 1 —
+C# forbids them as CS0157). A transfer out of `finally` would silently discard a pending exception
+or return value.
+
+```python
+def f() -> int:
+    try:
+        return 1
+    finally:
+        return 2   # error SPY0702: 'return' is not allowed inside a 'finally' block
+```
+
+A `break` or `continue` inside a loop that is **declared inside** the `finally` body is allowed —
+the transfer stays within the finally:
+
+```python
+def g() -> int:
+    try:
+        return 1
+    finally:
+        total: int = 0
+        for i in range(3):
+            if i == 1:
+                break        # OK — loop is inside finally
+            total += i
+        print(f"finally {total}")
+    return 0
+
+def main() -> None:
+    print(g())
+```
+
+```
+finally 0
+1
+```
+
+`yield` inside a `finally` block is separately refused as SPY0272 (C# CS1625). The two diagnostics
+do not double-report: a `return` in a generator's `finally` is SPY0702 only.
+
 ## `raise ... from ...` Not Supported
 
 Unlike Python, Sharpy does not support `raise ... from ...` (exception chaining via the `from` clause). This Python feature relies on runtime exception mutation that does not map cleanly to .NET's immutable inner exception model.

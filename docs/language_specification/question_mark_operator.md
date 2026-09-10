@@ -152,18 +152,57 @@ value: int = compute()??? fallback
 > and the final `??` are then type-checked independently against the operand and
 > RHS types.
 
+## Evaluated Only When Reached
+
+The `?` operator's early-return lowering evaluates **exactly where it is written**. In a
+short-circuit branch, a ternary arm, or a match guard, the `?` fires only if execution
+reaches that point:
+
+```python
+def neg() -> int !ValueError:
+    return Err(ValueError("neg"))
+
+def try_it() -> int !ValueError:
+    r = False and neg()?   # and short-circuits — neg() never called
+    print(f"Ok({r})")
+    return Ok(0)
+
+def main() -> None:
+    match try_it():
+        case Ok(v):
+            pass
+        case Err(e):
+            print(f"Err: {e}")
+```
+
+```
+Ok(False)
+```
+
 ## Restrictions
 
 | Condition                                   | Diagnostic | Message (abbreviated)                                          |
 |---------------------------------------------|------------|---------------------------------------------------------------|
 | Used at module level / outside any function | `SPY0462`  | `'?' operator can only be used inside a function`              |
 | Used inside a `finally:` block              | `SPY0211`  | `'?' operator cannot be used inside a 'finally' block`         |
+| Used inside a lambda body                   | `SPY0462`  | `'?' operator can only be used inside a function`              |
 | Operand is not `Result` or `Optional`       | `SPY0460`  | `'?' operator requires Result or Optional type, got '...'`    |
 | Return type incompatible / error mismatch   | `SPY0461`  | `'?' ... is not assignable to function return error type ...` |
 
 `?` is disallowed in `finally` blocks because an early `return` from `finally`
 would silently discard a pending exception or return value, which is a footgun
 rather than error propagation.
+
+`?` is disallowed inside a lambda body because the lambda has no declared
+`Result`/`Optional` return type for the early return to target — the `return`
+would escape the lambda and target the enclosing function, which is not
+the intent:
+
+```python
+def f() -> int !ValueError:
+    g = lambda x: int_parse(x)?   # error SPY0462: '?' inside a lambda
+    return Ok(g("42"))
+```
 
 `?` is also the idiomatic way to clear the [must-use warning `SPY0480`](tagged_unions_result.md#must-use-warning-spy0480): a `Result`/`Optional` produced only to be thrown away as a bare statement warns, and appending `?` both propagates the failure and satisfies the must-use check. Because `?` yields the *unwrapped* inner value, `expr?` is never itself flagged as a discarded carrier.
 

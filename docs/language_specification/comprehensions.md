@@ -178,6 +178,29 @@ print(y)  # ERROR: 'y' does not exist in this scope
 
 **Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy, the syntactic boundary (`[...]` / `{...}`) is the semantic boundary: nothing leaks. See [walrus_operator.md](walrus_operator.md) for more details.
 
+**PEP 572 Prohibited Positions (SPY0704):**
+
+Following PEP 572, a walrus in a comprehension's **iterable** is refused — the iterable
+evaluates once before the loop begins, so a walrus there would bind in the wrong scope.
+Rebinding the iteration variable with a walrus in the element or condition is also refused:
+
+```python
+xs: list[int] = [1, 2, 3]
+r = [y for y in (t := xs)]    # error SPY0704: walrus in iterable
+r = [i := 0 for i in xs]      # error SPY0704: walrus rebinds 'i'
+```
+
+A walrus in the **element** or **condition** position is accepted — it is local to the
+comprehension:
+
+```python
+xs: list[int] = [1, 2, 3]
+r = [v for x in xs if (v := x * 2) > 2]
+print(r)   # [4, 6]
+```
+
+See [Walrus Operator — PEP 572](walrus_operator.md#pep-572-prohibited-positions-spy0704).
+
 **Shadowing Outer Variables:**
 
 Comprehension variables may shadow variables from the enclosing scope. The outer variable is not modified:

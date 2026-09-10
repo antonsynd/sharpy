@@ -140,8 +140,156 @@ for x in data:
         results.append(y * 2)
 ```
 
+## Evaluation Placement
+
+A walrus expression evaluates **exactly where it is written** — in a short-circuit branch, a
+ternary arm, an `elif` test, a `while` test, a lambda body, or a match guard. The compiler
+manufactures a statement-level sink so hoisted lowerings land in the correct scope:
+
+```python
+def probe() -> int:
+    print("evaluated")
+    return 3
+
+def main() -> None:
+    if False and (w := probe()):
+        pass
+    print("done")
+```
+
+```
+done
+```
+
+The short-circuited `and` RHS is never evaluated.
+
+In an `or` expression, the RHS evaluates only when the LHS is falsy:
+
+```python
+def probe() -> int:
+    print("evaluated")
+    return 3
+
+def main() -> None:
+    w: int = 0
+    if 0 or (w := probe()):
+        pass
+    print(f"w {w}")
+```
+
+```
+evaluated
+w 3
+```
+
+In a `while` test, the walrus re-evaluates on every iteration:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 0, 3]
+    while (v := xs.pop(0)):
+        print(f"iter {v}")
+    print(f"done {len(xs)}")
+```
+
+```
+iter 1
+iter 2
+done 1
+```
+
+## Definite Assignment for Walrus Names
+
+A walrus in a short-circuit branch may or may not execute — the name it binds is not
+necessarily assigned on all paths to a subsequent read. Sharpy applies the C# §9.4.4
+when-true/when-false definite assignment rule:
+
+- After `a and b`: definitely assigned when **true** = T(a) ∪ T(b); when **false** = F(a) ∩ (T(a) ∪ F(b)).
+- After `a or b`: definitely assigned when **true** = T(a) ∩ (F(a) ∪ T(b)); when **false** = F(a) ∪ F(b).
+- After `not e`: true/false swap.
+
+A read on a path where the walrus may not have executed is SPY0600, mirroring Python's
+`NameError`:
+
+```python
+def probe() -> int:
+    return 3
+
+def main() -> None:
+    if True or (w := probe()):
+        print(w)   # error SPY0600: variable 'w' is used before being assigned
+```
+
+A walrus that is unconditional (e.g., the LHS of `and`) is available on both branches:
+
+```python
+def probe() -> int:
+    return 1
+
+def main() -> None:
+    if (w := probe()) > 0 and False:
+        pass
+    else:
+        print(f"else {w}")
+```
+
+```
+else 1
+```
+
+`w` is definitely assigned regardless of the `and` result.
+
+## PEP 572 Prohibited Positions (SPY0704)
+
+Following PEP 572, a walrus inside a comprehension's **iterable** expression is refused:
+
+```python
+xs: list[int] = [1, 2, 3]
+r = [y for y in (t := xs)]   # error SPY0704: walrus operator not allowed in iterable
+```
+
+A walrus in the **element** or **condition** position of a comprehension is accepted:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    r = [v for x in xs if (v := x * 2) > 2]
+    print(r)
+```
+
+```
+[4, 6]
+```
+
+Rebinding the iteration variable with a walrus in the element or condition is also refused:
+
+```python
+xs: list[int] = [1, 2, 3]
+r = [i := 0 for i in xs]   # error SPY0704: walrus rebinds iteration variable 'i'
+```
+
+## Walrus in F-String Holes
+
+A walrus inside a parenthesized f-string hole is accepted — the parentheses distinguish it from
+a format specifier:
+
+```python
+def f() -> str:
+    return "hello"
+
+def main() -> None:
+    print(f"{(s := f())} {s}")
+```
+
+```
+hello hello
+```
+
+Without parentheses, `{s := f()}` would parse `:` as the format spec start. Expressions that
+need parentheses in holes: walrus, lambda, and slices.
+
 *Implementation*
-- *🔄 Lowered - Hoisted variable declaration:*
+- *🔄 Lowered - Hoisted variable declaration with manufactured sinks:*
 
 ```python
 # Sharpy

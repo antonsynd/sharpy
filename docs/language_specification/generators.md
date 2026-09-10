@@ -227,6 +227,28 @@ def safe_items(items: list[int]) -> int:
         yield value
 ```
 
+### No `yield` inside a suppression-capable `with` (SPY0703)
+
+A `with` whose `__exit__` accepts exception parameters (`self` + 3) can suppress exceptions.
+The emitter lowers this to a `try/catch` block, which cannot contain `yield return` in a C#
+iterator. A simple (1-parameter) `__exit__` uses `try/finally` and allows `yield`:
+
+```python
+class Suppressor:
+    def __enter__(self) -> Suppressor:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
+def gen() -> int:
+    with Suppressor() as s:
+        yield 1   # error SPY0703: 'yield' cannot be used inside a 'with' block
+                   # whose '__exit__' can suppress exceptions
+```
+
+See [Context Managers — Exit Shapes](context_managers.md#exit-shapes) for the full rule.
+
 ## Restrictions
 
 ### No `yield` inside `__next__`

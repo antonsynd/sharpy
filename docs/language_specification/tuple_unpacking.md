@@ -46,6 +46,62 @@ print([y for (y) in [13, 14]])   # [13, 14]
 The shapes Python rejects stay rejected: `(*a), b = xs` ("cannot use starred expression here"),
 `except E as (e)`, and a parenthesized walrus target `((a) := 1)`.
 
+## List-Display Targets
+
+A list display on the left side of an assignment is accepted as a tuple target — `[a, b] = (1, 2)`
+is identical to `(a, b) = (1, 2)`. The parser normalizes the list display to a tuple target at the
+one store-target seam, so every downstream position (assignment, `for`, comprehension, `with … as`)
+accepts it uniformly:
+
+```python
+def main() -> None:
+    [a, b] = (1, 2)
+    print(a, b)
+    for [x, y] in [(3, 4), (5, 6)]:
+        print(x, y)
+```
+
+```
+1 2
+3 4
+5 6
+```
+
+Augmented assignment onto a list display stays refused (Python `SyntaxError` for both tuple and
+list displays):
+
+```python
+[a, b] += (1, 2)   # error SPY0225: augmented assignment onto a list display target
+```
+
+## Starred Targets in All Positions
+
+A starred target (`*rest`) works in every unpacking position — assignment, `for` statement,
+comprehension `for` clause, and `with … as` — with one arity rule: a star absorbs zero or more
+remaining elements. The source can be a tuple or a `list[T]`:
+
+```python
+def main() -> None:
+    # Assignment
+    first, *rest = [1, 2, 3]
+    print(first, rest)
+
+    # For statement
+    for a, *tail in [(1, 2, 3), (4, 5, 6)]:
+        print(a, tail)
+
+    # Comprehension
+    heads = [h for h, *_ in [(10, 20, 30), (40, 50, 60)]]
+    print(heads)
+```
+
+```
+1 [2, 3]
+1 [2, 3]
+4 [5, 6]
+[10, 40]
+```
+
 ## Nested Tuple Unpacking
 
 Targets can themselves be tuple patterns, enabling nested destructuring:

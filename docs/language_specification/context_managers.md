@@ -153,6 +153,102 @@ If neither protocol is implemented, a compile-time error is reported (SPY0324).
 
 ---
 
+## Exit Shapes
+
+The `__exit__` / `__aexit__` parameter count determines the **exit shape** — how the compiler
+models the `with` block's control flow and what the emitter generates.
+
+| Parameters | Exit shape | C# lowering | Can suppress? |
+|------------|------------|-------------|---------------|
+| `self` only | **Simple** | `try / finally { Exit() }` | No |
+| `self` + 3 (`exc_type`, `exc_val`, `exc_tb`) | **Suppression-capable** | `try / catch { suppress = Exit(…); if (!suppress) throw; } / finally { … }` | Yes |
+| `IDisposable` | **Simple** | `using (…) { … }` | No |
+| `IAsyncDisposable` | **Simple** | `await using (…) { … }` | No |
+
+The exit shape is a **materialized semantic fact** — it is decided during type checking and
+carried to code generation on the IR. The emitter never inspects `__exit__` itself.
+
+### Suppression-capable `with` and reachability
+
+When a `with` body's only exit is a `return`, `raise`, or `?` early return, the code after the
+`with` is still reachable if the manager is suppression-capable: `__exit__` returning `True`
+suppresses the exception and falls through. For a simple manager, the code after the `with` is
+unreachable and must not contain a `return` path.
+
+```python
+class Suppressor:
+    def __enter__(self) -> Suppressor:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
+def f() -> int:
+    with Suppressor() as s:
+        return 9
+    # error SPY0266: function 'f' must return a value of type 'int32' in all code paths
+```
+
+A function returning `None` whose body raises inside a suppressing `with` falls through —
+`__exit__` suppresses the exception:
+
+```python
+class Suppressor:
+    def __enter__(self) -> Suppressor:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
+def g() -> None:
+    with Suppressor() as s:
+        raise ValueError("test")
+    print("after")   # reachable — __exit__ suppresses the exception
+
+def main() -> None:
+    g()
+```
+
+```
+after
+```
+
+### `yield` inside a suppression-capable `with` (SPY0703)
+
+A `yield` inside a `with` whose `__exit__` can suppress is refused. The C# iterator state machine
+cannot resume inside a `try/catch`, and the suppression edge makes the successor reachable:
+
+```python
+class Suppressor:
+    def __enter__(self) -> Suppressor:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
+def gen() -> int:
+    with Suppressor() as s:
+        yield 1   # error SPY0703: 'yield' cannot be used inside a 'with' block
+                   # whose '__exit__' can suppress exceptions
+```
+
+A simple (1-parameter) `__exit__` poses no issue — the `with` lowers to `try/finally`,
+and C# allows `yield return` inside a finally-free try body:
+
+```python
+class Simple:
+    def __enter__(self) -> Simple:
+        return self
+
+    def __exit__(self):
+        pass
+
+def gen() -> int:
+    with Simple() as s:
+        yield 1   # OK — simple exit shape
+    yield 2
+```
+
 ## `__exit__` Signature Variants
 
 **Status:** Implemented
@@ -161,8 +257,8 @@ If neither protocol is implemented, a compile-time error is reported (SPY0324).
 
 Sharpy supports two forms for `__exit__` and `__aexit__`:
 
-1. **No-arg form**: `def __exit__(self):` — cleanup only, no exception awareness
-2. **3-arg form**: `def __exit__(self, exc_type, exc_val, exc_tb):` — receives exception context, can suppress exceptions by returning `True`
+1. **No-arg form**: `def __exit__(self):` — cleanup only, no exception awareness (simple exit shape)
+2. **3-arg form**: `def __exit__(self, exc_type, exc_val, exc_tb):` — receives exception context, can suppress exceptions by returning `True` (suppression-capable exit shape)
 
 The same applies to the async variants (`__aexit__`).
 
@@ -182,7 +278,7 @@ class SuppressingResource:
         return self
 
     # 3-arg form — exception-aware
-    def __exit__(self, exc_type: type?, exc_val: Exception?, exc_tb: object?) -> bool:
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
         if exc_val is not None:
             print(f"Suppressing {exc_type}: {exc_val}")
             return True   # suppress the exception

@@ -117,6 +117,41 @@ c = True
 print(f"{Dog() if c else Cat()}")  # OK — both branches admitted to object
 ```
 
+## Hole Delimiter Rules
+
+Inside an f-string interpolation hole (`{…}`), a `:` at brace depth 1 starts a **format
+specifier**. However, when the `:` is inside parentheses or brackets (paren depth > 0), it is
+part of the expression — not a format spec delimiter. This allows parenthesized expressions that
+contain `:` to appear in holes:
+
+```python
+def f() -> str:
+    return "hello"
+
+def main() -> None:
+    # Walrus — parenthesized to avoid format-spec parse
+    print(f"{(s := f())} {s}")
+
+    # Lambda — parenthesized call
+    print(f"{(lambda: 42)()}")
+
+    # Slice — parenthesized indexing
+    xs: list[int] = [1, 2, 3, 4]
+    print(f"{xs[0:2]}")
+```
+
+```
+hello hello
+42
+[1, 2]
+```
+
+Without parentheses, `{s := f()}` would parse `:` as the format spec start. The same
+applies to `{lambda: 42}` (parsed as `lambda` with format spec `42}`) and bare slices.
+
+A bare `{x:=10}` (no parentheses) is intentionally a **format specifier** — it formats `x`
+with the spec `=10`, matching Python's behavior. Only the parenthesized form is a walrus.
+
 *Implementation*
 - *✅ Native - Maps to C# interpolated strings `$"..."`.*
 - *Nested f-strings require lexer mode stack.*
