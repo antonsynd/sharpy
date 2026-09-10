@@ -1093,7 +1093,7 @@ internal partial class TypeChecker
     /// <see cref="RecordIterableArgumentMarks"/> before any dispatch, exactly for the iterable
     /// positions the ring knows about (<see cref="GetBuiltinIterableKeyPositions"/>,
     /// <see cref="GetMemberIterableKeyPositions"/>) and only for sources the emitter can also lower
-    /// (<see cref="ClassifyIterableArgument"/>). Gating acceptance on that mark means a source is
+    /// (<see cref="ClassifyIterableSource"/>). Gating acceptance on that mark means a source is
     /// never type-accepted in a position the emitter would pass unusable — a dict passed unprojected
     /// compiles to C# handing <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> where
     /// <c>IEnumerable&lt;K&gt;</c> is required (CS1503), and a tuple passed unbridged has no

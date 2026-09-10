@@ -448,6 +448,10 @@ internal partial class RoslynEmitter
         var iteratorType = GetExpressionSemanticType(forStmt.Iterator);
         var iterator = GenerateExpression(forStmt.Iterator);
 
+        // Apply the iterable projection (tuple→array, dict→keys, str→list) BEFORE the
+        // IterationLowering switch — the two facts are orthogonal (#1783).
+        iterator = ApplyIterableProjection(forStmt.Iterator, iterator);
+
         var iterLowering = _context.SemanticInfo?.GetIterationLowering(forStmt.Iterator);
         if (iterLowering?.Kind == IterationLoweringKind.StringChars)
         {

@@ -41,7 +41,19 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            var elementType = ResolveMembershipElementType(containerType);
+            // Tuples need the array bridge for Contains; other containers (str, list, set,
+            // dict) already have their own Contains semantics (#1771).
+            IterableArgumentProjection? membershipProjection = null;
+            if (containerType is TupleType)
+            {
+                membershipProjection = ClassifyIterableSource(
+                    binOp.Right, containerType, null, StorePosition.CollectionElement, "membership container");
+                if (membershipProjection != null)
+                    _semanticInfo.SetIterableProjection(binOp.Right, membershipProjection);
+            }
+
+            var elementType = membershipProjection?.ElementType
+                ?? ResolveMembershipElementType(containerType);
             SemanticType needleType;
             if (elementType != null)
             {
@@ -1465,6 +1477,10 @@ internal partial class TypeChecker
         // str in str is always str (substring test)
         if (containerType == SemanticType.Str)
             return SemanticType.Str;
+
+        // Tuples: the element type is the best-common-type of all elements (#1771).
+        if (containerType is TupleType tuple && tuple.ElementTypes.Count > 0)
+            return _typeInference.InferIterableElementType(tuple);
 
         // Generic containers: list[T] → T, set[T] → T, dict[K,V] → K (keys)
         if (containerType is GenericType generic && generic.TypeArguments.Count > 0)

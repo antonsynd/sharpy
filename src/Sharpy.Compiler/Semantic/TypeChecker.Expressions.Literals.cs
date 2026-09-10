@@ -578,7 +578,18 @@ internal partial class TypeChecker
                 new IterationLowering(kind));
         }
 
-        var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
+        IterableArgumentProjection? compProjection = null;
+        if (iterType is TupleType)
+        {
+            compProjection = ClassifyIterableSource(
+                forClause.Iterator, iterType, null, StorePosition.CollectionElement, "comprehension iterator");
+            if (compProjection != null)
+                _semanticInfo.SetIterableProjection(forClause.Iterator, compProjection);
+        }
+
+        var elemType = compProjection?.ElementType
+            ?? _typeInference.InferIterableElementType(iterType)
+            ?? SemanticType.Unknown;
 
         if (forClause.Target is Identifier id)
         {

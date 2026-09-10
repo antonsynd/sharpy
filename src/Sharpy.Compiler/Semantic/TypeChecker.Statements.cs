@@ -746,7 +746,10 @@ internal partial class TypeChecker
                             span: assignment.Span);
                         return false;
                     }
-                    if (ClassifyIterableArgument(valueType) is { } projection)
+                    if (ClassifyIterableSource(
+                            assignment.Value, valueType, targetElement,
+                            StorePosition.Augmented, "iterable operand")
+                        is { } projection)
                         _semanticInfo.SetIterableProjection(assignment.Value, projection);
                     return true;
                 }
@@ -836,7 +839,10 @@ internal partial class TypeChecker
                                 span: assignment.Span);
                             return false;
                         }
-                        if (ClassifyIterableArgument(valueType) is { } projection)
+                        if (ClassifyIterableSource(
+                                assignment.Value, valueType, null,
+                                StorePosition.Augmented, "iterable operand")
+                            is { } projection)
                             _semanticInfo.SetIterableProjection(assignment.Value, projection);
                         return true;
                     }
@@ -1145,7 +1151,16 @@ internal partial class TypeChecker
         {
             // yield from expr: the value must be iterable, element type must match
             var iterableType = CheckExpression(yieldStmt.Value);
-            var elementType = _typeInference.InferIterableElementType(iterableType);
+            IterableArgumentProjection? yieldProjection = null;
+            if (iterableType is TupleType)
+            {
+                yieldProjection = ClassifyIterableSource(
+                    yieldStmt.Value, iterableType, null, StorePosition.CollectionElement, "yield from source");
+                if (yieldProjection != null)
+                    _semanticInfo.SetIterableProjection(yieldStmt.Value, yieldProjection);
+            }
+            var elementType = yieldProjection?.ElementType
+                ?? _typeInference.InferIterableElementType(iterableType);
 
             if (elementType == null && iterableType is not UnknownType)
             {
@@ -1321,8 +1336,21 @@ internal partial class TypeChecker
                 new IterationLowering(kind));
         }
 
-        // Infer element type from the iterator (errors reported by validator in pipeline)
-        var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
+        // Record the iterable projection for tuple sources that need the array bridge.
+        // Strings/enums have their own IterationLowering; dicts/lists/sets already implement
+        // IEnumerable<element> and need no projection at the for/comprehension route (#1783).
+        IterableArgumentProjection? projection = null;
+        if (iterType is TupleType)
+        {
+            projection = ClassifyIterableSource(
+                forStmt.Iterator, iterType, null, StorePosition.CollectionElement, "for iterator");
+            if (projection != null)
+                _semanticInfo.SetIterableProjection(forStmt.Iterator, projection);
+        }
+
+        var elementType = projection?.ElementType
+            ?? _typeInference.InferIterableElementType(iterType)
+            ?? SemanticType.Unknown;
 
         // Enter scope for for-body block FIRST
         // This ensures loop variables are scoped to the loop

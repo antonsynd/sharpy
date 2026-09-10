@@ -151,6 +151,11 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateComprehensionIterator(Expression iterator)
     {
         var iterExpr = GenerateExpression(iterator);
+
+        // Apply the iterable projection (tuple→array, dict→keys, str→list) BEFORE the
+        // IterationLowering switch — the two facts are orthogonal (#1783).
+        iterExpr = ApplyIterableProjection(iterator, iterExpr);
+
         var iterLowering = _context.SemanticInfo?.GetIterationLowering(iterator);
         if (iterLowering?.Kind == IterationLoweringKind.StringChars)
         {

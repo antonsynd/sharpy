@@ -275,10 +275,10 @@ internal class ProtocolValidator : ValidatingAstWalker
             return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem;
         }
 
-        // Check TupleType
+        // Check TupleType — tuples are iterable, sized, indexable, and contain-testable (#1771).
         if (type is TupleType)
         {
-            return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem;
+            return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem or DunderNames.Contains;
         }
 
         // Check generic container types — use TypeSymbol metadata (populated by discovery)

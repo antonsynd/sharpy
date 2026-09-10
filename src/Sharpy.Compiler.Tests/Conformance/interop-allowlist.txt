@@ -30,7 +30,3 @@ builtins::method::List`1.pop::method                    # #1625
 builtins::method::List`1.extend::method                 # #1625
 builtins::method::List`1.copy::method                   # #1625
 
-# #1822: random.choice has three CLR overloads (Sharpy.List<T>, T[], IList<T>) that
-# all bridge to the same Sharpy signature list[T] -> T. No candidate's CLR type beats
-# all others — Sharpy.List<int> and int[] both beat IList<int> but not each other.
-random::function::choice::call                           # #1822

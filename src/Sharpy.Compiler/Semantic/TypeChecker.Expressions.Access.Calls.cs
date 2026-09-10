@@ -4973,7 +4973,7 @@ internal partial class TypeChecker
     /// <para>The mark is also the gate on ACCEPTING a non-<c>list</c> iterable in these positions
     /// (<see cref="ProjectedArgumentType"/>), so recording runs before any dispatch — every consumer
     /// that binds arguments reads it. Recording only sources that
-    /// <see cref="ClassifyIterableArgument"/> can also lower is what keeps acceptance and lowering
+    /// <see cref="ClassifyIterableSource"/> can also lower is what keeps acceptance and lowering
     /// one decision.</para>
     ///
     /// <para>The position tables are the only thing that grants this acceptance, which keeps it
@@ -5016,7 +5016,9 @@ internal partial class TypeChecker
                 continue;
             var argNode = call.Arguments[position];
             var argType = _semanticInfo.GetExpressionType(argNode);
-            if (argType == null || ClassifyIterableArgument(argType) is not { } projection)
+            if (argType == null || ClassifyIterableSource(
+                    argNode, argType, null, StorePosition.ArgumentPositional, "iterable argument")
+                is not { } projection)
                 continue;
 
             // reversed(s) has a dedicated lowering — StringHelpers.Reversed(string) — that consumes
@@ -5036,9 +5038,10 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Decides how an argument type binds in an iterable position: the element type it iterates as
-    /// and the projection that makes its C# form an <c>IEnumerable&lt;element&gt;</c> — or
-    /// <c>null</c> when the ring does not accept this source there (#1198).
+    /// Decides how an iterable source binds: the element type it iterates as (via best-common-type
+    /// for tuples under a slot) and the projection that makes its C# form an
+    /// <c>IEnumerable&lt;element&gt;</c> — or <c>null</c> when the ring does not accept this source
+    /// (#1198, #1783).
     ///
     /// <para>The two halves are one decision on purpose. Every arm below either needs no lowering
     /// (the source really is an <c>IEnumerable&lt;element&gt;</c>, proven by CLR inspection rather
@@ -5046,47 +5049,70 @@ internal partial class TypeChecker
     /// and stays rejected, which is a deliberate semantic diagnostic rather than the CS1503/CS0411
     /// internal errors that acceptance-without-lowering produced (#1198, #1199).</para>
     /// </summary>
-    private IterableArgumentProjection? ClassifyIterableArgument(SemanticType argType)
+    private IterableArgumentProjection? ClassifyIterableSource(
+        Expression source, SemanticType sourceType, SemanticType? slot,
+        StorePosition position, string siteNoun)
     {
-        // A dict (bare, or `| None` — the C#-interop nullable, whose null throws at .Keys() like
-        // Python raises on iterating None) iterates its KEYS: project to d.Keys(). Sharpy's strict
-        // `dict[K, V]?` is deliberately not unwrapped by that authority and gets no mark.
-        if (_typeInference.GetProjectedDictKeysType(argType)
+        if (_typeInference.GetProjectedDictKeysType(sourceType)
             is GenericType { TypeArguments.Count: 1 } projectedKeys)
         {
             return new IterableArgumentProjection(
                 IterableProjectionKind.DictKeys, projectedKeys.TypeArguments[0]);
         }
 
-        // System.ValueTuple implements no IEnumerable<T>, so a tuple needs the typed-array bridge.
-        // Arity is static, so the spread is always well-formed; requiring one element type keeps the
-        // array well-typed (a heterogeneous tuple gets no mark and is rejected, not mis-lowered).
-        if (argType is TupleType tuple && tuple.ElementTypes.Count > 0)
+        if (sourceType is TupleType tuple && tuple.ElementTypes.Count > 0)
         {
-            var tupleElement = tuple.ElementTypes[0];
-            foreach (var elementType in tuple.ElementTypes)
+            // At argument positions, the element type is decided by the old identity rule:
+            // all elements must match. The BestCommonType refusal (arm 3) is reserved for
+            // iteration routes (for, comprehension, membership) where the classifier owns
+            // the diagnostic — at argument positions the callee's own error is more specific.
+            if (position == StorePosition.ArgumentPositional || position == StorePosition.Augmented)
             {
-                if (!elementType.Equals(tupleElement))
-                    return null;
+                var tupleElement = tuple.ElementTypes[0];
+                foreach (var et in tuple.ElementTypes)
+                {
+                    if (!et.Equals(tupleElement))
+                        return null;
+                }
+                return new IterableArgumentProjection(
+                    IterableProjectionKind.TupleToArray, tupleElement, tuple.ElementTypes.Count);
             }
 
+            // At iteration/membership routes: use BestCommonType for the element type decision.
+            var operands = new List<(Expression? Node, SemanticType Type)>(tuple.ElementTypes.Count);
+            if (source is TupleLiteral tupleLit && tupleLit.Elements.Length == tuple.ElementTypes.Count)
+            {
+                for (int i = 0; i < tuple.ElementTypes.Count; i++)
+                    operands.Add((tupleLit.Elements[i], tuple.ElementTypes[i]));
+            }
+            else
+            {
+                foreach (var et in tuple.ElementTypes)
+                    operands.Add((null, et));
+            }
+
+            var steer = slot != null
+                ? $"xs: list[{slot.GetDisplayName()}] = ..."
+                : "xs: list[T] = ...";
+            var elementType = BestCommonType(
+                operands, slot, position, (Node)source,
+                siteNoun,
+                new BestCommonTypeOptions(AnnotateSteer: steer));
+
+            if (elementType is UnknownType)
+                return null;
+
             return new IterableArgumentProjection(
-                IterableProjectionKind.TupleToArray, tupleElement, tuple.ElementTypes.Count);
+                IterableProjectionKind.TupleToArray, elementType, tuple.ElementTypes.Count);
         }
 
-        // `str` cannot prove itself below — System.String is IEnumerable<char>, not
-        // IEnumerable<string> — but Python iterates a string as one-character STRINGS, and
-        // Builtins.ListFromStr is exactly that bridge (list(s) has always used it). Kept here, next
-        // to the proof it fails, because that is where the question is asked (#1209).
-        if (OperandView(argType) == SemanticType.Str)
+        if (OperandView(sourceType) == SemanticType.Str)
         {
             return new IterableArgumentProjection(IterableProjectionKind.StrToList, SemanticType.Str);
         }
 
-        // Everything else must prove it already presents as IEnumerable<element> in C# — list, set,
-        // frozenset, the dict views, range/iterators, CLR-backed collections.
-        if (_typeInference.InferIterableElementType(argType) is { } inferredElement
-            && EnumeratesAsInClr(argType, inferredElement))
+        if (_typeInference.InferIterableElementType(sourceType) is { } inferredElement
+            && EnumeratesAsInClr(sourceType, inferredElement))
         {
             return new IterableArgumentProjection(IterableProjectionKind.Direct, inferredElement);
         }

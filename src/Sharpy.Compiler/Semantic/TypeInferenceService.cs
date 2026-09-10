@@ -1401,10 +1401,28 @@ internal class TypeInferenceService
             return generic.TypeArguments[0];
         }
 
-        // Tuples
+        // Tuples — the slot-less data-level arm-2 answer: one element type that accepts all
+        // others via IsAssignableTo, or null if the tuple is heterogeneous with no common type.
+        // The checker's ClassifyIterableSource is the RECORDING authority (arm 1 slot-directed,
+        // arm 3 refusal); this arm serves only the non-checker callers (BuiltinReturnTypeInference,
+        // InferReversedElementType, etc.) that have no source node and no slot (#1783).
         if (iterableType is TupleType tuple && tuple.ElementTypes.Count > 0)
         {
-            return tuple.ElementTypes[0];
+            foreach (var candidate in tuple.ElementTypes)
+            {
+                bool acceptsAll = true;
+                foreach (var et in tuple.ElementTypes)
+                {
+                    if (!et.IsAssignableTo(candidate))
+                    {
+                        acceptsAll = false;
+                        break;
+                    }
+                }
+                if (acceptsAll) return candidate;
+            }
+
+            return null;
         }
 
         // Strings

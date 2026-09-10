@@ -800,6 +800,30 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // A non-field member on an unnamed tuple is refused by name; the CLR element
+        // spellings (item1…itemN / Item1…ItemN) keep working through the permissive channel (#1783).
+        if (memberLookupType is TupleType unmTuple && !unmTuple.IsNamed)
+        {
+            var member = memberAccess.Member.ToLowerInvariant();
+            if (member.StartsWith("item") && int.TryParse(member.Substring(4), out var idx)
+                && idx >= 1 && idx <= unmTuple.ElementTypes.Count)
+            {
+                // CLR element access — fall through to the permissive channel
+            }
+            else
+            {
+                var steer = member is "count" or "index"
+                    ? $"a tuple is not a list; use 'list(t).{memberAccess.Member}(...)'"
+                    : $"a tuple has no member '{memberAccess.Member}'; to convert, use 'list(t)'";
+                AddError(
+                    $"Type '{unmTuple.GetDisplayName()}' has no member '{memberAccess.Member}' — {steer}",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedMember,
+                    span: memberAccess.Span);
+                return SemanticType.Unknown;
+            }
+        }
+
         // Before falling through to the permissive channel, check whether the member
         // is only accessible through an explicitly-implemented interface (#1572).
         TryRecordInterfaceCastLowering(memberAccess, memberLookupType);
