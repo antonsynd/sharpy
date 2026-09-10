@@ -255,6 +255,34 @@ public record ListComprehension : Expression
 }
 
 /// <summary>
+/// Generator expression (expr for x in iterable if condition).
+/// Parenthesized form is legal anywhere; bare form is legal only as the sole call argument.
+/// Typed as Iterator[T] and lowered to a deferred LINQ chain wrapped in Builtins.Iter.
+/// </summary>
+public record GeneratorExpression : Expression
+{
+    public Expression Element { get; init; } = null!;
+    public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Element != null, "GeneratorExpression.Element cannot be null");
+        Debug.Assert(Clauses != null, "GeneratorExpression.Clauses cannot be null");
+        Debug.Assert(Clauses.Length > 0, "GeneratorExpression.Clauses must have at least one clause");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Element;
+        foreach (var clause in Clauses)
+            yield return clause;
+    }
+}
+
+/// <summary>
 /// Set comprehension {expr for x in iterable if condition}
 /// </summary>
 public record SetComprehension : Expression

@@ -708,7 +708,7 @@ internal static class NarrowingFlowAnalysis
             case IntegerLiteral or FloatLiteral or StringLiteral or BytesLiteralExpression
                 or FStringLiteral or TStringLiteral or BooleanLiteral
                 or ListLiteral or DictLiteral or SetLiteral or TupleLiteral
-                or ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension
+                or GeneratorExpression or ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension
                 or LambdaExpression:
                 return true;
 

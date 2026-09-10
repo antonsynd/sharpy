@@ -6,6 +6,14 @@ internal sealed partial class UnparseVisitor
 {
     #region Comprehensions
 
+    public override void VisitGeneratorExpression(GeneratorExpression node)
+    {
+        _w.Write("(");
+        Visit(node.Element);
+        WriteClauses(node.Clauses);
+        _w.Write(")");
+    }
+
     public override void VisitListComprehension(ListComprehension node)
     {
         _w.Write("[");

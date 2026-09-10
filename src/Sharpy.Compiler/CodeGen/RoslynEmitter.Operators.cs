@@ -1496,6 +1496,16 @@ internal partial class RoslynEmitter
                 foreach (var part in tstr.Parts)
                     CollectReferencedIdentifiers(part.Expression, identifiers);
                 break;
+            case GeneratorExpression comp:
+                CollectReferencedIdentifiers(comp.Element, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
             case ListComprehension comp:
                 CollectReferencedIdentifiers(comp.Element, identifiers);
                 foreach (var clause in comp.Clauses)

@@ -154,6 +154,8 @@ internal sealed partial class LoweringPass
             // List/set/dict comprehensions carry their imperative-loop decisions on the IR node
             // (E2 #1056, migrates the comprehension transform). Dict-spread comprehensions are a
             // separate transform and stay opaque for now.
+            GeneratorExpression genExpr
+                => LowerGeneratorExpression(genExpr, semanticInfo, state),
             ListComprehension listComp
                 => LowerComprehension(listComp, BuiltinNames.List, listComp.Clauses,
                     listComp.Element is SpreadElement, semanticInfo, state),

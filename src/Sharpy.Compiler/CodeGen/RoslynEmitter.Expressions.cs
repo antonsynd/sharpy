@@ -182,6 +182,7 @@ internal partial class RoslynEmitter
             TupleLiteral tupleLit => GenerateTupleLiteral(tupleLit),
 
             // Comprehensions
+            GeneratorExpression genExpr => GenerateGeneratorExpression(genExpr),
             ListComprehension listComp => GenerateListComprehension(listComp),
             SetComprehension setComp => GenerateSetComprehension(setComp),
             DictComprehension dictComp => GenerateDictComprehension(dictComp),

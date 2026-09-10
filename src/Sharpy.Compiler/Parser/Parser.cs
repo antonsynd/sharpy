@@ -1238,7 +1238,38 @@ public partial class Parser
                     {
                         throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
                     }
-                    args.Add(ParseExpression());
+                    var argExprGenexp = ParseExpression();
+
+                    if (IsComprehensionForStart())
+                    {
+                        var genStartLine = argExprGenexp.LineStart;
+                        var genStartColumn = argExprGenexp.ColumnStart;
+                        var clausesGenexp = ParseComprehensionClauses();
+                        var genExpr = new GeneratorExpression
+                        {
+                            Element = argExprGenexp,
+                            Clauses = clausesGenexp.ToImmutableArray(),
+                            LineStart = genStartLine,
+                            ColumnStart = genStartColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Length,
+                            Span = CombineSpans(argExprGenexp.Span, Previous.Type != TokenType.None ? GetSpanFromToken(Previous) : argExprGenexp.Span)
+                        };
+
+                        if (args.Count > 0 || Current.Type == TokenType.Comma)
+                        {
+                            ReportError("Generator expression must be parenthesized",
+                                genStartLine, genStartColumn,
+                                DiagnosticCodes.Parser.GeneratorExpressionMustBeParenthesized,
+                                span: genExpr.Span);
+                        }
+
+                        args.Add(genExpr);
+                    }
+                    else
+                    {
+                        args.Add(argExprGenexp);
+                    }
                 }
 
                 if (Current.Type == TokenType.Comma)

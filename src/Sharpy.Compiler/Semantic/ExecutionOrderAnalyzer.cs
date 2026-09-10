@@ -285,6 +285,16 @@ internal class ExecutionOrderAnalyzer
             case LambdaExpression lambda:
                 CollectReferencedIdentifiers(lambda.Body, identifiers);
                 break;
+            case GeneratorExpression genExpr:
+                CollectReferencedIdentifiers(genExpr.Element, identifiers);
+                foreach (var clause in genExpr.Clauses)
+                {
+                    if (clause is ForClause forClause)
+                        CollectReferencedIdentifiers(forClause.Iterator, identifiers);
+                    else if (clause is IfClause ifClause)
+                        CollectReferencedIdentifiers(ifClause.Condition, identifiers);
+                }
+                break;
             case ListComprehension listComp:
                 CollectReferencedIdentifiers(listComp.Element, identifiers);
                 foreach (var clause in listComp.Clauses)

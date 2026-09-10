@@ -2672,6 +2672,9 @@ internal partial class TypeChecker
             case ListComprehension:
                 return ListBackingKind.SharpyList;
 
+            case GeneratorExpression:
+                return ListBackingKind.Unknown;
+
             case Identifier id:
                 return _semanticInfo.GetIdentifierSymbol(id) is { } symbol
                     && _listBackingKinds.TryGetValue(symbol, out var kind)

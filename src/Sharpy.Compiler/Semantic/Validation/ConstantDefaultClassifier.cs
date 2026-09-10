@@ -159,6 +159,7 @@ internal static class ConstantDefaultClassifier
             case SetLiteral:
                 return EmittableConstantKind.Collection;
 
+            case GeneratorExpression:
             case ListComprehension:
             case SetComprehension:
             case DictComprehension:

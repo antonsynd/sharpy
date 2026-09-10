@@ -79,6 +79,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
 
     #region Expressions - Comprehensions
 
+    public override Node VisitGeneratorExpression(GeneratorExpression node) =>
+        Zero(node) with { Element = (Expression)Visit(node.Element), Clauses = VisitClauses(node.Clauses) };
+
     public override Node VisitListComprehension(ListComprehension node) =>
         Zero(node) with { Element = (Expression)Visit(node.Element), Clauses = VisitClauses(node.Clauses) };
 

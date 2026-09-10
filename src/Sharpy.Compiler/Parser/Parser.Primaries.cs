@@ -383,6 +383,23 @@ public partial class Parser
 
                     var expr = ParseExpression();
 
+                    // Generator expression: (expr for x in iterable)
+                    if (IsComprehensionForStart())
+                    {
+                        var clauses = ParseComprehensionClauses();
+                        Expect(TokenType.RightParen);
+                        return new GeneratorExpression
+                        {
+                            Element = expr,
+                            Clauses = clauses.ToImmutableArray(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
+                    }
+
                     // Tuple (expr,) or (expr, expr2, ...)
                     if (Current.Type == TokenType.Comma)
                     {

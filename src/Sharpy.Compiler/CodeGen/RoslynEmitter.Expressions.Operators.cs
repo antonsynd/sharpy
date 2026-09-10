@@ -131,22 +131,22 @@ internal partial class RoslynEmitter
                 return GenerateMatMulCall(left, right);
 
             case BinaryOperator.In:
-            {
-                // x in y → y.Contains(x); apply the iterable projection so tuple/dict
-                // containers are bridged to an IEnumerable with Contains (#1771).
-                var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                return InvocationExpression(Member(projectedRight, "Contains"))
-                    .AddArgumentListArguments(Argument(left));
-            }
+                {
+                    // x in y → y.Contains(x); apply the iterable projection so tuple/dict
+                    // containers are bridged to an IEnumerable with Contains (#1771).
+                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
+                    return InvocationExpression(Member(projectedRight, "Contains"))
+                        .AddArgumentListArguments(Argument(left));
+                }
 
             case BinaryOperator.NotIn:
-            {
-                // x not in y → !y.Contains(x)
-                var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                return Prefix(SyntaxKind.LogicalNotExpression,
-                    InvocationExpression(Member(projectedRight, "Contains"))
-                        .AddArgumentListArguments(Argument(left)));
-            }
+                {
+                    // x not in y → !y.Contains(x)
+                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
+                    return Prefix(SyntaxKind.LogicalNotExpression,
+                        InvocationExpression(Member(projectedRight, "Contains"))
+                            .AddArgumentListArguments(Argument(left)));
+                }
 
             case BinaryOperator.Is:
                 if (binOp.Right is NoneLiteral)

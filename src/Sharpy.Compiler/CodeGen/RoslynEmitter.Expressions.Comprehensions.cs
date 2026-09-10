@@ -37,6 +37,94 @@ internal partial class RoslynEmitter
         return captured;
     }
 
+    private ExpressionSyntax GenerateGeneratorExpression(GeneratorExpression genExpr)
+    {
+        var chain = GenerateGeneratorLinqChain(genExpr.Clauses, genExpr.Element, 0);
+        var elementType = MapComprehensionTypeArgument(
+            GetExpressionSemanticType(genExpr), 0);
+        return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                    GenericName(Identifier("Iter"))
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList(elementType)))))
+            .AddArgumentListArguments(Argument(chain));
+    }
+
+    private ExpressionSyntax GenerateGeneratorLinqChain(
+        ImmutableArray<ComprehensionClause> clauses, Expression element, int clauseIndex)
+    {
+        var forClauses = new List<(ForClause For, List<IfClause> Ifs)>();
+        ForClause? currentFor = null;
+        List<IfClause>? currentIfs = null;
+        for (int i = clauseIndex; i < clauses.Length; i++)
+        {
+            if (clauses[i] is ForClause fc)
+            {
+                if (currentFor != null)
+                    forClauses.Add((currentFor, currentIfs!));
+                currentFor = fc;
+                currentIfs = new List<IfClause>();
+            }
+            else if (clauses[i] is IfClause ic)
+            {
+                currentIfs?.Add(ic);
+            }
+        }
+        if (currentFor != null)
+            forClauses.Add((currentFor, currentIfs!));
+
+        return GenerateNestedLinqChain(forClauses, element, 0);
+    }
+
+    private ExpressionSyntax GenerateNestedLinqChain(
+        List<(ForClause For, List<IfClause> Ifs)> forClauses,
+        Expression element, int depth)
+    {
+        var (forClause, ifClauses) = forClauses[depth];
+        var iterExpr = GenerateComprehensionIterator(forClause.Iterator);
+
+        var loopVarName = forClause.Target is Identifier id
+            ? GetMangledVariableName(id, isNewDeclaration: true)
+            : GenerateTempVarName("genvar");
+
+        var loopParam = Parameter(EscapedIdentifier(loopVarName));
+
+        ExpressionSyntax chain = iterExpr;
+
+        foreach (var ifClause in ifClauses)
+        {
+            var condExpr = GenerateExpression(ifClause.Condition);
+            var condLambda = SimpleLambdaExpression(loopParam, condExpr);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    chain, IdentifierName("Where")))
+                .AddArgumentListArguments(Argument(condLambda));
+        }
+
+        ExpressionSyntax body;
+        if (depth + 1 < forClauses.Count)
+        {
+            body = GenerateNestedLinqChain(forClauses, element, depth + 1);
+            var innerLambda = SimpleLambdaExpression(loopParam, body);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    chain, IdentifierName("SelectMany")))
+                .AddArgumentListArguments(Argument(innerLambda));
+        }
+        else
+        {
+            body = GenerateExpression(element);
+            var selectLambda = SimpleLambdaExpression(loopParam, body);
+            chain = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    chain, IdentifierName("Select")))
+                .AddArgumentListArguments(Argument(selectLambda));
+        }
+
+        return chain;
+    }
+
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
         => GenerateImperativeComprehension(
             listComp, listComp.Clauses, listComp.Element, null, null, BuiltinNames.List);

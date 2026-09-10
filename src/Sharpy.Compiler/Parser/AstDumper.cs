@@ -790,6 +790,20 @@ internal class AstDumper : AstVisitor
 
     #region Expressions - Comprehensions
 
+    public override void VisitGeneratorExpression(GeneratorExpression node)
+    {
+        var (indent, prefix, depth) = CaptureContext();
+        var childPrefix = _childPrefix;
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}GeneratorExpression @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Element:");
+        VisitChild(node.Element, depth + 2, false);
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Clauses: [{node.Clauses.Length}]");
+        for (int i = 0; i < node.Clauses.Length; i++)
+        {
+            DumpComprehensionClause(node.Clauses[i], depth + 2, i == node.Clauses.Length - 1);
+        }
+    }
+
     public override void VisitListComprehension(ListComprehension node)
     {
         var (indent, prefix, depth) = CaptureContext();

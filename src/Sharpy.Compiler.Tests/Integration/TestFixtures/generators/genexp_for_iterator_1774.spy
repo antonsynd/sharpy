@@ -1,0 +1,4 @@
+# Generator expression used as a for-loop iterator (#1774)
+def main() -> None:
+    for x in (i * 2 for i in [1, 2, 3]):
+        print(x)

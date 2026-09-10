@@ -636,6 +636,12 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     CollectExpressionTokens(el, tokens, parameterNames, semanticQuery);
                 break;
 
+            case GeneratorExpression genExpr:
+                CollectExpressionTokens(genExpr.Element, tokens, parameterNames, semanticQuery);
+                foreach (var clause in genExpr.Clauses)
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames, semanticQuery);
+                break;
+
             case ListComprehension listComp:
                 CollectExpressionTokens(listComp.Element, tokens, parameterNames, semanticQuery);
                 foreach (var clause in listComp.Clauses)

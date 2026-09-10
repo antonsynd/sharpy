@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0146
-    /// Reserved: SPY0147-SPY0199
+    /// Active: SPY0100-SPY0147
+    /// Reserved: SPY0148-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -224,7 +224,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0147-SPY0199: Reserved for future parser diagnostics
+        #region Generator expression must be parenthesized (SPY0147)
+
+        public const string GeneratorExpressionMustBeParenthesized = "SPY0147"; // Active (#1774)
+
+        #endregion
+
+        // SPY0148-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

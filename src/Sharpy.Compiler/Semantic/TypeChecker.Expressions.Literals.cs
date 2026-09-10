@@ -340,6 +340,26 @@ internal partial class TypeChecker
         return expectation;
     }
 
+    private SemanticType CheckGeneratorExpression(GeneratorExpression genExpr)
+    {
+        _symbolTable.EnterScope("generator-expression");
+
+        SemanticType elementType;
+        using (ClearExpectation(null))
+        {
+            CheckComprehensionClauses(genExpr.Clauses);
+            elementType = CheckExpression(genExpr.Element);
+        }
+
+        _symbolTable.ExitScope();
+
+        return new GenericType
+        {
+            Name = BuiltinNames.Iterator,
+            TypeArguments = new List<SemanticType> { elementType }
+        };
+    }
+
     private SemanticType CheckListComprehension(ListComprehension listComp)
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.List, 1);

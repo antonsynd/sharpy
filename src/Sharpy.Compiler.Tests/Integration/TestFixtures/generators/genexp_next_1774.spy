@@ -1,0 +1,5 @@
+# Generator expression with next() — single-pass semantics (#1774)
+def main() -> None:
+    g = (x for x in [10, 20, 30])
+    print(next(g))
+    print(next(g))

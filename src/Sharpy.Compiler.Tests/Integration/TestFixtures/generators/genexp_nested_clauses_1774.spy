@@ -1,0 +1,4 @@
+# Generator expression with nested for clauses (#1774)
+def main() -> None:
+    result: list[int] = list(x * y for x in [1, 2] for y in [10, 20])
+    print(result)

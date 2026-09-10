@@ -51,6 +51,7 @@ internal partial class TypeChecker
             DictLiteral dict => CheckDictLiteral(dict),
             SetLiteral set => CheckSetLiteral(set),
             TupleLiteral tuple => CheckTupleLiteral(tuple),
+            GeneratorExpression genExpr => CheckGeneratorExpression(genExpr),
             ListComprehension listComp => CheckListComprehension(listComp),
             SetComprehension setComp => CheckSetComprehension(setComp),
             DictComprehension dictComp => CheckDictComprehension(dictComp),

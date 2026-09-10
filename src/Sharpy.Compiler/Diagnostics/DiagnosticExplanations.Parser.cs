@@ -243,5 +243,10 @@ public static partial class DiagnosticExplanations
             "An augmented assignment operator (+=, -=, ??=, etc.) was used inside an expression. Augmented assignments are statements and cannot appear inside parenthesized expressions, function arguments, or other expression contexts. Use the walrus operator ':=' if you need an inline assignment expression.",
             "result = (name ??= \"Default\")",
             "Use ':=' for inline assignment:\n  result = (name := \"Default\")\n\nOr split into separate statements:\n  name ??= \"Default\"\n  result = name");
+
+        Add(dict, DiagnosticCodes.Parser.GeneratorExpressionMustBeParenthesized, "Generator expression must be parenthesized", "Parser",
+            "A generator expression used as a function argument must be the sole argument when written without parentheses. When passing a generator expression alongside other arguments, wrap it in parentheses. This matches Python's grammar: 'f(x for x in xs)' is valid (sole argument), but 'f(x for x in xs, 0)' requires parentheses around the generator.",
+            "sum(x for x in xs, 0)",
+            "Parenthesize the generator expression:\n  sum((x for x in xs), 0)\n\nOr use a list comprehension:\n  sum([x for x in xs], 0)");
     }
 }

@@ -40,6 +40,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             DictLiteral a => DictLiteralEquals(a, (DictLiteral)y),
             SetLiteral a => NodesEqual(a.Elements, ((SetLiteral)y).Elements),
             TupleLiteral a => TupleLiteralEquals(a, (TupleLiteral)y),
+            GeneratorExpression a => ComprehensionEquals(a.Element, a.Clauses, ((GeneratorExpression)y).Element, ((GeneratorExpression)y).Clauses),
             ListComprehension a => ComprehensionEquals(a.Element, a.Clauses, ((ListComprehension)y).Element, ((ListComprehension)y).Clauses),
             SetComprehension a => ComprehensionEquals(a.Element, a.Clauses, ((SetComprehension)y).Element, ((SetComprehension)y).Clauses),
             DictComprehension a => DictComprehensionEquals(a, (DictComprehension)y),

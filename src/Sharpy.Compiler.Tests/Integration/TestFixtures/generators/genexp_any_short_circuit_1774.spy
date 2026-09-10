@@ -1,0 +1,9 @@
+# Lazy evaluation: any short-circuits after first True (#1774)
+def probe(i: int) -> bool:
+    print("probe " + str(i))
+    return i > 0
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    result: bool = any(probe(i) for i in xs)
+    print(result)

@@ -1,0 +1,3 @@
+# Generator expression with if clause (#1774)
+def main() -> None:
+    print(sum(x for x in range(10) if x % 2 == 0))

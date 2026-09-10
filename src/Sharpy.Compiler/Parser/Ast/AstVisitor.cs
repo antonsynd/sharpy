@@ -64,6 +64,9 @@ public abstract class AstVisitor
                 break;
 
             // Expressions - Comprehensions
+            case GeneratorExpression n:
+                VisitGeneratorExpression(n);
+                break;
             case ListComprehension n:
                 VisitListComprehension(n);
                 break;
@@ -397,6 +400,7 @@ public abstract class AstVisitor
 
     #region Expressions - Comprehensions
 
+    public virtual void VisitGeneratorExpression(GeneratorExpression node) => VisitExpression(node);
     public virtual void VisitListComprehension(ListComprehension node) => VisitExpression(node);
     public virtual void VisitSetComprehension(SetComprehension node) => VisitExpression(node);
     public virtual void VisitDictComprehension(DictComprehension node) => VisitExpression(node);
@@ -584,6 +588,7 @@ public abstract class AstVisitor<T>
             TupleLiteral n => VisitTupleLiteral(n),
 
             // Expressions - Comprehensions
+            GeneratorExpression n => VisitGeneratorExpression(n),
             ListComprehension n => VisitListComprehension(n),
             SetComprehension n => VisitSetComprehension(n),
             DictComprehension n => VisitDictComprehension(n),
@@ -758,6 +763,7 @@ public abstract class AstVisitor<T>
 
     #region Expressions - Comprehensions
 
+    public virtual T VisitGeneratorExpression(GeneratorExpression node) => VisitExpression(node);
     public virtual T VisitListComprehension(ListComprehension node) => VisitExpression(node);
     public virtual T VisitSetComprehension(SetComprehension node) => VisitExpression(node);
     public virtual T VisitDictComprehension(DictComprehension node) => VisitExpression(node);

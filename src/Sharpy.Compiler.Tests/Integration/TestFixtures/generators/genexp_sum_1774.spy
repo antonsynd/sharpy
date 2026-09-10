@@ -1,0 +1,4 @@
+# Generator expression as sole call argument (#1774)
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(sum(x * 2 for x in xs))

@@ -54,6 +54,7 @@ internal static class GenExpressions
             TupleLiteralExpr(ctx),
             LambdaExpr(ctx),
             ListComprehensionExpr(ctx),
+            GeneratorExpressionExpr(ctx),
             IndexAccessExpr(ctx),
             SliceAccessExpr(ctx),
             MultiAxisAccessExpr(ctx),
@@ -222,6 +223,16 @@ internal static class GenExpressions
             Expression(ctx),
             ComprehensionForClause(ctx),
             (elem, clause) => new ListComprehension
+            {
+                Element = elem,
+                Clauses = ImmutableArray.Create<ComprehensionClause>(clause)
+            });
+
+    public static Gen<GeneratorExpression> GeneratorExpressionExpr(GenContext ctx) =>
+        Gen.Select(
+            Expression(ctx),
+            ComprehensionForClause(ctx),
+            (elem, clause) => new GeneratorExpression
             {
                 Element = elem,
                 Clauses = ImmutableArray.Create<ComprehensionClause>(clause)

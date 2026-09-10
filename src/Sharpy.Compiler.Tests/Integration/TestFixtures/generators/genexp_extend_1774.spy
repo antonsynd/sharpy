@@ -1,0 +1,5 @@
+# Generator expression with list.extend (#1774)
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    xs.extend(x * 2 for x in [1, 2, 3])
+    print(xs)

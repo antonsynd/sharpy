@@ -5268,7 +5268,7 @@ internal partial class TypeChecker
             SetLiteral set => set.Elements.Length > 0,
             DictLiteral dict => dict.Entries.Length > 0,
             TupleLiteral tuple => tuple.Elements.Length > 0,
-            ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension => true,
+            GeneratorExpression or ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension => true,
             _ => false
         };
 

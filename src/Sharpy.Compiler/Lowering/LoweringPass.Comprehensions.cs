@@ -58,6 +58,25 @@ internal sealed partial class LoweringPass
     }
 
     /// <summary>
+    /// Lowers a generator expression to an <see cref="IrLoweredGenerator"/>. The element and clause
+    /// sub-expressions are lowered via <see cref="LowerChildren"/>; the emitter reads the clauses
+    /// to build the deferred LINQ chain.
+    /// </summary>
+    private static IrLoweredGenerator LowerGeneratorExpression(
+        GeneratorExpression genExpr,
+        SemanticInfo semanticInfo,
+        LoweringState state)
+    {
+        var children = LowerChildren(genExpr, semanticInfo, state);
+        return new IrLoweredGenerator(
+            genExpr.Clauses,
+            genExpr,
+            semanticInfo.GetExpressionType(genExpr),
+            SpanOf(genExpr),
+            children);
+    }
+
+    /// <summary>
     /// Returns the single <see cref="ForClause"/> in <paramref name="clauses"/>, or <c>null</c> when
     /// there is not exactly one. Capacity preallocation only applies to single-<c>for</c>
     /// comprehensions: with nested for-clauses the result size is the product of the sources, which no

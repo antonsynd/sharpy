@@ -220,6 +220,28 @@ internal sealed record IrLoweredLoop(
 }
 
 /// <summary>
+/// A generator expression lowered for deferred LINQ emission. Carries the clause decisions
+/// that the emitter reads to build <c>source.Where(…).Select(…)</c> chains wrapped in
+/// <c>Builtins.Iter(…)</c>. Unlike <see cref="IrLoweredLoop"/>, no imperative loop is emitted;
+/// the result is a single expression whose evaluation is deferred.
+/// </summary>
+/// <param name="Clauses">The comprehension clauses (for/if).</param>
+/// <param name="GeneratorExpression">The originating AST node.</param>
+/// <param name="Type">The generator's result type (<c>Iterator[T]</c>).</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered child IR nodes (element and clause sub-expressions).</param>
+internal sealed record IrLoweredGenerator(
+    ImmutableArray<ComprehensionClause> Clauses,
+    GeneratorExpression GeneratorExpression,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
 /// A collection literal proven not to escape (E3 #1057, <c>opt_stack_collections</c>): its only use
 /// is as the direct iterator of a <c>for</c> statement, so it can be emitted as a raw array
 /// (<c>new T[] { ... }</c>) instead of allocating the three-object <c>Sharpy.List</c> wrapper
