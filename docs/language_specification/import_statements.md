@@ -31,3 +31,13 @@ from math import *
 
 *Implementation*
 - *✅ Native - `using static` or direct reference.*
+
+### CLR Import Names
+
+When importing from a .NET namespace, type and namespace names are resolved from the reflected CLR metadata — the Pythonic→PascalCase mangler that transforms `snake_case` Sharpy identifiers does not apply to import targets:
+
+```python
+from system import Guid    # → using Guid = global::System.Guid;
+from system import Uri      # → using Uri = global::System.Uri;
+from system.net.http import HttpClient  # → using HttpClient = global::System.Net.Http.HttpClient;
+```
