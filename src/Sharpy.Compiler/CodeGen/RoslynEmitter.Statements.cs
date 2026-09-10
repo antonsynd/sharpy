@@ -837,17 +837,4 @@ internal partial class RoslynEmitter
         => AstHelper.ExtractNarrowingKey(ma);
 
     /// <summary>
-    /// If walrus pre-declarations were accumulated during inline mode (while-loop conditions),
-    /// wraps the statement in a block containing the pre-declarations followed by the statement.
-    /// Otherwise returns the statement unchanged.
-    /// </summary>
-    private StatementSyntax WrapWithWalrusPreDeclarations(StatementSyntax statement)
-    {
-        if (_walrusPreDeclarations.Count == 0)
-            return statement;
-
-        var wrapped = new List<StatementSyntax>(_walrusPreDeclarations) { statement };
-        _walrusPreDeclarations.Clear();
-        return Block(wrapped);
-    }
 }

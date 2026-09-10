@@ -50,6 +50,11 @@ internal partial class RoslynEmitter
             return GeneratePipeForward(binOp.Left, binOp.Right);
         }
 
+        if (binOp.Operator is BinaryOperator.And or BinaryOperator.Or)
+        {
+            return GenerateShortCircuitOp(binOp);
+        }
+
         var left = GenerateExpression(binOp.Left);
         var right = GenerateExpression(binOp.Right);
 
@@ -224,16 +229,7 @@ internal partial class RoslynEmitter
 
         }
 
-        // and/or: wrap both operands through truthiness before emitting && / || (#1558)
-        if (binOp.Operator is BinaryOperator.And or BinaryOperator.Or)
-        {
-            var wrappedLeft = WrapTruthinessIfNeeded(left, binOp.Left);
-            var wrappedRight = WrapTruthinessIfNeeded(right, binOp.Right);
-            var logicalKind = binOp.Operator == BinaryOperator.And
-                ? SyntaxKind.LogicalAndExpression
-                : SyntaxKind.LogicalOrExpression;
-            return Binary(logicalKind, wrappedLeft, wrappedRight);
-        }
+        // and/or moved to GenerateShortCircuitOp above
 
         // Standard binary operators
         var kind = binOp.Operator switch
@@ -756,14 +752,116 @@ internal partial class RoslynEmitter
             or NoneLiteral;
     }
 
+    private ExpressionSyntax GenerateShortCircuitOp(BinaryOp binOp)
+    {
+        var isAnd = binOp.Operator == BinaryOperator.And;
+        var left = GenerateExpression(binOp.Left);
+        var wrappedLeft = WrapTruthinessIfNeeded(left, binOp.Left);
+
+        ExpressionSyntax right = null!;
+        var (decls, evals) = WithSink(() => { right = GenerateExpression(binOp.Right); });
+
+        if (decls.Count == 0 && evals.Count == 0)
+        {
+            var wrappedRight = WrapTruthinessIfNeeded(right!, binOp.Right);
+            var logicalKind = isAnd
+                ? SyntaxKind.LogicalAndExpression
+                : SyntaxKind.LogicalOrExpression;
+            return Binary(logicalKind, wrappedLeft, wrappedRight);
+        }
+
+        // Manufactured sink: hoists from the right operand must only run when the
+        // right operand is actually evaluated (short-circuit semantics).
+        // bool __and_tmp = left; if (__and_tmp) { evals; __and_tmp = right; }
+        // (for or: if (!__and_tmp) { evals; __and_tmp = right; })
+        // Use HoistEvaluation for the declaration so it comes AFTER any hoists from
+        // the left operand (e.g. walrus declarations).
+        var tmpName = GenerateTempVarName(isAnd ? "and" : "or");
+
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(tmpName))
+                        .WithInitializer(EqualsValueClause(wrappedLeft))))));
+
+        // Re-hoist captured declarations to the outer scope so walrus variables
+        // remain visible after the manufactured if-block.
+        foreach (var decl in decls)
+            HoistDeclaration(decl);
+
+        var wrappedRight2 = WrapTruthinessIfNeeded(right!, binOp.Right);
+        var bodyStatements = new List<StatementSyntax>();
+        bodyStatements.AddRange(evals);
+        bodyStatements.Add(ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(tmpName),
+                wrappedRight2)));
+
+        var condition = isAnd
+            ? (ExpressionSyntax)EscapedIdentifierName(tmpName)
+            : PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                ParenthesizedExpression(EscapedIdentifierName(tmpName)));
+
+        HoistEvaluation(IfStatement(condition, Block(bodyStatements)));
+
+        return EscapedIdentifierName(tmpName);
+    }
+
     private ExpressionSyntax GenerateConditionalExpression(ConditionalExpression cond)
     {
         // value if test else other → test ? value : other
         var test = WrapTruthinessIfNeeded(GenerateExpression(cond.Test), cond.Test);
-        var whenTrue = ApplyConditionalBranchNarrowing(cond.ThenValue, GenerateExpression(cond.ThenValue));
-        var whenFalse = ApplyConditionalBranchNarrowing(cond.ElseValue, GenerateExpression(cond.ElseValue));
 
-        return Conditional(test, whenTrue, whenFalse);
+        ExpressionSyntax whenTrue = null!;
+        var (trueDecls, trueEvals) = WithSink(() =>
+        {
+            whenTrue = ApplyConditionalBranchNarrowing(cond.ThenValue, GenerateExpression(cond.ThenValue));
+        });
+
+        ExpressionSyntax whenFalse = null!;
+        var (falseDecls, falseEvals) = WithSink(() =>
+        {
+            whenFalse = ApplyConditionalBranchNarrowing(cond.ElseValue, GenerateExpression(cond.ElseValue));
+        });
+
+        if (trueDecls.Count == 0 && trueEvals.Count == 0
+            && falseDecls.Count == 0 && falseEvals.Count == 0)
+        {
+            return Conditional(test, whenTrue!, whenFalse!);
+        }
+
+        // Manufactured sink: hoists from then/else must only run in their branch.
+        var exprType = GetExpressionSemanticType(cond);
+        var typeSyntax = exprType != null
+            ? _typeMapper.MapSemanticType(exprType)
+            : IdentifierName("var");
+        var tmpName = GenerateTempVarName("cond");
+
+        HoistDeclaration(LocalDeclarationStatement(
+            VariableDeclaration(typeSyntax)
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(tmpName))))));
+
+        // Re-hoist captured declarations to the outer scope
+        foreach (var d in trueDecls) HoistDeclaration(d);
+        foreach (var d in falseDecls) HoistDeclaration(d);
+
+        var trueBody = new List<StatementSyntax>();
+        trueBody.AddRange(trueEvals);
+        trueBody.Add(ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(tmpName), whenTrue!)));
+
+        var falseBody = new List<StatementSyntax>();
+        falseBody.AddRange(falseEvals);
+        falseBody.Add(ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(tmpName), whenFalse!)));
+
+        HoistEvaluation(IfStatement(test, Block(trueBody), ElseClause(Block(falseBody))));
+
+        return EscapedIdentifierName(tmpName);
     }
 
     /// <summary>

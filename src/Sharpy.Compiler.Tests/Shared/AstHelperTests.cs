@@ -142,40 +142,6 @@ public class AstHelperTests
 
     #region ContainsWalrusExpression
 
-    [Fact]
-    public void ContainsWalrusExpression_ReturnsTrue_ForWalrus()
-    {
-        var expr = new WalrusExpression
-        {
-            Target = "x",
-            Value = new IntegerLiteral { Value = "1" }
-        };
-        Assert.True(AstHelper.ContainsWalrusExpression(expr));
-    }
-
-    [Fact]
-    public void ContainsWalrusExpression_ReturnsFalse_ForSimpleExpression()
-    {
-        var expr = new Identifier { Name = "x" };
-        Assert.False(AstHelper.ContainsWalrusExpression(expr));
-    }
-
-    [Fact]
-    public void ContainsWalrusExpression_ReturnsTrue_ForNestedInBinaryOp()
-    {
-        var expr = new BinaryOp
-        {
-            Left = new WalrusExpression
-            {
-                Target = "x",
-                Value = new IntegerLiteral { Value = "1" }
-            },
-            Operator = BinaryOperator.Add,
-            Right = new IntegerLiteral { Value = "2" }
-        };
-        Assert.True(AstHelper.ContainsWalrusExpression(expr));
-    }
-
     #endregion
 
     #region Ellipsis stub detection (#1214)

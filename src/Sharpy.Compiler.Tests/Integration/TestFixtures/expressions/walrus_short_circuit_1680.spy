@@ -1,0 +1,9 @@
+# walrus in a short-circuit operand evaluates only when reached (#1680)
+def probe() -> int:
+    print("evaluated")
+    return 5
+
+def main() -> None:
+    if False and (w := probe()) > 0:
+        print("yes")
+    print("done")

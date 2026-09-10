@@ -63,16 +63,40 @@ internal partial class RoslynEmitter
             ? BuildApproxSuccessCondition(parts)
             : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
-        var ctorArgs = assert.Message != null
-            ? ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(assert.Message))))
-            : ArgumentList();
-        var throwStmt = ThrowStatement(
-            ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
-                .WithArgumentList(ctorArgs));
+        StatementSyntax guard;
+        if (assert.Message != null)
+        {
+            ExpressionSyntax msgExpr = null!;
+            var (msgDecls, msgEvals) = WithSink(() =>
+            {
+                msgExpr = GenerateExpression(assert.Message);
+            });
 
-        var guard = IfStatement(
-            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(successCondition)),
-            Block(throwStmt));
+            var ctorArgs = ArgumentList(SingletonSeparatedList(Argument(msgExpr!)));
+            var throwStmt = ThrowStatement(
+                ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
+                    .WithArgumentList(ctorArgs));
+
+            var failBody = new List<StatementSyntax>();
+            failBody.AddRange(msgDecls);
+            failBody.AddRange(msgEvals);
+            failBody.Add(throwStmt);
+
+            guard = IfStatement(
+                PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    ParenthesizedExpression(successCondition)),
+                Block(failBody));
+        }
+        else
+        {
+            var throwStmt = ThrowStatement(
+                ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
+                    .WithArgumentList(ArgumentList()));
+            guard = IfStatement(
+                PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    ParenthesizedExpression(successCondition)),
+                Block(throwStmt));
+        }
 
         // Narrowing an assert contributes to following statements (e.g. `assert x is not None`
         // narrows x for the rest of the scope) is materialized per-read-node by the TypeChecker
@@ -346,37 +370,46 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateIf(IfStatement ifStmt)
     {
-        // Narrowing of reads inside each branch is materialized per-read-node by the TypeChecker
-        // (#1081); the emitter no longer re-derives which variables a branch condition narrows.
         var condition = WrapTruthinessIfNeeded(GenerateExpression(ifStmt.Test), ifStmt.Test);
-
-        // Since #1560 all local names are pre-computed — no scope save/restore needed.
         var thenBlock = GenerateSuiteBlock(ifStmt.ThenBody);
 
         ElseClauseSyntax? elseClause = null;
 
-        // Process elif clauses from last to first to build nested if-else structure
         if (ifStmt.ElifClauses.Length > 0 || ifStmt.ElseBody.Length > 0)
         {
             StatementSyntax? currentElse = null;
 
-            // Start with the final else block if it exists
             if (ifStmt.ElseBody.Length > 0)
             {
                 currentElse = GenerateSuiteBlock(ifStmt.ElseBody);
             }
 
-            // Process elif clauses in reverse order
             for (int i = ifStmt.ElifClauses.Length - 1; i >= 0; i--)
             {
                 var elif = ifStmt.ElifClauses[i];
-                var elifCondition = WrapTruthinessIfNeeded(GenerateExpression(elif.Test), elif.Test);
+                ExpressionSyntax elifCondition = null!;
+                var (elifDecls, elifEvals) = WithSink(() =>
+                {
+                    elifCondition = WrapTruthinessIfNeeded(
+                        GenerateExpression(elif.Test), elif.Test);
+                });
                 var elifBody = GenerateSuiteBlock(elif.Body);
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
-                var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
 
-                currentElse = elifStatement;
+                if (elifDecls.Count == 0 && elifEvals.Count == 0)
+                {
+                    currentElse = IfStatement(elifCondition!, elifBody, elifElseClause);
+                }
+                else
+                {
+                    // Manufactured sink: else { decls; evals; if (test) ... }
+                    var wrapper = new List<StatementSyntax>();
+                    wrapper.AddRange(elifDecls);
+                    wrapper.AddRange(elifEvals);
+                    wrapper.Add(IfStatement(elifCondition!, elifBody, elifElseClause));
+                    currentElse = Block(wrapper);
+                }
             }
 
             if (currentElse != null)
@@ -390,56 +423,94 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
-        // Narrowing of reads inside the loop body is materialized per-read-node by the TypeChecker
-        // (#1081); the emitter no longer re-derives which variables the condition narrows.
-
-        // For walrus operators in while conditions, use inline assignment mode so the
-        // expression is re-evaluated each iteration instead of being hoisted once.
-        var hasWalrus = AstHelper.ContainsWalrusExpression(whileStmt.Test);
-        if (hasWalrus)
+        ExpressionSyntax condition = null!;
+        var (testDecls, testEvals) = WithSink(() =>
         {
-            _walrusInlineMode = true;
-            _walrusPreDeclarations.Clear();
+            condition = WrapTruthinessIfNeeded(GenerateExpression(whileStmt.Test), whileStmt.Test);
+        });
+
+        var hasHoists = testDecls.Count > 0 || testEvals.Count > 0;
+
+        if (!hasHoists)
+        {
+            if (whileStmt.ElseBody.IsEmpty)
+            {
+                return WhileStatement(condition!, GenerateSuiteBlock(whileStmt.Body));
+            }
+
+            return GenerateWhileWithElse(condition!, whileStmt);
         }
 
-        var condition = WrapTruthinessIfNeeded(GenerateExpression(whileStmt.Test), whileStmt.Test);
+        // Manufactured sink: while (true) { decls; evals; if (!(test)) break; body }
+        // Hoists run on every iteration but only ONCE per iteration, inside the loop.
+        var loopBodyStatements = new List<StatementSyntax>();
+        loopBodyStatements.AddRange(testDecls);
+        loopBodyStatements.AddRange(testEvals);
+        loopBodyStatements.Add(IfStatement(
+            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                ParenthesizedExpression(condition!)),
+            BreakStatement()));
 
-        if (hasWalrus)
-            _walrusInlineMode = false;
-
-        // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
-            var simpleBody = GenerateSuiteBlock(whileStmt.Body);
-            return WrapWithWalrusPreDeclarations(WhileStatement(condition, simpleBody));
+            var bodyBlock = GenerateSuiteBlock(whileStmt.Body);
+            loopBodyStatements.AddRange(bodyBlock is BlockSyntax block
+                ? block.Statements
+                : new[] { bodyBlock });
+            return WhileStatement(
+                LiteralExpression(SyntaxKind.TrueLiteralExpression),
+                Block(loopBodyStatements));
         }
 
-        // Loop with else clause: use boolean flag pattern
-        // bool _loopCompleted = true;
-        // while (condition) { ... if (break) { _loopCompleted = false; break; } }
-        // if (_loopCompleted) { elseBody }
+        // while-else with hoists: use flag pattern inside the while(true) loop
+        var flagName = GenerateTempVarName("loopCompleted");
+        var outerStatements = new List<StatementSyntax>();
+
+        outerStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(flagName))
+                        .WithInitializer(EqualsValueClause(
+                            LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
+
+        var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
+        var transformedBodyBlock = GenerateSuiteBlock(transformedBody);
+
+        loopBodyStatements.AddRange(transformedBodyBlock is BlockSyntax tBlock
+            ? tBlock.Statements
+            : new[] { transformedBodyBlock });
+
+        outerStatements.Add(WhileStatement(
+            LiteralExpression(SyntaxKind.TrueLiteralExpression),
+            Block(loopBodyStatements)));
+
+        var elseBodyBlock = GenerateSuiteBlock(whileStmt.ElseBody);
+        outerStatements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
+
+        return Block(outerStatements);
+    }
+
+    private StatementSyntax GenerateWhileWithElse(ExpressionSyntax condition, WhileStatement whileStmt)
+    {
         var flagName = GenerateTempVarName("loopCompleted");
         var statements = new List<StatementSyntax>();
 
-        // bool _loopCompleted = true;
         statements.Add(LocalDeclarationStatement(
             VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(flagName))
-                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
+                        .WithInitializer(EqualsValueClause(
+                            LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
-        // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
         var bodyBlock = GenerateSuiteBlock(transformedBody);
 
-        // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));
 
-        // if (_loopCompleted) { elseBody }
         var elseBodyBlock = GenerateSuiteBlock(whileStmt.ElseBody);
         statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
 
-        return WrapWithWalrusPreDeclarations(Block(statements));
+        return Block(statements);
     }
 
     private StatementSyntax GenerateFor(ForStatement forStmt)

@@ -1130,50 +1130,33 @@ internal partial class RoslynEmitter
                 walrus.IsNameBacktickEscaped);
         }
 
-        if (_walrusInlineMode)
-        {
-            // Inline mode: emit a typed pre-declaration (no initializer) and return
-            // an inline assignment expression so the value is re-evaluated each iteration.
-            var semType = GetExpressionSemanticType(walrus.Value);
-            // R-AE: when the value is None (VoidType), var cannot infer from null — use the
-            // symbol's recorded type, which carries the slot the checker bound (#1812).
-            var typeSyntax = semType is Semantic.VoidType && symbol?.Type != null
-                ? _typeMapper.MapSemanticType(symbol.Type)
-                : semType != null
-                    ? _typeMapper.MapSemanticType(semType)
-                    : IdentifierName("var");
-
-            _walrusPreDeclarations.Add(
-                LocalDeclarationStatement(
-                    VariableDeclaration(typeSyntax)
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(EscapedIdentifier(varName))))));
-
-            // Return: (varName = value)
-            return ParenthesizedExpression(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    EscapedIdentifierName(varName),
-                    value));
-        }
-
-        // Hoist: var varName = value; — or the recorded type where var would infer narrower (a
-        // union case construction is its case class under var, #1770; see LocalDeclarationType).
-        // R-AE: when the value is None (VoidType), var cannot infer from null — use the symbol's
-        // recorded type, which carries the slot the checker bound (#1812).
+        // Pre-declare the walrus variable at scope level (HoistDeclaration), then return
+        // an inline assignment expression. This pattern lets manufactured sinks (and/or,
+        // ternary, while) capture the assignment inside their conditional branch while
+        // keeping the variable visible in the outer scope (#1680).
         var hoistValueType = GetExpressionSemanticType(walrus.Value);
-        var hoistDeclType = hoistValueType is Semantic.VoidType && symbol?.Type != null
+        // Bare declaration: must use explicit type, not 'var' (CS0818)
+        var declType = symbol?.Type != null
             ? _typeMapper.MapSemanticType(symbol.Type)
-            : LocalDeclarationType(symbol, hoistValueType);
-        HoistEvaluation(
+            : hoistValueType != null
+                ? _typeMapper.MapSemanticType(hoistValueType)
+                : IdentifierName("object");
+
+        HoistDeclaration(
             LocalDeclarationStatement(
-                VariableDeclaration(hoistDeclType)
+                VariableDeclaration(declType)
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(varName))
-                            .WithInitializer(EqualsValueClause(value))))));
+                            .WithInitializer(EqualsValueClause(
+                                PostfixUnaryExpression(
+                                    SyntaxKind.SuppressNullableWarningExpression,
+                                    LiteralExpression(SyntaxKind.DefaultLiteralExpression))))))));
 
-        // The walrus expression evaluates to the variable itself
-        return EscapedIdentifierName(varName);
+        return ParenthesizedExpression(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(varName),
+                value));
     }
 
     /// <summary>

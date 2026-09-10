@@ -1,0 +1,7 @@
+# A comprehension in a while test must not loop forever (#1724)
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    while [v for v in xs if v > 0]:
+        print("iter")
+        xs.pop(0)
+    print("done", len(xs))

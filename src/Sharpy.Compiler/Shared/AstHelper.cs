@@ -117,16 +117,6 @@ internal static class AstHelper
     /// iteration when the comprehension sits in the <c>while</c> test, so it must count; the
     /// comprehension lowering under inline mode is the open half (#1724 — CS0103 today,
     /// an infinite loop before the walk was structural).</para>
-    ///
-    /// <para>Sole consumer: <c>RoslynEmitter.GenerateWhile</c>. The <c>if</c>/<c>elif</c>,
-    /// short-circuit, and ternary hosts do not go through here and still evaluate a walrus
-    /// eagerly (#1680).</para>
-    /// </summary>
-    public static bool ContainsWalrusExpression(Expression expr)
-    {
-        return ContainsDescendant(expr, static n => n is WalrusExpression, static n => n is LambdaExpression);
-    }
-
     internal static bool ContainsDescendant(Node root, Func<Node, bool> predicate, Func<Node, bool>? stopAt = null)
     {
         if (predicate(root))

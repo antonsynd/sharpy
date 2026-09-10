@@ -117,20 +117,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     private readonly Utilities.ScratchListPool<StatementSyntax> _statementListPool = new();
 
-    /// <summary>
-    /// When true, walrus expressions emit inline assignment expressions (varName = value)
-    /// instead of hoisted declarations. Used in while-loop conditions where the assignment
-    /// must be re-evaluated on each iteration. Temporary — deleted when manufactured sinks
-    /// replace the while-loop walrus path.
-    /// </summary>
-    private bool _walrusInlineMode;
-
-    /// <summary>
-    /// Typed variable declarations (no initializer) for walrus variables used in inline mode.
-    /// These are emitted before the while loop. Temporary — deleted when manufactured sinks
-    /// replace the while-loop walrus path.
-    /// </summary>
-    private readonly List<LocalDeclarationStatementSyntax> _walrusPreDeclarations = new();
 
     // Resolved return type of the function/method currently being generated.
     // Used so that a bare `return None` against an Optional<T> return type emits
