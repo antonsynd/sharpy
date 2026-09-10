@@ -212,6 +212,26 @@ internal class ClrTypeBridge
         return MapClrTypeToSemanticType(clrType);
     }
 
+    public SemanticType MapPropertyType(PropertyInfo property)
+        => ClrDeclaredNullability.Apply(
+            MapClrTypeToSemanticType(property.PropertyType),
+            ClrDeclaredNullability.DeclaresNullable(property));
+
+    public SemanticType MapFieldType(FieldInfo field)
+        => ClrDeclaredNullability.Apply(
+            MapClrTypeToSemanticType(field.FieldType),
+            ClrDeclaredNullability.DeclaresNullable(field));
+
+    public SemanticType MapReturnType(MethodInfo method)
+        => ClrDeclaredNullability.Apply(
+            MapClrTypeToSemanticType(method.ReturnType),
+            ClrDeclaredNullability.DeclaresNullableReturn(method));
+
+    public SemanticType MapParameterType(ParameterInfo parameter)
+        => ClrDeclaredNullability.Apply(
+            MapClrParameterTypeToSemanticType(parameter.ParameterType),
+            ClrDeclaredNullability.DeclaresNullableArgument(parameter));
+
     private SemanticType MapTypeInternal(Type clrType)
     {
         // Handle generic type parameters (e.g., T in List<T>)
