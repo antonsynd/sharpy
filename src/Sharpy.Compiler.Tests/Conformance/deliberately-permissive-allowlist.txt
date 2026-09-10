@@ -17,6 +17,6 @@
 #        position, reflection inconclusive, or a name the #1141 proof kept)
 #   :792 general tail: a receiver kind the resolver declines -> #1678
 #   :903 inherited CLR member AFTER the resolver             -> #1678
-TypeChecker.Expressions.Access.cs 4 #1674 #1678 #1678 #1678
+TypeChecker.Expressions.Access.cs 3 #1674 #1678 #1678
 # Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
 TypeChecker.Expressions.cs 2 #1675 #1676

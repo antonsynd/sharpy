@@ -435,12 +435,10 @@ internal partial class TypeChecker
                 // If so, record the interface-cast lowering for codegen (#1572).
                 TryRecordInterfaceCastLowering(memberAccess, memberLookupType);
 
-                // Member not found on CLR type — fall back to codegen rather than
-                // emitting an error, since the TypeSymbol may be a CLR shadow of a
-                // user-defined type with different members.
-                MarkExpressionAsErrorRecovery(memberAccess,
-                    ErrorRecoveryReason.DeliberatelyPermissive(
-                        PermissiveClrMemberReason(memberAccess)));
+                // ClrMemberTypeFromReflection now handles MethodGroup (SPY0336 in value
+                // position), Inconclusive (UnmappedClrType), and the absence proof answers
+                // Absent — the remaining fallthrough is a member codegen resolves through
+                // CLR discovery. No longer marked DeliberatelyPermissive (#1678 drained).
                 return SemanticType.Unknown;
             }
 
@@ -1223,10 +1221,19 @@ internal partial class TypeChecker
                 return m.Type;
 
             case Discovery.ClrMemberResolution.MethodGroup:
-                // Selecting among overloads needs the call's arguments, which this seam cannot see.
-                // Declined here and answered at the call seam, where the arity that selects exactly
-                // one candidate is in hand (#1243's rule).
-                return null;
+                // In CALLEE position: selecting among overloads needs the call's arguments —
+                // declined here and answered at the call seam (#1243).
+                // In VALUE position: the method group is referenced, not called — refused by name
+                // (#1678, R-Q). SPY0336 is the standing "overloaded callable in value position" code.
+                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                    return null;
+
+                AddError(
+                    $"'{memberAccess.Member}' is a CLR method group; call it, or wrap it in a lambda",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+                    span: memberAccess.Span);
+                return SemanticType.Unknown;
 
             case Discovery.ClrMemberResolution.Property prop:
                 // A zero-arg CALL onto a property (`s.count()`) is legal Sharpy and lowers to the
@@ -1245,6 +1252,12 @@ internal partial class TypeChecker
                     return null;
 
                 return field.Type;
+
+            case Discovery.ClrMemberResolution.InconclusiveResult:
+                // The bridge cannot express the member (enum, open generic, char, interface) —
+                // typed UnmappedClrType instead of Unknown (#1678, R-Q). Assignable nowhere except
+                // object/re-interop, which is the honest answer.
+                return new UnmappedClrType { ClrTypeName = memberAccess.Member };
 
             default:
                 return null;
