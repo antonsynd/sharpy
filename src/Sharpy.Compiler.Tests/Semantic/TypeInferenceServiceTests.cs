@@ -441,12 +441,12 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
-    public void InferIterableElementType_TupleIntStr_ReturnsFirst()
+    public void InferIterableElementType_TupleIntStr_ReturnsNull()
     {
-        // Simplified: returns first element type
+        // A heterogeneous tuple where neither type accepts all — arm-2 returns null (#1783).
         var tuple = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Str } };
         var result = _service.InferIterableElementType(tuple);
-        result.Should().Be(SemanticType.Int);
+        result.Should().BeNull();
     }
 
     [Fact]

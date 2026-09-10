@@ -75,6 +75,13 @@ fixture::collections/dict_literal_assignment
 fixture::collections/dict_literal_return_type
 fixture::collections/list_literal_return_type
 
+# Tuple float-mix iteration: `for x in (1, 2.5)` types `x` as float64 by BestCommonType
+# arm 2 (#1783), so `1` prints as `1.0` where CPython keeps the int. Same class as the
+# collection literal widening entries above — a contextual type wins over Python's duck-type
+# value identity.
+# deviations.yaml: numeric-widening-in-typed-context. Permanent.
+fixture::tuples/for_over_tuple_1783
+
 # The variadic value form of min()/max() promotes mixed-numeric arguments to a common
 # numeric type (#1014), so min(2, 3.0) is 2.0 where CPython returns the unpromoted
 # int 2. Matches Sharpy's binary numeric operators (2 + 0.0 == 2.0); the fixture's own
