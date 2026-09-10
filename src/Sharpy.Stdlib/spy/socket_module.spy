@@ -140,7 +140,7 @@ class socket(IDisposable):
                 raise gaierror("Name or service not known", (SocketError.HostNotFound as! int))
             endpoint: IPEndPoint = IPEndPoint(ip_addresses[0], address[1])
             self._socket.connect(endpoint)
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -178,7 +178,7 @@ class socket(IDisposable):
             remote_ep: IPEndPoint = remote as! IPEndPoint
             conn: socket = socket(accepted)
             return (conn, (remote_ep.address.to_string(), remote_ep.port))
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -189,7 +189,7 @@ class socket(IDisposable):
         """Send data to the socket, returning the number of bytes sent."""
         try:
             return self._socket.send(data.to_array())
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -205,7 +205,7 @@ class socket(IDisposable):
                 if sent == 0:
                     raise error("Connection reset by peer", (SocketError.ConnectionReset as! int))
                 total_sent = total_sent + sent
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -218,7 +218,7 @@ class socket(IDisposable):
             result = array[byte](received)
             Array.copy(buffer, result, received)
             return bytes(result)
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -229,7 +229,7 @@ class socket(IDisposable):
             ip_addr: IPAddress = IPAddress.parse(address[0])
             endpoint: IPEndPoint = IPEndPoint(ip_addr, address[1])
             return self._socket.send_to(data.to_array(), endpoint)
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
@@ -244,7 +244,7 @@ class socket(IDisposable):
             Array.copy(buffer, result, received)
             ep: IPEndPoint = remote as! IPEndPoint
             return (bytes(result), (ep.address.to_string(), ep.port))
-        except SocketException as ex when (ex.socket_error_code as! SocketError) == SocketError.TimedOut:
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
             raise error.from_socket_exception(ex)
