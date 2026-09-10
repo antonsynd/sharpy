@@ -107,12 +107,13 @@ internal sealed partial class LoweringPass
             if (item.Target != null)
                 children.Add(LowerExpression(item.Target, semanticInfo, state));
 
-            var kind = semanticInfo.GetContextManagerKindForIr(item.ContextExpression);
-            if (kind is { } contextManagerKind)
+            var lowering = semanticInfo.GetContextManagerLoweringForIr(item.ContextExpression);
+            if (lowering != null)
             {
                 // _withItemSymbols is an ISemanticQuery/LSP fact, not a codegen consumer, so the
                 // as-variable (AsVar) is not folded here — deferred (see report).
-                state.WithItems[item] = new IrWithItem(contextExpr, contextManagerKind, null, item.Span ?? TextSpan.Empty);
+                state.WithItems[item] = new IrWithItem(contextExpr, lowering.Kind, lowering.ExitShape,
+                    lowering.ExitMethod, null, item.Span ?? TextSpan.Empty);
             }
         }
 

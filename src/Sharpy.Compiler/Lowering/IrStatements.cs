@@ -67,10 +67,14 @@ internal sealed record IrScopeGuard(
 /// C# <c>using</c> statement and explicit enter/exit calls.</param>
 /// <param name="AsVar">The variable symbol bound by the <c>as</c> clause, or <c>null</c> when there
 /// is no <c>as</c> clause.</param>
+/// <param name="ExitShape">Whether the __exit__ can suppress exceptions.</param>
+/// <param name="ExitMethod">The resolved __exit__/__aexit__ method, or null for IDisposable.</param>
 /// <param name="Span">The originating source span.</param>
 internal sealed record IrWithItem(
     IrExpression ContextExpr,
     ContextManagerKind Kind,
+    ContextManagerExitShape ExitShape,
+    FunctionSymbol? ExitMethod,
     VariableSymbol? AsVar,
     TextSpan Span) : IrNode(null, Span)
 {

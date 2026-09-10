@@ -658,15 +658,12 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Reads a with-item's context-manager kind from the lowering IR (E2 #1056, migrates
-    /// <c>_contextManagerKinds</c>). Returns <c>null</c> when no <see cref="IrWithItem"/> was recorded
-    /// (an error case), which the caller treats as the default disposable protocol.
+    /// Reads a with-item's lowering IR (E2 #1056). Returns <c>null</c> when no
+    /// <see cref="IrWithItem"/> was recorded (an error case).
     /// </summary>
-    private ContextManagerKind? GetIrContextManagerKind(WithItem item)
+    private IrWithItem? GetIrWithItem(WithItem item)
     {
-        return _context.Ir.WithItems.TryGetValue(item, out var withItem)
-            ? withItem.Kind
-            : null;
+        return _context.Ir.WithItems.TryGetValue(item, out var withItem) ? withItem : null;
     }
 
     private StatementSyntax GenerateWith(WithStatement withStmt)
@@ -689,11 +686,12 @@ internal partial class RoslynEmitter
         for (int i = withStmt.Items.Length - 1; i >= 0; i--)
         {
             var item = withStmt.Items[i];
-            var cmKind = GetIrContextManagerKind(item);
+            var irItem = GetIrWithItem(item);
+            var cmKind = irItem?.Kind;
 
             if (cmKind is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
             {
-                innermost = GenerateWithDunderProtocol(item, innermost, cmKind.Value);
+                innermost = GenerateWithDunderProtocol(item, innermost, irItem!);
             }
             else
             {
@@ -1124,15 +1122,14 @@ internal partial class RoslynEmitter
     ///   finally { if (__exc_N == null) __ctx_N.Exit(Optional&lt;T1&gt;.None, Optional&lt;T2&gt;.None, Optional&lt;T3&gt;.None); }
     /// 4-arg __aexit__ (async): analogous, with await on Enter/Exit calls.
     /// </summary>
-    private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, ContextManagerKind cmKind)
+    private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, IrWithItem irItem)
     {
-        bool isAsync = cmKind == ContextManagerKind.AsyncDunderProtocol;
+        bool isAsync = irItem.Kind == ContextManagerKind.AsyncDunderProtocol;
         var enterMethod = isAsync ? ProtocolConstants.AenterAsync : ProtocolConstants.Enter;
         var exitMethod = isAsync ? ProtocolConstants.AexitAsync : ProtocolConstants.Exit;
 
-        // Determine which __exit__ form was declared (1-arg vs 4-arg).
-        var exitMethodSymbol = TryGetExitMethod(item.ContextExpression, isAsync);
-        bool isFourArgExit = exitMethodSymbol != null && exitMethodSymbol.Parameters.Count == 4;
+        bool isSuppressionCapable = irItem.ExitShape == ContextManagerExitShape.SuppressionCapable;
+        var exitMethodSymbol = irItem.ExitMethod;
 
         var contextExpr = GenerateExpression(item.ContextExpression);
         var ctxVarName = GenerateTempVarName("ctx");
@@ -1186,9 +1183,9 @@ internal partial class RoslynEmitter
 
         var bodyBlock = innermost is BlockSyntax blk ? blk : Block(innermost);
 
-        if (isFourArgExit)
+        if (isSuppressionCapable)
         {
-            statements.Add(GenerateFourArgExitTry(ctxVarName, exitMethod, bodyBlock, isAsync, exitMethodSymbol!));
+            statements.Add(GenerateSuppressionCapableExitTry(ctxVarName, exitMethod, bodyBlock, isAsync, exitMethodSymbol!));
         }
         else
         {
@@ -1212,42 +1209,10 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Resolves the FunctionSymbol for the context manager's __exit__ (or __aexit__) method.
-    /// Returns null if the symbol cannot be resolved.
+    /// Generates the try/catch/finally block for a suppression-capable __exit__ (4 parameters).
+    /// See <see cref="GenerateWithDunderProtocol"/> for the emitted shape.
     /// </summary>
-    private FunctionSymbol? TryGetExitMethod(Expression contextExpression, bool isAsync)
-    {
-        var exprType = _context.SemanticInfo?.GetExpressionType(contextExpression);
-        if (exprType == null)
-            return null;
-
-        var typeSymbol = ExtractTypeSymbolForContextManager(exprType);
-        if (typeSymbol == null)
-            return null;
-
-        var exitName = isAsync ? DunderNames.Aexit : DunderNames.Exit;
-        return typeSymbol.Methods.FirstOrDefault(m => m.Name == exitName);
-    }
-
-    /// <summary>
-    /// Extracts the TypeSymbol underlying a SemanticType, unwrapping nullable/optional layers.
-    /// </summary>
-    private static TypeSymbol? ExtractTypeSymbolForContextManager(SemanticType type)
-    {
-        return type switch
-        {
-            UserDefinedType udt => udt.Symbol,
-            NullableType nullable => ExtractTypeSymbolForContextManager(nullable.UnderlyingType),
-            OptionalType optional => ExtractTypeSymbolForContextManager(optional.UnderlyingType),
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Generates the try/catch/finally block for the 4-arg __exit__ form. See
-    /// <see cref="GenerateWithDunderProtocol"/> for the emitted shape.
-    /// </summary>
-    private StatementSyntax GenerateFourArgExitTry(string ctxVarName, string exitMethod, BlockSyntax bodyBlock, bool isAsync, FunctionSymbol exitMethodSymbol)
+    private StatementSyntax GenerateSuppressionCapableExitTry(string ctxVarName, string exitMethod, BlockSyntax bodyBlock, bool isAsync, FunctionSymbol exitMethodSymbol)
     {
         var excVarName = GenerateTempVarName("exc");
         var ePrime = GenerateTempVarName("e");

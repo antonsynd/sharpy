@@ -1980,7 +1980,19 @@ internal partial class TypeChecker
             }
             else
             {
-                _semanticInfo.SetContextManagerKind(item.ContextExpression, cmKind.Value);
+                var exitShape = ContextManagerExitShape.Simple;
+                FunctionSymbol? exitMethod = null;
+                if (cmKind.Value is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
+                {
+                    var exitName = cmKind.Value == ContextManagerKind.AsyncDunderProtocol
+                        ? DunderNames.Aexit : DunderNames.Exit;
+                    var typeSymbol = GetTypeSymbolFromSemanticType(exprType);
+                    exitMethod = typeSymbol?.Methods.FirstOrDefault(m => m.Name == exitName);
+                    if (exitMethod != null && exitMethod.Parameters.Count == 4)
+                        exitShape = ContextManagerExitShape.SuppressionCapable;
+                }
+                _semanticInfo.SetContextManagerLowering(item.ContextExpression,
+                    new ContextManagerLowering(cmKind.Value, exitShape, exitMethod));
             }
 
             // Determine the type for the 'as' variable

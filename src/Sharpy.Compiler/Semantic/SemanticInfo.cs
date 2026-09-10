@@ -271,11 +271,10 @@ public class SemanticInfo : ISemanticQuery
     // (Disposable, DunderProtocol, or AsyncDisposable/AsyncDunderProtocol)
     //
     // TRANSPORT (E2 #1056): this fact now flows to codegen through the lowering IR
-    // (IrWithItem.Kind); the emitter reads the IR, never this dict. The dict is retained only as the
-    // lowering pass's input (the kind is resolved via CLR IDisposable/dunder-protocol inspection and
-    // cannot be recomputed post-type-check). Physical deletion + its MergeFrom line are deferred to
-    // the guardrail-retirement step (lowering-ir.md §6.4, post-E2).
-    private readonly ConcurrentDictionary<Expression, ContextManagerKind> _contextManagerKinds =
+    // (IrWithItem carries Kind, ExitShape, ExitMethod); the emitter reads the IR, never this dict.
+    // The dict is retained only as the lowering pass's input. Physical deletion + its MergeFrom line
+    // are deferred to the guardrail-retirement step (lowering-ir.md §6.4, post-E2).
+    private readonly ConcurrentDictionary<Expression, ContextManagerLowering> _contextManagerLowerings =
         new(ReferenceEqualityComparer.Instance);
 
     // Map with-item nodes to their 'as' variable symbols
@@ -1350,26 +1349,24 @@ public class SemanticInfo : ISemanticQuery
     public int IdentifierSymbolCount => _identifierSymbols.Count;
 
     /// <summary>
-    /// Records how a with-item's context expression should be handled at codegen time.
-    /// Keyed on the context expression (each with-item has a unique expression reference).
+    /// Records the materialized context-manager lowering for a with-item's context expression.
     /// </summary>
-    public void SetContextManagerKind(Expression contextExpr, ContextManagerKind kind)
+    public void SetContextManagerLowering(Expression contextExpr, ContextManagerLowering lowering)
     {
-        _contextManagerKinds[contextExpr] = kind;
+        _contextManagerLowerings[contextExpr] = lowering;
     }
 
     /// <summary>
-    /// Gets the context manager kind for a with-item's context expression.
+    /// Gets the context manager lowering for a with-item's context expression.
     /// Returns null if not recorded (defaults to Disposable in codegen).
     /// </summary>
     /// <remarks>
     /// Lowering-input only (E2 #1056): the lowering pass reads this to build
-    /// <c>IrWithItem.Kind</c>; code generation reads the IR, never this accessor. Renamed with the
-    /// <c>ForIr</c> suffix so nothing in <c>CodeGen/</c> can bind it.
+    /// <c>IrWithItem</c>; code generation reads the IR, never this accessor.
     /// </remarks>
-    public ContextManagerKind? GetContextManagerKindForIr(Expression contextExpr)
+    public ContextManagerLowering? GetContextManagerLoweringForIr(Expression contextExpr)
     {
-        return _contextManagerKinds.TryGetValue(contextExpr, out var kind) ? kind : null;
+        return _contextManagerLowerings.TryGetValue(contextExpr, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -1825,8 +1822,8 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._errorRecoveryNodes)
             _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);
 
-        foreach (var kvp in other._contextManagerKinds)
-            _contextManagerKinds.TryAdd(kvp.Key, kvp.Value);
+        foreach (var kvp in other._contextManagerLowerings)
+            _contextManagerLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._withItemSymbols)
             _withItemSymbols.TryAdd(kvp.Key, kvp.Value);
@@ -2055,6 +2052,31 @@ public enum ContextManagerKind
     /// <summary>Implements __aenter__/__aexit__ async dunder protocol — emit AenterAsync()/AexitAsync() calls.</summary>
     AsyncDunderProtocol
 }
+
+/// <summary>
+/// Describes whether a context manager's __exit__/__aexit__ can suppress exceptions.
+/// </summary>
+public enum ContextManagerExitShape
+{
+    /// <summary>1-parameter __exit__(self) or IDisposable — never suppresses.</summary>
+    Simple,
+
+    /// <summary>4-parameter __exit__(self, exc_type, exc_val, exc_tb) — may suppress.</summary>
+    SuppressionCapable
+}
+
+/// <summary>
+/// Materialized lowering fact for a with-item's context manager. Carries the protocol kind,
+/// the exit shape (1-param vs suppression-capable), and the resolved __exit__/__aexit__ method
+/// symbol so the emitter never inspects the type symbol directly (Rule 2).
+/// </summary>
+/// <param name="Kind">The context manager protocol (IDisposable, dunder, async variants).</param>
+/// <param name="ExitShape">Whether the __exit__ can suppress exceptions.</param>
+/// <param name="ExitMethod">The resolved __exit__/__aexit__ FunctionSymbol, or null for IDisposable.</param>
+public sealed record ContextManagerLowering(
+    ContextManagerKind Kind,
+    ContextManagerExitShape ExitShape,
+    FunctionSymbol? ExitMethod);
 
 /// <summary>
 /// The accessor codegen applies when reading a narrowed value at a specific read site. Each kind maps
