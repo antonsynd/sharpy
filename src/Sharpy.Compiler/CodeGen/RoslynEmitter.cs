@@ -110,6 +110,63 @@ internal partial class RoslynEmitter : ICodeEmitter
         return (sink.Declarations, sink.Evaluations);
     }
 
+    private ExpressionSyntax[] GenerateExpressionsInOrder(System.Collections.Generic.IReadOnlyList<Expression> operands)
+    {
+        if (operands.Count <= 1)
+        {
+            var single = new ExpressionSyntax[operands.Count];
+            for (int i = 0; i < operands.Count; i++)
+                single[i] = GenerateExpression(operands[i]);
+            return single;
+        }
+
+        var results = new ExpressionSyntax[operands.Count];
+        var capturedDecls = new List<StatementSyntax>[operands.Count];
+        var capturedEvals = new List<StatementSyntax>[operands.Count];
+
+        for (int i = 0; i < operands.Count; i++)
+        {
+            ExpressionSyntax expr = null!;
+            var (decls, evals) = WithSink(() => expr = GenerateExpression(operands[i]));
+            results[i] = expr;
+            capturedDecls[i] = decls;
+            capturedEvals[i] = evals;
+        }
+
+        var needsCapture = new bool[operands.Count];
+        for (int k = 1; k < operands.Count; k++)
+        {
+            if (capturedDecls[k].Count == 0 && capturedEvals[k].Count == 0)
+                continue;
+            for (int j = 0; j < k; j++)
+            {
+                if (!IsSideEffectFree(operands[j]))
+                    needsCapture[j] = true;
+            }
+        }
+
+        for (int i = 0; i < operands.Count; i++)
+        {
+            foreach (var decl in capturedDecls[i])
+                HoistDeclaration(decl);
+            foreach (var eval in capturedEvals[i])
+                HoistEvaluation(eval);
+
+            if (needsCapture[i])
+            {
+                var tempName = GenerateTempVarName("arg");
+                HoistEvaluation(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(tempName))
+                                .WithInitializer(EqualsValueClause(results[i]))))));
+                results[i] = IdentifierName(tempName);
+            }
+        }
+
+        return results;
+    }
+
     /// <summary>
     /// Pool of scratch statement buffers reused by <see cref="GenerateSuiteBlock"/> when
     /// building a <c>BlockSyntax</c>. Instance-owned: the emitter is single-threaded per

@@ -815,8 +815,10 @@ internal partial class RoslynEmitter
     {
         if (!NeedsParameterReordering(funcSymbol))
         {
-            // No reordering — use the existing positional + keyword pattern
-            var positionalArgs = GeneratePositionalArguments(call.Arguments, funcSymbol);
+            var preGenerated = call.Arguments.Length > 1
+                ? GenerateExpressionsInOrder(call.Arguments)
+                : null;
+            var positionalArgs = GeneratePositionalArguments(call.Arguments, funcSymbol, preGenerated);
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
             {
                 var csharpName = GetCSharpParameterName(kwarg.Name, funcSymbol);
@@ -1137,7 +1139,8 @@ internal partial class RoslynEmitter
 
     private IEnumerable<ArgumentSyntax> GeneratePositionalArguments(
         System.Collections.Immutable.ImmutableArray<Expression> arguments,
-        FunctionSymbol? funcSymbol = null)
+        FunctionSymbol? funcSymbol = null,
+        ExpressionSyntax[]? preGeneratedExprs = null)
     {
         // Positional parameter list (excluding self/cls) for target-typed argument
         // conversions (e.g., method group → Optional<delegate> needs an explicit cast).
@@ -1262,7 +1265,9 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var generated = GenerateExpression(arg);
+                var generated = preGeneratedExprs != null && argIndex < preGeneratedExprs.Length
+                    ? preGeneratedExprs[argIndex]
+                    : GenerateExpression(arg);
                 generated = ApplyIterableProjection(arg, generated);
                 if (positionalParams != null && !sawSpread
                     && argIndex < positionalParams.Count
