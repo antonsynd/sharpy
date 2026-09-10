@@ -19,8 +19,9 @@
 # only; see docs/deviations.yaml id: builtin-exception-python-surface) are a
 # refused-by-design verdict classified by the sweep itself — they never appear here.
 
-# #1625: Sharpy-own collection types — BuiltinRegistry.TryFindClrType returns SCG.List`1
-# when Sharpy.List`1 should win. Structural fix deferred; these are not CLR interop targets.
+# #1625: Sharpy-own collection types — TryFindClrType now rejects Sharpy-namespace
+# results (P4 resolution priority fix 2cc6e0667), so these Python-style member names
+# on Sharpy.List`1 are not reachable through CLR reflection at all.
 builtins::property::List`1.length::property             # #1625
 builtins::method::List`1.delete_at::method              # #1625
 builtins::method::List`1.get_item_unchecked::method     # #1625
@@ -29,4 +30,55 @@ builtins::method::List`1.count::method                  # #1625
 builtins::method::List`1.pop::method                    # #1625
 builtins::method::List`1.extend::method                 # #1625
 builtins::method::List`1.copy::method                   # #1625
+
+# #1625: Sharpy-internal types live in Sharpy namespaces and are correctly rejected by
+# TryFindClrType's Sharpy-namespace exclusion (P4 resolution priority fix 2cc6e0667).
+# These types are accessed through Sharpy's import system, not CLR reflection.
+builtins::property::TmpPathFixture.value::property                # #1625
+builtins::method::TmpPathFixture.dispose::method                  # #1625
+builtins::type::TmpPathFixture::match                             # #1625
+builtins::type::TmpPathFixture::annotate                          # #1625
+builtins::method::CapturedStderr.dispose::method                  # #1625
+builtins::method::CapturedStderr.getvalue::method                 # #1625
+builtins::type::CapturedStderr::match                             # #1625
+builtins::type::CapturedStderr::annotate                          # #1625
+builtins::method::CapturedOutput.dispose::method                  # #1625
+builtins::method::CapturedOutput.getvalue::method                 # #1625
+builtins::type::CapturedOutput::match                             # #1625
+builtins::type::CapturedOutput::annotate                          # #1625
+builtins::property::StatisticsError.stack_trace::property          # #1625
+builtins::property::StatisticsError.h_result::property             # #1625
+builtins::property::StatisticsError.source::property               # #1625
+builtins::property::StatisticsError.help_link::property            # #1625
+builtins::property::StatisticsError.inner_exception::property      # #1625
+builtins::property::StatisticsError.data::property                 # #1625
+builtins::property::StatisticsError.message::property              # #1625
+builtins::property::StatisticsError.target_site::property          # #1625
+builtins::method::StatisticsError.get_base_exception::method       # #1625
+builtins::type::StatisticsError::match                             # #1625
+builtins::type::StatisticsError::annotate                          # #1625
+builtins::property::SliceSpec.is_squeeze::property                 # #1625
+builtins::property::SliceSpec.start::property                      # #1625
+builtins::property::SliceSpec.step::property                       # #1625
+builtins::property::SliceSpec.stop::property                       # #1625
+builtins::type::SliceSpec::match                                   # #1625
+builtins::type::SliceSpec::annotate                                # #1625
+builtins::property::Attachment.content_type::property              # #1625
+builtins::property::Attachment.data::property                      # #1625
+builtins::property::Attachment.filename::property                  # #1625
+builtins::type::Attachment::match                                  # #1625
+builtins::type::Attachment::annotate                               # #1625
+builtins::property::CacheInfo.current_size::property               # #1625
+builtins::property::CacheInfo.hits::property                       # #1625
+builtins::property::CacheInfo.max_size::property                   # #1625
+builtins::property::CacheInfo.misses::property                     # #1625
+builtins::type::CacheInfo::match                                   # #1625
+builtins::type::CacheInfo::annotate                                # #1625
+builtins::method::ITzinfo.dst::method                              # #1625
+builtins::method::ITzinfo.tzname::method                           # #1625
+builtins::method::ITzinfo.utcoffset::method                        # #1625
+builtins::type::ITzinfo::match                                     # #1625
+builtins::type::ITzinfo::annotate                                  # #1625
+builtins::type::IInterpolation::match                              # #1625
+builtins::type::IInterpolation::annotate                           # #1625
 

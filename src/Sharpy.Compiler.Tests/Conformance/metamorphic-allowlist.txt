@@ -26,5 +26,13 @@
 # Parser/MatchExpressionBoundaryTests.cs and Integration/TestFixtures/pattern_matching/
 # match_expr_then_if.spy.
 #
-# The list is now empty: the compile-clean contract is fully enforced over every cell. Do not add an
-# entry without an issue reference, and delete it in the same change that fixes the issue.
+# P4 DP drain (#1678): CLR method groups in value position now fire SPY0336. ParensWrapCallee wraps
+# the callee in parens, moving it from call to value position — correct refusal, but the transform
+# produces an artificial value-position reference that the original fixture never had.
+ParensWrapCallee::interop/clr_type_in_class_field #1678
+ParensWrapCallee::interop/clr_static_call_enum_argument_1573 #1678
+ParensWrapCallee::interop/clr_static_call_disambiguated_1569 #1678
+ParensWrapCallee::interop/clr_static_call_ambiguous_arity_1451 #1678
+ParensWrapCallee::interop/clr_enum_as_argument #1678
+ParensWrapCallee::basics/backtick_dotted_import #1678
+ParensWrapCallee::decorators/bracket_attr_custom_reflection #1678

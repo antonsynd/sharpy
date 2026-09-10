@@ -244,13 +244,15 @@ public class TypeParameterRemappingTests : IDisposable
         var appendMethod = listType.Methods.FirstOrDefault(m => m.Name == "append");
         Assert.NotNull(appendMethod);
         Assert.Single(appendMethod.Parameters);
-        Assert.True(ReferenceEquals(sharedT0, appendMethod.Parameters[0].Type),
+        var appendParamType = UnwrapNullable(appendMethod.Parameters[0].Type);
+        Assert.True(ReferenceEquals(sharedT0, appendParamType),
             "append(item) parameter type should be shared T0 instance");
 
         // Find pop method - its return type should be T0
         var popMethod = listType.Methods.FirstOrDefault(m => m.Name == "pop");
         Assert.NotNull(popMethod);
-        Assert.True(ReferenceEquals(sharedT0, popMethod.ReturnType),
+        var popReturnType = UnwrapNullable(popMethod.ReturnType);
+        Assert.True(ReferenceEquals(sharedT0, popReturnType),
             "pop() return type should be shared T0 instance");
     }
 
@@ -276,9 +278,14 @@ public class TypeParameterRemappingTests : IDisposable
 
         var getWithDefault = getMethods.FirstOrDefault(m => m.Parameters.Count == 2);
         Assert.NotNull(getWithDefault);
-        Assert.True(ReferenceEquals(sharedT0, getWithDefault.Parameters[0].Type),
+        var getKeyType = UnwrapNullable(getWithDefault.Parameters[0].Type);
+        Assert.True(ReferenceEquals(sharedT0, getKeyType),
             "get(key) first param should be shared T0");
-        Assert.True(ReferenceEquals(sharedT1, getWithDefault.Parameters[1].Type),
+        var getDefaultType = UnwrapNullable(getWithDefault.Parameters[1].Type);
+        Assert.True(ReferenceEquals(sharedT1, getDefaultType),
             "get(key, default) second param should be shared T1");
     }
+
+    private static SemanticType UnwrapNullable(SemanticType type)
+        => type is NullableType nt ? nt.UnderlyingType : type;
 }

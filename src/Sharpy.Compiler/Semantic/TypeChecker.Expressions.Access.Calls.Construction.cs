@@ -118,7 +118,8 @@ internal partial class TypeChecker
                 .Where(c => !c.IsGenericMethodDefinition)
                 .ToArray();
             if (ctors.Length > 0 && !call.Arguments.Any(a => a is SpreadElement)
-                && call.KeywordArguments.Length == 0 && call.Arguments.Length == argTypes.Count)
+                && call.KeywordArguments.Length == 0 && call.Arguments.Length == argTypes.Count
+                && !(ctorClrType.IsValueType && argTypes.Count == 0))
             {
                 var fittingCtors = ctors
                     .Where(c => ClrConstructorArityFits(c, argTypes.Count))

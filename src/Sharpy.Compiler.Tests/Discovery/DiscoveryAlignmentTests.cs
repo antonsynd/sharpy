@@ -125,9 +125,11 @@ public class DiscoveryAlignmentTests : IDisposable
         Assert.Single(getOverloads[0].Parameters);
         Assert.IsType<OptionalType>(getOverloads[0].ReturnType);
 
-        // 2-param overload: get(key, default) -> V
+        // 2-param overload: get(key, default) -> V (possibly nullable after NRT mapping)
         Assert.Equal(2, getOverloads[1].Parameters.Count);
-        Assert.IsType<TypeParameterType>(getOverloads[1].ReturnType);
+        var getReturnType = getOverloads[1].ReturnType;
+        Assert.True(getReturnType is TypeParameterType || getReturnType is NullableType { UnderlyingType: TypeParameterType },
+            $"Expected TypeParameterType or NullableType<TypeParameterType>, got {getReturnType.GetType().Name}");
     }
 
     [Fact]

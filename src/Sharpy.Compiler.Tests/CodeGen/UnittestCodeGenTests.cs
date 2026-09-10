@@ -169,7 +169,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>(x)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>((object?)x)");
     }
 
     [Fact]
@@ -250,7 +250,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>(x)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>((object?)x)");
     }
 
     [Fact]
@@ -286,7 +286,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False(x is global::Sharpy.IDict)");
+        code.Should().Contain("Xunit.Assert.False((object?)x is global::Sharpy.IDict)");
     }
 
     [Fact]
@@ -1031,7 +1031,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>(x)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>((object?)x)");
         code.Should().NotContain("IsType");
     }
 
@@ -1048,7 +1048,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False(x is int)");
+        code.Should().Contain("Xunit.Assert.False((object?)x is int)");
     }
 
     [Fact]
@@ -1082,7 +1082,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False(x is global::System.ValueTuple<int, string>)");
+        code.Should().Contain("Xunit.Assert.False((object?)x is global::System.ValueTuple<int, string>)");
     }
 
     #endregion

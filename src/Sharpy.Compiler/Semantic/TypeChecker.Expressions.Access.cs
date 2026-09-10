@@ -1254,9 +1254,14 @@ internal partial class TypeChecker
                 return field.Type;
 
             case Discovery.ClrMemberResolution.InconclusiveResult:
-                // The bridge cannot express the member (enum, open generic, char, interface) —
-                // typed UnmappedClrType instead of Unknown (#1678, R-Q). Assignable nowhere except
-                // object/re-interop, which is the honest answer.
+                // The bridge cannot express the member's TYPE (enum, open generic, char,
+                // interface) but the member itself exists. In CALL position the call seam
+                // resolves the method from the raw MethodInfo — Inconclusive only means the
+                // return type cannot be mapped, not that the member is absent (#1678).
+                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                    return null;
+                // In VALUE position, UnmappedClrType is the honest answer — assignable
+                // nowhere except object/re-interop.
                 return new UnmappedClrType { ClrTypeName = memberAccess.Member };
 
             default:
