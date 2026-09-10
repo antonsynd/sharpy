@@ -10,8 +10,10 @@ class Node:
 
 def main():
     head: Node? = Some(Node(1))
-    head.unwrap().next = Some(Node(2))
-    head.unwrap().next.unwrap().next = Some(Node(3))
+    n2: Node? = Some(Node(2))
+    head.unwrap().next = n2
+    n3: Node? = Some(Node(3))
+    head.unwrap().next.unwrap().next = n3
 
     current: Node? = head
     while current is not None:

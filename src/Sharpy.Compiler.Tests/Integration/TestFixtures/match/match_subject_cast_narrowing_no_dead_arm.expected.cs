@@ -24,7 +24,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
     public static void FromIdentifier(object r)
     {
 #line (25, 5) - (25, 33) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!(r is double))
+        if (!((object?)r is double))
 #line hidden
         {
             throw new global::Sharpy.AssertionError();
@@ -50,7 +50,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
     public static void FromIndex(Sharpy.Dict<string, object> d)
     {
 #line (35, 5) - (35, 40) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!(d["key"] is double))
+        if (!((object?)d["key"] is double))
 #line hidden
         {
             throw new global::Sharpy.AssertionError();
@@ -76,7 +76,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
     public static void FromMember(Holder h)
     {
 #line (43, 5) - (43, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!(h.Value is double))
+        if (!((object?)h.Value is double))
 #line hidden
         {
             throw new global::Sharpy.AssertionError();
@@ -102,7 +102,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
     public static string FromMatchExpression(object r)
     {
 #line (51, 5) - (51, 33) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!(r is double))
+        if (!((object?)r is double))
 #line hidden
         {
             throw new global::Sharpy.AssertionError();

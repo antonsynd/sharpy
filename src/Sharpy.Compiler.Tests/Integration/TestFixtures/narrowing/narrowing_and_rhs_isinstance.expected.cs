@@ -34,14 +34,14 @@ public static partial class NarrowingAndRhsIsinstance
     public static bool IsBarkingDog(Animal a)
     {
 #line (15, 5) - (15, 54) 8 "narrowing_and_rhs_isinstance.spy"
-        return a is Dog && ((Dog)a!).Bark() == "woof";
+        return (object?)a is Dog && ((Dog)a!).Bark() == "woof";
 #line hidden
     }
 
     public static string Describe(Animal a)
     {
 #line (18, 5) - (18, 58) 8 "narrowing_and_rhs_isinstance.spy"
-        bool ok = a is Dog && ((Dog)a!).Bark() == "woof";
+        bool ok = (object?)a is Dog && ((Dog)a!).Bark() == "woof";
 #line (19, 5) - (20, 30) 8 "narrowing_and_rhs_isinstance.spy"
         if (ok)
 #line hidden

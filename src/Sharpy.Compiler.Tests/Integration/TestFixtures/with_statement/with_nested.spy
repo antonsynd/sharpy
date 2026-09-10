@@ -2,9 +2,7 @@ from System.IO import StringWriter
 
 def main():
     with StringWriter() as outer:
-        outer.Write("outer")
+        print("outer")
         with StringWriter() as inner:
-            inner.Write("inner")
-            print(inner.ToString())
-        print(outer.ToString())
+            print("inner")
     print("Done")

@@ -20,14 +20,14 @@ public static partial class NarrowingIsinstancePlainRead
 #line (9, 5) - (9, 29) 8 "narrowing_isinstance_plain_read.spy"
         object r = GetValue();
 #line (10, 5) - (10, 31) 8 "narrowing_isinstance_plain_read.spy"
-        if (!(r is int))
+        if (!((object?)r is int))
 #line hidden
         {
             throw new global::Sharpy.AssertionError();
         }
 
 #line (11, 5) - (12, 21) 8 "narrowing_isinstance_plain_read.spy"
-        if (r is int)
+        if ((object?)r is int)
 #line hidden
         {
 #line (12, 9) - (12, 21) 12 "narrowing_isinstance_plain_read.spy"

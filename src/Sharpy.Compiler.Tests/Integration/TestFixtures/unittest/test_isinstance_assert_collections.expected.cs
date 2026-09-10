@@ -33,7 +33,7 @@ public partial class TestIsinstanceAssertCollectionsTests
             }
         };
 #line (4, 5) - (4, 32) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>(x);
+        Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>((object?)x);
 #line hidden
     }
 
@@ -49,7 +49,7 @@ public partial class TestIsinstanceAssertCollectionsTests
             3
         };
 #line (9, 5) - (9, 32) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.IsAssignableFrom<global::Sharpy.IList>(x);
+        Xunit.Assert.IsAssignableFrom<global::Sharpy.IList>((object?)x);
 #line hidden
     }
 
@@ -65,7 +65,7 @@ public partial class TestIsinstanceAssertCollectionsTests
             3
         };
 #line (14, 5) - (14, 31) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.IsAssignableFrom<global::Sharpy.ISet>(x);
+        Xunit.Assert.IsAssignableFrom<global::Sharpy.ISet>((object?)x);
 #line hidden
     }
 
@@ -82,7 +82,7 @@ public partial class TestIsinstanceAssertCollectionsTests
             }
         };
 #line (20, 5) - (20, 55) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.True(x is global::Sharpy.IDict || x is global::Sharpy.IList);
+        Xunit.Assert.True((object?)x is global::Sharpy.IDict || (object?)x is global::Sharpy.IList);
 #line hidden
     }
 
@@ -92,7 +92,7 @@ public partial class TestIsinstanceAssertCollectionsTests
 #line (24, 5) - (24, 25) 8 "test_isinstance_assert_collections.spy"
         object x = "hello";
 #line (25, 5) - (25, 36) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.False(x is global::Sharpy.IDict);
+        Xunit.Assert.False((object?)x is global::Sharpy.IDict);
 #line hidden
     }
 
@@ -102,7 +102,7 @@ public partial class TestIsinstanceAssertCollectionsTests
 #line (30, 5) - (30, 25) 8 "test_isinstance_assert_collections.spy"
         object x = "hello";
 #line (31, 5) - (31, 63) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.True(!(x is global::Sharpy.IList) && !(x is global::Sharpy.ISet));
+        Xunit.Assert.True(!((object?)x is global::Sharpy.IList) && !((object?)x is global::Sharpy.ISet));
 #line hidden
     }
 
@@ -117,7 +117,7 @@ public partial class TestIsinstanceAssertCollectionsTests
             2
         };
 #line (37, 5) - (37, 77) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.True(x is global::Sharpy.IDict || x is int || x is global::Sharpy.IList);
+        Xunit.Assert.True((object?)x is global::Sharpy.IDict || (object?)x is int || (object?)x is global::Sharpy.IList);
 #line hidden
     }
 }

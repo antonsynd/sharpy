@@ -26,7 +26,7 @@ public partial class TestIsinstanceAssertTests
 #line (3, 5) - (3, 20) 8 "test_isinstance_assert.spy"
         object x = 42;
 #line (4, 5) - (4, 31) 8 "test_isinstance_assert.spy"
-        Xunit.Assert.IsAssignableFrom<int>(x);
+        Xunit.Assert.IsAssignableFrom<int>((object?)x);
 #line hidden
     }
 
@@ -36,7 +36,7 @@ public partial class TestIsinstanceAssertTests
 #line (8, 5) - (8, 25) 8 "test_isinstance_assert.spy"
         object x = "hello";
 #line (9, 5) - (9, 35) 8 "test_isinstance_assert.spy"
-        Xunit.Assert.False(x is int);
+        Xunit.Assert.False((object?)x is int);
 #line hidden
     }
 
