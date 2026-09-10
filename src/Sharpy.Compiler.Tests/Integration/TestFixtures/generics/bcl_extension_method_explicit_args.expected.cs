@@ -12,7 +12,7 @@ public static partial class BclExtensionMethodExplicitArgs
     public static void Main()
     {
 #line (11, 5) - (11, 22) 8 "bcl_extension_method_explicit_args.spy"
-        var lst = new System.Collections.Generic.List<int>();
+        var lst = new global::System.Collections.Generic.List<int>();
 #line (12, 5) - (12, 15) 8 "bcl_extension_method_explicit_args.spy"
         lst.Add(3);
 #line (13, 5) - (13, 15) 8 "bcl_extension_method_explicit_args.spy"

@@ -12,7 +12,7 @@ public static partial class UnreachableAfterRaise
     public static int Foo()
     {
 #line (2, 5) - (2, 30) 8 "unreachable_after_raise.spy"
-        throw new Exception("error");
+        throw new global::System.Exception("error");
 #line (3, 5) - (3, 14) 8 "unreachable_after_raise.spy"
         return 1;
 #line hidden
@@ -28,7 +28,7 @@ public static partial class UnreachableAfterRaise
             Foo();
 #line hidden
         }
-        catch (Exception e)
+        catch (global::System.Exception e)
         {
 #line (9, 9) - (9, 24) 12 "unreachable_after_raise.spy"
             global::Sharpy.Builtins.Print("caught");

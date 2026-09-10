@@ -9,7 +9,7 @@ using Attribute = global::System.Attribute;
 
 public static partial class BracketAttrCustomReflection
 {
-    public class AuthorAttribute : System.Attribute
+    public class AuthorAttribute : global::System.Attribute
     {
         public string Name;
         public int Year;
@@ -38,7 +38,7 @@ public static partial class BracketAttrCustomReflection
 #line (20, 5) - (20, 23) 8 "bracket_attr_custom_reflection.spy"
         var t = obj.GetType();
 #line (21, 5) - (21, 47) 8 "bracket_attr_custom_reflection.spy"
-        var attrs = Attribute.GetCustomAttributes(t);
+        var attrs = global::System.Attribute.GetCustomAttributes(t);
 #line (22, 5) - (26, 31) 8 "bracket_attr_custom_reflection.spy"
         foreach (var __loopVar_0 in attrs)
 #line hidden

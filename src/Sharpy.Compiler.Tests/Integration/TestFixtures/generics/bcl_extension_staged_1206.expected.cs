@@ -12,7 +12,7 @@ public static partial class BclExtensionStaged1206
     public static void Main()
     {
 #line (10, 5) - (10, 34) 8 "bcl_extension_staged_1206.spy"
-        System.Collections.Generic.List<int> lst = new System.Collections.Generic.List<int>();
+        global::System.Collections.Generic.List<int> lst = new global::System.Collections.Generic.List<int>();
 #line (11, 5) - (11, 15) 8 "bcl_extension_staged_1206.spy"
         lst.Add(3);
 #line (12, 5) - (12, 15) 8 "bcl_extension_staged_1206.spy"

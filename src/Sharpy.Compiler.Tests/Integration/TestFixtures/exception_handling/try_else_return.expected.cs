@@ -27,7 +27,7 @@ public static partial class TryElseReturn
 #line hidden
                 __trySucceeded_0 = true;
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
 #line (8, 9) - (8, 24) 16 "try_else_return.spy"
                 return "error";

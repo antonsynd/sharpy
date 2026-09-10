@@ -9,7 +9,7 @@ using global::Sharpy;
 
 public static partial class ClrGenericBaseForwarders1408
 {
-    public class IntList : System.Collections.Generic.List<int>
+    public class IntList : global::System.Collections.Generic.List<int>
     {
         public IntList() : base()
         {
@@ -19,7 +19,7 @@ public static partial class ClrGenericBaseForwarders1408
         {
         }
 
-        public IntList(System.Collections.Generic.IEnumerable<int> collection) : base(collection)
+        public IntList(global::System.Collections.Generic.IEnumerable<int> collection) : base(collection)
         {
         }
     }
@@ -31,7 +31,7 @@ public static partial class ClrGenericBaseForwarders1408
 #line (27, 5) - (27, 13) 8 "clr_generic_base_forwarders_1408.spy"
         m.Add(1);
 #line (28, 5) - (28, 23) 8 "clr_generic_base_forwarders_1408.spy"
-        System.Collections.Generic.List<int> ok = m;
+        global::System.Collections.Generic.List<int> ok = m;
 #line (29, 5) - (29, 20) 8 "clr_generic_base_forwarders_1408.spy"
         global::Sharpy.Builtins.Print(ok.Count);
 #line (31, 5) - (31, 33) 8 "clr_generic_base_forwarders_1408.spy"

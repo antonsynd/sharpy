@@ -22,7 +22,7 @@ public static partial class UnusedVariableInTryElse
 #line hidden
                 __trySucceeded_0 = true;
             }
-            catch (Exception e)
+            catch (global::System.Exception e)
             {
 #line (6, 9) - (6, 24) 16 "unused_variable_in_try_else.spy"
                 global::Sharpy.Builtins.Print("caught");

@@ -19,7 +19,7 @@ public static partial class UnusedExceptVariable
             global::Sharpy.Builtins.Print("trying");
 #line hidden
         }
-        catch (Exception e)
+        catch (global::System.Exception e)
         {
 #line (6, 9) - (6, 24) 12 "unused_except_variable.spy"
             global::Sharpy.Builtins.Print("caught");

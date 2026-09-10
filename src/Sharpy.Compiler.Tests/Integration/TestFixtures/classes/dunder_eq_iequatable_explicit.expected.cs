@@ -8,7 +8,7 @@ using global::Sharpy;
 
 public static partial class DunderEqIequatableExplicit
 {
-    public class Foo : System.IEquatable<Foo>
+    public class Foo : global::System.IEquatable<Foo>
     {
         public int Value;
         public virtual bool Equals(Foo other)
