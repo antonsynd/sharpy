@@ -6421,10 +6421,11 @@ internal partial class TypeChecker
             return;
         }
 
-        // A static call through a type name (`Console.write_line(...)`) reaches a different resolver
-        // with a different receiver; this seam is about instance members.
-        if (memberAccess.Object is Identifier staticId
-            && _semanticInfo.GetIdentifierSymbol(staticId) is TypeSymbol)
+        // A static call through a type name (`Console.write_line(...)`, `system.io.Directory.enumerate_files(...)`)
+        // reaches a different resolver with a different receiver; this seam is about instance members.
+        if (_semanticInfo.IsTypeReference(memberAccess.Object)
+            || (memberAccess.Object is Identifier staticId
+                && _semanticInfo.GetIdentifierSymbol(staticId) is TypeSymbol))
         {
             return;
         }
@@ -6557,8 +6558,13 @@ internal partial class TypeChecker
             return null;
         }
 
-        if (memberAccess.Object is not Identifier typeName
-            || _semanticInfo.GetIdentifierSymbol(typeName) is not TypeSymbol { ClrType: { } clrType })
+        TypeSymbol? receiverTypeSymbol = memberAccess.Object switch
+        {
+            Identifier id => _semanticInfo.GetIdentifierSymbol(id) as TypeSymbol,
+            MemberAccess ma => TryResolveTypeSymbolFromMemberAccess(ma),
+            _ => null
+        };
+        if (receiverTypeSymbol?.ClrType is not { } clrType)
         {
             return null;
         }
