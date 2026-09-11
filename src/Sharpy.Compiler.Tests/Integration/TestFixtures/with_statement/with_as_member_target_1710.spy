@@ -1,7 +1,8 @@
 # A `with … as` target is a WRITE, but a NON-identifier target reads its base: `as p.x` stores into
 # p.x and therefore reads p. A bare-declared `p` is reported at the TARGET, not only at a later use
 # (#1710). There is deliberately no read of `p` after the with: two SPY0600s with the same message
-# would let the .error matcher bind the wrong one.
+# would let the .error matcher bind the wrong one. The name is short on purpose — vstest truncates a
+# long theory argument in the display name, and a `DisplayName~<name>` filter then matches nothing.
 class Holder:
     x: int
 
