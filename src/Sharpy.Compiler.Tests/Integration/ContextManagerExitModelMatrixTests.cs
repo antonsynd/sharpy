@@ -194,17 +194,17 @@ public class ContextManagerExitModelMatrixTests : IntegrationTestBase
     private static IEnumerable<Cell> GenerateCells()
     {
         foreach (var shape in Enum.GetValues<Shape>())
-        foreach (var exit in Enum.GetValues<BodyExit>())
-        foreach (var host in Enum.GetValues<Host>())
-        foreach (var ret in Enum.GetValues<FunctionReturn>())
-        {
-            if (NotApplicable(shape, exit, host, ret) != null)
-                continue;
+            foreach (var exit in Enum.GetValues<BodyExit>())
+                foreach (var host in Enum.GetValues<Host>())
+                    foreach (var ret in Enum.GetValues<FunctionReturn>())
+                    {
+                        if (NotApplicable(shape, exit, host, ret) != null)
+                            continue;
 
-            var label = $"{Label(shape)}.{Label(exit)}.{Label(host)}.{Label(ret)}";
-            yield return new Cell(label, BuildSource(shape, exit, host, ret),
-                ExpectedTrace(shape, exit, host, ret), RefusalCode(shape, exit, host, ret));
-        }
+                        var label = $"{Label(shape)}.{Label(exit)}.{Label(host)}.{Label(ret)}";
+                        yield return new Cell(label, BuildSource(shape, exit, host, ret),
+                            ExpectedTrace(shape, exit, host, ret), RefusalCode(shape, exit, host, ret));
+                    }
     }
 
     private static string Label(Shape s) => s switch

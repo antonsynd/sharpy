@@ -496,7 +496,7 @@ public class ClrMemberFidelityMatrixTests
             "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    b: bool = xs.pop(0)\n",
             Expect.TypeMismatchNonNullable);
 
-                // ── NESTED type argument: ProcessStartInfo.environment is IDictionary<string, string?> ──
+        // ── NESTED type argument: ProcessStartInfo.environment is IDictionary<string, string?> ──
         // The N/A this replaces said the top-level state was read "by design". It was the defect
         // (#1847): a member whose declared nullability sits one level down came back as the
         // non-nullable type, and the faithful spelling a caller must write was then refused by
@@ -521,7 +521,7 @@ public class ClrMemberFidelityMatrixTests
                 "p = ProcessStartInfo()\n    x: bool = p.argument_list"),
             Expect.TypeMismatchNonNullable);
 
-                // ── User class INHERITING a CLR type: class IntList(List[int]) ──
+        // ── User class INHERITING a CLR type: class IntList(List[int]) ──
 
         yield return new Cell("IntList(List[int]).count-correct-pythonic",
             SrcInherited("v = IntList()\n    v.add(1)\n    n: int = v.count"), Expect.Compiles);
