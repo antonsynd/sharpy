@@ -2066,14 +2066,19 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// reported as a runtime divergence (the harness's own third option: "a harness/subset gap
     /// (tighten the filter)").
     ///
-    /// <para>Narrow on purpose: only CPython's two "has no attribute" phrasings, not
-    /// <c>AttributeError</c> in general. A REAL divergence here would be Sharpy and CPython
-    /// disagreeing about a member both of them have, which cannot produce this message.</para>
+    /// <para>Narrow on purpose, and narrowed AGAIN after measurement: only the TYPE OBJECT phrasing
+    /// (<c>type object 'int' has no attribute 'max_value'</c>), which is a STATIC receiver — a CLR
+    /// static member reached through a builtin alias. The INSTANCE phrasing
+    /// (<c>'str' object has no attribute 'reverse'</c>) is deliberately NOT skipped: the first
+    /// version of this arm caught it too, and `bare_clr_sequence_display_1453` — an allowlisted
+    /// divergence someone triaged by hand — silently turned from Divergent into Skip, which the
+    /// ratchet then reported as a stale entry. A filter that drains someone else's allowlist entry by
+    /// making a cell disappear is widening, whatever it is called.</para>
     /// </summary>
     private static bool ReferencesAttributeMissingInPython(string stderr)
         => stderr.Contains("AttributeError", StringComparison.Ordinal)
-           && (stderr.Contains("has no attribute", StringComparison.Ordinal)
-               || stderr.Contains("object has no attribute", StringComparison.Ordinal));
+           && stderr.Contains("type object ", StringComparison.Ordinal)
+           && stderr.Contains("has no attribute", StringComparison.Ordinal);
 
     /// <summary>Deterministic (process-independent) 32-bit FNV-1a hash for stable subsampling.</summary>
     private static uint StableHash(string s)
