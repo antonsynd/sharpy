@@ -787,6 +787,14 @@ internal partial class TypeChecker
     /// guess: an error recovery, or a lambda whose types are still being inferred and which Roslyn
     /// has delegate information for that this seam lacks (#1569).
     /// </summary>
+    /// <remarks>
+    /// An argument the bridge collapsed to <c>object</c> (<see cref="UnmappedClrType"/>) counts as
+    /// unadjudicable for the SET, not just for its own formal. It accepts every formal, so it cannot
+    /// discriminate between them — and a set nothing can discriminate is not an ambiguity, it is a
+    /// question this seam cannot answer: `Convert.to_int32(finfo.Attributes)`, whose enum-typed
+    /// argument the member resolver declines to type, would otherwise be SPY0601 between six
+    /// overloads C# picks one of.
+    /// </remarks>
     private bool ClrCallCannotAdjudicate(ClrCallArguments args)
     {
         for (int ordinal = 0; ordinal < args.Positional.Count; ordinal++)
@@ -812,7 +820,8 @@ internal partial class TypeChecker
     }
 
     private static bool ClrArgumentIsUnadjudicable(SemanticType type)
-        => type is UnknownType || (type is FunctionType fn && fn.HasUnresolvedTypes());
+        => type is UnknownType or UnmappedClrType
+           || (type is FunctionType fn && fn.HasUnresolvedTypes());
 
     // ---------------------------------------------------------------------------------------
     // The post-selection argument check

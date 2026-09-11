@@ -6629,8 +6629,15 @@ internal partial class TypeChecker
 
         foreach (var argument in binding.Arguments)
         {
-            if (argument.Formal.ClrType != typeof(char) || argument.Node == null)
+            // The row is the `str` -> `char` rule specifically. An argument of any other type — in
+            // particular one the bridge collapsed to `object`, as the stdlib's
+            // `trim_end(Path.DirectorySeparatorChar, ...)` arguments are — is the general check's,
+            // which treats that collapse as the non-fact it is.
+            if (argument.Formal.ClrType != typeof(char) || argument.Node == null
+                || !argument.Type.Equals(SemanticType.Str))
+            {
                 continue;
+            }
 
             if (argument.Ordinal is { } ordinal)
                 indices.Add(ordinal);
