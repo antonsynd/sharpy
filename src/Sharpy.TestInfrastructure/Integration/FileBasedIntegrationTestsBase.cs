@@ -96,9 +96,9 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
 
     /// <summary>
     /// Asserts a fixture's outcome against its sidecars: <c>.runtime-error</c> (compiles, then fails
-    /// at runtime), <c>.error</c> (compilation must fail, optionally at a stated
-    /// <c>@line:col</c>), else <c>.expected</c> stdout — plus the <c>.expected.cs</c> snapshot and
-    /// <c>.warning</c> checks. Every harness that drives fixtures shares this one method so the arms
+    /// at runtime), <c>.error</c> (compilation must fail, optionally with a stated
+    /// <c>SPYnnnn:</c> code and/or at a stated <c>@line:col</c>), else <c>.expected</c> stdout —
+    /// plus the <c>.expected.cs</c> snapshot and <c>.warning</c> checks. Every harness that drives fixtures shares this one method so the arms
     /// cannot drift in what "passing" means (#1171); an arm differs only in how it compiles.
     /// </summary>
     /// <param name="verifyCSharpSnapshot">
@@ -199,6 +199,17 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
                 }
 
                 var expectedLine = expectation.Text;
+
+                // An optional leading `SPYnnnn: ` pins the diagnostic's CODE, which the message
+                // text alone cannot express — CompilationErrors carries `d.Message`, and a
+                // Sharpy message never contains its own code (#1827). The prefix was verified
+                // unused across all existing sidecars before it was chosen, so no fixture
+                // changes meaning.
+                var codeMatch = Regex.Match(expectedLine, @"^(SPY\d{4}):\s*(.*)$");
+                var expectedCode = codeMatch.Success ? codeMatch.Groups[1].Value : null;
+                if (expectedCode != null)
+                    expectedLine = codeMatch.Groups[2].Value.Trim();
+
                 var locationMatch = Regex.Match(expectedLine, @"^(.+?)\s+@(\d+):(\d+)$");
                 if (locationMatch.Success)
                 {
@@ -209,11 +220,14 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
                     Assert.Contains(messagePattern, actualErrors, StringComparison.OrdinalIgnoreCase);
 
                     var matchingDiag = result.RawDiagnostics.FirstOrDefault(d =>
-                        d.Message.Contains(messagePattern, StringComparison.OrdinalIgnoreCase));
+                        d.Message.Contains(messagePattern, StringComparison.OrdinalIgnoreCase)
+                        && (expectedCode == null || d.Code == expectedCode));
 
                     Assert.True(matchingDiag != null,
-                        $"No raw diagnostic found matching '{messagePattern}'. " +
-                        $"RawDiagnostics count: {result.RawDiagnostics.Count}");
+                        $"No raw diagnostic found matching '{messagePattern}'"
+                        + (expectedCode == null ? "" : $" with code {expectedCode}")
+                        + ". RawDiagnostics: "
+                        + string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message)));
 
                     int? actualLine = null;
                     int? actualColumn = null;
@@ -236,6 +250,16 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
 
                     Assert.Equal(expectedLineNum, actualLine!.Value);
                     Assert.Equal(expectedColumn, actualColumn ?? 0);
+                }
+                else if (expectedCode != null)
+                {
+                    Assert.Contains(expectedLine, actualErrors, StringComparison.OrdinalIgnoreCase);
+                    Assert.True(
+                        result.RawDiagnostics.Any(d => d.Code == expectedCode
+                            && d.Message.Contains(expectedLine, StringComparison.OrdinalIgnoreCase)),
+                        $"No diagnostic with code {expectedCode} matching '{expectedLine}'. "
+                        + "RawDiagnostics: "
+                        + string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message)));
                 }
                 else
                 {
@@ -347,6 +371,13 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
     ///   <item><c>!some text</c> — that text must NOT appear in any diagnostic.</item>
     ///   <item><c>!count 1</c> — exactly one error diagnostic, no more.</item>
     /// </list>
+    ///
+    /// <para>A POSITIVE line may additionally lead with <c>SPYnnnn: </c>, which pins the
+    /// diagnostic's CODE (#1827). The code is not expressible in the message text: the harness
+    /// matches against <c>CompilationErrors</c>, which is <c>d.Message</c>, and a Sharpy message
+    /// never contains its own code — so "SPY0234 at the keyword" and "SPY0354 at the call"
+    /// satisfy the same wording-based sidecar. The prefix is handled where the line is MATCHED,
+    /// not here, because it composes with the <c>@line:col</c> form.</para>
     ///
     /// <para>The <c>!</c> sigil was verified unused across every existing <c>.error</c> and
     /// <c>.runtime-error</c> sidecar before it was chosen, so no fixture changes meaning. A line
