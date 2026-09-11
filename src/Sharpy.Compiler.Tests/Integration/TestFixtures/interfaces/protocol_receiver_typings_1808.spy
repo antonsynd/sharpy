@@ -4,8 +4,11 @@
 #     while len/bool/if/for/in/[] on the same receiver all worked;
 #   - a GENERIC HOST declaring __len__ was refused at `if b:` while `bool(b)` ran (the #1808
 #     divergence surviving on the host axis).
-# The fourth typing — a receiver TYPED as `IEnumerable[int]` — still refuses `in` and is NOT in this
-# fixture: see #1860.
+# Two typings are NOT in this fixture because they are still red, each with its issue:
+#   - a receiver TYPED as `IEnumerable[int]` still refuses `in` (#1860);
+#   - a GENERIC host in an `ISized` SLOT (`s: ISized = Box[int](6)`) is SPY0220, while the
+#     non-generic host in the same slot runs and `len(Box[int](6))` runs — the assignability half
+#     of the host axis, #1746's residue (#1865). The ROUTE half is covered below.
 # Output verified against python3 for the reversed cell (`list(reversed([1, 2]))` -> `[2, 1]`);
 # truthiness follows Python's "empty is falsy" rule through __len__.
 class Bag:
@@ -30,7 +33,27 @@ class Box[T]:
     def __len__(self) -> int:
         return self.n
 
+class Sized:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [1, 2, 3]
+
+    def __len__(self) -> int:
+        return len(self.items)
+
 def main() -> None:
+    # The receiver typed as the PROTOCOL INTERFACE itself — #1808's headline cell, and the one
+    # the round's audit found untested ("m22 VACUOUS"). An interface's GetInterfaces() never
+    # contains itself, so this works only because the membership authority also matches the type's
+    # OWN identity. The two existing `: ISized` fixtures pass a CONCRETE class to an ISized
+    # PARAMETER and never call a protocol route on an interface-typed receiver, so neither covers it.
+    sized: ISized = Sized()
+    print(len(sized))
+    print(bool(sized))
+    if sized:
+        print("sized-truthy")
+
     s: Sack = Sack()
     for x in reversed(s):
         print(x)

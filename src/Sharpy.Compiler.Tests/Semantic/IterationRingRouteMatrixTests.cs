@@ -519,6 +519,61 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
             $"{sourceId} x {routeId} x {slotId} value\n{source}");
     }
 
+    // ──────────── the STRICT family at the consumer ring ────────────
+
+    /// <summary>
+    /// A strict <c>T?</c> at an iterable-argument position is refused BY NAME with SPY0326, naming
+    /// the consumer the user wrote, at EVERY entry of the ring's position table — not at one
+    /// builtin at a time.
+    ///
+    /// <para><b>Why this theory exists.</b> The arm that does this was the one mutation in the P9
+    /// slice that no test detected: turning it off left 132/132 green across this matrix and
+    /// <c>ProtocolReceiverMatrixTests</c>. It is not dead code — measured, it is live at all seven
+    /// consumers below — so it was a live, UNGUARDED arm, which is the second of the two things a
+    /// surviving mutant can mean. This is its guard.</para>
+    ///
+    /// <para>Without the arm the ring has no opinion and the refusal falls out of the consumer's own
+    /// overload set as SPY0354 "No overload of 'reversed' matches (list[int32]?)", which names
+    /// neither the strict family nor a remedy, and which differs from what <c>len</c>, <c>in</c>,
+    /// iteration, indexing and slicing say about the same receiver.</para>
+    /// </summary>
+    /// <remarks>
+    /// The LOOSE cell is the positive control and it is load-bearing: it proves the refusal belongs
+    /// to the strict wrapper rather than to the consumer. Without it a consumer that refused
+    /// <c>list[int]</c> outright would satisfy the strict half and the cell would assert nothing.
+    /// </remarks>
+    [Theory]
+    [InlineData("reversed", "print(list(reversed(v)))")]
+    [InlineData("sorted", "print(sorted(v))")]
+    [InlineData("sum", "print(sum(v))")]
+    [InlineData("list", "print(list(v))")]
+    [InlineData("set", "print(len(set(v)))")]
+    [InlineData("any", "print(any(v))")]
+    [InlineData("max", "print(max(v))")]
+    public void StrictOptionalSourceIsRefusedByNameAtEveryConsumer(string consumer, string body)
+    {
+        var strict = CompileAndExecute(
+            $"def main() -> None:\n    v: list[int]? = Some([1, 2])\n    {body}\n");
+
+        strict.Success.Should().BeFalse(
+            $"a strict `list[int]?` is not an iterable source at {consumer}()");
+        strict.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.OptionalRequiresNarrowing
+                 && d.Message.Contains($"{consumer}()", StringComparison.Ordinal),
+            $"the refusal names the consumer the user wrote ({consumer}()) and the remedy; got "
+            + string.Join(" | ", strict.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+
+        // Positive control: the LOOSE wrapper over the same payload RUNS at the same consumer, so
+        // the refusal above is the strict family's and not the consumer's.
+        var loose = CompileAndExecute(
+            $"def main() -> None:\n    v: list[int] | None = [1, 2]\n    {body}\n");
+
+        loose.Success.Should().BeTrue(
+            $"the loose `list[int] | None` control must RUN at {consumer}(), or the strict cell "
+            + "above proves nothing about the wrapper: "
+            + string.Join("; ", loose.CompilationErrors));
+    }
+
     // ──────────── heterogeneous refusal (arm-3 SPY0227) ────────────
 
     [Theory]
