@@ -1,0 +1,14 @@
+# The refusal twin of clr_bare_type_parameter_member_not_nullable_1705, and the control beside it:
+# a bare-`T` return is named `str`, while a member genuinely declared `string?` is still named
+# `str | None`. One fixture, both directions — a fix that flattened all nullability would pass the
+# first line and fail the second.
+
+
+from system.io import Path
+
+
+def main() -> None:
+    xs: list[str] = ["a"]
+    b: bool = xs.pop(0)
+    c: bool = Path.get_directory_name("/usr/bin/x")
+    print(b, c)

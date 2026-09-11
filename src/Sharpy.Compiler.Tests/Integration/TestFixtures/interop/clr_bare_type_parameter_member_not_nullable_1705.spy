@@ -1,0 +1,33 @@
+# A member declared with a BARE type parameter is NOT nullable (#1705). Discovery and the overload
+# index reflect over the generic type DEFINITION (`List<T>.Pop` returns `T`, never `string`), where
+# NullabilityInfoContext answers Nullable for an unconstrained `T` — so every such member was typed
+# `T | None`: `xs.pop(0)` became `str | None`, and `list.append`'s slot became `Box[int] | None`,
+# which made the union constructor below fail to infer.
+#
+# A member declared `T?` on a generic definition is a separate, standing gap (#1828): the runtime
+# reports the same NRT state for `T` and `T?` there.
+
+
+union Box[T]:
+    case Full(v: T)
+    case Empty()
+
+
+def main() -> None:
+    xs: list[str] = ["a", "b"]
+    first: str = xs.pop(0)
+    print(first)
+    print(len(xs))
+
+    v: str? = Some("x")
+    got: str = v.unwrap_or("fallback")
+    print(got)
+
+    boxes = [Box.Full(1), Box.Full(2)]
+    boxes.append(Box.Empty())
+    for b in boxes:
+        match b:
+            case Full(x):
+                print(x)
+            case Empty():
+                print("empty")

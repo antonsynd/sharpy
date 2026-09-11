@@ -1,0 +1,29 @@
+# An enum-typed CLR member has the ENUM's type, not its underlying int32 and not `object` (#1705).
+#
+# The bridge used to describe a CLR enum as `int32`, which is not what the value IS, so the member
+# seam DECLINED enums to stay honest and they reached the permissive channel. When P4's
+# deliberately-permissive drain turned a declined member in value position into `UnmappedClrType`
+# (displayed `object`, assignable nowhere), the decline became a refusal: every line below was
+# SPY0222/SPY0220 for a program that ran.
+#
+# The date is fixed rather than `DateTime.now`, so the output does not depend on the day the suite
+# runs. 2026-01-01 is a Thursday.
+
+
+from system import DateTime, DayOfWeek
+
+
+def name_of(day: DayOfWeek) -> str:
+    return str(day)
+
+
+def main() -> None:
+    d: DayOfWeek = DateTime(2026, 1, 1).day_of_week
+    print(d)
+    print(d == DayOfWeek.Monday)
+    print(d == DayOfWeek.Thursday)
+    print(name_of(DateTime(2026, 1, 1).day_of_week))
+
+    match DateTime(2026, 1, 1).day_of_week:
+        case _:
+            print("matched")

@@ -1,0 +1,2 @@
+Cannot assign type 'str' to variable of type 'bool' @12:5
+Cannot assign type 'str | None' to variable of type 'bool' @13:5

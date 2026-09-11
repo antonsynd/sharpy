@@ -1,0 +1,12 @@
+# The refusal twin of clr_enum_member_is_the_enum_1705: an enum-typed member in a `bool` slot is
+# refused by NAME. The type name is the point — `object` is also SPY0220 here, and that was the
+# regression: a member whose type the bridge declined displayed `object` and was assignable nowhere.
+
+
+from system import DateTime, DayOfWeek
+
+
+def main() -> None:
+    b: bool = DateTime(2026, 1, 1).day_of_week
+    c: int = DayOfWeek.Monday
+    print(b, c)

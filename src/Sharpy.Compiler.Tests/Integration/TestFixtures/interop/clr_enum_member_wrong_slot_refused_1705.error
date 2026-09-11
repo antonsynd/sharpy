@@ -1,0 +1,2 @@
+Cannot assign type 'DayOfWeek' to variable of type 'bool' @10:5
+Cannot assign type 'DayOfWeek' to variable of type 'int32' @11:5
