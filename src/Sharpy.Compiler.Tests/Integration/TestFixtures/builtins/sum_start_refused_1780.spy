@@ -1,0 +1,5 @@
+# The refusal half of the start-family rule (#1780): a start whose pair with the element type has
+# no C# binary row is refused BY NAME, naming the pair — never silently widened and never an ICE.
+# python3 raises TypeError for the str start; the float64/decimal pair has no C# row at all.
+def main() -> None:
+    print(sum([1, 2], "a"))

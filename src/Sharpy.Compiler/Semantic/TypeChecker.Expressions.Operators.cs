@@ -34,7 +34,10 @@ internal partial class TypeChecker
         // Some(v)/None()/Ok(v)/Err(e) in the needle position infer from the container.
         if (binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn)
         {
-            var containerType = OperandView(CheckExpression(binOp.Right));
+            // #1792: the container goes through the protocol-receiver seam, so a loose `T | None`
+            // container dispatches like `T` AND carries the `.Value` the emitted `.Contains` needs
+            // when the payload is a struct (a tuple: `(int, int)?` has no Contains — CS1929).
+            var containerType = ProtocolReceiver(binOp.Right, CheckExpression(binOp.Right));
             if (containerType is UnknownType)
             {
                 CheckExpression(binOp.Left);
@@ -47,7 +50,8 @@ internal partial class TypeChecker
             if (containerType is TupleType)
             {
                 membershipProjection = ClassifyIterableSource(
-                    binOp.Right, containerType, null, StorePosition.CollectionElement, "membership container");
+                    binOp.Right, containerType, null, StorePosition.CollectionElement,
+                    MembershipContainerSiteNoun);
                 if (membershipProjection != null)
                     _semanticInfo.SetIterableProjection(binOp.Right, membershipProjection);
             }
@@ -1523,10 +1527,16 @@ internal partial class TypeChecker
                 }
             }
 
-            // Check regular Methods
-            var containsMethod = typeSymbol.Methods.FirstOrDefault(
-                m => m.Name == DunderNames.Contains
-                     && m.Parameters.Count(p => p.Name != Shared.PythonNames.Self) >= 1);
+            // Check regular Methods, walking the BASE CHAIN through the protocol authority so an
+            // inherited __contains__ names the needle slot exactly as a declared one does (#1808).
+            var containsMethod = ProtocolMembership.FindDunderInChain(
+                typeSymbol, DunderNames.Contains);
+            if (containsMethod is { } found
+                && found.Parameters.Count(p => p.Name != Shared.PythonNames.Self) < 1)
+            {
+                containsMethod = null;
+            }
+
             if (containsMethod != null)
             {
                 var itemParam = containsMethod.Parameters.FirstOrDefault(

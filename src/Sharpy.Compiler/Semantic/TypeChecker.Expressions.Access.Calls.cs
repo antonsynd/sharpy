@@ -4942,6 +4942,33 @@ internal partial class TypeChecker
                 positions = GetMemberIterableKeyPositions(memberAccess, call.Arguments);
                 break;
 
+            // `list[object](t)` — the SAME builtin, written with its type argument. The callee is an
+            // IndexAccess rather than an Identifier, and recording nothing for it is why the
+            // spelling the SPY0227 steer recommends ("annotate the target / spell `list[T](t)`")
+            // did not work: the explicit vector is exactly the slot arm 1 needs (#1783).
+            //
+            // Only the ELEMENT-parameterized collection constructors qualify. `tuple[int, str](t)`
+            // is an identity conversion to a written TupleType (#1200), not an iteration — its type
+            // arguments are the tuple's OWN members, so projecting the argument to an array would
+            // hand the conversion a `int[]` (CS7036/CS1503 and the wrong value).
+            case IndexAccess
+            {
+                Object: Identifier
+                {
+                    Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.FrozenSet
+                        or BuiltinNames.Sorted
+                } generic
+            }:
+                // The same user-shadow guard the Identifier arm carries: `def sorted[T](...)` called
+                // as `sorted[str](x)` is the USER's function, and projecting its argument would
+                // check the call against the builtin while the emitter calls the user's symbol
+                // (#1240, #1241).
+                if (_symbolTable.Lookup(generic.Name) is FunctionSymbol shadowFs
+                    && SemanticBinding.HasCodeGenInfo(shadowFs))
+                    return;
+                positions = GetBuiltinIterableKeyPositions(generic.Name, call.Arguments.Length);
+                break;
+
             default:
                 return;
         }
@@ -4949,31 +4976,143 @@ internal partial class TypeChecker
         if (positions == null)
             return;
 
+        var slot = ResolveIterableArgumentSlot(call, callee);
+
         foreach (var position in positions)
         {
             if (position >= call.Arguments.Length)
                 continue;
             var argNode = call.Arguments[position];
             var argType = _semanticInfo.GetExpressionType(argNode);
+
+            // The strict family is refused BY NAME at every route, and the builtin consumer ring is
+            // a route (#1792). Without this arm the refusal was the ring's own absence of a match:
+            // `reversed(xs)` on a `list[int]?` said SPY0354 "No overload of 'reversed' matches
+            // (list[int32]?)" while `len`, `in`, iteration, indexing and slicing on the same
+            // receiver all said SPY0326 and named narrowing and unwrapping as the remedies. One
+            // arm here covers every entry of the position table rather than one builtin at a time.
+            if (argType is OptionalType strictOptional)
+            {
+                AddError(
+                    $"Optional type '{strictOptional.GetDisplayName()}' does not support "
+                    + $"{IterableArgumentOperationNoun(callee)} directly. "
+                    + "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
+                    argNode.LineStart, argNode.ColumnStart,
+                    code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: argNode.Span);
+                continue;
+            }
+
             if (argType == null || ClassifyIterableSource(
-                    argNode, argType, null, StorePosition.ArgumentPositional, "iterable argument")
+                    argNode, argType, slot, StorePosition.ArgumentPositional, "iterable argument")
                 is not { } projection)
                 continue;
 
-            // reversed(s) has a dedicated lowering — StringHelpers.Reversed(string) — that consumes
-            // the RAW string lazily, with no list materialization. Recording StrToList here would
-            // make the positional-argument funnel wrap the operand in ListFromStr before that arm
-            // reads it, emitting StringHelpers.Reversed(List<string>) — CS1503 behind SPY0908. A
-            // recorded fact the emitter does not apply is worse than no fact, so the mark is
-            // deliberately withheld for exactly this callee (#1209).
+            // reversed(s) and iter(s) each have a dedicated lowering over the RAW string —
+            // StringHelpers.Reversed(string) and Builtins.Iter(string) — that consumes it lazily,
+            // with no list materialization. Recording StrToList here would make the positional-
+            // argument funnel wrap the operand in ListFromStr before that arm reads it, emitting
+            // Reversed(List<string>) / Iter(List<string>) — CS1503 behind SPY0908. A recorded fact
+            // the emitter does not apply is worse than no fact, so the mark is deliberately
+            // withheld for exactly these callees (#1209, #1468).
             if (projection.Kind == IterableProjectionKind.StrToList
-                && callee is Identifier { Name: BuiltinNames.Reversed })
+                && callee is Identifier { Name: BuiltinNames.Reversed or BuiltinNames.Iter })
             {
                 continue;
             }
 
             _semanticInfo.SetIterableProjection(argNode, projection);
         }
+    }
+
+    /// <summary>
+    /// Whether a receiver is one of the two set-ring kinds (<c>set[T]</c>, <c>frozenset[T]</c>) whose
+    /// members take any iterable source.
+    /// </summary>
+    private static bool IsSetRingReceiver(SemanticType receiver)
+        => receiver is GenericType { Name: BuiltinNames.Set or BuiltinNames.FrozenSet };
+
+    /// <summary>
+    /// How a refusal at an iterable ARGUMENT position names the operation: the callee's own spelling
+    /// when there is one ("reversed()"), else the generic noun. The message reads as the route the
+    /// user wrote rather than as compiler vocabulary.
+    /// </summary>
+    private static string IterableArgumentOperationNoun(Expression callee) => callee switch
+    {
+        Identifier id => $"{id.Name}()",
+        IndexAccess { Object: Identifier generic } => $"{generic.Name}()",
+        MemberAccess ma => $"{ma.Member}()",
+        _ => "this iterable position",
+    };
+
+    /// <summary>
+    /// The site noun the membership route passes to the iteration ring. A constant rather than a
+    /// literal at each end because the ring's arm-3 steer branches on it: the two must agree, and a
+    /// renamed noun would silently restore the wrong steer.
+    /// </summary>
+    internal const string MembershipContainerSiteNoun = "membership container";
+
+    /// <summary>
+    /// The element slot an iterable ARGUMENT is written into, or <c>null</c> when nothing at the call
+    /// names one (#1783, R-W arm 1). Three spellings name a slot, in the order a reader would expect
+    /// them to win:
+    /// <list type="number">
+    /// <item>the explicit type argument — <c>list[object](t)</c>;</item>
+    /// <item>the receiver's own element type for a member route — <c>xs.extend(t)</c>,
+    /// <c>s.union(t)</c>;</item>
+    /// <item>the declared store target the call result flows into — <c>ys: list[object] = list(t)</c>.</item>
+    /// </list>
+    /// Without this every argument position passed <c>slot = null</c>, so arm 1 existed but nothing
+    /// could reach it and all three spellings the diagnostic steers users toward stayed red.
+    /// </summary>
+    private SemanticType? ResolveIterableArgumentSlot(FunctionCall call, Expression callee)
+    {
+        if (callee is IndexAccess { Object: Identifier } written
+            && TryResolveTypeArguments(written.Index) is { Count: 1 } writtenArgs
+            && !ContainsTypeParameter(writtenArgs[0])
+            && writtenArgs[0] is not UnknownType)
+        {
+            return writtenArgs[0];
+        }
+
+        if (callee is MemberAccess member
+            && _semanticInfo.GetExpressionType(member.Object) is { } receiverType
+            && CollectionElementSlot(ProtocolReceiverView(receiverType)) is { } receiverElement)
+        {
+            return receiverElement;
+        }
+
+        // The declared target only names a slot when THIS call is the value being stored. An
+        // ambient store one level out (the call nested inside a literal, an operand of `or`, an
+        // argument of an argument) describes a different value, and reading its slot here would
+        // admit the tuple's elements into the wrong type.
+        return _storeContext is { } store && store.IsDirectOperand(call)
+            ? CollectionElementSlot(store.Slot)
+            : null;
+    }
+
+    /// <summary>
+    /// The element type of a single-argument builtin collection (<c>list</c>, <c>set</c>,
+    /// <c>frozenset</c>), or <c>null</c> for anything else — the one place the ring turns a
+    /// collection slot into an ELEMENT slot.
+    /// </summary>
+    private static SemanticType? CollectionElementSlot(SemanticType? type)
+    {
+        if (type is not GenericType
+            {
+                Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.FrozenSet,
+                TypeArguments.Count: 1
+            } generic)
+        {
+            return null;
+        }
+
+        var element = generic.TypeArguments[0];
+
+        // An OPEN element names no slot. `def f[T](xs: list[T]): xs.extend(t)` and a store into a
+        // still-inferring `list[T]` would otherwise hand arm 1 a type parameter to admit the tuple's
+        // elements into, refusing every element with "cannot be assigned to 'T'". An unknown element
+        // is the same non-answer. Either way the ring falls back to the slot-less rule.
+        return ContainsTypeParameter(element) || element is UnknownType ? null : element;
     }
 
     /// <summary>
@@ -4992,6 +5131,31 @@ internal partial class TypeChecker
         Expression source, SemanticType sourceType, SemanticType? slot,
         StorePosition position, string siteNoun)
     {
+        // #1792: a loose `T | None` source iterates as `T`. The view is taken HERE, at the ring's one
+        // decider, so every route it serves (for, comprehension, membership, yield-from, `+=`/extend,
+        // argument positions) sees the payload rather than each route unwrapping for itself. The
+        // `.Value` a STRUCT payload's emitted receiver needs is recorded only on the paths that
+        // RETURN a projection — a recorded fact the emitter never applies is worse than no fact
+        // (#1209), and an unclassified source is refused, never emitted.
+        var viewType = ProtocolReceiverView(sourceType);
+        var projection = ClassifyIterableSourceCore(source, viewType, slot, position, siteNoun);
+        if (projection != null && sourceType is NullableType { IsValueType: true })
+        {
+            _semanticInfo.SetReceiverUnwrap(
+                source, new ReceiverUnwrapLowering(ReceiverUnwrapKind.NullableValue));
+        }
+
+        return projection;
+    }
+
+    /// <summary>
+    /// The classification proper, over the source's PAYLOAD view (see
+    /// <see cref="ClassifyIterableSource"/>, which owns the wrapper question).
+    /// </summary>
+    private IterableArgumentProjection? ClassifyIterableSourceCore(
+        Expression source, SemanticType sourceType, SemanticType? slot,
+        StorePosition position, string siteNoun)
+    {
         if (_typeInference.GetProjectedDictKeysType(sourceType)
             is GenericType { TypeArguments.Count: 1 } projectedKeys)
         {
@@ -5001,23 +5165,13 @@ internal partial class TypeChecker
 
         if (sourceType is TupleType tuple && tuple.ElementTypes.Count > 0)
         {
-            // At argument positions, the element type is decided by the old identity rule:
-            // all elements must match. The BestCommonType refusal (arm 3) is reserved for
-            // iteration routes (for, comprehension, membership) where the classifier owns
-            // the diagnostic — at argument positions the callee's own error is more specific.
-            if (position == StorePosition.ArgumentPositional || position == StorePosition.Augmented)
-            {
-                var tupleElement = tuple.ElementTypes[0];
-                foreach (var et in tuple.ElementTypes)
-                {
-                    if (!et.Equals(tupleElement))
-                        return null;
-                }
-                return new IterableArgumentProjection(
-                    IterableProjectionKind.TupleToArray, tupleElement, tuple.ElementTypes.Count);
-            }
-
-            // At iteration/membership routes: use BestCommonType for the element type decision.
+            // ONE rule at EVERY position (#1783, R-W). The element type of a tuple source is
+            // BestCommonType(elements, slot) wherever the source sits — `for`, a comprehension
+            // clause, a membership container, `yield from`, `+=`/extend, or a call argument. The
+            // classifier used to keep a second, identity-only rule for the argument and augmented
+            // positions, which is what made `for x in (1, 2.5)` iterate as float while
+            // `sum((1, 2.5))` refused: two deciders inside one decider (the plan's own inertness
+            // case (c)).
             var operands = new List<(Expression? Node, SemanticType Type)>(tuple.ElementTypes.Count);
             if (source is TupleLiteral tupleLit && tupleLit.Elements.Length == tuple.ElementTypes.Count)
             {
@@ -5030,9 +5184,15 @@ internal partial class TypeChecker
                     operands.Add((null, et));
             }
 
-            var steer = slot != null
-                ? $"xs: list[{slot.GetDisplayName()}] = ..."
-                : "xs: list[T] = ...";
+            // The steer must name an action available AT THIS ROUTE. A membership container has no
+            // target to annotate, and the message told users to annotate one anyway ("annotate the
+            // target (e.g. `xs: list[T] = ...`)" for `2 in (1, "a")`) — a steer that names a
+            // nonexistent remedy is worse than none.
+            var steer = siteNoun == MembershipContainerSiteNoun
+                ? "give the tuple one element type, or test the elements separately"
+                : slot != null
+                    ? $"xs: list[{slot.GetDisplayName()}] = ..."
+                    : "xs: list[T] = ...";
             var elementType = BestCommonType(
                 operands, slot, position, (Node)source,
                 siteNoun,
@@ -5107,6 +5267,12 @@ internal partial class TypeChecker
             case BuiltinNames.Sum:
             case BuiltinNames.Any:
             case BuiltinNames.All:
+            // frozenset and iter are the ring's other two single-iterable consumers. They were
+            // absent from this table, so `frozenset(t)` ICEd CS1503 and `iter(t)` refused SPY0237
+            // while `set(t)` and `list(t)` worked — the same builtin surface answering one question
+            // two ways (#1783).
+            case BuiltinNames.FrozenSet:
+            case BuiltinNames.Iter:
                 return IterablePositionZero;
 
             // min/max also have a value form (min(a, b, …)); only the single-positional iterable form
@@ -5175,6 +5341,27 @@ internal partial class TypeChecker
 
             case "symmetric_difference_update":
                 return arguments.Count == 1 && receiver is GenericType { Name: BuiltinNames.Set }
+                    ? IterablePositionZero : null;
+
+            // The NON-mutating half of the set ring takes the same iterable sources as the mutating
+            // half — one rule, not two (#1773). Leaving these out of the table is what refused a
+            // tuple, a str and a dict at `union`/`intersection`/`difference`/`symmetric_difference`/
+            // `is_subset`/`is_superset`/`is_disjoint` on both `set` and `frozenset` receivers while
+            // `update` accepted all three. Core already carries the `IEnumerable<T>` overload for
+            // every one of them, so only the position table was missing.
+            case "union":
+            case "intersection":
+            case "difference":
+                return IsSetRingReceiver(receiver) ? AllPositions(arguments.Count) : null;
+
+            // Python's single-argument members: `symmetric_difference` takes exactly one operand
+            // (arity != 1 is a TypeError, the SPY0354/SPY0224 control), and the three predicates
+            // take exactly one iterable.
+            case "symmetric_difference":
+            case "is_subset":
+            case "is_superset":
+            case "is_disjoint":
+                return arguments.Count == 1 && IsSetRingReceiver(receiver)
                     ? IterablePositionZero : null;
 
             default:

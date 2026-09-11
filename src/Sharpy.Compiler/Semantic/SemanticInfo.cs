@@ -68,6 +68,20 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowedReadLowering> _narrowedReadLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a PROTOCOL-ROUTE RECEIVER whose declared type is a loose `T | None` over a C# VALUE type to
+    // the unwrap codegen must apply before the route's own lowering runs (#1792, Critical Rule 2
+    // pattern (b)). The spec makes `T | None` dispatch like `T` at every protocol route, and for a
+    // reference payload that is free - C# member access on a `string?`/`List<T>?` compiles. For a
+    // STRUCT payload the emitted receiver is `Nullable<T>`, which has neither the indexer, the ItemN
+    // fields, `Contains`, nor a `GetEnumerator`; handing it to the route's lowering is the
+    // CS0021/CS1061/CS1503/CS1579/CS1929 family behind SPY0908. The unwrap is decided by the ONE
+    // helper that computes the receiver view (TypeChecker.ProtocolReceiver) and applied at the ONE
+    // expression choke point (RoslynEmitter.GenerateExpression), so a route cannot be added that
+    // forgets it. Absent for every reference payload and every bare receiver, which is all of them
+    // but these, so the default path is byte-identical.
+    private readonly ConcurrentDictionary<Expression, ReceiverUnwrapLowering> _receiverUnwraps =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map an Assignment or WalrusExpression node to the OptionalType the emitter must wrap the
     // stored value in. Recorded by the TypeChecker when a payload-typed value stores into a
     // narrowed Optional slot (R-T payload rule, #1755 B) so the emitter prints
@@ -737,6 +751,27 @@ public class SemanticInfo : ISemanticQuery
     public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
     {
         return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records that <paramref name="receiver"/> sits at a protocol route whose loose <c>T | None</c>
+    /// wrapper must be unwrapped before the route's lowering runs (#1792). Set by
+    /// <c>TypeChecker.ProtocolReceiver</c>, the single helper that computes the receiver view, so
+    /// acceptance of the wrapper and the unwrap that makes it emittable are one decision.
+    /// </summary>
+    public void SetReceiverUnwrap(Expression receiver, ReceiverUnwrapLowering lowering)
+    {
+        _receiverUnwraps[receiver] = lowering;
+    }
+
+    /// <summary>
+    /// The unwrap an expression must be wrapped in before a protocol route's lowering reads it, or
+    /// <c>null</c> when the emitted receiver already has the payload's shape - which is every
+    /// reference payload and every bare receiver.
+    /// </summary>
+    public ReceiverUnwrapLowering? GetReceiverUnwrap(Expression receiver)
+    {
+        return _receiverUnwraps.TryGetValue(receiver, out var lowering) ? lowering : null;
     }
 
     public void SetOptionalStoreWrap(Node storeNode, OptionalType wrapAs)
@@ -1783,6 +1818,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._charMaterializations)
             _charMaterializations.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._receiverUnwraps)
+            _receiverUnwraps.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._typeTestLowerings)
             _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);
 
@@ -2121,6 +2159,31 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
+
+/// <summary>
+/// The unwrap codegen applies to a protocol-route RECEIVER before the route's own lowering runs
+/// (#1792). Node-keyed <see cref="SemanticInfo"/> fact (Critical Rule 2 pattern (b)) decided by
+/// <c>TypeChecker.ProtocolReceiver</c>.
+/// </summary>
+public enum ReceiverUnwrapKind
+{
+    /// <summary>
+    /// The receiver is a loose <c>T | None</c> whose payload is a C# value type (<c>bytes</c>, a
+    /// tuple, a CLR struct), so the emitted receiver is <c>Nullable&lt;T&gt;</c> and the route's
+    /// lowering needs the payload: emit <c>.Value</c>. Per spec the loose family dereferences
+    /// without a check, so a <c>None</c> receiver raises at runtime exactly as a reference payload's
+    /// null dereference does.
+    /// </summary>
+    NullableValue
+}
+
+/// <summary>
+/// The exact unwrap codegen must apply at a protocol-route receiver, materialized per receiver node
+/// by the TypeChecker (#1792). The emitter looks it up in its expression choke point and applies it
+/// without re-deriving what the receiver's wrapper is.
+/// </summary>
+/// <param name="Kind">Which unwrap to apply.</param>
+public sealed record ReceiverUnwrapLowering(ReceiverUnwrapKind Kind);
 
 /// <summary>
 /// How codegen converts a value whose emitted C# type is char-based into the Sharpy <c>str</c> its

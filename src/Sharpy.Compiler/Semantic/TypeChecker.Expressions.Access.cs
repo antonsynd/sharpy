@@ -192,6 +192,17 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
         }
+        else if (objectType is NullableType { IsValueType: true })
+        {
+            // #1792, struct arm of the loose-receiver rule: a `T | None` member access dispatches
+            // like `T`. For a REFERENCE payload that already holds downstream (ResolveBuiltinTypeInfo
+            // and the generic/UDT arms unwrap before they look the member up) AND the emitted
+            // receiver is the payload itself, so nothing is needed here. For a STRUCT payload the
+            // emitted receiver is `Nullable<T>`, which carries none of the payload's members —
+            // `b.decode()` on `bytes | None` type-checked and then emitted CS1061 behind SPY0908.
+            // Going through the protocol-receiver seam takes the view AND materializes the `.Value`.
+            memberLookupType = ProtocolReceiver(memberAccess.Object, objectType);
+        }
 
         // Strict Optional (T?): direct member access is only allowed for Optional's own API
         // (unwrap, unwrap_or, unwrap_or_else, map, is_some, is_none, ...). Accessing a member of
@@ -1887,7 +1898,14 @@ internal partial class TypeChecker
                 return false;
         }
 
-        suggestion = EditDistance.FindClosestMatch(memberName, clrNames!);
+        // The SHARPY surface is searched first. The suggester used to read only the reflected CLR
+        // name set, so a near-miss on a snake_case member was answered with the PascalCase CLR name:
+        // `s.issubset(...)` on a `set[str]` was told "Did you mean 'IsSubset'?" — a spelling that is
+        // not the Sharpy surface and fails the same way if typed. The discovered members are the
+        // names a user can actually write, so they win when one is within the edit budget; the CLR
+        // surface stays as the fallback for members Sharpy exposes under their CLR name.
+        suggestion = EditDistance.FindClosestMatch(memberName, SharpyMemberNameSurface(ownerSymbol))
+            ?? EditDistance.FindClosestMatch(memberName, clrNames!);
 
         // Don't suggest refused CLR names on builtin exception receivers (#1515).
         if (suggestion != null && ownerSymbol.ClrType != null
@@ -1897,6 +1915,21 @@ internal partial class TypeChecker
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// The member names a user can WRITE on this receiver — the discovered Sharpy surface, in the
+    /// spelling discovery recorded (snake_case for anything mapped from a CLR name). Used by the
+    /// absence proof's suggester so a near-miss is answered with a spelling that works.
+    /// </summary>
+    private static IEnumerable<string> SharpyMemberNameSurface(TypeSymbol symbol)
+    {
+        foreach (var method in symbol.Methods)
+            yield return method.Name;
+        foreach (var property in symbol.Properties)
+            yield return property.Name;
+        foreach (var field in symbol.Fields)
+            yield return field.Name;
     }
 
     /// <summary>
@@ -2644,8 +2677,9 @@ internal partial class TypeChecker
     private IndexAccessLowering ComputeIndexAccessLowering(
         SemanticType objectType, Expression objectExpr, Expression index)
     {
-        // #1792: unwrap T | None so str | None dispatches like str
-        var viewType = ProtocolReceiverView(objectType);
+        // #1792: unwrap T | None so str | None dispatches like str, and materialize the `.Value`
+        // the emitted receiver needs when the payload is a struct (bytes, a tuple).
+        var viewType = ProtocolReceiver(objectExpr, objectType);
 
         if (viewType is TupleType && TryGetConstantIntIndex(index, out _))
             return IndexAccessLowering.TupleItem;

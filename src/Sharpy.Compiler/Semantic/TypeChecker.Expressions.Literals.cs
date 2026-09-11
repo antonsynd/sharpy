@@ -584,32 +584,8 @@ internal partial class TypeChecker
             }
         }
 
-        if (OperandView(iterType) == SemanticType.Str)
-        {
-            _semanticInfo.SetIterationLowering(forClause.Iterator,
-                new IterationLowering(IterationLoweringKind.StringChars));
-        }
-        else if (iterType is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum } enumSym2 })
-        {
-            var kind = enumSym2.IsStringEnum
-                ? IterationLoweringKind.StringEnumValues
-                : IterationLoweringKind.EnumValues;
-            _semanticInfo.SetIterationLowering(forClause.Iterator,
-                new IterationLowering(kind));
-        }
-
-        IterableArgumentProjection? compProjection = null;
-        if (iterType is TupleType)
-        {
-            compProjection = ClassifyIterableSource(
-                forClause.Iterator, iterType, null, StorePosition.CollectionElement, "comprehension iterator");
-            if (compProjection != null)
-                _semanticInfo.SetIterableProjection(forClause.Iterator, compProjection);
-        }
-
-        var elemType = compProjection?.ElementType
-            ?? _typeInference.InferIterableElementType(iterType)
-            ?? SemanticType.Unknown;
+        var elemType = RecordIterationSourceFacts(
+            forClause.Iterator, iterType, "comprehension iterator");
 
         if (forClause.Target is Identifier id)
         {
@@ -809,8 +785,9 @@ internal partial class TypeChecker
             return objType;
         }
 
-        // #1792: unwrap T | None so str | None dispatches like str
-        var viewType = ProtocolReceiverView(objType);
+        // #1792: unwrap T | None so str | None dispatches like str, and materialize the `.Value`
+        // the emitted receiver needs when the payload is a struct (bytes, a tuple).
+        var viewType = ProtocolReceiver(sliceAccess.Object, objType);
 
         // Classify the receiver and record the lowering fact
         if (viewType is GenericType gt && gt.Name == BuiltinNames.List)

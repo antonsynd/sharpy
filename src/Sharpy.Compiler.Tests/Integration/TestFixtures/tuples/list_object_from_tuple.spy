@@ -1,10 +1,23 @@
-# Positive control: annotated list[object] from a homogeneous tuple prints.
-# This is the annotated-target positive control for the arm-3 absence assertion:
-# list[object]((1, 2)) with the explicit generic is still deferred (slot-passing
-# at argument positions), but the list[object] literal with tuple elements works.
+# Positive control for arm 1 of the best-common-type rule at the iteration ring (#1783): a tuple
+# SOURCE whose elements have no best common type is admitted when a SLOT names one, because each
+# element is admitted into the slot rather than into a type derived from its siblings.
+#
+# This fixture used to contain no tuple at all (`xs: list[object] = [1, "a"]`, a list literal), so
+# it guarded nothing: its output was identical at the base compiler. Both slot spellings the SPY0227
+# refusal steers users toward are exercised here — the declared target and the explicit type
+# argument. Output verified against python3 (`list((1, "a"))` -> `[1, 'a']`).
 
 def main() -> None:
-    xs: list[object] = [1, "a"]
+    t: tuple[int, str] = (1, "a")
+
+    # Slot from the declared store target.
+    xs: list[object] = list(t)
     print(len(xs))
     for x in xs:
         print(x)
+
+    # Slot from the explicit type argument on the constructor callee.
+    ys = list[object]((1, "a"))
+    print(len(ys))
+    for y in ys:
+        print(y)

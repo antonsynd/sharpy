@@ -1506,11 +1506,88 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         consumerNa.Should().OnlyContain(n => n.Reason.Length > 20,
             "every consumer N/A cell states why");
 
-        var totalConsumer = ConsumerKinds.Length * ConsumerWidths.Length
-                            * ConsumerShapes.Length * ConsumerContainers.Length;
-        (consumerLive.Count + consumerNa.Length).Should().Be(totalConsumer,
-            $"consumer live ({consumerLive.Count}) + N/A ({consumerNa.Length}) = "
-            + $"{ConsumerKinds.Length} × {ConsumerWidths.Length} × {ConsumerShapes.Length} × {ConsumerContainers.Length}");
+        // The axis sizes are pinned to LITERALS, not to the arrays' own Length. Computing both sides
+        // of the equation from the same arrays is an identity: deleting `new("min", ...)` from an
+        // axis dropped the theory count silently and this assertion still PASSED (measured on the
+        // sibling IterationRingRouteMatrixTests, same shape). Spelling the roster out means a
+        // deleted or renamed axis member reddens here.
+        ConsumerKinds.Should().BeEquivalentTo(new[] { "sum", "in", "not in" },
+            "the consumer axis is exactly these three routes");
+        ConsumerWidths.Select(w => w.Name).Should().BeEquivalentTo(
+            new[] { "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64" },
+            "the width axis is the eight integer widths");
+        ConsumerShapes.Should().BeEquivalentTo(
+            new[] { "const-in-range", "const-present", "const-out-of-range", "same-width-var",
+                    "narrower-signed-var", "signed-vs-unsigned", "non-numeric" },
+            "the needle/start shape axis");
+        ConsumerContainers.Should().BeEquivalentTo(
+            new[] { "list", "set", "dict", "tuple", "range" },
+            "the container axis includes tuple and range");
+
+        (consumerLive.Count + consumerNa.Length).Should().Be(840,
+            $"3 consumers x 8 widths x 7 shapes x 5 containers = 840; consumer live "
+            + $"({consumerLive.Count}) + N/A ({consumerNa.Length})");
+    }
+
+    // ── consumer axis, bool width and the start FAMILY (#1772, #1780) ──
+
+    /// <summary>
+    /// <c>sum</c>'s <c>bool</c> element width and its cross-FAMILY <c>start</c> rows. These are a
+    /// companion axis rather than two more columns of the generated cross-product above: a
+    /// <c>bool</c> has no signedness, no bit width and no out-of-range literal, and a start's family
+    /// is a property of the START, not of the needle shapes the generated cells vary — so folding
+    /// them in would have produced mostly-N/A columns whose reasons say "bool has no bits".
+    ///
+    /// <para>Every row is the row C# has for that pair of operand types (Design Decision 3): Sharpy
+    /// adds no promotion rule of its own, so a pair C# cannot add is refused BY NAME rather than
+    /// widened. The last two rows are that refusal.</para>
+    ///
+    /// <para>Typed probes, not <c>print</c>: the result's TYPE is half of what is under test, and
+    /// <c>print</c> is never a type probe (verification contract §3). Each accepted row asserts the
+    /// value under a correct annotation AND the type by the SPY0220 a deliberately wrong one draws.</para>
+    /// </summary>
+    [Theory]
+    // elements   start          annotation  value    what the row pins
+    [InlineData("[True, True, False]", null, "int32", "2", null)]
+    [InlineData("[True, True, False]", "1", "int32", "3", null)]
+    [InlineData("[True, True, False]", "1.5", "float64", "3.5", null)]
+    [InlineData("[1, 2]", null, "int32", "3", null)]
+    [InlineData("[1, 2]", "1", "int32", "4", null)]
+    [InlineData("[1, 2]", "1.5", "float64", "4.5", null)]
+    [InlineData("[1.5, 2.5]", "1", "float64", "5.0", null)]
+    [InlineData("[1, 2]", "\"a\"", null, null, "No overload of 'sum' matches")]
+    [InlineData("[1.5, 2.5]", "decimal(1)", null, null, "No overload of 'sum' matches")]
+    public void SumBoolWidthAndStartFamilyFollowTheCSharpBinaryTable(
+        string elements, string? start, string? annotation, string? value, string? refusal)
+    {
+        var call = start == null ? $"sum({elements})" : $"sum({elements}, {start})";
+
+        if (refusal != null)
+        {
+            var refused = CompileAndExecute($"def main() -> None:\n    print({call})\n");
+            refused.Success.Should().BeFalse(
+                $"{call} has no C# binary row and must be refused by name");
+            string.Join(" ", refused.CompilationErrors).Should().Contain(refusal,
+                $"{call} must be refused by name, not widened");
+            return;
+        }
+
+        var accepted = CompileAndExecute(
+            $"def main() -> None:\n    v: {annotation} = {call}\n    print(v)\n");
+        accepted.Success.Should().BeTrue(
+            $"{call} binds the C# `{annotation}` row: "
+            + string.Join("; ", accepted.CompilationErrors));
+        accepted.StandardOutput.Should().Contain(value!, $"{call} value");
+
+        // The type probe: a `bool` annotation is wrong for every row here, so the SPY0220 it draws
+        // names the row that was actually bound. Silence would mean the expression is Unknown and
+        // the value above proved nothing about the row.
+        var probed = CompileAndExecute(
+            $"def main() -> None:\n    b: bool = {call}\n    print(b)\n");
+        probed.Success.Should().BeFalse($"{call} is not a bool");
+        string.Join(" ", probed.CompilationErrors).Should().Contain($"'{annotation}'",
+            $"{call} must be TYPED {annotation} (a mistyped probe names the type; silence would "
+            + "mean Unknown)");
     }
 
     /// <summary>

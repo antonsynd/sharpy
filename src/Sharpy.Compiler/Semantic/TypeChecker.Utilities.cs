@@ -54,32 +54,101 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Walks the type symbol's own methods and its base chain (TypeSymbol.BaseType) to find
-    /// a dunder method (#1808). Handles inherited dunders so <c>class Sack(Bag)</c> where
-    /// <c>Bag</c> declares <c>__len__</c> makes <c>Sack</c> sized.
+    /// The protocol-route receiver seam (#1792): returns
+    /// <see cref="ProtocolReceiverView(SemanticType)"/> AND materializes the unwrap codegen needs to
+    /// make that view real. Every route that dereferences a loose <c>T | None</c> receiver - index,
+    /// slice, membership, iteration, an iterable argument, a method call - must come through here
+    /// rather than calling the view directly, because for a STRUCT payload the emitted receiver is
+    /// <c>Nullable&lt;T&gt;</c>: accepting the wrapper without recording the unwrap hands the route's
+    /// lowering a value that has none of the payload's members, which is SPY0908 (CS0021 on
+    /// <c>Bytes?</c>, CS1061 on <c>(int, int)?.Item1</c>, CS1929 on <c>.Contains</c>, CS1579 on
+    /// <c>foreach</c>). Acceptance and the lowering that makes it emittable are one decision, so a
+    /// route added later cannot take the view and skip the unwrap.
     /// </summary>
-    internal static bool HasDunderInChain(TypeSymbol symbol, string dunderName)
+    /// <remarks>
+    /// A receiver that flow-narrowing already proved non-<c>None</c> arrives here with its payload
+    /// type, not a <see cref="NullableType"/>, so nothing is recorded and the narrowing seam's own
+    /// <c>.Value</c> accessor (<see cref="NarrowedReadKind.NullableValue"/>) stays the only one -
+    /// the two facts are never both live on one node.
+    /// </remarks>
+    internal SemanticType ProtocolReceiver(Expression receiver, SemanticType type)
     {
-        var current = symbol;
-        while (current != null)
+        if (type is NullableType { IsValueType: true })
         {
-            if (current.ProtocolMethods.ContainsKey(dunderName))
-                return true;
-            if (current.Methods.Any(m => m.Name == dunderName))
-                return true;
-            current = current.BaseType;
+            _semanticInfo.SetReceiverUnwrap(
+                receiver, new ReceiverUnwrapLowering(ReceiverUnwrapKind.NullableValue));
         }
-        return false;
+
+        return ProtocolReceiverView(type);
     }
 
     /// <summary>
-    /// Checks if a CLR type is or implements a protocol interface by full name (#1808).
-    /// Checks the type's own FullName AND its GetInterfaces() so an interface-typed
-    /// receiver (e.g. ISized) resolves as its own implementor.
+    /// Records the two iteration facts a for-ROUTE source carries — the
+    /// <see cref="IterationLowering"/> tag (string chars, enum values) and the
+    /// <see cref="IterableArgumentProjection"/> mark (the tuple array bridge) — and returns the
+    /// element type the target binds. The <c>for</c> STATEMENT and the comprehension /
+    /// generator-expression for-CLAUSE are two spellings of one route, and were two byte-identical
+    /// copies of this logic (the mirrored-arm class, CLAUDE.md Rule 11): a wrapper or source kind
+    /// taught to one of them stayed broken in the other, which is how <c>[ch for ch in s]</c> on
+    /// <c>str | None</c> ICEd while <c>for ch in s</c> ran (#1792).
+    ///
+    /// <para>Every source question is asked of the PROTOCOL RECEIVER VIEW, so the loose <c>T | None</c>
+    /// wrapper dispatches like <c>T</c> at this route as the spec promises, and the strict <c>T?</c>
+    /// (which the view does not unwrap) keeps its own refusal.</para>
+    /// </summary>
+    /// <param name="iterator">The source expression — the node both facts are keyed on.</param>
+    /// <param name="iterType">Its checked type, wrapper included.</param>
+    /// <param name="siteNoun">The route's name for a best-common-type refusal (SPY0227).</param>
+    private SemanticType RecordIterationSourceFacts(
+        Expression iterator, SemanticType iterType, string siteNoun)
+    {
+        var view = ProtocolReceiverView(iterType);
+
+        if (view == SemanticType.Str)
+        {
+            _semanticInfo.SetIterationLowering(iterator,
+                new IterationLowering(IterationLoweringKind.StringChars));
+        }
+        else if (view is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum } enumSym })
+        {
+            _semanticInfo.SetIterationLowering(iterator,
+                new IterationLowering(enumSym.IsStringEnum
+                    ? IterationLoweringKind.StringEnumValues
+                    : IterationLoweringKind.EnumValues));
+        }
+
+        // Record the iterable projection for tuple sources that need the array bridge.
+        // Strings/enums have their own IterationLowering; dicts/lists/sets already implement
+        // IEnumerable<element> and need no projection at the for/comprehension route (#1783).
+        IterableArgumentProjection? projection = null;
+        if (view is TupleType)
+        {
+            projection = ClassifyIterableSource(
+                iterator, iterType, null, StorePosition.CollectionElement, siteNoun);
+            if (projection != null)
+                _semanticInfo.SetIterableProjection(iterator, projection);
+        }
+
+        return projection?.ElementType
+            ?? _typeInference.InferIterableElementType(iterType)
+            ?? SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Walks the type symbol's own methods and its base chain to find a dunder (#1808). Forwards to
+    /// <see cref="ProtocolMembership.HasDunderInChain"/>, the single authority — this was a second
+    /// copy of that walk.
+    /// </summary>
+    internal static bool HasDunderInChain(TypeSymbol symbol, string dunderName)
+        => ProtocolMembership.HasDunderInChain(symbol, dunderName);
+
+    /// <summary>
+    /// Whether a CLR type is or implements a Sharpy protocol interface (#1808). Forwards to
+    /// <see cref="ProtocolMembership.HasClrProtocolInterface"/>, the single authority.
     /// </summary>
     internal static bool HasClrProtocolInterface(System.Type clrType, string interfaceFullName)
-        => clrType.FullName == interfaceFullName
-           || clrType.GetInterfaces().Any(i => i.FullName == interfaceFullName);
+        => ProtocolMembership.HasClrProtocolInterface(clrType, interfaceFullName);
+
 
     /// <summary>
     /// Returns whether the type can be used in a truthiness context and, when true, the lowering
@@ -125,22 +194,7 @@ internal partial class TypeChecker
                 if (udt.Name == BuiltinNames.Bytes)
                     return (true, TruthinessLowering.BytesNotEmpty);
 
-                if (HasDunderInChain(symbol, DunderNames.Bool))
-                    return (true, TruthinessLowering.BoolConvertible);
-
-                if (HasDunderInChain(symbol, DunderNames.Len))
-                    return (true, TruthinessLowering.SizedNotEmpty);
-
-                // #1808: check CLR type for protocol interfaces (ISized, IBoolConvertible)
-                if (symbol.ClrType != null)
-                {
-                    if (HasClrProtocolInterface(symbol.ClrType, "Sharpy.IBoolConvertible"))
-                        return (true, TruthinessLowering.BoolConvertible);
-                    if (HasClrProtocolInterface(symbol.ClrType, "Sharpy.ISized"))
-                        return (true, TruthinessLowering.SizedNotEmpty);
-                }
-
-                return (false, default);
+                return ClassifyDeclaredTruthiness(symbol);
             }
         }
 
@@ -152,12 +206,50 @@ internal partial class TypeChecker
                     or BuiltinNames.Tuple or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict
                     or BuiltinNames.DefaultDict => (true, TruthinessLowering.CollectionNotEmpty),
                 BuiltinNames.Bytes => (true, TruthinessLowering.BytesNotEmpty),
-                _ => (false, default)
+                // A GENERIC HOST (`class Box[T]` declaring __len__/__bool__) is truth-testable
+                // exactly as the non-generic class is — the host axis of #1808. `bool(b)` already
+                // worked on one because it goes through the builtin's own overload set, while
+                // `if b:` came here and got "no": the same receiver, two answers.
+                _ => GenericHostSymbol(gt) is { } hostSymbol
+                    ? ClassifyDeclaredTruthiness(hostSymbol)
+                    : (false, default)
             };
         }
 
         return (false, default);
     }
+
+    /// <summary>
+    /// The truthiness verdict for a receiver whose protocol comes from a DECLARED type — its own
+    /// dunders, an inherited one, or a Sharpy protocol interface it carries. One helper for the
+    /// plain-class and generic-host arms, which were two copies of this question (#1808).
+    /// </summary>
+    private static (bool isTruthTestable, TruthinessLowering lowering) ClassifyDeclaredTruthiness(
+        TypeSymbol symbol)
+    {
+        if (HasDunderInChain(symbol, DunderNames.Bool))
+            return (true, TruthinessLowering.BoolConvertible);
+
+        if (HasDunderInChain(symbol, DunderNames.Len))
+            return (true, TruthinessLowering.SizedNotEmpty);
+
+        if (symbol.ClrType != null)
+        {
+            if (HasClrProtocolInterface(symbol.ClrType, SharpyProtocolInterfaces.BoolConvertible))
+                return (true, TruthinessLowering.BoolConvertible);
+            if (HasClrProtocolInterface(symbol.ClrType, SharpyProtocolInterfaces.Sized))
+                return (true, TruthinessLowering.SizedNotEmpty);
+        }
+
+        return (false, default);
+    }
+
+    /// <summary>
+    /// The declaring symbol behind a generic instantiation (<c>Box[int]</c> → <c>Box</c>), or
+    /// <c>null</c> when the instantiation names no user type.
+    /// </summary>
+    private TypeSymbol? GenericHostSymbol(GenericType generic)
+        => generic.GenericDefinition ?? _symbolTable?.Lookup(generic.Name) as TypeSymbol;
 
     private bool IsTruthTestable(SemanticType type) => ClassifyTruthiness(type).isTruthTestable;
 

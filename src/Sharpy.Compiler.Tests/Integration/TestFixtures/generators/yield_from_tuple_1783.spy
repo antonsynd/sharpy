@@ -1,0 +1,12 @@
+# `yield from` is a route of the iteration ring, so a tuple source gets the same array bridge the
+# `for` statement, the comprehension clause, the membership container and the argument funnel get
+# (#1783). The checker RECORDED the projection here before this fixture existed and the emitter
+# dropped it, which is a foreach over a ValueTuple: CS1579 behind SPY0908. Output verified against
+# python3 (`list(gen())` -> `[1, 2, 3, 4]`).
+def gen() -> int:
+    yield from (1, 2)
+    yield from [3, 4]
+
+def main() -> None:
+    for x in gen():
+        print(x)
