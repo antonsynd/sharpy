@@ -809,7 +809,7 @@ internal partial class TypeChecker
                 // uses (#1705).
                 Type = Discovery.ClrDeclaredNullability.Apply(
                     _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ParameterTypes[i]),
-                    Discovery.ClrDeclaredNullability.DeclaresNullableArgument(clrParameters[i + 1]))
+                    Discovery.ClrDeclaredNullability.DescribeArgument(clrParameters[i + 1]))
             });
         }
 
@@ -826,7 +826,7 @@ internal partial class TypeChecker
             Parameters = parameters,
             ReturnType = Discovery.ClrDeclaredNullability.Apply(
                 _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ReturnType),
-                Discovery.ClrDeclaredNullability.DeclaresNullableReturn(partial.OpenMethod)),
+                Discovery.ClrDeclaredNullability.DescribeReturn(partial.OpenMethod)),
             IsStatic = false
         };
     }

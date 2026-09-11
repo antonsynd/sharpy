@@ -749,28 +749,16 @@ internal class OverloadIndexBuilder
     /// and that stamp must match the one <see cref="ClrTypeBridge"/> applies (#1294).
     /// </remarks>
     internal TypeSignature CreateTypeSignature(PropertyInfo property)
-        => WrapIfNullableReference(CreateTypeSignature(property.PropertyType), ClrDeclaredNullability.DeclaresNullable(property));
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(property.PropertyType), ClrDeclaredNullability.Describe(property));
 
     internal TypeSignature CreateTypeSignature(FieldInfo field)
-        => WrapIfNullableReference(CreateTypeSignature(field.FieldType), ClrDeclaredNullability.DeclaresNullable(field));
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(field.FieldType), ClrDeclaredNullability.Describe(field));
 
     internal TypeSignature CreateReturnTypeSignature(MethodInfo method)
-        => WrapIfNullableReference(CreateTypeSignature(method.ReturnType), ClrDeclaredNullability.DeclaresNullableReturn(method));
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(method.ReturnType), ClrDeclaredNullability.DescribeReturn(method));
 
     internal TypeSignature CreateParameterTypeSignature(ParameterInfo parameter)
-        => WrapIfNullableReference(CreateTypeSignature(parameter.ParameterType), ClrDeclaredNullability.DeclaresNullableArgument(parameter));
-
-    private static TypeSignature WrapIfNullableReference(TypeSignature inner, bool declaredNullable)
-    {
-        if (!declaredNullable || inner.Name == TypeSignature.NullableSentinel)
-            return inner;
-        return new TypeSignature
-        {
-            Name = TypeSignature.NullableReferenceSentinel,
-            IsGeneric = true,
-            TypeArguments = new List<TypeSignature> { inner }
-        };
-    }
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(parameter.ParameterType), ClrDeclaredNullability.DescribeArgument(parameter));
 
     internal TypeSignature CreateTypeSignature(Type clrType)
     {

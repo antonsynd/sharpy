@@ -787,9 +787,9 @@ internal class BuiltinRegistry
             Name = NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method),
             // A reflected Type is NRT-blind, so the declared `string?` is read from the MEMBER —
             // the same seam ClrTypeBridge.MapReturnType and OverloadIndexBuilder use (#1705).
-            ReturnType = WrapIfDeclaredNullable(
+            ReturnType = Discovery.ClrDeclaredNullability.Apply(
                 CreateTypeSignatureFromClr(method.ReturnType, typeMapper),
-                Discovery.ClrDeclaredNullability.DeclaresNullableReturn(method)),
+                Discovery.ClrDeclaredNullability.DescribeReturn(method)),
         };
 
         // Skip the first parameter (the `this string` extension target)
@@ -799,9 +799,9 @@ internal class BuiltinRegistry
             signature.Parameters.Add(new ParameterSignature
             {
                 Name = param.Name ?? "arg",
-                Type = WrapIfDeclaredNullable(
+                Type = Discovery.ClrDeclaredNullability.Apply(
                     CreateTypeSignatureFromClr(param.ParameterType, typeMapper),
-                    Discovery.ClrDeclaredNullability.DeclaresNullableArgument(param)),
+                    Discovery.ClrDeclaredNullability.DescribeArgument(param)),
                 HasDefault = param.HasDefaultValue,
                 DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
                 IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
@@ -809,30 +809,6 @@ internal class BuiltinRegistry
         }
 
         return signature;
-    }
-
-    /// <summary>
-    /// The member-declared nullability applied to an extension method's signature, in the encoding
-    /// the discovery cache already uses (<see cref="Discovery.Caching.TypeSignature.NullableReferenceSentinel"/>) —
-    /// the twin of <c>OverloadIndexBuilder.WrapIfNullableReference</c>, so the two routes that
-    /// describe the same CLR member describe it identically (#1705).
-    /// </summary>
-    private static Discovery.Caching.TypeSignature WrapIfDeclaredNullable(
-        Discovery.Caching.TypeSignature inner, bool declaredNullable)
-    {
-        if (!declaredNullable
-            || inner.Name == Discovery.Caching.TypeSignature.NullableSentinel
-            || inner.Name == Discovery.Caching.TypeSignature.NullableReferenceSentinel)
-        {
-            return inner;
-        }
-
-        return new Discovery.Caching.TypeSignature
-        {
-            Name = Discovery.Caching.TypeSignature.NullableReferenceSentinel,
-            IsGeneric = true,
-            TypeArguments = new List<Discovery.Caching.TypeSignature> { inner }
-        };
     }
 
     /// <summary>

@@ -691,7 +691,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (323, 13) - (323, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (324, 13) - (324, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), (string?)"yEs"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "yEs"));
 #line hidden
                         break;
                     default:
@@ -715,7 +715,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (333, 13) - (333, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (334, 13) - (334, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), (string?)"Y"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "Y"));
 #line hidden
                         break;
                     default:
@@ -739,7 +739,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (343, 13) - (343, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (344, 13) - (344, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), (string?)"N"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "N"));
 #line hidden
                         break;
                     default:
@@ -754,7 +754,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSafeDumpQuotesTheBoolFamilySoItRoundTrips()
             {
 #line (352, 5) - (352, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(yaml.SafeDump("NO"), (string?)"'NO'\n"));
+                Xunit.Assert.True(@operator.Eq(yaml.SafeDump("NO"), "'NO'\n"));
 #line (353, 5) - (353, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(yaml.SafeLoad(yaml.SafeDump("NO")), "NO"));
 #line (354, 5) - (354, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -1138,7 +1138,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (519, 5) - (519, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(null);
 #line (520, 5) - (520, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(text, (string?)"null\n...\n"));
+                Xunit.Assert.True(@operator.Eq(text, "null\n...\n"));
 #line (521, 5) - (521, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Null(yaml.SafeLoad(text));
 #line hidden
