@@ -1,0 +1,11 @@
+# #1687: an imported CLR type keeps the name it was IMPORTED under, and its members resolve under
+# the reverse-mangled Sharpy spelling AND the verbatim CLR spelling.
+# `Uri` is deliberately NOT exercised here: its type is forwarded to System.Private.Uri, which the
+# file-based harness's Roslyn reference set does not carry, so the cell would measure the reference
+# set rather than the compiler. ClrImportNameFidelityTests covers the same axis.
+from system import Guid
+
+def main() -> None:
+    g: Guid = Guid.new_guid()
+    print(len(g.to_string()) > 0)
+    print(len(Guid.NewGuid().ToString()) > 0)
