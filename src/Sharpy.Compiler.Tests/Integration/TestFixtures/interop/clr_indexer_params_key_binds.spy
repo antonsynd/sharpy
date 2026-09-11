@@ -1,0 +1,12 @@
+# The indexer route decides a SINGLE-key indexer and stays out of the shapes it does not model: a
+# `params` index parameter (one element, several, or the array itself) and a multi-key indexer. The
+# first version of the check refused every numpy subscript — 18 Sharpy.Stdlib.Tests fixtures — by
+# reading `this[params int[] indices]` as a formal that takes an array and nothing else.
+from System.Collections.Generic import List
+
+
+def main() -> None:
+    # A single-key indexer still decides: the positive control lives in clr_indexer_key_refused.
+    xs: List[str] = List[str]()
+    xs.add("a")
+    print(xs[0])

@@ -1340,15 +1340,28 @@ internal partial class TypeChecker
         if (indexType is UnknownType or TypeParameterType)
             return true;
 
+        // A TUPLE key is a MULTI-INDEX subscript (`a[0, 1]`), which this seam does not model: which
+        // indexer it means, and how the elements distribute over the index parameters, is a question
+        // the subscript lowering owns.
+        if (indexType is TupleType)
+            return true;
+
         var indexers = closedClrType.GetProperties()
-            .Where(p => p.GetIndexParameters().Length == 1
-                        && (forStore ? p.GetSetMethod() != null : p.GetGetMethod() != null))
+            .Where(p => forStore ? p.GetSetMethod() != null : p.GetGetMethod() != null)
+            .Where(p => p.GetIndexParameters().Length > 0)
             .ToList();
 
-        // No single-key indexer to decide against: a multi-key indexer, or a type whose subscript
-        // only codegen resolves. Not this seam's question.
-        if (indexers.Count == 0)
+        // Nothing to decide against, or a shape this seam does not model: a multi-key indexer
+        // (`this[int, int]`), or a `params` index parameter (`NdArray`'s `this[params int[]]`), whose
+        // key may be one element, several, or the array itself. Deciding the single-key case and
+        // staying out of the rest is the difference between a diagnostic and a false refusal on every
+        // numpy subscript.
+        if (indexers.Count == 0
+            || indexers.Any(p => p.GetIndexParameters() is not { Length: 1 } single
+                                 || IsClrParamsArray(single[0])))
+        {
             return true;
+        }
 
         var refused = new List<string>();
         var noneRefusals = new List<(string Parameter, string Display)>();
