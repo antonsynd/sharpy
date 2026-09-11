@@ -65,4 +65,39 @@ public class ComprehensionFusionPassTests
                 + "    return len([i + j for i in range(n) for j in range(m)])\n";
         CompileCSharp(src, fuse: true).Should().NotContain(ProductPresize);
     }
+
+    // ── the generator-expression kind (#1774) ───────────────────────────────────────────────
+
+    private const string MultiForGenerator =
+        "def f(xs: list[int], ys: list[int]) -> int:\n"
+        + "    return sum(x + y for x in xs for y in ys)\n";
+
+    /// <summary>
+    /// The pass SKIPS <c>IrLoweredGenerator</c>, and that is the right answer rather than an
+    /// oversight: presizing is a materialization decision, and a generator expression materializes
+    /// nothing — it is a deferred LINQ chain. Design Decision 5 required a test that states which of
+    /// "handles" or "skips" the pass does for the new kind, so this is it.
+    /// </summary>
+    /// <remarks>
+    /// The ASSERTION is a comparison, not an absence: the same program under the flag and without it
+    /// must produce byte-identical C#. An absence assertion ("no product presize") would pass
+    /// vacuously for any reason at all, including a generator that stopped being lowered; the
+    /// positive control that the flag DOES change output on a comprehension is
+    /// <see cref="Enabled_MultiForAllSized_PresizesToProductOfCounts"/> on the same shape of program.
+    /// </remarks>
+    [Fact]
+    public void GeneratorExpression_IsSkippedByThePass_OutputIsIdenticalWithAndWithoutTheFlag()
+    {
+        var fused = CompileCSharp(MultiForGenerator, fuse: true);
+        var plain = CompileCSharp(MultiForGenerator, fuse: false);
+
+        fused.Should().Be(plain,
+            "a generator expression materializes no collection, so there is nothing for the "
+            + "presizing pass to size — it must pass through unchanged");
+        fused.Should().NotContain(ProductPresize,
+            "and in particular it is never presized");
+        fused.Should().Contain("SelectMany",
+            "positive control: the two-for generator really did lower to a nested LINQ chain, so "
+            + "the equality above compared a generator program rather than an empty one");
+    }
 }

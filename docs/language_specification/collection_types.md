@@ -148,6 +148,41 @@ def main() -> None:
 `s - f` is `{1}` and `f - s` is `frozenset({3})` because difference is not symmetric; the elements
 differ for the usual reason, and only the *type* of each result comes from the left-operand rule.
 
+### The named methods take any iterable, at any arity
+
+The operators above require a set on both sides. The named methods do not: on both `set` and
+`frozenset`, every member of the ring takes **any iterable source** — a list, a tuple, a `str`, a
+`dict` (its keys), a `range`, another set, or a generator expression — and the variadic members take
+**zero or more** of them, exactly as Python does. `symmetric_difference` and
+`symmetric_difference_update` take exactly one operand (Python raises `TypeError` otherwise; Sharpy
+refuses by name).
+
+| Method | Arity | Mutates |
+|---|---|---|
+| `update`, `intersection_update`, `difference_update` | 0..n | yes (`set` only) |
+| `union`, `intersection`, `difference` | 0..n | no |
+| `symmetric_difference`, `symmetric_difference_update` | exactly 1 | the `_update` form |
+| `is_subset`, `is_superset`, `is_disjoint` | exactly 1 | no |
+
+```python
+def main() -> None:
+    s: set[int] = {1, 2}
+
+    print(s.union({3}, (4,)))        # {1, 2, 3, 4} — a set and a tuple in one call
+    print(s.union([3, 4]))           # {1, 2, 3, 4}
+    print(s.union())                 # {1, 2}       — arity 0 is a copy
+    print(s.is_subset((1, 2, 3)))    # True
+    # print(s.symmetric_difference({2}, {3}))  # refused by name — Python raises TypeError
+
+    t: set[str] = {"a"}
+    print(t.union("de"))             # {'a', 'd', 'e'} — a str iterates as its characters
+    print(t.union({"b": 1}))         # {'a', 'b'}      — a dict iterates as its keys
+```
+
+Note the SPELLINGS: Sharpy uses `is_subset` / `is_superset` / `is_disjoint`, not Python's
+`issubset` / `issuperset` / `isdisjoint` (snake_case throughout — see
+[naming_conventions.md](naming_conventions.md)).
+
 ### Augmented assignment rebinds
 
 `|=`, `&=`, `-=` and `^=` are defined by the binary operator plus a rebinding of the left-hand name.

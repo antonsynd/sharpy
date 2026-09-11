@@ -1,0 +1,4 @@
+# Second refusal cell of the start-family rule (#1780): C# has no `double + decimal` row, so a
+# decimal start over float elements is refused by name rather than promoted.
+def main() -> None:
+    print(sum([1.5, 2.5], decimal(1)))

@@ -9,7 +9,7 @@
 > - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
 > - `yield from` in async generators is **implemented** (Sharpy extension beyond Python).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
-> - Async comprehensions (`[x async for x in ...]`, `[await f(x) for x in ...]`) are **implemented** inside `async def` functions for list/set/dict comprehensions — see [Async Comprehensions](#async-comprehensions) below. Async *generator expressions* (`(x async for x in ...)`) remain unsupported.
+> - Async comprehensions (`[x async for x in ...]`, `[await f(x) for x in ...]`) are **implemented** inside `async def` functions for list/set/dict comprehensions — see [Async Comprehensions](#async-comprehensions) below. Synchronous generator expressions are **implemented** (see [comprehensions.md](comprehensions.md#generator-expressions)); async *generator expressions* (`(x async for x in ...)`) remain unsupported.
 >
 > See [generators.md](generators.md) for synchronous and async generator documentation.
 
@@ -93,7 +93,10 @@ async def collect() -> list[int]:
 
 *Implementation: ✅ Implemented — each async comprehension lowers to a temporary collection populated by an `await foreach` (for an `async for` clause) or a `foreach` (when only `await` appears in the body), appending each element/entry in order; the temporary is the comprehension's result. Nested async comprehensions lower to nested loops, so the inner collection is recreated per outer iteration. Using an `async for` clause or `await` in a comprehension outside `async def` is a compile error.*
 
-> Async **generator expressions** — `(x async for x in src)` — are **not** supported, because Sharpy has no generator-expression construct at all (synchronous generator expressions are likewise unavailable). Use a list/set/dict comprehension or an explicit `async for` loop instead.
+> Async **generator expressions** — `(x async for x in src)` — are **not** supported: the `async for`
+> clause is available to list/set/dict comprehensions only. SYNCHRONOUS generator expressions are
+> supported (see [comprehensions.md](comprehensions.md#generator-expressions)). For an async source,
+> use an async comprehension or an explicit `async for` loop instead.
 
 **Generator Return Types:**
 

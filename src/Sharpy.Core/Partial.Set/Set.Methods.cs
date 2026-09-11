@@ -122,9 +122,9 @@ namespace Sharpy
         /// <returns><c>true</c> if the sets have no common elements.</returns>
         /// <example>
         /// <code>
-        /// a = {1, 2}
-        /// b = {3, 4}
-        /// a.isdisjoint(b)    # True
+        /// a: set[int] = {1, 2}
+        /// b: set[int] = {3, 4}
+        /// print(a.is_disjoint(b))    # True
         /// </code>
         /// </example>
         public bool IsDisjoint(Set<T> other)

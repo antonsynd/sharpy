@@ -946,6 +946,15 @@ public sealed record TupleType : SemanticType
     /// </summary>
     public bool IsNamed => ElementNames != null && ElementNames.Value.Length > 0;
 
+    /// <summary>
+    /// A tuple emits as <c>System.ValueTuple&lt;…&gt;</c>, which is a struct — so <c>tuple[…] | None</c>
+    /// is a <c>Nullable&lt;ValueTuple&lt;…&gt;&gt;</c> and every seam that asks "does dereferencing
+    /// this wrapper need <c>.Value</c>?" must get <c>true</c> here (#1792). Answering <c>false</c>
+    /// (the base default before this) made the narrowing seam emit the null-forgiving <c>v!.Item1</c>
+    /// and the protocol-receiver seam emit nothing at all, both CS1061 behind SPY0908.
+    /// </summary>
+    public override bool IsValueType => true;
+
     public override string CanonicalKey
     {
         get

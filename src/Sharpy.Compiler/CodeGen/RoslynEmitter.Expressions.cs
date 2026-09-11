@@ -26,6 +26,16 @@ internal partial class RoslynEmitter
 
         var generated = GenerateExpressionCore(expr);
 
+        // Receiver unwrap (#1792): the TypeChecker accepted this expression as a protocol route's
+        // receiver through the loose `T | None` view, and its payload is a C# value type — so the
+        // value in hand is a `Nullable<T>` and the route's lowering (indexer, ItemN, Contains,
+        // GetEnumerator) needs the payload. Applied FIRST, before the two materializations below,
+        // because those describe the payload's own shape, not the wrapper's. Absent for every
+        // reference payload and every bare receiver, so the default path is byte-identical.
+        var receiverUnwrap = _context.SemanticInfo?.GetReceiverUnwrap(expr);
+        if (receiverUnwrap != null)
+            generated = ApplyReceiverUnwrap(generated, receiverUnwrap.Kind);
+
         // Char materialization (#1291): the TypeChecker decided this expression yields a char-based CLR
         // value where its own semantic type says Sharpy `str`, and named the conversion. Applied before
         // the sequence wrap below, so a value needing both is converted first and then wrapped — the
@@ -53,6 +63,23 @@ internal partial class RoslynEmitter
         return slotCast != null
             ? EmittedTreePrecedence.Cast(_typeMapper.MapSemanticType(slotCast), generated)
             : generated;
+    }
+
+    /// <summary>
+    /// Applies the unwrap the TypeChecker recorded for a protocol-route receiver (#1792). One arm per
+    /// <see cref="ReceiverUnwrapKind"/>; the emitter decides nothing — which receivers carry an
+    /// unwrap, and which kind, was decided by <c>TypeChecker.ProtocolReceiver</c>.
+    /// </summary>
+    private static ExpressionSyntax ApplyReceiverUnwrap(ExpressionSyntax value, ReceiverUnwrapKind kind)
+    {
+        return kind switch
+        {
+            ReceiverUnwrapKind.NullableValue =>
+                EmittedTreePrecedence.Member(value, nameof(Nullable<int>.Value)),
+            _ => throw new InvalidOperationException(
+                $"Unhandled {nameof(ReceiverUnwrapKind)} '{kind}' — every kind recorded by "
+                + "TypeChecker.ProtocolReceiver needs an emitter arm here (#1792).")
+        };
     }
 
     /// <summary>

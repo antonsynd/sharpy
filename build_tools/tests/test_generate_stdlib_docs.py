@@ -1705,3 +1705,71 @@ def test_editor_browsable_never_member_is_skipped(tmp_path: Path) -> None:
     # Mutation: drop `_is_hidden_from_surface` from any member site -> this goes red.
     assert "in_place_repeat" not in names
     assert "hidden_count" not in names
+
+
+class TestVariadicAndKeywordReferenceRendering:
+    """
+    Two renderings that published a signature and a sentence no reader could act on
+    (2026-09-11 P9 audit, plan-a79696 §7).
+
+    A `params T[]` formal is a VARIADIC at the Sharpy surface: the caller writes
+    `s.union(a, b)`. It rendered as `union(others: list[Iterable[T]])` because the array-suffix
+    branch of `map_type` ran before the `params`-prefix branch, stripping the `[]` and then
+    wrapping the result in `list[...]` — the exact opposite of what the method accepts.
+
+    A `<see langword="..."/>` is a C# keyword reference. Nothing handled it, so the catch-all
+    tag stripper ate it whole and `builtins.md` read "Sums a sequence of booleans, counting  as
+    1." with the subject of the sentence gone.
+    """
+
+    def test_params_array_renders_as_a_variadic_not_a_list(self):
+        assert map_type("params IEnumerable<T>[]") == "*Iterable[T]"
+
+    def test_params_of_a_scalar_renders_as_a_variadic(self):
+        assert map_type("params int[]") == "*int"
+
+    def test_a_plain_array_is_still_a_list(self):
+        # The positive control for the branch ORDER: moving `params` first must not stop an
+        # ordinary array from rendering as list[...].
+        assert map_type("int[]") == "list[int]"
+        assert map_type("IEnumerable<T>[]") == "list[Iterable[T]]"
+
+    def test_langword_reference_survives_tag_stripping(self):
+        assert _strip_xml_tags('counting <see langword="true"/> as 1') == "counting `true` as 1"
+
+    def test_langword_reference_is_pythonified_in_prose(self):
+        # The rendered page runs prose through _fixup_prose, which is what turns the C# keyword
+        # into the Sharpy spelling. Asserted through both stages because either alone would leave
+        # a C# keyword in the docs.
+        assert _fixup_prose(
+            _strip_xml_tags('counting <see langword="true"/> as 1')) == "counting `True` as 1"
+
+    def test_cref_reference_still_renders(self):
+        # Positive control: the new langword rule sits beside the cref rule and must not shadow it.
+        assert _strip_xml_tags('see <see cref="Foo.Bar"/> for more') == "see `Foo.Bar` for more"
+
+    def test_variadic_star_moves_to_the_parameter_name(self, tmp_path):
+        """`*others: Iterable[T]`, never `others: *Iterable[T]`.
+
+        map_type marks the TYPE because that is where C# puts the `params` keyword; the signature
+        renderer moves the star onto the name, which is where Python puts it. Asserted through
+        parse_cs_file so the signature is the one the generator BUILDS, not one restated here.
+        """
+        cs = textwrap.dedent(
+            """\
+            public partial class SetModule
+            {
+                /// <summary>Union with every other iterable.</summary>
+                /// <param name="others">The iterables to union with.</param>
+                public static int Union(params int[] others)
+                {
+                    return 0;
+                }
+            }
+        """
+        )
+        f = tmp_path / "SetModule.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        assert len(members) == 1
+        assert members[0].signature == "union(*others: int) -> int"

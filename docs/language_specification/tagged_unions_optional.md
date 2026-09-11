@@ -322,6 +322,34 @@ where nullable references flow into ordinary member access:
 s: str | None = dotnet_api()
 print(len(s))      # works; throws at runtime if s is None
 print(s.upper())   # works; throws at runtime if s is None
+print(s[0])        # works — indexing is a protocol route like any other
+print(s[0:1])     # works — so is slicing
+for ch in s:       # works — and iteration
+    print(ch)
+print([ch for ch in s])   # works — including the comprehension spelling
+```
+
+"Every protocol route" means every one, for every payload — including payloads that emit as .NET
+value types, where the loose wrapper is a `Nullable<T>`:
+
+```python
+b: bytes | None = read_bytes()
+print(b[0])        # works
+print(b[0:1])      # works
+print(b.decode())  # works
+
+t: tuple[int, int] | None = pair()
+print(t[0])        # works
+print(2 in t)      # works
+for x in t:        # works
+    print(x)
+```
+
+By contrast the strict `T?` refuses all of them with SPY0326 and tells you to narrow or unwrap:
+
+```python
+o: str? = maybe(dotnet_api())
+# print(o[0])      # SPY0326 — narrow it first (if o is not None:) or unwrap it (o.unwrap())
 ```
 
 Choose `T?` when you want the compiler to force you to handle absence; choose

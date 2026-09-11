@@ -798,7 +798,14 @@ internal partial class RoslynEmitter
 
         // yield from expr → foreach (var __yieldItem_N in expr) { yield return __yieldItem_N; }
         // In async generators, if the iterable is IAsyncEnumerable<T>, emit await foreach.
-        var iterableExpr = GenerateExpression(yieldStmt.Value);
+        //
+        // The iteration ring's projection is applied here exactly as it is at `for`, the
+        // comprehension clause, the membership container and the argument funnel (#1783). Without
+        // this arm the checker RECORDED the tuple array bridge for `yield from t` and the emitter
+        // dropped it, which is a foreach over a ValueTuple: CS1579 behind SPY0908. A recorded fact
+        // the emitter never applies is worse than no fact (contract §4).
+        var iterableExpr = ApplyIterableProjection(
+            yieldStmt.Value, GenerateExpression(yieldStmt.Value));
         var itemName = GenerateTempVarName("yieldItem");
         var itemIdentifier = Identifier(itemName);
         var yieldReturn = YieldStatement(

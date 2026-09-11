@@ -65,10 +65,20 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
         new("min", "min()"),
     };
 
+    /// <summary>
+    /// The slot axis. It is measured by <see cref="SlotDirectedCellBehavesAsTheRulePredicts"/> rather
+    /// than as a third factor of the source × route cross-product, because a slot is a property of
+    /// the SPELLING: only a constructor callee can carry an explicit type argument, only a stored
+    /// result can carry a declared target, and only a mutating store into a typed receiver carries a
+    /// receiver element. Folding it in produced a matrix where one blanket rule excluded half the
+    /// cells — the shape this round found and named (a slot axis that is 100% N/A measures nothing).
+    /// </summary>
     private static readonly Slot[] Slots =
     {
         new("none", "no slot"),
-        new("receiver-element", "receiver element type"),
+        new("explicit-generic", "explicit type argument on the constructor callee"),
+        new("declared-target", "declared element type of the store target"),
+        new("receiver-element", "element type of the mutated receiver"),
     };
 
     // ───────────────────────────── N/A ─────────────────────────────
@@ -80,23 +90,23 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
         var cells = new List<NaCell>();
         foreach (var src in Sources)
             foreach (var route in Routes)
-                foreach (var slot in Slots)
-                {
-                    var reason = NaReason(src, route, slot);
-                    if (reason != null)
-                        cells.Add(new NaCell(src.Id, route.Id, slot.Id, reason));
-                }
+            {
+                var reason = NaReason(src, route);
+                if (reason != null)
+                    cells.Add(new NaCell(src.Id, route.Id, "none", reason));
+            }
         return cells.ToArray();
     }
 
-    private static string? NaReason(Source src, Route route, Slot slot)
+    /// <summary>
+    /// Why a source × route cell is not part of the contract. Every reason names a LANGUAGE rule —
+    /// never "deferred" or "not implemented yet", which is how a matrix launders a defect into an
+    /// exclusion. Two such reasons lived here (float-mix at argument positions, and range
+    /// membership) and both described behaviour that either works now or is the very thing the
+    /// matrix exists to measure.
+    /// </summary>
+    private static string? NaReason(Source src, Route route)
     {
-        // The receiver-element slot only applies to routes that have a typed target
-        // (extend/+= — those are separate tests, not matrix rows, because they need
-        // a receiver declaration). All other routes pass no slot.
-        if (slot.Id == "receiver-element")
-            return "receiver-element slot is tested in dedicated extend/+= tests, not the matrix routes";
-
         // nested-unpack only makes sense with for (unpacking target) and comprehension
         if (src.Id == "nested-unpack" && route.Id is not ("for" or "list-comp"))
             return "nested unpacking is only meaningful with for and list comprehension iterators";
@@ -108,16 +118,6 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
         // min requires comparable elements — nested tuples are not directly comparable
         if (route.Id == "min" && src.Id == "nested-unpack")
             return "min of nested tuples is not directly comparable in Sharpy (no tuple ordering)";
-
-        // float-mix at argument positions (sorted, list-ctor, sum, min): the slot is not
-        // passed at argument positions yet (null is passed) so the projection element stays
-        // int, producing CS1503 — deferred until slot-passing at argument positions is wired
-        if (src.Id == "float-mix" && route.Id is "sorted" or "list-ctor" or "sum" or "min")
-            return "float-mix tuple at argument positions deferred — slot is null at RecordIterableArgumentMarks";
-
-        // range membership is Phase 2 (#1778) — RangeIterator has no Contains yet
-        if (src.Id == "range-control" && route.Id is "in" or "not-in")
-            return "range membership is Phase 2 (#1778) — RangeIterator.Contains not implemented yet";
 
         return null;
     }
@@ -342,14 +342,12 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
 
         foreach (var src in Sources)
             foreach (var route in Routes)
-                foreach (var slot in Slots)
-                {
-                    if (naCells.Any(n => n.Source == src.Id && n.Route == route.Id && n.Slot == slot.Id))
-                        continue;
+            {
+                if (naCells.Any(n => n.Source == src.Id && n.Route == route.Id))
+                    continue;
 
-                    if (slot.Id == "none")
-                        programs.Add(BuildProgram(src, route));
-                }
+                programs.Add(BuildProgram(src, route));
+            }
 
         return programs;
     }
@@ -415,25 +413,165 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
 
         foreach (var src in Sources)
             foreach (var route in Routes)
-                foreach (var slot in Slots)
-                {
-                    var isNa = naCells.Any(
-                        n => n.Source == src.Id && n.Route == route.Id && n.Slot == slot.Id);
-                    if (isNa)
-                        continue;
+            {
+                if (naCells.Any(n => n.Source == src.Id && n.Route == route.Id))
+                    continue;
 
-                    live.Should().Contain(
-                        c => c.Source == src.Id && c.Route == route.Id && c.Slot == slot.Id,
-                        $"{src.Id} × {route.Id} × {slot.Id} is a cell of the matrix");
-                }
+                live.Should().Contain(
+                    c => c.Source == src.Id && c.Route == route.Id,
+                    $"{src.Id} × {route.Id} is a cell of the matrix");
+            }
 
         naCells.Should().OnlyContain(n => n.Reason.Length >= 20,
-            "every N/A cell states why (≥ 20 chars)");
+            "every N/A cell states why (>= 20 chars)");
 
-        var total = Sources.Length * Routes.Length * Slots.Length;
-        (live.Count + naCells.Length).Should().Be(total,
-            $"live ({live.Count}) + N/A ({naCells.Length}) = "
-            + $"{Sources.Length} × {Routes.Length} × {Slots.Length}");
+        // The axis rosters are spelled out as LITERALS. Computing both sides of the count from
+        // Sources/Routes is an identity: deleting `new("min", "min()")` from Routes dropped the
+        // theory count 133 -> 128 and this assertion still PASSED (measured). A literal roster
+        // reddens on a deleted or renamed axis member.
+        Sources.Select(x => x.Id).Should().BeEquivalentTo(
+            new[] { "tuple-literal", "tuple-var", "float-mix", "nested-unpack",
+                    "list-control", "str-control", "range-control" },
+            "the source axis");
+        Routes.Select(x => x.Id).Should().BeEquivalentTo(
+            new[] { "for", "list-comp", "set-comp", "dict-comp", "in", "not-in",
+                    "sorted", "list-ctor", "sum", "min" },
+            "the route axis");
+        Slots.Select(x => x.Id).Should().BeEquivalentTo(
+            new[] { "none", "explicit-generic", "declared-target", "receiver-element" },
+            "the slot axis — the `none` slot IS the source x route cross-product above; the three "
+            + "written slots are measured by SlotDirectedCellBehavesAsTheRulePredicts");
+
+        (live.Count + naCells.Length).Should().Be(70,
+            $"7 sources x 10 routes = 70; live ({live.Count}) + N/A ({naCells.Length})");
+
+        // Every WRITTEN slot has real cells, so no slot can be excluded wholesale (the shape this
+        // matrix previously had: one blanket rule sent every receiver-element cell to N/A).
+        foreach (var slotId in new[] { "explicit-generic", "declared-target", "receiver-element" })
+        {
+            SlotCells.Should().Contain(c => (string)c[2] == slotId,
+                $"the '{slotId}' slot must have at least one LIVE cell — a slot axis that is "
+                + "entirely N/A measures nothing");
+        }
+    }
+
+    // ──────────── the SLOT axis (R-W arm 1) ────────────
+
+    /// <summary>
+    /// The slot-directed cells: source × the spelling that names a slot × the slot's element type.
+    /// Arm 1 of the best-common-type rule admits each element INTO the slot (or refuses at the
+    /// element's own span), so a slot decides the projected element type and the slot-less rule
+    /// does not get a say.
+    ///
+    /// <para>These are the cells the SPY0227 refusal steers users toward — "annotate the target
+    /// (e.g. <c>xs: list[T] = ...</c>)". Every one of the three spellings it recommends is here, and
+    /// each is measured against python3's value for the same program.</para>
+    /// </summary>
+    /// <remarks>
+    /// Columns: source expression · the spelling · the slot id · the program body · expected stdout.
+    /// The heterogeneous source is the discriminating row of each spelling: it is REFUSED without a
+    /// slot (<see cref="HeterogeneousTupleIsRefusedAtSlotLessRoutes"/>) and admitted with one, so a
+    /// slot that is read produces a different verdict from a slot that is ignored.
+    /// </remarks>
+    public static IEnumerable<object[]> SlotCells => new[]
+    {
+        // explicit-generic: list[object](t) / list[float](t) / set[object](t)
+        new object[] { "het-mix", "list-ctor", "explicit-generic",
+            "print(list[object]((1, \"a\")))", "[1, 'a']" },
+        new object[] { "tuple-literal", "list-ctor", "explicit-generic",
+            "print(list[object]((1, 2)))", "[1, 2]" },
+        new object[] { "tuple-literal", "list-ctor", "explicit-generic",
+            "print(list[float]((1, 2)))", "[1.0, 2.0]" },
+        new object[] { "het-mix", "set-ctor", "explicit-generic",
+            "print(len(set[object]((1, \"a\"))))", "2" },
+
+        // declared-target: ys: list[object] = list(t)
+        new object[] { "het-mix", "list-ctor", "declared-target",
+            "ys: list[object] = list((1, \"a\"))\n    print(ys)", "[1, 'a']" },
+        new object[] { "tuple-literal", "list-ctor", "declared-target",
+            "zs: list[float] = list((1, 2))\n    print(zs)", "[1.0, 2.0]" },
+
+        // receiver-element: xs.extend(t)
+        new object[] { "het-mix", "extend", "receiver-element",
+            "xs: list[object] = []\n    xs.extend((1, \"a\"))\n    print(xs)", "[1, 'a']" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SlotCells))]
+    public void SlotDirectedCellBehavesAsTheRulePredicts(
+        string sourceId, string routeId, string slotId, string body, string expected)
+    {
+        var source = $"def main() -> None:\n    {body}\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(
+            $"{sourceId} x {routeId} x {slotId} is admitted by arm 1 (each element goes into the "
+            + "slot) but failed: " + string.Join("; ", result.CompilationErrors) + "\n" + source);
+
+        var printed = result.StandardOutput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0 && l != "=== Running Program ===")
+            .ToList();
+
+        printed.Should().Equal(
+            expected.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            $"{sourceId} x {routeId} x {slotId} value\n{source}");
+    }
+
+    // ──────────── the STRICT family at the consumer ring ────────────
+
+    /// <summary>
+    /// A strict <c>T?</c> at an iterable-argument position is refused BY NAME with SPY0326, naming
+    /// the consumer the user wrote, at EVERY entry of the ring's position table — not at one
+    /// builtin at a time.
+    ///
+    /// <para><b>Why this theory exists.</b> The arm that does this was the one mutation in the P9
+    /// slice that no test detected: turning it off left 132/132 green across this matrix and
+    /// <c>ProtocolReceiverMatrixTests</c>. It is not dead code — measured, it is live at all seven
+    /// consumers below — so it was a live, UNGUARDED arm, which is the second of the two things a
+    /// surviving mutant can mean. This is its guard.</para>
+    ///
+    /// <para>Without the arm the ring has no opinion and the refusal falls out of the consumer's own
+    /// overload set as SPY0354 "No overload of 'reversed' matches (list[int32]?)", which names
+    /// neither the strict family nor a remedy, and which differs from what <c>len</c>, <c>in</c>,
+    /// iteration, indexing and slicing say about the same receiver.</para>
+    /// </summary>
+    /// <remarks>
+    /// The LOOSE cell is the positive control and it is load-bearing: it proves the refusal belongs
+    /// to the strict wrapper rather than to the consumer. Without it a consumer that refused
+    /// <c>list[int]</c> outright would satisfy the strict half and the cell would assert nothing.
+    /// </remarks>
+    [Theory]
+    [InlineData("reversed", "print(list(reversed(v)))")]
+    [InlineData("sorted", "print(sorted(v))")]
+    [InlineData("sum", "print(sum(v))")]
+    [InlineData("list", "print(list(v))")]
+    [InlineData("set", "print(len(set(v)))")]
+    [InlineData("any", "print(any(v))")]
+    [InlineData("max", "print(max(v))")]
+    public void StrictOptionalSourceIsRefusedByNameAtEveryConsumer(string consumer, string body)
+    {
+        var strict = CompileAndExecute(
+            $"def main() -> None:\n    v: list[int]? = Some([1, 2])\n    {body}\n");
+
+        strict.Success.Should().BeFalse(
+            $"a strict `list[int]?` is not an iterable source at {consumer}()");
+        strict.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.OptionalRequiresNarrowing
+                 && d.Message.Contains($"{consumer}()", StringComparison.Ordinal),
+            $"the refusal names the consumer the user wrote ({consumer}()) and the remedy; got "
+            + string.Join(" | ", strict.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+
+        // Positive control: the LOOSE wrapper over the same payload RUNS at the same consumer, so
+        // the refusal above is the strict family's and not the consumer's.
+        var loose = CompileAndExecute(
+            $"def main() -> None:\n    v: list[int] | None = [1, 2]\n    {body}\n");
+
+        loose.Success.Should().BeTrue(
+            $"the loose `list[int] | None` control must RUN at {consumer}(), or the strict cell "
+            + "above proves nothing about the wrapper: "
+            + string.Join("; ", loose.CompilationErrors));
     }
 
     // ──────────── heterogeneous refusal (arm-3 SPY0227) ────────────

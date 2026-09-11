@@ -306,4 +306,49 @@ Later dicts overwrite earlier keys (same as `dict.update()` semantics).
 
 Async comprehensions **are supported** inside `async def` functions: list, set, and dict comprehensions may use an `async for` clause and/or `await` in the element/key/value/filter, executing sequentially. See [async_programming.md](async_programming.md#async-comprehensions) for the rules, semantics, and examples.
 
-Async *generator expressions* (`(x async for x in src)`) are not supported, since Sharpy has no generator-expression construct.
+Async *generator expressions* (`(x async for x in src)`) are not supported: the `async for` clause is
+only available to list, set and dict comprehensions.
+
+## Generator Expressions
+
+A generator expression has a comprehension's syntax without the brackets, and produces an
+`Iterator[T]` that is evaluated **lazily** and consumed **once**:
+
+```python
+def probe(i: int) -> bool:
+    print(f"probe {i}")
+    return i > 0
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(sum(x * 2 for x in xs))          # 12
+    print(any(probe(i) for i in xs))       # probe 1 / True — stops at the first truthy element
+    g = (x for x in xs if x > 1)
+    print(list(g))                         # [2, 3]
+    print(list(g))                         # [] — a generator is single-pass
+```
+
+**Where it may be written.**
+
+- **Parenthesized**, anywhere a parenthesized expression is legal: an assignment right-hand side, a
+  `return`, an f-string hole, a ternary arm, a lambda body, a `for` iterator, a comprehension
+  element, or one argument among several.
+- **Bare**, as the SOLE argument of a call — `sum(x for x in xs)` — which is Python's rule.
+
+Every other bare spelling is refused by name with SPY0147 and the steer to parenthesize it:
+
+```python
+# print(sum(x for x in xs, 1))   # SPY0147 — generator expression must be parenthesized
+# print(f(1, x for x in xs))     # SPY0147
+# print(f(a=x for x in xs))      # SPY0147 — a keyword VALUE is not a bare-generator position
+```
+
+Clauses are the comprehension clauses: one or more `for`, each optionally followed by `if` filters.
+The element type is the element expression's type, so the generator's type is `Iterator[T]` — the
+same type `map`/`filter`/`iter` produce, which is why every consumer that takes an iterable takes a
+generator expression with no special case.
+
+*Implementation*
+- *🔄 Lowered - a deferred LINQ chain (`src.Where(...).Select(...)`, nested clauses become
+  `SelectMany`) wrapped in `Sharpy.Builtins.Iter(...)` so `next()` works. No collection is
+  materialized and no statement is hoisted, which is what makes the laziness observable.*

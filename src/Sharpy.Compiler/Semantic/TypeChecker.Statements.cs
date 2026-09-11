@@ -1178,7 +1178,9 @@ internal partial class TypeChecker
             // yield from expr: the value must be iterable, element type must match
             var iterableType = CheckExpression(yieldStmt.Value);
             IterableArgumentProjection? yieldProjection = null;
-            if (iterableType is TupleType)
+            // The source question is asked of the protocol receiver view, so a loose
+            // `tuple[...] | None` source is the same route as a bare tuple (#1792).
+            if (ProtocolReceiverView(iterableType) is TupleType)
             {
                 yieldProjection = ClassifyIterableSource(
                     yieldStmt.Value, iterableType, null, StorePosition.CollectionElement, "yield from source");
@@ -1348,35 +1350,7 @@ internal partial class TypeChecker
             }
         }
 
-        if (OperandView(iterType) == SemanticType.Str)
-        {
-            _semanticInfo.SetIterationLowering(forStmt.Iterator,
-                new IterationLowering(IterationLoweringKind.StringChars));
-        }
-        else if (iterType is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum } enumSym })
-        {
-            var kind = enumSym.IsStringEnum
-                ? IterationLoweringKind.StringEnumValues
-                : IterationLoweringKind.EnumValues;
-            _semanticInfo.SetIterationLowering(forStmt.Iterator,
-                new IterationLowering(kind));
-        }
-
-        // Record the iterable projection for tuple sources that need the array bridge.
-        // Strings/enums have their own IterationLowering; dicts/lists/sets already implement
-        // IEnumerable<element> and need no projection at the for/comprehension route (#1783).
-        IterableArgumentProjection? projection = null;
-        if (iterType is TupleType)
-        {
-            projection = ClassifyIterableSource(
-                forStmt.Iterator, iterType, null, StorePosition.CollectionElement, "for iterator");
-            if (projection != null)
-                _semanticInfo.SetIterableProjection(forStmt.Iterator, projection);
-        }
-
-        var elementType = projection?.ElementType
-            ?? _typeInference.InferIterableElementType(iterType)
-            ?? SemanticType.Unknown;
+        var elementType = RecordIterationSourceFacts(forStmt.Iterator, iterType, "for iterator");
 
         // Enter scope for for-body block FIRST
         // This ensures loop variables are scoped to the loop

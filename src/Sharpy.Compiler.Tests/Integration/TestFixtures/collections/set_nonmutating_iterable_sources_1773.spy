@@ -1,0 +1,25 @@
+# The non-mutating half of the set ring takes the same iterable sources as the mutating half
+# (#1773): a tuple, a str and a dict, on both `set` and `frozenset` receivers. Before this, `update`
+# accepted all three while `union`/`intersection`/`difference`/`symmetric_difference`/`is_subset`/
+# `is_superset`/`is_disjoint` refused them with SPY0220 — 28 cells. The shipped variadic fixture
+# passed only set literals, so it could not see this.
+# Output verified against python3 (sorted where the iteration order of a set is unspecified).
+def main() -> None:
+    s: set[int] = {1, 2}
+    print(sorted(s.union((3,))))
+    print(sorted(s.union({3}, (4,))))
+    print(sorted(s.intersection((2, 3))))
+    print(sorted(s.difference((2,))))
+    print(sorted(s.symmetric_difference((2, 3))))
+    print(s.is_subset((1, 2, 3)))
+    print(s.is_superset((1,)))
+    print(s.is_disjoint((9,)))
+
+    t: set[str] = {"a"}
+    print(sorted(t.union("de")))
+    d: dict[str, int] = {"b": 1}
+    print(sorted(t.union(d)))
+
+    f: frozenset[int] = frozenset([1, 2])
+    print(f.is_subset((1, 2, 3)))
+    print(sorted(f.union((3,))))

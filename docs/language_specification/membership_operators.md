@@ -92,7 +92,33 @@ print(2 in xs)            # True — constant 2 converts to uint64
 print(1 in [1, 2, 3])     # True  — same-width, always works
 ```
 
-Tuples are not containers — `2 in (1, 2)` is SPY0320.
+### Container kinds
+
+`in` works on every container kind the iteration ring accepts, and the needle is checked against
+that container's ELEMENT type in each case:
+
+| container | needle slot | example |
+|---|---|---|
+| `list[T]`, `set[T]`, `frozenset[T]`, `array[T]` | `T` | `2 in [1, 2]` |
+| `dict[K, V]` | `K` (keys, as in Python) | `"a" in {"a": 1}` |
+| `str` | `str` (substring test) | `"a" in "ab"` |
+| `bytes` | `int` | `97 in b"ab"` |
+| `tuple[...]` | the tuple's best common element type | `2 in (1, 2)` |
+| `range(...)` | `int` | `3 in range(10)` |
+| a class with `__contains__` (declared or inherited) | that method's parameter type | `2 in bag` |
+| a CLR type with a public `Contains`, or any `IEnumerable[T]` | `T` | `2 in clr_list` |
+
+A tuple is a container: `2 in (1, 2)` is `True`, and a heterogeneous tuple's element type is the
+best common type of its elements, so `2 in (1, 2.5)` compares `2.0` against `1.0` and `2.5` and is
+`False` — the same answer Python gives for a different reason (`2.0 != 2.5`).
+
+Range membership is arithmetic, not a scan: `3 in range(10)` is answered in constant time from
+`start`, `stop` and `step`, so it does not consume the range.
+
+**Departure from Python (range needles).** `2.0 in range(5)` is `True` in Python; Sharpy refuses a
+float needle against a range with SPY0222, because the needle slot is `int` (the same
+`membership-needle-type-mismatch` departure catalogued below).
+
 
 **Departure from Python.** Python's `in` never fails on a type mismatch — `"a" in [1, 2]` is simply
 `False`. Sharpy refuses the needle at compile time (SPY0222): a value the element type cannot hold can
