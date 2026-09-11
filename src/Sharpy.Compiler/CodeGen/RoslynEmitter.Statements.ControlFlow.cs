@@ -765,11 +765,17 @@ internal partial class RoslynEmitter
     /// Reads a with-item's lowering IR (E2 #1056). Returns <c>null</c> when no
     /// <see cref="IrWithItem"/> was recorded (an error case).
     /// </summary>
+    // WithItem justified (#1710): a MAP reader keyed BY the item — the IR lookup for the
+    // lowering facts. The `as` target is read by the per-shape generators below.
     private IrWithItem? GetIrWithItem(WithItem item)
     {
         return _context.Ir.WithItems.TryGetValue(item, out var withItem) ? withItem : null;
     }
 
+    // WithItem justified (#1710): a DISPATCHER. It generates each item's context expression
+    // under that item's own evaluation sink and hands the item to the per-shape generator —
+    // GenerateWithDisposable / GenerateWithDunderProtocol / TryGenerateAssertRaises — each of
+    // which binds the `as` target itself.
     private StatementSyntax GenerateWith(WithStatement withStmt)
     {
         //   with assert_raises(ExceptionType): body

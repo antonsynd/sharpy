@@ -159,8 +159,13 @@ internal class GeneratorValidator : SemanticValidatorBase
         if (yieldInSuppWith != null)
         {
             AddError(context,
-                "'yield' cannot be used inside a 'with' block whose '__exit__' can suppress exceptions; " +
-                "use an '__exit__' that cannot suppress, or collect values before yielding",
+                // ONE name for the shape, everywhere it is named: "suppression-capable" is the
+                // form, and the cure is "the non-suppressing form `__exit__(self) -> None`". The
+                // message used to say "can suppress" while the explanation said "1-parameter", so
+                // the same shape had two names and neither matched SemanticInfo's "4-parameter".
+                "'yield' cannot be used inside a 'with' block whose '__exit__' is " +
+                "suppression-capable; use the non-suppressing form '__exit__(self) -> None', " +
+                "or collect the values before yielding",
                 yieldInSuppWith.LineStart, yieldInSuppWith.ColumnStart,
                 code: DiagnosticCodes.ValidationOverflow.YieldInSuppressingWith,
                 span: yieldInSuppWith.Span);
@@ -215,6 +220,9 @@ internal class GeneratorValidator : SemanticValidatorBase
         });
     }
 
+    // WithItem justified (#1710): this reads the recorded EXIT SHAPE of each item's
+    // manager to decide whether the statement lowers to a try/catch, and looks for a `yield` in the
+    // body. The `as` target binds a name the guard never inspects.
     private static YieldStatement? FindYieldInSuppressingWith(
         ImmutableArray<Statement> statements, SemanticInfo semanticInfo)
     {

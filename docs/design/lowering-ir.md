@@ -430,7 +430,9 @@ retained as validator transport", accurately deviating from the plan's "…retir
 
 **Phase-3 scoping — what moved vs. what stayed.** Only the **decisions** (what to emit) moved onto the
 IR. The **mechanical, state-dependent emission** stays in the emitter: temp-variable naming
-(`GenerateTempVarName`), statement hoisting (`_hoistedStatements`), loop-variable scope versioning
+(`GenerateTempVarName`), statement hoisting (the `HoistSink` stack: `WithScopeSink` /
+`WithEvaluationSink` / `HoistDeclaration` / `HoistEvaluation`, which replaced the flat
+`_hoistedStatements` list in plan-0667c5), loop-variable scope versioning
 (`SaveScope`/`RestoreScope`), the suite-split + LIFO nesting for `defer`, and every sub-expression
 `GenerateExpression`. That split is exactly what keeps output byte-identical. A **full** mechanical
 migration — folding the guarded remainder onto `IrScopeGuard`, and folding temp naming onto the IR so

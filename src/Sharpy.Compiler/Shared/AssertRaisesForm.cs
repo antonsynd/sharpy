@@ -71,6 +71,9 @@ internal static class AssertRaisesForm
     /// two flat statements. What both arms share — and what the CFG and the <c>as</c>-capture
     /// actually depend on — is the spelling, and nothing else.
     /// </summary>
+    // WithItem justified (#1710): a FORM check, not a walk. It asks only whether the
+    // context expression names the assert_raises marker; the `as` target plays no part in deciding
+    // that and is read by the passes that bind it (the CFG, the checker, the emitter's rewrite).
     internal static bool IsRewritten(WithStatement statement)
         => statement.Items.Length == 1 && IsCall(statement.Items[0].ContextExpression);
 }

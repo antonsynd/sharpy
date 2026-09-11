@@ -1385,6 +1385,8 @@ public class SemanticInfo : ISemanticQuery
     /// Records the variable symbol for a with-item's <c>as</c> variable.
     /// Called during type checking so the symbol is retrievable after the with-scope is exited.
     /// </summary>
+    // WithItem justified (#1710): a MAP writer keyed BY the item; the checker has already
+    // resolved the `as` target and passes the symbol it bound.
     public void SetWithItemSymbol(WithItem item, VariableSymbol symbol)
     {
         _withItemSymbols[item] = symbol;
@@ -1394,6 +1396,7 @@ public class SemanticInfo : ISemanticQuery
     /// Gets the variable symbol for a with-item's <c>as</c> variable.
     /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
     /// </summary>
+    // WithItem justified (#1710): a MAP reader keyed BY the item; it walks no half of it.
     public VariableSymbol? GetWithItemSymbol(WithItem item)
     {
         return _withItemSymbols.TryGetValue(item, out var symbol) ? symbol : null;
@@ -2073,7 +2076,11 @@ public enum ContextManagerExitShape
     /// <summary>1-parameter __exit__(self) or IDisposable — never suppresses.</summary>
     Simple,
 
-    /// <summary>4-parameter __exit__(self, exc_type, exc_val, exc_tb) — may suppress.</summary>
+    /// <summary>
+    /// The suppression-capable form, <c>__exit__(self, exc_type, exc_val, exc_tb) -&gt; bool</c>.
+    /// This is the ONE name for the shape: SPY0703 and its explanation say "suppression-capable"
+    /// too, and name the alternative as "the non-suppressing form `__exit__(self) -> None`".
+    /// </summary>
     SuppressionCapable
 }
 

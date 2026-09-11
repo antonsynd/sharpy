@@ -1,1 +1,1 @@
-'yield' cannot be used inside a 'with' block whose '__exit__' can suppress exceptions
+'yield' cannot be used inside a 'with' block whose '__exit__' is suppression-capable
