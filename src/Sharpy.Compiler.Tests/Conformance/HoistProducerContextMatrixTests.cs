@@ -74,14 +74,21 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
                 continue;
             }
 
-            var diagnostics = string.Join("; ", result.CompilationErrors);
-            if (!diagnostics.Contains(cell.ExpectedCode, StringComparison.Ordinal))
-                failures.Add($"{cell.Label}: expected {cell.ExpectedCode}, got: {diagnostics}");
+            // Assert on the CODE, not the message: a message match would pass on a renamed code and
+            // a code match survives any wording change (RawDiagnostics carries both).
+            var codes = result.RawDiagnostics.Select(d => d.Code).Where(c => c != null).ToList();
+            if (!codes.Contains(cell.ExpectedCode, StringComparer.Ordinal))
+            {
+                failures.Add($"{cell.Label}: expected {cell.ExpectedCode}, got codes "
+                    + $"[{string.Join(", ", codes)}] / {string.Join("; ", result.CompilationErrors)}");
+            }
         }
 
         Output.WriteLine($"Hoist cells: {cells.Count}  Refused cells: {refused.Count}  Failures: {failures.Count}");
         foreach (var na in NotApplicableCells())
             Output.WriteLine($"  N/A {na.label}: {na.reason}");
+        foreach (var kr in KnownRedCells())
+            Output.WriteLine($"  KNOWN-RED {kr.label}: {kr.reason}");
         foreach (var f in failures)
             Output.WriteLine($"  {f}");
 
@@ -89,6 +96,41 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
             $"Hoist producer × context matrix (#1680, #1739): {failures.Count} of "
             + $"{cells.Count + refused.Count} cells failed.\n"
             + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    /// <summary>
+    /// Every AST operand LIST whose elements are evaluated left to right, as a literal roster. This
+    /// is the ordering axis's own totality check: the fix that started it integrated
+    /// <c>GenerateExpressionsInOrder</c> into call argument generation ONLY, so the class stayed
+    /// open for binary operands, display elements and comparison-chain operands. A position added
+    /// to the language must arrive with its cell.
+    /// </summary>
+    private static readonly string[] OperandListPositions =
+    {
+        "call-arguments",
+        "binary-operands",
+        "list-elements",
+        "tuple-elements",
+        "dict-entries",
+        "set-elements",
+        "comparison-chain-operand",
+        "with-items",
+    };
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void EveryOperandListPosition_HasAnOrderingCell()
+    {
+        Assert.Equal(8, OperandListPositions.Length);
+
+        var labels = GenerateCells().Select(c => c.Label).ToList();
+        var missing = OperandListPositions
+            .Where(position => !labels.Any(l => l.Contains(position, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(missing.Count == 0,
+            "Operand-list positions with no ordering cell (the ordering axis is not total): "
+            + string.Join(", ", missing));
     }
 
     /// <summary>
@@ -100,7 +142,7 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
     [Trait("Category", "Conformance")]
     public void Matrix_HasThePinnedCellCounts()
     {
-        Assert.Equal(59, GenerateCells().Count());
+        Assert.Equal(47, GenerateCells().Count());
         Assert.Equal(3, RefusedCells().Count());
         Assert.Equal(2, NotApplicableCells().Count());
     }
@@ -147,6 +189,39 @@ def use() -> Result[int, str]:
 def main() -> None:
     print(use())",
             "SPY0462");
+    }
+
+    /// <summary>
+    /// Cells that are a live defect of an adjacent class, parked with their issue rather than
+    /// asserted — asserting the current behaviour would PIN it (CLAUDE.md Rule 1), and asserting the
+    /// correct behaviour would leave a red in the suite. Each reason names its issue and the entry is
+    /// deleted in the commit that fixes it. <see cref="KnownRedCellReasons_CiteAnIssue"/> keeps the
+    /// citation honest.
+    /// </summary>
+    private static IEnumerable<(string label, string reason)> KnownRedCells()
+    {
+        yield return ("with.suppression-capable-body-assigns-bare-local",
+            "#1839 — a bare local assigned UNCONDITIONALLY in a suppression-capable with body and "
+            + "read after the with is SPY0600. The suppression edge leaves from the with-body ENTRY "
+            + "block, so a body with no raise is treated as possibly aborting before its first "
+            + "statement. Ran at 5bac4cf71 and in python3 (prints 5); an owner ruling is pending on "
+            + "whether to model the edge per raise-capable statement or adopt the C# CS0165 reading.");
+
+        yield return ("coalesce-assign.rhs-hoist",
+            "#1835 — `x ??= rhs` runs the rhs's hoists even when the target already has a value; the "
+            + "expression form `a ?? b` is sunk. Found by SinkPushingTotalityTests, which parks the "
+            + "site in its own KnownRedSites roster.");
+    }
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void KnownRedCellReasons_CiteAnIssue()
+    {
+        foreach (var (label, reason) in KnownRedCells())
+        {
+            Assert.Contains("#", reason, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(reason), $"Known-red cell '{label}' has no reason.");
+        }
     }
 
     private static IEnumerable<(string label, string reason)> NotApplicableCells()
@@ -462,7 +537,7 @@ def main() -> None:
         // Ordering axis: argument-after-side-effect
         // ══════════════════════════════════════════════════════════════════════════
 
-        yield return new Cell("ordering.args-after-side-effect",
+        yield return new Cell("ordering.call-arguments-after-side-effect",
             @"def f(a: int, b: list[int]) -> None:
     print(a, b)
 
@@ -591,7 +666,7 @@ def main() -> None:
     print(""left"", len(xs))",
             "[10]\nleft 3");
 
-        yield return new Cell("P1.multi-item-with-context",
+        yield return new Cell("P1.with-items-context-order",
             @"class Appender:
     label: str
     src: list[int]

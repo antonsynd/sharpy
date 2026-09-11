@@ -82,6 +82,7 @@ public class AssignmentTargetDispatchTotalityTests
     {
         ("src/Sharpy.Compiler/Semantic/TypeChecker.Utilities.cs", "IsValidAssignmentTarget"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "CollectBindingKeysInto"),
+        ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "AddWithTargetBaseReads"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectAssignedNames"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectTargetReads"),
         ("src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs", "TargetBindsName"),
@@ -127,6 +128,27 @@ public class AssignmentTargetDispatchTotalityTests
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
             $"  Missing: {string.Join(", ", expected.Except(arms))}");
+    }
+
+    // --- ControlFlowGraphBuilder.AddWithTargetBaseReads ---
+    // A `with … as` target is a WRITE; only a NON-identifier target also reads its base. Arms ==
+    // universe: Identifier is the no-op arm (the with binds the name), TupleLiteral and
+    // StarExpression recurse, MemberAccess contributes its object, IndexAccess its object and its
+    // index. Targets are canonical: no Parenthesized arm.
+
+    [Fact]
+    public void AddWithTargetBaseReads_Arms_AreKnown()
+    {
+        var arms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs",
+            "AddWithTargetBaseReads");
+        Assert.NotEmpty(arms);
+        _output.WriteLine($"AddWithTargetBaseReads arms: {string.Join(", ", arms.OrderBy(a => a))}");
+
+        Assert.True(arms.SetEquals(Universe),
+            $"Arms differ from the assignment-target universe.\n" +
+            $"  Extra: {string.Join(", ", arms.Except(Universe))}\n" +
+            $"  Missing: {string.Join(", ", Universe.Except(arms))}");
     }
 
     // --- DefiniteAssignmentAnalysis.CollectAssignedNames ---

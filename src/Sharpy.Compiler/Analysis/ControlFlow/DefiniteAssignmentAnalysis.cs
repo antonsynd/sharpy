@@ -413,7 +413,12 @@ internal static class DefiniteAssignmentAnalysis
     /// <item><description><c>?</c> early-return — everything evaluated after a <c>?</c> in the same
     /// expression runs only when the <c>?</c> did not return.</description></item>
     /// </list>
-    /// Every other expression evaluates all of its children, so the default arm unions them.
+    /// Every other expression evaluates all of its children, so the default arm unions them. The
+    /// partiality is deliberate and its direction is the safe one: an unlisted kind falls to that
+    /// default and its walrus is CREDITED, which is what this analysis did for every kind before the
+    /// conditional arms existed — so a kind nobody has classified yet cannot refuse a legal program,
+    /// only fail to refuse an illegal one. That is the contract; adding a kind that conditionally
+    /// evaluates a sub-expression means adding an arm here.
     /// </summary>
     private static (HashSet<string> WhenTrue, HashSet<string> WhenFalse) ComputeWalrusWhenTrueFalse(
         Expression expr)
