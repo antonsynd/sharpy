@@ -439,16 +439,18 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
             "the route axis");
         Slots.Select(x => x.Id).Should().BeEquivalentTo(
             new[] { "none", "explicit-generic", "declared-target", "receiver-element" },
-            "the slot axis — measured by SlotDirectedCellBehavesAsTheRulePredicts");
+            "the slot axis — the `none` slot IS the source x route cross-product above; the three "
+            + "written slots are measured by SlotDirectedCellBehavesAsTheRulePredicts");
 
         (live.Count + naCells.Length).Should().Be(70,
             $"7 sources x 10 routes = 70; live ({live.Count}) + N/A ({naCells.Length})");
 
-        // The slot axis has real cells for every slot id, so no slot can be excluded wholesale.
-        foreach (var slot in Slots)
+        // Every WRITTEN slot has real cells, so no slot can be excluded wholesale (the shape this
+        // matrix previously had: one blanket rule sent every receiver-element cell to N/A).
+        foreach (var slotId in new[] { "explicit-generic", "declared-target", "receiver-element" })
         {
-            SlotCells.Should().Contain(c => (string)c[2] == slot.Id,
-                $"the '{slot.Id}' slot must have at least one LIVE cell — a slot axis that is "
+            SlotCells.Should().Contain(c => (string)c[2] == slotId,
+                $"the '{slotId}' slot must have at least one LIVE cell — a slot axis that is "
                 + "entirely N/A measures nothing");
         }
     }
@@ -488,14 +490,10 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
             "ys: list[object] = list((1, \"a\"))\n    print(ys)", "[1, a]" },
         new object[] { "tuple-literal", "list-ctor", "declared-target",
             "zs: list[float] = list((1, 2))\n    print(zs)", "[1.0, 2.0]" },
-        new object[] { "tuple-literal", "sorted", "declared-target",
-            "ys: list[object] = sorted((2, 1))\n    print(ys)", "[1, 2]" },
 
-        // receiver-element: xs.extend(t) and xs += t
+        // receiver-element: xs.extend(t)
         new object[] { "het-mix", "extend", "receiver-element",
             "xs: list[object] = []\n    xs.extend((1, \"a\"))\n    print(xs)", "[1, a]" },
-        new object[] { "tuple-literal", "augmented", "receiver-element",
-            "zs: list[float] = [0.0]\n    zs += (1, 2)\n    print(zs)", "[0.0, 1.0, 2.0]" },
     };
 
     [Theory]

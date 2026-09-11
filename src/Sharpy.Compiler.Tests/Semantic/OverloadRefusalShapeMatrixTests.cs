@@ -121,7 +121,15 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
             "out-of-range-const" => "'int32'",
             "optional" => "'uint8?'",
             "nullable" => "'uint8 | None'",
-            _ => "'tuple[str, str]'",
+            // mistyped-tuple. Ran before (`st: set[uint8] = {1}; st.update(("a", "b"))`, measured at
+            // 311252e33): SPY0220 "Cannot pass argument of type 'tuple[str, str]' to parameter of
+            // type 'list[uint8]'". Runs now: SPY0220 "Cannot pass argument of type 'str' to
+            // parameter of type 'uint8'", once per offending element. Refusal to refusal, and more
+            // specific: the receiver's element type is now the SLOT the tuple's elements are
+            // admitted into (R-W arm 1, #1783), so the refusal lands on the element that does not
+            // fit instead of on the whole collection. python3 accepts the program (a set of mixed
+            // types), so the departure is Axiom 2 and unchanged in either direction by this.
+            _ => "'str'",
         };
 
         /// <summary>The wrong-typed variable is chosen against the slot: a `str` is wrong for a
@@ -305,9 +313,21 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// The six set/dict mutators name the SUBSTITUTED element type, as <c>list.extend</c> does —
-    /// <c>set[uint8]</c>, never <c>set[T0]</c>.
+    /// The six set/dict mutators name the SUBSTITUTED element type, never the declaration's type
+    /// PARAMETER: <c>uint8</c>, never <c>T0</c>.
     /// </summary>
+    /// <remarks>
+    /// The assertion names BOTH sides of the mismatch rather than just <c>uint8</c>. Measured before
+    /// (@ 311252e33) the message was "Cannot pass argument of type 'tuple[str, str]' to parameter of
+    /// type 'list[uint8]'", so <c>Contain("set[uint8]")</c> was already false and
+    /// <c>Contain("uint8")</c> alone could be satisfied by the parameter's display with nothing said
+    /// about the argument. Measured now it is "Cannot pass argument of type 'str' to parameter of
+    /// type 'uint8'": the receiver's element type is the SLOT each tuple element is admitted into
+    /// (R-W arm 1, #1783), so the refusal names the element that does not fit. Requiring both
+    /// <c>'str'</c> and <c>'uint8'</c> keeps the substitution under guard — an unsubstituted slot
+    /// would print <c>T0</c> or <c>T</c> — and pins the offending-element granularity that replaced
+    /// the whole-collection message.
+    /// </remarks>
     [Fact]
     public void SetUpdate_NamesTheSubstitutedElementType()
     {
@@ -315,8 +335,12 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         var errors = string.Join(" ", result.CompilationErrors);
-        errors.Should().Contain("uint8").And.NotContain("T0",
-            "the receiver's type argument is substituted before the parameter is displayed");
+        errors.Should().Contain("'uint8'")
+            .And.Contain("'str'")
+            .And.NotContain("T0")
+            .And.NotContain("'T'",
+                "the receiver's type argument is substituted before the parameter is displayed, and "
+                + "the refusal names the element that does not fit it");
     }
 
     // ── The CLR routes ───────────────────────────────────────────────────────────────────────
