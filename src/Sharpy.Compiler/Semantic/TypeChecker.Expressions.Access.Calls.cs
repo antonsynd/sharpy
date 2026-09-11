@@ -6475,7 +6475,16 @@ internal partial class TypeChecker
         // an arity or no-match reaches the extension surface — which used to suppress the refusal BY
         // NAME, on nothing but the reachability of a spelling (#1798).
         if (decision.Outcome is ClrCallOutcome.Selected or ClrCallOutcome.Ambiguous
-            || !surface.ExtensionNameReachable)
+            || !surface.ExtensionNameReachable
+            // A keyword name is decided by the UNION of every reachable candidate's parameter names,
+            // extensions included (#1591's permissive reading) — and a name no candidate on either
+            // surface binds is refused here, because the extension resolver pairs formals with
+            // argument shapes by POSITION and cannot answer a keyword call at all.
+            || (decision.Outcome == ClrCallOutcome.UnknownKeyword
+                && !Discovery.ClrExtensionMethodResolver
+                    .CandidateParameterNames(NameMangler.ToPascalCase(memberAccess.Member))
+                    .Any(name => name == decision.FailureName
+                                 || name == NameMangler.ToCamelCase(decision.FailureName!))))
         {
             ReportClrCallDecision(decision, args, memberDisplay, arityMessage);
             return;

@@ -730,19 +730,30 @@ internal partial class TypeChecker
 
         if (applicable.Count == 0)
         {
-            // The candidate that got FURTHEST is the one a no-match reports against, the way C#
+            // The candidates that got FURTHEST are the ones a no-match reports against, the way C#
             // reports CS1503 against the overload its own resolution preferred: `DateTime(2020, 1,
-            // "x")` is argument 3's type error, not "no overload takes these three".
+            // "x")` is argument 3's type error, not "no overload takes these three". A candidate that
+            // fell over at argument 1 has nothing to say about argument 3, so its refusal is not
+            // allowed to veto the agreement among those that reached it.
             ClrCallBinding? bestFailing = null;
+            var maximalRefusals = refusals;
+            var maximalCount = bound.Count;
             if (reach.Count > 0)
             {
                 var furthest = reach.Max(r => r.Value);
-                var tied = reach.Where(r => r.Value == furthest).ToList();
+                var tied = reach.Where(r => r.Value == furthest).Select(r => r.Key).ToList();
                 if (tied.Count == 1)
-                    bestFailing = tied[0].Key;
+                    bestFailing = tied[0];
+                maximalCount = tied.Count;
+                maximalRefusals = new List<ClrArgumentRefusal>();
+                foreach (var binding in tied)
+                {
+                    if (!ClrBindingIsApplicable(binding, literalAdaptation: true, out var r, out _))
+                        maximalRefusals.AddRange(r);
+                }
             }
             return new ClrCallDecision(
-                ClrCallOutcome.NoMatch, null, bound, refusals, bound.Count, null, bestFailing);
+                ClrCallOutcome.NoMatch, null, bound, maximalRefusals, maximalCount, null, bestFailing);
         }
 
         if (applicable.Count == 1)
@@ -1208,7 +1219,32 @@ internal partial class TypeChecker
                 receiverClrType, memberName, shapes);
         }
         if (resolved.Count == 0)
+        {
+            // Nothing of that name bound these shapes. When the name DOES have an overload this
+            // receiver satisfies, the reason is the COUNT — the resolver pairs formals with shapes by
+            // position and requires them to match exactly — so the arity is refused by name rather
+            // than left to CS1501 behind SPY0908. A lambda argument is excluded: its own arity is one
+            // of the things the resolver matched on, and a mismatch there is not the call's count.
+            var arities = Discovery.ClrExtensionMethodResolver.CandidateArities(
+                Shared.NameMangler.ToPascalCase(memberName));
+            if (arities.Count > 0
+                && !arities.Contains(call.Arguments.Length)
+                && !call.Arguments.Any(a => UnwrapParenthesized(a) is LambdaExpression)
+                && Discovery.ClrExtensionMethodResolver.AnyOverloadAcceptsReceiver(
+                    receiverClrType, Shared.NameMangler.ToPascalCase(memberName)))
+            {
+                var expected = arities.Count == 1
+                    ? $"{arities[0]} argument{(arities[0] == 1 ? "" : "s")}"
+                    : $"{arities.Min()} to {arities.Max()} arguments";
+                AddError(
+                    $"'{memberDisplay}' expects {expected} but got {call.Arguments.Length}",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WrongArgumentCount, span: call.Span);
+                return ClrExtensionProbe.Refused;
+            }
+
             return ClrExtensionProbe.NoCandidates;
+        }
 
         var candidates = resolved
             .Select(partial => new ClrCallCandidate(
@@ -1223,11 +1259,32 @@ internal partial class TypeChecker
 
         var decision = DecideClrCall(candidates, args);
 
-        // An extension set that binds, or that this seam cannot separate, is Roslyn's to finish: the
-        // resolver closes type parameters from the RECEIVER only, so an argument-determined one is
-        // still open here and an "ambiguity" between two such candidates is not a fact about the call.
-        if (decision.Outcome is ClrCallOutcome.Selected or ClrCallOutcome.Ambiguous)
+        if (decision.Outcome == ClrCallOutcome.Selected)
             return ClrExtensionProbe.Bound;
+
+        // The resolver closes type parameters from the RECEIVER only, so an argument-determined one is
+        // still open here and an "ambiguity" between two such candidates is not a fact about the call —
+        // inference has yet to run. When every surviving candidate is CLOSED, the ambiguity IS the
+        // fact, and Roslyn will reach the same one: `xs.first_or_default(None)` is CS0121 between
+        // FirstOrDefault(source, TSource) and FirstOrDefault(source, Func<TSource, bool>).
+        if (decision.Outcome == ClrCallOutcome.Ambiguous)
+        {
+            var allClosed = decision.Pool.All(binding =>
+                binding.Candidate.Origin is Discovery.ClrExtensionMethodResolver.PartialResolution
+                {
+                    OpenTypeParameterNames.Count: 0
+                });
+            if (!allClosed || ClrCallCannotAdjudicate(args))
+                return ClrExtensionProbe.Bound;
+
+            AddError(
+                $"Call to '{memberDisplay}' is ambiguous between {decision.Pool.Count} overloads: "
+                + $"{DescribeClrCandidates(decision.Pool)}. "
+                + DescribeClrDisambiguatingCast(decision.Pool, args),
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload, span: call.Span);
+            return ClrExtensionProbe.Refused;
+        }
         if (decision.Outcome == ClrCallOutcome.Arity || ClrCallCannotAdjudicate(args))
             return ClrExtensionProbe.Undecidable;
 
@@ -1272,9 +1329,19 @@ internal partial class TypeChecker
             return true;
 
         var refused = new List<string>();
+        var noneRefusals = new List<(string Parameter, string Display)>();
         foreach (var indexer in indexers)
         {
             var formal = ClrFormal.Of(indexer.GetIndexParameters()[0]);
+
+            // Sharpy's declared-nullability rule reaches the subscript too: `d[None]` on a
+            // Dictionary[str, int] is SPY0229, not a null key at runtime.
+            if (ClrFormalRefusesNone(formal, indexAccess.Index))
+            {
+                noneRefusals.Add((formal.Parameter!.Name ?? "key", ClrFormalDisplay(formal)));
+                continue;
+            }
+
             var verdict = ClrFormalVerdict(formal, indexType, indexAccess.Index);
             if (verdict.Accepted)
                 return true;
@@ -1283,6 +1350,18 @@ internal partial class TypeChecker
             {
                 refused.Add(verdict.ExpectedDisplay);
             }
+        }
+
+        if (noneRefusals.Count > 0 && refused.Count == 0)
+        {
+            AddError(
+                $"Cannot pass 'None' to parameter '{noneRefusals[0].Parameter}' of "
+                + $"'{Shared.ClrNameHelper.StripArity(closedClrType.Name)}' indexer — it is declared "
+                + $"non-nullable ('{noneRefusals[0].Display}')",
+                indexAccess.Index.LineStart, indexAccess.Index.ColumnStart,
+                code: DiagnosticCodes.Semantic.NullabilityViolation,
+                span: indexAccess.Index.Span);
+            return false;
         }
 
         // Every indexer refused for a reason the formal's own spelling does not state (the lossy arm):
