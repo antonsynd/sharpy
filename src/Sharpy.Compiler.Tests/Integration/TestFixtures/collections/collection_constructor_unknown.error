@@ -1,9 +1,11 @@
 # `list(x)` on a non-iterable falls back to Unknown type arguments, which reach Roslyn as
-# CS0305 and are reported as SPY0908. This is the POSITIVE CONTROL for every `!SPY0908`
-# expectation in the corpus (#1827): those nine were green BY CONSTRUCTION, because the harness
-# matched them against Roslyn's raw `Diagnostic.ToString()` text, which never contains the string
-# "SPY0908" whatever the program does. An absence assertion with no positive twin cannot tell
-# "the ICE is gone" from "the channel never carried the string".
+# CS0305 and are reported as SPY0908. The ICE ITSELF is a defect and is owned by #1868 — when
+# that is fixed this fixture goes red and its expectation becomes the new semantic refusal.
+# Until then it is the POSITIVE CONTROL for every `!SPY0908` expectation in the corpus (#1827):
+# those nine were green BY CONSTRUCTION, because the harness matched them against Roslyn's raw
+# `Diagnostic.ToString()` text, which never contains the string "SPY0908" whatever the program
+# does. An absence assertion with no positive twin cannot tell "the ICE is gone" from "the
+# channel never carried the string".
 internal error: generated C# failed to compile @4:28
 SPY0908
 CS0305
