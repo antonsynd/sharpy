@@ -1,0 +1,17 @@
+# A wrong type at a `string` formal is a diagnostic on every CLR route, not CS1503 behind SPY0908.
+from System.IO import Path
+from System import Uri
+from System.Text import StringBuilder
+
+
+def main() -> None:
+    print(Path.combine("a", 1))
+    print(Path.combine("a", True))
+    print(Path.combine("a", 2.5))
+    xs: list[int] = [1]
+    print(Path.combine("a", xs))
+    # params tail, expanded form: each written argument faces the ELEMENT type.
+    print(Path.combine("a", "b", "c", 4, "e"))
+    u: Uri = Uri(7)
+    sb: StringBuilder = StringBuilder()
+    sb.append_line("ok", 42)

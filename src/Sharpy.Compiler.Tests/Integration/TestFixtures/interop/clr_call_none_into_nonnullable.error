@@ -1,0 +1,5 @@
+Cannot pass 'None' to parameter 'path1' of 'Path.combine' — it is declared non-nullable ('str') @12:34
+Cannot pass 'None' to parameter 'variable' of 'Environment.get_environment_variable' — it is declared non-nullable ('str') @13:48
+Cannot pass 'None' to parameter 'name' of 'Environment.expand_environment_variables' — it is declared non-nullable ('str') @14:52
+Cannot pass 'None' to parameter 'uriString' of 'Uri' — it is declared non-nullable ('str') @15:18
+Cannot pass 'None' to parameter 'path' of 'DirectoryInfo.create_subdirectory' — it is declared non-nullable ('str') @17:27

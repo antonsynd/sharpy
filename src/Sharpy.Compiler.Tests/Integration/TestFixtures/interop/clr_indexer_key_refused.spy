@@ -1,0 +1,9 @@
+# The indexer is the fifth CLR call route and used to ask nothing: `d["wrong"]` on a
+# Dictionary[int, str] inferred `str` off the int-keyed indexer and handed Roslyn CS1503 (#1798).
+from System.Collections.Generic import Dictionary
+
+
+def main() -> None:
+    d: Dictionary[int, str] = Dictionary[int, str]()
+    d[1] = "a"
+    print(d["wrong"])

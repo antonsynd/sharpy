@@ -1,0 +1,9 @@
+# The positive control for clr_indexer_key_refused: the right key reads and writes.
+from System.Collections.Generic import Dictionary
+
+
+def main() -> None:
+    d: Dictionary[int, str] = Dictionary[int, str]()
+    d[1] = "a"
+    print(d[1])
+    print(len(d))

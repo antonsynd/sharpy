@@ -1,0 +1,17 @@
+# A `None` at a formal .NET declares non-nullable is SPY0229 on EVERY CLR route (#1705). The
+# `string` formals used to be skipped wholesale, because System.String declares an OUTBOUND
+# op_Implicit (to ReadOnlySpan<char>) and the undecidability predicate counted it.
+import system.io
+from System import Environment, Uri
+from System.IO import DirectoryInfo
+
+
+def main() -> None:
+    # static, params sibling present: Combine(string, string) wins the normal-form tie-break, so the
+    # refusal is not hidden by Combine(params string[]).
+    print(system.io.Path.combine(None, "b"))
+    print(Environment.get_environment_variable(None))
+    print(Environment.expand_environment_variables(None))
+    u: Uri = Uri(None)
+    d: DirectoryInfo = DirectoryInfo(".")
+    d.create_subdirectory(None)

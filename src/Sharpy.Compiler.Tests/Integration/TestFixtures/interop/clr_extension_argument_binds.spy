@@ -1,0 +1,10 @@
+# The positive control for clr_extension_argument_refused: the extension still binds, with a value
+# argument and with a lambda.
+from System.Linq import Enumerable
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.first_or_default())
+    print(xs.first_or_default(7))
+    print(list(xs.where(lambda v: v > 1)))

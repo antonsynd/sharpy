@@ -21,6 +21,11 @@ def main() -> None:
     floats.add(2)
     print(floats[0])
 
+    # A params array absorbs the tail; C# decides whether the arguments or an array were passed.
+    sb: StringBuilder = StringBuilder()
+    sb.append_format("{0}-{1}", 1, 2)
+    print(sb.to_string())
+
     # None binds a reference-typed parameter — what the target means by it is the target's business.
     names: List[str] = List[str]()
     names.add("a")
@@ -44,4 +49,5 @@ def main() -> None:
     sb2: StringBuilder = StringBuilder()
     sb2.append("x")
     sb2.append(1)
+    sb2.insert(0, "y")
     print(sb2.to_string())

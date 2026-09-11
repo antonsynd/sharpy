@@ -1,0 +1,9 @@
+# The extension route goes through the same seam. It used to decide BY NAME — the mere reachability
+# of an extension spelling suppressed every refusal — so an extension's own argument mistype reached
+# Roslyn as CS1503 behind SPY0908 (#1798).
+from System.Linq import Enumerable
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.first_or_default("a"))

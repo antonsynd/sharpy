@@ -1,0 +1,10 @@
+# Keyword arguments bind by ParameterInfo.Name on every CLR route (#1753, #1798). The static and
+# constructor routes used to bail on any keyword, so these reached Roslyn as CS1503/CS1739.
+from System import Math
+from System.Numerics import Vector2
+
+
+def main() -> None:
+    v: Vector2 = Vector2(x="a", y="b")
+    print(Math.max(val1="a", val2=1))
+    print(Math.max(x=1, y=2))

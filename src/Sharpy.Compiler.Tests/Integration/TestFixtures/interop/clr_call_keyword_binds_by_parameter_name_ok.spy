@@ -1,0 +1,12 @@
+# The positive control: valid keyword names bind and the call runs, on the static, constructor and
+# instance routes alike.
+from System import Math
+from System.Numerics import Vector2
+from System.IO import Path
+
+
+def main() -> None:
+    print(Math.max(val1=1, val2=2))
+    v: Vector2 = Vector2(x=1.0, y=2.0)
+    print(v.x)
+    print(Path.combine(path1="a", path2="b"))
