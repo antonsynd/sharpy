@@ -1212,6 +1212,19 @@ internal partial class TypeChecker
         if (IsObjectType(receiverType))
             return ClrExtensionProbe.Undecidable;
 
+        // An INSTANCE member answers this name under a CLR-name or Sharpy-verb mapping — `xs.index(20)`
+        // binds `List<int>.IndexOf` through the collection-verb map (#1571) — and C# gives an
+        // applicable instance member priority over every extension. The instance surface above is
+        // built from the WRITTEN name, so such a call arrives here with an empty candidate set;
+        // refusing it on the extension surface's arities would reject a call that binds
+        // (`Enumerable.Index` takes no arguments, `IndexOf` takes one).
+        if (Discovery.ClrTypeHelper.ResolveClrMethodName(receiverClrType, memberName) != null
+            || (Shared.NameMangler.GetClrCollectionVerbMapping(memberName) is { } mappedVerb
+                && ClrInstanceCallSurfaceOf(receiverClrType, mappedVerb).Candidates.Length > 0))
+        {
+            return ClrExtensionProbe.Undecidable;
+        }
+
         var shapes = new Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape[call.Arguments.Length];
         for (int i = 0; i < call.Arguments.Length; i++)
         {
