@@ -124,14 +124,14 @@ Make an iterator that returns accumulated sums (or accumulated results of a bina
 
 Make an iterator that returns accumulated results with an initial value.
 
-### `itertools.chain(iterables: list[Iterable[T]]) -> Iterable[T]`
+### `itertools.chain(*iterables: Iterable[T]) -> Iterable[T]`
 
 Make an iterator that returns elements from the first iterable until it is exhausted,
 then proceeds to the next iterable.
 
 **Parameters:**
 
-- `iterables` (list[Iterable[T]]) -- One or more iterables to chain together.
+- `iterables` (*Iterable[T]) -- One or more iterables to chain together.
 
 **Returns:** An iterator over the concatenated elements.
 

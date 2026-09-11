@@ -8,7 +8,7 @@ import struct
 
 ## Functions
 
-### `struct.pack(format: str, values: list[object]) -> Bytes`
+### `struct.pack(format: str, *values: object) -> Bytes`
 
 Pack values according to the format string and return as Bytes.
 
@@ -40,7 +40,7 @@ Corresponds to Python's struct.Struct class.
 | `format` | `str` | Gets the format string used to create this Struct instance. |
 | `size` | `int` | Gets the calculated size of the struct in bytes. |
 
-### `pack(values: list[object]) -> Bytes`
+### `pack(*values: object) -> Bytes`
 
 Pack values according to the pre-compiled format and return as Bytes.
 

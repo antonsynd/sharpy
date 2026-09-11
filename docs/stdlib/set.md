@@ -44,9 +44,9 @@ Returns whether this set is a subset of other (all elements in other).
 **Returns:** `True` if every element in this set is also in *other*.
 
 ```python
-a = {1, 2}
-b = {1, 2, 3}
-a.issubset(b)    # True
+a: set[int] = {1, 2}
+b: set[int] = {1, 2, 3}
+print(a.is_subset(b))    # True
 ```
 
 ### `is_subset(other: Iterable[T]) -> bool`
@@ -74,9 +74,9 @@ Returns whether this set is a superset of other (contains all elements of other)
 **Returns:** `True` if every element in *other* is also in this set.
 
 ```python
-a = {1, 2, 3}
-b = {1, 2}
-a.issuperset(b)    # True
+a: set[int] = {1, 2, 3}
+b: set[int] = {1, 2}
+print(a.is_superset(b))    # True
 ```
 
 ### `is_superset(other: Iterable[T]) -> bool`
@@ -103,7 +103,7 @@ a.union(b)    # {1, 2, 3}
 
 Return a new set with elements from this set and the iterable.
 
-### `union(others: list[Iterable[T]]) -> set[T]`
+### `union(*others: Iterable[T]) -> set[T]`
 
 Return a new set with elements from this set and all others.
 
@@ -127,7 +127,7 @@ a.intersection(b)    # {2, 3}
 
 Return a new set with elements common to this set and the iterable.
 
-### `intersection(others: list[Iterable[T]]) -> set[T]`
+### `intersection(*others: Iterable[T]) -> set[T]`
 
 Return a new set with elements common to this set and all others.
 
@@ -151,7 +151,7 @@ a.difference(b)    # {1}
 
 Return a new set with elements in this set but not in the iterable.
 
-### `difference(others: list[Iterable[T]]) -> set[T]`
+### `difference(*others: Iterable[T]) -> set[T]`
 
 Return a new set with elements in this set but not in any of the others.
 
@@ -269,22 +269,22 @@ Returns whether this set has no elements in common with other.
 **Returns:** `True` if the sets have no common elements.
 
 ```python
-a = {1, 2}
-b = {3, 4}
-a.isdisjoint(b)    # True
+a: set[int] = {1, 2}
+b: set[int] = {3, 4}
+print(a.is_disjoint(b))    # True
 ```
 
 ### `is_disjoint(other: Iterable[T]) -> bool`
 
 Returns whether this set has no elements in common with the given iterable.
 
-### `update(others: list[Iterable[T]])`
+### `update(*others: Iterable[T])`
 
 Update the set, adding elements from the given iterables.
 
 **Parameters:**
 
-- `others` (list[Iterable[T]]) -- The iterables of elements to add.
+- `others` (*Iterable[T]) -- The iterables of elements to add.
 
 ```python
 s = {1, 2, 3}
@@ -292,13 +292,13 @@ s.update({3, 4})          # {1, 2, 3, 4}
 s.update({5}, {6}, {7})   # {1, 2, 3, 4, 5, 6, 7}
 ```
 
-### `difference_update(others: list[Iterable[T]])`
+### `difference_update(*others: Iterable[T])`
 
 Update the set, removing elements found in any of the given iterables.
 
 **Parameters:**
 
-- `others` (list[Iterable[T]]) -- The iterables of elements to remove.
+- `others` (*Iterable[T]) -- The iterables of elements to remove.
 
 ```python
 s = {1, 2, 3}
@@ -306,13 +306,13 @@ s.difference_update({2})      # {1, 3}
 s.difference_update({1}, {3}) # set()
 ```
 
-### `intersection_update(others: list[Iterable[T]])`
+### `intersection_update(*others: Iterable[T])`
 
 Update the set, keeping only elements found in all given iterables.
 
 **Parameters:**
 
-- `others` (list[Iterable[T]]) -- The iterables to intersect with.
+- `others` (*Iterable[T]) -- The iterables to intersect with.
 
 ```python
 s = {1, 2, 3}

@@ -8,7 +8,7 @@ import heapq
 
 ## Functions
 
-### `heapq.merge(iterables: list[list[T]]) -> Iterable[T]`
+### `heapq.merge(*iterables: list[T]) -> Iterable[T]`
 
 Merge multiple sorted inputs into a single sorted output.
 

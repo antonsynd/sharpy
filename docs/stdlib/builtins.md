@@ -1249,14 +1249,14 @@ This overload accepts the type as a parameter for runtime type checking.
 
 **Returns:** True if obj is an instance of classInfo, False otherwise
 
-### `isinstance(obj: object | None, class_info: list[Type]) -> bool`
+### `isinstance(obj: object | None, *class_info: Type) -> bool`
 
 Return True if the object argument is an instance of any of the types in classInfo.
 
 **Parameters:**
 
 - `obj` (object | None) -- The object to check
-- `class_info` (list[Type]) -- A tuple of types to check against
+- `class_info` (*Type) -- A tuple of types to check against
 
 **Returns:** True if obj is an instance of any type in classInfo, False otherwise
 
@@ -1277,14 +1277,14 @@ issubclass(bool, int)    # True
 issubclass(int, str)     # False
 ```
 
-### `issubclass(cls: Type, class_info: list[Type]) -> bool`
+### `issubclass(cls: Type, *class_info: Type) -> bool`
 
 Return True if class is a subclass of any of the types in classInfo.
 
 **Parameters:**
 
 - `cls` (Type) -- The class to check
-- `class_info` (list[Type]) -- A tuple of types to check against
+- `class_info` (*Type) -- A tuple of types to check against
 
 **Returns:** True if cls is a subclass of any type in classInfo, False otherwise
 
@@ -1532,7 +1532,7 @@ Return the largest item in an iterable, or default if the iterable is empty.
 Return the largest item in an iterable using a key function,
 or default if the iterable is empty.
 
-### `max(first: T, second: T, rest: list[T]) -> T`
+### `max(first: T, second: T, *rest: T) -> T`
 
 Return the largest of two or more values (the variadic value form).
 
@@ -1540,7 +1540,7 @@ Return the largest of two or more values (the variadic value form).
 
 - `first` (T) -- The first value
 - `second` (T) -- The second value
-- `rest` (list[T]) -- Any additional values
+- `rest` (*T) -- Any additional values
 
 **Returns:** The largest value (the first encountered on ties, matching Python)
 
@@ -1599,7 +1599,7 @@ Return the smallest item in an iterable, or default if the iterable is empty.
 Return the smallest item in an iterable using a key function,
 or default if the iterable is empty.
 
-### `min(first: T, second: T, rest: list[T]) -> T`
+### `min(first: T, second: T, *rest: T) -> T`
 
 Return the smallest of two or more values (the variadic value form).
 
@@ -1607,7 +1607,7 @@ Return the smallest of two or more values (the variadic value form).
 
 - `first` (T) -- The first value
 - `second` (T) -- The second value
-- `rest` (list[T]) -- Any additional values
+- `rest` (*T) -- Any additional values
 
 **Returns:** The smallest value (the first encountered on ties, matching Python)
 
@@ -1917,7 +1917,7 @@ Handles negative bases correctly.
 ### `contains(value: int) -> bool`
 
 O(1) arithmetic membership test matching CPython's `range.__contains__` for
-`int` needles. Returns  when *value* is
+`int` needles. Returns `True` when *value* is
 within the half-open interval and lies on a step boundary.
 
 ### `range(stop: int) -> RangeIterator`
@@ -2491,7 +2491,7 @@ Sums a sequence of unsigned long integers with a start value.
 
 ### `sum(iterable: Iterable[bool]) -> int`
 
-Sums a sequence of booleans, counting  as 1.
+Sums a sequence of booleans, counting `True` as 1.
 
 ### `sum(iterable: Iterable[bool], start: int) -> int`
 
@@ -2904,14 +2904,14 @@ and center-alignment.
 
 **Returns:** The aligned string, or *value* unchanged if already wider than *width*
 
-### `print(values: list[object | None])`
+### `print(*values: object | None)`
 
 Print values to standard output, matching Python's print() behavior.
 Values are converted to strings using ToString() and separated by the separator.
 
 **Parameters:**
 
-- `values` (list[object | None]) -- Values to print
+- `values` (*object | None) -- Values to print
 
 ```python
 print("hello")           # hello
