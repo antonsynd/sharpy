@@ -68,8 +68,10 @@ class Box:
 
 # ✅ the type parameter lives on the class
 class Box[V]:
-    def __init__(self, v: V) -> None:
-        self.v: V = v
+    value: V
+
+    def __init__(self, value: V) -> None:
+        self.value = value
 ```
 
 Every other member kind — module function, instance method, static method, `__call__` — carries its
