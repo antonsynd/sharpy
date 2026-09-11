@@ -41,3 +41,10 @@ builtins::method::List`1.get::method                    # #1829
 builtins::method::List`1.pop::method                    # #1829
 builtins::method::List`1.extend::method                 # #1829
 builtins::method::List`1.copy::method                   # #1829
+# #1829, same wrong-receiver class as the seven rows above: the sweep enumerates Sharpy.List`1's
+# members but spells the receiver as a bare `List[int]`, which is the BCL
+# System.Collections.Generic.List<int> on every tree. `count` is that type's `Count` PROPERTY, so
+# `recv.count(0)` is not callable — the base compiler gave CS1929 behind SPY0908 and the CLR call
+# seam now refuses it by name. The cell was NOT ATTEMPTED at base or on v5/clr-call-seam alone and
+# became attempted on the integration tree (e85d3acb4, merged).
+builtins::method::List`1.count::method                  # #1829

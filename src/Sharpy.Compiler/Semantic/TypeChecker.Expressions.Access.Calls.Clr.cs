@@ -1257,17 +1257,6 @@ internal partial class TypeChecker
             return ClrExtensionProbe.Undecidable;
         }
 
-        // A PROPERTY or FIELD of this name is the OTHER reason the instance surface came back empty,
-        // and it is the instance seam's own conservatism: "the call may be invoking a delegate stored
-        // there, which the method surface does not describe". That conservatism has to travel with the
-        // emptiness, or this probe converts it into a refusal — which is exactly what happened to
-        // `recv.count(0)` on a `List[int]`, where `count` is the `Count` PROPERTY: the probe read the
-        // call as an extension call, found `Enumerable.Count(source, Func<T, bool>)`, and refused an
-        // `int` argument the whole program was built around. What such a call MEANS is decided
-        // upstream of this seam, so this seam does not get to refuse it.
-        if (Discovery.ClrTypeHelper.ResolveClrPropertyName(receiverClrType, memberName) != null)
-            return ClrExtensionProbe.Undecidable;
-
         var shapes = new Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape[call.Arguments.Length];
         for (int i = 0; i < call.Arguments.Length; i++)
         {
@@ -1352,6 +1341,30 @@ internal partial class TypeChecker
         }
         if (decision.Outcome == ClrCallOutcome.Arity || ClrCallCannotAdjudicate(args))
             return ClrExtensionProbe.Undecidable;
+
+        // A same-named PROPERTY is why the instance surface was suppressed ("the call may be invoking
+        // a delegate stored there"), and when no extension overload accepts the arguments either, that
+        // is the whole explanation the user needs: the name is not callable the way they called it.
+        //
+        // The property does NOT block extension binding — C# resolves `xs.count(lambda)` to
+        // `Enumerable.Count` precisely because the property is not invocable — so this is asked only
+        // AFTER applicability has failed, never before. Declining here instead was a regression in
+        // kind (contract §3): nothing bound the call, it fell through to CodeGen, and an explanatory
+        // SPY0220 became the CS1929 ICE the base compiler gave.
+        if (Discovery.ClrTypeHelper.ResolveClrPropertyName(receiverClrType, memberName) != null)
+        {
+            var overloads = string.Join(", ", decision.Pool.Select(binding =>
+                $"{binding.Candidate.Name}({string.Join(", ", binding.Arguments
+                    .OrderBy(a => a.ParameterIndex)
+                    .Select(a => ClrFormalDisplay(a.Formal)))})"));
+            AddError(
+                $"'{memberName}' on '{receiverType.GetDisplayName()}' is a property, not a method; "
+                + $"the callable overloads of that name are {overloads}, and the arguments do not "
+                + "match any of them",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch, span: call.Span);
+            return ClrExtensionProbe.Refused;
+        }
 
         return ReportClrCallDecision(
                 decision, args, memberDisplay,

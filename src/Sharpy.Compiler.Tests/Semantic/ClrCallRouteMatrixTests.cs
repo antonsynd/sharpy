@@ -529,15 +529,16 @@ public class ClrCallRouteMatrixTests : IntegrationTestBase
     // N/A rows whose only reason is "this axis value is about extension precedence", which is another
     // way of saying they do not belong to it.
     //
-    // The contract: an EMPTY instance candidate surface is not a proof of absence. It is also what a
-    // Sharpy-verb mapping produces (`xs.index(20)` binds `List<int>.IndexOf`, #1571) and what the
-    // member seam's own conservatism produces when a PROPERTY shares the name — "the call may be
-    // invoking a delegate stored there, which the method surface does not describe". The extension
-    // probe has to carry that conservatism with it, or it converts an "I cannot see it" into a
-    // refusal. `recv.count(0)` on a `List[int]` is the case that caught it: `count` is the `Count`
-    // PROPERTY, the probe read the call as an extension call, found
-    // `Enumerable.Count(source, Func<T, bool>)`, and refused the `int` argument with
-    // "expects '(int32) -> bool'" — a program the base compiler accepts.
+    // The contract: an EMPTY instance candidate surface is not a proof of absence, and whatever the
+    // probe concludes, the call is either BOUND or REFUSED BY NAME — never left to fall through to
+    // CodeGen. Emptiness has three causes: genuinely absent (#1141's question, answered at the member
+    // seam); a Sharpy-verb or CLR-name mapping binds it under another spelling (`xs.index(20)` ->
+    // `List<int>.IndexOf`, #1571); or the member seam SUPPRESSED the surface because a PROPERTY
+    // shares the name. The first two mean the probe must yield. The third does not: a property does
+    // not block extension binding — C# resolves `xs.count(lambda)` to `Enumerable.Count` precisely
+    // because a property is not invocable — so the probe decides applicability first and, if nothing
+    // accepts the arguments, says so by name. Declining there instead turned an explanatory SPY0220
+    // into the CS1929 the base compiler gave (contract §3, refusal -> ICE is a regression in kind).
 
     public static TheoryData<string, string, string> ExtensionPrecedenceCells()
     {
@@ -549,19 +550,34 @@ public class ClrCallRouteMatrixTests : IntegrationTestBase
 
     private static IEnumerable<(string Key, string Source, string Expectation)> ExtensionPrecedenceRoster()
     {
-        // The regression, asserted as an ABSENCE because the C# outcome is another branch's: a
-        // value-vs-delegate overload pair reached through a receiver whose same-named PROPERTY
-        // suppressed the instance surface, called with a literal argument. What this seam owes the
-        // program is that it does not REFUSE it; whether the emitted call then binds depends on which
-        // `List` the annotation resolves to, which is the Sharpy-namespace resolution item, not this
-        // one. The absence is paired with the positive control below, so it cannot pass vacuously.
+        // The expectation pins the WORDING, not just SPY0220, and that is deliberate: the generic
+        // no-match path refuses this call too ("Argument 1 of 'List.count' expects '(int32) -> bool'"),
+        // so a cell asserting only the code passes whether or not the property is named — measured,
+        // it stayed green with the naming arm disabled. Pinning the sentence is what makes the cell
+        // discriminate.
+        //
+        // A bare `List[int]` is the BCL `System.Collections.Generic.List<int>` on every tree — base,
+        // every wave-1 branch and integration, measured by `emit csharp` — so `count` here is the
+        // `Count` PROPERTY and `count(0)` is not callable at all. The correct outcome is a NAMED
+        // refusal: the base compiler gave CS1929 behind SPY0908, and an explanatory diagnostic at the
+        // sharpy stage is the improvement. What must never happen is falling through to CodeGen,
+        // which is what declining produced (contract §3, refusal -> ICE is a regression in kind).
         yield return ("property_shares_the_name.value_argument", """
             def _use(recv: List[int]) -> None:
                 _x = recv.count(0)
 
             def main() -> None:
                 print("ok")
-            """, "not-refused:(int32) -> bool");
+            """, "SPY0220: 'count' on 'List[int32]' is a property");
+
+        // The positive control for the arm above: the SHARPY receiver, where `count` IS the Python
+        // verb and the call binds and runs. Without it, the refusal cell could pass by the seam
+        // refusing everything of that name.
+        yield return ("property_shares_the_name.sharpy_receiver_binds", """
+            def main() -> None:
+                xs: list[int] = [1, 0, 2, 0]
+                print(xs.count(0))
+            """, "out:2");
 
         // The same shape through the Sharpy-verb mapping (#1571): `index` binds IndexOf, while
         // .NET 9's `Enumerable.Index` takes no argument beyond its receiver.
@@ -589,26 +605,9 @@ public class ClrCallRouteMatrixTests : IntegrationTestBase
 
     [Theory]
     [MemberData(nameof(ExtensionPrecedenceCells))]
-    public void ExtensionSurface_DoesNotClaimACallTheInstanceSurfaceOnlyFailedToSee(
+    public void ExtensionSurface_ResolvesOrRefusesByName_NeverFallsThroughToCodeGen(
         string key, string source, string expectation)
-    {
-        if (!expectation.StartsWith("not-refused:", StringComparison.Ordinal))
-        {
-            Cell_ProducesItsExpectation(key, source, expectation);
-            return;
-        }
-
-        var formal = expectation.Substring("not-refused:".Length);
-        var result = CompileAndExecute(source);
-        var reported = result.CompilationErrors.Concat(
-            result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")).ToList();
-
-        reported.Should().NotContain(
-            message => message.Contains("SPY0220", StringComparison.Ordinal)
-                       && message.Contains(formal, StringComparison.Ordinal),
-            $"cell {key}: the extension surface must not claim a call the instance surface only "
-            + $"failed to SEE, so no argument of it is refused against '{formal}'");
-    }
+        => Cell_ProducesItsExpectation(key, source, expectation);
 
     /// <summary>
     /// The totality pin: every cell of route x argument form x mismatch is either LIVE above or
