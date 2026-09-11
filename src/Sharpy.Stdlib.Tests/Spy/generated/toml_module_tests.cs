@@ -441,9 +441,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (207, 5) - (207, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (208, 5) - (208, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>((object?)value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
 #line (209, 5) - (214, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if ((object?)value is global::Sharpy.DateTime)
+                if (value is global::Sharpy.DateTime)
 #line hidden
                 {
 #line (210, 9) - (210, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -468,7 +468,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (219, 5) - (219, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (220, 5) - (220, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>((object?)value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
 #line hidden
             }
 
@@ -480,9 +480,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (225, 5) - (225, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["d"];
 #line (226, 5) - (226, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>((object?)value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>(value);
 #line (227, 5) - (230, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if ((object?)value is global::Sharpy.Date)
+                if (value is global::Sharpy.Date)
 #line hidden
                 {
 #line (228, 9) - (228, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -503,9 +503,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (235, 5) - (235, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["t"];
 #line (236, 5) - (236, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>((object?)value);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>(value);
 #line (237, 5) - (239, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                if ((object?)value is global::Sharpy.Time)
+                if (value is global::Sharpy.Time)
 #line hidden
                 {
 #line (238, 9) - (238, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
