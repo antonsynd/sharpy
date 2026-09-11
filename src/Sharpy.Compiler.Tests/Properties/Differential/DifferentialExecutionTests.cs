@@ -2055,7 +2055,25 @@ public class DifferentialExecutionTests : IntegrationTestBase
     private static bool ReferencesNameMissingInPython(string stderr)
         => stderr.Contains("NameError", StringComparison.Ordinal)
            || stderr.Contains("ModuleNotFoundError", StringComparison.Ordinal)
-           || stderr.Contains("ImportError", StringComparison.Ordinal);
+           || stderr.Contains("ImportError", StringComparison.Ordinal)
+           || ReferencesAttributeMissingInPython(stderr);
+
+    /// <summary>
+    /// An attribute CPython does not have AT ALL on the object it was asked for. A BUILTIN ALIAS in
+    /// receiver position (<c>int.max_value</c>, <c>str.is_null_or_empty("")</c>) is a CLR static
+    /// member reached through a Sharpy spelling — the same Sharpy-only class the import arms above
+    /// cover, but reachable without any <c>import</c>, so those arms never saw it and the cell was
+    /// reported as a runtime divergence (the harness's own third option: "a harness/subset gap
+    /// (tighten the filter)").
+    ///
+    /// <para>Narrow on purpose: only CPython's two "has no attribute" phrasings, not
+    /// <c>AttributeError</c> in general. A REAL divergence here would be Sharpy and CPython
+    /// disagreeing about a member both of them have, which cannot produce this message.</para>
+    /// </summary>
+    private static bool ReferencesAttributeMissingInPython(string stderr)
+        => stderr.Contains("AttributeError", StringComparison.Ordinal)
+           && (stderr.Contains("has no attribute", StringComparison.Ordinal)
+               || stderr.Contains("object has no attribute", StringComparison.Ordinal));
 
     /// <summary>Deterministic (process-independent) 32-bit FNV-1a hash for stable subsampling.</summary>
     private static uint StableHash(string s)
