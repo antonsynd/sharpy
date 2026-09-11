@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
@@ -43,8 +44,18 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     /// A member's call site on one route: the statements that build the receiver, and the call with
     /// <c>{n}</c> standing for the needle. <see cref="NotApplicable"/> is the reason this route has
     /// no cell for the member.
+    ///
+    /// <para><c>ElementSlot</c> marks a position whose expected type is the RECEIVER'S ELEMENT type,
+    /// so a collection argument is admitted member by member (R-W arm 1, #1783) and a mistyped one
+    /// is refused naming the member that does not fit rather than the whole argument. Measured, not
+    /// assumed, and a property of the SITE rather than of the <see cref="SlotFamily"/>:
+    /// <c>dict.update</c>'s parameter is a whole <c>dict</c>, and every CLR twin binds
+    /// <c>IEnumerable[T]</c> through the CLR route, which arm 1 never reaches — all of them
+    /// Iterable-family sites that name the whole tuple.</para>
     /// </summary>
-    private sealed record Site(string Prelude, string Call, string Import = "", string? NotApplicable = null)
+    private sealed record Site(
+        string Prelude, string Call, string Import = "", string? NotApplicable = null,
+        bool ElementSlot = false)
     {
         public static Site Na(string reason) => new("", "", NotApplicable: reason);
     }
@@ -89,19 +100,19 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
             new("d: dict[uint8, str] = {1: \"a\"}", "print(d.pop({n}))"),
             Site.Na(Na1798)),
         new("set.update", SlotFamily.Iterable,
-            new("st: set[uint8] = {1}", "st.update({n})"),
+            new("st: set[uint8] = {1}", "st.update({n})", ElementSlot: true),
             new("st = HashSet[uint8]()", "st.union_with({n})",
                 Import: "from system.collections.generic import HashSet")),
         new("set.intersection_update", SlotFamily.Iterable,
-            new("st: set[uint8] = {1}", "st.intersection_update({n})"),
+            new("st: set[uint8] = {1}", "st.intersection_update({n})", ElementSlot: true),
             new("st = HashSet[uint8]()", "st.intersect_with({n})",
                 Import: "from system.collections.generic import HashSet")),
         new("set.difference_update", SlotFamily.Iterable,
-            new("st: set[uint8] = {1}", "st.difference_update({n})"),
+            new("st: set[uint8] = {1}", "st.difference_update({n})", ElementSlot: true),
             new("st = HashSet[uint8]()", "st.except_with({n})",
                 Import: "from system.collections.generic import HashSet")),
         new("set.symmetric_difference_update", SlotFamily.Iterable,
-            new("st: set[uint8] = {1}", "st.symmetric_difference_update({n})"),
+            new("st: set[uint8] = {1}", "st.symmetric_difference_update({n})", ElementSlot: true),
             new("st = HashSet[uint8]()", "st.symmetric_except_with({n})",
                 Import: "from system.collections.generic import HashSet")),
         new("dict.update", SlotFamily.Iterable,
@@ -115,21 +126,28 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     /// </summary>
     private sealed record Shape(string Name, string Extra, string Needle, bool NumericSlotOnly = false)
     {
-        public string ArgumentTypeDisplay(SlotFamily family) => Name switch
+        public string ArgumentTypeDisplay(SlotFamily family, bool elementSlot) => Name switch
         {
             "mistyped-var" => family == SlotFamily.Numeric ? "'str'" : "'bool'",
             "out-of-range-const" => "'int32'",
             "optional" => "'uint8?'",
             "nullable" => "'uint8 | None'",
-            // mistyped-tuple. Ran before (`st: set[uint8] = {1}; st.update(("a", "b"))`, measured at
-            // 311252e33): SPY0220 "Cannot pass argument of type 'tuple[str, str]' to parameter of
-            // type 'list[uint8]'". Runs now: SPY0220 "Cannot pass argument of type 'str' to
-            // parameter of type 'uint8'", once per offending element. Refusal to refusal, and more
-            // specific: the receiver's element type is now the SLOT the tuple's elements are
-            // admitted into (R-W arm 1, #1783), so the refusal lands on the element that does not
-            // fit instead of on the whole collection. python3 accepts the program (a set of mixed
-            // types), so the departure is Axiom 2 and unchanged in either direction by this.
-            _ => "'str'",
+            // mistyped-tuple, split by SITE because the compiler's answer is. Measured at
+            // 9e41f12c3 over all 20 live cells:
+            //
+            //   element slot  st.update / intersection_update / difference_update /
+            //                 symmetric_difference_update, all core:
+            //                 "Cannot pass argument of type 'str' to parameter of type 'uint8'"
+            //   everywhere    list.index/insert, dict.get/pop, the five str members, dict.update,
+            //                 and every CLR twin:
+            //                 "... of type 'tuple[str, str]' to parameter of type 'uint8'|'str'|…"
+            //
+            // The receiver's element type is the slot each tuple member is admitted into at the
+            // four element-slot sites (R-W arm 1, #1783), so the refusal lands on the member that
+            // does not fit; a scalar slot has no members to admit and names the whole argument, as
+            // it did before that work. Refusal to refusal at every cell — nothing was widened into
+            // acceptance, and nothing that ran is refused.
+            _ => elementSlot ? "'str'" : "'tuple[str, str]'",
         };
 
         /// <summary>The wrong-typed variable is chosen against the slot: a `str` is wrong for a
@@ -198,11 +216,43 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
             $"cell '{cell}' reports the argument's own SPY0220, not SPY0354. Diagnostics: "
             + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
 
-        var typed = string.Join(" ", result.RawDiagnostics
+        // Assert against the ARGUMENT half of the sentence only. Scanning the whole message lets a
+        // cell pass on the PARAMETER's type instead: with a `'str'` expectation the five str.*
+        // members matched `to parameter of type 'str'` while their argument half said
+        // `'tuple[str, str]'` — green for the opposite of what this test exists to check. The two
+        // message shapes are the core route's "Cannot pass argument of type 'X' to parameter of
+        // type 'Y'" and the CLR route's "Argument N of 'M' expects 'Y' but got 'X'".
+        var arguments = result.RawDiagnostics
             .Where(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch)
-            .Select(d => d.Message));
-        typed.Should().Contain(needleShape.ArgumentTypeDisplay(row.Family),
-            $"cell '{cell}' names the argument's own type");
+            .Select(d => ArgumentTypeIn(d.Message))
+            .Where(t => t != null)
+            .ToList();
+
+        arguments.Should().NotBeEmpty(
+            $"cell '{cell}' must report a SPY0220 whose argument type this test can read; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        // Substring WITHIN the argument half, not equality: the four other shapes were green under
+        // a whole-message scan and must stay green, and only the half the match is allowed to look
+        // at needed narrowing.
+        var expected = needleShape.ArgumentTypeDisplay(row.Family, site.ElementSlot);
+        arguments.Should().Contain(t => t!.Contains(expected, System.StringComparison.Ordinal),
+            $"cell '{cell}' names the ARGUMENT's own type ({expected}); argument types reported "
+            + "were " + string.Join(" | ", arguments));
+    }
+
+    /// <summary>
+    /// The argument's type as a quoted display, pulled out of either refusal shape, or <c>null</c>
+    /// when the message is neither.
+    /// </summary>
+    private static string? ArgumentTypeIn(string message)
+    {
+        var core = Regex.Match(message, @"Cannot pass argument of type ('[^']*')");
+        if (core.Success)
+            return core.Groups[1].Value;
+
+        var clr = Regex.Match(message, @"but got ('[^']*')");
+        return clr.Success ? clr.Groups[1].Value : null;
     }
 
     /// <summary>
