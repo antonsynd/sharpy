@@ -803,7 +803,13 @@ internal partial class TypeChecker
             parameters.Add(new ParameterSymbol
             {
                 Name = clrParameters[i + 1].Name ?? $"arg{i}",
-                Type = _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ParameterTypes[i])
+                // The SUBSTITUTED parameter type is what the receiver pinned, but NRT annotations
+                // live on the declaration, not on the constructed Type — read from the open
+                // method's own ParameterInfo, the same seam every other member-derived mapping
+                // uses (#1705).
+                Type = Discovery.ClrDeclaredNullability.Apply(
+                    _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ParameterTypes[i]),
+                    Discovery.ClrDeclaredNullability.DeclaresNullableArgument(clrParameters[i + 1]))
             });
         }
 
@@ -818,7 +824,9 @@ internal partial class TypeChecker
                 .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
                 .ToList(),
             Parameters = parameters,
-            ReturnType = _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ReturnType),
+            ReturnType = Discovery.ClrDeclaredNullability.Apply(
+                _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ReturnType),
+                Discovery.ClrDeclaredNullability.DeclaresNullableReturn(partial.OpenMethod)),
             IsStatic = false
         };
     }
