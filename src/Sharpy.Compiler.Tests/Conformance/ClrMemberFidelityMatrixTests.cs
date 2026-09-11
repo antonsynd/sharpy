@@ -485,6 +485,13 @@ public class ClrMemberFidelityMatrixTests
             Src("Stack", "s = Stack[str]()\n    s.push(\"a\")\n    b: bool = s.peek()"),
             Expect.TypeMismatchNonNullable);
 
+        // `T?` with `T` instantiated as a VALUE type is plain `int` in C# — `default(int)`, not
+        // `Nullable<int>` — so the annotated arm must not wrap it. Found by mutation: withholding the
+        // value-type guard in `Wrap` typed this `int32 | None` and no cell noticed.
+        yield return new Cell("nrt.closed-generic-annotated-T-return-value-payload",
+            Src("List", "xs: List[int] = List[int]()\n    b: bool = xs.find(lambda v: v == 1)"),
+            Expect.TypeMismatchNonNullable);
+
         yield return new Cell("nrt.sharpy-list-bare-T-return-twin",
             "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    b: bool = xs.pop(0)\n",
             Expect.TypeMismatchNonNullable);
