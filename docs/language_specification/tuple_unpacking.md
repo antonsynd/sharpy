@@ -102,6 +102,37 @@ def main() -> None:
 [10, 40]
 ```
 
+The `with … as` position takes the same starred target and the same arity rule, including the
+parenthesized spelling:
+
+```python
+class Triple:
+    vals: tuple[int, int, int]
+
+    def __init__(self, a: int, b: int, c: int) -> None:
+        self.vals = (a, b, c)
+
+    def __enter__(self) -> tuple[int, int, int]:
+        return self.vals
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    with Triple(1, 2, 3) as (a, *rest):
+        print(a, rest)
+    with Triple(1, 2, 3) as (a, b, *rest):
+        print(a, b, rest)
+```
+
+```
+1 [2, 3]
+1 2 [3]
+```
+
+An arity error names the position as a suffix — `… in with statement`, `… in for loop`,
+`… in comprehension for clause` — so one wording covers every position (SPY0239).
+
 ## Nested Tuple Unpacking
 
 Targets can themselves be tuple patterns, enabling nested destructuring:

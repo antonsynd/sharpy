@@ -160,7 +160,7 @@ internal partial class RoslynEmitter
         // Why a comprehension does not defeat this, which is the trap a naive statement-boundary
         // RESET would fall into. A comprehension generates its sub-expressions inside
         // `CaptureHoisted` (Expressions.Comprehensions.cs), which saves, clears and restores
-        // `_hoistedStatements` so a hoist lands at the comprehension's own loop rather than at the
+        // its own scope sink so a hoist lands at the comprehension's own loop rather than at the
         // flat statement boundary (#1000). If this boundary CLEARED the recorder instead of nesting,
         // that inner generation would be attributed to a fresh scope and a node generated once
         // outside and once inside the comprehension would look like two separate single visits.

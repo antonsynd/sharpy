@@ -807,6 +807,42 @@ internal class ControlFlowGraphBuilder
         _currentBlock = mergeBlock;
     }
 
+    /// <summary>
+    /// Records the reads a <c>with … as</c> target performs, and only those. A plain
+    /// <c>as name</c> target is a pure write and contributes nothing: adding the whole target made
+    /// the bound NAME look like a read and produced a false SPY0600 on a target the with itself
+    /// binds (#1635, which is why 3d8bd694f removed the write). Adding nothing lost the base read,
+    /// so <c>with CM() as p.x:</c> with a bare-declared <c>p</c> reported only at the later use
+    /// instead of at the target line (#1710). The same split the definite-assignment walker's
+    /// CollectTargetReads applies to assignment targets.
+    /// </summary>
+    private void AddWithTargetBaseReads(Expression target)
+    {
+        switch (target)
+        {
+            case Identifier:
+                // Pure write: the with statement binds this name.
+                break;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    AddWithTargetBaseReads(element);
+                break;
+            case StarExpression star:
+                AddWithTargetBaseReads(star.Operand);
+                break;
+            case MemberAccess member:
+                _currentBlock.Expressions.Add(member.Object);
+                break;
+            case IndexAccess index:
+                _currentBlock.Expressions.Add(index.Object);
+                _currentBlock.Expressions.Add(index.Index);
+                break;
+            default:
+                _currentBlock.Expressions.Add(target);
+                break;
+        }
+    }
+
     private void BuildWith(WithStatement stmt)
     {
         // `with assert_raises(E):` (unittest) compiles to a try/catch, so an exception raised
@@ -847,6 +883,12 @@ internal class ControlFlowGraphBuilder
         foreach (var item in stmt.Items)
         {
             _currentBlock.Expressions.Add(item.ContextExpression);
+
+            // The `as` target is a WRITE, but a non-identifier target READS its base:
+            // `with CM() as p.x:` stores into p.x and therefore reads p, so a bare-declared `p`
+            // must be reported at the TARGET, not only at a later use (#1710).
+            if (item.Target != null)
+                AddWithTargetBaseReads(item.Target);
 
             if (_semanticInfo != null)
             {

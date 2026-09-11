@@ -173,7 +173,7 @@ internal sealed record IrConstant(
 /// presize the result from a sized single source, whose already-inferred element type is the
 /// capacity expression's <see cref="IrNode.Type"/>.</item>
 /// </list>
-/// The <b>stateful</b> C# emission (temp naming, hoisting via <c>_hoistedStatements</c>,
+/// The <b>stateful</b> C# emission (temp naming, hoisting via the emitter's sink stack,
 /// loop-variable scope versioning, sub-expression <c>GenerateExpression</c>) stays in the emitter
 /// during E2 — that is what keeps output byte-identical — so the AST <see cref="Clauses"/> ride along
 /// for the emitter's stateful walk. The lowered clause sub-expressions live in

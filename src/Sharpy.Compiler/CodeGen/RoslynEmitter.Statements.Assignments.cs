@@ -746,7 +746,7 @@ internal partial class RoslynEmitter
     /// temp identifier, or <paramref name="generated"/> unchanged when no hoist is needed or
     /// permitted.
     /// <para>
-    /// The hoisted declaration goes into <c>_hoistedStatements</c>, which the statement emitter
+    /// The hoisted declaration goes into the enclosing scope sink, which the statement emitter
     /// flushes as flat siblings ahead of the statement being generated. Evaluating the target's
     /// subexpressions before the value also matches CPython, which for
     /// <c>xs[idx()] += val()</c> prints <c>idx</c> then <c>val</c> (verified with python3);

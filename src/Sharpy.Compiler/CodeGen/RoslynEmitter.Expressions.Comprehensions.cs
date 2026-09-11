@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     /// <summary>
-    /// Runs <paramref name="generate"/> against a fresh <c>_hoistedStatements</c> scope and returns
+    /// Runs <paramref name="generate"/> under a fresh SCOPE sink and returns
     /// whatever statements it hoisted (e.g. a nested or async comprehension's <c>await foreach</c> +
     /// temp declaration), restoring the prior hoist accumulator before returning. Mirrors the
     /// save/clear/restore discipline in <c>GenerateBodyStatements</c>. Imperative comprehension

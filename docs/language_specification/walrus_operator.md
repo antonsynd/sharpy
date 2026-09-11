@@ -143,8 +143,37 @@ for x in data:
 ## Evaluation Placement
 
 A walrus expression evaluates **exactly where it is written** — in a short-circuit branch, a
-ternary arm, an `elif` test, a `while` test, a lambda body, or a match guard. The compiler
-manufactures a statement-level sink so hoisted lowerings land in the correct scope:
+ternary arm, an `elif` test, a `while` test, a comparison-chain operand, a `??` right operand, a
+lambda body, or a match guard. The compiler manufactures a sink at each of those constructs so a
+hoisted lowering runs where the construct evaluates it.
+
+The name a walrus binds has the lifetime of the enclosing **scope**, not of the enclosing
+evaluation, so its declaration is placed at the enclosing scope even when its assignment is placed
+inside a manufactured conditional or loop body. That is why a walrus declared in a `while` test is
+readable in the loop's `else` clause and after the loop:
+
+```python
+def probe(xs: list[int]) -> int:
+    print("probe", len(xs))
+    return len(xs)
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    while (n := probe(xs)) > 1:
+        xs.pop(0)
+    else:
+        print("else", n)
+    print("after", n)
+```
+
+```
+probe 3
+probe 2
+probe 1
+else 1
+after 1
+```
+
 
 ```python
 def probe() -> int:
@@ -207,6 +236,37 @@ when-true/when-false definite assignment rule:
 - After `a and b`: definitely assigned when **true** = T(a) ∪ T(b); when **false** = F(a) ∩ (T(a) ∪ F(b)).
 - After `a or b`: definitely assigned when **true** = T(a) ∩ (F(a) ∪ T(b)); when **false** = F(a) ∪ F(b).
 - After `not e`: true/false swap.
+- After `x if c else y`: when **true** = (T(c) ∪ T(x)) ∩ (F(c) ∪ T(y)); when **false** =
+  (T(c) ∪ F(x)) ∩ (F(c) ∪ F(y)). Only the condition runs unconditionally.
+- After a comparison chain `a < b < c`: operands 0 and 1 always run, so their walruses are assigned
+  on both outcomes; an operand past the first link runs only when every earlier link held, so it is
+  assigned when **true** only.
+- After `a ?? b`: only `a` runs unconditionally.
+- In a comprehension or generator expression: only the first `for` clause's iterator is evaluated
+  exactly once. A walrus in the element, the value, or an `if` clause runs once per item — zero times
+  over an empty iterable — so it is not definitely assigned. python3 agrees: `[(w := v) for v in []]`
+  followed by a read of `w` raises `UnboundLocalError`.
+
+A walrus in a **match guard** is assigned on entry to the arm it guards, so the arm's body reads it:
+
+```python
+def f() -> int:
+    print("f")
+    return 3
+
+def main() -> None:
+    m: int = 1
+    match m:
+        case 1 if (w2 := f()) > 0:
+            print("one", w2)
+        case _:
+            print("other")
+```
+
+```
+f
+one 3
+```
 
 A read on a path where the walrus may not have executed is SPY0600, mirroring Python's
 `NameError`:
@@ -219,6 +279,32 @@ def main() -> None:
     if True or (w := probe()):
         print(w)   # error SPY0600: variable 'w' is used before being assigned
 ```
+
+A ternary arm and a comparison-chain operand past the first link refuse the same way:
+
+```python
+def f() -> int:
+    return 3
+
+def main() -> None:
+    c: bool = False
+    w: int
+    v: int = (w := f()) if c else 0
+    print(v, w)   # error SPY0600: Variable 'w' is used before being assigned
+```
+
+```python
+def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if 5 < 1 < (w := f()):
+        print("in")
+    print("after", w)   # error SPY0600: Variable 'w' is used before being assigned
+```
+
+python3 raises `UnboundLocalError` on both programs.
 
 A walrus that is unconditional (e.g., the LHS of `and`) is available on both branches:
 

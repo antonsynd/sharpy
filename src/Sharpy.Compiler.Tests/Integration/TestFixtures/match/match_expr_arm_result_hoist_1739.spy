@@ -1,0 +1,15 @@
+# An arm's RESULT is evaluated only when the arm is selected, so its hoists belong in the arm
+# (#1739 acceptance cell 9). `case 0` is not selected, so `take` is never called.
+def take(xs: list[int]) -> list[int]:
+    print("result-eval")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    got: list[int] = match m:
+        case 0: [v for v in take(xs)]
+        case _: [10]
+    print(got)
+    print("left", len(xs))

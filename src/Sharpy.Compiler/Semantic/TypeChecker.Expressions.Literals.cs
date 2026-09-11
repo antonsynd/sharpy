@@ -648,11 +648,12 @@ internal partial class TypeChecker
                 if (hasStar)
                 {
                     BindStarredUnpackingTargets(targetTuple, tupleType,
-                        forClause.LineStart, forClause.ColumnStart, forClause.Target.Span);
+                        forClause.LineStart, forClause.ColumnStart, forClause.Target.Span,
+                        UnpackingPosition.ComprehensionForClause);
                 }
                 else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
                 {
-                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
+                    AddError(UnpackArityMessage(tupleType.ElementTypes.Count, targetTuple.Elements.Length, UnpackingPosition.ComprehensionForClause),
                         forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: forClause.Target.Span);
                 }
@@ -669,7 +670,7 @@ internal partial class TypeChecker
             }
             else
             {
-                AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}'",
+                AddError(UnpackNonTupleMessage(elemType.GetDisplayName(), UnpackingPosition.ComprehensionForClause),
                     forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                     span: forClause.Target.Span);
             }

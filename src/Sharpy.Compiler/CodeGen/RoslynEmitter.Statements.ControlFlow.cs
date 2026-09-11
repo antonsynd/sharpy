@@ -1155,7 +1155,7 @@ internal partial class RoslynEmitter
     /// store produces inside the <c>with</c>'s own scope.
     ///
     /// <para><see cref="GenerateStore"/>'s tuple arm emits a temp plus one declaration per element
-    /// and hoists all but the last into <c>_hoistedStatements</c> — a channel the ordinary
+    /// and hoists all but the last into the evaluation channel — a channel the ordinary
     /// statement dispatcher flushes as flat siblings of the ENCLOSING statement. For a comprehension
     /// or a for-loop that lands in the same block; for a <c>with</c> it lands outside the
     /// <c>using</c>/try, above the temp the store reads, so <c>with CM() as (a, b)</c> emitted

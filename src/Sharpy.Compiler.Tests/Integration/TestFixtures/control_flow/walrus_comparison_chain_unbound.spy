@@ -1,0 +1,12 @@
+# A comparison chain short-circuits like `&&`: the third operand runs only if the first link held,
+# so its walrus is assigned when-true only. python3 raises UnboundLocalError here; before the rule
+# this printed `after 0`.
+def f() -> int:
+    print("f")
+    return 3
+
+def main() -> None:
+    w: int
+    if 5 < 1 < (w := f()):
+        print("in")
+    print("after", w)

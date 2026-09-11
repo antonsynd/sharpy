@@ -101,9 +101,6 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             "widening to a runtime-checked unpack is a spec decision no ruling made");
         yield return ("augmented-list-display",
             "[a, b] += [1, 2] stays refused (python SyntaxError for both list and tuple)");
-        yield return ("with-as-starred",
-            "with CM() as (a, *rest) — starred unpacking in with-as target not yet routed through " +
-            "ParseForTarget; the parser reads * as multiply; currently SPY0239");
     }
 
     private static IEnumerable<Cell> GenerateCells()
@@ -232,7 +229,7 @@ def main() -> None:
 def main() -> None:
     with CM(1, 2, 3) as (a, *rest):
         print(a, rest)",
-            Expect.SPY0239);
+            Expect.Runs, "1 [2, 3]");
 
         yield return new Cell("with-as.tuple.mismatch",
             @"class CM:

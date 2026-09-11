@@ -1,0 +1,36 @@
+# Python evaluates `with a() as x, b() as y:` strictly left to right: item 0's context expression,
+# item 0's __enter__, THEN item 1's context expression. The using/try nest is built inside-out, so
+# item 1's hoists used to flush above the whole statement and ran before item 0's __enter__.
+class Appender:
+    label: str
+    src: list[int]
+
+    def __init__(self, label: str, src: list[int]) -> None:
+        self.label = label
+        self.src = src
+
+    def __enter__(self) -> str:
+        print("enter", self.label)
+        self.src.append(9)
+        return self.label
+
+    def __exit__(self) -> None:
+        print("exit", self.label)
+
+class Counter:
+    seen: list[int]
+
+    def __init__(self, seen: list[int]) -> None:
+        self.seen = seen
+
+    def __enter__(self) -> int:
+        print("enter", self.seen)
+        return len(self.seen)
+
+    def __exit__(self) -> None:
+        print("exit", self.seen)
+
+def main() -> None:
+    src: list[int] = []
+    with Appender("a", src) as first, Counter([v for v in src]) as count:
+        print("body", src, count)

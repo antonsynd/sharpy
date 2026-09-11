@@ -1,0 +1,16 @@
+# The `is`-chain manufactures no switch and no loop, so `break` in a guarded arm body targets the
+# enclosing Python loop — which is what Python means. Under the switch form it exited the switch and
+# the loop ran to completion (#1816, still open for arms whose guard hoists nothing).
+def take(xs: list[int]) -> list[int]:
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    for i in range(3):
+        match i:
+            case 1 if len([v for v in take(xs)]) > 0:
+                print("hit", i)
+                break
+            case _:
+                print("skip", i)
+    print("done")

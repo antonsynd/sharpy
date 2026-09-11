@@ -996,7 +996,7 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.ValidationOverflow.YieldInSuppressingWith,
             "Yield inside a suppression-capable with", "Validation",
             "A `yield` inside a `with` block whose `__exit__` can suppress exceptions " +
-            "(4-parameter form) would require the iterator to hold the suppression state across " +
+            "would require the iterator to hold the suppression state across " +
             "resumption points. C# does not allow `yield` inside a `try` with a `catch` (CS1626). " +
             "Use a 1-parameter `__exit__` or collect the values before yielding.",
             "class CM:\n    def __exit__(self, t: object?, v: Exception?, tb: object?) -> bool:\n        return False\ndef gen() -> Iterator[int]:\n    with CM():\n        yield 1  # SPY0703",

@@ -41,7 +41,7 @@ internal partial class RoslynEmitter
         // Pipe-forward is decided BEFORE the operands are generated: its lowering re-generates
         // the left operand itself (the piped value becomes a call argument), so generating it
         // here first produced the value twice and discarded one. GenerateExpression is not pure —
-        // it can push into `_hoistedStatements`, which are flushed unconditionally — so a
+        // it can push into the enclosing sink, which is flushed unconditionally — so a
         // speculative generation is a duplicated side effect waiting for the right operand
         // (#1228's rule, found live by the re-entry tripwire, #1334).
         if (binOp.Operator == BinaryOperator.PipeForward)
@@ -98,7 +98,7 @@ internal partial class RoslynEmitter
                     // What this replaced was unsound in two ways. It called
                     // GenerateExpression(binOp.Left) a second time with NO gate at all — the
                     // IsSideEffectFree check covered only the right operand — and
-                    // GenerateExpression is not pure: it can push into _hoistedStatements
+                    // GenerateExpression is not pure: it can push into the enclosing sink
                     // (the #1198 tuple-spread hoist), so `sum(make_tuple()) ** 2` emitted the
                     // hoist twice and called make_tuple() twice. And when the gate DID fire it
                     // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so

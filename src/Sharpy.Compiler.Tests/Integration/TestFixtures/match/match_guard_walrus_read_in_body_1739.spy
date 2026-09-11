@@ -1,0 +1,15 @@
+# A match guard's walrus is assigned on entry to the arm it guards, so the arm body reads it. The
+# guard used to sit in the CFG's condition position (evaluated after the block's statements), so
+# definite assignment judged the body's read before crediting the guard — SPY0600 on a program that
+# ran (#1739).
+def f() -> int:
+    print("f")
+    return 3
+
+def main() -> None:
+    m: int = 1
+    match m:
+        case 1 if (w2 := f()) > 0:
+            print("one", w2)
+        case _:
+            print("other")
