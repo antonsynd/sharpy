@@ -115,9 +115,9 @@ namespace Sharpy
         /// <returns><c>true</c> if every element in this set is also in <paramref name="other"/>.</returns>
         /// <example>
         /// <code>
-        /// a = {1, 2}
-        /// b = {1, 2, 3}
-        /// a.issubset(b)    # True
+        /// a: set[int] = {1, 2}
+        /// b: set[int] = {1, 2, 3}
+        /// print(a.is_subset(b))    # True
         /// </code>
         /// </example>
         public bool IsSubset(Set<T> other)
@@ -160,9 +160,9 @@ namespace Sharpy
         /// <returns><c>true</c> if every element in <paramref name="other"/> is also in this set.</returns>
         /// <example>
         /// <code>
-        /// a = {1, 2, 3}
-        /// b = {1, 2}
-        /// a.issuperset(b)    # True
+        /// a: set[int] = {1, 2, 3}
+        /// b: set[int] = {1, 2}
+        /// print(a.is_superset(b))    # True
         /// </code>
         /// </example>
         public bool IsSuperset(Set<T> other)

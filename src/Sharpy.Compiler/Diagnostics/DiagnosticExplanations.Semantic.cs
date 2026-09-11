@@ -696,7 +696,8 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Semantic.ProtocolMissingMethod, "Protocol method not implemented", "Semantic",
             "Reported in two situations. (1) A class claims to implement an interface (protocol) but is missing one or more required methods — all interface methods must be implemented. "
             + "(2) A protocol operation is applied to a type that does not support it: iterating a non-iterable (missing __iter__), indexing a type without __getitem__, "
-            + "or slicing a type that does not support slicing. Slicing is supported by list, str, bytes, array, and ndarray; tuple slicing is refused (tracked as #1609) and dict/set have no slice protocol.",
+            + "or slicing a type that does not support slicing. Slicing is supported by list, str, bytes, array, ndarray and tuple (with constant bounds); dict/set have no slice protocol. "
+            + "A loose `T | None` receiver answers every protocol operation its payload answers, so it is never the reason for this error; a strict `T?` is refused with SPY0326 instead, which names narrowing and unwrapping as the remedies.",
             "interface Printable:\n    def display(self) -> str: ...\n\nclass Foo(Printable):  # missing display()\n    x: int\n\n# Protocol-operation face:\nd: dict[str, int] = {\"a\": 1}\nfirst = d[0:2]  # dict does not support slicing",
             "Implement all required methods:\nclass Foo(Printable):\n    x: int\n    def display(self) -> str:\n        return str(self.x)\n\nFor a protocol operation, use a type that supports it — e.g. slice a list of the dict's items:\nfirst = list(d.items())[0:2]");
 

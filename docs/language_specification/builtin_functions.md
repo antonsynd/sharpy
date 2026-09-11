@@ -410,10 +410,27 @@ for i, name in enumerate(names, 1):
 | `int64` | `int64` | |
 | `uint64` | `uint64` | |
 | `float32`, `float64` | same | |
+| `decimal` | `decimal` | |
+| `bool` | `int32` | Python counts `True` as 1 — `sum([True, True, False])` is `2` |
 
 Each width has a `start` form: `sum(xs, start)` initialises the accumulator to `start` and adds
 elements onto it. Overflow raises `OverflowError` (checked accumulation, matching the `int`
 form's LINQ `Sum` overflow behaviour).
+
+**`start` of another family.** A `start` need not share the elements' family. The result is the row
+C# has for that pair of operand types, and nothing else — Sharpy adds no promotion rule of its own:
+
+| Elements | `start` | Result | Example |
+|---|---|---|---|
+| any integer width, `bool` | `int` | the element's width (`int32` for sub-int and `bool`) | `sum([1, 2], 1)` → `4` (`int32`) |
+| any integer width, `bool`, `float32` | `float64` | `float64` | `sum([1, 2], 1.5)` → `4.5` |
+| any integer width, `bool` | `decimal` | `decimal` | `sum([1, 2], decimal(1))` |
+| `float32`, `float64` | `decimal` | **refused (SPY0354)** | C# has no `double + decimal` row |
+| any | `str` | **refused (SPY0354)** | naming the pair |
+
+A `start` written as a constant converts first, as it does anywhere else: `sum([1.5, 2.5], 1)` is
+`5.0` because the literal `1` becomes `1.0` before the row is chosen. The keyword spelling
+`sum(xs, start=v)` dispatches identically to the positional one.
 
 | `zip(a, b)` | Combine iterables | `.Zip()` |
 | `range(n)` | Number sequence | `Enumerable.Range()` |

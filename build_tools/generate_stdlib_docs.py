@@ -286,15 +286,20 @@ def map_type(cs_type: str) -> str:
     if cs_type == "Action":
         return "() -> None"
 
+    # params keyword prefix — checked BEFORE the array suffix. A `params T[]` formal is a VARIADIC of
+    # T at the Sharpy surface (`s.union(a, b)`), not a parameter that takes a list of T. Testing the
+    # suffix first stripped the `[]` and rendered `union(others: list[Iterable[T]]) -> set[T]` — a
+    # signature no user can write and the opposite of what the method does.
+    if cs_type.startswith("params "):
+        inner = cs_type[7:].strip()
+        if inner.endswith("[]"):
+            inner = inner[:-2]
+        return f"*{map_type(inner)}"
+
     # Array types
     if cs_type.endswith("[]"):
         inner = map_type(cs_type[:-2])
         return f"list[{inner}]"
-
-    # params keyword prefix
-    if cs_type.startswith("params "):
-        inner = map_type(cs_type[7:])
-        return f"*{inner}"
 
     # Single-letter type params (T, K, V, etc.)
     if len(cs_type) == 1 and cs_type.isupper():
@@ -347,6 +352,11 @@ def _strip_xml_tags(text: str) -> str:
         return ""
     # Replace common XML doc tags
     text = re.sub(r"<see\s+cref=\"([^\"]+)\"\s*/>", r"`\1`", text)
+    # <see langword="true"/> — a C# KEYWORD reference, which the catch-all below eats whole. That is
+    # how builtins.md came to read "Sums a sequence of booleans, counting  as 1." with the subject of
+    # the sentence missing. Rendered as the Sharpy spelling, since the Python-ification pass that
+    # maps true/false/null runs over prose and would otherwise leave a bare C# keyword in the docs.
+    text = re.sub(r"<see\s+langword=\"([^\"]+)\"\s*/>", r"`\1`", text)
     text = re.sub(r"<paramref\s+name=\"([^\"]+)\"\s*/>", r"*\1*", text)
     text = re.sub(r"<c>([^<]*)</c>", r"`\1`", text)
     text = re.sub(r"</?[a-zA-Z][^>]*>", "", text)
@@ -620,8 +630,13 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         if i == 0 and is_extension and _EXTENSION_THIS_RE.match(part):
             continue
 
-        # Handle params keyword
-        part = part.replace("params ", "")
+        # The `params` keyword is KEPT so map_type can render the formal as the variadic it is
+        # (`*Iterable[T]`). Deleting it here is what made a variadic read as an ordinary array
+        # parameter and then as `list[...]` — `union(others: list[Iterable[T]])`, a signature no
+        # user can write.
+        is_variadic = part.startswith("params ")
+        if is_variadic:
+            part = part[len("params "):]
 
         # Handle default values
         default = None
@@ -636,10 +651,17 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         tokens = part.rsplit(None, 1)
         if len(tokens) == 2:
             ptype, pname = tokens
+            mapped = map_type(ptype.strip())
+            if is_variadic:
+                # A `params T[]` formal takes zero or more T, so the element type is what the
+                # signature names; the star goes on the NAME when the signature is rendered.
+                if mapped.startswith("list[") and mapped.endswith("]"):
+                    mapped = mapped[len("list["):-1]
+                mapped = "*" + mapped
             params.append(
                 DocParam(
                     name=pascal_to_snake(pname),
-                    type=map_type(ptype.strip()),
+                    type=mapped,
                     default=default,
                 )
             )
@@ -1045,7 +1067,15 @@ def parse_cs_file(
             # Build signature
             param_strs = []
             for p in params:
-                s = f"{p.name}: {p.type}" if p.type else p.name
+                # A variadic renders Python-style: `*others: Iterable[T]`, never
+                # `others: *Iterable[T]`. map_type marks the TYPE because that is where the C#
+                # `params` keyword sits; the star moves to the name here.
+                if p.type and p.type.startswith("*"):
+                    s = f"*{p.name}: {p.type[1:]}"
+                elif p.type:
+                    s = f"{p.name}: {p.type}"
+                else:
+                    s = p.name
                 if p.default is not None:
                     s += f" = {p.default}"
                 param_strs.append(s)
