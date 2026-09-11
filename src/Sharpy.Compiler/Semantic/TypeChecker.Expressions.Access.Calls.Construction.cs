@@ -393,19 +393,14 @@ internal partial class TypeChecker
             values.Add((kwarg.Value, type));
         }
 
-        // Arm 1: if all values fit the contextual dict's value type, adopt it.
-        SemanticType commonValueType;
-        if (valueExpectation != null && !ContainsTypeParameterType(valueExpectation)
-            && AdmitCollectionElements(values, valueExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonValueType = valueExpectation;
-        }
-        else
-        {
-            commonValueType = BestCommonType(values, null, StorePosition.CollectionElement,
-                call, "dict value",
-                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[str, V] = ...'"));
-        }
+        // `dict(a=1, b="x")` and `{"a": 1, "b": "x"}` are two spellings of ONE construct, so the
+        // value row goes through the same join the literal's does (Construction.cs doc contract).
+        var commonValueType = JoinCollectionOperands(
+            values, valueExpectation, call, "dict value",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'d: dict[str, object] = ...'",
+                NoneAnnotateSteer: "'d: dict[str, V | None] = ...' for .NET-nullable values, "
+                    + "or 'd: dict[str, V?] = ...' with None() values for Sharpy optionals"));
 
         return new GenericType
         {

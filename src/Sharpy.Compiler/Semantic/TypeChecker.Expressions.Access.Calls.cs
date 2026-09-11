@@ -5031,8 +5031,8 @@ internal partial class TypeChecker
             }
 
             var steer = slot != null
-                ? $"xs: list[{slot.GetDisplayName()}] = ..."
-                : "xs: list[T] = ...";
+                ? $"'xs: list[{slot.GetDisplayName()}] = ...'"
+                : "'xs: list[T] = ...'";
             var elementType = BestCommonType(
                 operands, slot, position, (Node)source,
                 siteNoun,

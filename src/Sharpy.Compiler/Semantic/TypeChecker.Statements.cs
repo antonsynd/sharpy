@@ -198,7 +198,10 @@ internal partial class TypeChecker
                     var resolved = BestCommonType(
                         new[] { ((Expression?)assignment.Value, inferredType) },
                         null, StorePosition.PlainStore, assignment,
-                        $"'{targetId.Name}'");
+                        $"'{targetId.Name}'",
+                        new BestCommonTypeOptions(
+                            AnnotateSteer: $"'{targetId.Name}: T = ...'",
+                            NoneAnnotateSteer: BindingNoneSteer(targetId.Name)));
                     if (resolved is UnknownType)
                         return;
                     inferredType = resolved;
@@ -979,7 +982,10 @@ internal partial class TypeChecker
                 var resolved = BestCommonType(
                     new[] { ((Expression?)varDecl.InitialValue, initType) },
                     null, StorePosition.Declaration, varDecl,
-                    $"'{varDecl.Name}'");
+                    $"'{varDecl.Name}'",
+                    new BestCommonTypeOptions(
+                        AnnotateSteer: $"'{varDecl.Name}: T = ...'",
+                        NoneAnnotateSteer: BindingNoneSteer(varDecl.Name)));
                 initType = resolved;
             }
 

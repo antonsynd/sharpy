@@ -36,7 +36,9 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Guards against a <see cref="VoidType"/> collection element/value type, which arises when
+    /// The element type of a list literal: arm 1 when the context supplies an element slot, else
+    /// arms 2–3 of the R-W rule (<see cref="JoinCollectionOperands"/>).
+    /// </summary>
     private SemanticType CheckListLiteral(ListLiteral list)
     {
         if (list.Elements.Length == 0)
@@ -70,21 +72,12 @@ internal partial class TypeChecker
             }
         }
 
-        // Arm 1 (R-W): the contextual element type is the slot — if every element is admitted,
-        // adopt it. AdmitCollectionElements already calls ClassifyStore per element (#1671, #1698).
-        SemanticType commonType;
-        if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
-            && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonType = elementExpectation;
-        }
-        else
-        {
-            // Arms 2-3 (R-W): one element's type accepts all, or refuse by name.
-            commonType = BestCommonType(elements, null, StorePosition.CollectionElement,
-                list, "list element",
-                new BestCommonTypeOptions(AnnotateSteer: "'xs: list[T] = ...'"));
-        }
+        var commonType = JoinCollectionOperands(
+            elements, elementExpectation, list, "list element",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'xs: list[object] = ...'",
+                NoneAnnotateSteer: "'xs: list[T | None] = ...' for .NET-nullable elements, "
+                    + "or 'xs: list[T?] = ...' with None() elements for Sharpy optionals"));
 
         return new GenericType
         {
@@ -133,31 +126,18 @@ internal partial class TypeChecker
             }
         }
 
-        SemanticType commonKeyType;
-        if (keyExpectation != null && !ContainsTypeParameterType(keyExpectation)
-            && AdmitCollectionElements(keys, keyExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonKeyType = keyExpectation;
-        }
-        else
-        {
-            commonKeyType = BestCommonType(keys, null, StorePosition.CollectionElement,
-                dict, "dict key",
-                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[K, V] = ...'"));
-        }
+        var commonKeyType = JoinCollectionOperands(
+            keys, keyExpectation, dict, "dict key",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'d: dict[object, V] = ...'",
+                NoneAnnotateSteer: "'d: dict[K | None, V] = ...' for a .NET-nullable key"));
 
-        SemanticType commonValueType;
-        if (valueExpectation != null && !ContainsTypeParameterType(valueExpectation)
-            && AdmitCollectionElements(values, valueExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonValueType = valueExpectation;
-        }
-        else
-        {
-            commonValueType = BestCommonType(values, null, StorePosition.CollectionElement,
-                dict, "dict value",
-                new BestCommonTypeOptions(AnnotateSteer: "'d: dict[K, V] = ...'"));
-        }
+        var commonValueType = JoinCollectionOperands(
+            values, valueExpectation, dict, "dict value",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'d: dict[K, object] = ...'",
+                NoneAnnotateSteer: "'d: dict[K, V | None] = ...' for .NET-nullable values, "
+                    + "or 'd: dict[K, V?] = ...' with None() values for Sharpy optionals"));
 
         return new GenericType
         {
@@ -199,18 +179,12 @@ internal partial class TypeChecker
             }
         }
 
-        SemanticType commonType;
-        if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
-            && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonType = elementExpectation;
-        }
-        else
-        {
-            commonType = BestCommonType(elements, null, StorePosition.CollectionElement,
-                set, "set element",
-                new BestCommonTypeOptions(AnnotateSteer: "'s: set[T] = ...'"));
-        }
+        var commonType = JoinCollectionOperands(
+            elements, elementExpectation, set, "set element",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'s: set[object] = ...'",
+                NoneAnnotateSteer: "'s: set[T | None] = ...' for .NET-nullable elements, "
+                    + "or 's: set[T?] = ...' with None() elements for Sharpy optionals"));
 
         return new GenericType
         {
@@ -283,6 +257,10 @@ internal partial class TypeChecker
         {
             directElementTypes = indexExpectations.ToList();
         }
+        else
+        {
+            directElementTypes = DecideTupleIndexTypes(tuple, directElements);
+        }
 
         var tupleType = new TupleType { ElementTypes = directElementTypes };
 
@@ -293,6 +271,37 @@ internal partial class TypeChecker
         }
 
         return tupleType;
+    }
+
+    /// <summary>
+    /// #1796's NAMED check: a tuple literal is a ROW OF SINGLE-OPERAND SEAMS — one
+    /// <see cref="BestCommonType"/> call per index, because each index has its own slot (unlike a
+    /// list's shared element type).
+    ///
+    /// <para>A typed index returns its own type unchanged, so this is an identity for
+    /// <c>(1, "a")</c>. An UNTYPED index — a bare <c>None</c> or a void call — is refused AT THAT
+    /// INDEX instead of being recorded as <c>void</c> and handed to the emitter: <c>t = (None, 1)</c>
+    /// and <c>for s, n in [(None, 1)]</c> were SPY0599 "Keyword 'void' cannot be used in this
+    /// context" (R-AB).</para>
+    /// </summary>
+    private List<SemanticType> DecideTupleIndexTypes(
+        TupleLiteral tuple, IReadOnlyList<(Expression? Node, SemanticType Type)> directElements)
+    {
+        var decided = new List<SemanticType>(directElements.Count);
+        for (int i = 0; i < directElements.Count; i++)
+        {
+            decided.Add(BestCommonType(
+                new[] { directElements[i] },
+                null, StorePosition.TupleElement,
+                (Node?)directElements[i].Node ?? tuple,
+                $"tuple element {i + 1}",
+                new BestCommonTypeOptions(
+                    AnnotateSteer: "'t: tuple[...] = ...'",
+                    NoneAnnotateSteer: "'t: tuple[..., T | None, ...] = ...' for a "
+                        + ".NET-nullable element, or a 'T?' element built with None()")));
+        }
+
+        return decided;
     }
 
     /// <summary>
@@ -386,22 +395,20 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
-        // Non-spread comprehension elements route through AdmitCollectionElements so a
-        // refused value reports at the ELEMENT span, matching the literal twin ([v]).
+        // A comprehension is a collection literal whose element is written once, so its element
+        // row goes through the SAME join (#1671): the contextual element type is the slot and a
+        // refused value reports at the ELEMENT span; slot-less, arms 2–3 decide, so
+        // `[None for i in range(2)]` is refused by name instead of emitting `void` (#1796).
         // Spreads keep ContextualElementType because there is no single element node.
-        var commonType = elementType;
-        if (listComp.Element is not SpreadElement
-            && expectations?[0] is { } expectation && !ContainsTypeParameterType(expectation)
-            && AdmitCollectionElements(
+        var commonType = listComp.Element is SpreadElement
+            ? ContextualElementType(elementType, expectations?[0])
+            : JoinCollectionOperands(
                 new (Expression?, SemanticType)[] { (listComp.Element, elementType) },
-                expectation) != ElementAdmissionResult.Refused)
-        {
-            commonType = expectation;
-        }
-        else if (listComp.Element is SpreadElement)
-        {
-            commonType = ContextualElementType(elementType, expectations?[0]);
-        }
+                expectations?[0], listComp, "list comprehension element",
+                new BestCommonTypeOptions(
+                    AnnotateSteer: "'xs: list[object] = ...'",
+                    NoneAnnotateSteer: "'xs: list[T | None] = ...' for .NET-nullable elements, "
+                        + "or 'xs: list[T?] = ...' with None() elements for Sharpy optionals"));
 
         return new GenericType
         {
@@ -436,19 +443,15 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
-        var commonType = elementType;
-        if (setComp.Element is not SpreadElement
-            && expectations?[0] is { } expectation && !ContainsTypeParameterType(expectation)
-            && AdmitCollectionElements(
+        var commonType = setComp.Element is SpreadElement
+            ? ContextualElementType(elementType, expectations?[0])
+            : JoinCollectionOperands(
                 new (Expression?, SemanticType)[] { (setComp.Element, elementType) },
-                expectation) != ElementAdmissionResult.Refused)
-        {
-            commonType = expectation;
-        }
-        else if (setComp.Element is SpreadElement)
-        {
-            commonType = ContextualElementType(elementType, expectations?[0]);
-        }
+                expectations?[0], setComp, "set comprehension element",
+                new BestCommonTypeOptions(
+                    AnnotateSteer: "'s: set[object] = ...'",
+                    NoneAnnotateSteer: "'s: set[T | None] = ...' for .NET-nullable elements, "
+                        + "or 's: set[T?] = ...' with None() elements for Sharpy optionals"));
 
         return new GenericType
         {
@@ -477,25 +480,22 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
-        // Dict comprehension keys and values always have a node — route both through
-        // AdmitCollectionElements so refusals report at the element span.
-        var commonKeyType = keyType;
-        if (expectations?[0] is { } keyExpectation && !ContainsTypeParameterType(keyExpectation)
-            && AdmitCollectionElements(
-                new (Expression?, SemanticType)[] { (dictComp.Key, keyType) },
-                keyExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonKeyType = keyExpectation;
-        }
+        // Dict comprehension keys and values always have a node, so both rows take the same
+        // join every other literal row takes — refusals report at the element span.
+        var commonKeyType = JoinCollectionOperands(
+            new (Expression?, SemanticType)[] { (dictComp.Key, keyType) },
+            expectations?[0], dictComp, "dict comprehension key",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'d: dict[object, V] = ...'",
+                NoneAnnotateSteer: "'d: dict[K | None, V] = ...' for a .NET-nullable key"));
 
-        var commonValueType = valueType;
-        if (expectations?[1] is { } valueExpectation && !ContainsTypeParameterType(valueExpectation)
-            && AdmitCollectionElements(
-                new (Expression?, SemanticType)[] { (dictComp.Value, valueType) },
-                valueExpectation) != ElementAdmissionResult.Refused)
-        {
-            commonValueType = valueExpectation;
-        }
+        var commonValueType = JoinCollectionOperands(
+            new (Expression?, SemanticType)[] { (dictComp.Value, valueType) },
+            expectations?[1], dictComp, "dict comprehension value",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'d: dict[K, object] = ...'",
+                NoneAnnotateSteer: "'d: dict[K, V | None] = ...' for .NET-nullable values, "
+                    + "or 'd: dict[K, V?] = ...' with None() values for Sharpy optionals"));
 
         return new GenericType
         {
