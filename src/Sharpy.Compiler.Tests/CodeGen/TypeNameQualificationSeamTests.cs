@@ -76,6 +76,69 @@ def main() -> None:
     }
 
     [Fact]
+    public void GenericClrType_BesideSharpyCollection_QualifiesTheClrNameInEveryPosition()
+    {
+        // #1765: 311252e33 exempted GENERIC types from qualification, so this file's annotation
+        // emitted a bare `List<int>` (bound only by `using System.Collections.Generic`) while the
+        // construction one line later emitted the global::-qualified name — the two-formula
+        // divergence the seam exists to prevent. The cause was IEnumerable's registry entry naming
+        // the NON-generic System.Collections.IEnumerable; the entry now names the open generic
+        // definition and the exemption is gone.
+        var result = CompileAndExecute(@"
+from System.Collections.Generic import List
+
+def count_clr(xs: List[int]) -> int:
+    return xs.count
+
+def main() -> None:
+    clr: List[int] = List[int]()
+    clr.add(7)
+    print(count_clr(clr))
+    sharpy: list[int] = [1, 2, 3]
+    print(len(sharpy))
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n3\n", result.StandardOutput.Replace("\r\n", "\n"));
+        Assert.NotNull(result.GeneratedCSharp);
+
+        // The PARAMETER position is the one the carve-out suppressed.
+        Assert.Contains("CountClr(global::System.Collections.Generic.List<int> xs)", result.GeneratedCSharp);
+        Assert.Contains("new global::System.Collections.Generic.List<int>()", result.GeneratedCSharp);
+
+        // Sharpy's own collection keeps its short name (the Sharpy-namespace arm is unchanged),
+        // which is also the positive control: the assertion above is not matching every generic.
+        Assert.Contains("Sharpy.List<int> sharpy", result.GeneratedCSharp);
+        Assert.DoesNotContain("global::Sharpy.List<int> sharpy", result.GeneratedCSharp);
+    }
+
+    [Fact]
+    public void GenericSharpyMappedInterface_QualifiesFromTheGenericDefinition()
+    {
+        // IEnumerable is the entry that caused the carve-out: Sharpy maps the name to
+        // System.Collections.Generic.IEnumerable<T>, and while the registry recorded the
+        // non-generic System.Collections.IEnumerable, qualification produced
+        // `System.Collections.IEnumerable<int>` (CS0308). Executing the program is what checks the
+        // emitted name binds.
+        var result = CompileAndExecute(@"
+def total(xs: IEnumerable[int]) -> int:
+    n: int = 0
+    for x in xs:
+        n = n + x
+    return n
+
+def main() -> None:
+    print(total([1, 2, 3]))
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("6\n", result.StandardOutput.Replace("\r\n", "\n"));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("global::System.Collections.Generic.IEnumerable<int>", result.GeneratedCSharp);
+        Assert.DoesNotContain("System.Collections.IEnumerable<", result.GeneratedCSharp);
+    }
+
+    [Fact]
     public void ExceptionType_GlobalQualified()
     {
         // Exception types from the builtin registry must also be global::-qualified (#1765).

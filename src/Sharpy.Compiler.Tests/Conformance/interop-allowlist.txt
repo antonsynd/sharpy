@@ -19,65 +19,25 @@
 # only; see docs/deviations.yaml id: builtin-exception-python-surface) are a
 # refused-by-design verdict classified by the sweep itself — they never appear here.
 
-# #1625: Sharpy-own collection types — TryFindClrType now rejects Sharpy-namespace
-# results (P4 resolution priority fix 2cc6e0667), so these Python-style member names
-# on Sharpy.List`1 are not reachable through CLR reflection at all.
-builtins::property::List`1.length::property             # #1625
-builtins::method::List`1.delete_at::method              # #1625
-builtins::method::List`1.get_item_unchecked::method     # #1625
-builtins::method::List`1.get::method                    # #1625
-builtins::method::List`1.pop::method                    # #1625
-builtins::method::List`1.extend::method                 # #1625
-builtins::method::List`1.copy::method                   # #1625
 
-# #1625: Sharpy-internal types live in Sharpy namespaces and are correctly rejected by
-# TryFindClrType's Sharpy-namespace exclusion (P4 resolution priority fix 2cc6e0667).
-# These types are accessed through Sharpy's import system, not CLR reflection.
-builtins::property::TmpPathFixture.value::property                # #1625
-builtins::method::TmpPathFixture.dispose::method                  # #1625
-builtins::type::TmpPathFixture::match                             # #1625
-builtins::type::TmpPathFixture::annotate                          # #1625
-builtins::method::CapturedStderr.dispose::method                  # #1625
-builtins::method::CapturedStderr.getvalue::method                 # #1625
-builtins::type::CapturedStderr::match                             # #1625
-builtins::type::CapturedStderr::annotate                          # #1625
-builtins::method::CapturedOutput.dispose::method                  # #1625
-builtins::method::CapturedOutput.getvalue::method                 # #1625
-builtins::type::CapturedOutput::match                             # #1625
-builtins::type::CapturedOutput::annotate                          # #1625
-builtins::property::StatisticsError.stack_trace::property          # #1625
-builtins::property::StatisticsError.h_result::property             # #1625
-builtins::property::StatisticsError.source::property               # #1625
-builtins::property::StatisticsError.help_link::property            # #1625
-builtins::property::StatisticsError.inner_exception::property      # #1625
-builtins::property::StatisticsError.data::property                 # #1625
-builtins::property::StatisticsError.message::property              # #1625
-builtins::property::StatisticsError.target_site::property          # #1625
-builtins::method::StatisticsError.get_base_exception::method       # #1625
-builtins::type::StatisticsError::match                             # #1625
-builtins::type::StatisticsError::annotate                          # #1625
-builtins::property::SliceSpec.is_squeeze::property                 # #1625
-builtins::property::SliceSpec.start::property                      # #1625
-builtins::property::SliceSpec.step::property                       # #1625
-builtins::property::SliceSpec.stop::property                       # #1625
-builtins::type::SliceSpec::match                                   # #1625
-builtins::type::SliceSpec::annotate                                # #1625
-builtins::property::Attachment.content_type::property              # #1625
-builtins::property::Attachment.data::property                      # #1625
-builtins::property::Attachment.filename::property                  # #1625
-builtins::type::Attachment::match                                  # #1625
-builtins::type::Attachment::annotate                               # #1625
-builtins::property::CacheInfo.current_size::property               # #1625
-builtins::property::CacheInfo.hits::property                       # #1625
-builtins::property::CacheInfo.max_size::property                   # #1625
-builtins::property::CacheInfo.misses::property                     # #1625
-builtins::type::CacheInfo::match                                   # #1625
-builtins::type::CacheInfo::annotate                                # #1625
-builtins::method::ITzinfo.dst::method                              # #1625
-builtins::method::ITzinfo.tzname::method                           # #1625
-builtins::method::ITzinfo.utcoffset::method                        # #1625
-builtins::type::ITzinfo::match                                     # #1625
-builtins::type::ITzinfo::annotate                                  # #1625
-builtins::type::IInterpolation::match                              # #1625
-builtins::type::IInterpolation::annotate                           # #1625
 
+
+# #1829: the sweep's own instrument, not a bridge gap. The closed-construction probe for a generic
+# discovered type asks only "does `List[int]` compile", not "did that name bind the type whose
+# members I am about to probe". Since the resolution fix (#1625) `List` answers with
+# System.Collections.Generic.List<T> — the collision rule — so Sharpy.List`1's Python member names
+# are probed against the .NET List<int> and report SPY0203. `list[int]` has all of them.
+# 2cc6e0667 filed these as "genuine API-surface gaps" against the issue it was closing; they are
+# neither gaps nor resolution bugs. Delete all seven when #1829 lands.
+#
+# The other 47 rows this file carried against #1625 DRAINED with the resolution fix: every
+# Sharpy-namespace non-collision type (TmpPathFixture, CapturedStderr, CapturedOutput,
+# StatisticsError, SliceSpec, Attachment, CacheInfo, ITzinfo, IInterpolation) is nameable again, and
+# the sweep reads 2576 pass / 7 fail / 0 crash / 0 stale.
+builtins::property::List`1.length::property             # #1829
+builtins::method::List`1.delete_at::method              # #1829
+builtins::method::List`1.get_item_unchecked::method     # #1829
+builtins::method::List`1.get::method                    # #1829
+builtins::method::List`1.pop::method                    # #1829
+builtins::method::List`1.extend::method                 # #1829
+builtins::method::List`1.copy::method                   # #1829

@@ -348,13 +348,14 @@ internal partial class RoslynEmitter
             }
 
             // Every CLR-backed TypeSymbol in expression position is emitted global::-qualified
-            // from the reflected type so no `using` set can make it ambiguous (#1765).
+            // from the reflected type so no `using` set can make it ambiguous (#1765). Named by
+            // the ONE CLR-naming transform, not by StripArity alone: the two disagree on a nested
+            // type (`Outer`1+Inner` keeps its `+` under StripArity).
             {
                 var ts = (resolvedSymbol as TypeSymbol) ?? (symbol as TypeSymbol);
                 if (ts?.ClrType != null)
                 {
-                    var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
-                    return MakeGlobalQualifiedName(fullName.Split('.'));
+                    return TypeSyntaxMapper.GlobalClrTypeNameSyntax(ts.ClrType);
                 }
             }
         }

@@ -1,0 +1,14 @@
+# `iter(generator)` with no explicit type argument infers T from the ANNOTATED SLOT (#1518).
+# This cell was pinned as a strictness control ("stays SPY0237 — out of scope") because the
+# inference used to fail: the builtin's parameter is IEnumerable[T], and IEnumerable's registry
+# entry recorded the NON-generic System.Collections.IEnumerable as its CLR type, so unifying the
+# argument against IEnumerable[T] could not bind T. With the entry naming the open generic
+# definition (#1765) the slot decides it, and the emitted call is `Builtins.Iter<int>(...)`.
+def _gen(xs: list[int]) -> int:
+    for x in xs:
+        yield x
+
+
+def main() -> None:
+    it: Iterator[int] = iter(_gen([1, 2, 3]))
+    print(next(it))
