@@ -173,6 +173,14 @@ public class ClrNestedNullabilityMatrixTests
             Route.Property, Direction.Read, nameof(Surface.NullableListOfNullable), Array.Empty<int>(), true);
         yield return new Cell("top-and-nested.property.element", "top level over nested",
             Route.Property, Direction.Read, nameof(Surface.NullableListOfNullable), new[] { 0 }, true);
+
+        // The control for the position: a member annotated at NEITHER level. Without it, a projection
+        // that wrapped every position would satisfy both cells above. (This pair was missing on the
+        // first run and the harness's own pair rule is what reported it.)
+        yield return new Cell("top-and-nested.property.root-control", "top level over nested",
+            Route.Property, Direction.Read, nameof(Surface.ListOfNonNullable), System.Array.Empty<int>(), false);
+        yield return new Cell("top-and-nested.property.element-control", "top level over nested",
+            Route.Property, Direction.Read, nameof(Surface.ListOfNonNullable), new[] { 0 }, false);
     }
 
     [Fact]

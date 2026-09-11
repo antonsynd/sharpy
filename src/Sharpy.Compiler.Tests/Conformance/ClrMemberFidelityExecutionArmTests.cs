@@ -83,12 +83,17 @@ public class ClrMemberFidelityExecutionArmTests : IntegrationTestBase
             "annotated-T.nullable",
             "def main() -> None:\n    xs: list[str] = [\"a\"]\n    v: str | None = xs.first_or_default()\n    print(v)\n"
         },
-        // NESTED nullable type argument (#1847): the member's own type, read in a position that does
-        // not cross the container-materialization gap #1866.
+        // Top-level declared nullability on a CLR return (#1705), the arm the nested projection is
+        // built on top of. The NESTED cell that would belong here reads
+        // `ProcessStartInfo.Environment`, whose type is forwarded to System.Diagnostics.Process —
+        // an assembly this harness's Roslyn reference set does not carry, so the cell measures the
+        // reference set rather than the compiler. Its evidence is the reflection matrix
+        // (ClrNestedNullabilityMatrixTests) plus the ClrMemberFidelityMatrixTests cells, both of
+        // which type the member without emitting.
         {
-            "nested-arg.member-read",
-            "from system.diagnostics import ProcessStartInfo\n\ndef main() -> None:\n"
-            + "    p = ProcessStartInfo()\n    print(p.argument_list.count)\n"
+            "declared-nullable.return",
+            "import system.io\n\ndef main() -> None:\n"
+            + "    d: str | None = system.io.Path.get_directory_name(\"/usr/bin/ls\")\n    print(d)\n"
         }
     };
 
