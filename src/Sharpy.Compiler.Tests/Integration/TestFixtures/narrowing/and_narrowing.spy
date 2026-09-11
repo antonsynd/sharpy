@@ -15,8 +15,7 @@ def test_if_narrowing() -> None:
 
 def test_while_narrowing() -> None:
     current: Node? = Some(Node(1))
-    n2: Node? = Some(Node(2))
-    current.unwrap().next = n2
+    current.unwrap().next = Some(Node(2))
     parts: list[str] = []
     while current is not None and current.value > 0:
         parts.append(str(current.value))
