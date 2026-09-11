@@ -69,7 +69,8 @@ The type of a conditional expression follows best-common-type (R-W):
 2. **One-accepts-all (arm 2):** without a slot, if one branch's type accepts the other, that type is the result:
    ```python
    x = Dog() if c else Animal()  # Animal (Dog is assignable to Animal)
-   y = 1 if c else 2.5           # float (int literal converts to float)
+   y = 1 if c else 2.5           # float — the int literal is materialized as 1.0, so it PRINTS
+                                 # as 1.0 (the documented widening deviation, #1842 Q3)
    ```
 
 3. **Refuse by name (arm 3):** if neither branch accepts the other, the compiler refuses:
@@ -79,12 +80,25 @@ The type of a conditional expression follows best-common-type (R-W):
 
 A `None` branch in a slot-less conditional triggers an arm-3 refusal: `None` is untyped and has no best common type with any value. Use a typed slot instead: `x: str | None = None if c else "hello"`.
 
-**Truthiness position:** when a conditional appears in a truthiness context (`if`, `while`, `not`, `and`, `or`, `assert`, comprehension condition, match guard), the truthiness test distributes per branch rather than requiring a common type:
+**Truthiness position:** when a conditional appears in a truthiness context (`if`, `elif`, `while`,
+`not`, `and`, `or`, `assert`, comprehension condition, match guard, another ternary's test), the
+truthiness test distributes per branch rather than requiring a common type. Distribution recurses,
+so a conditional nested inside a distributed branch needs no type either:
 ```python
-s = ""
-n = 42
-if s if flag else n:  # tests s's truthiness or n's truthiness per branch
-    print("truthy")
+def main():
+    flag = True
+    s = ""
+    n = 42
+    if s if flag else n:      # tests s's truthiness, or n's, per branch
+        print("truthy")
+    else:
+        print("falsy")
+```
+
+Output:
+
+```
+falsy
 ```
 
 *Implementation: ✅ Native - Maps to `condition ? trueVal : falseVal`. Arm-1 casts are inert under C# 9 target-typed conditionals; truthiness distributes via `TruthinessLowering.Distributed`.*

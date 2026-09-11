@@ -126,19 +126,32 @@ struct Bad:
     y: int         # Error: cannot follow a field with a default value
 ```
 
-The compiler auto-generates a constructor with optional parameters for fields that have defaults. Constant fields (`const`) are excluded from the constructor — they are neither parameters nor assignments:
+The compiler auto-generates a constructor with optional parameters for fields that have defaults.
+
+A `const` is class-level storage, not per-instance state, so it is **not an instance field**: it is
+neither a constructor parameter nor a constructor assignment, and it does not take part in the
+ordering rule above. A `const` may therefore be declared before a field with no default:
 
 ```python
 struct Point:
+    const DIMENSIONS: int = 2
     x: float
     y: float
-    const DIMENSIONS: int = 2
 
-p = Point(2.0, 5.0)  # const is not a parameter
-print(p.x)            # 2
-print(Point.DIMENSIONS)  # 2
-q = Point()           # parameterless: zero-initialized instance fields
-print(q.x)            # 0
+def main():
+    p = Point(2.0, 5.0)      # the const is not a parameter
+    print(p.x)               # 2.0
+    print(Point.DIMENSIONS)  # 2
+    q = Point()              # parameterless: zero-initialized instance fields
+    print(q.x)               # 0.0
+```
+
+Output:
+
+```
+2.0
+2
+0.0
 ```
 
 **When to Use Structs:**

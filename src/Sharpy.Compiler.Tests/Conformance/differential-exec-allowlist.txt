@@ -79,7 +79,12 @@ fixture::collections/list_literal_return_type
 # arm 2 (#1783), so `1` prints as `1.0` where CPython keeps the int. Same class as the
 # collection literal widening entries above — a contextual type wins over Python's duck-type
 # value identity.
-# deviations.yaml: numeric-widening-in-typed-context. Permanent.
+#
+# RULED #1842 Q3 (option A, 2026-09-11): the same deviation covers a slot-less display whose
+# elements are all numeric literals (`xs = [2.5, 1]` prints `[2.5, 1.0]`). Accepted as a
+# documented Axiom-3 deviation; the note lives in collection_types.md beside the
+# best-common-type rule ("Numeric literals widen to the display's element type").
+# deviations.yaml: numeric-widening-in-typed-context. Permanent (#1783, #1842).
 fixture::tuples/for_over_tuple_1783
 
 # The variadic value form of min()/max() promotes mixed-numeric arguments to a common
