@@ -136,6 +136,12 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         if (route.Id == "slice" && payload.Id == "userclass")
             return "__getitem__ over an int does not make a user class sliceable — no slice protocol";
 
+        // A tuple is not truth-testable at all: `if (1, 2):` is SPY0220 at this sha AND at
+        // 311252e33 (controlled), where python3 prints. The BARE cell is the defect, so the
+        // comparison against it would compare two refusals and prove nothing. Cited, not silent.
+        if (route.Id == "truthiness" && payload.Id == "tuple")
+            return "a tuple is not truth-testable yet — the bare control is itself refused (#1861)";
+
         return null;
     }
 
@@ -259,5 +265,9 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         var live = Cells.Count();
         (live + naCells.Length).Should().Be(48,
             $"6 payloads x 8 routes = 48 cells; live ({live}) + N/A ({naCells.Length})");
+
+        naCells.Should().HaveCount(3,
+            "three cells are excluded, each naming a language rule or an OPEN issue: dict slicing, "
+            + "user-class slicing, and tuple truthiness (#1861)");
     }
 }

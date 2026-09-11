@@ -477,7 +477,7 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
     {
         // explicit-generic: list[object](t) / list[float](t) / set[object](t)
         new object[] { "het-mix", "list-ctor", "explicit-generic",
-            "print(list[object]((1, \"a\")))", "[1, a]" },
+            "print(list[object]((1, \"a\")))", "[1, 'a']" },
         new object[] { "tuple-literal", "list-ctor", "explicit-generic",
             "print(list[object]((1, 2)))", "[1, 2]" },
         new object[] { "tuple-literal", "list-ctor", "explicit-generic",
@@ -487,13 +487,13 @@ public class IterationRingRouteMatrixTests : IntegrationTestBase
 
         // declared-target: ys: list[object] = list(t)
         new object[] { "het-mix", "list-ctor", "declared-target",
-            "ys: list[object] = list((1, \"a\"))\n    print(ys)", "[1, a]" },
+            "ys: list[object] = list((1, \"a\"))\n    print(ys)", "[1, 'a']" },
         new object[] { "tuple-literal", "list-ctor", "declared-target",
             "zs: list[float] = list((1, 2))\n    print(zs)", "[1.0, 2.0]" },
 
         // receiver-element: xs.extend(t)
         new object[] { "het-mix", "extend", "receiver-element",
-            "xs: list[object] = []\n    xs.extend((1, \"a\"))\n    print(xs)", "[1, a]" },
+            "xs: list[object] = []\n    xs.extend((1, \"a\"))\n    print(xs)", "[1, 'a']" },
     };
 
     [Theory]
