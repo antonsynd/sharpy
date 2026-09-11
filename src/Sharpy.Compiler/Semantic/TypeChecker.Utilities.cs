@@ -1282,9 +1282,9 @@ internal partial class TypeChecker
 
             var satisfied = variance switch
             {
-                TypeParameterVariance.Covariant => IsAssignable(sourceArg, targetArg),
-                TypeParameterVariance.Contravariant => IsAssignable(targetArg, sourceArg),
-                _ => sourceArg.CanonicalKey == targetArg.CanonicalKey,
+                TypeParameterVariance.Covariant => IsVarianceConvertible(sourceArg, targetArg),
+                TypeParameterVariance.Contravariant => IsVarianceConvertible(targetArg, sourceArg),
+                _ => IsIdenticalTypeArgument(sourceArg, targetArg),
             };
 
             if (!satisfied)
@@ -1293,6 +1293,99 @@ internal partial class TypeChecker
 
         return true;
     }
+
+    /// <summary>
+    /// Whether a DECLARED-variant type-argument position admits <paramref name="from"/> where
+    /// <paramref name="to"/> is expected: an identity conversion, or an implicit REFERENCE conversion.
+    /// Not general assignability — .NET's variance is defined over reference conversions only, so
+    /// `IEnumerable<sbyte>` is not an `IEnumerable<int>` and
+    /// `IEnumerable<int>` is not an `IEnumerable<object>` however freely `sbyte` widens and `int` boxes.
+    ///
+    /// <para>Asking plain <see cref="IsAssignable"/> here accepted both, and each landed as CS1503
+    /// behind SPY0908 — `IEnumerable[int8]` into an `IEnumerable[int]` formal and `IEnumerable[int]`
+    /// into an `IEnumerable[object]` formal (measured @ 311252e33). A value-typed argument therefore
+    /// satisfies a variant position only by identity; the widening a user wants is a new sequence, not
+    /// a conversion of the one they have.</para>
+    ///
+    /// <para>Also the element rule for the collection mutators, whose CLR parameter is a covariant
+    /// `IEnumerable<T>`: `xs: list[Animal]; xs += ds` copies `Dog`s in and keeps working, while
+    /// `xs: list[int]; xs += list[int8]` is refused by name instead of reaching `Extend` as CS1503 —
+    /// #1682's rule for `dict |=`, stated once for every mutator arm.</para>
+    /// </summary>
+    private bool IsVarianceConvertible(SemanticType from, SemanticType to)
+        => IsIdenticalTypeArgument(from, to)
+            || (!from.IsValueType && !to.IsValueType && IsAssignable(from, to));
+
+    /// <summary>
+    /// Type IDENTITY, which is what an invariant type-argument position requires — <c>list[Dog]</c> is
+    /// not a <c>list[Animal]</c> and <c>list[int8]</c> is not a <c>list[int]</c>, exactly as
+    /// <c>Sharpy.List&lt;T&gt;</c> is invariant in C# (generic_variance.md, Axiom 1).
+    ///
+    /// <para>Identity, not <see cref="SemanticType.CanonicalKey"/> string equality: one type can have
+    /// more than one spelling, and an invariant position must not refuse a value for being written the
+    /// other way. Two such pairs are load-bearing in this repository and each cost a fixture when the
+    /// raw key comparison shipped alone — <c>Self</c> inside <c>class Node</c> IS <c>Node</c>
+    /// (<c>list[Self]</c> into <c>list[Node]</c>, #1342's own control), and the builtin <c>bytes</c>
+    /// and the CLR-discovered <c>Bytes</c> are both <c>Sharpy.Bytes</c> (<c>b.split()</c> returns
+    /// <c>list[Bytes]</c> into a declared <c>list[bytes]</c>, #890's spelling split).</para>
+    ///
+    /// <para>Widening is still refused in every arm: the symbol comparison asks for the SAME
+    /// declaration (Dog is not Animal), the CLR comparison for the SAME runtime type (sbyte is not
+    /// int32), and a nested generic is compared argument-by-argument through this same predicate, so
+    /// <c>list[IEnumerable[Dog]]</c> stays out of <c>list[IEnumerable[Animal]]</c> — C#'s rule that an
+    /// invariant position admits an identity conversion only.</para>
+    /// </summary>
+    private bool IsIdenticalTypeArgument(SemanticType sourceArg, SemanticType targetArg)
+    {
+        if (sourceArg.CanonicalKey == targetArg.CanonicalKey)
+            return true;
+
+        // An INSTANTIATED generic is identical when its own arguments are: identity recurses, it does
+        // not become assignability one level down, and it never asks the CLR — `TryGetClrType`
+        // substitutes `typeof(object)` for an argument it cannot map (its own documented behavior for
+        // the assignability fallback), so `list[Dog]` and `list[Animal]` would both answer
+        // `Sharpy.List<object>` and compare identical. That is how `list[list[Dog]]` reached Roslyn as
+        // CS1503 while the flat `list[Dog]` was already refused by name.
+        if (sourceArg is GenericType || targetArg is GenericType)
+        {
+            return sourceArg is GenericType nestedSource
+                && targetArg is GenericType nestedTarget
+                && nestedSource.Name == nestedTarget.Name
+                && nestedSource.TypeArguments.Count == nestedTarget.TypeArguments.Count
+                && !nestedSource.TypeArguments
+                    .Where((arg, i) => !IsIdenticalTypeArgument(arg, nestedTarget.TypeArguments[i]))
+                    .Any();
+        }
+
+        // Same declaration under two spellings (Self ↔ its declaring type).
+        var sourceSymbol = IdentityDeclarationOf(sourceArg);
+        var targetSymbol = IdentityDeclarationOf(targetArg);
+        if (sourceSymbol != null && targetSymbol != null
+            && TypeHierarchyService.IsSameType(sourceSymbol, targetSymbol))
+        {
+            return true;
+        }
+
+        // Same runtime type under two spellings (builtin `bytes` ↔ CLR-discovered `Bytes`). Leaf types
+        // only, by the guard above.
+        var sourceClr = TryGetClrType(sourceArg);
+        return sourceClr != null && sourceClr == TryGetClrType(targetArg);
+    }
+
+    /// <summary>
+    /// The declaration a type argument denotes, for the identity comparison above. <c>Self</c> denotes
+    /// the type it was written inside; a user-defined or generic type denotes its own symbol. Anything
+    /// else has no declaration to compare and answers null, which leaves the decision to the other arms.
+    /// </summary>
+    private static TypeSymbol? IdentityDeclarationOf(SemanticType type) => type switch
+    {
+        SelfType self => self.DeclaringType,
+        // An INSTANTIATED generic is deliberately not reduced to its definition here: `list[Dog]` and
+        // `list[Animal]` share one definition symbol, and answering it would call them identical. Their
+        // identity is decided argument-by-argument in the nested arm.
+        GenericType => null,
+        _ => type.DeclaringSymbol,
+    };
 
     /// <summary>
     /// The Sharpy-native form of a bridge-mapped collection type — the same type with its CLR

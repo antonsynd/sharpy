@@ -1,0 +1,9 @@
+# #1748: a covariant type parameter inside an INVARIANT generic is refused by name. `list[T]` admits
+# neither direction (Sharpy.List<T> is an invariant class), so this declaration was CS1961 behind
+# SPY0908 — the C# compiler doing the refusing — and is now SPY0418 at the annotation.
+interface ICovariant[out T]:
+    def get_list(self) -> list[T]
+
+
+def main():
+    print("unreachable")

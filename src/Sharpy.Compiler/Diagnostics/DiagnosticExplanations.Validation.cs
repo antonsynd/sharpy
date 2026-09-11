@@ -144,15 +144,23 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.Validation.CovariantInContravariantPosition, "Covariant type parameter in contravariant position", "Validation",
             "A type parameter declared as covariant (out) appears in a contravariant position (e.g., as a parameter type). " +
-            "Covariant type parameters can only appear in output positions such as return types.",
-            "delegate BadHandler[out T](value: T) -> None  # error: T is covariant but used as parameter",
-            "Change the variance to 'in' or remove it:\ndelegate Handler[in T](value: T) -> None");
+            "Covariant type parameters can only appear in output positions such as return types. The same code reports " +
+            "an INVARIANT position: the type-argument slot of a generic that declares no variance there, such as " +
+            "'list[T]' or 'set[T]', admits neither direction, so 'out T' is illegal inside it even in a return type.",
+            "delegate BadHandler[out T](value: T) -> None  # error: T is covariant but used as parameter\n\n" +
+            "interface ICovariant[out T]:  # error: list[T] is invariant in T\n    def get_list(self) -> list[T]",
+            "Change the variance to 'in' or remove it:\ndelegate Handler[in T](value: T) -> None\n\n" +
+            "For an invariant position, return a covariant interface instead:\ninterface ICovariant[out T]:\n    def get_list(self) -> IEnumerable[T]");
 
         Add(dict, DiagnosticCodes.Validation.ContravariantInCovariantPosition, "Contravariant type parameter in covariant position", "Validation",
             "A type parameter declared as contravariant (in) appears in a covariant position (e.g., as a return type). " +
-            "Contravariant type parameters can only appear in input positions such as parameter types.",
-            "delegate BadProducer[in T]() -> T  # error: T is contravariant but used as return type",
-            "Change the variance to 'out' or remove it:\ndelegate Producer[out T]() -> T");
+            "Contravariant type parameters can only appear in input positions such as parameter types. The same code " +
+            "reports an INVARIANT position: the type-argument slot of a generic that declares no variance there, such " +
+            "as 'list[T]' or 'set[T]', admits neither direction, so 'in T' is illegal inside it even in a parameter type.",
+            "delegate BadProducer[in T]() -> T  # error: T is contravariant but used as return type\n\n" +
+            "interface IContravariant[in T]:  # error: list[T] is invariant in T\n    def consume(self, xs: list[T]) -> None",
+            "Change the variance to 'out' or remove it:\ndelegate Producer[out T]() -> T\n\n" +
+            "For an invariant position, take the values one at a time:\ninterface IContravariant[in T]:\n    def consume(self, value: T) -> None");
 
 
         // ── Event validation (SPY0420-SPY0423) ───────────────────────────

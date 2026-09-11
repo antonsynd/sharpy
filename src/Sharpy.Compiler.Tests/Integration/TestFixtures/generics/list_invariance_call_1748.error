@@ -1,0 +1,1 @@
+Cannot pass argument of type 'list[int8]' to parameter of type 'list[int32]' @9:17

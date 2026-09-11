@@ -370,6 +370,96 @@ interface IBad[in T]:
             d => d.Code == "SPY0419");
     }
 
+    #endregion
+
+    #region SPY0418/SPY0419 — INVARIANT positions (#1748)
+
+    // A position can admit NEITHER direction: the type-argument slot of a generic that declares no
+    // variance there, and the `T?` / `T !E` wrappers (Optional<T> and Result<T,E> are invariant
+    // structs). C# calls this "must be invariantly valid" and reports CS1961; every cell below was
+    // SPY0908 CS1961 at 311252e33, including `-> T?`, which this spec's own "valid out positions" list
+    // claimed was legal.
+
+    [Theory]
+    [InlineData("list[T]", "def get_list(self) -> list[T]: ...")]
+    [InlineData("set[T]", "def get_set(self) -> set[T]: ...")]
+    [InlineData("dict[str, T]", "def get_map(self) -> dict[str, T]: ...")]
+    [InlineData("tuple[T, int]", "def get_pair(self) -> tuple[T, int]: ...")]
+    [InlineData("list[T]", "def take_list(self, xs: list[T]) -> None: ...")]
+    [InlineData("T?", "def get_optional(self) -> T?: ...")]
+    [InlineData("T !str", "def get_result(self) -> T !str: ...")]
+    [InlineData("int !T", "def get_error(self) -> int !T: ...")]
+    public void CovariantTypeParam_InInvariantPosition_ProducesErrorNamingTheHost(string host, string member)
+    {
+        var code = "\ninterface ICovariant[out T]:\n    " + member + "\n";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0418"
+                && d.Message.Contains("invariant position")
+                && d.Message.Contains($"'{host}'"));
+    }
+
+    [Theory]
+    [InlineData("list[T]", "def take_list(self, xs: list[T]) -> None: ...")]
+    [InlineData("T?", "def take_optional(self, v: T?) -> None: ...")]
+    public void ContravariantTypeParam_InInvariantPosition_ProducesErrorNamingTheHost(string host, string member)
+    {
+        var code = "\ninterface IContravariant[in T]:\n    " + member + "\n";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0419"
+                && d.Message.Contains("invariant position")
+                && d.Message.Contains($"'{host}'"));
+    }
+
+    // Positive controls on the same axis: the positions that ARE legal must stay legal, or the rule
+    // above would be satisfied by refusing everything.
+    [Theory]
+    [InlineData("def get(self) -> T: ...")]
+    [InlineData("def items(self) -> IEnumerable[T]: ...")]
+    [InlineData("def get_or_none(self) -> T | None: ...")]
+    public void CovariantTypeParam_InVariantValidPosition_NoError(string member)
+    {
+        var code = "\ninterface ICovariant[out T]:\n    " + member + "\n";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors,
+            "legal out positions must not be refused: " + string.Join(
+                " | ", context.Diagnostics.GetAll().Select(d => d.Code + ": " + d.Message)));
+    }
+
+    [Fact]
+    public void InvariantInterfaceTypeParam_InsideInvariantGeneric_NoError()
+    {
+        // The invariant-position rule is about VARIANT type parameters. An interface whose parameter
+        // declares no variance may use it inside `list[T]` freely — this is the control that makes the
+        // rule falsifiable by direction rather than by volume.
+        var code = @"
+interface IBox[T]:
+    def get_list(self) -> list[T]: ...
+    def take_list(self, xs: list[T]) -> None: ...
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    #endregion
+
+    #region Nested variance flip rules (continued)
+
     [Fact]
     public void InvariantTypeParam_NoVarianceChecking()
     {

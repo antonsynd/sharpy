@@ -10,11 +10,31 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Covariant (out) type params must only appear in output positions (SPY0418)
 /// - Contravariant (in) type params must only appear in input positions (SPY0419)
 /// Variance is only valid on interface and delegate type parameters.
+///
+/// <para>A position is one of THREE things, not two (C#'s "must be invariantly valid" rule, CS1961): output,
+/// input, or <b>invariant</b> — the argument position of a generic whose own type parameter declares
+/// no variance. A variant type parameter is illegal in an invariant position REGARDLESS of direction,
+/// so <c>def get_list(self) -> list[T]</c> under <c>interface ICovariant[out T]</c> is refused here
+/// (SPY0418) instead of reaching Roslyn as CS1961 behind SPY0908. The two-valued model this replaced
+/// read an invariant argument position as "unchanged", which let every such declaration through
+/// (#1748).</para>
 /// </summary>
 internal class VarianceValidator : SemanticValidatorBase
 {
     public override string Name => "VarianceValidator";
     public override int Order => 415; // After PropertyValidator (410), before UnusedVariableValidator (420)
+
+    /// <summary>
+    /// Where a type is written, as variance sees it. <see cref="Invariant"/> is a position in its own
+    /// right — not "either of the other two" — because a generic that declares no variance on the
+    /// parameter it is instantiated at admits NEITHER direction there.
+    /// </summary>
+    private enum VariancePosition
+    {
+        Covariant,
+        Contravariant,
+        Invariant,
+    }
 
     public override void Validate(Module module, SemanticContext context)
     {
@@ -143,14 +163,14 @@ internal class VarianceValidator : SemanticValidatorBase
         {
             if (param.Type != null)
             {
-                CheckTypeInPosition(param.Type, variantParams, isCovariantPosition: false, context);
+                CheckTypeInPosition(param.Type, variantParams, VariancePosition.Contravariant, invariantHost: null, context);
             }
         }
 
         // Check return type (covariant position)
         if (delegateDef.ReturnType != null)
         {
-            CheckTypeInPosition(delegateDef.ReturnType, variantParams, isCovariantPosition: true, context);
+            CheckTypeInPosition(delegateDef.ReturnType, variantParams, VariancePosition.Covariant, invariantHost: null, context);
         }
     }
 
@@ -177,14 +197,14 @@ internal class VarianceValidator : SemanticValidatorBase
 
                     if (param.Type != null)
                     {
-                        CheckTypeInPosition(param.Type, variantParams, isCovariantPosition: false, context);
+                        CheckTypeInPosition(param.Type, variantParams, VariancePosition.Contravariant, invariantHost: null, context);
                     }
                 }
 
                 // Return type is in covariant position
                 if (method.ReturnType != null)
                 {
-                    CheckTypeInPosition(method.ReturnType, variantParams, isCovariantPosition: true, context);
+                    CheckTypeInPosition(method.ReturnType, variantParams, VariancePosition.Covariant, invariantHost: null, context);
                 }
             }
         }
@@ -207,13 +227,50 @@ internal class VarianceValidator : SemanticValidatorBase
     private void CheckTypeInPosition(
         TypeAnnotation typeAnnotation,
         Dictionary<string, TypeParameterVariance> variantParams,
-        bool isCovariantPosition,
+        VariancePosition position,
+        TypeAnnotation? invariantHost,
         SemanticContext context)
     {
+        // `T?` and `T !E` are WRAPPERS, not positions of their own: the annotation that names the type
+        // parameter carries the flag, so the parameter is written INSIDE `Sharpy.Optional<T>` /
+        // `Result<T, E>` — invariant structs. Both were CS1961 behind SPY0908 (`-> T?` is in this
+        // spec's own "valid out positions" list, and it never compiled), and `T` on the ERROR side of
+        // a Result was not examined at all. `T | None` is deliberately NOT here: it emits C#'s nullable
+        // ANNOTATION on `T` itself, which Roslyn accepts in a variant position (measured).
+        if (typeAnnotation.IsOptional || typeAnnotation.IsResult)
+        {
+            position = VariancePosition.Invariant;
+            invariantHost = typeAnnotation;
+        }
+
         // Check if the type annotation directly names a variant type parameter
         if (variantParams.TryGetValue(typeAnnotation.Name, out var variance))
         {
-            if (variance == TypeParameterVariance.Covariant && !isCovariantPosition)
+            // An invariant position admits neither direction, and the type that MAKES it invariant is
+            // what the user has to change — so the message names that type (`list[T]`), not the
+            // direction. This is the CS1961 case the C# compiler used to report from behind SPY0908.
+            if (position == VariancePosition.Invariant)
+            {
+                var host = TypeAnnotationHelper.GetName(invariantHost);
+                var isCovariant = variance == TypeParameterVariance.Covariant;
+                var direction = isCovariant ? "Covariant" : "Contravariant";
+                var keyword = isCovariant ? "out" : "in";
+                // The steer names a type that IS variant in the needed direction — a covariant
+                // sequence for `out T`, a consumer callback for `in T`.
+                var steer = isCovariant
+                    ? $"Use a covariant interface (e.g. 'IEnumerable[{typeAnnotation.Name}]')"
+                    : $"Use a contravariant position (e.g. a '({typeAnnotation.Name}) -> None' parameter)";
+                AddError(context,
+                    $"{direction} type parameter '{typeAnnotation.Name}' cannot appear in invariant position "
+                        + $"'{host}' — '{host}' is invariant in '{typeAnnotation.Name}'. "
+                        + $"{steer} or remove '{keyword}' from '{typeAnnotation.Name}'",
+                    typeAnnotation.LineStart, typeAnnotation.ColumnStart,
+                    code: variance == TypeParameterVariance.Covariant
+                        ? DiagnosticCodes.Validation.CovariantInContravariantPosition
+                        : DiagnosticCodes.Validation.ContravariantInCovariantPosition,
+                    span: typeAnnotation.Span);
+            }
+            else if (variance == TypeParameterVariance.Covariant && position == VariancePosition.Contravariant)
             {
                 AddError(context,
                     $"Covariant type parameter '{typeAnnotation.Name}' cannot appear in contravariant position (parameter type)",
@@ -221,7 +278,7 @@ internal class VarianceValidator : SemanticValidatorBase
                     code: DiagnosticCodes.Validation.CovariantInContravariantPosition,
                     span: typeAnnotation.Span);
             }
-            else if (variance == TypeParameterVariance.Contravariant && isCovariantPosition)
+            else if (variance == TypeParameterVariance.Contravariant && position == VariancePosition.Covariant)
             {
                 AddError(context,
                     $"Contravariant type parameter '{typeAnnotation.Name}' cannot appear in covariant position (return type)",
@@ -234,7 +291,14 @@ internal class VarianceValidator : SemanticValidatorBase
         // Recurse into generic type arguments with variance flipping
         if (typeAnnotation.TypeArguments.Length > 0)
         {
-            RecurseIntoGenericTypeArguments(typeAnnotation, variantParams, isCovariantPosition, context);
+            RecurseIntoGenericTypeArguments(typeAnnotation, variantParams, position, invariantHost, context);
+        }
+
+        // The error side of `T !E` is a type argument of `Result<T, E>` that no TypeArguments walk
+        // reaches, so it is visited here — under the same invariant position the wrapper established.
+        if (typeAnnotation.ErrorType is { } errorType)
+        {
+            CheckTypeInPosition(errorType, variantParams, position, invariantHost, context);
         }
     }
 
@@ -249,7 +313,8 @@ internal class VarianceValidator : SemanticValidatorBase
     private void RecurseIntoGenericTypeArguments(
         TypeAnnotation typeAnnotation,
         Dictionary<string, TypeParameterVariance> variantParams,
-        bool isCovariantPosition,
+        VariancePosition position,
+        TypeAnnotation? invariantHost,
         SemanticContext context)
     {
         // Function types: (T1, T2, ...) -> R
@@ -260,32 +325,47 @@ internal class VarianceValidator : SemanticValidatorBase
             for (int i = 0; i < typeAnnotation.TypeArguments.Length - 1; i++)
             {
                 // Parameter positions of a function are contravariant: flip the context
-                bool effectivePosition = !isCovariantPosition;
-                CheckTypeInPosition(typeAnnotation.TypeArguments[i], variantParams, effectivePosition, context);
+                CheckTypeInPosition(
+                    typeAnnotation.TypeArguments[i], variantParams, Flip(position), invariantHost, context);
             }
 
             // The last type argument is the return type (covariant position: same as context)
             if (typeAnnotation.TypeArguments.Length > 0)
             {
                 var returnArg = typeAnnotation.TypeArguments[typeAnnotation.TypeArguments.Length - 1];
-                CheckTypeInPosition(returnArg, variantParams, isCovariantPosition, context);
+                CheckTypeInPosition(returnArg, variantParams, position, invariantHost, context);
             }
 
             return;
         }
 
-        // For named generic types (e.g., IProducer[T], IConsumer[T]), look up
-        // the type's declared type parameters to determine their variance
+        // For named generic types (e.g., IProducer[T], IConsumer[T], list[T]), look up the type's
+        // declared type parameters to determine their variance. A type the symbol table does not know
+        // gets NO opinion (null): guessing "invariant" for an unresolved name would refuse legal
+        // declarations whose generic simply has not been resolved here.
         var typeParamVariances = LookupTypeParameterVariances(typeAnnotation.Name, context);
 
         for (int i = 0; i < typeAnnotation.TypeArguments.Length; i++)
         {
-            var argVariance = (typeParamVariances.HasValue && i < typeParamVariances.Value.Length)
-                ? typeParamVariances.Value[i]
-                : TypeParameterVariance.None;
+            if (typeParamVariances is not { } variances || i >= variances.Length)
+            {
+                // Unknown declaration: carry the context through unchanged, as the two-valued model did.
+                CheckTypeInPosition(
+                    typeAnnotation.TypeArguments[i], variantParams, position, invariantHost, context);
+                continue;
+            }
 
-            bool effectivePosition = CombineVariance(isCovariantPosition, argVariance);
-            CheckTypeInPosition(typeAnnotation.TypeArguments[i], variantParams, effectivePosition, context);
+            var argVariance = variances[i];
+            var effectivePosition = CombineVariance(position, argVariance);
+
+            // The host is the NEAREST enclosing generic whose argument position is invariant — the one
+            // whose spelling the message quotes, and the one the user would change.
+            var effectiveHost = effectivePosition == VariancePosition.Invariant
+                ? typeAnnotation
+                : invariantHost;
+
+            CheckTypeInPosition(
+                typeAnnotation.TypeArguments[i], variantParams, effectivePosition, effectiveHost, context);
         }
     }
 
@@ -296,6 +376,9 @@ internal class VarianceValidator : SemanticValidatorBase
     private static System.Collections.Immutable.ImmutableArray<TypeParameterVariance>?
         LookupTypeParameterVariances(string typeName, SemanticContext context)
     {
+        // `list`/`set`/`dict` resolve here through the BuiltinRegistry, which reads variance off the
+        // CLR type — so this validator and `TypeChecker.TypeArgumentsSatisfyVariance` agree on what
+        // `list[T]` admits by construction, from one declaration (#1748).
         var typeSymbol = context.SymbolTable.LookupType(typeName);
         if (typeSymbol != null && typeSymbol.TypeParameters.Count > 0)
         {
@@ -315,19 +398,32 @@ internal class VarianceValidator : SemanticValidatorBase
     /// Combines the current context position with the declared variance of a type argument position.
     /// Returns the effective covariant-position for the nested type argument.
     /// </summary>
-    private static bool CombineVariance(bool isCovariantPosition, TypeParameterVariance argVariance)
+    private static VariancePosition CombineVariance(VariancePosition position, TypeParameterVariance argVariance)
     {
-        // Invariant type parameter: position is unchanged (treated as both input and output)
+        // Invariant type parameter: the argument position is INVARIANT, whatever the context was. This
+        // is C#'s "must be invariantly valid" — a variant parameter written there is CS1961 in either
+        // direction. Reading it as "unchanged" is what let `-> list[T]` under `out T` through (#1748).
         if (argVariance == TypeParameterVariance.None)
-            return isCovariantPosition;
+            return VariancePosition.Invariant;
 
         // Covariant (out) type parameter: same direction as context
         if (argVariance == TypeParameterVariance.Covariant)
-            return isCovariantPosition;
+            return position;
 
         // Contravariant (in) type parameter: flip the context!
         // covariant context + contravariant arg = contravariant
         // contravariant context + contravariant arg = covariant (double flip)
-        return !isCovariantPosition;
+        return Flip(position);
     }
+
+    /// <summary>
+    /// Direction reversal. Invariant has no direction to reverse and stays itself — once a position is
+    /// invariant, no amount of nesting makes it admit a variant parameter again.
+    /// </summary>
+    private static VariancePosition Flip(VariancePosition position) => position switch
+    {
+        VariancePosition.Covariant => VariancePosition.Contravariant,
+        VariancePosition.Contravariant => VariancePosition.Covariant,
+        _ => VariancePosition.Invariant,
+    };
 }
