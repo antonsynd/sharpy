@@ -30,6 +30,14 @@ builtins::method::List`1.pop::method                    # #1625
 builtins::method::List`1.extend::method                 # #1625
 builtins::method::List`1.copy::method                   # #1625
 
+# #1829, same wrong-receiver class as the seven rows above: the sweep enumerates Sharpy.List`1's
+# members but spells the receiver as a bare `List[int]`, which is the BCL
+# System.Collections.Generic.List<int> on every tree. `count` is that type's `Count` PROPERTY, so
+# `recv.count(0)` is not callable — the base compiler gave CS1929 behind SPY0908 and the CLR call
+# seam now refuses it by name. The cell was NOT ATTEMPTED at base or on v5/clr-call-seam alone and
+# became attempted on the integration tree.
+builtins::method::List`1.count::method                  # #1829
+
 # #1625: Sharpy-internal types live in Sharpy namespaces and are correctly rejected by
 # TryFindClrType's Sharpy-namespace exclusion (P4 resolution priority fix 2cc6e0667).
 # These types are accessed through Sharpy's import system, not CLR reflection.
