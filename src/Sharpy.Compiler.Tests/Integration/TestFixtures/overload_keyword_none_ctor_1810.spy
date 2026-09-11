@@ -1,0 +1,12 @@
+# `None()` at a keyword slot no candidate declares as Optional is the constructor's own refusal
+# (SPY0244), naming every slot the candidates offer — the same refusal the positional spelling
+# `g(None())` gives (#1810, Decision 6(b)).
+
+def g(x: int) -> str:
+    return "int"
+
+def g(x: str) -> str:
+    return "str"
+
+def main() -> None:
+    print(g(x=None()))

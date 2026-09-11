@@ -1,0 +1,15 @@
+# The criterion-3 example from overload_resolution.md, in both spellings (#1810): per-candidate
+# inference closes BOTH formals to list[list[int32]], so the difference survives only in the
+# declared shape — list[list[T]] is more specific than list[T]. Measured against csc (2026-09-10):
+# F(xs) and F(v: xs) both print "nested".
+
+def f[T](v: list[T]) -> str:
+    return "flat"
+
+def f[T](v: list[list[T]]) -> str:
+    return "nested"
+
+def main() -> None:
+    xs: list[list[int]] = [[1], [2]]
+    print(f(xs))
+    print(f(v=xs))

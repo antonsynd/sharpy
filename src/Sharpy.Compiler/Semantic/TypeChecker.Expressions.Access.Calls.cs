@@ -228,6 +228,12 @@ internal partial class TypeChecker
         // dispatch path, because each of them binds arguments and must see the same marks.
         RecordIterableArgumentMarks(call, callee);
 
+        // `super().__init__(...)` over an OVERLOADED base initializer: the same route every other
+        // initializer call takes (#1810, Decision 4). Runs here because it needs the argument types.
+        var superInitResult = CheckSuperInitializerCall(call, callee, argTypes, kwargTypes, totalArgCount);
+        if (superInitResult != null)
+            return superInitResult;
+
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
@@ -1626,103 +1632,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Recursively checks whether <paramref name="arg"/> can satisfy an expected parameter
-    /// <paramref name="expected"/> that may contain open generic type parameters. A bare type
-    /// parameter is a wildcard at its own position; a same-name/same-arity generic is matched
-    /// recursively (so a flat <c>list[int]</c> does NOT satisfy a nested <c>list[list[T]]</c>);
-    /// any other case compares against the expected shape with every remaining type parameter
-    /// treated as <c>object</c> (rejecting structurally incompatible arguments such as
-    /// <c>float</c> vs <c>list[T]</c>, while still accepting non-generic arguments genuinely
-    /// assignable to the open shape). Mirrors the structural half of C#'s overload
-    /// applicability for open generic parameters (#954, #957).
-    /// </summary>
-    private bool ArgMatchesGenericShape(SemanticType arg, SemanticType expected)
-    {
-        if (expected is TypeParameterType)
-            return true;
-
-        if (!ContainsTypeParameter(expected))
-            return IsAssignable(arg, expected);
-
-        if (expected is GenericType eg)
-        {
-            // Same outer generic: recurse so a flat list[int] does NOT satisfy list[list[T]] (#957).
-            if (arg is GenericType ag && string.Equals(eg.Name, ag.Name, StringComparison.Ordinal))
-            {
-                if (ag.TypeArguments.Count != eg.TypeArguments.Count)
-                    return false;
-                for (int i = 0; i < eg.TypeArguments.Count; i++)
-                {
-                    if (!ArgMatchesGenericShape(ag.TypeArguments[i], eg.TypeArguments[i]))
-                        return false;
-                }
-
-                return true;
-            }
-
-            // Different outer name — if expected carries CLR provenance and the arg's name
-            // matches the origin's simple name, recurse on type arguments (#1518). The closed
-            // spelling reaches the provenance arm (ClrOriginIsSatisfiedBy) in IsAssignable;
-            // the open spelling could not, because TryGetClrType returns null for generator-
-            // wrapped IEnumerable[T] (no backing symbol). Matching the origin name structurally
-            // with recursive ArgMatchesGenericShape avoids the CLR round-trip entirely.
-            // Gated on ClrOriginTypeName so user-defined formals (no provenance) stay strict:
-            // a Sharpy-written list[T] has no origin, so take() stays SPY0354; array[T] has
-            // no origin, so #954 stays refused; same-name shapes never reach this arm.
-            if (arg is GenericType argGeneric)
-            {
-                if (expected is GenericType { ClrOriginTypeName: not null } expectedGeneric
-                    && argGeneric.TypeArguments.Count == expectedGeneric.TypeArguments.Count
-                    && OriginSimpleNameMatches(argGeneric.Name, expectedGeneric.ClrOriginTypeName))
-                {
-                    for (int i = 0; i < expectedGeneric.TypeArguments.Count; i++)
-                    {
-                        if (!ArgMatchesGenericShape(argGeneric.TypeArguments[i], expectedGeneric.TypeArguments[i]))
-                            return false;
-                    }
-
-                    return true;
-                }
-
-                return false;
-            }
-
-            // Non-generic argument against an open generic shape: accept only if genuinely
-            // assignable with type parameters treated as object — rejects float vs list[T]
-            // while still allowing a subtype (e.g. MyList vs list[T]).
-            return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
-        }
-
-        // Same-arity tuple against a tuple shape: recurse element-wise, exactly as the same-name
-        // generic arm does, so an open generic INSIDE a tuple element keeps its wildcard positions.
-        // Substituting object here made `tuple[K, list[T]]` compare `list[T]` against `list[object]`,
-        // which invariance rejects — the shape `iter[tuple[K, list[T]]]` was refused SPY0354 whether
-        // or not K carried a constraint, while `tuple[K, T]` (no nested generic) passed (#1600).
-        if (expected is TupleType expectedTuple && arg is TupleType argTuple)
-        {
-            if (argTuple.ElementTypes.Count != expectedTuple.ElementTypes.Count)
-                return false;
-            for (int i = 0; i < expectedTuple.ElementTypes.Count; i++)
-            {
-                if (!ArgMatchesGenericShape(argTuple.ElementTypes[i], expectedTuple.ElementTypes[i]))
-                    return false;
-            }
-
-            return true;
-        }
-
-        // NullableType<T>, OptionalType<T>, TupleType<T,...> (against a non-tuple arg): substitute
-        // type parameters with object and check assignability — rejects structurally incompatible
-        // args (e.g., list[int] ↛ T?) while still accepting compatible ones (#966).
-        if (expected is NullableType or OptionalType or TupleType)
-            return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
-
-        // FunctionType, GenericFunctionType, and other opaque shapes: preserve permissive
-        // behavior — real checking happens during generic type inference.
-        return true;
-    }
-
-    /// <summary>
     /// True when <paramref name="argName"/> matches the simple (unqualified, arity-stripped)
     /// name from a CLR origin type name. For example, <c>"IEnumerable"</c> matches
     /// <c>"System.Collections.Generic.IEnumerable`1"</c>.
@@ -1734,73 +1643,6 @@ internal partial class TypeChecker
         if (lastDot >= 0)
             simpleName = simpleName[(lastDot + 1)..];
         return string.Equals(argName, simpleName, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Returns a copy of <paramref name="type"/> with every <see cref="TypeParameterType"/>
-    /// replaced by <see cref="SemanticType.Object"/> — the most permissive binding — so an
-    /// open generic shape can be compared via ordinary assignability.
-    /// </summary>
-    private static SemanticType SubstituteTypeParametersWithObject(SemanticType type)
-    {
-        switch (type)
-        {
-            case TypeParameterType:
-                return SemanticType.Object;
-            case GenericType g:
-                return new GenericType
-                {
-                    Name = g.Name,
-                    GenericDefinition = g.GenericDefinition,
-                    TypeArguments = g.TypeArguments.Select(SubstituteTypeParametersWithObject).ToList(),
-                    // Provenance survives the substitution, as it does in TypeSubstitution.Apply.
-                    // A formal the bridge mapped from CLR metadata MEANS the CLR type it came from,
-                    // and the assignability arm that knows this keys on ClrOriginTypeName (#1260);
-                    // rebuilding without it silently asked a different question. No verdict in the
-                    // current suite depends on this, so it is a correctness alignment between two
-                    // copies of one operation rather than a fix — but a reconstruction that drops
-                    // provenance is a trap for the next caller either way.
-                    ClrOriginTypeName = g.ClrOriginTypeName
-                };
-            case NullableType n:
-                return new NullableType { UnderlyingType = SubstituteTypeParametersWithObject(n.UnderlyingType) };
-            case OptionalType o:
-                return new OptionalType { UnderlyingType = SubstituteTypeParametersWithObject(o.UnderlyingType) };
-            case TupleType t:
-                return new TupleType
-                {
-                    ElementTypes = t.ElementTypes.Select(SubstituteTypeParametersWithObject).ToList(),
-                    ElementNames = t.ElementNames
-                };
-            case ResultType rt:
-                return new ResultType
-                {
-                    OkType = SubstituteTypeParametersWithObject(rt.OkType),
-                    ErrorType = SubstituteTypeParametersWithObject(rt.ErrorType)
-                };
-            case FunctionType ft:
-                return new FunctionType
-                {
-                    ParameterTypes = ft.ParameterTypes.Select(SubstituteTypeParametersWithObject).ToList(),
-                    ReturnType = SubstituteTypeParametersWithObject(ft.ReturnType),
-                    OptionalParameterCount = ft.OptionalParameterCount,
-                    VariadicParameterIndex = ft.VariadicParameterIndex
-                };
-            case UnionType ut:
-                return new UnionType
-                {
-                    Name = ut.Name,
-                    Symbol = ut.Symbol,
-                    CaseTypes = ut.CaseTypes.Select(SubstituteTypeParametersWithObject).ToList()
-                };
-            case TaskType { ResultType: not null } taskT:
-                return new TaskType
-                {
-                    ResultType = SubstituteTypeParametersWithObject(taskT.ResultType)
-                };
-            default:
-                return type;
-        }
     }
 
     /// <summary>
@@ -2358,15 +2200,19 @@ internal partial class TypeChecker
         // #1775: same-argument rule — if every arity candidate rejected the same argument for a
         // type reason, report the concrete type mismatch instead of the generic overload error.
         if (TryReportSameArgumentRefusal(
-                call, (IReadOnlyList<SemanticType>?)argTypes ?? Array.Empty<SemanticType>(), arityCandidates.Count, resolution.CandidateFailures))
+                call, (IReadOnlyList<SemanticType>?)argTypes ?? Array.Empty<SemanticType>(), arityCandidates.Count, resolution.CandidateFailures,
+                candidates: arityCandidates, kwargTypes: resolution.KwargTypes))
         {
             return;
         }
 
-        // When every candidate failed inference (#1811), name the conflict so the user knows
-        // WHY no overload matched rather than just THAT none matched.
+        // When every candidate failed inference (#1811) — or a binding reason the same-argument rule
+        // above could not phrase on its own — name the reason so the user knows WHY no overload
+        // matched rather than just THAT none matched. Keyed on the RECORDED reason rather than on the
+        // failure kind: the binding kinds (#1810) carry one too, and reading only Inference dropped
+        // every binding reason from the message the moment those kinds were introduced.
         var inferenceReasons = resolution.CandidateFailures
-            .Where(f => f.Kind == OverloadFailureKind.Inference && f.Reason != null)
+            .Where(f => f.Reason != null)
             .Select(f => f.Reason!)
             .Distinct()
             .ToList();
@@ -2404,19 +2250,30 @@ internal partial class TypeChecker
         FunctionCall call,
         IReadOnlyList<SemanticType> argTypes,
         int candidateCount,
-        IReadOnlyList<OverloadCandidateFailure> candidateFailures)
+        IReadOnlyList<OverloadCandidateFailure> candidateFailures,
+        IReadOnlyList<FunctionSymbol>? candidates = null,
+        IReadOnlyDictionary<string, SemanticType>? kwargTypes = null)
     {
-        // Every candidate must have been rejected, and rejected for a TYPE reason: a candidate that
-        // ran out of parameters (Variadic) or failed a generic shape is not an argument the user can
-        // fix by changing its type.
+        // Every candidate must have been rejected, and rejected the SAME way — one kind, one
+        // argument. Candidates that disagree on either keep SPY0354.
         if (candidateCount == 0 || candidateFailures.Count != candidateCount)
             return false;
-        if (candidateFailures.Any(f => f.Kind != OverloadFailureKind.Type))
+
+        var firstKind = candidateFailures[0].Kind;
+        if (candidateFailures.Any(f => f.Kind != firstKind))
             return false;
 
         var firstRef = candidateFailures[0].Ref;
         if (candidateFailures.Any(f => !f.Ref.SameArgument(firstRef)))
             return false;
+
+        // A BINDING failure is not an argument the user can fix by changing its type, so it is not
+        // the store seam's refusal — it is the keyword rule's own, and an overloaded callee owes the
+        // same code at the same span as its single-candidate twin (#1810, Decision 6(b)). A candidate
+        // that ran out of parameters (Variadic, TooManyPositional) or failed inference has no such
+        // twin: those keep SPY0354, with their recorded reason appended by the caller.
+        if (firstKind != OverloadFailureKind.Type)
+            return TryReportKeywordBindingRefusal(call, firstKind, firstRef, candidates);
 
         SemanticType failedArgType;
         Expression? argNode;
@@ -2428,12 +2285,20 @@ internal partial class TypeChecker
             var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == kwName);
             if (kwarg == null)
                 return false;
-            var kwargTypes = new Dictionary<string, SemanticType>();
-            foreach (var ka in call.KeywordArguments)
+            // The vector the applicability pass MEASURED, when the caller carries one: a probed
+            // slot-typed construction (`None()`) has no recorded expression type, so re-deriving the
+            // keyword's type from SemanticInfo answered "no opinion" and dropped `g(x=None())` to
+            // SPY0354 while its positional twin `g(None())` refused with SPY0244 (#1810).
+            if (kwargTypes == null)
             {
-                var kaType = _semanticInfo.GetExpressionType(ka.Value);
-                if (kaType != null)
-                    kwargTypes[ka.Name] = kaType;
+                var derived = new Dictionary<string, SemanticType>();
+                foreach (var ka in call.KeywordArguments)
+                {
+                    var kaType = _semanticInfo.GetExpressionType(ka.Value);
+                    if (kaType != null)
+                        derived[ka.Name] = kaType;
+                }
+                kwargTypes = derived;
             }
             if (!kwargTypes.TryGetValue(kwName, out failedArgType!))
                 return false;
@@ -2533,6 +2398,51 @@ internal partial class TypeChecker
                 span: argNode?.Span ?? call.Span);
         }
         return true;
+    }
+
+    /// <summary>
+    /// The single-candidate route's own refusal for a keyword argument EVERY candidate of an overload
+    /// set rejected the same way (#1810, Decision 6(b)): SPY0234 for a keyword no candidate declares,
+    /// SPY0370 for one naming a positional-only slot, SPY0235 for one naming a slot already filled
+    /// positionally — each at the keyword's own span, through the same reporters
+    /// <see cref="ValidateKeywordArguments"/> uses. The did-you-mean is drawn from the UNION of the
+    /// candidates' parameter names, because any of them could have supplied the slot. Returns false
+    /// — leaving SPY0354 — for a kind with no keyword twin, or when the recorded ref names no
+    /// keyword at this call.
+    /// </summary>
+    private bool TryReportKeywordBindingRefusal(
+        FunctionCall call, OverloadFailureKind kind, ArgumentRef failureRef,
+        IReadOnlyList<FunctionSymbol>? candidates)
+    {
+        if (failureRef.Keyword is not { } keyword)
+            return false;
+        var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == keyword);
+        if (kwarg == null)
+            return false;
+
+        switch (kind)
+        {
+            case OverloadFailureKind.UnknownKeyword:
+                var spellings = candidates == null
+                    ? Enumerable.Empty<string>()
+                    : candidates
+                        .SelectMany(c => c.Parameters.Select(
+                            p => CanonicalKeywordSpellingOf(p, c.ClrMethodName != null)))
+                        .Distinct(StringComparer.Ordinal);
+                ReportUnknownKeywordArgument(kwarg, spellings);
+                return true;
+
+            case OverloadFailureKind.PositionalOnlyKeyword:
+                ReportPositionalOnlyByKeyword(kwarg);
+                return true;
+
+            case OverloadFailureKind.DuplicateKeyword:
+                ReportKeywordAlreadyPositional(kwarg);
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     /// <summary>
@@ -3824,15 +3734,8 @@ internal partial class TypeChecker
             var param = FindKeywordParameter(parameters, kwarg.Name);
             if (param == null)
             {
-                var suggestion = EditDistance.FindClosestMatch(kwarg.Name,
+                ReportUnknownKeywordArgument(kwarg,
                     parameters.Select(p => CanonicalKeywordSpellingOf(p, clrParameterNames)));
-                var unknownMessage = $"Unknown keyword argument '{kwarg.Name}'";
-                if (suggestion != null)
-                    unknownMessage += $". Did you mean '{suggestion}'?";
-                AddError(unknownMessage,
-                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                    span: kwarg.Span ?? kwarg.Value.Span,
-                    data: SuggestionData(suggestion));
             }
             else if (CanonicalKeywordSpellingOf(param, clrParameterNames) is { } canonicalSpelling
                 && canonicalSpelling != kwarg.Name)
@@ -3847,10 +3750,7 @@ internal partial class TypeChecker
             }
             else if (param.IsPositionalOnly)
             {
-                AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
-                    kwarg.LineStart, kwarg.ColumnStart,
-                    code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
-                    span: kwarg.Span ?? kwarg.Value.Span);
+                ReportPositionalOnlyByKeyword(kwarg);
             }
             else
             {
@@ -3858,9 +3758,7 @@ internal partial class TypeChecker
                 var paramType = SubstitutedParameterType(param.Type, typeBinding);
                 if (!param.IsKeywordOnly && paramIndex < positionalArgCount)
                 {
-                    AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                        span: kwarg.Span ?? kwarg.Value.Span);
+                    ReportKeywordAlreadyPositional(kwarg);
                 }
                 else if (paramType != null)
                 {
@@ -3906,6 +3804,41 @@ internal partial class TypeChecker
     /// declared name for a Sharpy-declared parameter; <see cref="CanonicalClrParameterSpelling"/>
     /// for a verbatim-stored CLR name.
     /// </summary>
+    /// <summary>
+    /// SPY0234 at the keyword's own span, with a did-you-mean drawn from
+    /// <paramref name="candidateSpellings"/>. The ONE phrasing of "this callee has no such
+    /// parameter": the single-candidate route (<see cref="ValidateKeywordArguments"/>) and the
+    /// overload route (<see cref="TryReportKeywordBindingRefusal"/>) both report through here, so an
+    /// overloaded callee cannot answer an unknown keyword with a different code or a different span
+    /// than its single-candidate twin (#1810, Decision 6(b)).
+    /// </summary>
+    private void ReportUnknownKeywordArgument(KeywordArgument kwarg, IEnumerable<string> candidateSpellings)
+    {
+        var suggestion = EditDistance.FindClosestMatch(kwarg.Name, candidateSpellings);
+        var unknownMessage = $"Unknown keyword argument '{kwarg.Name}'";
+        if (suggestion != null)
+            unknownMessage += $". Did you mean '{suggestion}'?";
+        AddError(unknownMessage,
+            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+            span: kwarg.Span ?? kwarg.Value.Span,
+            data: SuggestionData(suggestion));
+    }
+
+    /// <summary>SPY0370 at the keyword's own span. <inheritdoc cref="ReportUnknownKeywordArgument"
+    /// path="/summary/text()[last()]"/></summary>
+    private void ReportPositionalOnlyByKeyword(KeywordArgument kwarg) =>
+        AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
+            kwarg.LineStart, kwarg.ColumnStart,
+            code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+            span: kwarg.Span ?? kwarg.Value.Span);
+
+    /// <summary>SPY0235 at the keyword's own span. <inheritdoc cref="ReportUnknownKeywordArgument"
+    /// path="/summary/text()[last()]"/></summary>
+    private void ReportKeywordAlreadyPositional(KeywordArgument kwarg) =>
+        AddError($"Argument '{kwarg.Name}' was already provided positionally",
+            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+            span: kwarg.Span ?? kwarg.Value.Span);
+
     private static string CanonicalKeywordSpellingOf(ParameterSymbol param, bool clrParameterNames)
         => clrParameterNames ? CanonicalClrParameterSpelling(param.Name) : param.Name;
 
@@ -5781,6 +5714,53 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Resolves <c>super().__init__(...)</c> against the base class's <c>__init__</c> OVERLOADS
+    /// through the one resolver every other overload route uses, and refuses an ambiguity by name
+    /// (#1810, Decision 4: SPY0353 on every ambiguity route).
+    ///
+    /// <para>The base-member signature this route otherwise binds is deliberately
+    /// <c>SkipArgumentValidation</c> whenever the base declares more than one constructor — "defer to
+    /// the C# compiler" — and Roslyn's betterness is not Sharpy's, so an ambiguous
+    /// <c>super().__init__(x=1)</c> surfaced as SPY0908/CS0121 pointing INSIDE the second overload's
+    /// body while the identical <c>Base(x=1)</c> construction reported SPY0353 at the call. Two facts
+    /// come out of running the resolver here: the ambiguity refusal, at the CALL's span; and, when one
+    /// candidate wins, the winner's argument binding — which is what records the nullable-slot cast
+    /// that makes Roslyn agree on the <c>{int?, int | None}</c> pair (#1721).</para>
+    ///
+    /// <para>Returns null — leaving the existing path untouched — for a single-candidate base, for a
+    /// call no candidate accepts (that stays deferred, so no program this route used to compile is
+    /// newly refused on APPLICABILITY), and for a unique winner. Only the ambiguity is reported.</para>
+    /// </summary>
+    private SemanticType? CheckSuperInitializerCall(
+        FunctionCall call, Expression callee, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+    {
+        if (callee is not MemberAccess { Object: SuperExpression, Member: DunderNames.Init }
+            || _currentClass == null)
+        {
+            return null;
+        }
+
+        if (GetBaseType(_currentClass) is not { } baseType)
+            return null;
+
+        var candidates = ResolveInitializerConstructorCandidates(baseType);
+        if (candidates.Count < 2 || ArityApplicableCount(candidates, call) <= 1)
+            return null;
+
+        var resolution = ResolveOverloadCore(new OverloadResolutionContext(
+            candidates.ToList(), totalArgCount, argTypes,
+            SkipSelfParam: true, SkipUnknownTypes: true,
+            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
+
+        if (!resolution.IsAmbiguous)
+            return null;
+
+        ReportOverloadError(baseType.Name, call, resolution, totalArgCount, argTypes);
+        return SemanticType.Void;
     }
 
     /// <summary>

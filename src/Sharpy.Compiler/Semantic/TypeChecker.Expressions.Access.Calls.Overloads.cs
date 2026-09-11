@@ -31,6 +31,30 @@ internal partial class TypeChecker
         /// (#1811).
         /// </summary>
         Inference,
+
+        /// <summary>
+        /// The candidate has no parameter with this keyword argument's name (#1810). The
+        /// single-candidate route reports SPY0234 at the keyword.
+        /// </summary>
+        UnknownKeyword,
+
+        /// <summary>
+        /// A keyword argument names a POSITIONAL-ONLY parameter of this candidate (#1810). The
+        /// single-candidate route reports SPY0370 at the keyword.
+        /// </summary>
+        PositionalOnlyKeyword,
+
+        /// <summary>
+        /// A keyword argument names a slot this call already filled positionally (#1810). The
+        /// single-candidate route reports SPY0235 at the keyword.
+        /// </summary>
+        DuplicateKeyword,
+
+        /// <summary>
+        /// The call supplies more positional arguments than the candidate has slots for, and the
+        /// candidate has no variadic parameter to absorb them.
+        /// </summary>
+        TooManyPositional,
     }
 
     /// <summary>
@@ -47,10 +71,20 @@ internal partial class TypeChecker
 
     /// <summary>
     /// One argument bound to one candidate's slot: the call-site reference, the AST node (null for
-    /// defaulted parameters), the argument's type, and the candidate's formal type at that slot.
+    /// defaulted parameters), the argument's type, the candidate's formal type at that slot, and the
+    /// RESOLVED PARAMETER INDEX it was bound to.
+    ///
+    /// <para><see cref="ParamIndex"/> indexes the candidate's own <c>Parameters</c> list, self
+    /// offset included, and is resolved by <see cref="BindCandidate"/> for positional AND keyword
+    /// arguments alike — through <see cref="FindKeywordParameter"/> for the latter. It is the one
+    /// fact a betterness arm needs to reach the candidate's DECLARED parameter: its still-open
+    /// formal (criterion 3) and its reflected CLR parameter type (criterion 8). Deriving the index
+    /// from <c>Ref.Ordinal</c> instead left both arms dead for every keyword argument, because a
+    /// keyword <see cref="ArgumentRef"/> carries no ordinal — <c>f(v=d)</c> picked the bare-<c>T</c>
+    /// overload where <c>f(d)</c> picked the constructed one, a silent wrong pick (#1810).</para>
     /// </summary>
     internal sealed record BoundArgument(
-        ArgumentRef Ref, Expression? Node, SemanticType ArgType, SemanticType Formal);
+        ArgumentRef Ref, Expression? Node, SemanticType ArgType, SemanticType Formal, int ParamIndex);
 
     /// <summary>
     /// A full binding of all call-site arguments to one candidate's parameter slots. When
@@ -69,6 +103,19 @@ internal partial class TypeChecker
         /// <see cref="BindCandidate"/> after a successful pair-based inference pass.
         /// </summary>
         internal IReadOnlyDictionary<string, SemanticType>? InferredTypeArguments { get; init; }
+
+        /// <summary>
+        /// WHICH kind of failure <see cref="InapplicableReason"/> describes, and WHICH call-site
+        /// argument caused it (#1810, Decision 6(b)). Null when the binding succeeded, and null for
+        /// an inference failure (which keeps <see cref="OverloadFailureKind.Inference"/>, the
+        /// default). Carried so an overloaded callee can phrase a BINDING failure with the
+        /// single-candidate route's own code at the keyword's own span — SPY0234 / SPY0370 /
+        /// SPY0235 — instead of collapsing every one of them into SPY0354 at the whole call.
+        /// </summary>
+        internal OverloadFailureKind? InapplicableKind { get; init; }
+
+        /// <inheritdoc cref="InapplicableKind"/>
+        internal ArgumentRef? InapplicableRef { get; init; }
     }
 
     /// <summary>
@@ -105,6 +152,16 @@ internal partial class TypeChecker
         /// when the winner is generic (#1811). Null when no candidate was selected.
         /// </summary>
         internal CandidateBinding? WinnerBinding { get; init; }
+
+        /// <summary>
+        /// The call's keyword-argument types, as the resolution saw them
+        /// (<see cref="OverloadResolutionContext.KwargTypes"/>). The reporting sites need the SAME
+        /// vector the applicability pass measured: re-deriving a keyword argument's type from
+        /// <see cref="SemanticInfo"/> misses a probed slot-typed construction (a <c>None()</c> mask
+        /// has no recorded type), which is why <c>g(None())</c> refused with SPY0244 while
+        /// <c>g(x=None())</c> fell to SPY0354 (#1810).
+        /// </summary>
+        internal Dictionary<string, SemanticType>? KwargTypes { get; init; }
 
         public void Deconstruct(
             out FunctionSymbol? match, out List<FunctionSymbol> arityCandidates, out bool isAmbiguous)
@@ -290,6 +347,16 @@ internal partial class TypeChecker
         // Track which parameter indices are filled by positional arguments.
         var filledParamIndices = new HashSet<int>();
 
+        // Every early return names the KIND of failure and the call-site argument that caused it, so
+        // an overloaded callee can phrase it with the same code and span the single-candidate route
+        // gives (#1810, Decision 6(b)).
+        CandidateBinding Inapplicable(string reason, OverloadFailureKind kind, ArgumentRef failingRef) =>
+            new CandidateBinding(candidate, arguments, reason)
+            {
+                InapplicableKind = kind,
+                InapplicableRef = failingRef,
+            };
+
         // --- Positional arguments ---
         for (int i = 0; i < context.ArgTypes.Count; i++)
         {
@@ -309,8 +376,10 @@ internal partial class TypeChecker
             }
             else
             {
-                return new CandidateBinding(candidate, arguments,
-                    $"Too many positional arguments (expected {parameters.Count - selfOffset})");
+                return Inapplicable(
+                    $"Too many positional arguments (expected {parameters.Count - selfOffset})",
+                    OverloadFailureKind.TooManyPositional,
+                    new ArgumentRef(Ordinal: i, Keyword: null));
             }
 
             if (context.TypeSubstitution != null)
@@ -318,7 +387,8 @@ internal partial class TypeChecker
 
             var argNode = ArgumentNodeAt(context.Call, i);
             arguments.Add(new BoundArgument(
-                new ArgumentRef(Ordinal: i, Keyword: null), argNode, context.ArgTypes[i], formal));
+                new ArgumentRef(Ordinal: i, Keyword: null), argNode, context.ArgTypes[i], formal,
+                ParamIndex: paramIdx));
         }
 
         // --- Keyword arguments ---
@@ -330,27 +400,35 @@ internal partial class TypeChecker
                 if (!kwargTypes.TryGetValue(kwarg.Name, out var kwargType))
                     continue;
 
+                var keywordRef = new ArgumentRef(Ordinal: null, Keyword: kwarg.Name);
                 var param = FindKeywordParameter(paramsAfterSelf, kwarg.Name);
                 if (param == null)
-                    return new CandidateBinding(candidate, arguments,
-                        $"No parameter named '{kwarg.Name}'");
+                    return Inapplicable(
+                        $"No parameter named '{kwarg.Name}'",
+                        OverloadFailureKind.UnknownKeyword, keywordRef);
+
+                // The parameter this keyword resolves to, in the candidate's OWN index space — the
+                // same fact the positional loop records, so betterness reads one index for both
+                // spellings (#1810).
+                var matchedParamIdx = parameters.IndexOf(param);
 
                 // Check if the matched parameter's index was already filled positionally.
-                var matchedParamIdx = parameters.IndexOf(param);
                 if (matchedParamIdx >= 0 && filledParamIndices.Contains(matchedParamIdx))
-                    return new CandidateBinding(candidate, arguments,
-                        $"Parameter '{param.Name}' is already filled by a positional argument");
+                    return Inapplicable(
+                        $"Parameter '{param.Name}' is already filled by a positional argument",
+                        OverloadFailureKind.DuplicateKeyword, keywordRef);
 
                 if (param.IsPositionalOnly)
-                    return new CandidateBinding(candidate, arguments,
-                        $"Parameter '{param.Name}' is positional-only");
+                    return Inapplicable(
+                        $"Parameter '{param.Name}' is positional-only",
+                        OverloadFailureKind.PositionalOnlyKeyword, keywordRef);
 
                 var formal = param.Type;
                 if (context.TypeSubstitution != null)
                     formal = context.TypeSubstitution(formal);
 
                 arguments.Add(new BoundArgument(
-                    new ArgumentRef(Ordinal: null, Keyword: kwarg.Name), kwarg.Value, kwargType, formal));
+                    keywordRef, kwarg.Value, kwargType, formal, ParamIndex: matchedParamIdx));
             }
         }
 
@@ -546,10 +624,13 @@ internal partial class TypeChecker
 
             if (binding.InapplicableReason != null)
             {
+                // The KIND and the failing argument travel with the record (#1810, Decision 6(b)):
+                // a binding failure every candidate shares is phrased with the single-candidate
+                // route's own code at the keyword's span, not flattened into SPY0354 at the call.
                 candidateFailures.Add(new OverloadCandidateFailure(
-                    new ArgumentRef(Ordinal: 0, Keyword: null),
+                    binding.InapplicableRef ?? new ArgumentRef(Ordinal: 0, Keyword: null),
                     SemanticType.Unknown,
-                    OverloadFailureKind.Inference,
+                    binding.InapplicableKind ?? OverloadFailureKind.Inference,
                     Reason: binding.InapplicableReason));
                 continue;
             }
@@ -607,7 +688,8 @@ internal partial class TypeChecker
         OverloadResolution Resolve(FunctionSymbol? winner, bool ambiguous) =>
             new OverloadResolution(winner, arityCandidates, ambiguous, candidateFailures)
             {
-                WinnerBinding = winner != null && candidateBindings.TryGetValue(winner, out var wb) ? wb : null
+                WinnerBinding = winner != null && candidateBindings.TryGetValue(winner, out var wb) ? wb : null,
+                KwargTypes = context.KwargTypes,
             };
 
         // --- Step A: Conversion betterness (C# §12.6.4.3) ---
@@ -754,9 +836,6 @@ internal partial class TypeChecker
 
         bool hasStrictlyBetter = false;
 
-        var selfOffsetA = ReceiverOffsetOf(a, context);
-        var selfOffsetB = ReceiverOffsetOf(b, context);
-
         foreach (var boundA in bindingA.Arguments)
         {
             var paramTypeA = boundA.Formal;
@@ -771,7 +850,21 @@ internal partial class TypeChecker
                     break;
                 }
             }
-            var paramTypeB = correspondingB?.Formal ?? SemanticType.Unknown;
+
+            // An argument B bound to NO slot at all is not a position the two candidates can be
+            // compared at, so it contributes nothing. It used to yield `paramTypeB = Unknown`, and
+            // the identity test below then read "A matches the argument exactly, B does not" off a
+            // position B never offered — A won a comparison it was never in (#1810, cure SUGG 13).
+            //
+            // Defensive, and known to be: reverting it to the `Unknown` form leaves the whole
+            // overload suite green (mutation M5b, 464/464), because a candidate that cannot bind an
+            // argument is already inapplicable and never reaches betterness. No input distinguishes
+            // the two versions today; the guard is here so that a future binding that CAN leave a
+            // hole does not silently hand A a win. Do not cite it as a guarded fix.
+            if (correspondingB == null)
+                continue;
+
+            var paramTypeB = correspondingB.Formal;
 
             // §12.6.4.6: if the argument's natural type exactly matches one parameter
             // type but not the other, the matching type is strictly better. This is
@@ -791,12 +884,14 @@ internal partial class TypeChecker
             // and Sharpy.List<T> both to list[T]).
             if (paramTypeA.Equals(paramTypeB))
             {
-                // §12.6.4.4: after per-candidate inference (#1811), two candidates may
-                // close to the same concrete type but one's ORIGINAL formal was a bare
-                // type parameter (T) and the other's was a constructed type (list[T]).
-                // The constructed type is more specific.
-                var paramIdxA = boundA.Ref.Ordinal is { } ordA ? ordA + selfOffsetA : -1;
-                var paramIdxB = correspondingB?.Ref.Ordinal is { } ordB ? ordB + selfOffsetB : -1;
+                // §12.6.4.5: after per-candidate inference (#1811), two candidates may close to
+                // the same concrete type while their ORIGINAL formals differ in shape — a bare type
+                // parameter (T) against a constructed type (list[T]), or list[T] against
+                // list[list[T]]. The more specific DECLARED shape wins. Both indices come from the
+                // binding, so a keyword argument reaches this arm exactly as a positional one does
+                // (#1810).
+                var paramIdxA = boundA.ParamIndex;
+                var paramIdxB = correspondingB.ParamIndex;
                 var origA = paramIdxA >= 0 && paramIdxA < a.Parameters.Count ? a.Parameters[paramIdxA].Type : null;
                 var origB = paramIdxB >= 0 && paramIdxB < b.Parameters.Count ? b.Parameters[paramIdxB].Type : null;
                 if (origA != null && origB != null)
@@ -806,11 +901,9 @@ internal partial class TypeChecker
                         origA = context.TypeSubstitution(origA);
                         origB = context.TypeSubstitution(origB);
                     }
-                    bool aIsTypeParam = origA is TypeParameterType;
-                    bool bIsTypeParam = origB is TypeParameterType;
-                    if (!aIsTypeParam && bIsTypeParam)
+                    if (IsMoreSpecificDeclaredType(origA, origB))
                     { hasStrictlyBetter = true; continue; }
-                    if (aIsTypeParam && !bIsTypeParam)
+                    if (IsMoreSpecificDeclaredType(origB, origA))
                     { return false; }
                 }
 
@@ -859,6 +952,75 @@ internal partial class TypeChecker
 
         return hasStrictlyBetter;
     }
+
+    /// <summary>
+    /// C# §12.6.4.5, "more specific parameter types", applied to the two candidates' DECLARED
+    /// formals at one argument position: a type parameter is less specific than anything that is not
+    /// one, and a constructed type is more specific than another constructed type over the same
+    /// generic when at least one type argument is more specific and none is less specific.
+    ///
+    /// <para>Measured against csc (2026-09-10, net10.0): <c>F&lt;T&gt;(List&lt;T&gt;)</c> against
+    /// <c>F&lt;T&gt;(List&lt;List&lt;T&gt;&gt;)</c> called with a <c>List&lt;List&lt;int&gt;&gt;</c>
+    /// picks the nested one, in both the positional and the named spelling — which is the example
+    /// <c>overload_resolution.md</c> states for criterion 3. Reading only the outermost shape
+    /// ("is it a bare T?") left that example ambiguous, because per-candidate inference closes both
+    /// formals to the SAME type and the difference survives only in the declared shape (#1810).</para>
+    /// </summary>
+    private static bool IsMoreSpecificDeclaredType(SemanticType more, SemanticType less)
+    {
+        if (more.Equals(less))
+            return false;
+
+        bool moreIsTypeParam = more is TypeParameterType;
+        bool lessIsTypeParam = less is TypeParameterType;
+        if (moreIsTypeParam || lessIsTypeParam)
+            return !moreIsTypeParam && lessIsTypeParam;
+
+        var argsMore = DeclaredTypeArgumentsOf(more);
+        var argsLess = DeclaredTypeArgumentsOf(less);
+        if (argsMore == null || argsLess == null || argsMore.Count == 0
+            || argsMore.Count != argsLess.Count
+            || DeclaredTypeConstructorOf(more) != DeclaredTypeConstructorOf(less))
+        {
+            return false;
+        }
+
+        bool anyMoreSpecific = false;
+        for (int i = 0; i < argsMore.Count; i++)
+        {
+            if (IsMoreSpecificDeclaredType(argsMore[i], argsLess[i]))
+            {
+                anyMoreSpecific = true;
+                continue;
+            }
+            if (IsMoreSpecificDeclaredType(argsLess[i], argsMore[i]))
+                return false;
+        }
+        return anyMoreSpecific;
+    }
+
+    /// <summary>
+    /// The type arguments a DECLARED formal was written with, or null when it is not a constructed
+    /// type. Only the two shapes a written annotation can nest — a generic instantiation
+    /// (<c>list[list[T]]</c>, <c>Box[T]</c>) and a tuple (<c>tuple[T, int]</c>) — participate in
+    /// <see cref="IsMoreSpecificDeclaredType"/>'s recursion.
+    /// </summary>
+    private static IReadOnlyList<SemanticType>? DeclaredTypeArgumentsOf(SemanticType type) => type switch
+    {
+        GenericType g => g.TypeArguments,
+        TupleType t => t.ElementTypes,
+        _ => null,
+    };
+
+    /// <summary>The generic constructor a declared formal names, for the same-constructor gate in
+    /// <see cref="IsMoreSpecificDeclaredType"/>. Two different constructors with equally specific
+    /// type arguments make neither formal more specific.</summary>
+    private static string? DeclaredTypeConstructorOf(SemanticType type) => type switch
+    {
+        GenericType g => g.Name,
+        TupleType => "tuple",
+        _ => null,
+    };
 
     /// <summary>
     /// C# §12.6.4.7: a signed integer type is a better conversion target than an unsigned

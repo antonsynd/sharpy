@@ -1,0 +1,16 @@
+# r1 (#1810): the keyword spelling of a call is resolved by the SAME rule as the positional one,
+# betterness included. Both candidates infer a formal of dict[str, int] here, so the pick is decided
+# by the DECLARED shape: C# §12.6.4.5 says a constructed type beats a bare type parameter, and
+# overload_resolution.md criterion 3 names this exact pair. Measured against csc (2026-09-10):
+# G(d) and G(v: d) both pick the Dictionary<K, V> overload.
+
+def f[V](v: V) -> str:
+    return "bare"
+
+def f[K, V](v: dict[K, V]) -> str:
+    return "structured"
+
+def main() -> None:
+    d: dict[str, int] = {"a": 1}
+    print(f(d))
+    print(f(v=d))
