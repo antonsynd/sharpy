@@ -349,16 +349,20 @@ internal class BuiltinRegistry
         // e.g., IEnumerable registered as System.Collections.IEnumerable) (#827).
         typeParams = ApplyClrVariance(typeParams, varianceSource ?? clrType);
 
-        // list and set are covariant in their element type by language design: Sharpy
-        // treats list[Dog] as assignable to list[Animal] even though Sharpy.List<T> is
-        // invariant in C#. This expresses per-parameter what the removed
-        // TypeSymbol.IsCovariant flag previously declared for the whole type (#827).
-        if (sharpyName is BuiltinNames.List or BuiltinNames.Set)
-        {
-            typeParams = typeParams
-                .Select(tp => tp with { Variance = TypeParameterVariance.Covariant })
-                .ToList();
-        }
+        // No override here: `list[T]` and `set[T]` take the variance their CLR types declare, which
+        // is NONE. `Sharpy.List<T>`/`Sharpy.Set<T>` are invariant classes in C#, and
+        // generic_variance.md says an unannotated type parameter is invariant and such generic types
+        // are not substitutable. Declaring them covariant (the #827 collateral this replaces) put
+        // `IsAssignable` — the one assignability authority (#1748, #1701 Decision 4) — in disagreement
+        // with both: `list[Dog]` into `list[Animal]` and `list[int8]` into `list[int]` were accepted by
+        // the checker and refused by Roslyn as CS0029/CS1503 behind SPY0908, and `list[T]` under an
+        // `out T` interface reached Roslyn as CS1961. #827's actual subject — inferring `T` through an
+        // `IEnumerable[T]` formal from a `list[int]` actual — is a BASE-INTERFACE relation, not element
+        // covariance, and keeps working through the supertype walk in
+        // `TypeChecker.IsGenericAssignableWithVariance`.
+        //
+        // Element widening is written, not inferred: a slot-directed literal (`xs: list[object] = [1]`)
+        // or an explicit reconstruction (`list[Animal](ds)`).
 
         var methods = discovered?.Methods ?? new List<FunctionSymbol>();
         var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();

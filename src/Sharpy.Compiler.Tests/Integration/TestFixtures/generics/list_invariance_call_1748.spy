@@ -1,0 +1,9 @@
+# #1748 n35: `list[T]` is invariant, so a `list[int8]` is not a `list[int]` — the CALL route refuses
+# it by name instead of letting Roslyn report CS1503 behind SPY0908.
+def first(xs: list[int]) -> int:
+    return xs[0]
+
+
+def main():
+    ys: list[int8] = [1, 2]
+    print(first(ys))

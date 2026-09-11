@@ -43,18 +43,39 @@ animal = producer.get()  # Returns Dog, but typed as Animal
 interface ICovariant[out T]:
     # ✅ Valid: T in return position
     def get(self) -> T: ...
-    def get_optional(self) -> T?: ...
-    def get_list(self) -> list[T]: ...  # Assuming list is covariant
-    
+
+    # ✅ Valid: T | None is C#'s nullable ANNOTATION on T, not a wrapper type
+    def get_or_none(self) -> T | None: ...
+
+    # ✅ Valid: T inside a COVARIANT generic, in a return position
+    def items(self) -> IEnumerable[T]: ...
+
     # ✅ Valid: T in covariant nested position
     def get_producer(self) -> IProducer[T]: ...
-    
+
     # ❌ Invalid: T in parameter position
     # def set(self, value: T): ...  # ERROR: T is covariant
-    
+
     # ❌ Invalid: T in contravariant nested position  
     # def get_consumer(self) -> IConsumer[T]: ...  # ERROR
+
+    # ❌ Invalid: T inside an INVARIANT generic, in ANY position
+    # def get_list(self) -> list[T]: ...      # ERROR SPY0418: list[T] is invariant in T
+    # def get_set(self) -> set[T]: ...        # ERROR SPY0418: set[T] is invariant in T
+    # def get_pair(self) -> tuple[T, int]: ...  # ERROR SPY0418: a tuple is invariant
+
+    # ❌ Invalid: T? is Optional[T], a struct, and T !E is Result[T, E] — both invariant wrappers
+    # def get_optional(self) -> T?: ...       # ERROR SPY0418: T? is invariant in T
+    # def get_result(self) -> T !str: ...     # ERROR SPY0418: T !str is invariant in T
 ```
+
+A type parameter is legal only in a position that admits its direction, and a position can admit
+NEITHER: the type-argument slot of a generic that declares no variance there (`list[T]`, `set[T]`,
+`dict[K, V]`, `tuple[...]`, `Iterator[T]`) and the `T?` / `T !E` wrappers (`Optional[T]` and
+`Result[T, E]` are invariant structs) are **invariant positions**, and a variant type parameter inside
+one is refused wherever it appears — return type included. This is C#'s "must be invariantly valid"
+rule (CS1961). `IEnumerable[T]` is the covariant sequence to return instead, and `T | None` is legal
+because it is C#'s nullable annotation on `T` itself rather than a wrapper type.
 
 ## Contravariance (`in T`)
 
@@ -64,14 +85,14 @@ A type parameter marked `in` can only appear in input positions (parameters). Th
 interface IConsumer[in T]:
     """Consumes values of type T."""
     def accept(self, value: T): ...
-    def process(self, items: list[T]): ...
+    def process(self, items: IEnumerable[T]): ...  # IEnumerable, not list: list[T] is invariant
 
 # Contravariance in action
 class AnimalHandler(IConsumer[Animal]):
     def accept(self, value: Animal):
         print(f"Handling: {value.name}")
-    
-    def process(self, items: list[Animal]):
+
+    def process(self, items: IEnumerable[Animal]):
         for item in items:
             self.accept(item)
 
@@ -79,6 +100,8 @@ class AnimalHandler(IConsumer[Animal]):
 handler: IConsumer[Dog] = AnimalHandler()  # ✅ OK: contravariant
 handler.accept(Dog("Rex"))  # AnimalHandler can handle any Animal, including Dog
 ```
+
+Prints `Handling: Rex`.
 
 **Why this is safe:** A handler that can process any `Animal` can certainly process a `Dog`, since `Dog` is-an `Animal`.
 
@@ -88,16 +111,22 @@ handler.accept(Dog("Rex"))  # AnimalHandler can handle any Animal, including Dog
 interface IContravariant[in T]:
     # ✅ Valid: T in parameter position
     def accept(self, value: T): ...
-    def process(self, items: list[T]): ...
-    
+
+    # ✅ Valid: T inside a COVARIANT generic, in a parameter position
+    def process(self, items: IEnumerable[T]): ...
+
     # ✅ Valid: T in contravariant nested position
     def set_producer(self, producer: IProducer[T]): ...  # Flipped!
-    
+
     # ❌ Invalid: T in return position
     # def get(self) -> T: ...  # ERROR: T is contravariant
-    
+
     # ❌ Invalid: T in covariant nested position
     # def get_consumer(self) -> IConsumer[T]: ...  # ERROR: double flip = covariant
+
+    # ❌ Invalid: T inside an INVARIANT generic, in ANY position
+    # def process_list(self, items: list[T]): ...  # ERROR SPY0419: list[T] is invariant in T
+    # def take_optional(self, value: T?): ...      # ERROR SPY0419: T? is invariant in T
 ```
 
 ## Invariance (Default)
@@ -116,6 +145,54 @@ mutable: IMutable[Animal] = SomeMutable[Animal]()  # ✅ OK: exact match
 ```
 
 **Why invariance is required:** If `IMutable[Dog]` were assignable to `IMutable[Animal]`, you could call `set(Cat())` on what's actually a `Dog` container — type safety violation.
+
+### The builtin collections are invariant
+
+`list[T]`, `set[T]` and `dict[K, V]` declare no variance, because `Sharpy.List<T>`, `Sharpy.Set<T>`
+and `Sharpy.Dict<K, V>` are invariant classes in .NET (Axiom 1). The same argument as `IMutable[T]`
+applies: a `list[Animal]` accepts `append(Cat())`, so a `list[Dog]` must not be one. The covariant
+sequence interfaces are — `IEnumerable[T]` is declared `out T` by .NET and substitutes freely.
+
+```python
+class Animal:
+    def __init__(self):
+        pass
+
+class Dog(Animal):
+    def __init__(self):
+        super().__init__()
+
+def count(xs: IEnumerable[Animal]) -> int:
+    n: int = 0
+    for x in xs:
+        n += 1
+    return n
+
+def main():
+    ds: list[Dog] = [Dog(), Dog()]
+
+    # ✅ OK: list[Dog] IS an IEnumerable[Dog], and IEnumerable is covariant
+    print(count(ds))
+
+    # ✅ OK: the slot directs the literal's element type
+    animals: list[Animal] = [Dog()]
+    print(len(animals))
+
+    # ❌ ERROR SPY0220: Cannot assign type 'list[Dog]' to variable of type 'list[Animal]'
+    # animals2: list[Animal] = ds
+
+    # Widen explicitly instead — a new list, which is what the conversion would have to be anyway
+    widened: list[Animal] = list[Animal](ds)
+    print(len(widened))
+```
+
+Output:
+
+```
+2
+1
+2
+```
 
 ## Multiple Type Parameters
 
@@ -281,12 +358,21 @@ The compiler validates variance annotations by checking each usage of a variant 
    - Covariant in covariant = covariant
    - Contravariant in covariant = contravariant
 
-**Error example:**
+4. **Invariant positions admit neither** — a type argument of a generic that declares no variance
+   there, and the `T?` / `T !E` wrappers. A variant type parameter written inside one is refused
+   whatever the surrounding position is (SPY0418 for `out`, SPY0419 for `in`), which is C#'s
+   "must be invariantly valid" rule.
+
+**Error examples:**
 
 ```python
 interface IBroken[out T]:
     def set(self, value: T): ...  
-    # ERROR: Type parameter 'T' is covariant but appears in contravariant position
+    # ERROR SPY0418: Covariant type parameter 'T' cannot appear in contravariant position (parameter type)
+
+interface IAlsoBroken[out T]:
+    def get_list(self) -> list[T]: ...
+    # ERROR SPY0418: Covariant type parameter 'T' cannot appear in invariant position 'list[T]'
 ```
 
 ## Declaration-Site vs Usage-Site Enforcement

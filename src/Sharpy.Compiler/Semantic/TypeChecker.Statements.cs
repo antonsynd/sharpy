@@ -746,11 +746,19 @@ internal partial class TypeChecker
                             messageSuffix: $" — '{classified.PythonName}' requires an iterable");
                         return false;
                     }
-                    if (!IsAssignable(rhsElement, targetElement))
+                    // Variance-convertible, not merely assignable. `Extend` takes a covariant
+                    // `IEnumerable<T>`, so a Dog element reaches an Animal list (a reference
+                    // conversion, and it still runs) while an int8 element does NOT reach an int list —
+                    // .NET declares no variance over value types, and accepting it on assignability is
+                    // what sent `xs: list[int]; xs += list[int8]` to Roslyn as CS1503 behind SPY0908.
+                    // This is #1682's `dict |=` rule at the sibling arm, through the one predicate.
+                    if (!IsVarianceConvertible(rhsElement, targetElement))
                     {
                         AddError(
                             $"Element type '{rhsElement.GetDisplayName()}' of the iterable is not assignable to "
-                            + $"'{targetElement.GetDisplayName()}'",
+                            + $"'{targetElement.GetDisplayName()}'"
+                            + " — the mutator binds a covariant IEnumerable, so the element types must"
+                            + " match or be related by inheritance; build a new list instead",
                             assignment.LineStart, assignment.ColumnStart,
                             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
                             span: assignment.Span);
@@ -791,7 +799,10 @@ internal partial class TypeChecker
                     }
                     var targetElement = gt.TypeArguments[0];
                     var rhsGt = (GenericType)valueType;
-                    if (rhsGt.TypeArguments.Count > 0 && !IsAssignable(rhsGt.TypeArguments[0], targetElement))
+                    // Same predicate as the list arm: the set mutators bind covariant sequence
+                    // interfaces, which .NET does not extend over value types (#1682's rule).
+                    if (rhsGt.TypeArguments.Count > 0
+                        && !IsVarianceConvertible(rhsGt.TypeArguments[0], targetElement))
                     {
                         AddError(
                             $"Element type '{rhsGt.TypeArguments[0].GetDisplayName()}' is not assignable to "

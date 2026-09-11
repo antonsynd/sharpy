@@ -1,0 +1,10 @@
+# #1748 n36: the PIPE route carries the same refusal as the call route. This cell was a clean SPY0220
+# at fd5c1321a, regressed to SPY0908 CS1503 when `list` was declared covariant, and is a named
+# refusal again.
+def first(xs: list[int]) -> int:
+    return xs[0]
+
+
+def main():
+    ys: list[int8] = [1, 2]
+    print(ys |> first)
