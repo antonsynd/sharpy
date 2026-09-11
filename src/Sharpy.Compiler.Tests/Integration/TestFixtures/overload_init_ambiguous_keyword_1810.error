@@ -1,1 +1,2 @@
-Ambiguous call to overloaded method
+Ambiguous call to overloaded method 'C' @12:5
+!count 1
