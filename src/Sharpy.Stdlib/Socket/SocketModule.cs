@@ -39,7 +39,7 @@ namespace Sharpy
         /// <summary>
         /// Base exception for socket-related errors. Corresponds to Python's socket.error.
         /// </summary>
-        public class Error : Exception
+        public class Error : global::System.Exception
         {
             public int Errno;
             /// <summary>
@@ -61,7 +61,7 @@ namespace Sharpy
             /// <summary>
             /// Create a socket error wrapping an inner exception.
             /// </summary>
-            public Error(string message, Exception inner, int errno = 0) : base(message, inner)
+            public Error(string message, global::System.Exception inner, int errno = 0) : base(message, inner)
             {
                 this.Errno = errno;
             }
@@ -82,7 +82,7 @@ namespace Sharpy
             /// <summary>
             /// Create a socket timeout error wrapping an inner exception.
             /// </summary>
-            public Timeout(string message, Exception inner, int errno = 0) : base(message, inner, errno)
+            public Timeout(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
             {
             }
         }
@@ -102,7 +102,7 @@ namespace Sharpy
             /// <summary>
             /// Create a GAI error wrapping an inner exception.
             /// </summary>
-            public Gaierror(string message, Exception inner, int errno = 0) : base(message, inner, errno)
+            public Gaierror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
             {
             }
         }
@@ -122,7 +122,7 @@ namespace Sharpy
             /// <summary>
             /// Create an herror wrapping an inner exception.
             /// </summary>
-            public Herror(string message, Exception inner, int errno = 0) : base(message, inner, errno)
+            public Herror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
             {
             }
         }
@@ -151,7 +151,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
                     this._Socket.Connect(endpoint);
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -225,7 +225,7 @@ namespace Sharpy
                     Socket conn = new Socket(accepted);
                     return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -244,7 +244,7 @@ namespace Sharpy
                 {
                     return this._Socket.Send(data.ToArray());
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -275,7 +275,7 @@ namespace Sharpy
                         totalSent = totalSent + sent;
                     }
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -298,7 +298,7 @@ namespace Sharpy
                     global::System.Array.Copy(buffer, result, received);
                     return new global::Sharpy.Bytes(result);
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -319,7 +319,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
                     return this._Socket.SendTo(data.ToArray(), endpoint);
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -344,7 +344,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)remote;
                     return (new global::Sharpy.Bytes(result), (ep.Address.ToString(), ep.Port));
                 }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (((global::System.Net.Sockets.SocketError)ex.SocketErrorCode) == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
