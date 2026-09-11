@@ -2406,6 +2406,16 @@ internal partial class TypeChecker
             var closedClrType = TryGetClrType(objectType);
             if (closedClrType != null)
             {
+                // The KEY is checked before the element type is read off an indexer, because the
+                // indexer that answers depends on the key: `d["wrong"]` on a Dictionary[int, str] used
+                // to infer `str` off the int-keyed indexer and hand Roslyn CS1503 (#1798, indexer
+                // route). The acceptance question is the CLR call seam's, the same one every other
+                // route asks.
+                var isIndexStore = ReferenceEquals(indexAccess, _indexStoreTarget?.Target)
+                    && _indexStoreTarget?.IsAugmented == false;
+                if (!ClrIndexerAcceptsKey(indexAccess, closedClrType, indexType, isIndexStore))
+                    return SemanticType.Unknown;
+
                 var keyClrType = TryGetClrType(indexType);
                 var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType, keyClrType);
                 if (clrIndexerType != null)
