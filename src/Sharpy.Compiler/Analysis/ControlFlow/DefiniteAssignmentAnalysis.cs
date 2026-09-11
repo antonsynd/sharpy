@@ -287,6 +287,37 @@ internal static class DefiniteAssignmentAnalysis
             CollectWalrusTargets(child, assigned);
     }
 
+    /// <summary>Set union, as a fresh set; the two inputs are left alone.</summary>
+    private static HashSet<string> Union(HashSet<string> a, HashSet<string> b)
+    {
+        var result = new HashSet<string>(a);
+        result.UnionWith(b);
+        return result;
+    }
+
+    /// <summary>
+    /// The compile-time truth value of <paramref name="expr"/>, or null when it does not have one.
+    /// Recognizes exactly a boolean literal and <c>not</c> applied to one — C# §9.4.4's
+    /// definite-assignment rules for <c>?:</c>, <c>&amp;&amp;</c> and <c>||</c> key on the operand
+    /// being a <i>constant expression</i>, and those two spellings are what a user writes to mean
+    /// "this branch always runs".
+    ///
+    /// <para>Deliberately not broader. This is a REACHABILITY judgement: widening it to fold
+    /// arbitrary constant expressions would make the analysis credit walruses on the strength of a
+    /// fold, and a fold that disagrees with the emitter's would refuse a program that runs. The
+    /// conservative direction is to return null, which falls back to the general formula.</para>
+    /// </summary>
+    private static bool? TryGetConstantTruth(Expression expr)
+    {
+        return expr switch
+        {
+            BooleanLiteral literal => literal.Value,
+            UnaryOp { Operator: UnaryOperator.Not } negation
+                => TryGetConstantTruth(negation.Operand) is { } inner ? !inner : null,
+            _ => null,
+        };
+    }
+
     /// <summary>
     /// "Definitely assigned after <paramref name="expr"/>" is <c>T(expr) ∩ F(expr)</c> (C#
     /// §12.6.4.2): the names assigned on both outcomes are the ones assigned regardless of outcome.
@@ -442,14 +473,24 @@ internal static class DefiniteAssignmentAnalysis
         {
             var (ta, fa) = ComputeWalrusWhenTrueFalse(andExpr.Left);
             var (tb, fb) = ComputeWalrusWhenTrueFalse(andExpr.Right);
+
+            // C# §9.4.4's constant rules: when the first operand is a CONSTANT, one outcome is
+            // unreachable and the general formula's intersection against it under-credits.
+            if (TryGetConstantTruth(andExpr.Left) is { } andConst)
+            {
+                return andConst
+                    // `True and b`: b always runs and decides the result.
+                    ? (Union(ta, tb), Union(ta, fb))
+                    // `False and b`: b never runs and the result is always false, so the true
+                    // outcome is unreachable and carries the same state as the false one.
+                    : (new HashSet<string>(fa), new HashSet<string>(fa));
+            }
+
             // T(a and b) = T(a) ∪ T(b)
-            var t = new HashSet<string>(ta);
-            t.UnionWith(tb);
+            var t = Union(ta, tb);
             // F(a and b) = F(a) ∩ (T(a) ∪ F(b))
-            var taUnionFb = new HashSet<string>(ta);
-            taUnionFb.UnionWith(fb);
             var f = new HashSet<string>(fa);
-            f.IntersectWith(taUnionFb);
+            f.IntersectWith(Union(ta, fb));
             return (t, f);
         }
 
@@ -457,14 +498,22 @@ internal static class DefiniteAssignmentAnalysis
         {
             var (ta, fa) = ComputeWalrusWhenTrueFalse(orExpr.Left);
             var (tb, fb) = ComputeWalrusWhenTrueFalse(orExpr.Right);
+
+            if (TryGetConstantTruth(orExpr.Left) is { } orConst)
+            {
+                return orConst
+                    // `True or b`: b never runs and the result is always true, so the false
+                    // outcome is unreachable and carries the same state as the true one.
+                    ? (new HashSet<string>(ta), new HashSet<string>(ta))
+                    // `False or b`: b always runs and decides the result.
+                    : (Union(fa, tb), Union(fa, fb));
+            }
+
             // T(a or b) = T(a) ∩ (F(a) ∪ T(b))
-            var faUnionTb = new HashSet<string>(fa);
-            faUnionTb.UnionWith(tb);
             var t = new HashSet<string>(ta);
-            t.IntersectWith(faUnionTb);
+            t.IntersectWith(Union(fa, tb));
             // F(a or b) = F(a) ∪ F(b)
-            var f = new HashSet<string>(fa);
-            f.UnionWith(fb);
+            var f = Union(fa, fb);
             return (t, f);
         }
 
@@ -493,6 +542,17 @@ internal static class DefiniteAssignmentAnalysis
             var (tc, fc) = ComputeWalrusWhenTrueFalse(ternary.Test);
             var (tx, fx) = ComputeWalrusWhenTrueFalse(ternary.ThenValue);
             var (ty, fy) = ComputeWalrusWhenTrueFalse(ternary.ElseValue);
+
+            // C# §9.4.4's constant rule: when the condition is a constant, only one arm is
+            // reachable and the state after the `?:` is the state after THAT arm. Without this the
+            // general formula still intersects against the unreachable arm, so
+            // `(w := f()) if True else 0` — where python3 binds w unconditionally — was refused.
+            if (TryGetConstantTruth(ternary.Test) is { } condConst)
+            {
+                return condConst
+                    ? (Union(tc, tx), Union(tc, fx))
+                    : (Union(fc, ty), Union(fc, fy));
+            }
 
             static HashSet<string> Combine(
                 HashSet<string> condSide, HashSet<string> armSide,
