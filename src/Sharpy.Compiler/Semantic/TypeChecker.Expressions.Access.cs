@@ -1215,7 +1215,7 @@ internal partial class TypeChecker
                 // (measured on interop/clr_call_arity_refused and clr_static_call_arity_1451). The
                 // call's TYPE still comes from reflection, at that seam. In VALUE position there is
                 // no call to own, so the method reference is typed here (#1640).
-                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                if (IsCurrentCallCallee(memberAccess))
                     return null;
 
                 return m.Type;
@@ -1225,7 +1225,7 @@ internal partial class TypeChecker
                 // declined here and answered at the call seam (#1243).
                 // In VALUE position: the method group is referenced, not called — refused by name
                 // (#1678, R-Q). SPY0336 is the standing "overloaded callable in value position" code.
-                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                if (IsCurrentCallCallee(memberAccess))
                     return null;
 
                 AddError(
@@ -1241,14 +1241,14 @@ internal partial class TypeChecker
                 // CALL node: recorded here, consumed by the call seam, which also records the
                 // collapse the emitter reads (#1640).
                 _semanticInfo.SetResolvedClrMemberName(memberAccess, prop.ClrName);
-                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                if (IsCurrentCallCallee(memberAccess))
                     return null;
 
                 return ProjectClrChar(memberAccess, prop.Type);
 
             case Discovery.ClrMemberResolution.Field field:
                 _semanticInfo.SetResolvedClrMemberName(memberAccess, field.ClrName);
-                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                if (IsCurrentCallCallee(memberAccess))
                     return null;
 
                 return field.Type;
@@ -1258,7 +1258,7 @@ internal partial class TypeChecker
                 // interface) but the member itself exists. In CALL position the call seam
                 // resolves the method from the raw MethodInfo — Inconclusive only means the
                 // return type cannot be mapped, not that the member is absent (#1678).
-                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                if (IsCurrentCallCallee(memberAccess))
                     return null;
                 // In VALUE position, UnmappedClrType is the honest answer — assignable
                 // nowhere except object/re-interop.
@@ -1602,7 +1602,7 @@ internal partial class TypeChecker
         // — resolving a property type for c.keys() would emit SPY0201 because list[str] is not
         // callable (#555 hazard). The emitter's zero-arg-call-onto-property collapse handles
         // c.keys() from the codegen side; the TypeChecker must leave that path as Unknown.
-        if (!ReferenceEquals(memberAccess, _currentCallCallee))
+        if (!IsCurrentCallCallee(memberAccess))
         {
             var prop = genDef.Properties.FirstOrDefault(p => p.Name == member);
             if (prop != null)
