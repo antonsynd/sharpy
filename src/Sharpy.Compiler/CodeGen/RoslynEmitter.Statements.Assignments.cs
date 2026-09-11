@@ -74,7 +74,31 @@ internal partial class RoslynEmitter
             }
         }
 
-        var value = GenerateExpression(assign.Value);
+        // `??=` evaluates its right-hand side ONLY when the slot is absent, so it owns a hoist
+        // sink exactly as the `??` expression form does (GenerateNullCoalesceOp). Generated
+        // flat, a comprehension / spread / `?` / walrus in the right-hand side flushed its
+        // statements above the whole assignment and ran on every execution, including when the
+        // target already had a value (#1835, #1680). The captured statements are placed inside
+        // the absent-test guard by GenerateNullCoalesceAssignStatement, the ONE seam all three
+        // target routes (identifier, index, member) funnel through. Every other operator
+        // evaluates its value unconditionally and keeps the flat hoist.
+        //
+        // The sink is pushed only when one of those three routes will CONSUME it: a recorded
+        // in-place mutation takes an earlier branch that never reaches
+        // GenerateNullCoalesceAssignStatement, and captured statements nobody places are silently
+        // dropped statements (Rule 2). So the condition here and the three call sites below name
+        // exactly the same programs.
+        ExpressionSyntax value = null!;
+        var coalesceValueEvals = new List<StatementSyntax>();
+        if (assign.Operator == AssignmentOperator.NullCoalesceAssign
+            && _context.SemanticInfo?.GetAugmentedAssignMutation(assign) == null)
+        {
+            coalesceValueEvals = WithEvaluationSink(() => value = GenerateExpression(assign.Value));
+        }
+        else
+        {
+            value = GenerateExpression(assign.Value);
+        }
 
         // Handle simple identifier assignment
         if (assign.Target is Identifier name)
@@ -180,7 +204,7 @@ internal partial class RoslynEmitter
                 // `if (!x.IsSome) { x = value; }` which skips the store when present;
                 // for nullable, emit native C# `x ??= value`.
                 if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
-                    return GenerateNullCoalesceAssignStatement(assign, target, value);
+                    return GenerateNullCoalesceAssignStatement(assign, target, value, coalesceValueEvals);
 
                 // For the read side of augmented assignment, apply the narrowed-read accessor the
                 // TypeChecker recorded for the target identifier so x += 1 with a narrowed
@@ -286,7 +310,7 @@ internal partial class RoslynEmitter
 
             // ??= setter-skipping lowering (#1790, R-X)
             if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
-                return GenerateNullCoalesceAssignStatement(assign, elementAccess, value);
+                return GenerateNullCoalesceAssignStatement(assign, elementAccess, value, coalesceValueEvals);
 
             var augmentedValue = assign.Operator == AssignmentOperator.Assign
                 ? value
@@ -357,7 +381,7 @@ internal partial class RoslynEmitter
 
             // ??= setter-skipping lowering (#1790, R-X)
             if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
-                return GenerateNullCoalesceAssignStatement(assign, target, value);
+                return GenerateNullCoalesceAssignStatement(assign, target, value, coalesceValueEvals);
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
@@ -951,11 +975,19 @@ internal partial class RoslynEmitter
     /// <para>Called from each target path (identifier, index, member) AFTER hoisting and BEFORE
     /// the general <c>GenerateAugmentedValue</c> path, so it is one decision for all targets.
     /// Rule 2: the lowering kind is a recorded fact; the emitter decides nothing.</para>
+    ///
+    /// <para><b>The right-hand side is conditional (#1835).</b> <paramref name="valueEvals"/> holds
+    /// the statements the right-hand side hoisted under the evaluation sink
+    /// <c>GenerateAssignment</c> pushed for it, and they are placed INSIDE the absent-test guard —
+    /// the same manufactured-sink shape <c>GenerateNullCoalesceOp</c> uses for <c>??</c>. When the
+    /// right-hand side hoists nothing the emission is unchanged, so the native C# <c>??=</c> stays
+    /// the nullable lowering everywhere it was before.</para>
     /// </summary>
     private StatementSyntax GenerateNullCoalesceAssignStatement(
         Assignment assign,
         ExpressionSyntax target,
-        ExpressionSyntax value)
+        ExpressionSyntax value,
+        List<StatementSyntax> valueEvals)
     {
         if (_context.SemanticInfo?.GetOperatorLowering(assign)?.Kind
             == OperatorLoweringKind.OptionalCoalesceBothOptional)
@@ -964,7 +996,7 @@ internal partial class RoslynEmitter
             if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
                 value = WrapInOptionalSome(value, wrapOpt);
 
-            // if (!target.IsSome) { target = value; }
+            // if (!target.IsSome) { <rhs evals>; target = value; }
             return IfStatement(
                 PrefixUnaryExpression(
                     SyntaxKind.LogicalNotExpression,
@@ -972,11 +1004,19 @@ internal partial class RoslynEmitter
                         SyntaxKind.SimpleMemberAccessExpression,
                         target,
                         IdentifierName("IsSome"))),
-                ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        target,
-                        value)));
+                GuardedCoalesceAssignBody(valueEvals, target, value));
+        }
+
+        if (valueEvals.Count != 0)
+        {
+            // Manufactured sink for the nullable lowering: C#'s `??=` is an EXPRESSION, so it has
+            // nowhere to host the statements the right-hand side hoisted. The explicit null test
+            // is the same short-circuit (`target` is re-read, never re-evaluated: the index and
+            // member routes hoisted their receiver and index to temps before this call).
+            return IfStatement(
+                BinaryExpression(SyntaxKind.EqualsExpression, target,
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                GuardedCoalesceAssignBody(valueEvals, target, value));
         }
 
         // Nullable: native C# ??=, which skips the setter when not null.
@@ -985,6 +1025,26 @@ internal partial class RoslynEmitter
                 SyntaxKind.CoalesceAssignmentExpression,
                 target,
                 value));
+    }
+
+    /// <summary>
+    /// The guarded body of a <c>??=</c>: the right-hand side's hoisted statements followed by the
+    /// store. A single store stays a bare statement so the emission of a non-hoisting <c>??=</c> is
+    /// byte-identical to what it was before the sink (#1835).
+    /// </summary>
+    private static StatementSyntax GuardedCoalesceAssignBody(
+        List<StatementSyntax> valueEvals, ExpressionSyntax target, ExpressionSyntax value)
+    {
+        var store = ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, target, value));
+
+        if (valueEvals.Count == 0)
+            return store;
+
+        var body = new List<StatementSyntax>(valueEvals.Count + 1);
+        body.AddRange(valueEvals);
+        body.Add(store);
+        return Block(body);
     }
 
     /// <summary>

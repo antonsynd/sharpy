@@ -1,0 +1,6 @@
+optional present 5 3
+rhs ran
+optional absent 2 2
+nullable present 7 3
+rhs ran
+nullable absent 2 2

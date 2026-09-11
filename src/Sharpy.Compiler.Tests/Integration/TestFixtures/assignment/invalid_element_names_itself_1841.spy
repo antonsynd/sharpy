@@ -1,0 +1,13 @@
+# SPY0225 names the sub-expression that cannot be assigned to, not the group it sits in (#1841).
+# `[a, f()] = t` reported "Cannot assign to expression" for the whole tuple before the fix: the
+# description was read off the outermost node, and the parser canonicalizes `[a, b]` into a
+# TupleLiteral, which left the `ListLiteral => "list literal"` arm unreachable from a target
+# position. Positive control for the seam: starred_target_spellings_1841.spy, where the same
+# list-display target with a legal element binds and runs.
+def f() -> int:
+    return 1
+
+def main() -> None:
+    t: tuple[int, int] = (1, 2)
+    [a, f()] = t
+    print(a)

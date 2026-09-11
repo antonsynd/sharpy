@@ -1,0 +1,12 @@
+# `?` inside a lambda body is refused BY NAME (SPY0462, #1739 cell b5_20, Design Decision 8). A
+# lambda body is its own function, so the `?` has no enclosing Result-returning function to return
+# from; before the named refusal the generated C# was CS0029 behind SPY0908, which surfaces only
+# under `run` and never named the rule it broke.
+# Positive control: question_mark_result_basic.spy — the same `?` inside a real function compiles
+# and runs.
+def ok() -> int !str:
+    return Ok(6)
+
+def main() -> None:
+    g = lambda: ok()? + 1
+    print(g())

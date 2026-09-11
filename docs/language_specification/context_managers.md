@@ -213,6 +213,77 @@ def main() -> None:
 after
 ```
 
+### Definite assignment across a suppression-capable `with`
+
+The suppression edge cuts both ways. Because `__exit__` may return `True` and swallow an exception
+raised **anywhere** in the body, the statement after the `with` is reachable with the body only
+partly executed. Definite assignment is therefore **conservative** at that edge: a bare declaration
+assigned only inside a suppression-capable body is not definitely assigned after the `with`.
+
+```python
+class Suppressor:
+    def __enter__(self) -> int:
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return False
+
+def main() -> None:
+    n: int
+    with Suppressor():
+        n = 5
+    print(n)   # error SPY0600: variable 'n' is used before being assigned
+```
+
+A manager that **cannot** suppress has no such edge, so the same program compiles and runs:
+
+```python
+class Simple:
+    def __enter__(self) -> int:
+        return 1
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    n: int
+    with Simple():
+        n = 5
+    print(n)
+```
+
+```
+5
+```
+
+This is the same conservatism C# applies (CS0165: "use of unassigned local variable") and it can
+refuse a program that would have run: the example above declares `__exit__` returning `False`, so
+nothing is ever suppressed, and CPython prints `5`. The rule does not read the *value* `__exit__`
+returns — only its **shape** — because the value is a run-time decision. When the manager really
+does suppress, the conservative answer is the correct one and CPython agrees:
+
+```python
+class Suppressor:
+    def __enter__(self): return 1
+    def __exit__(self, t, v, tb): return True
+
+try:
+    with Suppressor():
+        raise ValueError("x")
+        n = 5
+    print(n)
+except NameError as e:
+    print("NameError:", e)
+```
+
+```
+NameError: name 'n' is not defined
+```
+
+Assign the declaration a value before the `with`, or read it inside the body. Narrowing the rule so
+that only statements after a `raise`-capable statement are treated as skippable is tracked by
+[#1839](https://github.com/antonsynd/sharpy/issues/1839); until it is decided, the refusal stands.
+
 ### `yield` inside a suppression-capable `with` (SPY0703)
 
 A `yield` inside a `with` whose `__exit__` can suppress is refused. The C# iterator state machine
@@ -229,7 +300,7 @@ class Suppressor:
 def gen() -> int:
     with Suppressor() as s:
         yield 1   # error SPY0703: 'yield' cannot be used inside a 'with' block
-                   # whose '__exit__' can suppress exceptions
+                  # whose '__exit__' is suppression-capable
 ```
 
 A simple (1-parameter) `__exit__` poses no issue — the `with` lowers to `try/finally`,

@@ -274,7 +274,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/TypeChecker.Statements.cs::ReassignmentFinder.TargetBindsName"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Semantic/TypeChecker.Statements.Patterns.cs::TypeChecker.CollectPatternBindingNames"] = "walker-default-contract",
         ["Semantic/TypeChecker.Utilities.cs::TypeChecker.GetAssignmentTargetDescription"] = "documented-by-design:Semantic/TypeChecker.Utilities.cs:GetAssignmentTargetDescription",
-        ["Semantic/TypeChecker.Utilities.cs::TypeChecker.IsValidAssignmentTarget"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
+        ["Semantic/TypeChecker.Utilities.cs::TypeChecker.FirstInvalidAssignmentTarget"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         // DecoratorValidator.ValidateLruCacheMaxSizeValue: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/Validation/EventValidator.cs::EventValidator.EnumerateAllEvents"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/EventValidator.cs::EventValidator.ValidateInterfaceEvents"] = "guarded-by:MemberKindValidatorTotalityTests",

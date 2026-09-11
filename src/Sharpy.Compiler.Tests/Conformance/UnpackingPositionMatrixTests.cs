@@ -28,9 +28,17 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
 {
     public UnpackingPositionMatrixTests(ITestOutputHelper output) : base(output) { }
 
-    private enum Expect { Runs, SPY0239, SPY0225 }
+    private enum Expect { Runs, SPY0239, SPY0225, KnownRed }
 
-    private sealed record Cell(string Label, string Source, Expect Expected, string? ExpectedOutput = null);
+    /// <param name="Expected">
+    /// <see cref="Expect.KnownRed"/> is a cell the contract says must RUN and that does not yet:
+    /// it asserts the cell is still refused and that <paramref name="Reason"/> names an OPEN issue,
+    /// so the entry fails the moment the defect is fixed and has to be deleted (drain on fix). It
+    /// never pins a refusal as correct — <see cref="Expect.SPY0239"/> / <see cref="Expect.SPY0225"/>
+    /// are for cells whose refusal IS the contract.
+    /// </param>
+    private sealed record Cell(
+        string Label, string Source, Expect Expected, string? ExpectedOutput = null, string? Reason = null);
 
     [Fact]
     [Trait("Category", "Conformance")]
@@ -80,6 +88,17 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
                     if (!result.RawDiagnostics.Any(d => d.Code == DiagnosticCodes.Semantic.InvalidAssignmentTarget))
                         failures.Add($"{cell.Label}: expected SPY0225 but got: {string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}");
                     break;
+
+                case Expect.KnownRed:
+                    // Drain on fix: the contract says this cell runs. When it starts running the
+                    // entry is stale and must be deleted, so a PASS here is the failure.
+                    if (result.Success)
+                    {
+                        failures.Add(
+                            $"{cell.Label}: parked as KnownRed ({cell.Reason}) but now compiles and runs — "
+                            + "delete the entry and give the cell its real expectation (drain on fix)");
+                    }
+                    break;
             }
         }
 
@@ -94,14 +113,33 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             string.Join("\n", failures.Select(f => "  " + f)));
     }
 
-    private static IEnumerable<(string label, string reason)> NotApplicableCells()
+    /// <summary>
+    /// Every parked cell names an issue, so none can be parked on a private opinion and every one
+    /// has a place to be deleted from (§8, drain on fix).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void KnownRedCells_CiteAnIssue()
     {
-        yield return ("non-starred-list-with-as",
-            "non-starred target over a list[T] source stays SPY0239 in every position — " +
-            "widening to a runtime-checked unpack is a spec decision no ruling made");
-        yield return ("augmented-list-display",
-            "[a, b] += [1, 2] stays refused (python SyntaxError for both list and tuple)");
+        var parked = GenerateCells().Where(c => c.Expected == Expect.KnownRed).ToList();
+        Assert.NotEmpty(parked);
+        foreach (var cell in parked)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(cell.Reason),
+                $"Known-red cell '{cell.Label}' has no reason.");
+            Assert.Contains("#", cell.Reason!, StringComparison.Ordinal);
+        }
     }
+
+    /// <summary>
+    /// Cells that cannot be expressed at all. Empty: the two entries this roster used to carry
+    /// were not inexpressible, they were unwritten — a non-starred target over a <c>list[T]</c>
+    /// source in the <c>with-as</c> position, and an augmented list-display target. Both are now
+    /// cells (<c>with-as.list.non-starred</c>, <c>augmented.list-display</c>), which is what an
+    /// N/A entry that describes a real, measurable cell always means (§8, drain on fix).
+    /// </summary>
+    private static IEnumerable<(string label, string reason)> NotApplicableCells()
+        => Enumerable.Empty<(string, string)>();
 
     private static IEnumerable<Cell> GenerateCells()
     {
@@ -142,6 +180,42 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
         yield return new Cell("assign.list.non-starred",
             "def main() -> None:\n    a, b = [1, 2]",
             Expect.SPY0239);
+
+        // ── Assignment position: the starred element in every SPELLING of the group (#1841) ──
+        // The `for`/`with-as` positions reach the store-target element parser, which builds a
+        // StarExpression; an assignment's left side is parsed by the EXPRESSION parser, which
+        // builds a SpreadElement. Both canonicalize to StarExpression at the one store-target seam,
+        // so the four spellings below bind exactly as `a, *rest = t` does.
+
+        yield return new Cell("assign.tuple.starred-parenthesized",
+            "def main() -> None:\n    (a, *rest) = (1, 2, 3)\n    print(a, rest)",
+            Expect.Runs, "1 [2, 3]");
+
+        yield return new Cell("assign.list.starred-parenthesized",
+            "def main() -> None:\n    (a, *rest) = [1, 2, 3]\n    print(a, rest)",
+            Expect.Runs, "1 [2, 3]");
+
+        yield return new Cell("assign.tuple.starred-list-display",
+            "def main() -> None:\n    [a, *rest] = (1, 2, 3)\n    print(a, rest)",
+            Expect.Runs, "1 [2, 3]");
+
+        yield return new Cell("assign.list.starred-list-display",
+            "def main() -> None:\n    [a, *rest] = [1, 2, 3]\n    print(a, rest)",
+            Expect.Runs, "1 [2, 3]");
+
+        yield return new Cell("assign.tuple.starred-parenthesized-first",
+            "def main() -> None:\n    (*rest, c) = (1, 2, 3)\n    print(rest, c)",
+            Expect.Runs, "[1, 2] 3");
+
+        // The sole starred element of a group stays refused: `(*a)` (python SyntaxError) and
+        // `(*a,)` / `[*a]` (legal python) all parse to the same one-element tuple (#1845).
+        yield return new Cell("assign.sole-star-parenthesized",
+            "def main() -> None:\n    (*a,) = (1, 2)\n    print(a)",
+            Expect.SPY0225);
+
+        yield return new Cell("assign.sole-star-list-display",
+            "def main() -> None:\n    [*a] = (1, 2)\n    print(a)",
+            Expect.SPY0225);
 
         // ── For-statement position ──
 
@@ -268,10 +342,51 @@ def main() -> None:
             "def main() -> None:\n    for a, (b, c) in [(1, (2, 3))]:\n        print(a, b, c)",
             Expect.Runs, "1 2 3");
 
+        // The star absorbs at depth 0 only: the nested arm compares arities with no star
+        // awareness, so these four cells are refused where python3 binds (#1846).
+        const string Nested1846 =
+            "#1846 — the arity rule ignores a star at nested depth (python3 binds all four)";
+
+        yield return new Cell("assign.nested-tuple.starred-inner",
+            "def main() -> None:\n    (a, (b, *c)) = (1, (2, 3, 4))\n    print(a, b, c)",
+            Expect.KnownRed, Reason: Nested1846);
+
+        yield return new Cell("assign.nested-tuple.starred-outer-element",
+            "def main() -> None:\n    (a, *rest), b = ((1, 2, 3), 4)\n    print(a, rest, b)",
+            Expect.KnownRed, Reason: Nested1846);
+
+        yield return new Cell("for.nested-tuple.starred-inner",
+            "def main() -> None:\n    for a, (b, *c) in [(1, (2, 3, 4))]:\n        print(a, b, c)",
+            Expect.KnownRed, Reason: Nested1846);
+
+        yield return new Cell("comp.nested-tuple.starred-inner",
+            "def main() -> None:\n    r = [a for a, (b, *c) in [(1, (2, 3, 4))]]\n    print(r)",
+            Expect.KnownRed, Reason: Nested1846);
+
+        // Drained from NotApplicableCells: a non-starred target over a list[T] source has no
+        // static arity and stays SPY0239 in the with-as position too — one refusal in all four.
+        yield return new Cell("with-as.list.non-starred",
+            @"class CM:
+    def __enter__(self) -> list[int]:
+        return [1, 2]
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    with CM() as (a, b):
+        print(a, b)",
+            Expect.SPY0239);
+
         // ── Augmented assignment stays refused ──
 
         yield return new Cell("augmented.tuple-display",
             "def main() -> None:\n    a: int = 1\n    b: int = 2\n    (a, b) += (3, 4)",
+            Expect.SPY0225);
+
+        // Drained from NotApplicableCells: the list-display spelling of the same refusal, so the
+        // parser's display normalization cannot accidentally admit one and refuse the other.
+        yield return new Cell("augmented.list-display",
+            "def main() -> None:\n    a: int = 1\n    b: int = 2\n    [a, b] += [3, 4]",
             Expect.SPY0225);
     }
 }

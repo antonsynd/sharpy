@@ -1,0 +1,21 @@
+# Positive control for as_member_no_unused_1710.spy's empty `.warning`: the same program with one
+# extra local that nothing reads. SPY0451 DOES fire here, so the absence assertion in the twin is
+# a real observation and not a probe that never reaches the validator (#1710).
+class Holder:
+    x: int
+
+    def __init__(self):
+        self.x = 0
+
+class CM:
+    def __enter__(self) -> int:
+        return 7
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    p: Holder = Holder()
+    q: Holder = Holder()
+    with CM() as p.x:
+        print("body")

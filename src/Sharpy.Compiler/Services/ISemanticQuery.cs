@@ -73,6 +73,8 @@ public interface ISemanticQuery
     /// Gets the variable symbol associated with a with-statement item's <c>as</c> variable.
     /// Returns null if no symbol was recorded (e.g., no <c>as</c> clause).
     /// </summary>
+    // WithItem justified (#1710): a MAP accessor keyed BY the item. It hands back the symbol the
+    // checker recorded for the `as` target and walks no half of the item itself.
     VariableSymbol? GetWithItemSymbol(WithItem item);
 
     /// <summary>

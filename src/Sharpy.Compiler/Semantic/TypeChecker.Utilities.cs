@@ -2135,16 +2135,34 @@ internal partial class TypeChecker
     }
 
     private bool IsValidAssignmentTarget(Expression target)
+        => FirstInvalidAssignmentTarget(target) == null;
+
+    /// <summary>
+    /// The innermost sub-expression of <paramref name="target"/> that cannot be assigned to, or
+    /// <c>null</c> when the whole target is valid. One switch, so a shape cannot be valid to
+    /// <see cref="IsValidAssignmentTarget"/> and invalid here; SPY0225 names what this returns —
+    /// the offending element, not the group it sits in (#1841).
+    /// </summary>
+    private Expression? FirstInvalidAssignmentTarget(Expression target)
     {
-        return target switch
+        switch (target)
         {
-            Identifier => true,
-            MemberAccess => true,
-            IndexAccess => true,
-            TupleLiteral tuple => tuple.Elements.All(IsValidAssignmentTarget),
-            StarExpression star => IsValidAssignmentTarget(star.Operand),
-            _ => false
-        };
+            case Identifier:
+            case MemberAccess:
+            case IndexAccess:
+                return null;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                {
+                    if (FirstInvalidAssignmentTarget(element) is { } bad)
+                        return bad;
+                }
+                return null;
+            case StarExpression star:
+                return FirstInvalidAssignmentTarget(star.Operand);
+            default:
+                return target;
+        }
     }
 
     /// <summary>
@@ -2170,6 +2188,14 @@ internal partial class TypeChecker
             UnaryOp => "expression result",
             ConditionalExpression => "conditional expression result",
             ComparisonChain => "comparison result",
+            // A store target's display kind survives canonicalization as IsListDisplay: the parser
+            // turns `[a, b]` into a TupleLiteral, so the ListLiteral arm above is unreachable from
+            // a target position and this is where a list display gets named (#1841, #1733).
+            TupleLiteral { IsListDisplay: true } => "list literal",
+            TupleLiteral => "tuple literal",
+            // The sole starred element of a group: `(*a) = xs` / `(*a), b = xs` are Python
+            // SyntaxErrors and the legal `(*a,) = xs` / `[*a] = xs` parse identically (#1845).
+            SpreadElement => "starred expression",
             _ => "expression"
         };
     }

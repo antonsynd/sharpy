@@ -282,6 +282,36 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
+    /// <see cref="GenerateExpressionsInOrder"/> for an operand list with ABSENT slots — a slice's
+    /// omitted bound (<c>ys[a():b()]</c> has three slots, two of them present). The present operands
+    /// go through the shared ordering helper in source order; an absent slot comes back
+    /// <c>null</c> for the caller to fill with its own placeholder (<c>null</c>, <c>SliceSpec.All</c>).
+    ///
+    /// <para>Without this the slice arm generated its bounds independently, so a hoist producer in a
+    /// LATER bound flushed its statements above the whole subscript and ran before an earlier bound's
+    /// side effect: <c>ys[lo(xs) : len([v for v in xs])]</c> printed <c>[10, 20, 30, 40]</c> where
+    /// python3 prints <c>[10, 20, 30]</c> — <c>lo</c> pops after the length was already taken
+    /// (#1849, measured).</para>
+    /// </summary>
+    private ExpressionSyntax?[] GenerateOptionalExpressionsInOrder(params Expression?[] operands)
+    {
+        var present = new List<Expression>(operands.Length);
+        foreach (var operand in operands)
+        {
+            if (operand != null)
+                present.Add(operand);
+        }
+
+        var generated = GenerateExpressionsInOrder(present);
+
+        var results = new ExpressionSyntax?[operands.Length];
+        var next = 0;
+        for (int i = 0; i < operands.Length; i++)
+            results[i] = operands[i] == null ? null : generated[next++];
+        return results;
+    }
+
+    /// <summary>
     /// Pool of scratch statement buffers reused by <see cref="GenerateSuiteBlock"/> when
     /// building a <c>BlockSyntax</c>. Instance-owned: the emitter is single-threaded per
     /// compilation and the pooled list is always copied into the block before it is returned.

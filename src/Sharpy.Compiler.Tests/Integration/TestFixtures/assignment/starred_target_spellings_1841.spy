@@ -1,0 +1,19 @@
+# A store target's starred element is ONE node in every spelling (#1841). The `for` / `with-as`
+# positions reach the store-target element parser (StarExpression); an assignment's left side is
+# parsed by the expression parser (SpreadElement). Both canonicalize at the one store-target seam
+# (AstHelper.CanonicalizeStoreTarget), so every spelling below binds like `a, *rest = t`.
+# Before the fix each parenthesized / list-display spelling was `SPY0225: Cannot assign to
+# expression`. python3 3.12-verified output.
+def main() -> None:
+    (a, *rest) = (1, 2, 3)
+    print(a, rest)
+    [b, *rest2] = (4, 5, 6)
+    print(b, rest2)
+    (c, *rest3) = [7, 8, 9]
+    print(c, rest3)
+    [d, *rest4] = [10, 11, 12]
+    print(d, rest4)
+    (*rest5, e) = (13, 14, 15)
+    print(rest5, e)
+    f, *rest6 = (16, 17, 18)
+    print(f, rest6)
