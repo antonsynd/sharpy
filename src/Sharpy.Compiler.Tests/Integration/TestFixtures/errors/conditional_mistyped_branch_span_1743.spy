@@ -1,0 +1,16 @@
+# Arm 1's span claim (#1743): under a slot, the branch that fails is the branch that is REPORTED.
+# `"x"` is at column 33, not the declaration's column 5, and there is exactly ONE diagnostic — the
+# enclosing store accepts the slot the conditional now reads as. Before the arm this was CS0029
+# behind SPY0908 with no semantic diagnostic at all.
+class Animal:
+    pass
+
+
+class Dog(Animal):
+    pass
+
+
+def main() -> None:
+    c = True
+    a: Animal = Dog() if c else "x"
+    print(a)

@@ -1,0 +1,46 @@
+# R-W for conditional expressions: arm 1 (the slot decides, every branch admitted at its own span),
+# arm 2 (one branch's type accepts the other), and the constant arm the enclosing store records.
+# Methods are declared on both classes so the printed value names WHICH type was decided.
+class Animal:
+    @virtual
+    def name(self) -> str:
+        return "animal"
+
+    def __str__(self) -> str:
+        return self.name()
+
+
+class Dog(Animal):
+    @override
+    def name(self) -> str:
+        return "dog"
+
+
+class Cat(Animal):
+    @override
+    def name(self) -> str:
+        return "cat"
+
+
+def show(a: Animal) -> None:
+    print(a.name())
+
+
+def pick(c: bool) -> Animal:
+    return Dog() if c else Cat()
+
+
+def main() -> None:
+    c = True
+    a: Animal = Dog() if c else Cat()
+    print(a.name())
+    show(Dog() if c else Cat())
+    print(pick(True).name())
+    b = Dog() if c else Animal()
+    print(b.name())
+    x = 1 if c else 2.5
+    print(x)
+    n: int8 = 7 if c else 8
+    print(n)
+    o: object = None if c else 1
+    print(o)

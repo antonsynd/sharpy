@@ -1,0 +1,22 @@
+# The positive control for the refusal in errors/tuple_unpack_none_element_1812: when the target
+# HAS a declared slot, the element is a store the seam decides, and the program runs. The nested and
+# starred forms take the same slot through the same seam.
+def main() -> None:
+    a: str | None = "s"
+    b: int = 0
+    a, b = None, 1
+    print(a)
+    print(b)
+
+    c: str | None = "s"
+    d: int = 0
+    e: int = 0
+    (c, d), e = (None, 1), 2
+    print(c)
+    print(d)
+    print(e)
+
+    f: str | None = "s"
+    f, *rest = None, 1, 2
+    print(f)
+    print(len(rest))

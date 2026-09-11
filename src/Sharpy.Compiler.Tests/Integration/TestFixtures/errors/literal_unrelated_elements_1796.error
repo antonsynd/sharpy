@@ -1,0 +1,2 @@
+no best common type ('int32', 'str') @5:10
+'xs: list[object] = ...'

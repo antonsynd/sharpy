@@ -1,0 +1,53 @@
+# R-W for literal element types: arm 1 (the element slot decides), arm 2 (one element's type accepts
+# the others), tuples PER INDEX, and `None` admitted under a slot. Each line prints the value, so a
+# join that compiles with the wrong element type fails here rather than passing silently.
+class Animal:
+    @virtual
+    def name(self) -> str:
+        return "animal"
+
+    def __str__(self) -> str:
+        return self.name()
+
+
+class Dog(Animal):
+    @override
+    def name(self) -> str:
+        return "dog"
+
+
+class Cat(Animal):
+    @override
+    def name(self) -> str:
+        return "cat"
+
+
+def main() -> None:
+    slot: list[Animal] = [Dog(), Cat()]
+    print(slot[0].name())
+    print(slot[1].name())
+
+    arm2 = [Dog(), Animal()]
+    print(arm2[0].name())
+
+    widened = [1, 2.5]
+    print(widened[0] + 0.5)
+
+    wide_int = [1, 10000000000]
+    print(wide_int[1] + 1)
+
+    t = (1, "a")
+    print(t[0])
+    print(t[1])
+
+    nullable: list[int | None] = [None, 1]
+    print(nullable[0])
+    print(nullable[1])
+
+    tslot: tuple[int | None, int] = (None, 1)
+    print(tslot[0])
+    print(tslot[1])
+
+    comp: list[str | None] = [None for i in range(2)]
+    print(comp[0])
+    print(len(comp))

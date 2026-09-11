@@ -1,0 +1,6 @@
+# Arm 3 for a list display: `int` does not accept `str` and `str` does not accept `int`, so there is
+# no element type and the compiler refuses by name rather than inventing `object`. Before R-W this
+# ran as `list[object]` — a type the user never wrote and cannot use (`xs[0] + 1` was SPY0222).
+def main() -> None:
+    xs = [1, "a"]
+    print(len(xs))

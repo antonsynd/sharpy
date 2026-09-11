@@ -1,0 +1,2 @@
+Constant 'K' is declared on interface 'I' @16:11
+read it through the interface: 'I.K'

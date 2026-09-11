@@ -43,10 +43,10 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private const int PositionCount = 21;
     private const int ShapeCount = 24;
-    private const int AcceptedCellCount = 248;
-    private const int RefusedCellCount = 202;
+    private const int AcceptedCellCount = 271;
+    private const int RefusedCellCount = 203;
     private const int KnownRedCellCount = 0;
-    private const int NotApplicableCellCount = 54;
+    private const int NotApplicableCellCount = 30;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
 
@@ -248,23 +248,24 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             8, DiagnosticCodes.Semantic.InvalidBinaryOperation,
             (v, t) => $"Type 'D' does not support operator '==' with operand of type '{v}'; '__eq__' takes '{t}'"),
 
-        // Fixed-slot positions: the store slot is fixed (not the shape's), so the shape axis creates
-        // no meaningful variation — all cells are N/A. Tested in dedicated integration tests.
+        // An f-string hole's slot is `object` (#1743, R-W Design Decision 3): C# target-types each
+        // hole through FormattableString, so the SHAPE's slot never applies and every value the
+        // hole can hold is admitted. The cells execute — the position's whole point is that a
+        // value refused elsewhere is legal here.
         new("FStringHole",
-            s => $"def main():\n    print(f\"{{str({s.Value})}}\")\n",
+            s => $"def main():\n    print(f\"{{{s.Value}}}\")\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
+            (v, t) => $"Cannot use type '{v}' in f-string interpolation hole expecting '{t}'"),
 
+        // A truthiness test has no slot at all (the seam pushes `Unknown`), so there is nothing
+        // for the shape axis to vary: the question at this position is truth-testability, not
+        // store conversion. Every cell is N/A, each written down in NotApplicableCells with that
+        // reason so adding a store position costs 24 explicit rows rather than one set entry.
         new("TruthinessTest",
             s => $"def main():\n    if {s.Value}:\n        print(True)\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
+            (v, t) => $"Cannot test truthiness of type '{v}'"),
     };
-
-    // ── Fixed-slot positions: slot is fixed (object / Unknown), not the shape's ──────────────
-    // All cells N/A: the shape axis creates no variation. Tested in f-string / truthiness
-    // integration tests (#1743).
-    private static readonly HashSet<string> FixedSlotPositions = new() { "FStringHole", "TruthinessTest" };
 
     // ── Cells whose refusal is decided BEFORE any store ───────────────────────────────────────
     // `+=` on an Optional or nullable slot has no operator to resolve, so the value never reaches
@@ -313,6 +314,51 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["CoalesceAssign×NoneCallIntoOptional"] = "1\n",
     };
 
+    // ── The f-string hole's own rows ─────────────────────────────────────────────────────────
+    // The hole's slot is `object`, so the shape's slot never applies: the value is admitted and
+    // the hole prints its Python str(). These outputs were MEASURED with `sharpyc run`; each one
+    // whose value is a NULL prints the empty string where python3 prints `None` — the open
+    // rendering gap #1814. Those four expectations are the measured output ON PURPOSE, so the
+    // cells go red BY DESIGN when #1814 is fixed and the expectation becomes "None\n"; they are
+    // marked below. Every other row matches python3 exactly.
+    private static readonly Dictionary<string, string> FStringHoleOutputs = new()
+    {
+        ["FStringHole×InRangeIntConstant"] = "7\n",
+        ["FStringHole×OutOfRangeIntConstant"] = "300\n",
+        ["FStringHole×ConstReference"] = "7\n",
+        ["FStringHole×FoldedConstant"] = "64\n",
+        ["FStringHole×NegativeConstant"] = "-1\n",
+        ["FStringHole×NegativeOutOfRangeConstant"] = "-129\n",
+        ["FStringHole×FloatLiteralIntoFloat32"] = "0.5\n",
+        ["FStringHole×FloatLiteralIntoDecimal"] = "1.5\n",
+        ["FStringHole×OutOfRangeFloatLiteral"] = "1e+40\n",
+        ["FStringHole×StringLiteralIntoLiteralString"] = "a\n",
+        ["FStringHole×ParenthesizedLiteralIntoLiteralString"] = "a\n",
+        ["FStringHole×ConcatLiteralIntoLiteralString"] = "ab\n",
+        ["FStringHole×StrValueIntoLiteralString"] = "a\n",
+        ["FStringHole×BareValueIntoOptional"] = "42\n",
+        ["FStringHole×BareNoneIntoOptional"] = "\n",  // #1814: python3 prints `None`
+        ["FStringHole×SomeIntoOptional"] = "Some(42)\n",
+        ["FStringHole×NoneIntoNullable"] = "\n",  // #1814: python3 prints `None`
+        ["FStringHole×NoneIntoNonNullable"] = "\n",  // #1814: python3 prints `None`
+        ["FStringHole×NullableIntoOptional"] = "\n",  // #1814: python3 prints `None`
+        ["FStringHole×OptionalIntoNullable"] = "Some(1)\n",
+        ["FStringHole×OptionalIntoNonOptional"] = "Some(1)\n",
+        ["FStringHole×SomeConstantIntoNarrowOptional"] = "Some(7)\n",
+        ["FStringHole×ConstantIntoNarrowNullable"] = "7\n",
+    };
+
+    // `None()` constructs a Sharpy Optional and an `object` hole has no Optional to construct —
+    // SPY0244 by name, and the message NAMES the hole's slot, which is what makes this cell a
+    // measurement of the slot rather than of the expression. It is the only refused cell here:
+    // `Some(42)` infers `int32?` from its argument under a non-Optional expectation (#1784) and
+    // renders, and a bare `None` is a legal store into `object` whose RENDERING is the open gap
+    // (#1814).
+    private static readonly HashSet<string> FStringHoleRefusalCells = new()
+    {
+        "FStringHole×NoneCallIntoOptional",
+    };
+
     // ── N/A cells ────────────────────────────────────────────────────────────────────────────
     // These cells are refused by DefaultParameterValidator (SPY0401) BEFORE the value reaches the
     // store seam — the store conversion is never consulted, so the matrix declines to measure it.
@@ -326,6 +372,31 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
         ["OperatorOperand×BareNoneIntoOptional"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
         ["OperatorOperand×NoneIntoNonNullable"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
+
+        ["TruthinessTest×InRangeIntConstant"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×OutOfRangeIntConstant"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×ConstReference"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×FoldedConstant"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NegativeConstant"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NegativeOutOfRangeConstant"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×FloatLiteralIntoFloat32"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×FloatLiteralIntoDecimal"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×OutOfRangeFloatLiteral"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×StringLiteralIntoLiteralString"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×ParenthesizedLiteralIntoLiteralString"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×ConcatLiteralIntoLiteralString"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×StrValueIntoLiteralString"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×BareValueIntoOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×BareNoneIntoOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×SomeIntoOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NoneCallIntoOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NoneIntoNullable"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NoneIntoNonNullable"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×NullableIntoOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×OptionalIntoNullable"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×OptionalIntoNonOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×SomeConstantIntoNarrowOptional"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
+        ["TruthinessTest×ConstantIntoNarrowNullable"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
     };
 
     // ── Known-red cells ──────────────────────────────────────────────────────────────────────
@@ -371,8 +442,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private static Verdict Classify(Position p, Shape s)
     {
-        if (FixedSlotPositions.Contains(p.Name))
-            return Verdict.NotApplicable;
         var key = Key(p, s);
         if (NotApplicableCells.ContainsKey(key))
             return Verdict.NotApplicable;
@@ -380,15 +449,18 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             return Verdict.KnownRed;
         if (OperatorRefusalCells.Contains(key)
             || CoalesceLeftRefusalCells.Contains(key)
-            || CoalesceNoneRefusalCells.Contains(key))
+            || CoalesceNoneRefusalCells.Contains(key)
+            || FStringHoleRefusalCells.Contains(key))
             return Verdict.Refused;
-        if (CoalesceAcceptedOverrides.ContainsKey(key))
+        if (CoalesceAcceptedOverrides.ContainsKey(key) || FStringHoleOutputs.ContainsKey(key))
             return Verdict.Accepted;
         return s.AcceptedOutput != null ? Verdict.Accepted : Verdict.Refused;
     }
 
     private static string AcceptedOutputOf(Position p, Shape s)
-        => CoalesceAcceptedOverrides.TryGetValue(Key(p, s), out var overridden) ? overridden : s.AcceptedOutput!;
+        => CoalesceAcceptedOverrides.TryGetValue(Key(p, s), out var overridden) ? overridden
+            : FStringHoleOutputs.TryGetValue(Key(p, s), out var hole) ? hole
+            : s.AcceptedOutput!;
 
     /// <summary>The code and message a refused cell must carry — read off the two axis tables.</summary>
     private static (string Code, string Head, string Tail) RefusalOf(Position p, Shape s)
@@ -407,6 +479,11 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         if (CoalesceNoneRefusalCells.Contains(Key(p, s)))
             return (DiagnosticCodes.Semantic.InvalidBinaryOperation,
                 $"Type '{s.SlotType}' does not support operator '??=' with operand of type 'None'",
+                "");
+
+        if (FStringHoleRefusalCells.Contains(Key(p, s)))
+            return (DiagnosticCodes.Semantic.InvalidNoneConstructor,
+                "'None()' can only construct Optional types, not 'object'",
                 "");
 
         if (s.RefusedCode != null)
@@ -880,20 +957,23 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         foreach (var key in CoalesceLeftRefusalCells.Concat(CoalesceNoneRefusalCells).Concat(CoalesceAcceptedOverrides.Keys))
             product.Should().Contain(key, $"??= row '{key}' names no cell");
 
+        foreach (var key in FStringHoleRefusalCells.Concat(FStringHoleOutputs.Keys))
+            product.Should().Contain(key, $"f-string hole row '{key}' names no cell");
+
         foreach (var key in NotApplicableCells.Keys)
             product.Should().Contain(key, $"N/A row '{key}' names no cell");
 
         var accepted = AcceptedCells.Count();
         var refused = RefusedCells.Count();
         var red = KnownRedCellData.Count();
-        var fixedSlotNA = FixedSlotPositions.Count * ShapeCount;
-        var na = NotApplicableCells.Count + fixedSlotNA;
+        var na = NotApplicableCells.Count;
 
         accepted.Should().Be(AcceptedCellCount, "the accepted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
         red.Should().Be(KnownRedCellCount, "known-red cells are drained (#1762 closed)");
         na.Should().Be(NotApplicableCellCount,
-            "N/A cells are refused before the store seam or have a fixed slot that does not vary with the shape axis");
+            "every N/A cell is written down BY NAME with its reason — a position whose slot the "
+            + "shape axis cannot vary costs 24 explicit rows, not one set entry");
 
         (accepted + refused + red + na).Should().Be(PositionCount * ShapeCount,
             $"live ({accepted + refused}) + known-red ({red}) + N/A ({na}) must be the whole "

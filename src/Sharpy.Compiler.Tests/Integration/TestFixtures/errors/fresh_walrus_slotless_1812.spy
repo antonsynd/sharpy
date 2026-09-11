@@ -1,0 +1,10 @@
+# The slot-less half of R-AE: a fresh walrus with no store to take a type from is `x = None`'s
+# refusal, and the steer names BOTH spellings of absence. It cannot say `q: T? = None`, which R-G
+# (#1720) refuses — a Sharpy optional is built with None().
+#
+# `print((q := None))` is NOT this cell: `print`'s parameter is an `object` slot, so the walrus is
+# the direct operand of a store and takes it (R-AE). That program prints `None` twice, exactly as
+# python3 does; it is the last two lines of basics/fresh_walrus_under_slot_1812.
+def main() -> None:
+    x = (q := None)
+    print(x)

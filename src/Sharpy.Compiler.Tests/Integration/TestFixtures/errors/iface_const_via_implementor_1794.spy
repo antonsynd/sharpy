@@ -1,0 +1,16 @@
+# C# binds `App.K` on `App` alone: an interface CONSTANT is not inherited into an implementing
+# type's static surface. Every member lookup missed, the reference left the checker untyped, and it
+# came back as CS0117 behind SPY0908 — a compiler-bug report for a program that names the wrong
+# type. Refused by name, steering to the declaring interface (#1794).
+#
+# The positive control is interfaces/interface_const_1794, which reads it as `I.K`.
+interface I:
+    const K: int = 1
+
+
+class App(I):
+    pass
+
+
+def main() -> None:
+    print(App.K)

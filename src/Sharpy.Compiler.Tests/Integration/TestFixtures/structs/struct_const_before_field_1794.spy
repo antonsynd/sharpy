@@ -1,0 +1,25 @@
+# A `const` is class-level storage, not an instance field, so it takes no part in the ordering rule
+# "a non-default field cannot follow a defaulted one". Because a const always carries an
+# initializer, reading it as a defaulted INSTANCE field made `x` SPY0435 (#1794) — three rosters
+# disagreed about what an instance field is, and only one of them knew about const.
+struct S:
+    const K: int = 7
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+struct Auto:
+    const D: int = 2
+    a: float
+    b: float
+
+
+def main() -> None:
+    s = S(5)
+    print(s.x)
+    print(S.K)
+    p = Auto(1.5, 2.5)
+    print(p.a)
+    print(Auto.D)

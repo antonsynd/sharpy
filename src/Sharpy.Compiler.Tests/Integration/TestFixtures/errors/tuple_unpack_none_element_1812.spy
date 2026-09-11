@@ -1,0 +1,7 @@
+# A tuple-unpacking element with no declared slot is a FRESH binding, so a bare `None` element is
+# `a = None`'s refusal — reported at the TARGET, naming it. Before the seam the emitted C# was
+# `var (a, b) = (null, 1);` (CS8130 behind SPY0908); python3 prints `None 1`.
+def main() -> None:
+    a, b = None, 1
+    print(a)
+    print(b)
