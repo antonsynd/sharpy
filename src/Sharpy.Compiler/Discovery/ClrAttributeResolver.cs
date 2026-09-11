@@ -389,6 +389,43 @@ internal sealed class ClrAttributeResolver
     }
 
     /// <summary>
+    /// The simple names of <paramref name="assemblies"/>, skipping any assembly that cannot describe
+    /// itself.
+    ///
+    /// <para>An assembly in the process can fail to answer <see cref="Assembly.GetName()"/> — a
+    /// transient assembly a test emitted whose file has since been replaced throws
+    /// <see cref="BadImageFormatException"/> ("Index not found") from the runtime's locale read. That
+    /// exception escaped into the validator and surfaced as an internal compiler error on programs
+    /// with nothing wrong with them, nondeterministically, depending on what else the process had
+    /// loaded (#1840). One unreadable assembly is not a reason to fail a compilation: it only means
+    /// that assembly's name cannot be compared against, so it is skipped and every other assembly is
+    /// still collected.</para>
+    /// </summary>
+    internal static HashSet<string> LoadedSimpleNames(IEnumerable<Assembly> assemblies)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var assembly in assemblies)
+        {
+            string? name;
+            try
+            {
+                name = assembly.GetName().Name;
+            }
+            catch (Exception ex) when (ex is BadImageFormatException or FileNotFoundException
+                                          or ReflectionTypeLoadException or NotSupportedException)
+            {
+                continue;
+            }
+
+            if (name != null)
+                names.Add(name);
+        }
+
+        return names;
+    }
+
+    /// <summary>
     /// Loads the trusted-platform assemblies whose simple name matches <paramref name="namespaceName"/>
     /// or one of its parents. Returns true when at least one new assembly was loaded.
     /// </summary>
@@ -409,13 +446,7 @@ internal sealed class ClrAttributeResolver
         for (var i = parts.Length - 1; i >= 2; i--)
             prefixes.Add(string.Join(".", parts, 0, i) + ".");
 
-        var loadedNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            var name = assembly.GetName().Name;
-            if (name != null)
-                loadedNames.Add(name);
-        }
+        var loadedNames = LoadedSimpleNames(AppDomain.CurrentDomain.GetAssemblies());
 
         var loadedAny = false;
         foreach (var path in tpaString.Split(Path.PathSeparator))
