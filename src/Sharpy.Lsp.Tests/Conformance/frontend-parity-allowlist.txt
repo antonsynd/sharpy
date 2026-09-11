@@ -72,3 +72,4 @@ compile::errors/parser_recovery_deeply_nested
 compile::exception_handling/raise_from_variable_0001
 compile::errors/parser_recovery_expression_error
 compile::lambdas/lambda_operand_not
+compile::generators/genexp_kwarg_refused_1774   # parse-refused keyword genexp (#1774): compile stops at SPY0147, Analyze continues (SPY0200, SPY0451) — #1360 block

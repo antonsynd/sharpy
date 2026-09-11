@@ -58,7 +58,6 @@ public class OperandOrderEntryPointTotalityTests
         ["GenerateNullCoalesceOp"] = "the rhs evaluates only on the absent path; it has its own evaluation sink",
         ["GenerateShortCircuitOp"] = "the rhs evaluates only when the lhs does not decide; own sink",
         ["GenerateConditionalExpression"] = "exactly one arm evaluates; each arm has its own sink",
-        ["WrapDistributedTruthiness"] = "distributes truthiness over the same conditional arms",
         ["GenerateAssert"] = "the message evaluates only on failure; it has its own evaluation sink",
         ["GenerateIf"] = "a test and its elif tests are evaluated conditionally, each under its own sink",
         ["GenerateMatchExpression"] = "the scrutinee and the arm results are per-arm; arms have their own sinks",
