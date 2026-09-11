@@ -85,14 +85,14 @@ A type parameter marked `in` can only appear in input positions (parameters). Th
 interface IConsumer[in T]:
     """Consumes values of type T."""
     def accept(self, value: T): ...
-    def process(self, items: list[T]): ...
+    def process(self, items: IEnumerable[T]): ...  # IEnumerable, not list: list[T] is invariant
 
 # Contravariance in action
 class AnimalHandler(IConsumer[Animal]):
     def accept(self, value: Animal):
         print(f"Handling: {value.name}")
-    
-    def process(self, items: list[Animal]):
+
+    def process(self, items: IEnumerable[Animal]):
         for item in items:
             self.accept(item)
 
@@ -100,6 +100,8 @@ class AnimalHandler(IConsumer[Animal]):
 handler: IConsumer[Dog] = AnimalHandler()  # ✅ OK: contravariant
 handler.accept(Dog("Rex"))  # AnimalHandler can handle any Animal, including Dog
 ```
+
+Prints `Handling: Rex`.
 
 **Why this is safe:** A handler that can process any `Animal` can certainly process a `Dog`, since `Dog` is-an `Animal`.
 
@@ -109,16 +111,22 @@ handler.accept(Dog("Rex"))  # AnimalHandler can handle any Animal, including Dog
 interface IContravariant[in T]:
     # ✅ Valid: T in parameter position
     def accept(self, value: T): ...
-    def process(self, items: list[T]): ...
-    
+
+    # ✅ Valid: T inside a COVARIANT generic, in a parameter position
+    def process(self, items: IEnumerable[T]): ...
+
     # ✅ Valid: T in contravariant nested position
     def set_producer(self, producer: IProducer[T]): ...  # Flipped!
-    
+
     # ❌ Invalid: T in return position
     # def get(self) -> T: ...  # ERROR: T is contravariant
-    
+
     # ❌ Invalid: T in covariant nested position
     # def get_consumer(self) -> IConsumer[T]: ...  # ERROR: double flip = covariant
+
+    # ❌ Invalid: T inside an INVARIANT generic, in ANY position
+    # def process_list(self, items: list[T]): ...  # ERROR SPY0419: list[T] is invariant in T
+    # def take_optional(self, value: T?): ...      # ERROR SPY0419: T? is invariant in T
 ```
 
 ## Invariance (Default)
@@ -350,12 +358,21 @@ The compiler validates variance annotations by checking each usage of a variant 
    - Covariant in covariant = covariant
    - Contravariant in covariant = contravariant
 
-**Error example:**
+4. **Invariant positions admit neither** — a type argument of a generic that declares no variance
+   there, and the `T?` / `T !E` wrappers. A variant type parameter written inside one is refused
+   whatever the surrounding position is (SPY0418 for `out`, SPY0419 for `in`), which is C#'s
+   "must be invariantly valid" rule.
+
+**Error examples:**
 
 ```python
 interface IBroken[out T]:
     def set(self, value: T): ...  
-    # ERROR: Type parameter 'T' is covariant but appears in contravariant position
+    # ERROR SPY0418: Covariant type parameter 'T' cannot appear in contravariant position (parameter type)
+
+interface IAlsoBroken[out T]:
+    def get_list(self) -> list[T]: ...
+    # ERROR SPY0418: Covariant type parameter 'T' cannot appear in invariant position 'list[T]'
 ```
 
 ## Declaration-Site vs Usage-Site Enforcement
