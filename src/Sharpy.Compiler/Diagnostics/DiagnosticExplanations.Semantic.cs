@@ -987,8 +987,18 @@ public static partial class DiagnosticExplanations
             + "compiler cannot determine which to use. This applies to calls with positional arguments, "
             + "keyword arguments, or a mix of both — keyword-argument types participate in the "
             + "betterness comparison the same way positional ones do.",
-            "class Foo:\n    def bar(self, x: int): ...\n    def bar(self, x: float): ...\nfoo.bar(42)",
-            "Add an explicit type annotation or cast to disambiguate the call.");
+            // EXECUTED verbatim (sharpyc run, 2026-09-11): this snippet reports
+            // "error[SPY0353] ... at 5:1". The former example — `bar(x: int)` / `bar(x: float)`
+            // called as `foo.bar(42)` — does NOT: the argument's type IS int32, so criterion 1
+            // (identity match) gives a unique winner, and the program compiles and prints "int".
+            // The cure line is executed too: `foo.bar(1, 2.0)` compiles and prints "int,float",
+            // i.e. it selects the (int, float) overload.
+            "class Foo:\n    def bar(self, x: int, y: float) -> None: ...\n"
+            + "    def bar(self, x: float, y: int) -> None: ...\n"
+            + "foo: Foo = Foo()\nfoo.bar(1, 2)",
+            "Annotate or convert an argument so one candidate is better at every position: "
+            + "`foo.bar(1, 2.0)` makes the second argument float64, which the (int, float) "
+            + "overload matches identically.");
 
         Add(dict, DiagnosticCodes.Semantic.NoMatchingOverload, "No matching method overload", "Semantic",
             "A function, method, or constructor call matches no overload, and the candidates disagree "

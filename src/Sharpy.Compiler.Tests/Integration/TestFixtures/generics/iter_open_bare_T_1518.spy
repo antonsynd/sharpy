@@ -1,5 +1,6 @@
-# iter[T](generator) inside a generic def — the open type parameter T flows through
-# the provenance arm via SubstituteTypeParametersWithObject (#1518).
+# iter[T](generator) inside a generic def — the open type parameter T flows through the provenance
+# arm (#1518). It used to name SubstituteTypeParametersWithObject, deleted with the object-collapsing
+# wildcard when per-candidate inference replaced it (#1811).
 def _gen[T](xs: list[T]) -> T:
     for x in xs:
         yield x
