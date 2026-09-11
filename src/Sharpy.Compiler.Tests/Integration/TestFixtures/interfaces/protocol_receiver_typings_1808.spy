@@ -1,0 +1,42 @@
+# One receiver, one protocol answer, whatever the TYPING (#1808). Four typings of the same protocol
+# were four different answers before the membership authority existed:
+#   - a DERIVED class inheriting __reversed__ was SPY0354 while len/bool/if/for/in/[] all worked;
+#   - a GENERIC HOST declaring __len__ was refused at `if b:` while `bool(b)` ran;
+#   - a receiver typed as IEnumerable[int] iterated but refused `in`.
+# Output verified against python3 for the reversed and membership cells; truthiness follows Python's
+# "empty is falsy" rule via __len__.
+class Bag:
+    def __init__(self) -> None:
+        self._xs: list[int] = [1, 2]
+
+    def __reversed__(self) -> int:
+        for i in range(len(self._xs) - 1, -1, -1):
+            yield self._xs[i]
+
+class Sack(Bag):
+    pass
+
+class Box[T]:
+    def __init__(self, n: int) -> None:
+        self._n: int = n
+
+    def __len__(self) -> int:
+        return self._n
+
+def main() -> None:
+    s: Sack = Sack()
+    for x in reversed(s):
+        print(x)
+
+    b: Box[int] = Box[int](6)
+    print(bool(b))
+    if b:
+        print("truthy")
+
+    empty: Box[int] = Box[int](0)
+    if not empty:
+        print("falsy")
+
+    xs: IEnumerable[int] = [1, 2, 3]
+    print(2 in xs)
+    print(9 not in xs)

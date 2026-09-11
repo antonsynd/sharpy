@@ -1532,11 +1532,15 @@ internal class TypeInferenceService
         if (iterableElement != null)
             return iterableElement;
 
-        // Check for __reversed__ protocol method on user-defined types
+        // Check for __reversed__ protocol method on user-defined types. The lookup walks the BASE
+        // CHAIN through the protocol authority, so an INHERITED __reversed__ resolves like a
+        // declared one (#1808): `class Sack(Bag)` where Bag declares it answered "no" here while
+        // len/bool/in/iteration/getitem on the same receiver all answered "yes" — one receiver,
+        // one protocol question, six different answers.
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            var reversedMethod = udt.Symbol.Methods.FirstOrDefault(
-                m => m.Name == DunderNames.Reversed);
+            var reversedMethod = ProtocolMembership.FindDunderInChain(
+                udt.Symbol, DunderNames.Reversed);
             if (reversedMethod?.ReturnType is { } returnType
                 && returnType != SemanticType.Unknown
                 && returnType != SemanticType.Void)
