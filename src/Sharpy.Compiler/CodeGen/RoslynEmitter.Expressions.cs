@@ -1044,9 +1044,9 @@ internal partial class RoslynEmitter
                 Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
                 IdentifierName("IsTrue")),
             TruthinessLowering.AlwaysFalse => LiteralExpression(SyntaxKind.FalseLiteralExpression),
-            TruthinessLowering.Distributed
-                when Shared.AstHelper.UnwrapParenthesized(astExpr) is ConditionalExpression condExpr =>
-                WrapDistributedTruthiness(condExpr),
+            // Already distributed by GenerateConditionalExpression, which reads the same fact at
+            // generation time — re-emitting here would generate the whole ternary a second time.
+            TruthinessLowering.Distributed => expr,
             _ => expr
         };
     }
@@ -1059,14 +1059,21 @@ internal partial class RoslynEmitter
     private ExpressionSyntax WrapDistributedTruthiness(ConditionalExpression condExpr)
     {
         var test = WrapTruthinessIfNeeded(GenerateExpression(condExpr.Test), condExpr.Test);
-        var whenTrue = WrapTruthinessIfNeeded(
-            ApplyConditionalBranchNarrowing(condExpr.ThenValue, GenerateExpression(condExpr.ThenValue)),
-            condExpr.ThenValue);
-        var whenFalse = WrapTruthinessIfNeeded(
-            ApplyConditionalBranchNarrowing(condExpr.ElseValue, GenerateExpression(condExpr.ElseValue)),
-            condExpr.ElseValue);
-        return Conditional(test, whenTrue, whenFalse);
+        return Conditional(test, WrapDistributedBranch(condExpr.ThenValue),
+            WrapDistributedBranch(condExpr.ElseValue));
     }
+
+    /// <summary>
+    /// One branch of a distributed truthiness test. A branch that DISTRIBUTES in turn (a nested
+    /// conditional in the same truthiness position) is emitted from its own branches, so it must
+    /// not be generated here first: the generated form would be discarded and the node generated
+    /// TWICE in one statement, which <c>GenerateExpressionReentryTests</c> counts as a re-entry
+    /// (#1334 — it counts generations, not emitted occurrences, because a generator with a side
+    /// effect makes the two indistinguishable).
+    /// </summary>
+    private ExpressionSyntax WrapDistributedBranch(Parser.Ast.Expression branch)
+        => WrapTruthinessIfNeeded(
+            ApplyConditionalBranchNarrowing(branch, GenerateExpression(branch)), branch);
 
     /// <summary>
     /// Checks if a function call is a tagged union constructor (Some, Ok, Err)
