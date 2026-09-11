@@ -5,9 +5,32 @@ namespace Sharpy.Compiler.Semantic;
 
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// The two arm-3 steers a caller supplies. Both are REAL SOURCE the user can paste: the site
+    /// noun ("list element", "binding 'q'") names WHERE the refusal is and is never interpolated
+    /// INTO the steer — "annotate the target (e.g. 'conditional expression: T = ...')" is not a
+    /// program.
+    /// </summary>
+    /// <param name="AnnotateSteer">
+    /// The steer when the operands have unrelated types (`[1, "a"]` → `'xs: list[object] = ...'`).
+    /// </param>
+    /// <param name="NoneAnnotateSteer">
+    /// The steer when an untyped bare <c>None</c> is the reason (R-AB). Falls back to
+    /// <paramref name="AnnotateSteer"/> when the caller supplies only one. It offers BOTH spellings
+    /// of absence — a .NET-nullable <c>T | None</c> and a Sharpy <c>T?</c> built with
+    /// <c>None()</c> — because <c>x: T? = None</c> is itself refused (R-G, #1720).
+    /// </param>
     internal readonly record struct BestCommonTypeOptions(
-        bool TruthinessPosition = false,
-        string? AnnotateSteer = null);
+        string? AnnotateSteer = null,
+        string? NoneAnnotateSteer = null);
+
+    /// <summary>
+    /// The <see cref="BestCommonTypeOptions.NoneAnnotateSteer"/> for a fresh binding named
+    /// <paramref name="name"/> — the two annotations that make <c>x = None</c> legal.
+    /// </summary>
+    internal static string BindingNoneSteer(string name)
+        => $"'{name}: T | None = None' for a .NET-nullable reference, "
+            + $"or '{name}: T? = None()' for a Sharpy optional";
 
     internal SemanticType BestCommonType(
         IReadOnlyList<(Expression? Node, SemanticType Type)> operands,
@@ -117,9 +140,7 @@ internal partial class TypeChecker
             {
                 AddError(
                     $"cannot infer a type for {siteNoun}: 'None' names no type on its own, " +
-                    $"so {siteNoun} has nothing to be. Annotate the binding with the type it " +
-                    $"will hold ({siteNoun}: T? = None() for a Sharpy optional, " +
-                    $"{siteNoun}: T | None = None for a .NET-nullable reference)",
+                    $"so {siteNoun} has nothing to be. Annotate the target ({NoneSteer(options)})",
                     host.LineStart, host.ColumnStart,
                     code: DiagnosticCodes.Semantic.CannotInferType, span: host.Span);
             }
@@ -201,12 +222,45 @@ internal partial class TypeChecker
         if (hasNone)
             typeNames.Add("'None'");
 
-        var steerText = options.AnnotateSteer ?? $"'{siteNoun}: T = ...'";
+        var steerText = hasNone ? NoneSteer(options) : (options.AnnotateSteer ?? DefaultSteer);
         AddError(
             $"Cannot infer a type for {siteNoun}: its operands have no best common type " +
             $"({string.Join(", ", typeNames)}) — annotate the target (e.g. {steerText})",
             host.LineStart, host.ColumnStart,
             code: DiagnosticCodes.Semantic.CannotInferType, span: host.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>The steer a caller that supplied none falls back to — still real source.</summary>
+    private const string DefaultSteer = "'x: T = ...' on the target";
+
+    private static string NoneSteer(BestCommonTypeOptions options)
+        => options.NoneAnnotateSteer ?? options.AnnotateSteer ?? BindingNoneSteer("x");
+
+    /// <summary>
+    /// Arm 1 of the R-W rule for one operand row of a collection literal, then arms 2–3.
+    ///
+    /// <para>The contextual element type is the SLOT: when every operand is admitted into it
+    /// (<see cref="AdmitCollectionElements"/> already classifies each one through
+    /// <c>ClassifyStore</c>, #1671/#1698) the literal adopts it; otherwise the row is decided
+    /// slot-less by <see cref="BestCommonType"/>. Five literal rows (list, set, dict key, dict
+    /// value, <c>dict(**kw)</c> value) carried this block by copy, so the slot-mismatch path had
+    /// five owners that could drift; it has one.</para>
+    /// </summary>
+    private SemanticType JoinCollectionOperands(
+        IReadOnlyList<(Expression? Node, SemanticType Type)> operands,
+        SemanticType? expectation,
+        Node host,
+        string siteNoun,
+        BestCommonTypeOptions options)
+    {
+        if (expectation != null
+            && !ContainsTypeParameterType(expectation)
+            && AdmitCollectionElements(operands, expectation) != ElementAdmissionResult.Refused)
+        {
+            return expectation;
+        }
+
+        return BestCommonType(operands, null, StorePosition.CollectionElement, host, siteNoun, options);
     }
 }

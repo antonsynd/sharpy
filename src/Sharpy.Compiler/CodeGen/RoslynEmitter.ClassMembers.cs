@@ -54,7 +54,14 @@ internal partial class RoslynEmitter
             var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
             var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
 
-            if (isDataclass && !varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
+            // A dataclass's INSTANCE fields become auto-properties; its class-level storage
+            // (a `const`, a `@static` field) is emitted as a FIELD, exactly as in a plain class.
+            // Read from the AST decorator list, this arm printed
+            // `public int SCALE { get; set; } = 3;` for a `const` and `P.SCALE` came back as
+            // CS0120 behind SPY0908 — the same roster defect one host over, and an AST read in
+            // CodeGen (#1794, Critical Rule 2). `IsSynthesizedConstructorField` is the one
+            // predicate, reading `VariableSymbol.IsStatic` and `CodeGenInfo.IsConstant`.
+            if (isDataclass && IsSynthesizedConstructorField(varDecl))
             {
                 var propDecl = GenerateDataclassProperty(varDecl, fieldName, isFrozen);
                 fieldMembers.Add(propDecl);

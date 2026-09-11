@@ -1,0 +1,15 @@
+# Arm 3 (#1677): two branches with unrelated types and no slot have no best common type. The
+# refusal NAMES both types and steers to an annotation; before it the raw ternary reached Roslyn as
+# CS0173 behind SPY0908.
+class Dog:
+    pass
+
+
+class Cat:
+    pass
+
+
+def main() -> None:
+    c = True
+    a = Dog() if c else Cat()
+    print(a)

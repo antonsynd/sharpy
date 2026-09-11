@@ -34,24 +34,29 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// A ternary whose branches are <c>Dog</c> and <c>str</c> under an <c>Animal</c> slot survives
-    /// semantic analysis at this commit and is refused by Roslyn with CS0029 — i.e. it reaches the
-    /// C#-compile stage, which is the only stage that can produce SPY0908. Through
-    /// <c>sharpyc run</c> the same source reports
-    /// <c>error[SPY0908]: internal error: generated C# failed to compile (CS0029: Cannot implicitly
-    /// convert type 'string' to '…Animal')</c>.
+    /// A program that survives semantic analysis and is refused by ROSLYN — the only shape that can
+    /// reach the C#-compile stage, and so the only positive control this harness contract can have.
+    ///
+    /// <para><b>#1713 is the reason this source is what it is.</b> A statically-impossible
+    /// <c>as?</c> coercion (<c>bytes as? long</c>: a sealed class against a value type) is typed by
+    /// the checker and emitted as a C# <c>is</c> pattern Roslyn rejects outright. Through
+    /// <c>sharpyc run</c>: <c>error[SPY0908]: internal error: generated C# failed to compile
+    /// (CS8121: An expression of type 'Bytes' cannot be handled by a pattern of type
+    /// 'long'.)</c>.</para>
+    ///
+    /// <para><b>This control has to be re-based when #1713 lands</b>, exactly as it was re-based
+    /// once already. It used to be <c>a: Animal = Dog() if c else "x"</c>, which reached Roslyn as
+    /// CS0029 until R-W arm 1 began admitting or refusing each conditional branch at its own span
+    /// (#1677/#1743) — that program is now a semantic SPY0220 at the <c>"x"</c> branch and can no
+    /// longer exercise the C#-compile stage. The harness contract below is unchanged; only the
+    /// input that reaches it moved. Any remaining SPY0908 gap will do.</para>
     /// </summary>
     private const string RoslynFailingSource = """
-        class Animal:
-            pass
-
-        class Dog(Animal):
-            pass
+        def compute(data: int) -> None:
+            assert b"hello" as? long, "x"
 
         def main() -> None:
-            c: bool = True
-            a: Animal = Dog() if c else "x"
-            print(a)
+            compute(1)
         """;
 
     private const string CleanSource = """
@@ -67,7 +72,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
         Assert.False(result.Success);
 
         // The C# error text must survive on CompilationErrors (unchanged contract) …
-        Assert.Contains("CS0029", string.Join("\n", result.CompilationErrors));
+        Assert.Contains("CS8121", string.Join("\n", result.CompilationErrors));
 
         // … and the fact must also be recorded as a diagnostic, or the suite's
         // "no SPY0908" assertions cannot go red.
@@ -79,7 +84,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
         Assert.Equal(CompilerPhase.Assembly, ice.Phase);
         // Mapped through AssemblyCompiler, so the harness and the CLI carry the same message
         // shape and the original Roslyn id is not lost.
-        Assert.Contains("CS0029", ice.Message);
+        Assert.Contains("CS8121", ice.Message);
         Assert.Contains("generated C# failed to compile", ice.Message);
     }
 
@@ -96,7 +101,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
             var result = CompileAndExecuteEntryFile(entry);
 
             Assert.False(result.Success);
-            Assert.Contains("CS0029", string.Join("\n", result.CompilationErrors));
+            Assert.Contains("CS8121", string.Join("\n", result.CompilationErrors));
 
             var ice = Assert.Single(
                 result.RawDiagnostics,
@@ -104,7 +109,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
 
             Assert.Equal(CompilerDiagnosticSeverity.Error, ice.Severity);
             Assert.Equal(CompilerPhase.Assembly, ice.Phase);
-            Assert.Contains("CS0029", ice.Message);
+            Assert.Contains("CS8121", ice.Message);
         }
         finally
         {

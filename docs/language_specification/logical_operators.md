@@ -29,7 +29,39 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 
 **Deviation from Python:** Python makes objects without `__bool__`/`__len__` vacuously truthy. Sharpy refuses them — the check can never do anything useful.
 
-A conditional expression in a truthiness position distributes the test per branch (`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the branches need not share a common type.
+A conditional expression in a truthiness position distributes the test per branch
+(`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the
+branches need not share a common type. Distribution **recurses**: a conditional nested inside a
+distributed branch is itself in a truthiness position and needs no type either.
+
+```spy
+class Yes:
+    def __bool__(self) -> bool:
+        return False
+
+class No:
+    def __bool__(self) -> bool:
+        return True
+
+def main() -> None:
+    flag = True
+    g = False
+    if Yes() if flag else No():          # Yes and No share no common type
+        print("truthy")
+    else:
+        print("falsy")
+    if ("a" if g else 0) if flag else 1:  # the nested ternary distributes too
+        print("nested-truthy")
+    else:
+        print("nested-falsy")
+```
+
+Output:
+
+```
+falsy
+nested-falsy
+```
 
 ## Return Type
 

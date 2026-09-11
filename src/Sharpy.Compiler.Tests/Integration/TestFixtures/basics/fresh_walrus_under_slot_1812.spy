@@ -1,0 +1,21 @@
+# R-AE (#1812): a FRESH walrus that is the DIRECT operand of a store takes that store's slot type.
+# Before the seam the emitter hoisted `var q = null;` — CS0815 behind SPY0908 at every one of these
+# positions, while python3 prints `None` for all of them.
+def g(x: str | None) -> None:
+    print(x)
+
+
+def k(name: str | None) -> None:
+    print(name)
+
+
+def main() -> None:
+    g((q := None))
+    print(q)
+    s: str | None = (r := None)
+    print(s)
+    print(r)
+    k(name=(t := None))
+    print(t)
+    print((u := None))
+    print(u)

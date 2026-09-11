@@ -1,0 +1,12 @@
+# A void-call walrus is refused at EVERY slot, before the slot is consulted (R-AE): there is no
+# value to bind, so no annotation can rescue it. The steer says so instead of naming a type.
+def void_fn() -> None:
+    pass
+
+
+def g(x: str | None) -> None:
+    print(x)
+
+
+def main() -> None:
+    g((q := void_fn()))

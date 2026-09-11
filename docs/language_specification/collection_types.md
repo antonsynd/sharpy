@@ -70,19 +70,45 @@ When a collection literal has no typed slot to direct it, the element type is de
    ys = [Dog(), Animal()]  # list[Animal] — Dog is assignable to Animal
    ```
 
-3. **Refuse by name:** if no element type accepts all others, the compiler refuses:
+3. **Refuse by name:** if no element type accepts all others, the compiler refuses and names both
+   the operand types and an annotation you can paste:
    ```python
-   xs = [1, "a"]    # error: no best common type ('int', 'str') — annotate: 'xs: list[object] = ...'
+   xs = [1, "a"]
+   # error: Cannot infer a type for list element: its operands have no best common type
+   #        ('int32', 'str') — annotate the target (e.g. 'xs: list[object] = ...')
    ```
 
-**`None` is untyped (R-AB):** a bare `None` in a slot-less literal triggers an arm-3 refusal:
+**`None` is untyped (R-AB):** a bare `None` in a slot-less literal triggers an arm-3 refusal. The
+steer offers both spellings of absence, because `xs: list[T?] = [None, 1]` is refused by R-G — a
+Sharpy optional is built with `None()`:
 ```python
-xs = [None, 1]    # error: no best common type ('None', 'int') — annotate: 'xs: list[int | None] = ...'
+xs = [None, 1]
+# error: Cannot infer a type for list element: its operands have no best common type
+#        ('int32', 'None') — annotate the target (e.g. 'xs: list[T | None] = ...' for
+#        .NET-nullable elements, or 'xs: list[T?] = ...' with None() elements for Sharpy optionals)
 ```
 
 Under a slot, `None` is admitted normally: `xs: list[int | None] = [None, 1]` prints `[None, 1]`.
 
 Tuple literals are per-index — each element is its own seam, so `(None, 1)` refuses at the `None` index while `(Dog(), Cat())` types as `tuple[Dog, Cat]`.
+
+**Numeric literals widen to the display's element type** (deliberate Axiom-3 deviation, #1783,
+ruled #1842 Q3 option A). Arm 2 picks the element type that accepts every operand, and each
+literal is then materialized AS that type — so a display mixing a float literal with an int
+literal renders every element as a float:
+
+```python
+def main():
+    xs = [2.5, 1]
+    print(xs)        # [2.5, 1.0]   (CPython prints [2.5, 1])
+```
+
+CPython has no element type to widen to, so it keeps each literal's own rendering. Sharpy's
+`list[T]` has exactly one `T`, and R-W refuses to invent an `object`/union element to hold two
+renderings; the values are numerically equal and only the `str()` differs. The same deviation
+covers `for x in (1, 2.5)` (the `numeric-widening-in-typed-context` entry in
+`differential-exec-allowlist.txt`). Annotate the display to choose the element type explicitly:
+`xs: list[object] = [2.5, 1]` prints `[2.5, 1]`.
 
 ## Set and Frozenset Operators
 

@@ -787,7 +787,10 @@ internal partial class TypeChecker
                 freshSlot,
                 freshPosition,
                 walrus,
-                $"binding '{walrus.Target}'");
+                $"binding '{walrus.Target}'",
+                new BestCommonTypeOptions(
+                    AnnotateSteer: $"'{walrus.Target}: T = ...' before the walrus",
+                    NoneAnnotateSteer: BindingNoneSteer(walrus.Target)));
         }
         if (predecessor != null)
         {

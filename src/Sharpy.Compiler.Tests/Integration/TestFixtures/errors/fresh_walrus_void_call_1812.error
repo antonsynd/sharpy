@@ -1,0 +1,2 @@
+cannot infer a type for binding 'q': this expression produces no value @12:8
+Call it as a statement

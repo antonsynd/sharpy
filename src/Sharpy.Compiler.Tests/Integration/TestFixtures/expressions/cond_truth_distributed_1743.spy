@@ -1,0 +1,39 @@
+# R-K (#1743): a conditional in a truthiness position never needs a type — the TEST distributes per
+# branch and each branch is wrapped with its own recorded lowering. Distribution recurses, so the
+# nested ternary in the last case needs no type either. Every value below is python3's.
+class Yes:
+    def __bool__(self) -> bool:
+        return False
+
+
+class No:
+    def __bool__(self) -> bool:
+        return True
+
+
+def main() -> None:
+    flag = True
+    if Yes() if flag else No():
+        print("if-truthy")
+    else:
+        print("if-falsy")
+
+    while Yes() if flag else No():
+        print("never")
+    print("while-done")
+
+    print(not (Yes() if flag else No()))
+    print(True and (Yes() if flag else No()))
+    print(False or (Yes() if flag else No()))
+
+    assert No() if flag else Yes()
+    print("assert-ok")
+
+    xs = [i for i in range(2) if (Yes() if flag else No())]
+    print(len(xs))
+
+    g = False
+    if ("a" if g else 0) if flag else 1:
+        print("nested-truthy")
+    else:
+        print("nested-falsy")

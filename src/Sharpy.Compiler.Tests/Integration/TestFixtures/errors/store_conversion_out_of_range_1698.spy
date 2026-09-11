@@ -1,6 +1,11 @@
 # Controls: the store seam admits a value SHAPE, not a type. An out-of-range
 # constant and a variable of the wider type stay refused at every position
 # (plan-14853b, #1698, #1688).
+#
+# The conditional row (line 16) reports at the OFFENDING BRANCH, not at the declaration: under a
+# slot each branch goes through the store seam at its own span (#1677, #1743, R-W arm 1). Before
+# that arm the same program was refused at 16:5 with the same code and the same message; only the
+# column moved, and `300` is the operand the user has to change.
 
 def takes_narrow(n: int8) -> int8:
     return n

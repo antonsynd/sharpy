@@ -1586,85 +1586,171 @@ internal partial class TypeChecker
         // seam refuses at the BRANCH's span, not the conditional's.
         SemanticType? condSlot = null;
         StorePosition condPosition = StorePosition.Declaration;
+        string? condCallee = null;
+        int? condOrdinal = null;
+        string? condKeyword = null;
         if (!isTruthinessPosition && _storeContext is { Slot: not null and not UnknownType } sc && sc.IsDirectOperand(cond))
         {
             condSlot = sc.Slot;
             condPosition = sc.Position;
+            condCallee = sc.CalleeDisplay;
+            condOrdinal = sc.ArgumentOrdinal;
+            condKeyword = sc.KeywordName;
         }
 
         // Expression-level narrowing (#1080): the true arm is evaluated only when the condition holds,
         // so it sees the condition's positive narrowings; the false arm sees the negative narrowings.
         // Reads inside each arm record their accessor lowering via the narrowing context, exactly as
         // `and`-RHS does — codegen needs no special handling. The narrowings do not leak past the arm.
-        // Branches see the OUTER store's _expectedType naturally (the assignment/argument push is still
-        // on the stack), so constants narrow to int8 etc. without an explicit per-branch EnterStore.
-        // The outer store's ClassifyConditionalBranch handles the emitter cast facts (#1698).
+        //
+        // Each branch is checked under its OWN store push, so the branch — not the conditional — is
+        // the store's value node. Two things follow that the ambient `_expectedType` leak could not
+        // give: a fresh walrus directly under a branch is a DIRECT operand of a slot and takes it
+        // (R-AE: `s: str | None = (q := None) if c else "a"`), and a nested conditional under a
+        // truthiness test is itself in a truthiness position, so distribution RECURSES rather than
+        // demanding a type of the inner conditional (R-K; `if ("a" if g else 0) if flag else 1:`).
         var thenEntries = ExtractNarrowedTypes(cond.Test, true);
         var elseEntries = ExtractNarrowedTypes(cond.Test, false);
+
+        IDisposable? BranchStore(Expression branch)
+            => isTruthinessPosition
+                ? EnterStore(StorePosition.TruthinessTest, SemanticType.Unknown, branch)
+                : condSlot != null
+                    ? EnterStore(condPosition, condSlot, branch, condCallee, condOrdinal, condKeyword)
+                    : null;
 
         SemanticType thenType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(thenEntries);
-            thenType = CheckExpression(cond.ThenValue);
+            using (BranchStore(cond.ThenValue))
+                thenType = CheckExpression(cond.ThenValue);
         }
 
         SemanticType elseType;
         using (_narrowingContext.EnterScope())
         {
             _narrowingContext.ApplyNarrowings(elseEntries);
-            elseType = CheckExpression(cond.ElseValue);
+            using (BranchStore(cond.ElseValue))
+                elseType = CheckExpression(cond.ElseValue);
         }
 
         // R-K: distribute truthiness per branch. Each branch gets its own TruthinessLowering
         // fact; the conditional itself records Distributed so the emitter wraps each branch.
         if (isTruthinessPosition)
         {
-            var (thenTruthTestable, thenTruthLowering) = ClassifyTruthiness(thenType);
-            if (!thenTruthTestable)
-            {
-                AddError($"Conditional expression branch must be truth-testable, got '{thenType.GetDisplayName()}'",
-                    cond.ThenValue.LineStart, cond.ThenValue.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch, span: cond.ThenValue.Span);
-            }
-            else
-            {
-                _semanticInfo.SetTruthinessLowering(cond.ThenValue, thenTruthLowering);
-            }
-
-            var (elseTruthTestable, elseTruthLowering) = ClassifyTruthiness(elseType);
-            if (!elseTruthTestable)
-            {
-                AddError($"Conditional expression branch must be truth-testable, got '{elseType.GetDisplayName()}'",
-                    cond.ElseValue.LineStart, cond.ElseValue.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch, span: cond.ElseValue.Span);
-            }
-            else
-            {
-                _semanticInfo.SetTruthinessLowering(cond.ElseValue, elseTruthLowering);
-            }
+            RecordBranchTruthiness(cond.ThenValue, thenType);
+            RecordBranchTruthiness(cond.ElseValue, elseType);
 
             _semanticInfo.SetTruthinessLowering(cond, TruthinessLowering.Distributed);
             return SemanticType.Bool;
         }
 
-        // Slot-directed conditionals: the outer store seam + ClassifyConditionalBranch already
-        // handles typing and emitter narrowing facts. Return the branch types and let the outer
-        // CheckStore/ClassifyStore produce the correct per-branch cast facts (#1698).
+        // ARM 1 (R-W): the slot decides, and each branch is ADMITTED OR REFUSED AT ITS OWN SPAN.
+        // Before this arm the slot-directed route did a pairwise `IsAssignable` and returned a
+        // branch type, so a mistyped branch reached Roslyn untouched — `a: Animal = Dog() if c
+        // else "x"` was CS0029 behind SPY0908 and `b: bool = y if flag else n` reported at the
+        // declaration rather than at `y` (#1677, #1743).
+        //
+        // When EVERY branch is admitted the conditional keeps its natural branch type so the
+        // enclosing store's own arm 6 (`ClassifyStore` → `ApplyConditionalBranchVerdicts`) still
+        // records the per-branch cast the integer-constant arm needs — `x: int8 = 7 if c else 8`
+        // is CS0266 without it (#1698). When a branch is refused the conditional reports there and
+        // reads as the SLOT, so the enclosing store accepts slot-into-slot and the user sees
+        // exactly one diagnostic, at the offending branch.
         if (condSlot != null)
         {
-            if (IsAssignable(thenType, elseType))
-                return elseType;
-            if (IsAssignable(elseType, thenType))
-                return thenType;
-            return thenType; // the outer store seam decides
+            return AdmitConditionalBranchesIntoSlot(
+                cond, thenType, elseType, condSlot, condPosition);
         }
 
         // R-W: slot-less → BestCommonType arm 2 (one-accepts-all) or arm 3 (refuse by name).
         // The DP mark and data-level comparison are retired.
         return BestCommonType(
             new[] { ((Expression?)cond.ThenValue, thenType), ((Expression?)cond.ElseValue, elseType) },
-            null, condPosition, cond, "conditional expression");
+            null, condPosition, cond, "conditional expression",
+            new BestCommonTypeOptions(
+                AnnotateSteer: "'x: T = ...' on the target",
+                NoneAnnotateSteer: "'x: T | None = ...' on the target"));
+    }
+
+    /// <summary>
+    /// ARM 1 of the R-W rule for a conditional expression — #1743's NAMED slot-directed check.
+    /// Each branch is admitted or REFUSED AT ITS OWN SPAN by the store seam.
+    ///
+    /// <para>Before this arm the slot-directed route did a pairwise <c>IsAssignable</c> and
+    /// returned a branch type, so a mistyped branch reached Roslyn untouched:
+    /// <c>a: Animal = Dog() if c else "x"</c> was CS0029 behind SPY0908, and
+    /// <c>b: bool = y if flag else n</c> reported at the declaration rather than at <c>y</c>.</para>
+    ///
+    /// <para>When EVERY branch is admitted the conditional keeps its natural branch type, so the
+    /// ENCLOSING store's own arm 6 (<c>ClassifyStore</c> → <c>ApplyConditionalBranchVerdicts</c>)
+    /// still records the per-branch cast the integer-constant arm needs — <c>x: int8 = 7 if c else
+    /// 8</c> is CS0266 without it (#1698). When a branch is refused the conditional reads as the
+    /// SLOT, so the enclosing store accepts slot-into-slot and the user sees exactly ONE
+    /// diagnostic, at the offending branch.</para>
+    /// </summary>
+    private SemanticType AdmitConditionalBranchesIntoSlot(
+        ConditionalExpression cond,
+        SemanticType thenType,
+        SemanticType elseType,
+        SemanticType slot,
+        StorePosition position)
+    {
+        var thenVerdict = ClassifyStore(position, cond.ThenValue, thenType, slot);
+        var elseVerdict = ClassifyStore(position, cond.ElseValue, elseType, slot);
+
+        if (!IsAcceptedVerdict(thenVerdict) || !IsAcceptedVerdict(elseVerdict))
+        {
+            if (!IsAcceptedVerdict(thenVerdict))
+                CheckStore(position, cond.ThenValue, thenType, slot,
+                    cond.ThenValue, cond.ThenValue.Span);
+            if (!IsAcceptedVerdict(elseVerdict))
+                CheckStore(position, cond.ElseValue, elseType, slot,
+                    cond.ElseValue, cond.ElseValue.Span);
+            return slot;
+        }
+
+        if (IsAssignable(thenType, elseType))
+            return elseType;
+        if (IsAssignable(elseType, thenType))
+            return thenType;
+        return thenType; // both admitted into the slot; the outer seam records the casts
+    }
+
+    /// <summary>
+    /// Records one branch's own <see cref="TruthinessLowering"/> for a conditional that distributes
+    /// its truthiness test (R-K, #1743).
+    ///
+    /// <para>A branch that is ITSELF a conditional in this truthiness position has already recorded
+    /// <see cref="TruthinessLowering.Distributed"/> for its own branches, and the emitter's
+    /// <c>WrapTruthinessIfNeeded</c> recurses on that fact. Classifying it again by its value type
+    /// (<c>bool</c> → <c>NativeBool</c>) would OVERWRITE the fact and hand the emitter the raw inner
+    /// ternary — `if ("a" if g else 0) if flag else 1:` was CS0173 behind SPY0908.</para>
+    /// </summary>
+    private void RecordBranchTruthiness(Expression branch, SemanticType branchType)
+    {
+        // The fact is recorded on the CONDITIONAL, which a parenthesized branch wraps; the
+        // emitter looks it up on the branch node it holds, so the mark is propagated outward.
+        var inner = Shared.AstHelper.UnwrapParenthesized(branch);
+        if (_semanticInfo.GetTruthinessLowering(inner) == TruthinessLowering.Distributed)
+        {
+            if (!ReferenceEquals(inner, branch))
+                _semanticInfo.SetTruthinessLowering(branch, TruthinessLowering.Distributed);
+            return;
+        }
+
+        var (truthTestable, lowering) = ClassifyTruthiness(branchType);
+        if (!truthTestable)
+        {
+            AddError(
+                $"Conditional expression branch must be truth-testable, got '{branchType.GetDisplayName()}'",
+                branch.LineStart, branch.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch, span: branch.Span);
+            return;
+        }
+
+        _semanticInfo.SetTruthinessLowering(branch, lowering);
     }
 
     /// <summary>

@@ -5198,8 +5198,8 @@ internal partial class TypeChecker
             var steer = siteNoun == MembershipContainerSiteNoun
                 ? "give the tuple one element type, or test the elements separately"
                 : slot != null
-                    ? $"xs: list[{slot.GetDisplayName()}] = ..."
-                    : "xs: list[T] = ...";
+                    ? $"'xs: list[{slot.GetDisplayName()}] = ...'"
+                    : "'xs: list[T] = ...'";
             var elementType = BestCommonType(
                 operands, slot, position, (Node)source,
                 siteNoun,

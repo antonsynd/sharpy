@@ -314,11 +314,18 @@ public class StoreSeamConformanceTests
     /// (42 pushes + 13 clears, measured by this scan). 55 -> 56 (plan-499995, #1797): the
     /// post-inference re-check (<c>RecheckOpenArguments</c>) pushes the closed slot for a KEYWORD
     /// argument recorded open, the twin of the positional push it already had
-    /// (43 pushes + 13 clears, measured by this scan). 56 -> 60 (plan-c068ff, #1743, R-W):
-    /// FStringHole (f-string + t-string holes), TruthinessTest (CheckTruthinessTest helper),
-    /// and the conditional's own TruthinessTest push (47 pushes + 13 clears).
+    /// (43 pushes + 13 clears, measured by this scan). 56 -> 60 (plan-c068ff, #1743, R-W): four
+    /// new pushes — the f-string hole, the t-string hole, <c>CheckTruthinessTest</c>, and the
+    /// fresh WALRUS's own slot push in <c>CheckWalrusExpression</c> (R-AE). [CORRECTED: the fourth
+    /// was attributed to "the conditional's own TruthinessTest push", which did not exist — the
+    /// conditional read <c>_storeContext</c> and pushed nothing.] 60 -> 61 (#1798): the CLR call
+    /// route registers with the seam. 61 -> 64 (plan-c068ff wave 2, #1677/#1743/#1707): the
+    /// conditional now pushes PER BRANCH — one push for the truthiness-distribution arm and one
+    /// for the slot-directed arm, which is what makes a fresh walrus under a branch a direct
+    /// operand and a nested conditional under a truthiness test distribute in turn — plus the
+    /// NESTED unpacking arm's push of its targets' composed slot (<c>NestedTargetSlot</c>).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 61;
+    private const int ExpectedSeamCallSiteCount = 64;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

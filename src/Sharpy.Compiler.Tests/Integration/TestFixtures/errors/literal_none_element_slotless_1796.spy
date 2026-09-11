@@ -1,0 +1,6 @@
+# R-AB (#1796): a bare `None` is untyped, so a slot-less literal holding one has no best common
+# type and is refused AT THE ELEMENT. The tuple form refuses per INDEX, naming the index. Before
+# this the tuple element was recorded as `void` and the emitted C# was `(void, int)` — SPY0599.
+def main() -> None:
+    t = (None, 1)
+    print(t[1])

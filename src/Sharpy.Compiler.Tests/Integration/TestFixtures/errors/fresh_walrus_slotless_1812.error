@@ -1,0 +1,3 @@
+cannot infer a type for binding 'q': 'None' names no type on its own @9:10
+'q: T | None = None' for a .NET-nullable reference
+'q: T? = None()' for a Sharpy optional

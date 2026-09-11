@@ -1000,6 +1000,14 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateConditionalExpression(ConditionalExpression cond)
     {
+        // A conditional the checker marked TruthinessLowering.Distributed is in a truthiness
+        // position and has no type of its own (R-K, #1743): it emits as `test ? wrap(a) : wrap(b)`.
+        // The fact is read HERE, once, at generation — reading it at the wrap site instead meant
+        // the caller generated the whole ternary first and the wrap discarded it, so every
+        // sub-expression was generated TWICE in one statement (#1334's re-entry sweep).
+        if (_context.SemanticInfo?.GetTruthinessLowering(cond) == TruthinessLowering.Distributed)
+            return WrapDistributedTruthiness(cond);
+
         // value if test else other → test ? value : other
         var test = WrapTruthinessIfNeeded(GenerateExpression(cond.Test), cond.Test);
 

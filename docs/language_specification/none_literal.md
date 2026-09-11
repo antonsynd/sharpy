@@ -25,10 +25,23 @@ See [Optional Type](tagged_unions_optional.md) for details on `T?`.
 Bare `None` is untyped: it contributes no type to the best-common-type rule. In a slot-less context, this causes an arm-3 refusal:
 
 ```python
-x = None          # error: cannot infer a type for 'x' — annotate: 'x: T | None = None'
-xs = [None, 1]    # error: no best common type ('None', 'int') — annotate: 'xs: list[int | None] = ...'
-z = None if c else "hello"  # error: no best common type
+x = None
+# error: cannot infer a type for 'x': 'None' names no type on its own, so 'x' has nothing to be.
+#        Annotate the target ('x: T | None = None' for a .NET-nullable reference,
+#        or 'x: T? = None()' for a Sharpy optional)
+
+xs = [None, 1]
+# error: Cannot infer a type for list element: its operands have no best common type
+#        ('int32', 'None') — annotate the target (e.g. 'xs: list[T | None] = ...' for
+#        .NET-nullable elements, or 'xs: list[T?] = ...' with None() elements for Sharpy optionals)
+
+z = None if c else "hello"
+# error: Cannot infer a type for conditional expression: its operands have no best common type
+#        ('str', 'None') — annotate the target (e.g. 'x: T | None = ...' on the target)
 ```
+
+Every steer is source you can paste. In particular the `None` steer never offers `T? = None`:
+a Sharpy optional's only constructors are `Some(v)` and `None()` (R-G, #1720).
 
 Under a slot, `None` is admitted through the store seam as usual:
 ```python

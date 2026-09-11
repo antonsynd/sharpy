@@ -1497,7 +1497,10 @@ internal partial class TypeChecker
                     elementType = BestCommonType(
                         new[] { (valueElemNode, elementType) },
                         null, StorePosition.TupleElement, tupleTargetId,
-                        $"'{tupleTargetId.Name}'");
+                        $"'{tupleTargetId.Name}'",
+                        new BestCommonTypeOptions(
+                            AnnotateSteer: $"'{tupleTargetId.Name}: T = ...'",
+                            NoneAnnotateSteer: BindingNoneSteer(tupleTargetId.Name)));
                 }
 
                 // In Sharpy, tuple unpacking creates new variable versions
@@ -1542,7 +1545,20 @@ internal partial class TypeChecker
                 // the element type from the source node.
                 var nestedType = valueElemType;
                 if (nestedType is UnknownType && valueElemNode != null)
-                    nestedType = CheckExpression(valueElemNode);
+                {
+                    // Push the nested TARGETS' declared slots as the inner literal's expectation,
+                    // the same slot push the identifier arm makes for its own declared type. Read
+                    // slot-less, `(x, y), n = (None, "b"), 1` has a bare `None` with nothing to be
+                    // and the per-index seam refuses it (#1796) even though `x: str | None` is
+                    // exactly the slot that decides it (#1707).
+                    var nestedSlot = NestedTargetSlot(nestedTuple);
+                    using (nestedSlot != null
+                        ? EnterStore(StorePosition.TupleElement, nestedSlot, valueElemNode)
+                        : null)
+                    {
+                        nestedType = CheckExpression(valueElemNode);
+                    }
+                }
 
                 if (nestedType is not TupleType nestedTupleType)
                 {
@@ -1670,12 +1686,56 @@ internal partial class TypeChecker
             else
             {
                 elementType = CheckExpression(valueNodes[i]);
+
+                // No declared slot: this value decides a FRESH name, so it goes through the same
+                // single-operand seam the flat unpacking path uses. An untyped operand (bare
+                // `None`, a void call) is refused by name here instead of being recorded as
+                // `void` and reaching the emitter — `a, *rest = None, 1, 2` was SPY0599
+                // "Keyword 'void' cannot be used in this context" (#1812, #1796).
+                var boundName = target is Identifier targetId ? targetId.Name : "rest";
+                var siteNoun = target is Identifier named
+                    ? $"'{named.Name}'"
+                    : $"starred element {i + 1}";
+                elementType = BestCommonType(
+                    new[] { ((Expression?)valueNodes[i], elementType) },
+                    null, StorePosition.TupleElement, valueNodes[i], siteNoun,
+                    new BestCommonTypeOptions(
+                        AnnotateSteer: $"'{boundName}: T = ...'",
+                        NoneAnnotateSteer: BindingNoneSteer(boundName)));
             }
 
             types.Add(elementType);
         }
 
         return types;
+    }
+
+    /// <summary>
+    /// The declared slot of a NESTED tuple target — the tuple of its elements' declared binding
+    /// types — or null when any element is not an already-declared identifier. Pushed as the inner
+    /// RHS literal's expectation so each of its rows is admitted at its OWN slot.
+    /// </summary>
+    private TupleType? NestedTargetSlot(TupleLiteral nestedTuple)
+    {
+        var slots = new List<SemanticType>(nestedTuple.Elements.Length);
+        foreach (var elem in nestedTuple.Elements)
+        {
+            if (elem is not Identifier id)
+                return null;
+
+            var predecessor = (_symbolTable.Lookup(id.Name, searchParents: false)
+                ?? _symbolTable.Lookup(id.Name, searchParents: true)) as VariableSymbol;
+            if (predecessor == null)
+                return null;
+
+            var slot = DeclaredBindingType(predecessor);
+            if (slot is UnknownType)
+                return null;
+
+            slots.Add(slot);
+        }
+
+        return new TupleType { ElementTypes = slots };
     }
 
     /// <summary>
