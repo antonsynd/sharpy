@@ -1,6 +1,9 @@
-# k13: ctor {int?, int | None} by keyword —
-# both candidates are applicable (IsArgumentAssignable accepts int → int?
-# and int → Optional<int>); the resolver picks the second by ordering.
+# k13: ctor {int?, int | None} by keyword — ONE candidate is applicable, and the pick is that
+# candidate, not an ordering artefact. Strict Optional (R-G, #1720) refuses a bare `1` at an
+# Optional slot on every route: the single-candidate control `def g(x: int?)` called as `g(1)` is
+# SPY0604 "'int32' is not an Optional[int32]" (measured). So `int?` is inapplicable here and the
+# `int | None` overload wins on applicability alone. Reversing the declaration order prints `opt`
+# too (measured), which is what makes this a pick rather than an ordering.
 
 class C:
     def __init__(self, x: int?) -> None:

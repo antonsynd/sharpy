@@ -21,12 +21,15 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <item>a bare value bound to a <c>T | None</c> slot of an overloaded callee is emitted cast to
 /// that slot — Roslyn admits <c>T → Optional&lt;T&gt;</c> implicitly and would otherwise report
 /// CS0121 (behind SPY0908) for <c>{T?, T | None}</c>;</item>
-/// <item>the rule is the same at every host: module def, method, <c>__init__</c>, imported def.</item>
+/// <item>the rule is the same at every host: module def, method, <c>__init__</c>, imported def;</item>
+/// <item>and the same in every SPELLING — the keyword column equals the positional column
+/// (#1810, R-AF). The expectation table is written once and both spellings are measured against it,
+/// which is the strongest form of that claim: there is no keyword-specific row to drift.</item>
 /// </list>
-/// Axes: pair (5) × argument (8) × host (4). Every accepted cell PRINTS the winner's tag; every
-/// refused cell names its code and never reaches Roslyn. The resolver has no tie anywhere in this
-/// matrix, so SPY0353 is asserted absent on every cell — a tie that appears is a red anchor, not a
-/// cell to allowlist. The refused half is a literal count.
+/// Axes: pair (5) × argument (8) × host (4) × argument kind (2). Every accepted cell PRINTS the
+/// winner's tag; every refused cell names its code and never reaches Roslyn. The resolver has no tie
+/// anywhere in this matrix, so SPY0353 is asserted absent on every cell — a tie that appears is a red
+/// anchor, not a cell to allowlist. The refused half is a literal count.
 /// </summary>
 [Collection("HeavyCompilation")]
 public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDisposable
@@ -34,8 +37,9 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
     private const int PairCount = 5;
     private const int ArgCount = 8;
     private const int HostCount = 4;
-    private const int CellCount = PairCount * ArgCount * HostCount;
-    private const int RefusedCellCount = 23 * HostCount;
+    private const int ArgKindCount = 2;
+    private const int CellCount = PairCount * ArgCount * HostCount * ArgKindCount;
+    private const int RefusedCellCount = 23 * HostCount * ArgKindCount;
 
     private readonly string _tempDir;
 
@@ -141,35 +145,48 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
         => $"{receiver}def {name}(x: {pair.Slot1}) -> str:\n{receiver}    return \"{body1}\"\n"
            + $"{receiver}def {name}(x: {pair.Slot2}) -> str:\n{receiver}    return \"{body2}\"\n";
 
-    private static string Call(Arg arg, string callee)
-        => arg.Setup + new string(' ', arg.CallIndent) + $"print({callee}({arg.Expr}))\n";
+    /// <summary>
+    /// The argument at the call site, in one of the two SPELLINGS (#1810). The parameter is named
+    /// <c>x</c> at every host, so the keyword spelling is <c>x=</c> followed by the same expression:
+    /// nothing but the spelling changes between the two columns.
+    /// </summary>
+    private static string Argument(Arg arg, string argKind)
+        => argKind == "Keyword" ? $"x={arg.Expr}" : arg.Expr;
 
-    private static string ModuleDef(Pair pair, Arg arg)
-        => Overloads(pair, "", "f", pair.Tag1, pair.Tag2) + "\ndef main():\n" + Call(arg, "f");
+    private static string Call(Arg arg, string callee, string argKind)
+        => arg.Setup + new string(' ', arg.CallIndent) + $"print({callee}({Argument(arg, argKind)}))\n";
 
-    private static string Method(Pair pair, Arg arg)
+    private static string ModuleDef(Pair pair, Arg arg, string argKind)
+        => Overloads(pair, "", "f", pair.Tag1, pair.Tag2) + "\ndef main():\n" + Call(arg, "f", argKind);
+
+    private static string Method(Pair pair, Arg arg, string argKind)
         => "class C:\n"
            + $"    def m(self, x: {pair.Slot1}) -> str:\n        return \"{pair.Tag1}\"\n"
            + $"    def m(self, x: {pair.Slot2}) -> str:\n        return \"{pair.Tag2}\"\n"
-           + "\ndef main():\n    c = C()\n" + Call(arg, "c.m");
+           + "\ndef main():\n    c = C()\n" + Call(arg, "c.m", argKind);
 
-    private static string Init(Pair pair, Arg arg)
+    private static string Init(Pair pair, Arg arg, string argKind)
         => "class C:\n"
            + $"    def __init__(self, x: {pair.Slot1}) -> None:\n        print(\"{pair.Tag1}\")\n"
            + $"    def __init__(self, x: {pair.Slot2}) -> None:\n        print(\"{pair.Tag2}\")\n"
-           + "\ndef main():\n" + arg.Setup + new string(' ', arg.CallIndent) + $"C({arg.Expr})\n";
+           + "\ndef main():\n" + arg.Setup + new string(' ', arg.CallIndent)
+           + $"C({Argument(arg, argKind)})\n";
 
     private static string ImportedLib(Pair pair) => Overloads(pair, "", "f", pair.Tag1, pair.Tag2);
 
-    private static string ImportedMain(Arg arg) => "from lib import f\n\ndef main():\n" + Call(arg, "f");
+    private static string ImportedMain(Arg arg, string argKind)
+        => "from lib import f\n\ndef main():\n" + Call(arg, "f", argKind);
 
     private static readonly string[] Hosts = { "ModuleDef", "Method", "Init", "ImportedDef" };
+
+    private static readonly string[] ArgumentKinds = { "Positional", "Keyword" };
 
     public static IEnumerable<object[]> Cells
         => from p in Pairs
            from a in Args
            from h in Hosts
-           select new object[] { p.Name, a.Name, h };
+           from k in ArgumentKinds
+           select new object[] { p.Name, a.Name, h, k };
 
     [Fact]
     public void Axes_AreAnchored_AndTheRefusedHalfIsWrittenDown()
@@ -177,8 +194,10 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
         Pairs.Length.Should().Be(PairCount);
         Args.Length.Should().Be(ArgCount);
         Hosts.Length.Should().Be(HostCount);
+        ArgumentKinds.Length.Should().Be(ArgKindCount);
         Cells.Count().Should().Be(CellCount);
-        (from p in Pairs from a in Args from h in Hosts where Expected(p, a).RefusalCode != null select 1)
+        (from p in Pairs from a in Args from h in Hosts from k in ArgumentKinds
+         where Expected(p, a).RefusalCode != null select 1)
             .Count().Should().Be(RefusedCellCount,
                 "the refused half is a literal: a refusal that starts compiling, or an accepted cell "
                 + "that starts refusing, moves this count");
@@ -186,21 +205,22 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
 
     [Theory]
     [MemberData(nameof(Cells))]
-    public void Cell_SelectsOneWinner_OrIsRefusedByName(string pairName, string argName, string host)
+    public void Cell_SelectsOneWinner_OrIsRefusedByName(
+        string pairName, string argName, string host, string argKind)
     {
         var pair = Pairs.Single(p => p.Name == pairName);
         var arg = Args.Single(a => a.Name == argName);
         var expected = Expected(pair, arg);
-        var label = $"[{pairName} × {argName} × {host}]";
+        var label = $"[{pairName} × {argName} × {host} × {argKind}]";
 
         ExecutionResult result;
         string source;
         if (host == "ImportedDef")
         {
-            var dir = Path.Combine(_tempDir, pairName + "_" + argName);
+            var dir = Path.Combine(_tempDir, pairName + "_" + argName + "_" + argKind);
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "lib.spy"), ImportedLib(pair));
-            source = ImportedMain(arg);
+            source = ImportedMain(arg, argKind);
             File.WriteAllText(Path.Combine(dir, "main.spy"), source);
             result = CompileAndExecuteProject(dir, "main.spy");
         }
@@ -208,9 +228,9 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
         {
             source = host switch
             {
-                "ModuleDef" => ModuleDef(pair, arg),
-                "Method" => Method(pair, arg),
-                "Init" => Init(pair, arg),
+                "ModuleDef" => ModuleDef(pair, arg, argKind),
+                "Method" => Method(pair, arg, argKind),
+                "Init" => Init(pair, arg, argKind),
                 _ => throw new InvalidOperationException(host),
             };
             result = CompileAndExecute(source);

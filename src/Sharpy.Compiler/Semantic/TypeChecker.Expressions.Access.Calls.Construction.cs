@@ -21,8 +21,11 @@ internal partial class TypeChecker
     /// slots cast) and validated like a sole-arity match. A call NO candidate accepts is refused
     /// the way every other overload route refuses it (SPY0220 at the argument, or SPY0354) — that
     /// was CS1503 behind SPY0908, or the strict-Optional loophole a single <c>__init__(int?)</c>
-    /// never had (#1720). Several equally applicable candidates are left to Roslyn exactly as
-    /// before: the ambiguity story for constructors is unchanged here.
+    /// never had (#1720). Several equally applicable candidates are an AMBIGUITY, reported here as
+    /// SPY0353 like every other overload route (#1810, Decision 4) — they used to be left to Roslyn,
+    /// which answered CS0121 behind SPY0908 and pointed inside a candidate's body. The same refusal
+    /// now covers <c>super().__init__(...)</c>, through
+    /// <c>CheckSuperInitializerCall</c>.
     /// </summary>
     private FunctionSymbol? SelectInitializerAmongArityPeers(
         FunctionCall call, TypeSymbol typeSymbol, List<FunctionSymbol> initMethods,

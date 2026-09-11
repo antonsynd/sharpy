@@ -1,0 +1,19 @@
+# Ambiguity is SPY0353 on EVERY route (#1810, Decision 4), including super().__init__(...). The base
+# initializer is overloaded and both candidates accept `x: int` with a defaulted second parameter, so
+# neither is better. This used to reach Roslyn as CS0121 behind SPY0908, reported INSIDE the second
+# overload's body instead of at the call.
+
+class Base:
+    def __init__(self, x: int, y: str = "a") -> None:
+        print("int-str")
+
+    def __init__(self, x: int, y: float = 1.0) -> None:
+        print("int-float")
+
+class Derived(Base):
+    def __init__(self) -> None:
+        super().__init__(x=1)
+
+def main() -> None:
+    d = Derived()
+    print("unreachable")

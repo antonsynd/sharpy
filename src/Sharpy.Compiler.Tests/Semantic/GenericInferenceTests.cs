@@ -1,19 +1,31 @@
 using Xunit;
+using Xunit.Abstractions;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.TestInfrastructure.Integration;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
 /// Tests for generic type argument inference.
 /// These tests verify that the compiler can infer type arguments from function arguments.
+///
+/// <para>Most cells run the checker directly through <see cref="CompileAndCheck"/>. A cell that
+/// asserts an ICE is ABSENT cannot: SPY0908 is raised when the generated C# is compiled, a stage a
+/// semantic-only run never reaches, so the assertion would pass whether or not the ICE is fixed.
+/// Those cells inherit <see cref="IntegrationTestBase"/> and go through
+/// <c>CompileAndExecute</c> instead (contract §2, absence assertions).</para>
 /// </summary>
-public class GenericInferenceTests
+public class GenericInferenceTests : IntegrationTestBase
 {
+    public GenericInferenceTests(ITestOutputHelper output) : base(output)
+    {
+    }
+
     private (Module, SymbolTable, SemanticInfo, TypeChecker) CompileAndCheck(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
@@ -305,6 +317,11 @@ def main():
     /// <summary>
     /// #1811: when a generic candidate's inference conflicts at an overloaded callee,
     /// the candidate is inapplicable (not an ICE). SPY0354 names the reason.
+    ///
+    /// <para>Run end to end, because the second assertion is an ABSENCE: SPY0908 is raised at the
+    /// C#-compile stage, so under a semantic-only run it could never appear and the assertion was
+    /// vacuous. <see cref="InferenceConflict_TheICEProbe_HitsWhenTheConflictIsNotRefused"/> is its
+    /// positive control.</para>
     /// </summary>
     [Fact]
     public void OverloadedCallee_InferenceConflict_InapplicableNotICE()
@@ -320,14 +337,54 @@ def main():
     xs: list[int] = [0]
     f(xs, ""a"")
 ";
-        var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: false);
+        var result = CompileAndExecute(source);
 
-        var errors = typeChecker.Diagnostics.GetErrors();
-        errors.Should().Contain(e => e.Code == DiagnosticCodes.Semantic.NoMatchingOverload,
-            "inference conflict makes the two-arg candidate inapplicable → SPY0354");
-        errors.Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+        result.Success.Should().BeFalse("the call matches no overload");
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.NoMatchingOverload,
+            "inference conflict makes the two-arg candidate inapplicable → SPY0354: "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message)));
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
             "the conflict is decided by Sharpy, not leaked to Roslyn as CS0411");
+
+        // MEASURED at 311252e33: an emit failure leaves RawDiagnostics EMPTY and puts the raw Roslyn
+        // text in CompilationErrors, so the assertion above cannot fire on its own yet — see the
+        // positive control below. This one can, and does: it is the channel that carries a C#-stage
+        // failure today. (IntegrationTestBase's emit-failure branch gains a synthesized SPY0908 on
+        // the test-infra branch; when that lands, both assertions are load-bearing.)
+        result.CompilationErrors.Should().NotContain(e => e.Contains("CS0411", StringComparison.Ordinal),
+            "CS0411 is what this refusal replaced");
+    }
+
+    /// <summary>
+    /// The positive control for the absence assertion above: the SAME probe — run the program and
+    /// look for a C#-stage failure — on a program whose generated C# genuinely does not compile.
+    /// Without it, "no CS0411" is a claim about the probe rather than about the compiler.
+    ///
+    /// <para>The subject here is deliberately a DIFFERENT defect from the one under test: a
+    /// method-level type parameter on <c>__init__</c> is accepted by the checker and never emitted
+    /// (filed — see the round's report). If that is fixed, this control must be re-pointed at
+    /// another C#-stage failure, not deleted.</para>
+    /// </summary>
+    [Fact]
+    public void InferenceConflict_TheICEProbe_HitsWhenTheConflictIsNotRefused()
+    {
+        // A method-level type parameter on __init__ is accepted by the checker and never emitted,
+        // so the generated C# names an unknown type `V` (CS0246) — an ICE the same probe must see.
+        var source = @"
+class C:
+    def __init__[V](self, v: V) -> None:
+        print(""bare"")
+
+def main():
+    c = C(1)
+";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse("the generated C# does not compile");
+        result.CompilationErrors.Should().Contain(e => e.Contains("CS0246", StringComparison.Ordinal),
+            "the probe must be able to see a C#-stage failure at all, or 'no CS0411' above says "
+            + "nothing: " + string.Join(" | ", result.CompilationErrors));
     }
 
     /// <summary>

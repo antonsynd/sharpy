@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Integration;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -369,21 +370,25 @@ def main():
     [InlineData(
         "non-generic over generic IS gated on sequence equivalence (t1 → SPY0353)",
         "def f[T](x: T, y: object) -> int:\n    return 1\n\ndef f(x: object, y: int) -> str:\n    return \"nongeneric\"\n\ndef main():\n    f(1, 2)\n",
-        false, null)]
-    public void BetternessOrder_MatchesCSharp(string cell, string source, bool succeeds, string? expectedOutput)
+        false, DiagnosticCodes.Semantic.AmbiguousOverload)]
+    public void BetternessOrder_MatchesCSharp(string cell, string source, bool succeeds, string? expected)
     {
         var result = CompileAndExecute(source);
         if (succeeds)
         {
             result.Success.Should().BeTrue($"{cell}: {string.Join(", ", result.CompilationErrors)}");
-            result.StandardOutput.Should().Be(expectedOutput, cell);
+            result.StandardOutput.Should().Be(expected, cell);
         }
         else
         {
+            // The refused row names its CODE. Accepting "Ambiguous OR No matching overload" let the
+            // row pass on either verdict, and the two mean opposite things here: t1's claim is that
+            // the non-generic tie-break is GATED, i.e. both candidates stay applicable and the call
+            // is AMBIGUOUS. SPY0354 would mean one of them was dropped instead (#1810, cure A2c).
             result.Success.Should().BeFalse($"{cell}: should have been refused");
-            var errors = string.Join(" ", result.CompilationErrors);
-            (errors.Contains("Ambiguous") || errors.Contains("No matching overload")).Should().BeTrue(
-                $"{cell}: expected SPY0353 or SPY0354, got: {errors}");
+            result.RawDiagnostics.Should().Contain(d => d.Code == expected,
+                $"{cell}: expected {expected}, got: "
+                + string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message)));
         }
     }
 

@@ -1,0 +1,11 @@
+# A keyword no candidate declares is SPY0234 at the KEYWORD, on an overloaded callee exactly as on a
+# single-candidate one (#1810, Decision 6(b)). It used to collapse to SPY0354 at the whole call.
+
+def g(x: int) -> str:
+    return "int"
+
+def g(x: str) -> str:
+    return "str"
+
+def main() -> None:
+    print(g(z=1))

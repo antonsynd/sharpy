@@ -75,7 +75,12 @@ lacking a matching parameter name, or whose named parameter was already filled b
 is eliminated. The keyword argument's **type** participates in the assignability and betterness checks
 exactly as a positional argument's type does — there is no "name-only filtering" step that discards
 keyword types. This is what lets `g(x=1)` choose `g(x: int)` over `g(x: str)` in the same way that
-`g(1)` chooses the `int` overload positionally. Parameter names are taken from the **static type** of
+`g(1)` chooses the `int` overload positionally. Every betterness criterion reads the parameter a
+keyword argument RESOLVED to, so the criteria that consult a candidate's *declared* parameter —
+criterion 3 (more specific declared shape) and criterion 4 (CLR-level specificity) — see a keyword
+argument exactly as they see a positional one. With `def f[V](v: V)` and `def f[K, V](v: dict[K, V])`,
+both `f(d)` and `f(v=d)` select the `dict` overload for a `dict[str, int]`; a keyword spelling that
+resolved differently from its positional twin would be a defect, not a rule. Parameter names are taken from the **static type** of
 the receiver, so an override that renames a parameter is matched against the receiver's declared type,
 not its runtime type (see [Named Arguments in Overload Resolution](function_parameters.md#named-arguments-in-overload-resolution)).
 
@@ -151,32 +156,51 @@ order; the first that yields a unique winner selects the target.
    Constant conversions participate in this comparison: when both candidates are reachable via a
    constant conversion, the narrower type that implicitly converts to the wider one is preferred
    (`uint8` beats `int16` because `uint8 → int16` exists).
-3. **More specific type.** When neither conversion dominates, the structurally more specific parameter
-   wins: a parameter assignable to the other but not vice-versa (`list[int]` beats `IEnumerable[int]`),
-   and a structured type beats a bare type parameter at the same position (`list[list[T]]` beats
-   `list[T]` for a nested literal). This is C#'s §12.6.4.4 shape rule.
-4. **Signed beats unsigned (§12.6.4.7).** When the conversion lattice is neutral (neither parameter
+3. **More specific type (§12.6.4.5).** When neither conversion dominates, the structurally more
+   specific parameter wins. Two comparisons, in this order:
+   - a parameter *assignable* to the other but not vice-versa is better (`list[int]` beats
+     `IEnumerable[int]`);
+   - failing that, the more specific **declared** shape is better — the shape as *written*, before
+     inference closed it. C#'s rule is recursive: a type parameter is less specific than anything that
+     is not one, and between two constructed types over the same generic, the one with at least one
+     more specific type argument and none less specific wins. So `dict[K, V]` beats a bare `V`, and
+     `list[list[T]]` beats `list[T]`.
+
+   The second comparison is what decides a pair whose *closed* formals are identical. With
+   `def f[T](v: list[T])` and `def f[T](v: list[list[T]])`, per-candidate inference closes both
+   formals to `list[list[int]]` for a `list[list[int]]` argument: only the declared shapes still
+   differ, and `list[list[T]]` is the more specific one. Measured against `csc` on `net10.0`
+   (2026-09-10): `F<T>(List<T>)` vs `F<T>(List<List<T>>)` called with a `List<List<int>>` selects the
+   nested overload, in the positional and the named spelling alike.
+4. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
+   types (e.g. `ClrTypeMapper` maps both `Sharpy.List<T>` and `IEnumerable<T>` to `list[T]`), the more
+   derived CLR type wins. This is part of the per-argument comparison, not a late tie-break: it is a
+   form of C#'s better-conversion-target rule (§12.6.4.4), which C# also evaluates inside "better
+   function member" and therefore *before* the tie-breaks in criteria 6–8.
+5. **Signed beats unsigned (§12.6.4.7).** When the conversion lattice is neutral (neither parameter
    type implicitly converts to the other), a signed integer parameter beats an unsigned integer
    parameter. The pairs are: `int8` beats `uint8`; `int16` beats `uint16`; `int32` beats `uint32`;
    `int64` beats `uint64`. More generally, any signed integer beats any unsigned integer when the
    lattice cannot decide.
-5. **All arguments correspond (C# §12.6.4.3 bullet 3).** A candidate whose declared parameter count
+6. **All arguments correspond (C# §12.6.4.3 bullet 3).** A candidate whose declared parameter count
    matches the argument count (no defaults needed) beats one that needs a default-value substitution.
    This tie-break applies **without** a sequence-equivalence precondition — it decides even when the two
    candidates' parameter types differ at every position.
-6. **Fewer type parameters.** Among candidates whose closed parameter sequences are **equivalent** (every
+7. **Fewer type parameters.** Among candidates whose closed parameter sequences are **equivalent** (every
    bound formal is equal by type), a less-generic overload beats a more-generic one
    (`Merge[T](a, b)` beats `Merge[T, TKey](iterables, key)` when both produce the same closed types).
    This tie-break is **gated on sequence equivalence**: when the closed formal types differ, neither
    candidate wins by type-parameter count alone (C# §12.6.4.3; measured: CS0121 for non-equivalent
    sequences with a generic vs. non-generic pair).
-7. **Non-variadic over variadic.** Among candidates with equivalent closed parameter sequences, a
+8. **Non-variadic over variadic.** Among candidates with equivalent closed parameter sequences, a
    fixed-arity parameter list beats one that binds arguments through a `*args` parameter. This tie-break
-   is **gated on sequence equivalence** in the same way as criterion 6 (measured: CS0121 for
+   is **gated on sequence equivalence** in the same way as criterion 7 (measured: CS0121 for
    non-equivalent sequences with a normal-form vs. expanded-form pair).
-8. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
-   types (e.g. `ClrTypeMapper` maps both `Sharpy.List<T>` and `IEnumerable<T>` to `list[T]`), the more
-   derived CLR type wins.
+
+Criteria 1–5 are the per-argument comparison: a candidate is better when it is at least as good at
+every argument and strictly better at one. Criteria 6–8 are tie-breaks applied to the candidates that
+comparison left tied, and 7 and 8 additionally require the tied candidates' closed parameter sequences
+to be equal position by position.
 
 If, after all eight criteria, no single candidate is strictly better than every other, the call is
 **ambiguous** and `SPY0353` is reported. Disambiguate with an explicit type annotation or cast at the
@@ -235,7 +259,29 @@ g(42)     # g(int) — exact match
 def h(xs: list[int]) -> int: ...
 def h(xs: IEnumerable[int]) -> int: ...
 
-h([1, 2, 3])   # h(list[int]) — more specific type (criterion 3)
+h([1, 2, 3])   # h(list[int]) — more specific type (criterion 3, assignability)
+```
+
+The declared-shape half of criterion 3 decides the pairs whose *closed* formals are equal, and it
+decides them the same way in both spellings:
+
+```python
+def f[T](v: list[T]) -> str:
+    return "flat"
+def f[T](v: list[list[T]]) -> str:
+    return "nested"
+
+def g[V](v: V) -> str:
+    return "bare"
+def g[K, V](v: dict[K, V]) -> str:
+    return "structured"
+
+xs: list[list[int]] = [[1], [2]]
+f(xs)      # "nested"      — list[list[T]] is the more specific declared shape
+f(v=xs)    # "nested"      — the keyword spelling resolves identically
+d: dict[str, int] = {"a": 1}
+g(d)       # "structured"  — a constructed type beats a bare type parameter
+g(v=d)     # "structured"
 ```
 
 ```python
@@ -270,7 +316,7 @@ def g(sb: int8) -> None:
     print("int8 arm")
 def g(b: uint8) -> None:
     print("uint8 arm")
-g(100)   # prints "int8 arm" — criterion 4, int8 beats uint8
+g(100)   # prints "int8 arm" — criterion 5, int8 beats uint8
 
 # ...across widths too, exactly as C#'s §12.6.4.7 table: the rule is only ever
 # reached when the unsigned candidate is the same width or wider (a narrower
@@ -279,7 +325,7 @@ def r(sb: int8) -> None:
     print("int8 arm")
 def r(u: uint64) -> None:
     print("uint64 arm")
-r(100)   # prints "int8 arm" — criterion 4, int8 beats uint64
+r(100)   # prints "int8 arm" — criterion 5, int8 beats uint64
 
 # Identity match trumps constant conversion:
 def h(b: uint8) -> None:

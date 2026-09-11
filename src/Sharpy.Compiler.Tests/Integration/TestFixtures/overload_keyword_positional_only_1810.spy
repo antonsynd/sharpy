@@ -1,0 +1,12 @@
+# A keyword naming a POSITIONAL-ONLY slot is SPY0370 at the keyword, on an overloaded callee exactly
+# as on a single-candidate one (#1810, Decision 6(b)). python3 agrees this is an error:
+# `def g(x, /, y=0)` then `g(x=1)` raises TypeError.
+
+def g(x: int, /, y: int = 0) -> str:
+    return "int"
+
+def g(x: str, /) -> str:
+    return "str"
+
+def main() -> None:
+    print(g(x=1))
