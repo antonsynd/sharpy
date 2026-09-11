@@ -318,7 +318,9 @@ public abstract class IntegrationTestBase
                     Success = false,
                     CompilationErrors = errors,
                     CompilationWarnings = compilationWarnings,
-                    GeneratedCSharp = generatedCSharp
+                    GeneratedCSharp = generatedCSharp,
+                    RawDiagnostics = WithGeneratedCodeDiagnostics(
+                        rawDiagnostics, emitResult, alreadyFailed: compilationErrors.Count > 0)
                 };
             }
 
@@ -765,6 +767,46 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
+    /// Records the fact that the generated C# failed to compile on
+    /// <see cref="ExecutionResult.RawDiagnostics"/>, as the SPY0908 diagnostics the CLI reports for
+    /// the same failure.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The harness runs the Sharpy pipeline through <see cref="CompilerApi"/> but emits the
+    /// generated C# itself, so it never reaches <c>AssemblyCompiler</c> — the only place that maps a
+    /// Roslyn <c>CSxxxx</c> error onto SPY0908. Before this seam existed, a C#-compile failure
+    /// returned a result whose <c>RawDiagnostics</c> was left at its empty default, which made every
+    /// assertion of the form
+    /// <c>RawDiagnostics.Should().NotContain(d =&gt; d.Code == GeneratedCodeCompilationError)</c>
+    /// pass for exactly the condition it names: the ICE the assertion was written to forbid was the
+    /// one input that guaranteed it green. Roughly twenty test files carry that assertion.
+    /// </para>
+    /// <para>
+    /// Mapping goes through <see cref="AssemblyCompiler.MapGeneratedCodeDiagnostics"/> rather than a
+    /// hand-rolled diagnostic so the harness and <c>sharpyc run</c> agree on code, severity, phase,
+    /// message shape and the <c>#line</c>-mapped <c>.spy</c> coordinate — a difference between them
+    /// is then a compiler difference, never a harness one. <paramref name="alreadyFailed"/> mirrors
+    /// <c>ProjectCompiler</c>'s <c>_diagnostics.HasErrors</c>, so the #1387 net-disarming rule (no
+    /// SPY0908 when the compilation had already reported errors of its own) applies identically.
+    /// </para>
+    /// </remarks>
+    private static List<CompilerDiagnostic> WithGeneratedCodeDiagnostics(
+        List<CompilerDiagnostic>? sharpyDiagnostics,
+        EmitResult emitResult,
+        bool alreadyFailed)
+    {
+        var combined = sharpyDiagnostics is null
+            ? new List<CompilerDiagnostic>()
+            : new List<CompilerDiagnostic>(sharpyDiagnostics);
+
+        combined.AddRange(
+            AssemblyCompiler.MapGeneratedCodeDiagnostics(emitResult.Diagnostics, alreadyFailed).Reported);
+
+        return combined;
+    }
+
+    /// <summary>
     /// Renders a project's per-file generated C# into the single string the
     /// <see cref="ExecutionResult.GeneratedCSharp"/> contract carries, ordered by file name so the
     /// report is stable across filesystem enumeration order.
@@ -824,7 +866,16 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = errors,
-                    GeneratedCSharp = generatedCSharpReport
+                    // The single-file arm carries the warnings through its own C#-failure return;
+                    // dropping them here would make a `.warning` sidecar behave differently across
+                    // the two arms for a harness reason (#1171).
+                    CompilationWarnings = compilationWarnings,
+                    GeneratedCSharp = generatedCSharpReport,
+                    RawDiagnostics = WithGeneratedCodeDiagnostics(
+                        rawDiagnostics,
+                        emitResult,
+                        alreadyFailed: rawDiagnostics?.Any(
+                            d => d.Severity == CompilerDiagnosticSeverity.Error) == true)
                 };
             }
 
