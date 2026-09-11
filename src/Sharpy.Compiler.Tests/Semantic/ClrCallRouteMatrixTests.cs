@@ -521,6 +521,95 @@ public class ClrCallRouteMatrixTests : IntegrationTestBase
             $"cell {key} must be refused by the checker, not by the C# compiler");
     }
 
+    // -- Extension precedence: not a product cell -----------------------------------
+    //
+    // These are NOT route x form x mismatch cells, in the same way AnnotationReferenceMatrixTests'
+    // alias-body position is not a kind x position cell: the fact is about which SURFACE owns a call,
+    // not about how one surface decides an argument. Forcing them into the product would add nine
+    // N/A rows whose only reason is "this axis value is about extension precedence", which is another
+    // way of saying they do not belong to it.
+    //
+    // The contract: an EMPTY instance candidate surface is not a proof of absence. It is also what a
+    // Sharpy-verb mapping produces (`xs.index(20)` binds `List<int>.IndexOf`, #1571) and what the
+    // member seam's own conservatism produces when a PROPERTY shares the name — "the call may be
+    // invoking a delegate stored there, which the method surface does not describe". The extension
+    // probe has to carry that conservatism with it, or it converts an "I cannot see it" into a
+    // refusal. `recv.count(0)` on a `List[int]` is the case that caught it: `count` is the `Count`
+    // PROPERTY, the probe read the call as an extension call, found
+    // `Enumerable.Count(source, Func<T, bool>)`, and refused the `int` argument with
+    // "expects '(int32) -> bool'" — a program the base compiler accepts.
+
+    public static TheoryData<string, string, string> ExtensionPrecedenceCells()
+    {
+        var data = new TheoryData<string, string, string>();
+        foreach (var (key, source, expectation) in ExtensionPrecedenceRoster())
+            data.Add(key, source, expectation);
+        return data;
+    }
+
+    private static IEnumerable<(string Key, string Source, string Expectation)> ExtensionPrecedenceRoster()
+    {
+        // The regression, asserted as an ABSENCE because the C# outcome is another branch's: a
+        // value-vs-delegate overload pair reached through a receiver whose same-named PROPERTY
+        // suppressed the instance surface, called with a literal argument. What this seam owes the
+        // program is that it does not REFUSE it; whether the emitted call then binds depends on which
+        // `List` the annotation resolves to, which is the Sharpy-namespace resolution item, not this
+        // one. The absence is paired with the positive control below, so it cannot pass vacuously.
+        yield return ("property_shares_the_name.value_argument", """
+            def _use(recv: List[int]) -> None:
+                _x = recv.count(0)
+
+            def main() -> None:
+                print("ok")
+            """, "not-refused:(int32) -> bool");
+
+        // The same shape through the Sharpy-verb mapping (#1571): `index` binds IndexOf, while
+        // .NET 9's `Enumerable.Index` takes no argument beyond its receiver.
+        yield return ("verb_mapping_shares_the_name.value_argument", """
+            from System.Collections.Generic import List
+
+            def main() -> None:
+                xs: List[int] = List[int]()
+                xs.add(10)
+                xs.add(20)
+                print(xs.index(20))
+            """, "out:1");
+
+        // The positive control: where NO instance member and NO property answers the name, the
+        // extension surface IS the binding and its argument mistype is refused by name. Without this,
+        // the two cells above could pass by the probe never refusing anything.
+        yield return ("no_instance_member.argument_mistype_still_refused", """
+            from System.Linq import Enumerable
+
+            def main() -> None:
+                xs: list[int] = [1, 2, 3]
+                print(xs.first_or_default("a"))
+            """, "SPY0220");
+    }
+
+    [Theory]
+    [MemberData(nameof(ExtensionPrecedenceCells))]
+    public void ExtensionSurface_DoesNotClaimACallTheInstanceSurfaceOnlyFailedToSee(
+        string key, string source, string expectation)
+    {
+        if (!expectation.StartsWith("not-refused:", StringComparison.Ordinal))
+        {
+            Cell_ProducesItsExpectation(key, source, expectation);
+            return;
+        }
+
+        var formal = expectation.Substring("not-refused:".Length);
+        var result = CompileAndExecute(source);
+        var reported = result.CompilationErrors.Concat(
+            result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")).ToList();
+
+        reported.Should().NotContain(
+            message => message.Contains("SPY0220", StringComparison.Ordinal)
+                       && message.Contains(formal, StringComparison.Ordinal),
+            $"cell {key}: the extension surface must not claim a call the instance surface only "
+            + $"failed to SEE, so no argument of it is refused against '{formal}'");
+    }
+
     /// <summary>
     /// The totality pin: every cell of route x argument form x mismatch is either LIVE above or
     /// rostered in <see cref="NotApplicable"/> with a reason. The axis sizes are literals, so
