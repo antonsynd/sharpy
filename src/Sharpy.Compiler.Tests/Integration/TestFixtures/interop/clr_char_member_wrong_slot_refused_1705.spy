@@ -1,0 +1,11 @@
+# The refusal twin of clr_char_member_is_str_1705: the char member's type is named `str`, not
+# `object`. `object` was the regression's answer and is also SPY0220, so only the NAME distinguishes
+# the fixed compiler from the broken one.
+
+
+from system.io import Path as IoPath
+
+
+def main() -> None:
+    b: bool = IoPath.DirectorySeparatorChar
+    print(b)

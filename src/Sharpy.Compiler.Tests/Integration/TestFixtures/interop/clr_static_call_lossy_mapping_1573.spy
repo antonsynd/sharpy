@@ -1,7 +1,11 @@
-# #1573: the enum→int bridge arm must not manufacture a unique candidate.
-# Compare(String, String, StringComparison) accepts a Sharpy `int` through its `int`
-# spelling while the emitted C# needs the enum (CS1503 behind SPY0908); the sibling
-# Compare(String, String, Boolean) refuses an int outright. Nothing fits: no-match.
+# #1573: an `int` must not be admitted at an enum-typed CLR parameter. `Compare(String, String,
+# StringComparison)` once accepted a Sharpy `int` because the bridge described every enum as its
+# underlying `int32`, which made it the unique candidate while the emitted C# needed the enum (CS1503
+# behind SPY0908); the sibling `Compare(String, String, Boolean)` refuses an int outright. Nothing
+# fits, and the refusal now NAMES both candidates' parameter types, because the enum parameter is
+# described as the enum itself (#1705) — so the Sharpy vocabulary is what refuses, and the
+# same-argument rule (#1775) can state it. C# refuses this call too: only the literal 0 converts to
+# an enum.
 from system import String
 
 

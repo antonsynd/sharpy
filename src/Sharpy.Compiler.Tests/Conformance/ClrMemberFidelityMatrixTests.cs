@@ -64,7 +64,13 @@ public class ClrMemberFidelityMatrixTests
         NoneRefused
     }
 
-    private sealed record Cell(string Label, string Source, Expect Expect);
+    /// <param name="MustName">
+    /// A substring some error message must contain — the TYPE NAME the diagnostic has to spell. The
+    /// code alone cannot distinguish "typed correctly and rejected" from "typed `object` and
+    /// rejected": both are SPY0220. Every enum/char cell below carries it, because `object` was
+    /// exactly the wrong answer the fix replaced (#1705).
+    /// </param>
+    private sealed record Cell(string Label, string Source, Expect Expect, string? MustName = null);
 
     /// <summary>A cell of the nominal matrix that cannot be measured, and why.</summary>
     private sealed record NotApplicable(string Label, string Reason);
@@ -95,6 +101,15 @@ public class ClrMemberFidelityMatrixTests
                 .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
                 .ToList();
 
+            // NOTE (#1837): this arm cannot fire as the harness is configured. `_api.Compile` emits an
+            // assembly only when an OutputAssemblyPath is given, so the generated C# never reaches
+            // Roslyn and SPY0908 is never raised here — `Expect.Compiles` means "no SEMANTIC
+            // diagnostic", not "the generated C# compiles". Measured: a mutation that emits
+            // `char.ToString()` into a reflected char slot leaves all cells green while the
+            // executing fixture for the same program fails with CS1503. Any cell whose failure mode
+            // is a C#-level mismatch therefore needs an executing FBIT fixture beside it; the
+            // enum/char/bare-T rows have clr_enum_member_is_the_enum_1705,
+            // clr_char_member_is_str_1705 and clr_bare_type_parameter_member_not_nullable_1705.
             if (errors.Any(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError))
             {
                 failures.Add($"{cell.Label}: SPY0908 — the member resolved to Unknown instead of its reflected type");
@@ -128,6 +143,11 @@ public class ClrMemberFidelityMatrixTests
                 case Expect.NoneRefused when !errors.Any(d => d.Code == DiagnosticCodes.Semantic.NullabilityViolation):
                     failures.Add($"{cell.Label}: expected SPY0229, got {Describe(errors)}");
                     break;
+            }
+
+            if (cell.MustName != null && !errors.Any(d => d.Message.Contains(cell.MustName, StringComparison.Ordinal)))
+            {
+                failures.Add($"{cell.Label}: no diagnostic names {cell.MustName} — got {Describe(errors)}");
             }
         }
 
@@ -178,6 +198,35 @@ public class ClrMemberFidelityMatrixTests
         yield return new NotApplicable("StringBuilder.static-member-any",
             "System.Text.StringBuilder declares no public static member, so the "
             + "static-receiver cells of the non-generic-class row have no member to name.");
+
+        yield return new NotApplicable("nrt.closed-generic-annotated-T-return",
+            "`List[str].find(...)` is typed `str`, not `str | None`, although `List<T>.Find` returns "
+            + "`T?`: the suppression that keeps a BARE `T` non-nullable also swallows the annotated "
+            + "case, and NullabilityInfoContext reports the same state for both on a generic "
+            + "definition (measured in ClrNullabilityConsumerTotalityTests). #1828.");
+
+        yield return new NotApplicable("nrt.extension-annotated-T-return",
+            "`xs.first_or_default()` on `list[str]` is typed `str` for the same reason — "
+            + "`Enumerable.FirstOrDefault<TSource>` returns `TSource?`. The extension route now "
+            + "applies declared nullability (BuiltinRegistry.WrapIfDeclaredNullable, "
+            + "GenericReferenceResolver's staged symbol), so a `string?` extension return DOES "
+            + "carry it; only the type-parameter shape is blind. #1828.");
+
+        yield return new NotApplicable("nrt.nested-type-argument",
+            "`ProcessStartInfo.environment` (`IDictionary<string, string?>`) is `dict[str, str]`: "
+            + "ClrDeclaredNullability reads the TOP-LEVEL state only, by design — `List<string?>` "
+            + "stays `list[str]`. Not a bypass; the rule is stated in the type's remarks.");
+
+        yield return new NotApplicable("char.parameter-computed-str",
+            "a COMPUTED `str` in a reflected `char` slot is refused by name at the call seam "
+            + "(#1402: only a one-character literal converts), which is a call-route cell owned by "
+            + "the argument-binding matrix, not by member fidelity. The member-derived direction — a "
+            + "char-origin value handed back to a char slot — IS measured below.");
+
+        yield return new NotApplicable("route.warm-incremental",
+            "the warm route needs a .spyproj compiled `--clean` then `--incremental`, which this "
+            + "harness (CompilerApi single-source) cannot express; the cold/warm pair for CLR member "
+            + "types is measured by ClrMemberTypeWarmColdTests.");
 
         yield return new NotApplicable("list[int].count-clr",
             "`count` on a SHARPY list is Sharpy's own count(value) method, not CLR's Count property — "
@@ -540,6 +589,102 @@ public class ClrMemberFidelityMatrixTests
         yield return new Cell("nrt.static-method-single-return-nonnullable",
             SrcFrom("system.io", "Directory", "n: int = Directory.get_current_directory()"), Expect.TypeMismatchNonNullable);
 
+        // ── Member kinds the bridge once DECLINED: enum and char (#1705) ──
+        // A declined member reached the permissive channel, and the DP drain turned that channel
+        // into `UnmappedClrType` — displayed `object`, assignable nowhere. Each refusal cell asserts
+        // the TYPE NAME as well as the code: `object` and the right answer are both SPY0220.
+        yield return new Cell("enum.instance-property-correct-slot",
+            SrcSystem("DateTime, DayOfWeek", "d: DayOfWeek = DateTime.now.day_of_week\n    print(d)"), Expect.Compiles);
+        yield return new Cell("enum.instance-property-wrong-slot",
+            SrcSystem("DateTime", "b: bool = DateTime.now.day_of_week"), Expect.TypeMismatch, "'DayOfWeek'");
+        yield return new Cell("enum.instance-property-compare-with-enum-value",
+            SrcSystem("DateTime, DayOfWeek", "print(DateTime.now.day_of_week == DayOfWeek.Monday)"), Expect.Compiles);
+        yield return new Cell("enum.instance-property-into-enum-parameter",
+            "from system import DateTime, DayOfWeek\n\ndef take(d: DayOfWeek) -> str:\n    return str(d)\n\n"
+            + "def _use() -> None:\n    print(take(DateTime.now.day_of_week))\n", Expect.Compiles);
+        yield return new Cell("enum.instance-property-print",
+            SrcSystem("DateTime", "print(DateTime.now.kind)"), Expect.Compiles);
+        yield return new Cell("enum.instance-property-match-subject",
+            SrcSystem("DateTime", "d = DateTime.now.day_of_week\n    match d:\n        case _:\n            print(\"any\")"), Expect.Compiles);
+        yield return new Cell("enum.static-field-value-correct-slot",
+            SrcSystem("DayOfWeek", "d: DayOfWeek = DayOfWeek.Monday\n    print(d)"), Expect.Compiles);
+        yield return new Cell("enum.static-field-value-wrong-slot",
+            SrcSystem("DayOfWeek", "b: bool = DayOfWeek.Monday"), Expect.TypeMismatch, "'DayOfWeek'");
+        yield return new Cell("enum.instance-property-exception-guard",
+            "from system.net.sockets import SocketException, SocketError\n\ndef _use() -> None:\n"
+            + "    try:\n        raise SocketException(10060)\n"
+            + "    except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:\n"
+            + "        print(\"timeout\")\n", Expect.Compiles);
+
+        yield return new Cell("char.static-field-compare-with-str",
+            SrcFrom("system.io", "Path as IoPath", "print(IoPath.DirectorySeparatorChar == \"/\")"), Expect.Compiles);
+        yield return new Cell("char.static-field-compare-with-char-field",
+            SrcFrom("system.io", "Path as IoPath",
+                "print(IoPath.AltDirectorySeparatorChar == IoPath.DirectorySeparatorChar)"), Expect.Compiles);
+        yield return new Cell("char.static-field-correct-slot",
+            SrcFrom("system.io", "Path as IoPath", "s: str = IoPath.DirectorySeparatorChar\n    print(s)"), Expect.Compiles);
+        yield return new Cell("char.static-field-wrong-slot",
+            SrcFrom("system.io", "Path as IoPath", "b: bool = IoPath.DirectorySeparatorChar"), Expect.TypeMismatch, "'str'");
+        yield return new Cell("char.static-field-str-builtin",
+            SrcFrom("system.io", "Path as IoPath", "print(str(IoPath.DirectorySeparatorChar))"), Expect.Compiles);
+        yield return new Cell("char.origin-value-into-clr-char-slot",
+            SrcFrom("system.io", "Path as IoPath",
+                "t: str = \"/tmp/x/\"\n    print(t.trim_end(IoPath.DirectorySeparatorChar))"), Expect.Compiles);
+        yield return new Cell("char.origin-value-into-params-char-tail",
+            SrcFrom("system.io", "Path as IoPath",
+                "t: str = \"/tmp/x/\"\n    print(t.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar))"),
+            Expect.Compiles);
+
+        // ── A member declared with a BARE type parameter on a generic DEFINITION (#1705 B1) ──
+        // The overload index reflects over `List<T>`, where NullabilityInfoContext calls an
+        // unconstrained `T` Nullable. Typing it `T | None` refused stores that used to compile and
+        // broke union-constructor inference through `append`'s slot.
+        yield return new Cell("generic-definition-T.method-return-not-nullable",
+            "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    b: bool = xs.pop(0)\n",
+            Expect.TypeMismatchNonNullable, "'str'");
+        yield return new Cell("generic-definition-T.method-return-correct-slot",
+            "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    s: str = xs.pop(0)\n    print(s)\n", Expect.Compiles);
+        yield return new Cell("generic-definition-T.optional-unwrap-or-not-nullable",
+            "def _use() -> None:\n    v: str? = Some(\"x\")\n    b: bool = v.unwrap_or(\"\")\n",
+            Expect.TypeMismatchNonNullable, "'str'");
+        yield return new Cell("generic-definition-T.parameter-slot-refuses-none",
+            "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    xs.append(None)\n", Expect.NoneRefused);
+        yield return new Cell("generic-definition-T.parameter-slot-takes-a-union-case",
+            "union Box[T]:\n    case Full(v: T)\n    case Empty()\n\ndef _use() -> None:\n"
+            + "    xs = [Box.Full(1), Box.Full(2)]\n    xs.append(Box.Empty())\n    print(len(xs))\n", Expect.Compiles);
+    }
+
+    /// <summary>
+    /// The axis totality pin. The member-kind and declaration axes are spelled as LITERALS here, not
+    /// derived from the cells, so a cell set that silently loses an axis value fails instead of
+    /// shrinking quietly (a count taken from the same source it checks is vacuous).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FidelityMatrix_CoversEveryMemberKindAndDeclarationAxisValue()
+    {
+        string[] memberKindPrefixes =
+        {
+            "enum.instance-property", "enum.static-field", "char.static-field",
+            "char.origin-value", "generic-definition-T.method-return",
+            "generic-definition-T.parameter-slot", "nrt.instance-property", "nrt.static-property",
+            "nrt.static-method"
+        };
+
+        var labels = GenerateCells().Select(c => c.Label).ToList();
+        var naLabels = NotApplicableCells().Select(n => n.Label).ToList();
+
+        var missing = memberKindPrefixes
+            .Where(prefix => !labels.Any(l => l.StartsWith(prefix, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(missing.Count == 0,
+            "member-kind axis value(s) with no cell: " + string.Join(", ", missing));
+
+        // Every axis value that CANNOT be measured is named, with an issue or a design rule.
+        Assert.Contains(naLabels, l => l == "nrt.closed-generic-annotated-T-return");
+        Assert.Contains(naLabels, l => l == "nrt.extension-annotated-T-return");
+        Assert.Contains(naLabels, l => l == "route.warm-incremental");
     }
 
     private static string Src(string type, string body) =>

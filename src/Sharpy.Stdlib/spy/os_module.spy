@@ -34,9 +34,7 @@ sep: str = str(IoPath.DirectorySeparatorChar)
 linesep: str = Environment.NewLine
 name: str = "nt" if sep == "\\" else "posix"
 pathsep: str = str(IoPath.PathSeparator)
-_alt_sep_char: str = str(IoPath.AltDirectorySeparatorChar)
-_dir_sep_char: str = str(IoPath.DirectorySeparatorChar)
-altsep: str = "" if _alt_sep_char == _dir_sep_char else _alt_sep_char
+altsep: str = "" if IoPath.AltDirectorySeparatorChar == IoPath.DirectorySeparatorChar else str(IoPath.AltDirectorySeparatorChar)
 
 def remove(path: str) -> None:
     """Remove a file (same as unlink)."""

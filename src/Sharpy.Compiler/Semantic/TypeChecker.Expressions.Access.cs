@@ -1251,17 +1251,24 @@ internal partial class TypeChecker
                 if (IsCurrentCallCallee(memberAccess))
                     return null;
 
-                return field.Type;
+                // A char-typed FIELD is the same surface fact as a char-typed property or a char
+                // RETURN: a one-character `str` (#1291). The projection is applied at the one seam
+                // both member kinds pass through, so `Path.directory_separator_char == "/"` is a
+                // str-vs-str comparison rather than an `object` refusal (#1705).
+                return ProjectClrChar(memberAccess, field.Type);
 
             case Discovery.ClrMemberResolution.InconclusiveResult:
-                // The bridge cannot express the member's TYPE (enum, open generic, char,
-                // interface) but the member itself exists. In CALL position the call seam
+                // The bridge cannot express the member's TYPE (an open generic, an unmappable
+                // interface shape) but the member itself exists. In CALL position the call seam
                 // resolves the method from the raw MethodInfo — Inconclusive only means the
                 // return type cannot be mapped, not that the member is absent (#1678).
                 if (IsCurrentCallCallee(memberAccess))
                     return null;
                 // In VALUE position, UnmappedClrType is the honest answer — assignable
-                // nowhere except object/re-interop.
+                // nowhere except object/re-interop. It is reserved for shapes Sharpy genuinely
+                // cannot spell: an enum and a char are both spellable and are typed above, because
+                // `object` here refuses programs that ran (SPY0222 on `day_of_week ==
+                // DayOfWeek.Monday`, SPY0220 into an enum-typed slot) (#1705).
                 return new UnmappedClrType { ClrTypeName = memberAccess.Member };
 
             default:
@@ -1492,6 +1499,65 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="argument"/> produces a value that IS a CLR <c>char</c> in the emitted
+    /// C#, described at the Sharpy surface as a one-character <c>str</c> by a recorded projection
+    /// (#1291). A char-typed member read and a char-returning call are both such values.
+    /// </summary>
+    private bool IsClrCharOriginValue(Expression? argument)
+        => argument != null
+            && _semanticInfo.GetCharMaterialization(argument) == CharMaterializationKind.Scalar;
+
+    /// <summary>
+    /// Withdraws the char-to-str projection from every argument of <paramref name="call"/> that binds
+    /// to a reflected <c>char</c> slot, and returns those argument positions.
+    /// </summary>
+    /// <remarks>
+    /// The projection is recorded by the seam that PRODUCES the value (a char-typed member or a
+    /// char-returning call), which cannot see where the value goes. Handed straight back to a CLR
+    /// <c>char</c> parameter the conversion is not merely unnecessary but wrong: the emitted
+    /// <c>ToString()</c> puts a <c>string</c> in a char slot (CS1503 behind SPY0908 —
+    /// <c>temp.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)</c> in
+    /// <c>Sharpy.Stdlib/spy/tempfile_module.spy</c>). The call seam is the one place that knows both
+    /// the value's origin and its destination, so the withdrawal happens here — for every CLR route,
+    /// since all three (instance, static, constructor) reach it through
+    /// <c>CheckClrCallArgumentTypesCore</c>.
+    /// <para>
+    /// A <c>params char[]</c> tail is included: each element of the tail occupies a char slot, which
+    /// is the shape the stdlib line above has.
+    /// </para>
+    /// </remarks>
+    private HashSet<int> WithdrawCharProjectionAtClrCharSlots(
+        FunctionCall call, System.Reflection.MethodBase method, int argumentCount)
+    {
+        var withdrawn = new HashSet<int>();
+        var parameters = method.GetParameters();
+        if (parameters.Length == 0)
+            return withdrawn;
+
+        var tailIsParamsChar = parameters[^1].IsDefined(typeof(ParamArrayAttribute), inherit: false)
+            && parameters[^1].ParameterType.GetElementType() == typeof(char);
+
+        for (int i = 0; i < argumentCount; i++)
+        {
+            var slotIsChar = i < parameters.Length && !parameters[i].IsDefined(typeof(ParamArrayAttribute), inherit: false)
+                ? parameters[i].ParameterType == typeof(char)
+                : tailIsParamsChar && i >= parameters.Length - 1;
+
+            if (!slotIsChar)
+                continue;
+
+            var argument = ArgumentNodeAt(call, i);
+            if (!IsClrCharOriginValue(argument))
+                continue;
+
+            _semanticInfo.ClearCharMaterialization(argument!);
+            withdrawn.Add(i);
+        }
+
+        return withdrawn;
     }
 
     /// <summary>

@@ -178,14 +178,23 @@ public class ClrTypeBridgeTests
         Assert.Equal(SemanticType.Int, tupleType.ElementTypes[0]);
     }
 
+    /// <summary>
+    /// A CLR enum maps to the enum's OWN type, not to its underlying int32 (#1705). The underlying
+    /// mapping described the value as something it is not, which is why the member seam had to
+    /// decline enums to stay honest — and the decline surfaced as `object` in value position, so
+    /// `DateTime.now.day_of_week == DayOfWeek.Monday` (a program that ran) drew SPY0222.
+    /// </summary>
     [Fact]
-    public void MapEnum_ToInt()
+    public void MapEnum_ToTheEnumsOwnType()
     {
         // Arrange & Act
         var result = _mapper.MapClrTypeToSemanticType(typeof(TestEnum));
 
         // Assert
-        Assert.Equal(SemanticType.Int, result);
+        var enumType = Assert.IsType<UserDefinedType>(result);
+        Assert.Equal(nameof(TestEnum), enumType.Name);
+        Assert.Equal(typeof(TestEnum), enumType.Symbol?.ClrType);
+        Assert.Equal(TypeKind.Enum, enumType.Symbol?.TypeKind);
     }
 
     [Fact]

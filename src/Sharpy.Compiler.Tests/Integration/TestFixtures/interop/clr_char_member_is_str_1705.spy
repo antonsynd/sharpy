@@ -1,0 +1,31 @@
+# A char-typed CLR MEMBER is the one-character `str` a CLR char is at the Sharpy surface (#1291,
+# #1705) — the same projection a char-returning CALL gets, and the same thing the `char` annotation
+# spelling means (clr_char_annotation_is_str_1291).
+#
+# The member seam used to decline char members so the permissive channel kept them; after the
+# deliberately-permissive drain that decline displayed `object`, so comparing two char fields was
+# SPY0222 "Type 'object' does not support operator '==' with operand of type 'object'" — which is how
+# os_module.spy's `altsep` line stopped compiling.
+#
+# The separator is compared with itself and with the platform's own value rather than with "/", so
+# the fixture does not assume a platform.
+
+
+from system.io import Path as IoPath
+
+
+def main() -> None:
+    sep: str = IoPath.DirectorySeparatorChar
+    print(len(sep))
+    print(sep == IoPath.DirectorySeparatorChar)
+    print(str(IoPath.DirectorySeparatorChar) == sep)
+    print(IoPath.AltDirectorySeparatorChar == IoPath.AltDirectorySeparatorChar)
+
+    # The ARGUMENT direction of the same projection: a char-origin value handed straight back to a
+    # reflected `char` slot keeps its char form — the conversion is withdrawn at the call seam.
+    trimmed: str = ("x" + sep).trim_end(IoPath.DirectorySeparatorChar)
+    print(trimmed)
+
+    # …including a `params char[]` tail, which is the shape tempfile_module.spy has.
+    both: str = ("y" + sep).trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
+    print(both)

@@ -127,31 +127,29 @@ internal sealed class ClrMemberTypeResolver
     /// (#1243, #1260).
     /// </summary>
     /// <remarks>
-    /// Two shapes are declined by identity rather than by their mapping:
     /// <list type="bullet">
-    /// <item><b>Enums.</b> The bridge maps a CLR enum onto its underlying <c>int32</c>, which is not
-    /// what the value IS: <c>ex.socket_error_code == SocketError.TimedOut</c> would become
-    /// int-vs-enum (SPY0222) and <c>sock.shutdown(how as! SocketShutdown)</c> enum-vs-int (SPY0220),
-    /// both of them working programs the emitter binds today (measured on
-    /// <c>Sharpy.Stdlib/spy/socket_module.spy</c>).</item>
-    /// <item><b>Open generics.</b> Reflecting a STATIC member on an unconstructed definition yields
-    /// the definition's own type parameters — <c>dict.fromkeys</c> came back as
-    /// <c>dict[str, V]</c>, a type with a free variable no destination can accept.</item>
+    /// <item><b>Open generics</b> are the one shape declined by identity. Reflecting a STATIC member
+    /// on an unconstructed definition yields the definition's own type parameters —
+    /// <c>dict.fromkeys</c> came back as <c>dict[str, V]</c>, a type with a free variable no
+    /// destination can accept.</item>
+    /// <item><b>Enums</b> map to the enum's own <see cref="UserDefinedType"/>, the same type a
+    /// <c>DayOfWeek</c> annotation and a <c>DayOfWeek.Monday</c> value resolve to. They were once
+    /// declined here because the bridge described an enum as its underlying <c>int32</c>; the bridge
+    /// now describes it faithfully, and declining became a refusal in value position (#1705).</item>
+    /// <item><b>A scalar <c>char</c></b> maps to <c>str</c>, the one-character string a CLR char IS at
+    /// the Sharpy surface (#1291) — the same projection <c>x: char</c> gets in
+    /// <c>TypeResolver</c>. The value-position seam records the <c>ToString()</c> that realizes it,
+    /// and the ARGUMENT direction (a char-origin value handed to a reflected <c>char</c> parameter)
+    /// drops that conversion at the call seam that owns it (#1402).</item>
     /// <item><b>Declared nullability.</b> The mapped type is wrapped in <see cref="NullableType"/> when the
     /// member declares <c>T?</c> — read from the member, never from the Type (#1705).</item>
-    /// <item><b>A scalar <c>char</c>.</b> Sharpy reads a CLR char as a one-character <c>str</c> at
-    /// a call's RESULT (#1291), but a char-typed member is also written as a char ARGUMENT:
-    /// <c>IoPath.DirectorySeparatorChar</c> feeds <c>trim_end(char, char)</c> in
-    /// <c>Sharpy.Stdlib/spy/tempfile_module.spy</c>, and projecting the field to <c>str</c> made the
-    /// emitter materialize a string into a char slot (CS1503). The projection belongs to the seam
-    /// that owns the conversion, not to the member's type.</item>
     /// </list>
     /// </remarks>
     private bool TryMapFaithfully(Type clrType, bool declaredNullable, out SemanticType? mapped)
     {
         mapped = null;
 
-        if (clrType.IsEnum || clrType.ContainsGenericParameters || clrType == typeof(char))
+        if (clrType.ContainsGenericParameters)
             return false;
 
         var candidate = _bridge.MapClrTypeToSemanticType(clrType);
