@@ -241,6 +241,11 @@ public class DispatchSiteInventoryTests
         // partiality cannot refuse a legal program; the behaviour of the cells that MUST be
         // conditional is pinned by the DA rows of HoistProducerContextMatrixTests.
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.ComputeWalrusWhenTrueFalse"] = "documented-by-design:Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs:ComputeWalrusWhenTrueFalse",
+        // TryGetConstantTruth: the constant-operand rule of C# §9.4.4 (?:, and, or) keys on a boolean
+        // literal or `not` of one — deliberately NOT a general fold, because this is a reachability
+        // judgement and a fold that disagreed with the emitter's would refuse a program that runs;
+        // the default arm returns null and the general formula applies (the safe direction).
+        ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.TryGetConstantTruth"] = "documented-by-design:Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs:TryGetConstantTruth",
         // AddWithTargetBaseReads: an assignment-target-shape dispatch, the same universe the other
         // target walkers range over.
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.AddWithTargetBaseReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
