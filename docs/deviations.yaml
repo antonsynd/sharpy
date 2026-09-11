@@ -1399,6 +1399,23 @@ deviations:
       sharpy: |
         print(min(2, 3.0))   # 2.0
 
+  - id: set-predicate-spelling
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "The set predicates are spelled `issubset` / `issuperset` / `isdisjoint`; `s.is_subset(t)` raises AttributeError."
+    sharpy_behavior: "The predicates are spelled `is_subset` / `is_superset` / `is_disjoint` — snake_case throughout the public API (collection_types.md, \"Set methods\"); the CPython spellings are not provided, so a program using them is refused at compile time rather than diverging at runtime."
+    spec_ref: docs/language_specification/collection_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print({1, 2}.issubset({1, 2, 3}))   # True
+      sharpy: |
+        s: set[int] = {1, 2}
+        print(s.is_subset({1, 2, 3}))       # True
+
   - id: math-floor-ceil-return-float
     code: null
     category: stdlib

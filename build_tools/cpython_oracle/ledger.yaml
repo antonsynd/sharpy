@@ -557,6 +557,14 @@ deviations:
   spec_ref: docs/language_specification/exception_handling.md
   existing_diagnostic: SPY0122
   planned_diagnostic: null
+- id: set-predicate-spelling
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/collection_types.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: shift-count-masked
   category: operators
   audience: python

@@ -5041,7 +5041,9 @@ internal partial class TypeChecker
     /// <summary>
     /// How a refusal at an iterable ARGUMENT position names the operation: the callee's own spelling
     /// when there is one ("reversed()"), else the generic noun. The message reads as the route the
-    /// user wrote rather than as compiler vocabulary.
+    /// user wrote rather than as compiler vocabulary. The discard arm is deliberately generic: it
+    /// only renders a noun and makes no semantic decision (documented-by-design for the dispatch
+    /// roster).
     /// </summary>
     private static string IterableArgumentOperationNoun(Expression callee) => callee switch
     {

@@ -217,6 +217,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractNestedTypes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
 
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.DescribeTypeOperand"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:DescribeTypeOperand",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.IterableArgumentOperationNoun"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:IterableArgumentOperationNoun",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.InferParamTypesFromSubExpression"] = "refusal-net:LambdaTypeInferenceTests",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.TryResolveExpressionType"] = "refusal-net:LambdaTypeInferenceTests",
         ["Semantic/TypeChecker.Statements.cs::TypeChecker.ReportEscapingControlTransfer"] = "guarded-by:DeferBodyControlFlowTotalityTests",

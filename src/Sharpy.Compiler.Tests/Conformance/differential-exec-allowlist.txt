@@ -87,6 +87,13 @@ fixture::collections/list_literal_return_type
 # deviations.yaml: numeric-widening-in-typed-context. Permanent (#1783, #1842).
 fixture::tuples/for_over_tuple_1783
 
+# The set predicates are spelled is_subset / is_superset / is_disjoint (snake_case API), so
+# CPython raises AttributeError ('set' object has no attribute 'is_subset') on the fixture that
+# exercises them with tuple/str/dict sources (#1773). The instance-receiver AttributeError is
+# deliberately NOT a subset-filter skip (it catches real bugs), so the designed spelling is
+# recorded here. deviations.yaml: set-predicate-spelling. Permanent (#1773).
+fixture::collections/set_nonmutating_iterable_sources_1773
+
 # The variadic value form of min()/max() promotes mixed-numeric arguments to a common
 # numeric type (#1014), so min(2, 3.0) is 2.0 where CPython returns the unpromoted
 # int 2. Matches Sharpy's binary numeric operators (2 + 0.0 == 2.0); the fixture's own
