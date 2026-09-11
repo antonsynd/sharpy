@@ -39,13 +39,11 @@ namespace Sharpy
             }
         }
 
-        public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+        public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
         public static string Linesep = global::System.Environment.NewLine;
         public static string Name = Sep == "\\" ? "nt" : "posix";
-        public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator);
-        public static string _AltSepChar = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
-        public static string _DirSepChar = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
-        public static string Altsep = _AltSepChar == _DirSepChar ? "" : _AltSepChar;
+        public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString());
+        public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar.ToString() == global::System.IO.Path.DirectorySeparatorChar.ToString() ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
         /// <summary>
         /// Remove a file (same as unlink).
         /// </summary>

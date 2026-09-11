@@ -49,7 +49,7 @@ namespace Sharpy
                 return ".";
             }
 
-            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
             bool isAbsolute = global::Sharpy.StringHelpers.GetItem(path, 0) == "/" || global::Sharpy.StringHelpers.GetItem(path, 0) == "\\" || (path.Length >= 2 && global::Sharpy.StringHelpers.GetItem(path, 1) == ":");
             Sharpy.List<string> stack = new Sharpy.List<string>()
             {
@@ -221,8 +221,8 @@ namespace Sharpy
                     return home;
                 }
 
-                string sepStr = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
-                string altSepStr = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
+                string sepStr = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
+                string altSepStr = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
                 if (global::Sharpy.StringHelpers.GetItem(path, 1) == sepStr || global::Sharpy.StringHelpers.GetItem(path, 1) == altSepStr)
                 {
                     return home + path.Substring(1);

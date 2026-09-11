@@ -145,8 +145,8 @@ namespace Sharpy
                 return null;
             }
 
-            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
-            string altSep = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
+            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
+            string altSep = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
             if (global::Sharpy.StringExtensions.Find(name, sep) >= 0 || global::Sharpy.StringExtensions.Find(name, altSep) >= 0)
             {
                 if (global::System.IO.File.Exists(name))
@@ -194,7 +194,7 @@ namespace Sharpy
                 }
             }
 
-            foreach (var __loopVar_0 in global::Sharpy.StringExtensions.Split(pathEnv, global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator)))
+            foreach (var __loopVar_0 in global::Sharpy.StringExtensions.Split(pathEnv, global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString())))
             {
                 var dirPath = __loopVar_0;
                 if (dirPath == "")
