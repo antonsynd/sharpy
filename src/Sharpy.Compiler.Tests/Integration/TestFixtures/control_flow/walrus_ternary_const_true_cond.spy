@@ -1,0 +1,16 @@
+# C# §9.4.4's constant rule for `?:`: when the condition is a constant, only one arm is reachable and
+# the state after the conditional is the state after THAT arm. The general when-true/when-false
+# formula still intersects against the unreachable arm, so the walrus in the arm that ALWAYS runs was
+# reported unassigned and this program was refused with SPY0600.
+#
+# `take` wraps `xs.pop(0)` behind a declared `-> str` return on purpose: bare `xs.pop(0)` in the
+# ternary's then-arm types as `str | None` at this commit and the conditional is refused by SPY0227
+# (best common type) before definite assignment is ever consulted — a different seam.
+def take(xs: list[str]) -> str:
+    return xs.pop(0)
+
+def main() -> None:
+    xs: list[str] = [" a ", " b ", "   "]
+    while ((s := take(xs)) if True else "") != "   ":
+        print(s.strip())
+    print("done", len(xs))

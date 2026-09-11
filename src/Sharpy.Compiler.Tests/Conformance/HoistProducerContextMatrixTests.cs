@@ -142,8 +142,8 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
     [Trait("Category", "Conformance")]
     public void Matrix_HasThePinnedCellCounts()
     {
-        Assert.Equal(47, GenerateCells().Count());
-        Assert.Equal(3, RefusedCells().Count());
+        Assert.Equal(51, GenerateCells().Count());
+        Assert.Equal(9, RefusedCells().Count());
         Assert.Equal(2, NotApplicableCells().Count());
     }
 
@@ -175,6 +175,73 @@ def main() -> None:
     w: int
     if 5 < 1 < (w := f()):
         print(""in"")
+    print(""after"", w)",
+            "SPY0600");
+
+        // The constant-condition axis's other six cells: the walrus sits in the arm the constant
+        // makes UNREACHABLE, so python3 leaves it unbound (UnboundLocalError) and SPY0600 is right.
+        // Without these, the constant rules could be "fixed" by crediting every arm unconditionally.
+        yield return new RefusedCell("DA.const-false-ternary-condition",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    v: int = (w := f()) if False else 0
+    print(v, w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.const-not-true-ternary-condition",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    v: int = (w := f()) if not True else 0
+    print(v, w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.const-false-and-lhs",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if False and (w := f()) > 0:
+        pass
+    print(""after"", w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.const-not-true-and-lhs",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if not True and (w := f()) > 0:
+        pass
+    print(""after"", w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.const-true-or-lhs",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if True or (w := f()) > 0:
+        pass
+    print(""after"", w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.const-not-false-or-lhs",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if not False or (w := f()) > 0:
+        pass
     print(""after"", w)",
             "SPY0600");
 
@@ -750,6 +817,62 @@ def main() -> None:
         case _:
             print(""other"")",
             "f\none 3");
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // Constant-condition axis (C# §9.4.4's constant rules for ?:, && and ||)
+        //
+        // When the deciding operand is a CONSTANT, one outcome is unreachable and the general
+        // when-true/when-false formula still intersects against it, so a walrus in the arm that
+        // ALWAYS runs was reported unassigned. Each cell's expectation is python3's: the
+        // always-taken arm binds the walrus (these four RUN), the never-taken arm leaves it unbound
+        // (those six are in RefusedCells).
+        // ══════════════════════════════════════════════════════════════════════════
+
+        yield return new Cell("DA.const-true-ternary-condition",
+            @"def f() -> int:
+    print(""f"")
+    return 3
+
+def main() -> None:
+    w: int
+    v: int = (w := f()) if True else 0
+    print(v, w)",
+            "f\n3 3");
+
+        yield return new Cell("DA.const-not-false-ternary-condition",
+            @"def f() -> int:
+    print(""f"")
+    return 3
+
+def main() -> None:
+    w: int
+    v: int = (w := f()) if not False else 0
+    print(v, w)",
+            "f\n3 3");
+
+        yield return new Cell("DA.const-true-and-lhs",
+            @"def f() -> int:
+    print(""f"")
+    return 3
+
+def main() -> None:
+    w: int
+    if True and (w := f()) > 0:
+        pass
+    print(""after"", w)",
+            "f\nafter 3");
+
+        yield return new Cell("DA.const-false-or-lhs",
+            @"def f() -> int:
+    print(""f"")
+    return 3
+
+def main() -> None:
+    w: int
+    if False or (w := f()) > 0:
+        pass
+    print(""after"", w)",
+            "f\nafter 3");
 
         // ══════════════════════════════════════════════════════════════════════════
         // Walrus DA cells — positive controls for the when-true/when-false rule
