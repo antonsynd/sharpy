@@ -280,17 +280,16 @@ internal partial class TypeChecker
 
         var clrAccepts = argClrType != null && formal.ClrType.IsAssignableFrom(argClrType);
 
-        // The float32/decimal literal narrowings are value SHAPES the store seam admits at every
-        // position (#1688 Decision 6) and that `allowConstantConversion` does not gate. C# has no
-        // counterpart for either, so the strict phase refuses them by name.
-        if (!literalAdaptation && node != null
-            && (ImplicitConversions.IsFloat32LiteralNarrowing(mapped, argType, UnwrapParenthesized(node))
-                || ImplicitConversions.IsDecimalLiteralNarrowing(mapped, argType, UnwrapParenthesized(node))))
-        {
-            return new ClrArgumentVerdict(ClrAcceptance.RefusedByVocabulary, ClrFormalDisplay(formal));
-        }
-
-        if (IsArgumentAssignable(argType, mapped, node, literalAdaptation))
+        // The strict phase asks whether the argument's TYPE licenses the conversion, with no help from
+        // its value SHAPE — so it passes NO argument node. `allowConstantConversion` alone would not
+        // do it: the float32 and decimal literal narrowings (#1688 Decision 6) are keyed on the node
+        // and are not gated by that flag, and neither has a C# counterpart at all (`float f = 2.5;` is
+        // CS0664). Withholding the node is also why this stays out of the value-shape predicates:
+        // the question is the store seam's, asked of the type.
+        if (IsArgumentAssignable(
+                argType, mapped,
+                literalAdaptation ? node : null,
+                allowConstantConversion: literalAdaptation))
         {
             // The Sharpy spelling accepted. It stands unless the mapping is lossy and .NET rejects
             // the argument's own CLR type, in which case the acceptance proved nothing (#1573).
@@ -566,9 +565,9 @@ internal partial class TypeChecker
         // §12.6.4.4 reads the expression's type first, and Sharpy's float-literal adaptation has no
         // C# counterpart at all (`float f = 2.5;` is CS0664).
         var typeAcceptsA = mappedA != null
-            && IsArgumentAssignable(argType, mappedA, node, allowConstantConversion: false);
+            && IsArgumentAssignable(argType, mappedA, argument: null, allowConstantConversion: false);
         var typeAcceptsB = mappedB != null
-            && IsArgumentAssignable(argType, mappedB, node, allowConstantConversion: false);
+            && IsArgumentAssignable(argType, mappedB, argument: null, allowConstantConversion: false);
         if (typeAcceptsA != typeAcceptsB)
             return typeAcceptsA ? -1 : 1;
 

@@ -58,7 +58,14 @@ public class StoreSeamConformanceTests
         "TypeChecker.Expressions.Access.Calls.cs::CheckLambdaCall",
         "TypeChecker.Expressions.Access.Calls.cs::ValidateCallArguments",
         "TypeChecker.Expressions.Access.Calls.cs::ValidateKeywordArguments",
-        "TypeChecker.Expressions.Access.Calls.cs::ClrParameterAccepts",
+        // THE CLR call-route seam (#1753, #1798). ClrFormalVerdict is the ONE acceptance answer every
+        // CLR route reads, and the binding half applies the verdict at the selected candidate
+        // (CheckClrBindingArguments -> ApplyArgumentConversion), so this is the same probe/apply pair
+        // the Sharpy routes above have. CompareClrFormals is read-only: it asks whether the argument's
+        // TYPE (rather than its literal shape) licenses each candidate's conversion, which is C#
+        // §12.6.4.4's first question, and records nothing.
+        "TypeChecker.Expressions.Access.Calls.Clr.cs::ClrFormalVerdict",
+        "TypeChecker.Expressions.Access.Calls.Clr.cs::CompareClrFormals",
         // The selection half of ResolveOverloadCore (plan-499995, #1721): the probe runs here,
         // and the binding half applies the verdict once the winner is known.
         "TypeChecker.Expressions.Access.Calls.Overloads.cs::SelectOverload",
