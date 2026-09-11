@@ -340,6 +340,13 @@ internal sealed class ProtocolMembership
         // decision (#1808). Without this arm a receiver TYPED as `IEnumerable[int]` iterated fine
         // and then refused `in` with "missing __contains__", while the emitted C# would have
         // compiled.
+        //
+        // NOT REACHED TODAY for that receiver (#1860): the GenericType arm above answers from the
+        // builtin registry's protocol table with an early `return`, and the table denies
+        // `__contains__` for `IEnumerable`, so the question never gets here. Measured — `2 in xs`
+        // on an `IEnumerable[int]` receiver is SPY0320 with this arm present. The arm is kept
+        // because it is the correct rule for every OTHER path that reaches the CLR arms; #1860
+        // decides whether the registry may deny what the CLR shape proves.
         if (dunderName == DunderNames.Contains)
         {
             bool IsGenericEnumerable(Type t)
