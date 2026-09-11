@@ -2151,15 +2151,14 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateGetSliceCall(ExpressionSyntax obj, SliceAccess sliceAccess)
     {
-        var start = sliceAccess.Start != null
-            ? GenerateExpression(sliceAccess.Start)
-            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
-        var end = sliceAccess.Stop != null
-            ? GenerateExpression(sliceAccess.Stop)
-            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
-        var step = sliceAccess.Step != null
-            ? GenerateExpression(sliceAccess.Step)
-            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
+        // The three bounds are sibling operands of one subscript, so they go through the shared
+        // left-to-right ordering helper (#1849): a hoist producer in a later bound must not run
+        // before an earlier bound's side effect.
+        var bounds = GenerateOptionalExpressionsInOrder(
+            sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step);
+        var start = bounds[0] ?? LiteralExpression(SyntaxKind.NullLiteralExpression);
+        var end = bounds[1] ?? LiteralExpression(SyntaxKind.NullLiteralExpression);
+        var step = bounds[2] ?? LiteralExpression(SyntaxKind.NullLiteralExpression);
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -2197,14 +2196,16 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateNewSlice(Expression? startExpr, Expression? stopExpr, Expression? stepExpr)
     {
         var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
-        var start = startExpr != null
-            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(startExpr))
+        // Sibling operands of one subscript — see GenerateOptionalExpressionsInOrder (#1849).
+        var bounds = GenerateOptionalExpressionsInOrder(startExpr, stopExpr, stepExpr);
+        var start = bounds[0] != null
+            ? (ExpressionSyntax)Cast(nullableInt, bounds[0]!)
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
-        var stop = stopExpr != null
-            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(stopExpr))
+        var stop = bounds[1] != null
+            ? (ExpressionSyntax)Cast(nullableInt, bounds[1]!)
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
-        var step = stepExpr != null
-            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(stepExpr))
+        var step = bounds[2] != null
+            ? (ExpressionSyntax)Cast(nullableInt, bounds[2]!)
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
         return ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
@@ -2297,17 +2298,20 @@ internal partial class RoslynEmitter
         var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
         var args = new List<ArgumentSyntax>();
 
-        args.Add(Argument(start != null
-            ? Cast(nullableInt, GenerateExpression(start))
+        // Sibling operands of one axis — see GenerateOptionalExpressionsInOrder (#1849).
+        var bounds = GenerateOptionalExpressionsInOrder(start, stop, step);
+
+        args.Add(Argument(bounds[0] != null
+            ? Cast(nullableInt, bounds[0]!)
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        args.Add(Argument(stop != null
-            ? Cast(nullableInt, GenerateExpression(stop))
+        args.Add(Argument(bounds[1] != null
+            ? Cast(nullableInt, bounds[1]!)
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        if (step != null)
+        if (bounds[2] != null)
         {
-            args.Add(Argument(Cast(nullableInt, GenerateExpression(step))));
+            args.Add(Argument(Cast(nullableInt, bounds[2]!)));
         }
 
         return ObjectCreationExpression(

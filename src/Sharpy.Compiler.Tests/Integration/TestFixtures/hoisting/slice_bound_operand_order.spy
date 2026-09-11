@@ -1,0 +1,19 @@
+# A slice's bounds are sibling operands of one subscript and evaluate left to right (#1849).
+# `lo` pops before the upper bound is taken, so the length is 3 and the slice is ys[0:3].
+# Before the fix the comprehension in the upper bound was hoisted above the whole subscript and
+# ran BEFORE `lo`, giving ys[0:4] — a silently wrong result, not an error.
+#
+# python3 3.12:
+#   def lo(xs):
+#       xs.pop(0); return 0
+#   xs = [1, 2, 3, 4]; ys = [10, 20, 30, 40]
+#   print(ys[lo(xs):len([v for v in xs])])
+#   # measured: [10, 20, 30]
+def lo(xs: list[int]) -> int:
+    xs.pop(0)
+    return 0
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3, 4]
+    ys: list[int] = [10, 20, 30, 40]
+    print(ys[lo(xs) : len([v for v in xs])])

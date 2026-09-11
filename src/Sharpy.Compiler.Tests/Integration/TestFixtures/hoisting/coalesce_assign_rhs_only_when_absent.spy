@@ -1,0 +1,31 @@
+# `??=` evaluates its right-hand side ONLY when the slot is absent (#1835). Both lowerings are
+# covered: the Optional slot (`int?`) and the nullable slot (`int | None`). Before the fix the
+# comprehension in the right-hand side was hoisted flat above the assignment, so `mark` ran and
+# `xs` shrank even though the target already held a value — a silently wrong result.
+# Positive control: the absent slots below, where the right-hand side MUST run.
+# Twin: hoisting/coalesce_rhs_hoist_only_when_absent.spy (the `??` expression form).
+def mark(xs: list[int]) -> list[int]:
+    print("rhs ran")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+
+    present: int? = Some(5)
+    present ??= len([v for v in mark(xs)])
+    print("optional present", present, len(xs))
+
+    absent: int? = None()
+    absent ??= len([v for v in mark(xs)])
+    print("optional absent", absent, len(xs))
+
+    ys: list[int] = [1, 2, 3]
+
+    nPresent: int | None = 7
+    nPresent ??= len([v for v in mark(ys)])
+    print("nullable present", nPresent, len(ys))
+
+    nAbsent: int | None = None
+    nAbsent ??= len([v for v in mark(ys)])
+    print("nullable absent", nAbsent, len(ys))

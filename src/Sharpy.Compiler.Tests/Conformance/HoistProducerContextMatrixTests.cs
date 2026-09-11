@@ -115,13 +115,14 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
         "set-elements",
         "comparison-chain-operand",
         "with-items",
+        "slice-bounds",
     };
 
     [Fact]
     [Trait("Category", "Conformance")]
     public void EveryOperandListPosition_HasAnOrderingCell()
     {
-        Assert.Equal(8, OperandListPositions.Length);
+        Assert.Equal(9, OperandListPositions.Length);
 
         var labels = GenerateCells().Select(c => c.Label).ToList();
         var missing = OperandListPositions
@@ -142,7 +143,7 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
     [Trait("Category", "Conformance")]
     public void Matrix_HasThePinnedCellCounts()
     {
-        Assert.Equal(51, GenerateCells().Count());
+        Assert.Equal(53, GenerateCells().Count());
         Assert.Equal(9, RefusedCells().Count());
         Assert.Equal(2, NotApplicableCells().Count());
     }
@@ -274,10 +275,6 @@ def main() -> None:
             + "statement. Ran at 5bac4cf71 and in python3 (prints 5); an owner ruling is pending on "
             + "whether to model the edge per raise-capable statement or adopt the C# CS0165 reading.");
 
-        yield return ("coalesce-assign.rhs-hoist",
-            "#1835 — `x ??= rhs` runs the rhs's hoists even when the target already has a value; the "
-            + "expression form `a ?? b` is sunk. Found by SinkPushingTotalityTests, which parks the "
-            + "site in its own KnownRedSites roster.");
     }
 
     [Fact]
@@ -646,6 +643,39 @@ def main() -> None:
     d: dict[int, int] = {xs.pop(0): len([v for v in xs])}
     print(d)",
             "{1: 2}");
+
+        // Slice bounds are an operand list too — the position that stayed unordered after call
+        // arguments, binary operands and displays were fixed (#1849). `lo` pops before the upper
+        // bound is taken, so the slice is ys[0:3]; python3 prints [10, 20, 30].
+        yield return new Cell("ordering.slice-bounds",
+            @"def lo(xs: list[int]) -> int:
+    xs.pop(0)
+    return 0
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3, 4]
+    ys: list[int] = [10, 20, 30, 40]
+    print(ys[lo(xs) : len([v for v in xs])])",
+            "[10, 20, 30]");
+
+        // Drained from KnownRedCells: `??=` now gives its right-hand side an evaluation sink, so
+        // the rhs's hoists run only on the absent path (#1835). The present arm is the subject;
+        // the absent arm is its positive control — the rhs MUST run there.
+        yield return new Cell("coalesce-assign.rhs-hoist",
+            @"def mark(xs: list[int]) -> list[int]:
+    print(""rhs ran"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    present: int? = Some(5)
+    present ??= len([v for v in mark(xs)])
+    print(present, len(xs))
+    absent: int? = None()
+    absent ??= len([v for v in mark(xs)])
+    print(absent, len(xs))",
+            "5 3\nrhs ran\n2 2");
 
         yield return new Cell("ordering.set-elements",
             @"def main() -> None:

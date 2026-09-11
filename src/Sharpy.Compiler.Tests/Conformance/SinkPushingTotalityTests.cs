@@ -93,6 +93,7 @@ public class SinkPushingTotalityTests
         ["GenerateMatchAsSwitch/SwitchStatement"] = "reached only when no guard hoists; C#'s `when` already evaluates per arm",
         ["GenerateMatchAsSwitch/WhenClause"] = "reached only when no guard hoists; see GenerateMatch",
         ["BuildCoalesceValue/ConditionalExpression"] = "reached only when the rhs hoists nothing; see GenerateNullCoalesceOp",
+        ["GenerateNullCoalesceAssignStatement/IfStatement"] = "builds the manufactured sink GenerateAssignment pushed for the `??=` rhs (#1835)",
         ["BuildCoalesceValue/BinaryExpression:LogicalAndExpression"] = "the EnsureSingleEvaluation capture condition, not a user operand",
         ["GenerateWhileWithElse/WhileStatement"] = "reached only when the test hoists nothing; see GenerateWhile",
         ["GenerateWhileWithElse/IfStatement"] = "the for/while-else completion flag test, not a user expression",
@@ -162,11 +163,9 @@ public class SinkPushingTotalityTests
     /// </summary>
     private static readonly Dictionary<string, string> KnownRedSites = new()
     {
-        // `x ??= rhs` generates the rhs at the assignment boundary and places it inside
-        // `if (!target.IsSome)`, so a comprehension/spread/`?` in the rhs runs even when the target
-        // already has a value. Found by this harness after the `??` expression form was sunk.
-        ["GenerateNullCoalesceAssignStatement/IfStatement"] =
-            "#1835 — `??=` rhs hoists run unconditionally; the expression form `??` is sunk",
+        // Empty: #1835 drained when GenerateAssignment gave the `??=` right-hand side its own
+        // evaluation sink. Add an entry only with an OPEN issue, and delete it in the commit that
+        // fixes the site (drain on fix).
     };
 
     [Fact]
