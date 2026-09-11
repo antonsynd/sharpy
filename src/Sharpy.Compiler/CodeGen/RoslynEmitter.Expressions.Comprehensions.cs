@@ -33,7 +33,14 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateGeneratorExpression(GeneratorExpression genExpr)
     {
-        var chain = GenerateGeneratorLinqChain(genExpr.Clauses, genExpr.Element, 0);
+        // The clause list comes from the LOWERING IR, the same way a list/set/dict comprehension
+        // reads its IrLoweredLoop (#1774). The generator is the one comprehension form the lowering
+        // pass produced a node for that nothing read, and a produced-but-unread IR node is a fact
+        // with no consumer: an IR pass that rewrote the clauses would have been silently discarded.
+        // Falls back to the AST when the node was not lowered (the error path), exactly as
+        // GetIrLoweredLoop's callers do, so output is unchanged.
+        var clauses = GetIrLoweredGenerator(genExpr)?.Clauses ?? genExpr.Clauses;
+        var chain = GenerateGeneratorLinqChain(clauses, genExpr.Element, 0);
         var elementType = MapComprehensionTypeArgument(
             GetExpressionSemanticType(genExpr), 0);
         return InvocationExpression(
@@ -150,6 +157,23 @@ internal partial class RoslynEmitter
             ? loop
             : null;
     }
+
+    /// <summary>
+    /// Reads the lowered generator-expression node for <paramref name="genExpr"/> from the lowering
+    /// IR. Returns <c>null</c> when the node was not lowered as a generator (an error case); the
+    /// caller then reads the clauses off the AST so output is unchanged.
+    /// </summary>
+    /// <remarks>
+    /// There is no optimized-copy lookup beside this one: <c>opt_comprehension_fusion</c> matches
+    /// <see cref="IrLoweredLoop"/> alone and recurses opaquely over every other node, so a generator
+    /// passes through unchanged — which is the right answer, because its preallocation is a
+    /// count-the-sources rewrite and a generator materializes nothing. Pinned by
+    /// <c>ComprehensionFusionPassTests</c>.
+    /// </remarks>
+    private IrLoweredGenerator? GetIrLoweredGenerator(Expression genExpr)
+        => _context.Ir.Index.TryGetValue(genExpr, out var node) && node is IrLoweredGenerator generator
+            ? generator
+            : null;
 
     /// <summary>
     /// Builds the constructor capacity argument for a product-of-counts presized comprehension (E3

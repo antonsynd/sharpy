@@ -1,0 +1,10 @@
+# A generator expression is not a bare-argument position when it is a keyword VALUE (#1774).
+# python3: `f(a=x for x in xs)` is a SyntaxError; Sharpy refuses by name with the parenthesize
+# steer, the same way the non-sole positional spelling does. Sibling of
+# genexp_must_be_parenthesized_1774, which covers the positional arm of the same loop.
+def f(a: int) -> int:
+    return a
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(f(a=x for x in xs))

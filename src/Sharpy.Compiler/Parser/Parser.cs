@@ -1218,6 +1218,22 @@ public partial class Parser
                     Advance();  // Skip name
                     Advance();  // Skip =
                     var value = ParseExpression();
+
+                    // A generator expression is never legal as a keyword VALUE (python3:
+                    // `f(a=x for x in xs)` is a SyntaxError), and the refusal has to be named here
+                    // too: only the positional arm consulted IsComprehensionForStart, so this
+                    // spelling fell through to the generic "Expected RightParen, got For" (SPY0104)
+                    // while `f(1, x for x in xs)` said SPY0147 with the parenthesize steer — one
+                    // rule, two answers, decided by which arm of the same loop the argument took.
+                    if (IsComprehensionForStart())
+                    {
+                        ReportError("Generator expression must be parenthesized",
+                            value.LineStart, value.ColumnStart,
+                            DiagnosticCodes.Parser.GeneratorExpressionMustBeParenthesized,
+                            span: value.Span);
+                        ParseComprehensionClauses();
+                    }
+
                     var kwargEndLine = Peek(-1).Line;
                     var kwargEndColumn = Peek(-1).Column + Peek(-1).Length;
 
