@@ -28,11 +28,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private List<StatementSyntax> CaptureHoisted(System.Action generate)
     {
-        var (decls, evals) = WithSink(generate);
-        var captured = new List<StatementSyntax>(decls.Count + evals.Count);
-        captured.AddRange(decls);
-        captured.AddRange(evals);
-        return captured;
+        return WithScopeSink(generate);
     }
 
     private ExpressionSyntax GenerateGeneratorExpression(GeneratorExpression genExpr)

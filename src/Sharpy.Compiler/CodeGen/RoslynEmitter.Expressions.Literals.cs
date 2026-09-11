@@ -50,7 +50,7 @@ internal partial class RoslynEmitter
         // always has plain elements (no spread builder needed).
         if (_context.Ir.StackAllocatedLiterals.Contains(list))
         {
-            var arrayElements = list.Elements.Select(elem => GenerateExpression(elem));
+            var arrayElements = GenerateExpressionsInOrder(list.Elements);
             return ArrayCreationExpression(
                     ArrayType(elementType)
                         .WithRankSpecifiers(SingletonList(
@@ -69,7 +69,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(list.Elements, listType, listInfo!.SpreadMethodName, listInfo.AddMethodName);
         }
 
-        var elements = list.Elements.Select(elem => GenerateExpression(elem));
+        var elements = GenerateExpressionsInOrder(list.Elements);
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -106,13 +106,21 @@ internal partial class RoslynEmitter
             return GenerateSpreadDictBuilder(dict.Entries, dictType, dictInfo!.SpreadMethodName);
         }
 
-        var initializers = dict.Entries.Select(entry =>
+        // key, value, key, value … is the source evaluation order of a dict display.
+        var entryOperands = new List<Expression>(dict.Entries.Length * 2);
+        foreach (var entry in dict.Entries)
         {
-            var keyExpr = GenerateExpression(entry.Key!);
-            var valExpr = GenerateExpression(entry.Value);
-            return InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
-                SeparatedList(new[] { keyExpr, valExpr }));
-        });
+            entryOperands.Add(entry.Key!);
+            entryOperands.Add(entry.Value);
+        }
+
+        var entryExprs = GenerateExpressionsInOrder(entryOperands);
+        var initializers = new List<ExpressionSyntax>(dict.Entries.Length);
+        for (int i = 0; i < dict.Entries.Length; i++)
+        {
+            initializers.Add(InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
+                SeparatedList(new[] { entryExprs[i * 2], entryExprs[(i * 2) + 1] })));
+        }
 
         return ObjectCreationExpression(dictType)
             .WithArgumentList(ArgumentList())
@@ -133,13 +141,15 @@ internal partial class RoslynEmitter
         var csharpDictType = TypeSyntaxMapper.QualifiedGenericName(
             CSharpTypeNames.SharpyDict, keyType, valueType);
 
-        var initializers = call.KeywordArguments.Select(kwarg =>
+        var kwargValues = GenerateExpressionsInOrder(
+            call.KeywordArguments.Select(kwarg => kwarg.Value).ToList());
+        var initializers = call.KeywordArguments.Select((kwarg, i) =>
             InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
                 SeparatedList(new[]
                 {
                     (ExpressionSyntax)LiteralExpression(
                         SyntaxKind.StringLiteralExpression, Literal(kwarg.Name)),
-                    GenerateExpression(kwarg.Value)
+                    kwargValues[i]
                 })));
 
         return ObjectCreationExpression(csharpDictType)
@@ -174,7 +184,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(set.Elements, setType, setInfo!.SpreadMethodName, setInfo.AddMethodName);
         }
 
-        var elements = set.Elements.Select(elem => GenerateExpression(elem));
+        var elements = GenerateExpressionsInOrder(set.Elements);
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -257,7 +267,7 @@ internal partial class RoslynEmitter
             return TupleExpression(SeparatedList(expandedArgs));
         }
 
-        var elements = tuple.Elements.Select(elem =>
+        var elements = GenerateExpressionsInOrder(tuple.Elements, elem =>
         {
             var expr = GenerateExpression(elem);
             // R-T: a per-element OptionalStoreWrap fact means the element is a payload value
@@ -266,7 +276,7 @@ internal partial class RoslynEmitter
             if (_context.SemanticInfo?.GetOptionalStoreWrap(elem) is { } wrapOpt)
                 expr = WrapInOptionalSome(expr, wrapOpt);
             return expr;
-        }).ToArray();
+        });
 
         // Named tuple: (x: 1.0, y: 2.0)
         if (!tuple.ElementNames.IsEmpty)

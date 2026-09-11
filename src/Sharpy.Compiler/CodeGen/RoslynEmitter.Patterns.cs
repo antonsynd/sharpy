@@ -18,6 +18,14 @@ internal partial class RoslynEmitter
 {
     private const string PatternMatchTempPrefix = "__spy_pm_";
 
+    /// <summary>A generated match arm: its pattern, its guard and the guard's hoisted statements.</summary>
+    private readonly record struct GeneratedMatchArm(
+        PatternSyntax Pattern,
+        ExpressionSyntax? Guard,
+        List<StatementSyntax> GuardEvaluations,
+        bool IsWildcardWithoutGuard,
+        List<StatementSyntax> Body);
+
     private StatementSyntax GenerateMatch(MatchStatement matchStmt)
     {
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
@@ -31,7 +39,7 @@ internal partial class RoslynEmitter
 
         var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchStmt.Scrutinee);
 
-        var sections = new List<SwitchSectionSyntax>();
+        var arms = new List<GeneratedMatchArm>(matchStmt.Cases.Length);
 
         foreach (var matchCase in matchStmt.Cases)
         {
@@ -42,10 +50,60 @@ internal partial class RoslynEmitter
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(matchCase.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
 
+            // A guard is evaluated only for its own arm, and only when the pattern matched, so it
+            // owns an evaluation sink (plan-0667c5 Design Decision 6). A `when` clause hosts an
+            // expression and cannot host statements, so an arm whose guard hoists forces the
+            // `is`-chain lowering below.
+            ExpressionSyntax? combinedGuard = null;
+            var guardEvaluations = WithEvaluationSink(
+                () => combinedGuard = CombineGuards(memberGuards, matchCase.Guard));
+
             // Generate body AFTER pattern — pattern registration in _variableVersions
             // must precede body generation so f-strings and other references see the
             // correct mangled variable names.
             var bodyStatements = GenerateSuite(matchCase.Body).ToList();
+
+            arms.Add(new GeneratedMatchArm(
+                pattern,
+                combinedGuard,
+                guardEvaluations,
+                matchCase.Pattern is WildcardPattern && combinedGuard == null,
+                bodyStatements));
+        }
+
+        // If the match is semantically exhaustive (covers all cases of a finite type)
+        // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
+        // definite return analysis. This is unreachable at runtime.
+        bool hasDefault = matchStmt.Cases.Any(c =>
+            c.Guard == null && ExhaustivenessHelper.IsIrrefutable(c.Pattern, _context.SemanticInfo));
+        bool needsUnreachableDefault = !hasDefault && scrutineeType != null && _context.SemanticInfo != null
+            && ExhaustivenessHelper.IsExhaustiveMatch(
+                scrutineeType,
+                matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
+                _context.SemanticInfo);
+
+        if (arms.Any(a => a.GuardEvaluations.Count > 0))
+        {
+            return GenerateMatchAsIsChain(scrutineeExpr, arms, needsUnreachableDefault);
+        }
+
+        return GenerateMatchAsSwitch(scrutineeExpr, arms, needsUnreachableDefault);
+    }
+
+    /// <summary>
+    /// The default lowering: one C# <c>switch</c> section per arm, guards in <c>when</c> clauses.
+    /// Used whenever no guard hoists — C#'s <c>when</c> already evaluates a guard once, per arm,
+    /// only after its pattern matched, and the <c>switch</c> keeps C#'s own exhaustiveness and
+    /// definite-assignment reasoning.
+    /// </summary>
+    private StatementSyntax GenerateMatchAsSwitch(
+        ExpressionSyntax scrutineeExpr, List<GeneratedMatchArm> arms, bool needsUnreachableDefault)
+    {
+        var sections = new List<SwitchSectionSyntax>(arms.Count + 1);
+
+        foreach (var arm in arms)
+        {
+            var bodyStatements = new List<StatementSyntax>(arm.Body);
 
             // Only add break if the last statement isn't an unconditional jump
             var lastStatement = bodyStatements.LastOrDefault();
@@ -55,55 +113,130 @@ internal partial class RoslynEmitter
             {
                 bodyStatements.Add(BreakStatement());
             }
-            SwitchLabelSyntax caseLabel;
 
-            var combinedGuard = CombineGuards(memberGuards, matchCase.Guard);
-
-            // WildcardPattern without guard → idiomatic `default:` label
-            if (matchCase.Pattern is WildcardPattern && combinedGuard == null)
-            {
-                caseLabel = DefaultSwitchLabel();
-            }
-            else if (combinedGuard != null)
-            {
-                caseLabel = CasePatternSwitchLabel(pattern, WhenClause(combinedGuard), Token(SyntaxKind.ColonToken));
-            }
-            else
-            {
-                caseLabel = CasePatternSwitchLabel(pattern, Token(SyntaxKind.ColonToken));
-            }
+            SwitchLabelSyntax caseLabel = arm.IsWildcardWithoutGuard
+                ? DefaultSwitchLabel()
+                : arm.Guard != null
+                    ? CasePatternSwitchLabel(arm.Pattern, WhenClause(arm.Guard), Token(SyntaxKind.ColonToken))
+                    : CasePatternSwitchLabel(arm.Pattern, Token(SyntaxKind.ColonToken));
 
             sections.Add(SwitchSection(
                 SingletonList(caseLabel),
                 List<StatementSyntax>(bodyStatements)));
         }
 
-        // If the match is semantically exhaustive (covers all cases of a finite type)
-        // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
-        // definite return analysis. This is unreachable at runtime.
-        bool hasDefault = matchStmt.Cases.Any(c =>
-            c.Guard == null && ExhaustivenessHelper.IsIrrefutable(c.Pattern, _context.SemanticInfo));
-        if (!hasDefault && scrutineeType != null && _context.SemanticInfo != null
-            && ExhaustivenessHelper.IsExhaustiveMatch(
-                scrutineeType,
-                matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
-                _context.SemanticInfo))
+        if (needsUnreachableDefault)
         {
-            var throwStatement = ThrowStatement(
-                ObjectCreationExpression(
-                    QualifiedName(
-                        IdentifierName("System"),
-                        IdentifierName("InvalidOperationException")))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(
-                        SyntaxKind.StringLiteralExpression,
-                        Literal("Unreachable: exhaustive match")))))));
             sections.Add(SwitchSection(
                 SingletonList<SwitchLabelSyntax>(DefaultSwitchLabel()),
-                SingletonList<StatementSyntax>(throwStatement)));
+                SingletonList<StatementSyntax>(BuildUnreachableExhaustiveMatchThrow())));
         }
 
         return SwitchStatement(scrutineeExpr, List(sections));
+    }
+
+    /// <summary>
+    /// The <c>is</c>-chain lowering (plan-0667c5 Design Decision 6, #1739 acceptance cells 8-10),
+    /// used when at least one guard produces hoisted statements. A <c>when</c> clause is an
+    /// expression position, so a comprehension/spread/<c>?</c> in a guard had to be hoisted above
+    /// the whole <c>switch</c> — where it ran once for the match rather than once per arm reached,
+    /// and ran even when no arm's pattern matched. Emitted shape:
+    /// <code>
+    /// var __matchSubject_0 = &lt;scrutinee&gt;;
+    /// bool __matchTaken_0 = false;
+    /// if (!__matchTaken_0 &amp;&amp; __matchSubject_0 is P1 p1)
+    /// {
+    ///     &lt;guard 1 hoists&gt;
+    ///     if (&lt;guard 1&gt;) { __matchTaken_0 = true; &lt;body 1&gt; }
+    /// }
+    /// if (!__matchTaken_0 &amp;&amp; __matchSubject_0 is P2 p2) { __matchTaken_0 = true; &lt;body 2&gt; }
+    /// </code>
+    /// <para>The flag is set BEFORE the body so that a body ending in <c>return</c>/<c>break</c>
+    /// leaves no unreachable statement (warnings are errors). No loop and no <c>switch</c> is
+    /// manufactured, so a <c>break</c> in an arm body targets the enclosing Python loop — which is
+    /// what Python means and what the <c>switch</c> form gets wrong (#1816).</para>
+    /// </summary>
+    private StatementSyntax GenerateMatchAsIsChain(
+        ExpressionSyntax scrutineeExpr, List<GeneratedMatchArm> arms, bool needsUnreachableDefault)
+    {
+        var subjectName = GenerateTempVarName("matchSubject");
+        var takenName = GenerateTempVarName("matchTaken");
+
+        var statements = new List<StatementSyntax>(arms.Count + 3);
+
+        statements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(subjectName))
+                        .WithInitializer(EqualsValueClause(scrutineeExpr))))));
+
+        statements.Add(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(takenName))
+                        .WithInitializer(EqualsValueClause(
+                            LiteralExpression(SyntaxKind.FalseLiteralExpression)))))));
+
+        var notTaken = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+            EscapedIdentifierName(takenName));
+        var markTaken = ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(takenName),
+                LiteralExpression(SyntaxKind.TrueLiteralExpression)));
+
+        foreach (var arm in arms)
+        {
+            // The arm's own test: `!taken` for a bare wildcard, otherwise `!taken && subject is P`.
+            ExpressionSyntax armTest = arm.IsWildcardWithoutGuard
+                ? notTaken
+                : BinaryExpression(SyntaxKind.LogicalAndExpression,
+                    notTaken,
+                    ParenthesizedExpression(IsPatternExpression(
+                        EscapedIdentifierName(subjectName), arm.Pattern)));
+
+            // The taken body: mark first, then the arm's statements.
+            var takenBody = new List<StatementSyntax>(arm.Body.Count + 1) { markTaken };
+            takenBody.AddRange(arm.Body);
+
+            if (arm.Guard == null)
+            {
+                statements.Add(IfStatement(armTest, Block(takenBody)));
+                continue;
+            }
+
+            // The guard's hoists run inside the pattern-matched block, before the guard itself,
+            // so they execute exactly once and only for an arm whose pattern matched.
+            var patternMatchedBody = new List<StatementSyntax>(arm.GuardEvaluations.Count + 1);
+            patternMatchedBody.AddRange(arm.GuardEvaluations);
+            patternMatchedBody.Add(IfStatement(arm.Guard, Block(takenBody)));
+
+            statements.Add(IfStatement(armTest, Block(patternMatchedBody)));
+        }
+
+        if (needsUnreachableDefault)
+        {
+            statements.Add(IfStatement(notTaken, Block(BuildUnreachableExhaustiveMatchThrow())));
+        }
+
+        return Block(statements);
+    }
+
+    /// <summary>
+    /// <c>throw new System.InvalidOperationException("Unreachable: exhaustive match")</c> — the
+    /// fall-through arm an exhaustive match needs so C#'s definite-return analysis accepts a
+    /// function whose every arm returns. Unreachable at runtime.
+    /// </summary>
+    private static StatementSyntax BuildUnreachableExhaustiveMatchThrow()
+    {
+        return ThrowStatement(
+            ObjectCreationExpression(
+                QualifiedName(
+                    IdentifierName("System"),
+                    IdentifierName("InvalidOperationException")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                Argument(LiteralExpression(
+                    SyntaxKind.StringLiteralExpression,
+                    Literal("Unreachable: exhaustive match")))))));
     }
 
     private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)
@@ -773,7 +906,8 @@ internal partial class RoslynEmitter
 
         var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchExpr.Scrutinee);
 
-        var arms = new List<SwitchExpressionArmSyntax>();
+        var generated = new List<GeneratedMatchArm>(matchExpr.Arms.Length);
+        var armResults = new List<ExpressionSyntax>(matchExpr.Arms.Length);
 
         foreach (var arm in matchExpr.Arms)
         {
@@ -781,19 +915,154 @@ internal partial class RoslynEmitter
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter, scrutineeType);
 
-            var combinedGuard = CombineGuards(memberGuards, arm.Guard);
+            // Guard and result are BOTH per-arm evaluations: the guard runs only when its pattern
+            // matched, the result only when the arm is selected. Each gets its own sink, and a
+            // switch-expression arm is an expression position that cannot host statements — so a
+            // hoist in either forces the `is`-chain lowering (Design Decision 6).
+            ExpressionSyntax? combinedGuard = null;
+            var guardEvaluations = WithEvaluationSink(
+                () => combinedGuard = CombineGuards(memberGuards, arm.Guard));
 
-            var resultExpr = GenerateExpression(arm.Result);
+            ExpressionSyntax resultExpr = null!;
+            var resultEvaluations = WithEvaluationSink(
+                () => resultExpr = GenerateExpression(arm.Result));
 
-            var switchArm = SwitchExpressionArm(pattern, resultExpr);
-            if (combinedGuard != null)
-            {
-                switchArm = switchArm.WithWhenClause(WhenClause(combinedGuard));
-            }
-            arms.Add(switchArm);
+            generated.Add(new GeneratedMatchArm(
+                pattern,
+                combinedGuard,
+                guardEvaluations,
+                arm.Pattern is WildcardPattern && combinedGuard == null,
+                // The result's own hoists plus the assignment of the result are the arm's "body"
+                // in the is-chain form; the switch-expression form needs the bare expression, so
+                // it is carried alongside in ResultExpressions below.
+                resultEvaluations));
+
+            armResults.Add(resultExpr);
         }
 
-        return SwitchExpression(scrutineeExpr, SeparatedList(arms));
+        if (generated.Any(a => a.GuardEvaluations.Count > 0 || a.Body.Count > 0))
+        {
+            return GenerateMatchExpressionAsIsChain(matchExpr, scrutineeExpr, generated, armResults);
+        }
+
+        var switchArms = new List<SwitchExpressionArmSyntax>(generated.Count);
+        for (int i = 0; i < generated.Count; i++)
+        {
+            var switchArm = SwitchExpressionArm(generated[i].Pattern, armResults[i]);
+            if (generated[i].Guard != null)
+            {
+                switchArm = switchArm.WithWhenClause(WhenClause(generated[i].Guard!));
+            }
+            switchArms.Add(switchArm);
+        }
+
+        return SwitchExpression(scrutineeExpr, SeparatedList(switchArms));
+    }
+
+    /// <summary>
+    /// The <c>is</c>-chain lowering of a match EXPRESSION, used when an arm's guard or result
+    /// produces hoisted statements (plan-0667c5 Design Decision 6, #1739 acceptance cells 8-9). The
+    /// expression yields a temp assigned in the selected arm:
+    /// <code>
+    /// var __matchSubject_0 = &lt;scrutinee&gt;;
+    /// T __matchValue_0;
+    /// bool __matchTaken_0 = false;
+    /// if (!__matchTaken_0 &amp;&amp; __matchSubject_0 is P1 p1)
+    /// {
+    ///     &lt;guard 1 hoists&gt;
+    ///     if (&lt;guard 1&gt;) { __matchTaken_0 = true; &lt;result 1 hoists&gt; __matchValue_0 = &lt;result 1&gt;; }
+    /// }
+    /// …
+    /// if (!__matchTaken_0) throw new System.InvalidOperationException("Unreachable: exhaustive match");
+    /// </code>
+    /// The trailing throw is unconditional here (not gated on semantic exhaustiveness): a match
+    /// EXPRESSION must produce a value, so a fall-through is a runtime error, which is exactly what
+    /// the C# <c>switch</c> expression does on its own (it throws
+    /// <c>SwitchExpressionException</c>). It also gives <c>__matchValue_0</c> its definite
+    /// assignment.
+    /// </summary>
+    private ExpressionSyntax GenerateMatchExpressionAsIsChain(
+        MatchExpression matchExpr,
+        ExpressionSyntax scrutineeExpr,
+        List<GeneratedMatchArm> arms,
+        List<ExpressionSyntax> armResults)
+    {
+        var resultType = GetExpressionSemanticType(matchExpr)
+            ?? throw new InvalidOperationException(
+                "No semantic type recorded for a match expression whose arm hoists; the TypeChecker "
+                + "must type every match expression (plan-0667c5 Design Decision 6).");
+
+        var subjectName = GenerateTempVarName("matchSubject");
+        var valueName = GenerateTempVarName("matchValue");
+        var takenName = GenerateTempVarName("matchTaken");
+
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(subjectName))
+                        .WithInitializer(EqualsValueClause(scrutineeExpr))))));
+
+        // `= default!` rather than a bare declaration: the trailing `if (!taken) throw` guarantees
+        // no arm-less read at runtime, but C#'s definite-assignment analysis cannot correlate the
+        // flag with the assignments and reports CS0165 without an initializer.
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(_typeMapper.MapSemanticType(resultType))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(valueName))
+                        .WithInitializer(EqualsValueClause(
+                            PostfixUnaryExpression(
+                                SyntaxKind.SuppressNullableWarningExpression,
+                                LiteralExpression(SyntaxKind.DefaultLiteralExpression))))))));
+
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(takenName))
+                        .WithInitializer(EqualsValueClause(
+                            LiteralExpression(SyntaxKind.FalseLiteralExpression)))))));
+
+        var notTaken = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+            EscapedIdentifierName(takenName));
+
+        for (int i = 0; i < arms.Count; i++)
+        {
+            var arm = arms[i];
+
+            ExpressionSyntax armTest = arm.IsWildcardWithoutGuard
+                ? notTaken
+                : BinaryExpression(SyntaxKind.LogicalAndExpression,
+                    notTaken,
+                    ParenthesizedExpression(IsPatternExpression(
+                        EscapedIdentifierName(subjectName), arm.Pattern)));
+
+            // The selected arm marks itself taken, runs the result's hoists, then stores the value.
+            var selectedBody = new List<StatementSyntax>(arm.Body.Count + 2)
+            {
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    EscapedIdentifierName(takenName),
+                    LiteralExpression(SyntaxKind.TrueLiteralExpression)))
+            };
+            selectedBody.AddRange(arm.Body);
+            selectedBody.Add(ExpressionStatement(
+                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    EscapedIdentifierName(valueName), armResults[i])));
+
+            if (arm.Guard == null)
+            {
+                HoistEvaluation(IfStatement(armTest, Block(selectedBody)));
+                continue;
+            }
+
+            var patternMatchedBody = new List<StatementSyntax>(arm.GuardEvaluations.Count + 1);
+            patternMatchedBody.AddRange(arm.GuardEvaluations);
+            patternMatchedBody.Add(IfStatement(arm.Guard, Block(selectedBody)));
+
+            HoistEvaluation(IfStatement(armTest, Block(patternMatchedBody)));
+        }
+
+        HoistEvaluation(IfStatement(notTaken, Block(BuildUnreachableExhaustiveMatchThrow())));
+
+        return EscapedIdentifierName(valueName);
     }
 
     private PatternSyntax GenerateTypePattern(

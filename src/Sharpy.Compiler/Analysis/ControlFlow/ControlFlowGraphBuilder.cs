@@ -1021,8 +1021,10 @@ internal class ControlFlowGraphBuilder
             if (captureNames.Count > 0)
                 caseBlock.EntryRebinds = captureNames;
 
+            // The guard runs on ENTRY to the arm, before the arm's body — not after the block's
+            // statements the way an `if` condition does. See BasicBlock.EntryExpressions.
             if (matchCase.Guard != null)
-                caseBlock.Expressions.Add(matchCase.Guard);
+                caseBlock.EntryExpressions.Add(matchCase.Guard);
 
             BuildStatements(matchCase.Body);
 

@@ -44,9 +44,22 @@ internal partial class RoslynEmitter
         // `approx` through `TryGetApproxParts`, and everything else (isinstance, ==, in, is,
         // startswith, endswith, not) through ordinary truthiness on the expression the user wrote —
         // so nothing is lost but xUnit's failure formatting.
-        if (_isInTestFunction && _context.TargetsTestHost)
+        // Python evaluates the assert message ONLY when the assertion fails. Generate it once, up
+        // front, under an evaluation sink so the guarded arm below can place its hoists inside the
+        // failure branch. When the message hoists, the Xunit rewrite is skipped: every Xunit
+        // overload takes the message as an EAGER argument, so a comprehension/spread/`?` in the
+        // message would run on every passing assertion. The framework-free arm is the mirrored
+        // twin and defers correctly, so the @test host takes it instead (Design Decision 6).
+        ExpressionSyntax? msgExpr = null;
+        var msgEvals = new List<StatementSyntax>();
+        if (assert.Message != null)
         {
-            return GenerateTestAssert(assert);
+            msgEvals = WithEvaluationSink(() => msgExpr = GenerateExpression(assert.Message));
+        }
+
+        if (_isInTestFunction && _context.TargetsTestHost && msgEvals.Count == 0)
+        {
+            return GenerateTestAssert(assert, msgExpr);
         }
 
         // Outside @test, `assert` is a real runtime check (#1070): it lowers to
@@ -66,19 +79,12 @@ internal partial class RoslynEmitter
         StatementSyntax guard;
         if (assert.Message != null)
         {
-            ExpressionSyntax msgExpr = null!;
-            var (msgDecls, msgEvals) = WithSink(() =>
-            {
-                msgExpr = GenerateExpression(assert.Message);
-            });
-
             var ctorArgs = ArgumentList(SingletonSeparatedList(Argument(msgExpr!)));
             var throwStmt = ThrowStatement(
                 ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
                     .WithArgumentList(ctorArgs));
 
             var failBody = new List<StatementSyntax>();
-            failBody.AddRange(msgDecls);
             failBody.AddRange(msgEvals);
             failBody.Add(throwStmt);
 
@@ -109,7 +115,12 @@ internal partial class RoslynEmitter
     /// appropriate xUnit assertion. Uses fully qualified Xunit.Assert to avoid ambiguity
     /// with System.Diagnostics.Debug.Assert.
     /// </summary>
-    private StatementSyntax GenerateTestAssert(AssertStatement assert)
+    /// <param name="msgExpr">
+    /// The already-generated message expression, or null when the assert has no message. Generated
+    /// once by <see cref="GenerateAssert"/> so the message is not emitted twice; this arm is only
+    /// reached when the message hoisted nothing, since Xunit takes the message eagerly.
+    /// </param>
+    private StatementSyntax GenerateTestAssert(AssertStatement assert, ExpressionSyntax? msgExpr)
     {
         var xunitAssert = ParseQualifiedName("Xunit.Assert");
         var test = assert.Test;
@@ -319,7 +330,7 @@ internal partial class RoslynEmitter
             var falseArgs = new List<ArgumentSyntax> { Argument(innerExpr) };
             if (assert.Message != null)
             {
-                falseArgs.Add(Argument(GenerateExpression(assert.Message)));
+                falseArgs.Add(Argument(msgExpr!));
             }
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))
@@ -337,7 +348,7 @@ internal partial class RoslynEmitter
             var cmpArgs = new List<ArgumentSyntax> { Argument(cmpExpr) };
             if (assert.Message != null)
             {
-                cmpArgs.Add(Argument(GenerateExpression(assert.Message)));
+                cmpArgs.Add(Argument(msgExpr!));
             }
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
@@ -349,7 +360,7 @@ internal partial class RoslynEmitter
         var trueArgs = new List<ArgumentSyntax> { Argument(truthyExpr) };
         if (assert.Message != null)
         {
-            trueArgs.Add(Argument(GenerateExpression(assert.Message)));
+            trueArgs.Add(Argument(msgExpr!));
         }
         return ExpressionStatement(InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
@@ -388,7 +399,7 @@ internal partial class RoslynEmitter
             {
                 var elif = ifStmt.ElifClauses[i];
                 ExpressionSyntax elifCondition = null!;
-                var (elifDecls, elifEvals) = WithSink(() =>
+                var elifEvals = WithEvaluationSink(() =>
                 {
                     elifCondition = WrapTruthinessIfNeeded(
                         GenerateExpression(elif.Test), elif.Test);
@@ -397,15 +408,14 @@ internal partial class RoslynEmitter
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
 
-                if (elifDecls.Count == 0 && elifEvals.Count == 0)
+                if (elifEvals.Count == 0)
                 {
                     currentElse = IfStatement(elifCondition!, elifBody, elifElseClause);
                 }
                 else
                 {
-                    // Manufactured sink: else { decls; evals; if (test) ... }
+                    // Manufactured sink: else { evals; if (test) ... }
                     var wrapper = new List<StatementSyntax>();
-                    wrapper.AddRange(elifDecls);
                     wrapper.AddRange(elifEvals);
                     wrapper.Add(IfStatement(elifCondition!, elifBody, elifElseClause));
                     currentElse = Block(wrapper);
@@ -424,12 +434,12 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
         ExpressionSyntax condition = null!;
-        var (testDecls, testEvals) = WithSink(() =>
+        var testEvals = WithEvaluationSink(() =>
         {
             condition = WrapTruthinessIfNeeded(GenerateExpression(whileStmt.Test), whileStmt.Test);
         });
 
-        var hasHoists = testDecls.Count > 0 || testEvals.Count > 0;
+        var hasHoists = testEvals.Count > 0;
 
         if (!hasHoists)
         {
@@ -441,10 +451,11 @@ internal partial class RoslynEmitter
             return GenerateWhileWithElse(condition!, whileStmt);
         }
 
-        // Manufactured sink: while (true) { decls; evals; if (!(test)) break; body }
-        // Hoists run on every iteration but only ONCE per iteration, inside the loop.
+        // Manufactured sink: while (true) { evals; if (!(test)) break; body }
+        // Hoists run on every iteration but only ONCE per iteration, inside the loop. A
+        // declaring walrus's pre-declaration is NOT here: it is scope-lifetime and routes to the
+        // enclosing scope sink, so a read in the `while … else` still sees it (#1724, g23).
         var loopBodyStatements = new List<StatementSyntax>();
-        loopBodyStatements.AddRange(testDecls);
         loopBodyStatements.AddRange(testEvals);
         loopBodyStatements.Add(IfStatement(
             PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
@@ -772,6 +783,22 @@ internal partial class RoslynEmitter
         // Generate the body block
         var bodyStatements = GenerateSuite(withStmt.Body).ToList();
 
+        // Python evaluates `with a() as x, b(x) as y:` strictly left to right: item 0's context
+        // expression, item 0's __enter__, THEN item 1's context expression. The using/try nest is
+        // built inside-out, so item k's context expression must be generated under its own
+        // evaluation sink and its hoists replanted at item k's nesting level — otherwise every
+        // item's hoists flush flat above the whole statement and item k's side effects run before
+        // item 0's __enter__ (plan-0667c5 Design Decision 6).
+        var itemCount = withStmt.Items.Length;
+        var itemExprs = new ExpressionSyntax[itemCount];
+        var itemEvals = new List<StatementSyntax>[itemCount];
+        for (int i = 0; i < itemCount; i++)
+        {
+            int captured = i;
+            itemEvals[i] = WithEvaluationSink(
+                () => itemExprs[captured] = GenerateExpression(withStmt.Items[captured].ContextExpression));
+        }
+
         // Build using/try-finally statements from inside out (last item wraps the body,
         // first item wraps everything)
         StatementSyntax innermost = Block(bodyStatements);
@@ -784,11 +811,19 @@ internal partial class RoslynEmitter
 
             if (cmKind is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
             {
-                innermost = GenerateWithDunderProtocol(item, innermost, irItem!);
+                innermost = GenerateWithDunderProtocol(item, innermost, irItem!, itemExprs[i]);
             }
             else
             {
-                innermost = GenerateWithDisposable(item, innermost, withStmt.IsAsync);
+                innermost = GenerateWithDisposable(item, innermost, withStmt.IsAsync, itemExprs[i]);
+            }
+
+            if (itemEvals[i].Count > 0)
+            {
+                var wrapped = new List<StatementSyntax>(itemEvals[i].Count + 1);
+                wrapped.AddRange(itemEvals[i]);
+                wrapped.Add(innermost);
+                innermost = Block(wrapped);
             }
         }
 
@@ -1131,18 +1166,21 @@ internal partial class RoslynEmitter
     private List<StatementSyntax> GenerateWithTargetStore(Expression target, ExpressionSyntax value)
     {
         StatementSyntax? store = null;
-        var (decls, evals) = WithSink(() => store = GenerateStore(target, value));
+        var evals = WithEvaluationSink(() => store = GenerateStore(target, value));
 
         var statements = new List<StatementSyntax>();
-        statements.AddRange(decls);
         statements.AddRange(evals);
         statements.Add(store!);
         return statements;
     }
 
-    private StatementSyntax GenerateWithDisposable(WithItem item, StatementSyntax innermost, bool isAsync)
+    /// <param name="contextExpr">
+    /// The already-generated context expression. <see cref="GenerateWith"/> generates it under an
+    /// evaluation sink so the hoists land at this item's nesting level, not above the statement.
+    /// </param>
+    private StatementSyntax GenerateWithDisposable(
+        WithItem item, StatementSyntax innermost, bool isAsync, ExpressionSyntax contextExpr)
     {
-        var contextExpr = GenerateExpression(item.ContextExpression);
 
         if (item.Target is Identifier withId)
         {
@@ -1211,7 +1249,11 @@ internal partial class RoslynEmitter
     ///   finally { if (__exc_N == null) __ctx_N.Exit(Optional&lt;T1&gt;.None, Optional&lt;T2&gt;.None, Optional&lt;T3&gt;.None); }
     /// 4-arg __aexit__ (async): analogous, with await on Enter/Exit calls.
     /// </summary>
-    private StatementSyntax GenerateWithDunderProtocol(WithItem item, StatementSyntax innermost, IrWithItem irItem)
+    /// <param name="contextExpr">
+    /// The already-generated context expression; see <see cref="GenerateWithDisposable"/>.
+    /// </param>
+    private StatementSyntax GenerateWithDunderProtocol(
+        WithItem item, StatementSyntax innermost, IrWithItem irItem, ExpressionSyntax contextExpr)
     {
         bool isAsync = irItem.Kind == ContextManagerKind.AsyncDunderProtocol;
         var enterMethod = isAsync ? ProtocolConstants.AenterAsync : ProtocolConstants.Enter;
@@ -1220,7 +1262,6 @@ internal partial class RoslynEmitter
         bool isSuppressionCapable = irItem.ExitShape == ContextManagerExitShape.SuppressionCapable;
         var exitMethodSymbol = irItem.ExitMethod;
 
-        var contextExpr = GenerateExpression(item.ContextExpression);
         var ctxVarName = GenerateTempVarName("ctx");
         var statements = new List<StatementSyntax>();
 

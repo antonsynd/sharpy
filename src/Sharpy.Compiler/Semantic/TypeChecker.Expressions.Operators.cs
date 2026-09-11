@@ -2323,7 +2323,20 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // 2. Disallow in finally blocks
+        // 2. Disallow inside a lambda body (docs/language_specification/question_mark_operator.md:
+        // "`?` is disallowed inside a lambda body because the lambda has no declared
+        // Result/Optional return type for the early return to target"). Design Decision 8.
+        if (_inLambdaBody)
+        {
+            AddError(
+                "'?' operator can only be used inside a function, not inside a lambda body",
+                qm.LineStart, qm.ColumnStart,
+                code: DiagnosticCodes.Validation.QuestionMarkOutsideFunction,
+                span: qm.Span);
+            return SemanticType.Unknown;
+        }
+
+        // 3. Disallow in finally blocks
         if (_inFinally)
         {
             AddError(
@@ -2334,7 +2347,7 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // 3. Type-check the operand
+        // 4. Type-check the operand
         var operandType = CheckExpression(qm.Operand);
 
         if (operandType is UnknownType)
@@ -2342,7 +2355,7 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // 4. Handle Result<T, E>
+        // 5. Handle Result<T, E>
         if (operandType is ResultType result)
         {
             if (_currentFunctionReturnType is ResultType returnResult)

@@ -180,7 +180,7 @@ internal partial class RoslynEmitter
         // Push a statement-boundary sink. All hoisted declarations and evaluations
         // produced while generating this statement are captured here and flushed as
         // flat siblings before the statement itself.
-        var sink = new HoistSink();
+        var sink = new HoistSink(HoistSinkKind.Scope);
         _sinks.Push(sink);
 
         // assert_raises lowers to several flat statements — a raised flag, a try/catch, and the
