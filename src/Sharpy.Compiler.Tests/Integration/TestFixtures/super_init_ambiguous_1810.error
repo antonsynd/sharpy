@@ -1,2 +1,2 @@
-Ambiguous call to overloaded method 'Base' @15:9
+SPY0353: Ambiguous call to overloaded method 'Base' @15:9
 !count 1

@@ -3732,12 +3732,20 @@ internal partial class TypeChecker
         foreach (var kwarg in call.KeywordArguments)
         {
             var param = FindKeywordParameter(parameters, kwarg.Name);
-            if (param == null)
+
+            // The three binding arms come from the ONE classifier every route reads, so this
+            // route and the overload route cannot drift in either the arms or their ORDER
+            // (#1810, Decision 6(b)). `hasSpread: false` preserves this route's behaviour: it
+            // is handed a positional COUNT and has never modelled a spread argument.
+            var bindingFailure = ClassifyKeywordBinding(
+                parameters, kwarg.Name, positionalArgCount, hasSpread: false);
+
+            if (bindingFailure == OverloadFailureKind.UnknownKeyword)
             {
                 ReportUnknownKeywordArgument(kwarg,
                     parameters.Select(p => CanonicalKeywordSpellingOf(p, clrParameterNames)));
             }
-            else if (CanonicalKeywordSpellingOf(param, clrParameterNames) is { } canonicalSpelling
+            else if (CanonicalKeywordSpellingOf(param!, clrParameterNames) is { } canonicalSpelling
                 && canonicalSpelling != kwarg.Name)
             {
                 // The raw CLR spelling names the right parameter, but the canonical kwarg spelling
@@ -3748,19 +3756,18 @@ internal partial class TypeChecker
                     span: kwarg.Span ?? kwarg.Value.Span,
                     data: SuggestionData(canonicalSpelling));
             }
-            else if (param.IsPositionalOnly)
+            else if (bindingFailure == OverloadFailureKind.PositionalOnlyKeyword)
             {
                 ReportPositionalOnlyByKeyword(kwarg);
             }
+            else if (bindingFailure == OverloadFailureKind.DuplicateKeyword)
+            {
+                ReportKeywordAlreadyPositional(kwarg);
+            }
             else
             {
-                var paramIndex = parameters.ToList().IndexOf(param);
-                var paramType = SubstitutedParameterType(param.Type, typeBinding);
-                if (!param.IsKeywordOnly && paramIndex < positionalArgCount)
-                {
-                    ReportKeywordAlreadyPositional(kwarg);
-                }
-                else if (paramType != null)
+                var paramType = SubstitutedParameterType(param!.Type, typeBinding);
+                if (paramType != null)
                 {
                     // A keyword argument is a store into the named parameter's slot, node and all:
                     // the route used to drop the node in the acceptance question and applied no
@@ -5770,10 +5777,24 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Reports SPY0234 for any keyword argument of a <c>super().__init__</c>/<c>self.__init__</c>
-    /// call whose name matches no non-self parameter of any candidate constructor overload (#907).
-    /// An empty candidate set (CLR base with no enumerated metadata, or no constructors) defers to
-    /// the C# compiler and reports nothing.
+    /// The keyword BINDING check for a <c>super().__init__</c>/<c>self.__init__</c> call: every
+    /// keyword argument no candidate constructor can bind draws the same code, at the keyword's own
+    /// span, that the ordinary call routes draw — SPY0234 for a name no candidate declares (#907),
+    /// SPY0370 for one naming a positional-only slot, SPY0235 for one naming a slot already filled
+    /// positionally.
+    ///
+    /// <para>These two routes used to check ONLY the unknown-name arm, so
+    /// <c>super().__init__(1, x=2)</c> and <c>self.__init__(1, x=2)</c> reached Roslyn as CS1744
+    /// behind SPY0908 — pointing INSIDE the base initializer's body — while the identical direct
+    /// construction <c>Base(1, x=2)</c> reported SPY0235 at the keyword. The class is "a binding
+    /// failure is phrased by the failing ARGUMENT, on every route"; the cell matrix is
+    /// failure kind × callee kind × spelling (<c>OverloadBindingFailureMatrixTests</c>).</para>
+    ///
+    /// <para>A kind is reported only when EVERY candidate agrees on it: one candidate that binds
+    /// the keyword means the call is not a binding failure, and candidates that fail it for
+    /// different reasons have nothing to say at the argument. An empty candidate set (CLR base
+    /// with no enumerated metadata, or no constructors) defers to the C# compiler and reports
+    /// nothing.</para>
     /// </summary>
     private void ValidateInitializerKeywordArguments(FunctionCall initCall, TypeSymbol? candidateRoot)
     {
@@ -5784,18 +5805,73 @@ internal partial class TypeChecker
         if (candidates.Count == 0)
             return;
 
+        // A spread argument makes the positional count unknown, so the "already filled
+        // positionally" question has no answer; the other two arms do not depend on it.
+        var hasSpread = initCall.Arguments.Any(a => a is SpreadElement);
+        var positionalCount = initCall.Arguments.Length;
+
         foreach (var kwarg in initCall.KeywordArguments)
         {
-            var matchesSomeOverload = candidates.Any(
-                ctor => ctor.Parameters.Skip(1).Any(p => p.Name == kwarg.Name));
-            if (!matchesSomeOverload)
+            var kinds = new List<OverloadFailureKind?>();
+            foreach (var ctor in candidates)
             {
-                AddError($"Unknown keyword argument '{kwarg.Name}'",
-                    kwarg.LineStart, kwarg.ColumnStart,
-                    code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                    span: kwarg.Span ?? kwarg.Value.Span);
+                var parameters = ctor.Parameters.Skip(1).ToList();
+                kinds.Add(ClassifyKeywordBinding(parameters, kwarg.Name, positionalCount, hasSpread));
+            }
+
+            // Any candidate that binds it → not a binding failure on this route.
+            if (kinds.Any(k => k == null))
+                continue;
+
+            var agreed = kinds[0];
+            if (kinds.Any(k => k != agreed))
+                continue;
+
+            switch (agreed)
+            {
+                case OverloadFailureKind.UnknownKeyword:
+                    ReportUnknownKeywordArgument(kwarg, candidates
+                        .SelectMany(c => c.Parameters.Skip(1).Select(
+                            pm => CanonicalKeywordSpellingOf(pm, c.ClrMethodName != null)))
+                        .Distinct(StringComparer.Ordinal));
+                    break;
+                case OverloadFailureKind.PositionalOnlyKeyword:
+                    ReportPositionalOnlyByKeyword(kwarg);
+                    break;
+                case OverloadFailureKind.DuplicateKeyword:
+                    ReportKeywordAlreadyPositional(kwarg);
+                    break;
+                default:
+                    break;
             }
         }
+    }
+
+    /// <summary>
+    /// Why one candidate's (self-free) parameter list cannot bind <paramref name="keyword"/>, or
+    /// null when it binds.
+    ///
+    /// <para>This is the canonical statement of the ORDER the three arms are tried in — unknown
+    /// name, then positional-only, then already-supplied-positionally. The order is observable:
+    /// an argument can be both positional-only and already filled positionally, and python3 names
+    /// the positional-only violation for it (`def g(x, /, y, z)` called `g(1, y=1, x=1)` raises
+    /// "got some positional-only arguments passed as keyword arguments: 'x'"). The same order is
+    /// written out in <see cref="ValidateKeywordArguments"/> (the single-candidate route) and in
+    /// <c>BindCandidate</c> (the overload route); a route that reversed it reported SPY0235 where
+    /// its twin reported SPY0370, which is the defect class <c>OverloadBindingFailureMatrixTests</c>
+    /// measures.</para>
+    /// </summary>
+    private static OverloadFailureKind? ClassifyKeywordBinding(
+        IReadOnlyList<ParameterSymbol> parameters, string keyword, int positionalCount, bool hasSpread)
+    {
+        var param = FindKeywordParameter(parameters, keyword);
+        if (param == null)
+            return OverloadFailureKind.UnknownKeyword;
+        if (param.IsPositionalOnly)
+            return OverloadFailureKind.PositionalOnlyKeyword;
+        if (!hasSpread && !param.IsKeywordOnly && parameters.ToList().IndexOf(param) < positionalCount)
+            return OverloadFailureKind.DuplicateKeyword;
+        return null;
     }
 
     /// <summary>

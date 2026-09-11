@@ -1,0 +1,16 @@
+# The self.__init__ route shares the seam: a keyword naming a positional-only slot is SPY0370 at the
+# keyword, not a CS number behind SPY0908 (#1810, Decision 6(b)). The delegating constructor carries
+# the same parameter shape as the one it delegates to, because it is itself a candidate of
+# `self.__init__` — candidates that disagree about WHY the keyword cannot bind are SPY0354's
+# business, not this refusal's.
+
+class C:
+    def __init__(self, x: int, /, y: int) -> None:
+        print("ints")
+
+    def __init__(self, x: str, /, y: str) -> None:
+        self.__init__(x=1, y=2)
+
+def main() -> None:
+    c: C = C("a", "b")
+    print("unreachable")

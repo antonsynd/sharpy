@@ -1,2 +1,2 @@
-'None()' can only construct Optional types, not 'int32' or 'str' @12:15
+SPY0244: 'None()' can only construct Optional types, not 'int32' or 'str' @12:15
 !count 1
