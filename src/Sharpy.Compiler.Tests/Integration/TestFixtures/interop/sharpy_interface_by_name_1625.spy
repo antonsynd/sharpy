@@ -1,0 +1,38 @@
+# #1625 / P4 remediation R4: an explicitly WRITTEN type name that exists in a Sharpy namespace
+# resolves by name. The Sharpy-namespace exclusion belongs to the collision fallback only (see
+# clr_generic_collision_1765.spy), so ISized, IBoolConvertible and IReverseEnumerable[T] — the
+# interfaces the compiler synthesizes from __len__/__bool__/__reversed__ — are nameable in
+# annotations. Dropping "Sharpy" from the fallback's namespace list made
+# `IReverseEnumerable[int]` SPY0202 ("Did you mean 'IReverseEnumerable`1'?").
+class Countdown:
+    n: int
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+    def __bool__(self) -> bool:
+        return self.n > 0
+
+    def __reversed__(self) -> int:
+        yield self.n
+        yield self.n - 1
+
+def size(s: ISized) -> str:
+    return "sized"
+
+def truthy(b: IBoolConvertible) -> str:
+    return "convertible"
+
+def take(r: IReverseEnumerable[int]) -> str:
+    return "reversible"
+
+def main() -> None:
+    c = Countdown(5)
+    print(size(c))
+    print(truthy(c))
+    print(take(c))
+    for x in reversed(c):
+        print(x)

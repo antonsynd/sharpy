@@ -148,6 +148,12 @@ internal class BuiltinRegistry
         // Tuple: registered for OperatorValidator/ProtocolValidator metadata lookup.
         // typeParamCount=1 is nominal — real tuple arity is tracked by TupleType.ElementTypes,
         // not by this TypeSymbol's TypeParameters. CLR type is System.ValueTuple (non-generic sentinel).
+        // Deliberately NOT an open generic definition, unlike IEnumerable/IEnumerator below:
+        // System.ValueTuple has one definition PER ARITY (`1 .. `8), so no single Type can stand for
+        // `tuple`. Nothing reads this ClrType for a NAME — the Sharpy name `tuple` is mapped by
+        // ClrTypeBridge.SpecialCases (-> "System.ValueTuple") and a written tuple annotation is
+        // emitted from TupleType through MapSemanticType's per-arity ValueTuple arm — so the
+        // sentinel never reaches the global::-qualification arm in TypeSyntaxMapper (#1765).
         RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
         // Dict view types (returned by dict.items(), .keys(), .values()).
@@ -162,10 +168,15 @@ internal class BuiltinRegistry
         // ABSTRACT, which is the fact that makes a reference to it non-constructible (#1346) —
         // recorded here rather than asserted in prose, so NonConstructibleTypeNameOf reads it.
         RegisterType(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
-            varianceSource: typeof(IEnumerable<>));
-        RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
-            varianceSource: typeof(IEnumerator<>));
+        // The registered ClrType is the GENERIC definition Sharpy actually maps these names to.
+        // They carried the non-generic System.Collections.IEnumerable/IEnumerator until #1765:
+        // a symbol declaring one type parameter whose ClrType had none made every consumer that
+        // names the type from reflection emit `System.Collections.IEnumerable<T>` (CS0308), which
+        // 311252e33 papered over by exempting ALL generic types from global:: qualification.
+        // Naming the definition here removes the need for both the exemption and the separate
+        // varianceSource argument (ApplyClrVariance now reads the variance off the ClrType).
+        RegisterType(BuiltinNames.IEnumerable, typeof(IEnumerable<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        RegisterType(BuiltinNames.IEnumerator, typeof(IEnumerator<>), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
 
         // Result and Optional (for semantic-time method/property resolution)
         RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
@@ -320,7 +331,7 @@ internal class BuiltinRegistry
         }
     }
 
-    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0, Type? varianceSource = null)
+    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
     {
         // Build shared TypeParameterType instances for generic types so all methods
         // reference the same objects (required for consistent name-based substitution).
@@ -344,10 +355,11 @@ internal class BuiltinRegistry
                     .ToList()
                 : new List<TypeParameterDef>());
 
-        // Apply CLR-declared variance (out/in) from the registered CLR type or an explicit
-        // variance source (used when the registered ClrType is a non-generic placeholder,
-        // e.g., IEnumerable registered as System.Collections.IEnumerable) (#827).
-        typeParams = ApplyClrVariance(typeParams, varianceSource ?? clrType);
+        // Apply CLR-declared variance (out/in) from the registered CLR type (#827). Every generic
+        // builtin registers its open GENERIC definition, so the variance is always readable from
+        // the registered type itself; the former `varianceSource` escape hatch existed only for
+        // IEnumerable/IEnumerator, whose entries named non-generic placeholders until #1765.
+        typeParams = ApplyClrVariance(typeParams, clrType);
 
         // No override here: `list[T]` and `set[T]` take the variance their CLR types declare, which
         // is NONE. `Sharpy.List<T>`/`Sharpy.Set<T>` are invariant classes in C#, and
@@ -1031,17 +1043,51 @@ internal class BuiltinRegistry
     private readonly System.Collections.Concurrent.ConcurrentDictionary<(string, int), TypeSymbol?> _clrTypeCache = new();
 
     /// <summary>
+    /// CamelCase interop spellings of the builtin collections mapped to their lowercase builtin
+    /// name. Reverse of the <c>SharpyToClrNameMap</c> in <see cref="Discovery.CachedModuleDiscovery"/>.
+    /// The single source for the alias set: <c>TypeResolver.ResolveGenericType</c> redirects these
+    /// spellings to the builtin, and <see cref="TryResolveClrType"/> keeps the CLR fallback from
+    /// answering with the Sharpy runtime type behind them (#1134, #1625).
+    /// </summary>
+    internal static readonly ImmutableDictionary<string, string> CamelCaseAliases =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Dict"] = BuiltinNames.Dict,
+            ["List"] = BuiltinNames.List,
+            ["Set"] = BuiltinNames.Set,
+            ["Bytes"] = BuiltinNames.Bytes,
+            ["Str"] = BuiltinNames.Str,
+        }.ToImmutableDictionary(StringComparer.Ordinal);
+
+    /// <summary>
     /// Attempts to resolve a type name as a .NET type from well-known namespaces.
     /// Used as a fallback when a type is not found in the symbol table.
     /// Results are cached for performance. The arity parameter selects the right
     /// member from a multi-arity group (e.g. Action vs Action`1 vs Action`2).
     /// </summary>
+    /// <remarks>
+    /// The Sharpy runtime namespace is searched LAST (see <see cref="TryFindClrType"/>), so a short
+    /// name that also names a non-Sharpy .NET type resolves to the .NET type — <c>List</c> is
+    /// <c>System.Collections.Generic.List</c>, never <c>Sharpy.List</c> (#1625). A name that exists
+    /// ONLY in a Sharpy namespace (<c>ISized</c>, <c>IReverseEnumerable</c>, the stdlib's own
+    /// classes) still resolves, because an explicitly written type name is not a collision.
+    /// <para>
+    /// Independently of that ordering, this fallback never answers with a Sharpy type for a name the
+    /// registry itself owns — its own builtin table and <see cref="CamelCaseAliases"/> decide that,
+    /// not a namespace exclusion. Reflecting `Dict` into a fresh <c>Sharpy.Dict</c> symbol would
+    /// bypass the builtin `dict`, which is what carries the collection protocols (#1134).
+    /// </para>
+    /// </remarks>
     public TypeSymbol? TryResolveClrType(string name, int arity = 0)
     {
-        return _clrTypeCache.GetOrAdd((name, arity), static key =>
+        var registryOwnsName = IsReservedBuiltinTypeName(name) || CamelCaseAliases.ContainsKey(name);
+
+        // The extra state is a pure function of the KEY's name, so it can never make two callers
+        // disagree about a cached entry.
+        return _clrTypeCache.GetOrAdd((name, arity), static ((string Name, int Arity) key, bool ownedByRegistry) =>
         {
             var (n, a) = key;
-            var clrType = TryFindClrType(n, a);
+            var clrType = TryFindClrType(n, a, allowSharpyNamespace: !ownedByRegistry);
             if (clrType == null)
                 return null;
 
@@ -1079,50 +1125,75 @@ internal class BuiltinRegistry
             }
 
             return sym;
-        });
+        }, registryOwnsName);
     }
 
-    private static Type? TryFindClrType(string name, int arity)
+    /// <summary>
+    /// The namespaces the CLR type fallback searches, in priority order. The Sharpy runtime
+    /// namespace is LAST: a short name that also names a non-Sharpy .NET type answers with the
+    /// .NET type (the COLLISION rule, #1625), while a name that exists only under
+    /// <c>Sharpy</c> — <c>ISized</c>, <c>IBoolConvertible</c>, <c>IReverseEnumerable</c>, the
+    /// stdlib's own classes — is still findable as a last resort. Priority is a total order across
+    /// all loaded assemblies because the namespace loop is the OUTER one.
+    /// </summary>
+    private static readonly string[] ClrFallbackNamespaces =
+    {
+        "System",
+        "System.Collections.Generic",
+        "System.IO",
+        "System.Text",
+        "System.IO.Compression",
+        "System.Net",
+        "System.Net.Sockets",
+        "System.Net.Http",
+        "System.Numerics",
+        "System.Threading",
+        "System.Threading.Tasks",
+        "System.Text.RegularExpressions",
+        "System.Security.Cryptography",
+        "System.Diagnostics",
+        "System.Linq",
+        ClrTypeBridge.SpecialCases.SharpyNamespace
+    };
+
+    /// <param name="allowSharpyNamespace">
+    /// False when the registry owns a builtin under this name, which is the only case where a
+    /// Sharpy-namespace result is wrong: the builtin table, not a namespace exclusion, is what
+    /// keeps <c>Dict</c>/<c>List</c> off the reflected <c>Sharpy.Dict</c>/<c>Sharpy.List</c>
+    /// (see <see cref="TryResolveClrType"/>, #1625).
+    /// </param>
+    private static Type? TryFindClrType(string name, int arity, bool allowSharpyNamespace)
     {
         // #1613: for arity > 0, probe `Name`N (e.g. Action`1, Func`3)
         var clrName = arity > 0 ? $"{name}`{arity}" : name;
 
-        string[] namespaces =
-        {
-            "System",
-            "System.Collections.Generic",
-            "System.IO",
-            "System.Text",
-            "System.IO.Compression",
-            "System.Net",
-            "System.Net.Sockets",
-            "System.Net.Http",
-            "System.Numerics",
-            "System.Threading",
-            "System.Threading.Tasks",
-            "System.Text.RegularExpressions",
-            "System.Security.Cryptography",
-            "System.Diagnostics",
-            "System.Linq"
-        };
-
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        foreach (var ns in namespaces)
+        foreach (var ns in ClrFallbackNamespaces)
         {
+            if (!allowSharpyNamespace && ClrTypeBridge.SpecialCases.IsSharpyNamespace(ns))
+                continue;
+
             var fullName = $"{ns}.{clrName}";
             var type = Type.GetType(fullName);
-            if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
+            if (Accepts(type))
                 return type;
 
             foreach (var assembly in assemblies)
             {
                 type = assembly.GetType(fullName);
-                if (type != null && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(type.Namespace))
+                if (Accepts(type))
                     return type;
             }
         }
 
         return null;
+
+        // A type found through a NON-Sharpy namespace can still BE a Sharpy type (a forwarded or
+        // aliased name), so the suppression is applied to the result, not only to the probe.
+        bool Accepts(Type? candidate)
+            => candidate != null
+                && (allowSharpyNamespace
+                    || !ClrTypeBridge.SpecialCases.IsSharpyNamespace(candidate.Namespace));
     }
 
     #endregion

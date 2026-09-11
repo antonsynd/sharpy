@@ -1,0 +1,9 @@
+# #1678: the refusal the paren fix must NOT weaken — a CLR method group in a genuine VALUE position
+# has no Sharpy type to give the binding, so it is refused by name rather than bound to an
+# arbitrary overload. Positive control for clr_paren_callee_1678.spy: same member, same file,
+# one position apart.
+from system import Math
+
+def main() -> None:
+    b: bool = Math.abs
+    print(b)

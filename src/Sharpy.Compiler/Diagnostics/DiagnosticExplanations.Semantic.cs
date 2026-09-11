@@ -293,11 +293,12 @@ public static partial class DiagnosticExplanations
             + "  mk = lambda r: Shape.Circle(r)");
 
         Add(dict, DiagnosticCodes.Semantic.AmbiguousCallableReference, "Ambiguous callable reference", "Semantic",
-            "A function or method whose overloads take different numbers of arguments was referenced as a value, and nothing at the reference site says which overload was meant. Sharpy will not pick one for you: binding an arbitrary overload makes every later call through the binding fail an arity check against a signature you never chose. Overload sets that all take the same number of arguments (int, str, len) are unaffected.",
-            "xs: list[int] = [1, 2, 3]\ng = xs.pop  # pop() and pop(index) both exist",
-            "Call it directly (`xs.pop(0)`), annotate the target so one overload is selected "
-            + "(`g: (int) -> int = xs.pop`), or wrap it in a lambda that pins the signature "
-            + "(`g = lambda i: xs.pop(i)`).");
+            "A function or method whose overloads take different numbers of arguments was referenced as a value, and nothing at the reference site says which overload was meant. Sharpy will not pick one for you: binding an arbitrary overload makes every later call through the binding fail an arity check against a signature you never chose. Sharpy overload sets that all take the same number of arguments (int, str, len) are unaffected. "
+            + "A reflected .NET method group is refused in value position whatever its shape, same arity included: Math.abs is Abs(int), Abs(long), Abs(double) and six more, and a CLR method group has no Sharpy type to give the binding, so there is nothing to select without the call's arguments. Parentheses around a callee are not a value position — (Math.abs)(-1) is the call Math.abs(-1).",
+            "xs: list[int] = [1, 2, 3]\ng = xs.pop  # pop() and pop(index) both exist\n\nfrom system import Math\nh = Math.abs  # a CLR method group; every overload takes one argument",
+            "Call it directly (`xs.pop(0)`, `Math.abs(-1)`), annotate the target so one overload is "
+            + "selected (`g: (int) -> int = xs.pop`), or wrap it in a lambda that pins the signature "
+            + "(`g = lambda i: xs.pop(i)`, `h = lambda v: Math.abs(v)`).");
 
         Add(dict, DiagnosticCodes.Semantic.UnsupportedVariableArityTuple,
             "Variable-length tuple(iterable) is not supported", "Semantic",

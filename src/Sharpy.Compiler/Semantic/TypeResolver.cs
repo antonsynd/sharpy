@@ -1,4 +1,4 @@
-using System.Collections.Frozen;
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -599,20 +599,13 @@ internal class TypeResolver
 
     /// <summary>
     /// CamelCase interop spellings of the builtin collections mapped to their lowercase builtin
-    /// name. Reverse of the <c>SharpyToClrNameMap</c> in <see cref="Discovery.CachedModuleDiscovery"/>.
-    /// Consulted only when the CamelCase name would otherwise resolve to a non-generic static
-    /// factory companion (currently only <c>Dict</c>, whose <c>Sharpy.Dict</c> holds
-    /// <c>dict.fromkeys</c>); see the redirect in <see cref="ResolveGenericType"/> (#1134).
+    /// name; see the redirect in <see cref="ResolveGenericType"/> (#1134). The table itself lives on
+    /// <see cref="Registry.BuiltinRegistry.CamelCaseAliases"/> because the CLR fallback reads the
+    /// same set to keep a reflected <c>Sharpy.Dict</c>/<c>Sharpy.List</c> from answering for these
+    /// names (#1625) — two copies of the alias set could disagree about who owns a spelling.
     /// </summary>
-    private static readonly FrozenDictionary<string, string> BuiltinCamelCaseAliases =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["Dict"] = BuiltinNames.Dict,
-            ["List"] = BuiltinNames.List,
-            ["Set"] = BuiltinNames.Set,
-            ["Bytes"] = BuiltinNames.Bytes,
-            ["Str"] = BuiltinNames.Str,
-        }.ToFrozenDictionary(StringComparer.Ordinal);
+    private static ImmutableDictionary<string, string> BuiltinCamelCaseAliases
+        => Registry.BuiltinRegistry.CamelCaseAliases;
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
@@ -746,8 +739,14 @@ internal class TypeResolver
         // CLR match is such a static shadow, redirect to the builtin so the CamelCase surface is
         // a true alias of the lowercase spelling for type-checking, protocols, and codegen alike.
         // The static-shadow gate keeps `List`/`Set` (no companion) resolving as before.
+        //
+        // Gated on the BARE spelling like every other name-keyed claim in this resolver (#1325):
+        // the redirect had no escape gate, so `` `List`[int] `` — which names a user type declared
+        // with the escape and nothing else — silently resolved to the builtin `list` (measured at
+        // 311252e33: the parameter emitted `Sharpy.List<int>` with no user declaration in sight).
         var normalizedToBuiltin = false;
-        if ((typeSymbol == null || typeSymbol is { ClrType: { IsAbstract: true, IsSealed: true, IsInterface: false } })
+        if (!escaped
+            && (typeSymbol == null || typeSymbol is { ClrType: { IsAbstract: true, IsSealed: true, IsInterface: false } })
             && BuiltinCamelCaseAliases.TryGetValue(annotation.Name, out var builtinAlias)
             && _symbolTable.BuiltinRegistry.GetType(builtinAlias) is { } aliasedBuiltin)
         {

@@ -505,10 +505,25 @@ internal class TypeSyntaxMapper
 
     /// <summary>
     /// Returns the <c>global::</c>-qualified C# name for a reflected CLR type.
-    /// This is the single public entry point for CLR type naming (#1765, Decision 2).
+    /// This is the single entry point for CLR type naming (#1765, Decision 2): every position that
+    /// names a type from its <see cref="System.Type"/> — the annotation/reference seam
+    /// (<see cref="GetMappedTypeName"/>), the symbol-driven seam (<see cref="QualifyFromSymbol"/>)
+    /// and the expression-position identifier arm in <c>RoslynEmitter.Expressions</c> (via
+    /// <see cref="GlobalClrTypeNameSyntax"/>) — goes through it, so arity stripping and the nested-type
+    /// <c>+</c> conversion are ONE transform. Two of those sites previously built the string inline and
+    /// a third used <c>StripArity</c> alone, which differ on nested generic types.
     /// </summary>
-    internal string GlobalClrTypeName(System.Type clrType)
+    internal static string GlobalClrTypeName(System.Type clrType)
         => $"global::{ClrNameHelper.ToCSharpQualifiedName(clrType.FullName!)}";
+
+    /// <summary>
+    /// <see cref="GlobalClrTypeName"/> as Roslyn syntax, for the positions that need a
+    /// <see cref="NameSyntax"/> rather than a string. Same one transform; the segments are escaped
+    /// exactly as every other emitted name is.
+    /// </summary>
+    internal static NameSyntax GlobalClrTypeNameSyntax(System.Type clrType)
+        => RoslynEmitter.MakeGlobalQualifiedName(
+            GlobalClrTypeName(clrType)["global::".Length..].Split('.'));
 
     /// <summary>
     /// The symbol-driven naming seam for a <em>construction</em> position: the name the RoslynEmitter
@@ -596,17 +611,18 @@ internal class TypeSyntaxMapper
                 return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
             }
 
-            // CLR-backed NON-GENERIC types without a defining module/file (builtins like
-            // Exception) emit the global::-qualified name so no using set can make them
-            // ambiguous (#1765). Generic types are excluded because the registered ClrType
-            // may be a different arity or namespace than the Sharpy mapping (e.g.,
-            // IEnumerable is registered as System.Collections.IEnumerable but Sharpy maps
-            // it to System.Collections.Generic.IEnumerable<T>).
+            // CLR-backed types without a defining module/file (builtins like Exception, and every
+            // type the CLR fallback resolved — SCG.List, Dictionary) emit the global::-qualified
+            // name so no using set can make them ambiguous (#1765). GENERIC types were carved out
+            // in 311252e33 because IEnumerable's registry entry named the NON-generic
+            // System.Collections.IEnumerable while Sharpy maps the name to
+            // System.Collections.Generic.IEnumerable<T>, so qualification emitted
+            // `System.Collections.IEnumerable<T>` (CS0308). The registry entry now names the open
+            // generic definition, so the carve-out is gone and the axis is qualified again.
             if (typeSymbol.ClrType != null
-                && !typeSymbol.IsGeneric
                 && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
             {
-                return $"global::{ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!)}";
+                return GlobalClrTypeName(typeSymbol.ClrType);
             }
 
             // Type is in current scope (user-defined in current file) - use simple name
@@ -625,7 +641,7 @@ internal class TypeSyntaxMapper
         {
             if (builtinTypeSymbol.ClrType != null)
             {
-                return $"global::{ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!)}";
+                return GlobalClrTypeName(builtinTypeSymbol.ClrType);
             }
             return sharpyTypeName;
         }
@@ -669,13 +685,11 @@ internal class TypeSyntaxMapper
     {
         if (typeSymbol.ClrType is { } clrType)
         {
-            // Strip CLR generic arity suffixes and convert nested type notation (+) to C# dot notation.
-            // Type arguments are added separately by the caller via QualifiedGenericName.
-            var fullName = ClrNameHelper.ToCSharpQualifiedName(clrType.FullName!);
-
-            // Every CLR-backed type is emitted global::-qualified from the reflected type
-            // so no `using` set can make it ambiguous (#1765, Decision 2).
-            return $"global::{fullName}";
+            // Every CLR-backed type is emitted global::-qualified from the reflected type so no
+            // `using` set can make it ambiguous (#1765, Decision 2). GlobalClrTypeName owns the
+            // transform: arity suffixes stripped (type arguments are added separately by the caller
+            // via QualifiedGenericName) and nested-type `+` converted to C# dot notation.
+            return GlobalClrTypeName(clrType);
         }
 
         string moduleNamespace;

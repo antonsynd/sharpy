@@ -1,0 +1,19 @@
+# #1678 / P4 remediation R6: a PARENTHESIZED callee is still a callee, on the CLR routes too.
+# `(Math.abs)(-1)` is the call `Math.abs(-1)` in Python and in Sharpy — the sibling rule
+# indirect_callee/paren_union_variant_ctor.spy already pins for a union constructor. The CLR member
+# arms tested callee position with ReferenceEquals against the call's callee node, and a
+# Parenthesized wrapper is a different node, so the method group was read as a VALUE reference and
+# refused with SPY0336 (it printed 1 at 24ee7d6f6 and stopped compiling at 311252e33).
+from system import Math
+
+def main() -> None:
+    # method group (nine Abs overloads) through parentheses, and bare as the control
+    print((Math.abs)(-1))
+    print(Math.abs(-2))
+
+    # a builtin type's static method, same shape
+    print((int.parse)("3").unwrap())
+
+    # double parentheses, and a parenthesized STATIC-property receiver
+    print(((Math.abs))(-4))
+    print((Math.max)(5, 2))

@@ -1,0 +1,28 @@
+# #1765 / #1625: a GENERIC collision in one file — Sharpy's `list` beside
+# System.Collections.Generic.List, both spelled in annotations and both constructed. `List` resolves
+# to the .NET type (the CLR fallback searches Sharpy LAST, so a short name that also names a
+# non-Sharpy type prefers the .NET one) while `list` stays Sharpy's. 311252e33 exempted generic
+# types from global:: qualification because IEnumerable's registry entry named the non-generic
+# System.Collections.IEnumerable; the entry now names the open generic definition, so this file's
+# CLR names are qualified like every other reflected type.
+from System.Collections.Generic import List
+
+def count_clr(xs: List[int]) -> int:
+    return xs.count
+
+def count_sharpy(xs: list[int]) -> int:
+    return len(xs)
+
+def main() -> None:
+    clr: List[int] = List[int]()
+    clr.add(7)
+    clr.add(8)
+    print(count_clr(clr))
+
+    sharpy: list[int] = [1, 2, 3]
+    print(count_sharpy(sharpy))
+
+    # the CamelCase interop spellings stay aliases of the builtins (#1134)
+    d: Dict[str, int] = {"a": 1}
+    print(d["a"])
+    print(len(d))
