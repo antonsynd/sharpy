@@ -386,7 +386,8 @@ internal partial class RoslynEmitter
         // scope. Mirrors GenerateImperativeComprehension's own restore.
 
         HoistEvaluation(tempDecl);
-        foreach (var s in currentBody) HoistEvaluation(s);
+        foreach (var s in currentBody)
+            HoistEvaluation(s);
 
         return IdentifierName(tempName);
     }
@@ -649,12 +650,14 @@ internal partial class RoslynEmitter
         // Hoist: presized source temp (single-for) + temp declaration + outermost loop
         if (sourceDecl != null)
         {
-            foreach (var s in sourceHoisted!) HoistEvaluation(s);
+            foreach (var s in sourceHoisted!)
+                HoistEvaluation(s);
             HoistEvaluation(sourceDecl);
         }
 
         HoistEvaluation(tempDecl);
-        foreach (var s in currentBody) HoistEvaluation(s);
+        foreach (var s in currentBody)
+            HoistEvaluation(s);
 
         return IdentifierName(tempName);
     }

@@ -55,7 +55,7 @@ def main() -> None:
     print(describe())
 """);
         helper.WithEntryPoint("main.spy");
-                var cold = helper.CompileAndExecute();
+        var cold = helper.CompileAndExecute();
         Assert.True(cold.Success, "cold: " + string.Join("; ", cold.CompilationErrors));
         Assert.Equal(Expected, cold.StandardOutput.Replace("\r\n", "\n"));
 
@@ -103,7 +103,7 @@ def main() -> None:
     b: bool = DateTime(2026, 1, 1).day_of_week
 """);
         helper.WithEntryPoint("main.spy");
-                var cold = helper.Compile();
+        var cold = helper.Compile();
         Assert.False(cold.Success);
         Assert.Contains(cold.Diagnostics.GetErrors(), d => d.Message.Contains("'DayOfWeek'", StringComparison.Ordinal));
 

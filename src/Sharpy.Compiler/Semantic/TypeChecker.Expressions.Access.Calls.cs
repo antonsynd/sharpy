@@ -6738,7 +6738,8 @@ internal partial class TypeChecker
         {
             var parameters = ctor.GetParameters();
             var required = parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p));
-            if (required < fewest) fewest = required;
+            if (required < fewest)
+                fewest = required;
             if (parameters.Any(p => IsClrParamsArray(p)))
                 unbounded = true;
             else if (parameters.Length > most)

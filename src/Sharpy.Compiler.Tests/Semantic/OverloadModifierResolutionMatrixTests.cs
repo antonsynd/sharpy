@@ -196,8 +196,12 @@ public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDispo
         Hosts.Length.Should().Be(HostCount);
         ArgumentKinds.Length.Should().Be(ArgKindCount);
         Cells.Count().Should().Be(CellCount);
-        (from p in Pairs from a in Args from h in Hosts from k in ArgumentKinds
-         where Expected(p, a).RefusalCode != null select 1)
+        (from p in Pairs
+         from a in Args
+         from h in Hosts
+         from k in ArgumentKinds
+         where Expected(p, a).RefusalCode != null
+         select 1)
             .Count().Should().Be(RefusedCellCount,
                 "the refused half is a literal: a refusal that starts compiling, or an accepted cell "
                 + "that starts refusing, moves this count");

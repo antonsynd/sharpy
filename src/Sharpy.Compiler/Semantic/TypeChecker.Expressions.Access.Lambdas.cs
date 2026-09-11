@@ -117,50 +117,50 @@ internal partial class TypeChecker
         try
         {
 
-        if (lambda.ReturnType != null)
-        {
-            var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
-            using (EnterStore(StorePosition.LambdaBody, declaredReturnType, lambda.Body))
-                bodyType = CheckExpression(lambda.Body);
-            if (declaredReturnType is not UnknownType && bodyType is not UnknownType)
+            if (lambda.ReturnType != null)
             {
-                CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, declaredReturnType,
-                    lambda.Body, lambda.Body.Span);
-            }
-            returnType = declaredReturnType;
-        }
-        else if (expectedFunc is { ReturnType: not UnknownType and not VoidType } expected
-            && !ContainsTypeParameterType(expected.ReturnType)
-            && expected.ReturnType is { } expectedReturn)
-        {
-            // An UNANNOTATED lambda under a typed target — `f: () -> int8 = lambda: 7` — has a slot
-            // for its body after all: the expected FunctionType's return type. Without pushing it,
-            // the body types as `int32`, the lambda's FunctionType is `() -> int32`, and the
-            // DECLARATION refuses two function types that differ only by a conversion the seam
-            // admits at every other position (#1698 a9). The body is a store into that slot, so it
-            // reaches the constant/float32/decimal/literal-derived arms and their side effects; when
-            // admitted, the slot type IS the lambda's return type, so the declaration's function-type
-            // comparison then agrees.
-            using (EnterStore(StorePosition.LambdaBody, expectedReturn, lambda.Body))
-                bodyType = CheckExpression(lambda.Body);
-
-            if (bodyType is not UnknownType)
-            {
-                if (!CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn))
-                    CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn,
+                var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
+                using (EnterStore(StorePosition.LambdaBody, declaredReturnType, lambda.Body))
+                    bodyType = CheckExpression(lambda.Body);
+                if (declaredReturnType is not UnknownType && bodyType is not UnknownType)
+                {
+                    CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, declaredReturnType,
                         lambda.Body, lambda.Body.Span);
-                returnType = expectedReturn;
+                }
+                returnType = declaredReturnType;
+            }
+            else if (expectedFunc is { ReturnType: not UnknownType and not VoidType } expected
+                && !ContainsTypeParameterType(expected.ReturnType)
+                && expected.ReturnType is { } expectedReturn)
+            {
+                // An UNANNOTATED lambda under a typed target — `f: () -> int8 = lambda: 7` — has a slot
+                // for its body after all: the expected FunctionType's return type. Without pushing it,
+                // the body types as `int32`, the lambda's FunctionType is `() -> int32`, and the
+                // DECLARATION refuses two function types that differ only by a conversion the seam
+                // admits at every other position (#1698 a9). The body is a store into that slot, so it
+                // reaches the constant/float32/decimal/literal-derived arms and their side effects; when
+                // admitted, the slot type IS the lambda's return type, so the declaration's function-type
+                // comparison then agrees.
+                using (EnterStore(StorePosition.LambdaBody, expectedReturn, lambda.Body))
+                    bodyType = CheckExpression(lambda.Body);
+
+                if (bodyType is not UnknownType)
+                {
+                    if (!CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn))
+                        CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn,
+                            lambda.Body, lambda.Body.Span);
+                    returnType = expectedReturn;
+                }
+                else
+                {
+                    returnType = bodyType;
+                }
             }
             else
             {
+                bodyType = CheckExpression(lambda.Body);
                 returnType = bodyType;
             }
-        }
-        else
-        {
-            bodyType = CheckExpression(lambda.Body);
-            returnType = bodyType;
-        }
 
         }
         finally
