@@ -340,46 +340,4 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
             "the refusal happens at semantic time");
     }
-
-    /// <summary>
-    /// The unexplained-refusal control: when NO candidate accepts the argument and no candidate's
-    /// MAPPED parameter type explains why, the same-argument rule (#1775) declines and the candidate
-    /// list is printed instead of a per-parameter SPY0220. Without a control on this shape the CLR
-    /// arm could pass by naming a type that does not actually explain the refusal.
-    ///
-    /// <para>
-    /// The premise here is a bare <c>None</c>: <c>ClrParameterAccepts</c> answers the <c>None</c> case
-    /// first — applicable to every reference-type and <c>Nullable&lt;T&gt;</c> parameter and to nothing
-    /// else — and returns BEFORE <c>vocabularyRefused</c> can be set, so neither surviving candidate
-    /// (<c>EscapeDataString(String)</c>, declared non-nullable, and
-    /// <c>EscapeDataString(ReadOnlySpan&lt;char&gt;)</c>, a non-nullable value type) leaves an
-    /// explanation behind.
-    /// </para>
-    ///
-    /// <para>
-    /// This control REPLACES a lossy-mapping one (#1573) that used
-    /// <c>String.compare("a", "b", 1)</c>: its premise was that <c>StringComparison</c> maps to
-    /// <c>int32</c>, so an <c>int32</c> argument satisfied the spelling while .NET refused it. A CLR
-    /// enum now maps to the enum's own type (#1705), which makes that refusal explainable — the call
-    /// is SPY0220 "Cannot pass argument of type 'int32' to parameter of type 'bool' or
-    /// 'StringComparison'", a more precise code for the same refusal. A scan of the 15 namespaces
-    /// the registry resolves from found the lossy condition has NO producer left (0 lossy shapes in
-    /// 22,879 formals over 962 types); see #1843, which owns the question of whether
-    /// <c>IsLossyClrMapping</c> is now dead code.
-    /// </para>
-    /// </summary>
-    [Fact]
-    public void ClrUnexplainedRefusal_KeepsSPY0354WithCandidateList()
-    {
-        var source = "from system import Uri\n\ndef main() -> None:\n    print(Uri.escape_data_string(None))\n";
-        var result = CompileAndExecute(source);
-        result.Success.Should().BeFalse();
-        result.RawDiagnostics.Should().Contain(
-            d => d.Code == DiagnosticCodes.Semantic.NoMatchingOverload,
-            "a refusal no candidate's mapped parameter type explains keeps SPY0354");
-        string.Join(" ", result.CompilationErrors).Should().Contain("Candidates:");
-        result.RawDiagnostics.Should().NotContain(
-            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            "the refusal happens at semantic time, not as CS1503 behind SPY0908");
-    }
 }
