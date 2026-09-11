@@ -412,16 +412,24 @@ internal partial class TypeChecker
                 // spellings (#1810).
                 var matchedParamIdx = parameters.IndexOf(param);
 
+                // The ORDER of these two arms is a shared fact, not a local choice: an argument
+                // can be BOTH positional-only and already filled positionally, and the code the
+                // user sees must not depend on which route classified it. Positional-only wins —
+                // python3 measured (`def g(x, /, y, z)` called `g(1, y=1, x=1)` raises "got some
+                // positional-only arguments passed as keyword arguments: 'x'", not "got multiple
+                // values"), and it is the order `ValidateKeywordArguments` and
+                // `ClassifyKeywordBinding` already used. Reversed here, an overloaded callee said
+                // SPY0235 where its single-candidate twin said SPY0370 (#1810, Decision 6(b)).
+                if (param.IsPositionalOnly)
+                    return Inapplicable(
+                        $"Parameter '{param.Name}' is positional-only",
+                        OverloadFailureKind.PositionalOnlyKeyword, keywordRef);
+
                 // Check if the matched parameter's index was already filled positionally.
                 if (matchedParamIdx >= 0 && filledParamIndices.Contains(matchedParamIdx))
                     return Inapplicable(
                         $"Parameter '{param.Name}' is already filled by a positional argument",
                         OverloadFailureKind.DuplicateKeyword, keywordRef);
-
-                if (param.IsPositionalOnly)
-                    return Inapplicable(
-                        $"Parameter '{param.Name}' is positional-only",
-                        OverloadFailureKind.PositionalOnlyKeyword, keywordRef);
 
                 var formal = param.Type;
                 if (context.TypeSubstitution != null)
@@ -865,6 +873,22 @@ internal partial class TypeChecker
                 continue;
 
             var paramTypeB = correspondingB.Formal;
+
+            // An UNKNOWN formal is an ABSENCE of information, not a worse formal: an annotation
+            // that did not resolve, or a position the type pass skipped under `SkipUnknownTypes`
+            // (which the initializer and super().__init__ routes set). Measured against it, the
+            // other candidate's identity match — `paramTypeA.Equals(argType)` is true while
+            // `Unknown.Equals(argType)` is false — read as "strictly better at this argument" and
+            // silently picked a winner over a candidate nobody had measured. The position
+            // contributes nothing in either direction.
+            //
+            // Like the `correspondingB == null` guard above, this is a TOTALITY guard, not a
+            // guarded fix: no source-level input is known to reach it, because an annotation that
+            // fails to resolve is itself refused (SPY0202) before betterness runs. Do not cite it
+            // as evidence for a fixed defect; it is here so that a formal the type pass skipped
+            // cannot hand the other candidate a win it did not earn.
+            if (paramTypeA is UnknownType || paramTypeB is UnknownType)
+                continue;
 
             // §12.6.4.6: if the argument's natural type exactly matches one parameter
             // type but not the other, the matching type is strictly better. This is

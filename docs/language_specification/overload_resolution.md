@@ -84,6 +84,27 @@ resolved differently from its positional twin would be a defect, not a rule. Par
 the receiver, so an override that renames a parameter is matched against the receiver's declared type,
 not its runtime type (see [Named Arguments in Overload Resolution](function_parameters.md#named-arguments-in-overload-resolution)).
 
+#### When no candidate can bind a keyword
+
+A keyword argument that **no** candidate can bind is a failure of that argument, not of the call, and
+is reported by the argument's own code at the argument's own span — the same code a single-candidate
+callee gives for the same mistake:
+
+| What is wrong with the keyword | Code |
+|--------------------------------|------|
+| No candidate declares a parameter of that name | `SPY0234` |
+| Every candidate's parameter of that name is positional-only | `SPY0370` |
+| Every candidate's parameter of that name is already filled positionally | `SPY0235` |
+
+This holds on every route, including `super().__init__(...)` and `self.__init__(...)`. `SPY0354` is
+reserved for the failures the candidates disagree about: an arity mismatch, or candidates that reject
+*different* arguments. A candidate set where even one candidate binds the keyword is not a binding
+failure at all — it is decided by applicability and betterness like any other call.
+
+The **arity** check runs before binding, so a call that passes more arguments than any candidate
+declares reports the arity failure (`SPY0224` for a single candidate, `SPY0354` for an overload set)
+rather than a keyword code, even when a keyword is also unbindable.
+
 ### Assignability of each argument
 
 Each argument type must be **assignable** to its corresponding parameter type. Assignability, for

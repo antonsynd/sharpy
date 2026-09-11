@@ -347,11 +347,10 @@ def main():
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
             "the conflict is decided by Sharpy, not leaked to Roslyn as CS0411");
 
-        // MEASURED at 311252e33: an emit failure leaves RawDiagnostics EMPTY and puts the raw Roslyn
-        // text in CompilationErrors, so the assertion above cannot fire on its own yet — see the
-        // positive control below. This one can, and does: it is the channel that carries a C#-stage
-        // failure today. (IntegrationTestBase's emit-failure branch gains a synthesized SPY0908 on
-        // the test-infra branch; when that lands, both assertions are load-bearing.)
+        // Both assertions are load-bearing since b0fd3e4d7: IntegrationTestBase's emit-failure
+        // branch now synthesizes a SPY0908 into RawDiagnostics carrying the CS text, so the
+        // NotContain above can fire. This one reads the other channel — the raw Roslyn strings —
+        // and names the specific CS number the refusal replaced.
         result.CompilationErrors.Should().NotContain(e => e.Contains("CS0411", StringComparison.Ordinal),
             "CS0411 is what this refusal replaced");
     }
@@ -361,28 +360,32 @@ def main():
     /// look for a C#-stage failure — on a program whose generated C# genuinely does not compile.
     /// Without it, "no CS0411" is a claim about the probe rather than about the compiler.
     ///
-    /// <para>The subject here is deliberately a DIFFERENT defect from the one under test: a
-    /// method-level type parameter on <c>__init__</c> is accepted by the checker and never emitted
-    /// (filed — see the round's report). If that is fixed, this control must be re-pointed at
-    /// another C#-stage failure, not deleted.</para>
+    /// <para>The subject here is deliberately a DIFFERENT defect from the one under test: static
+    /// member access through a generic type reference emits an indexer on the OPEN generic
+    /// (<b>#1817</b>, open). If that is fixed, this control must be re-pointed at another C#-stage
+    /// failure, not deleted.</para>
+    ///
+    /// <para>It used to be pointed at <c>def __init__[V](self, v: V)</c> (#1836), which was
+    /// accepted and never emitted. That is now refused by name (SPY0705), so it is no longer a
+    /// C#-stage failure and cannot serve as this control — the re-pointing the previous version of
+    /// this remark asked for.</para>
     /// </summary>
     [Fact]
     public void InferenceConflict_TheICEProbe_HitsWhenTheConflictIsNotRefused()
     {
-        // A method-level type parameter on __init__ is accepted by the checker and never emitted,
-        // so the generated C# names an unknown type `V` (CS0246) — an ICE the same probe must see.
+        // #1817: `G[int].K` emits an indexer on the open generic, so the generated C# names
+        // `G<T>` without its type argument (CS0305) — an ICE the same probe must see.
         var source = @"
-class C:
-    def __init__[V](self, v: V) -> None:
-        print(""bare"")
+struct G[T]:
+    const K: int = 1
 
 def main():
-    c = C(1)
+    print(G[int].K)
 ";
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeFalse("the generated C# does not compile");
-        result.CompilationErrors.Should().Contain(e => e.Contains("CS0246", StringComparison.Ordinal),
+        result.CompilationErrors.Should().Contain(e => e.Contains("CS0305", StringComparison.Ordinal),
             "the probe must be able to see a C#-stage failure at all, or 'no CS0411' above says "
             + "nothing: " + string.Join(" | ", result.CompilationErrors));
     }

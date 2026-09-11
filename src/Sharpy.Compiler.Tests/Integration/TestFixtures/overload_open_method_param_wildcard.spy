@@ -1,0 +1,23 @@
+# The wildcard arm in SelectOverload's type pass — a formal that STILL contains a type parameter is
+# admitted — is reached on the TypeSubstitution path and only there. The receiver's type argument
+# closes the CLASS's T, which makes `context.TypeSubstitution` non-null and therefore SKIPS
+# per-candidate inference (#1811), so the method's own [V] is never closed and both candidates'
+# first formal is still open. The second argument is what discriminates: `int` binds T (closed to
+# int32 by the receiver) and not `str`. Without the wildcard arm both candidates are inapplicable
+# at argument 1 and the call is SPY0354.
+
+class Box[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+    def pick[V](self, a: V, b: T) -> str:
+        return "open-t"
+
+    def pick[V](self, a: V, b: str) -> str:
+        return "open-str"
+
+def main() -> None:
+    b: Box[int] = Box[int](1)
+    print(b.pick("anything", 2))

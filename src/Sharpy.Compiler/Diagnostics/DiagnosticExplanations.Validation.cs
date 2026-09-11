@@ -1021,5 +1021,17 @@ public static partial class DiagnosticExplanations
             "[x := x for x in range(5)]    # SPY0704: rebinding iteration variable",
             "Move the walrus assignment outside the comprehension, or use a regular " +
             "assignment before the comprehension.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.MemberTypeParametersNotEmittable,
+            "Member cannot carry its own type parameters", "Validation",
+            "`__init__` is emitted as a C# constructor and every operator dunder (`__add__`, " +
+            "`__eq__`, `__neg__`, `__implicit__`, \u2026) is emitted as a C# `operator`. Neither " +
+            "may be generic (C# \u00a715.11, \u00a715.10), so a type parameter list written on " +
+            "one of them names nothing in the generated code. Every other member kind \u2014 " +
+            "module function, method, static method, `__call__` \u2014 carries its own type " +
+            "parameters normally.",
+            "class Box:\n    def __init__[V](self, v: V) -> None:  # SPY0705\n        pass",
+            "Move the type parameters to the type, where they are emitted:\n" +
+            "class Box[V]:\n    def __init__(self, v: V) -> None:\n        pass");
     }
 }

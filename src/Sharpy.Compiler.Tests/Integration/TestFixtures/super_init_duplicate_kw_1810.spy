@@ -1,0 +1,16 @@
+# A keyword naming a slot already filled positionally is SPY0235 at the KEYWORD on the
+# super().__init__ route too (#1810, Decision 6(b)). It used to reach Roslyn as CS1744 behind
+# SPY0908, reported inside the BASE initializer's body: the route checked only the unknown-name
+# arm, through a second hand-rolled implementation of the binding rule.
+
+class Base:
+    def __init__(self, x: int, y: int) -> None:
+        print("base")
+
+class Derived(Base):
+    def __init__(self) -> None:
+        super().__init__(1, x=2)
+
+def main() -> None:
+    d: Derived = Derived()
+    print("unreachable")

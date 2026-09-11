@@ -958,6 +958,7 @@ public static class DiagnosticCodes
         public const string FinallyControlTransfer = "SPY0702"; // Active (#1690)
         public const string YieldInSuppressingWith = "SPY0703"; // Active (#1745)
         public const string WalrusInProhibitedPosition = "SPY0704"; // Active (#1724)
-        // SPY0705-SPY0799: Available for new validation diagnostics
+        public const string MemberTypeParametersNotEmittable = "SPY0705"; // Active (#1836)
+        // SPY0706-SPY0799: Available for new validation diagnostics
     }
 }

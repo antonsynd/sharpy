@@ -48,6 +48,33 @@ def first[T](items: list[T]) -> T:
 *Implementation*
 - *✅ Native - `T Identity<T>(T value)`*
 
+### Members that cannot carry their own type parameters
+
+A member's type parameter list is emitted on the member, so a member whose C# form has no
+type-parameter list cannot declare one. Two kinds are affected, and both are refused with `SPY0705`:
+
+- **`__init__`**, which is emitted as a C# constructor;
+- **every operator dunder** (`__add__`, `__eq__`, `__neg__`, `__implicit__`, …), each emitted as a
+  C# `operator` or conversion operator.
+
+C# makes neither generic (§15.11, §15.10). Declare the type parameter on the **type** instead, which
+is where these members can read it:
+
+```python
+# ❌ SPY0705 — a constructor cannot be generic
+class Box:
+    def __init__[V](self, v: V) -> None:
+        pass
+
+# ✅ the type parameter lives on the class
+class Box[V]:
+    def __init__(self, v: V) -> None:
+        self.v: V = v
+```
+
+Every other member kind — module function, instance method, static method, `__call__` — carries its
+own type parameters normally.
+
 ## Generic Function Instantiation
 
 Generic functions support both type inference and explicit type arguments at call sites:

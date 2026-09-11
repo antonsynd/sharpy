@@ -1,2 +1,2 @@
-'x' is positional-only and cannot be passed as a keyword argument @12:13
+SPY0370: 'x' is positional-only and cannot be passed as a keyword argument @12:13
 !count 1

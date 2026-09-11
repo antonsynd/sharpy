@@ -76,8 +76,10 @@ public class OverloadApplicabilityMatrixTests : IntegrationTestBase, IDisposable
     /// <param name="MethodTypeParamsA">The type parameters candidate A declares when the pair is
     /// hosted on a FUNCTION or a METHOD (<c>""</c>, <c>"[V]"</c>, …).</param>
     /// <param name="ClassTypeParams">The type parameters the pair needs when it is hosted on a
-    /// CONSTRUCTOR, where they must live on the CLASS: a method-level type parameter on
-    /// <c>__init__</c> is not emitted today (SPY0908/CS0246 — filed, see the class remark).</param>
+    /// CONSTRUCTOR, where they must live on the CLASS: a constructor is not generic in C#, so a
+    /// method-level type parameter on <c>__init__</c> is refused by name (SPY0705, #1836). It used
+    /// to be accepted and emitted nowhere, reaching Roslyn as CS0246 behind SPY0908 — which is why
+    /// these hosts were written this way before the refusal existed.</param>
     /// <param name="ClassTypeArgs">The type arguments written at the construction site for
     /// <paramref name="ClassTypeParams"/>.</param>
     /// <param name="ExplicitTypeArgs">The type-argument list written at the call site for the

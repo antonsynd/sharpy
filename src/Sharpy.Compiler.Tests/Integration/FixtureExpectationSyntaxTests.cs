@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -109,6 +110,50 @@ public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase, IDis
                 Failed("SPY0999: internal error while typechecking prototype")));
     }
 
+    // ── `SPYnnnn: ` pins the CODE, both directions (#1827) ───────────────────────────────
+
+    // A sidecar can now say WHICH diagnostic it means, not just what text appears somewhere in
+    // the diagnostics. `CompilationErrors` carries `d.Message`, and a Sharpy message never
+    // contains its own code, so before this every `.error` fixture in the tree — all 963 — was
+    // blind to the code. A refusal that changed from SPY0234 at the keyword to SPY0354 at the
+    // call still matched a sidecar pinning the shared words.
+
+    [Fact]
+    public void CodePrefix_Passes_WhenTheCodeMatches()
+        => AssertErrorFixture("SPY0234: Unknown keyword argument 'z'",
+            FailedWith(("SPY0234", "Unknown keyword argument 'z'", 11, 13)));
+
+    [Fact]
+    public void CodePrefix_Fails_WhenTheSameMessageCarriesADifferentCode()
+    {
+        var thrown = Assert.ThrowsAny<XunitException>(() =>
+            AssertErrorFixture("SPY0234: Unknown keyword argument 'z'",
+                FailedWith(("SPY0354", "Unknown keyword argument 'z'", 11, 13))));
+
+        Assert.Contains("SPY0234", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CodePrefix_Passes_WithALocationToo()
+        => AssertErrorFixture("SPY0234: Unknown keyword argument 'z' @11:13",
+            FailedWith(("SPY0234", "Unknown keyword argument 'z'", 11, 13)));
+
+    [Fact]
+    public void CodePrefix_Fails_WhenOnlyTheLocationIsWrong()
+        => Assert.ThrowsAny<XunitException>(() =>
+            AssertErrorFixture("SPY0234: Unknown keyword argument 'z' @11:13",
+                FailedWith(("SPY0234", "Unknown keyword argument 'z'", 11, 5))));
+
+    [Fact]
+    public void CodePrefix_WithALocation_PicksTheDiagnosticWithTHATCode()
+    {
+        // Two diagnostics share the message; the pinned code selects which one's span is checked.
+        // Without the code in the predicate the first one wins and the assertion measures the
+        // wrong diagnostic.
+        AssertErrorFixture("SPY0354: same words @11:1",
+            FailedWith(("SPY0234", "same words", 11, 13), ("SPY0354", "same words", 11, 1)));
+    }
+
     // ── the historical behaviour is untouched ────────────────────────────────────────────
 
     [Fact]
@@ -201,10 +246,41 @@ public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase, IDis
             verifyCSharpSnapshot: false);
     }
 
+    /// <summary>
+    /// A failed result whose RAW diagnostics carry codes and locations — what a code-pinning
+    /// sidecar reads. <see cref="Failed"/> sets only the message strings, which is all the
+    /// pre-#1827 forms could see.
+    /// </summary>
+    private static ExecutionResult FailedWith(params (string Code, string Message, int Line, int Column)[] diags) => new()
+    {
+        Success = false,
+        CompilationErrors = diags.Select(d => d.Message).ToList(),
+        RawDiagnostics = diags
+            .Select(d => new CompilerDiagnostic(
+                d.Message, CompilerDiagnosticSeverity.Error, d.Line, d.Column, Code: d.Code))
+            .ToList(),
+    };
+
+    /// <summary>
+    /// A failed result from raw message strings. Each is carried VERBATIM in
+    /// <see cref="ExecutionResult.CompilationErrors"/> — which is what the substring, negative and
+    /// count forms read — and, when it is written in the conventional <c>SPYnnnn: message</c>
+    /// shape, is ALSO split into a raw diagnostic so the code-pinning form has the channel it
+    /// reads. A real compiler run populates both channels; a helper that populated only one would
+    /// make every code-pinned assertion vacuous here.
+    /// </summary>
     private static ExecutionResult Failed(params string[] errors) => new()
     {
         Success = false,
         CompilationErrors = errors.ToList(),
+        RawDiagnostics = errors.Select(e =>
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(e, @"^(SPY\d{4}):\s*(.*)$");
+            return m.Success
+                ? new CompilerDiagnostic(m.Groups[2].Value, CompilerDiagnosticSeverity.Error,
+                    Code: m.Groups[1].Value)
+                : new CompilerDiagnostic(e, CompilerDiagnosticSeverity.Error);
+        }).ToList(),
     };
 
     private static ExecutionResult Succeeded() => new()

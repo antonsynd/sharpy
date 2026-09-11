@@ -1,2 +1,2 @@
-'int32' is not an Optional[int32]; construct it with Some(...) @13:11
+SPY0604: 'int32' is not an Optional[int32]; construct it with Some(...) @13:11
 !count 1
