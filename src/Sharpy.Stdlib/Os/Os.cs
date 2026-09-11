@@ -43,7 +43,9 @@ namespace Sharpy
         public static string Linesep = global::System.Environment.NewLine;
         public static string Name = Sep == "\\" ? "nt" : "posix";
         public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator);
-        public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar == global::System.IO.Path.DirectorySeparatorChar ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
+        public static string _AltSepChar = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
+        public static string _DirSepChar = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+        public static string Altsep = _AltSepChar == _DirSepChar ? "" : _AltSepChar;
         /// <summary>
         /// Remove a file (same as unlink).
         /// </summary>
@@ -242,7 +244,7 @@ namespace Sharpy
                 {
                     var k = ((global::System.Collections.DictionaryEntry)entry!).Key;
                     var v = ((global::System.Collections.DictionaryEntry)entry!).Value;
-                    if (k is string && v is string)
+                    if ((object?)k is string && v is string)
                     {
                         result[((string)k!)] = ((string)v!);
                     }

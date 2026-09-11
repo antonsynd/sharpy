@@ -305,7 +305,7 @@ namespace Sharpy
         /// <summary>
         /// Exception raised when a regex pattern is invalid.
         /// </summary>
-        public class Error : Exception
+        public class Error : global::System.Exception
         {
             public string Msg;
             public string? Pattern;

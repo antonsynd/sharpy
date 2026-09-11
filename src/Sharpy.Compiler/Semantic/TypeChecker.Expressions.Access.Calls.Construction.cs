@@ -113,41 +113,47 @@ internal partial class TypeChecker
         }
         else if (typeSymbol.ClrType is { } ctorClrType)
         {
-            // CLR-bridged constructors: check arity and argument types against the reflected
-            // ConstructorInfo parameters — the same check the instance/static call seams perform
-            // (#1753). When exactly one constructor matches, its argument types are checked;
-            // when none matches, SPY0354; when several survive, SPY0601.
-            var ctors = ctorClrType.GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            // CLR-bridged constructors go through THE CLR call-route seam — the same binding,
+            // applicability and betterness formula the instance, static, indexer and extension routes
+            // use (#1753). There used to be two deciders here in sequence: a reflected arity-and-types
+            // block, and `SoleArityMatchingConstructor` re-deciding by arity alone and applying the
+            // conversions. The seam decides once and the conversions are applied by the same
+            // post-selection check every other route runs, so a keyword constructor call
+            // (`Vector2(x="a", y="b")`, which used to bail wholesale and reach Roslyn as CS1503) binds
+            // by parameter name here like everything else.
+            var ctors = ctorClrType.GetConstructors(
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                 .Where(c => !c.IsGenericMethodDefinition)
                 .ToArray();
+
+            // A struct's implicit parameterless constructor cannot be removed, so a zero-argument
+            // construction of one is never this seam's to adjudicate.
+            // A keyword construction of a BUILTIN collection (`dict(a=1, b=2)`) is not a CLR
+            // constructor call at all: ClassifyBuiltinKeywordConstruction below owns it, and the
+            // reflected Dictionary<K,V> constructors have no parameter by those names (#1220).
+            var builtinKeywordConstruction = call.KeywordArguments.Length > 0
+                && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(typeSymbol);
+
             if (ctors.Length > 0 && !call.Arguments.Any(a => a is SpreadElement)
-                && call.KeywordArguments.Length == 0 && call.Arguments.Length == argTypes.Count
-                && !(ctorClrType.IsValueType && argTypes.Count == 0))
+                && call.Arguments.Length == argTypes.Count
+                && !builtinKeywordConstruction
+                && !(ctorClrType.IsValueType && totalArgCount == 0))
             {
-                var fittingCtors = ctors
-                    .Where(c => ClrConstructorArityFits(c, argTypes.Count))
-                    .ToList();
                 var ctorDisplay = Shared.ClrNameHelper.StripArity(ctorClrType.Name);
+                var candidates = ctors.Select(ClrCallCandidate.Of).ToList();
+                var ctorArgs = ClrCallArgumentsOf(call, argTypes, kwargTypes);
 
-                if (fittingCtors.Count == 0)
+                if (!ReportNonPythonicClrKeywordSpellings(call, ctors.SelectMany(c => c.GetParameters())))
                 {
-                    AddError(
-                        $"'{ctorDisplay}' constructor expects {DescribeClrConstructorArities(ctors)} but got {argTypes.Count}",
-                        call.LineStart, call.ColumnStart,
-                        code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                        span: call.Span);
+                    ReportClrCallDecision(
+                        DecideClrCall(candidates, ctorArgs), ctorArgs, ctorDisplay,
+                        arityMessage: $"'{ctorDisplay}' constructor expects "
+                            + $"{DescribeClrConstructorArities(ctors)} but got {ctorArgs.Count}",
+                        // An open generic type's reflected parameters still name its type parameters,
+                        // so "several survive" is not a fact about this call — inference below closes
+                        // them and Roslyn adjudicates.
+                        reportAmbiguity: !ctorClrType.ContainsGenericParameters);
                 }
-                else if (fittingCtors.Count == 1)
-                {
-                    CheckClrCallArgumentTypes(call, fittingCtors[0], argTypes, ctorDisplay);
-                }
-            }
-
-            // Apply conversions for the bridged parameter symbols (the existing path).
-            if (SoleArityMatchingConstructor(typeSymbol, totalArgCount) is { } clrConstructorParameters)
-            {
-                ApplyResolvedArgumentConversions(call, clrConstructorParameters, argTypes,
-                    UnwrittenTypeParameterBinding(typeSymbol));
             }
         }
 

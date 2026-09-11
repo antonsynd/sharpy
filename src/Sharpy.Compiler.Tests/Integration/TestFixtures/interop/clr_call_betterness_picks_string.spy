@@ -1,0 +1,28 @@
+# The CLR call seam decides betterness, not just applicability (#1798): every overload set with an
+# `object` sibling used to come back SPY0601 because obliviousness made both candidates "compatible".
+# C# picks the String overload in each of these; so does Sharpy.
+from System.Text import StringBuilder
+from System.IO import StringWriter
+from System import Math, Console
+
+
+def main() -> None:
+    sb: StringBuilder = StringBuilder()
+    sb.append("x")
+    sb.insert(0, "y")
+    print(sb.to_string())
+
+    formatted: StringBuilder = StringBuilder()
+    formatted.append_format("{0}-{1}", 1, 2)
+    print(formatted.to_string())
+
+    writer: StringWriter = StringWriter()
+    writer.write("w")
+    writer.write_line("l")
+    print(writer.to_string().replace("\n", "").replace("\r", ""))
+
+    # Only Max(double, double) is applicable in C#; the float32/decimal siblings are reachable
+    # only through Sharpy's float-literal adaptation, which is a fallback, never the first set.
+    print(Math.max(1, 2.5))
+
+    Console.write_line("hello")

@@ -1,0 +1,10 @@
+# Betterness does not mean the seam always picks: `sb.append(None)` is ambiguous in C# too (CS0121
+# between Append(string?) and Append(StringBuilder?)), so it is SPY0601 by name rather than
+# SPY0908 behind Roslyn.
+from System.Text import StringBuilder
+
+
+def main() -> None:
+    sb: StringBuilder = StringBuilder()
+    sb.append(None)
+    print(sb.length)

@@ -1,0 +1,9 @@
+# The constructor route decides through the seam and reports against the candidate that got
+# FURTHEST, the way C# reports CS1503 against the overload its own resolution preferred:
+# DateTime(2020, 1, "x") is argument 3's type error, not "no overload takes these three".
+from System import DateTime
+
+
+def main() -> None:
+    d: DateTime = DateTime(2020, 1, "x")
+    print(d.year)

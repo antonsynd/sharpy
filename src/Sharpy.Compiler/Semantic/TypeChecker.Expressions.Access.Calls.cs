@@ -555,7 +555,7 @@ internal partial class TypeChecker
 
                 // The same silence on a STATIC CLR receiver, for the argument direction the char
                 // family had not covered: a `str` bound to a reflected `char` parameter (#1402).
-                if (ClrStaticCallType(call, memberAccessCall, argTypes) is { } staticCallType)
+                if (ClrStaticCallType(call, memberAccessCall, argTypes, kwargTypes) is { } staticCallType)
                     return staticCallType;
 
             }
@@ -3863,6 +3863,41 @@ internal partial class TypeChecker
     /// unknown name refuses with a did-you-mean, and a raw CLR spelling refuses with the exact
     /// steer to its Python form. An empty surface checks nothing (stays permissive).
     /// </summary>
+    /// <summary>
+    /// Refuses a keyword written with its RAW CLR spelling where the Python one is meant
+    /// (<c>destDirName=</c> for <c>dest_dir_name</c>), with the exact steer to that form — the one
+    /// spelling rule (#1591). Asked BEFORE the binder on every CLR route, because the binder accepts
+    /// both spellings and would bind the raw one silently. Returns true when it reported.
+    /// </summary>
+    private bool ReportNonPythonicClrKeywordSpellings(
+        FunctionCall call, IEnumerable<System.Reflection.ParameterInfo> parameters)
+    {
+        if (call.KeywordArguments.Length == 0)
+            return false;
+
+        var names = parameters.Select(p => p.Name).OfType<string>()
+            .Distinct(StringComparer.Ordinal).ToList();
+        if (names.Count == 0)
+            return false;
+
+        var reported = false;
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (!names.Contains(kwarg.Name, StringComparer.Ordinal))
+                continue;
+            if (CanonicalClrParameterSpelling(kwarg.Name) is not { } canonical || canonical == kwarg.Name)
+                continue;
+
+            AddError($"Unknown keyword argument '{kwarg.Name}'. Did you mean '{canonical}'?",
+                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                span: kwarg.Span ?? kwarg.Value.Span,
+                data: SuggestionData(canonical));
+            reported = true;
+        }
+
+        return reported;
+    }
+
     private void ValidateClrKeywordArgumentNames(
         FunctionCall call, IReadOnlyCollection<string> parameterNames)
     {
@@ -3977,35 +4012,6 @@ internal partial class TypeChecker
             ApplyArgumentConversion(
                 StorePosition.ArgumentPositional, ArgumentNodeAt(call, i), argTypes[i], paramType);
         }
-    }
-
-    /// <summary>
-    /// The sole constructor of <paramref name="typeSymbol"/> that accepts this many positional
-    /// arguments, or null when zero or several do — the same arity-decides rule
-    /// <see cref="ValidateSoleArityMatchingOverload"/> applies to <c>__init__</c> overloads,
-    /// asked of the CLR-discovered constructor surface.
-    /// </summary>
-    private static IReadOnlyList<ParameterSymbol>? SoleArityMatchingConstructor(
-        TypeSymbol typeSymbol, int totalArgCount)
-    {
-        IReadOnlyList<ParameterSymbol>? soleMatch = null;
-        foreach (var ctor in typeSymbol.Constructors)
-        {
-            var parameters = ctor.Parameters.Skip(1).ToList();
-            if (parameters.Any(p => p.IsVariadic))
-                return null;
-
-            var required = parameters.Count(p => !p.HasDefault);
-            if (totalArgCount < required || totalArgCount > parameters.Count)
-                continue;
-
-            if (soleMatch != null)
-                return null;
-
-            soleMatch = parameters;
-        }
-
-        return soleMatch;
     }
 
     private FunctionSymbol? ValidateSoleArityMatchingOverload(
@@ -6386,17 +6392,11 @@ internal partial class TypeChecker
         FunctionCall call, MemberAccess memberAccess,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes)
     {
-        // A keyword argument binds by CLR parameter name, and a spread occupies one argument slot
-        // while standing for however many the sequence holds — so neither the count nor the
-        // positions mean here what the arity/type checks below would read them as. A spread (or a
-        // count the argument walk disagreed on) leaves the call exactly as permissive as it is
-        // today. Keyword arguments no longer share that bail wholesale: their NAMES are
-        // position-independent and validate against the reflected surface below (#1591); only the
-        // arity/type checks stay off in their presence.
-        var hasKeywordArguments = kwargTypes.Count > 0 || call.KeywordArguments.Length > 0;
-        if (!hasKeywordArguments
-            && (call.Arguments.Length != argTypes.Count
-                || call.Arguments.Any(argument => argument is SpreadElement)))
+        // A spread argument occupies one slot while standing for however many the sequence holds, so
+        // neither the count nor the positions mean here what the binder would read them as. A
+        // spread (or a count the argument walk disagreed on) leaves the call as permissive as it was.
+        if (call.Arguments.Length != argTypes.Count
+            || call.Arguments.Any(argument => argument is SpreadElement))
         {
             return;
         }
@@ -6426,111 +6426,61 @@ internal partial class TypeChecker
             return;
 
         var surface = ClrInstanceCallSurfaceOf(reflectionType, memberAccess.Member);
-
-        // No candidate at all: a property, a field, a member only codegen can resolve, or one that is
-        // genuinely absent — and absence is the member seam's question, answered there (#1141).
-        if (surface.Candidates.Length == 0)
-            return;
-
-        // An extension method of this name is reachable, so the instance surface is not the only
-        // possible binding. Instead of bailing wholesale (#1798): check the instance candidates first;
-        // if NONE is applicable (arity or types reject all of them), fall through to Roslyn — the
-        // extension resolver "cannot decide" counts as accept. Only when at least one instance
-        // candidate is applicable does the seam report a mismatch.
-        var extensionFallback = surface.ExtensionNameReachable;
-
-        // Keyword NAMES validate against the union of every candidate's parameters — permissive
-        // across overloads on purpose: which overload the call means is CLR overload resolution's
-        // answer, so only a name NO candidate can bind refuses (#1591). Arity and types stay
-        // unchecked in the kwargs' presence, exactly as before.
-        if (hasKeywordArguments)
-        {
-            ValidateClrKeywordArgumentNames(call,
-                surface.Candidates
-                    .SelectMany(candidate => candidate.GetParameters())
-                    .Select(parameter => parameter.Name)
-                    .OfType<string>()
-                    .Distinct(StringComparer.Ordinal)
-                    .ToList());
-            return;
-        }
-
-        var fitting = surface.Candidates
-            .Where(candidate => ClrArityFits(candidate, argTypes.Count))
-            .ToList();
-
+        var args = ClrCallArgumentsOf(call, argTypes, kwargTypes);
         var memberDisplay = $"{Shared.ClrNameHelper.StripArity(reflectionType.Name)}.{memberAccess.Member}";
 
-        if (fitting.Count == 0)
+        // No instance candidate at all: a property, a field, a member only codegen can resolve, one
+        // that is genuinely absent — absence is the member seam's question, answered there (#1141) —
+        // or a member the EXTENSION surface answers, which C# reaches exactly here and which this
+        // seam now asks through the same formula (`xs.first_or_default("a")`).
+        if (surface.Candidates.Length == 0)
         {
-            if (extensionFallback)
-                return;
-            AddError(
-                $"'{memberDisplay}' expects {DescribeClrArities(surface.Candidates)} but got {argTypes.Count}",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                span: call.Span);
+            ProbeClrExtensionCall(
+                call, memberAccess.Member, receiverType, reflectionType, args, memberDisplay);
             return;
         }
 
-        // Two or more overloads of this arity: filter by argument types to find the applicable
-        // candidates, then decide. When every candidate rejects the SAME argument, that argument's
-        // type mismatch is reported (#1775); when none survives, SPY0354; when several survive,
-        // SPY0601 with the cast steer — the instance route gains the same outcomes as the static
-        // route (#1798).
-        if (fitting.Count > 1)
+        // A keyword whose NAME is a raw CLR spelling refuses with the exact steer to its Python form,
+        // before the binder — which binds both spellings, so it would accept the raw one silently
+        // (#1591). An unknown name is the binder's own answer (SPY0234, via the seam).
+        if (ReportNonPythonicClrKeywordSpellings(call, surface.Candidates.SelectMany(c => c.GetParameters())))
+            return;
+
+        var decision = DecideClrCall(surface.Candidates.Select(ClrCallCandidate.Of).ToList(), args);
+        var arityMessage =
+            $"'{memberDisplay}' expects {DescribeClrArities(surface.Candidates)} but got {args.Count}";
+
+        // C#'s precedence: an APPLICABLE instance member is the binding, and extension methods are
+        // consulted only when there is none. So a selection or an ambiguity is reported here, and only
+        // an arity or no-match reaches the extension surface — which used to suppress the refusal BY
+        // NAME, on nothing but the reachability of a spelling (#1798).
+        if (decision.Outcome is ClrCallOutcome.Selected or ClrCallOutcome.Ambiguous
+            || !surface.ExtensionNameReachable
+            // A keyword name is decided by the UNION of every reachable candidate's parameter names,
+            // extensions included (#1591's permissive reading) — and a name no candidate on either
+            // surface binds is refused here, because the extension resolver pairs formals with
+            // argument shapes by POSITION and cannot answer a keyword call at all.
+            || (decision.Outcome == ClrCallOutcome.UnknownKeyword
+                && !Discovery.ClrExtensionMethodResolver
+                    .CandidateParameterNames(NameMangler.ToPascalCase(memberAccess.Member))
+                    .Any(name => name == decision.FailureName
+                                 || name == NameMangler.ToCamelCase(decision.FailureName!))))
         {
-            var argumentCompatible = FilterClrCandidatesByArguments(
-                call, fitting, argTypes, out var overloadFailures);
-
-            if (argumentCompatible.Count == 1)
-            {
-                CheckClrCallArgumentTypes(call, argumentCompatible[0], argTypes, memberDisplay);
-                return;
-            }
-
-            // An unadjudicable argument (Unknown, unresolved lambda) leaves the call to Roslyn.
-            var cannotAdjudicate = argTypes.Any(a =>
-                a is UnknownType || (a is FunctionType argFn && argFn.HasUnresolvedTypes()));
-            if (cannotAdjudicate)
-                return;
-
-            if (argumentCompatible.Count == 0)
-            {
-                if (extensionFallback)
-                    return;
-                if (TryReportSameArgumentRefusal(call, argTypes, fitting.Count, overloadFailures))
-                    return;
-
-                AddError(
-                    $"No matching overload for '{memberDisplay}' with the given argument types",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                    span: call.Span);
-                return;
-            }
-
-            if (extensionFallback)
-                return;
-
-            var candidateDescriptions = string.Join(", ",
-                argumentCompatible.Select(c =>
-                {
-                    var ps = c.GetParameters();
-                    var paramDisplay = string.Join(", ", ps.Select(p => Shared.ClrNameHelper.StripArity(p.ParameterType.Name)));
-                    return $"{c.Name}({paramDisplay})";
-                }));
-
-            AddError(
-                $"Call to '{memberDisplay}' is ambiguous between {argumentCompatible.Count} overloads: " +
-                $"{candidateDescriptions}. {DescribeDisambiguatingCast(argumentCompatible, argTypes.Count)}",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
-                span: call.Span);
+            ReportClrCallDecision(decision, args, memberDisplay, arityMessage);
             return;
         }
 
-        CheckClrCallArgumentTypes(call, fitting[0], argTypes, memberDisplay);
+        switch (ProbeClrExtensionCall(
+            call, memberAccess.Member, receiverType, reflectionType, args, memberDisplay))
+        {
+            case ClrExtensionProbe.NoCandidates:
+                // The reachable spelling does not answer for THIS receiver and these argument shapes,
+                // so the instance surface was the only binding after all.
+                ReportClrCallDecision(decision, args, memberDisplay, arityMessage);
+                return;
+            default:
+                return;
+        }
     }
 
     /// <summary>
@@ -6571,13 +6521,12 @@ internal partial class TypeChecker
     /// </para>
     /// </remarks>
     private SemanticType? ClrStaticCallType(
-        FunctionCall call, MemberAccess memberAccess, List<SemanticType> argTypes)
+        FunctionCall call, MemberAccess memberAccess, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes)
     {
-        // A keyword argument binds by CLR parameter name and a spread stands for however many
-        // arguments the sequence holds, so neither the count nor the positions mean here what this
-        // seam would read them as.
-        if (call.KeywordArguments.Length > 0
-            || call.Arguments.Length != argTypes.Count
+        // A spread stands for however many arguments the sequence holds, so the positions do not mean
+        // here what the binder would read them as.
+        if (call.Arguments.Length != argTypes.Count
             || call.Arguments.Any(argument => argument is SpreadElement))
         {
             return null;
@@ -6621,225 +6570,91 @@ internal partial class TypeChecker
 
         var memberDisplay = $"{Shared.ClrNameHelper.StripArity(clrType.Name)}.{memberAccess.Member}";
 
-        var candidates = surface
-            .Where(m => ClrArityFits(m, argTypes.Count))
-            .ToList();
+        if (ReportNonPythonicClrKeywordSpellings(call, surface.SelectMany(m => m.GetParameters())))
+            return SemanticType.Unknown;
 
-        // The arity check the static receiver never had (#1451). `Char.is_digit("a", 0, 5)` against
-        // a one- and two-argument overload set reached Roslyn as CS1501 behind SPY0908.
-        if (candidates.Count == 0)
+        var args = ClrCallArgumentsOf(call, argTypes, kwargTypes);
+        var decision = DecideClrCall(surface.Select(ClrCallCandidate.Of).ToList(), args);
+
+        if (ReportClrCallDecision(
+                decision, args, memberDisplay,
+                arityMessage: $"'{memberDisplay}' expects {DescribeClrArities(surface)} but got {args.Count}")
+            is not { } selected)
         {
-            AddError(
-                $"'{memberDisplay}' expects {DescribeClrArities(surface)} but got {argTypes.Count}",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                span: call.Span);
             return SemanticType.Unknown;
         }
-
-        if (candidates.Count > 1)
-        {
-            // #1530: argument-driven unique-candidate selection. For each candidate, check the
-            // mapped parameter types against the argument types. Only a parameter that
-            // MapClrParameterType cannot express (null) counts as accepting; every MAPPED
-            // parameter adjudicates. This is deliberately narrower than the plan's
-            // ClrParameterIsUndecidable rule — that predicate calls `decimal` undecidable (it
-            // declares op_Implicit), which would leave Math.floor(1.5) ambiguous and contradict
-            // the plan's own acceptance example. A mapped parameter is judged the same way the
-            // unique-candidate seam (CheckClrCallArgumentTypes) judges it: the Sharpy-vocabulary
-            // acceptance, refuted when the mapping is lossy and .NET rejects the argument's own
-            // CLR type (enum→int manufactured false uniqueness, #1573), and rescued by .NET when
-            // the mapping lost a relation .NET has (a real enum value against the enum's `int`
-            // spelling, which the mapped check alone refused).
-            var argumentCompatible = FilterClrCandidatesByArguments(
-                call, candidates, argTypes, out var clrFailures);
-
-            // #1573: round-trip verification via CLR reflection. The mapped-type
-            // filter can produce false positives from lossy bridge arms (enum→int,
-            // MemberInfo→object). Verify each candidate's CLR parameters actually
-            // accept the emitted argument types. When at least one arg has a resolvable
-            // CLR type, the round-trip is authoritative and the result replaces the
-            // mapped-type set; otherwise fall through with the mapped set intact.
-            if (argumentCompatible.Count >= 1)
-            {
-                var anyArgHasClrType = argTypes.Any(a => TryGetClrType(a) != null);
-                if (anyArgHasClrType)
-                {
-                    var roundTripped = argumentCompatible.Where(c =>
-                    {
-                        var ps = c.GetParameters();
-                        for (int i = 0; i < argTypes.Count && i < ps.Length; i++)
-                        {
-                            if (IsClrParamsArray(ps[i]))
-                                break;
-                            var argClrType = TryGetClrType(argTypes[i]);
-                            if (argClrType == null)
-                                continue;
-                            if (!ps[i].ParameterType.IsAssignableFrom(argClrType))
-                                return false;
-                        }
-                        return true;
-                    }).ToList();
-                    if (roundTripped.Count > 0)
-                        argumentCompatible = roundTripped;
-                }
-            }
-
-            // Prefer non-params candidates over params candidates — matches C#'s
-            // preference for the more specific overload (e.g. CreateInstance(Type) over
-            // CreateInstance(Type, params Object[])).
-            if (argumentCompatible.Count > 1)
-            {
-                var nonParams = argumentCompatible
-                    .Where(c => !c.GetParameters().Any(p => IsClrParamsArray(p)))
-                    .ToList();
-                if (nonParams.Count > 0)
-                    argumentCompatible = nonParams;
-            }
-
-            // Prefer candidates whose total parameter count matches the arg count
-            // exactly — Dump(Object, TextFile) wins over Dump(Object, TextFile,
-            // Boolean=default) when called with 2 args (standard C# preference for
-            // the overload that doesn't skip optional parameters).
-            if (argumentCompatible.Count > 1)
-            {
-                var exactArity = argumentCompatible
-                    .Where(c => c.GetParameters().Length == argTypes.Count)
-                    .ToList();
-                if (exactArity.Count > 0)
-                    argumentCompatible = exactArity;
-            }
-
-            // Best conversion target: when one candidate's parameters are all at
-            // least as specific as another's, eliminate the less specific one. This
-            // handles Console.WriteLine(String) vs WriteLine(Object) — String is
-            // more specific, so it wins (standard C# better-conversion-target rule).
-            if (argumentCompatible.Count > 1)
-            {
-                argumentCompatible = argumentCompatible.Where(candidate =>
-                {
-                    var ps = candidate.GetParameters();
-                    return !argumentCompatible.Any(other =>
-                    {
-                        if (ReferenceEquals(other, candidate))
-                            return false;
-                        var ops = other.GetParameters();
-                        if (ops.Length != ps.Length)
-                            return false;
-                        var otherIsStricter = false;
-                        for (int i = 0; i < ps.Length; i++)
-                        {
-                            if (ps[i].ParameterType == ops[i].ParameterType)
-                                continue;
-                            if (ps[i].ParameterType.IsAssignableFrom(ops[i].ParameterType))
-                            {
-                                otherIsStricter = true;
-                                continue;
-                            }
-                            return false;
-                        }
-                        return otherIsStricter;
-                    });
-                }).ToList();
-            }
-
-            if (argumentCompatible.Count != 1)
-            {
-                // #1569: refuse only when the checker could actually adjudicate. An argument whose
-                // type is still being inferred (an unresolved lambda) or is an error recovery
-                // (Unknown) carries no fact to adjudicate on, and Roslyn still has the delegate
-                // information this seam lacks, so such a call falls through as before. Every other
-                // argument — a `None`, a Sharpy value, a CLR value — was judged above.
-                var cannotAdjudicate = argTypes.Any(a =>
-                    a is UnknownType || (a is FunctionType argFn && argFn.HasUnresolvedTypes()));
-                if (cannotAdjudicate)
-                    return null;
-
-                var survivingCandidates = argumentCompatible.Count > 0 ? argumentCompatible : candidates;
-                var candidateDescriptions = string.Join(", ",
-                    survivingCandidates.Select(c =>
-                    {
-                        var ps = c.GetParameters();
-                        var paramDisplay = string.Join(", ", ps.Select(p => Shared.ClrNameHelper.StripArity(p.ParameterType.Name)));
-                        return $"{c.Name}({paramDisplay})";
-                    }));
-
-                if (argumentCompatible.Count == 0)
-                {
-                    // Nothing survived: the arguments fit no overload, which is a no-match, not an
-                    // ambiguity — the two are different user actions (change the argument vs pick
-                    // between overloads), so they get the existing SPY0354 and its wording — unless
-                    // every candidate rejected the SAME argument, which the shared helper reports as
-                    // that argument's own type mismatch (#1775).
-                    if (TryReportSameArgumentRefusal(call, argTypes, candidates.Count, clrFailures))
-                        return SemanticType.Unknown;
-
-                    AddError(
-                        $"No matching overload for '{memberDisplay}' with the given argument types. "
-                        + $"Candidates: {candidateDescriptions}",
-                        call.LineStart, call.ColumnStart,
-                        code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                        span: call.Span);
-                    return SemanticType.Unknown;
-                }
-
-                AddError(
-                    $"Call to '{memberDisplay}' is ambiguous between {survivingCandidates.Count} overloads: " +
-                    $"{candidateDescriptions}. {DescribeDisambiguatingCast(survivingCandidates, argTypes.Count)}",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
-                    span: call.Span);
-                return SemanticType.Unknown;
-            }
-
-            candidates = argumentCompatible;
-        }
-
-        var parameters = candidates[0].GetParameters();
-
-        // The char row (#1402): a `str` argument bound to a reflected `char` parameter. Decided
-        // here, on the parameter, and recorded on the argument node.
-        var charArgumentIndices = new HashSet<int>();
-        for (int i = 0; i < parameters.Length && i < argTypes.Count; i++)
-        {
-            if (parameters[i].ParameterType != typeof(char))
-                continue;
-
-            charArgumentIndices.Add(i);
-            var argument = ArgumentNodeAt(call, i);
-            if (argument is StringLiteral { Value.Length: 1 })
-            {
-                _semanticInfo.SetCharMaterialization(argument, CharMaterializationKind.Literal);
-                continue;
-            }
-
-            // A value that IS a CLR char (a char-typed member read, a char-returning call) needs no
-            // conversion at all: its str-ness is a surface projection, withdrawn for this slot by
-            // the shared argument seam below (#1291/#1402).
-            if (IsClrCharOriginValue(argument))
-                continue;
-
-            AddError(
-                $"Argument {i + 1} of '{memberDisplay}' takes a CLR 'char', which only a "
-                + "single-character str literal converts to — Sharpy will not truncate a longer or "
-                + "computed str",
-                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: call.Arguments[i].Span);
-        }
-
-        // The argument check the instance seam already performs, now reaching the static receiver
-        // too. Char parameters are skipped because the row above already answered them, in the
-        // vocabulary that names the real constraint.
-        CheckClrCallArgumentTypes(call, candidates[0], argTypes, memberDisplay, charArgumentIndices);
 
         // The call's own value. Typing it is half the fix: an untyped static call was `Unknown` and
         // therefore assignable to anything, so every downstream slot went unchecked as well. A
         // char-returning static is the same one-character str every other seam in the family
         // projects it to, which is what keeps `x: str = Char.to_upper("a")` from handing Roslyn a
         // `char` for a `string` slot.
-        var returnType = _bclGenericMethodBridge.MapReturnType(candidates[0]);
-        return StaticCallResultTypeOrNull(call, returnType);
+        if (selected.Candidate.Method is not System.Reflection.MethodInfo selectedMethod)
+            return SemanticType.Unknown;
+        return StaticCallResultTypeOrNull(call, _bclGenericMethodBridge.MapReturnType(selectedMethod));
+    }
+
+    /// <summary>
+    /// The CLR-<c>char</c> row (#1402), the reverse direction of the #1291 char family: a <c>str</c>
+    /// going into a CLR <c>char</c> has no char-producing expression to key on, so the fact lives on
+    /// the PARAMETER and is decided here. Only a ONE-character string literal converts —
+    /// <c>Char.to_upper("abc")</c> has no correct char to pass, and taking the first character would
+    /// be Sharpy inventing a truncation .NET never asked for. "Single character" means a single UTF-16
+    /// code unit per Axiom 1's string model, so a non-BMP scalar (Length 2) is refused alongside
+    /// longer strings: a surrogate pair cannot fit a CLR <c>char</c> at all.
+    /// </summary>
+    private HashSet<int> RecordClrCharArguments(ClrCallBinding binding, string memberDisplay)
+    {
+        var indices = new HashSet<int>();
+
+        foreach (var argument in binding.Arguments)
+        {
+            // The row is the `str` -> `char` rule specifically. An argument of any other type — in
+            // particular one the bridge collapsed to `object`, as the stdlib's
+            // `trim_end(Path.DirectorySeparatorChar, ...)` arguments are — is the general check's,
+            // which treats that collapse as the non-fact it is.
+            if (argument.Formal.ClrType != typeof(char) || argument.Node == null
+                || !argument.Type.Equals(SemanticType.Str))
+            {
+                continue;
+            }
+
+            if (argument.Ordinal is { } ordinal)
+                indices.Add(ordinal);
+
+            if (argument.Node is StringLiteral { Value.Length: 1 })
+            {
+                _semanticInfo.SetCharMaterialization(argument.Node, CharMaterializationKind.Literal);
+                continue;
+            }
+
+            // A value that IS a CLR char (a char-typed member read, a char-returning call) needs no
+            // conversion at all: its str-ness is a surface projection recorded by the seam that
+            // PRODUCED the value, which cannot see where the value goes. Handed straight back to a
+            // CLR char slot the projection is not merely unnecessary but wrong — the emitted
+            // ToString() would put a string in a char slot (CS1503 behind SPY0908; the stdlib's
+            // `temp.trim_end(IoPath.DirectorySeparatorChar, ...)`). This seam knows both origin and
+            // destination, so the projection is withdrawn here, for every CLR route and for each
+            // element of a `params char[]` tail (#1291/#1402/#1705).
+            if (IsClrCharOriginValue(argument.Node))
+            {
+                _semanticInfo.ClearCharMaterialization(argument.Node);
+                continue;
+            }
+
+            var position = argument.Keyword != null
+                ? $"Argument '{argument.Keyword}'"
+                : $"Argument {(argument.Ordinal ?? 0) + 1}";
+            AddError(
+                $"{position} of '{memberDisplay}' takes a CLR 'char', which only a "
+                + "single-character str literal converts to — Sharpy will not truncate a longer or "
+                + "computed str",
+                argument.Node.LineStart, argument.Node.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: argument.Node.Span);
+        }
+
+        return indices;
     }
 
     /// <summary>
@@ -6882,208 +6697,8 @@ internal partial class TypeChecker
         return candidates;
     }
 
-    /// <summary>
-    /// Checks each argument of a member call against the sole arity-matching CLR candidate, using the
-    /// RAW <see cref="System.Reflection.ParameterInfo"/> types. The bridge's mapping is used to ASK
-    /// the question in Sharpy vocabulary (so the provenance-aware <see cref="IsAssignable"/> answers
-    /// it, and so the message names a type the user wrote), with the raw CLR type as a second chance
-    /// for anything the mapping does not describe — never the reconstructed signature a
-    /// <see cref="BuildBclGenericMethodSymbol"/> would build, whose <c>object</c> fallbacks accept
-    /// everything.
-    /// </summary>
-    /// <param name="skipArgumentIndices">Argument positions a caller has already decided on its own
-    /// terms — the static seam's CLR-<c>char</c> parameters (#1402), whose <c>str</c> argument is
-    /// governed by the single-character-literal rule and would otherwise be reported a second time
-    /// here as a plain <c>str</c>/<c>char</c> mismatch.</param>
-    private void CheckClrCallArgumentTypes(
-        FunctionCall call, System.Reflection.ConstructorInfo ctor,
-        List<SemanticType> argTypes, string memberDisplay)
-        => CheckClrCallArgumentTypesCore(call, ctor, argTypes, memberDisplay);
 
-    private void CheckClrCallArgumentTypes(
-        FunctionCall call, System.Reflection.MethodInfo method,
-        List<SemanticType> argTypes, string memberDisplay,
-        HashSet<int>? skipArgumentIndices = null)
-        => CheckClrCallArgumentTypesCore(call, method, argTypes, memberDisplay, skipArgumentIndices);
 
-    private void CheckClrCallArgumentTypesCore(
-        FunctionCall call, System.Reflection.MethodBase method,
-        List<SemanticType> argTypes, string memberDisplay,
-        HashSet<int>? skipArgumentIndices = null)
-    {
-        var parameters = method.GetParameters();
-
-        // A char-origin value bound to a reflected `char` slot keeps its emitted char form: the
-        // projection its producer recorded is withdrawn here, at the one seam every CLR route
-        // (instance, static, constructor) passes through, and those positions need no further
-        // acceptance question (#1291/#1402).
-        var charSlots = WithdrawCharProjectionAtClrCharSlots(call, method, argTypes.Count);
-
-        for (int i = 0; i < argTypes.Count && i < parameters.Length; i++)
-        {
-            if (skipArgumentIndices?.Contains(i) == true || charSlots.Contains(i))
-                continue;
-
-            var parameter = parameters[i];
-
-            // A params array absorbs the whole tail, and C# lets the caller pass either the elements
-            // or the array itself — two shapes this seam would have to re-decide to check either.
-            if (IsClrParamsArray(parameter))
-                return;
-
-            if (ClrParameterIsUndecidable(parameter))
-                continue;
-
-            // An argument whose own type is not settled (an error recovery, a still-open type
-            // parameter, a bare `None` whose target decides its meaning) is skipped rather than
-            // guessed at.
-            //
-            // A FUNCTION-typed argument is skipped ONLY while it is still being inferred — an
-            // UNRESOLVED lambda (`ft.HasUnresolvedTypes()`, the same predicate as :1116). The former
-            // blanket FunctionType skip shielded a #1393 mis-resolution (a parameter named like its
-            // own function resolving to the function); that landed in 1fbf87e21, so a genuine closed
-            // FunctionType argument is now checked like any other — the last shape of #1290's gap
-            // (#1501). `calendar_module.spy` stays the regression pin for the unresolved-lambda case.
-            if (argTypes[i] is UnknownType or TypeParameterType
-                || (argTypes[i] is FunctionType argFn && argFn.HasUnresolvedTypes()))
-            {
-                continue;
-            }
-
-            var argumentNode = ArgumentNodeAt(call, i);
-            var argumentClrType = TryGetClrType(argTypes[i]);
-            string expectedDisplay;
-
-            if (MapClrParameterType(parameter) is { } expected)
-            {
-                // Materialization is recorded before the acceptance question, in the same order the
-                // argument-binding seam uses (ValidateCallArguments), so the checker and the emitter
-                // agree about copies. A CLR formal is a .NET position — the emitted parameter IS the
-                // CLR type and the value goes in unconverted — so this records nothing here today; it
-                // is the rule (#1251, #1260) that must be stated at every binding site, not an effect.
-                RecordSequenceMaterialization(argumentNode, argTypes[i], expected);
-
-                if (ClrParameterAccepts(parameter, argTypes[i], argumentNode))
-                {
-                    ApplyArgumentConversion(
-                        StorePosition.ArgumentPositional, argumentNode, argTypes[i], expected);
-                    continue;
-                }
-
-                if (argumentNode != null && UnwrapParenthesized(argumentNode) is NoneLiteral
-                    && !parameter.ParameterType.IsValueType
-                    && Discovery.ClrDeclaredNullability.DeclaresNonNullableArgument(parameter))
-                {
-                    AddError(
-                        $"Cannot pass 'None' to parameter '{parameter.Name}' of '{memberDisplay}' — "
-                        + $"it is declared non-nullable ('{expected.GetDisplayName()}')",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                        code: DiagnosticCodes.Semantic.NullabilityViolation,
-                        span: call.Arguments[i].Span);
-                    continue;
-                }
-
-                expectedDisplay = IsLossyClrMapping(parameter.ParameterType, expected)
-                    ? Shared.ClrNameHelper.StripArity(parameter.ParameterType.Name)
-                    : expected.GetDisplayName();
-            }
-            else
-            {
-                // The bridge collapsed the formal to `object`, which is a degradation and not a fact —
-                // checking against it would accept everything, which is how `sb.append_line("ok", 42)`
-                // stayed silent (its arity-2 overload's first parameter is IFormatProvider, an
-                // interface the bridge has no Sharpy word for). The RAW parameter type is then the
-                // only honest description of the formal, so the question is asked of .NET directly.
-                if (argumentClrType == null
-                    || parameter.ParameterType.IsAssignableFrom(argumentClrType))
-                {
-                    continue;
-                }
-
-                expectedDisplay = Shared.ClrNameHelper.StripArity(parameter.ParameterType.Name);
-            }
-
-            AddError(
-                $"Argument {i + 1} of '{memberDisplay}' expects '{expectedDisplay}' "
-                + $"but got '{argTypes[i].GetDisplayName()}'",
-                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: call.Arguments[i].Span);
-        }
-    }
-
-    /// <summary>
-    /// Whether nothing this seam knows can decide an argument against <paramref name="parameter"/>,
-    /// whichever description of the formal is used. A <c>ref</c>/<c>out</c> or pointer parameter is
-    /// unwritable from Sharpy and a different diagnosis; one still naming a type parameter has no
-    /// concrete formal at all; a delegate is bound from a lambda by a C# conversion rather than an
-    /// assignability rule; <see cref="System.Type"/> is satisfied by a type reference, as
-    /// <see cref="IsSystemTypeParameter"/> already allows; <c>object</c> accepts everything; and a
-    /// ref-struct (<c>Span</c>, <c>ReadOnlySpan</c>) or a type carrying <c>op_Implicit</c> is reached
-    /// by conversions reflection cannot enumerate.
-    ///
-    /// <para>An enum is NOT undecidable: it reaches the call as the bridge's <c>int</c>, which is a
-    /// lossy spelling, and .NET decides it exactly through the argument's own CLR type — see
-    /// <see cref="ClrParameterAccepts"/> (#1573).</para>
-    /// </summary>
-    private static bool ClrParameterIsUndecidable(System.Reflection.ParameterInfo parameter)
-    {
-        var parameterClrType = parameter.ParameterType;
-
-        return parameterClrType.IsByRef || parameterClrType.IsPointer
-            || parameterClrType.ContainsGenericParameters
-            || parameterClrType.IsByRefLike
-            || parameterClrType == typeof(Type) || parameterClrType == typeof(object)
-            || typeof(Delegate).IsAssignableFrom(parameterClrType)
-            || DeclaresImplicitConversion(parameterClrType);
-    }
-
-    /// <summary>
-    /// The parameter's formal in Sharpy vocabulary, or <c>null</c> when the bridge collapsed it to
-    /// <c>object</c> — a degradation, not a fact, and the caller asks .NET about the raw type instead.
-    /// </summary>
-    private SemanticType? MapClrParameterType(System.Reflection.ParameterInfo parameter)
-    {
-        var mapped = _bclGenericMethodBridge.MapParameterType(parameter);
-        if (mapped is UnknownType || IsObjectType(mapped))
-            return null;
-
-        // A delegate parameter (Converter<T,U>, Func<>, Action<>, Predicate<>) maps to GenericType
-        // after #1640 (was UnmappedClrType → IsObjectType → null). The bridge cannot match a Sharpy
-        // FunctionType/lambda against a GenericType delegate spelling, so keep it unspellable.
-        if (mapped is GenericType && typeof(Delegate).IsAssignableFrom(parameter.ParameterType))
-            return null;
-
-        return mapped;
-    }
-
-    /// <summary>
-    /// The SPY0601 steer: the first argument position at which the surviving candidates disagree,
-    /// and the Sharpy spellings of each candidate's parameter there — the types the user can cast the
-    /// argument to (<c>Math.floor(float(x))</c>). A parameter the bridge cannot spell is named by its
-    /// CLR type. Falls back to the generic steer when the candidates differ only in arity.
-    /// </summary>
-    private string DescribeDisambiguatingCast(
-        IReadOnlyList<System.Reflection.MethodInfo> candidates, int argCount)
-    {
-        for (int position = 0; position < argCount; position++)
-        {
-            var spellings = candidates
-                .Select(c => c.GetParameters())
-                .Where(ps => position < ps.Length)
-                // The cast TARGET is the parameter's underlying type: a `string?` parameter is
-                // disambiguated by casting to `str` (`str?` would read as Optional) (#1705).
-                .Select(ps => MapClrParameterType(ps[position]) is { } formal
-                    ? (formal is NullableType nullable ? nullable.UnderlyingType : formal).GetDisplayName()
-                    : Shared.ClrNameHelper.StripArity(ps[position].ParameterType.Name))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-            if (spellings.Count > 1)
-                return $"Disambiguate by casting argument {position + 1} to one of: {string.Join(", ", spellings)}";
-        }
-
-        return "Disambiguate by casting the argument to the intended type";
-    }
 
     /// <summary>
     /// Whether the bridge's Sharpy spelling of <paramref name="parameterType"/> names a CLR type .NET
@@ -7097,135 +6712,7 @@ internal partial class TypeChecker
     private bool IsLossyClrMapping(Type parameterType, SemanticType mapped)
         => TryGetClrType(mapped) is { } mappedClrType && !parameterType.IsAssignableFrom(mappedClrType);
 
-    /// <summary>
-    /// Whether a MAPPED CLR parameter accepts an argument — the one answer both the candidate filter
-    /// and the unique-candidate seam (<c>CheckClrCallArgumentTypes</c>) give. A parameter the bridge
-    /// cannot express (<see cref="MapClrParameterType"/> returns null) counts as accepting here; the
-    /// unique-candidate seam asks .NET about that one directly.
-    /// <list type="number">
-    /// <item>The Sharpy-vocabulary acceptance, exactly as an annotation would decide it — unless the
-    /// mapping is <see cref="IsLossyClrMapping">lossy</see> and the argument has a CLR type .NET
-    /// rejects for the parameter, in which case the acceptance proved nothing (#1573).</item>
-    /// <item>Otherwise .NET's own answer on the argument's CLR type: the mapping is a description and
-    /// can lose a relation .NET has (a derived CLR class against a base-class parameter, or a real
-    /// enum value against the enum's <c>int</c> spelling).</item>
-    /// </list>
-    /// </summary>
-    private bool ClrParameterAccepts(
-        System.Reflection.ParameterInfo parameter, SemanticType argType, Expression? argumentNode)
-        => ClrParameterAccepts(parameter, argType, argumentNode, out _);
 
-    /// <param name="vocabularyRefused">
-    /// True only when the MAPPED parameter type is what refused the argument — the refusal is one
-    /// the Sharpy vocabulary states, so the mapped type explains it and a diagnostic may name it.
-    /// False when the mapped type ACCEPTED and only .NET's own answer refuted it (the lossy arm,
-    /// #1573): the mapping is a description that does not explain this refusal, and naming it would
-    /// read "cannot pass 'int32' to a parameter of type 'int32'". The same-argument rule (#1775)
-    /// declines on such a candidate, so those calls keep SPY0354 and its candidate list.
-    /// </param>
-    private bool ClrParameterAccepts(
-        System.Reflection.ParameterInfo parameter, SemanticType argType, Expression? argumentNode,
-        out bool vocabularyRefused)
-    {
-        vocabularyRefused = false;
-
-        // A bare `None` is C#'s null literal: applicable to every reference-type and Nullable<T>
-        // parameter and to nothing else. Mirroring that keeps the candidate set exactly as ambiguous
-        // as Roslyn will find it — `Console.write_line(None)` is ambiguous between the char[], string
-        // and object overloads in C# too — so the refusal is SPY0601 rather than CS0121 behind
-        // SPY0908 (#1569).
-        if (argumentNode != null && UnwrapParenthesized(argumentNode) is NoneLiteral)
-        {
-            var parameterType = parameter.ParameterType;
-            if (parameterType.IsValueType)
-                return Nullable.GetUnderlyingType(parameterType) != null;
-            return !Discovery.ClrDeclaredNullability.DeclaresNonNullableArgument(parameter);
-        }
-
-        var mapped = MapClrParameterType(parameter);
-        if (mapped == null)
-            return true;
-
-        var argumentClrType = TryGetClrType(argType);
-        var clrAccepts = argumentClrType != null && parameter.ParameterType.IsAssignableFrom(argumentClrType);
-
-        if (IsArgumentAssignable(argType, mapped, argumentNode))
-            return clrAccepts || argumentClrType == null || !IsLossyClrMapping(parameter.ParameterType, mapped);
-
-        vocabularyRefused = !clrAccepts;
-        return clrAccepts;
-    }
-
-    /// <summary>
-    /// The CLR candidates whose parameters accept every argument, and — recorded in the same pass —
-    /// each rejected candidate's FIRST rejected argument (#1775). One filter for both CLR routes:
-    /// the static route selects with the surviving list, the instance route consults only the
-    /// failures, and neither re-derives acceptance a second time.
-    ///
-    /// <para>A candidate rejected for a reason the MAPPED parameter type does not explain (the lossy
-    /// arm, #1573) records nothing, so <see cref="TryReportSameArgumentRefusal"/> sees fewer failures
-    /// than candidates and declines — those calls keep their candidate-listing SPY0354.</para>
-    /// </summary>
-    private List<System.Reflection.MethodInfo> FilterClrCandidatesByArguments(
-        FunctionCall call,
-        IReadOnlyList<System.Reflection.MethodInfo> candidates,
-        List<SemanticType> argTypes,
-        out List<OverloadCandidateFailure> failures)
-    {
-        var recorded = new List<OverloadCandidateFailure>();
-        var compatible = candidates.Where(c =>
-        {
-            var ps = c.GetParameters();
-            for (int i = 0; i < argTypes.Count && i < ps.Length; i++)
-            {
-                if (IsClrParamsArray(ps[i]))
-                    break;
-                if (!ClrParameterAccepts(
-                        ps[i], argTypes[i], ArgumentNodeAt(call, i), out var vocabularyRefused))
-                {
-                    // A by-ref/out parameter is not a slot a Sharpy argument can fill at all, so its
-                    // type is never named as an alternative; leaving the candidate unexplained makes
-                    // the same-argument rule decline rather than advertise an unwritable spelling.
-                    if (vocabularyRefused && !ps[i].ParameterType.IsByRef)
-                    {
-                        recorded.Add(new OverloadCandidateFailure(
-                            new ArgumentRef(Ordinal: i, Keyword: null),
-                            MapClrParameterType(ps[i]) ?? SemanticType.Unknown,
-                            OverloadFailureKind.Type));
-                    }
-                    return false;
-                }
-            }
-            return true;
-        }).ToList();
-
-        failures = recorded;
-        return compatible;
-    }
-
-    /// <summary>
-    /// Whether a type declares any user-defined implicit conversion. Such a type can be reached from
-    /// values <see cref="Type.IsAssignableFrom"/> says nothing about, so the raw check stays out of it.
-    /// </summary>
-    private static bool DeclaresImplicitConversion(Type type)
-        => type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            .Any(m => m.Name == "op_Implicit");
-
-    /// <summary>
-    /// Whether <paramref name="method"/> can take <paramref name="argCount"/> positional arguments:
-    /// optional parameters lower the floor and a <c>params</c> array removes the ceiling, exactly as
-    /// C# counts them.
-    /// </summary>
-    private static bool ClrArityFits(System.Reflection.MethodInfo method, int argCount)
-    {
-        var parameters = method.GetParameters();
-        var required = parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p));
-        if (argCount < required)
-            return false;
-
-        return (parameters.Length > 0 && IsClrParamsArray(parameters[^1]))
-               || argCount <= parameters.Length;
-    }
 
     private static bool IsClrParamsArray(System.Reflection.ParameterInfo parameter)
         => parameter.IsDefined(typeof(ParamArrayAttribute), inherit: false);

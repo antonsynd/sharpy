@@ -1,0 +1,4 @@
+Argument 'x' of 'Vector2' expects 'float32' but got 'str' @8:28
+Argument 'y' of 'Vector2' expects 'float32' but got 'str' @8:35
+Cannot pass argument of type 'str' to parameter of type @9:20
+Unknown keyword argument 'x' @10:20

@@ -1511,56 +1511,6 @@ internal partial class TypeChecker
             && _semanticInfo.GetCharMaterialization(argument) == CharMaterializationKind.Scalar;
 
     /// <summary>
-    /// Withdraws the char-to-str projection from every argument of <paramref name="call"/> that binds
-    /// to a reflected <c>char</c> slot, and returns those argument positions.
-    /// </summary>
-    /// <remarks>
-    /// The projection is recorded by the seam that PRODUCES the value (a char-typed member or a
-    /// char-returning call), which cannot see where the value goes. Handed straight back to a CLR
-    /// <c>char</c> parameter the conversion is not merely unnecessary but wrong: the emitted
-    /// <c>ToString()</c> puts a <c>string</c> in a char slot (CS1503 behind SPY0908 —
-    /// <c>temp.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)</c> in
-    /// <c>Sharpy.Stdlib/spy/tempfile_module.spy</c>). The call seam is the one place that knows both
-    /// the value's origin and its destination, so the withdrawal happens here — for every CLR route,
-    /// since all three (instance, static, constructor) reach it through
-    /// <c>CheckClrCallArgumentTypesCore</c>.
-    /// <para>
-    /// A <c>params char[]</c> tail is included: each element of the tail occupies a char slot, which
-    /// is the shape the stdlib line above has.
-    /// </para>
-    /// </remarks>
-    private HashSet<int> WithdrawCharProjectionAtClrCharSlots(
-        FunctionCall call, System.Reflection.MethodBase method, int argumentCount)
-    {
-        var withdrawn = new HashSet<int>();
-        var parameters = method.GetParameters();
-        if (parameters.Length == 0)
-            return withdrawn;
-
-        var tailIsParamsChar = parameters[^1].IsDefined(typeof(ParamArrayAttribute), inherit: false)
-            && parameters[^1].ParameterType.GetElementType() == typeof(char);
-
-        for (int i = 0; i < argumentCount; i++)
-        {
-            var slotIsChar = i < parameters.Length && !parameters[i].IsDefined(typeof(ParamArrayAttribute), inherit: false)
-                ? parameters[i].ParameterType == typeof(char)
-                : tailIsParamsChar && i >= parameters.Length - 1;
-
-            if (!slotIsChar)
-                continue;
-
-            var argument = ArgumentNodeAt(call, i);
-            if (!IsClrCharOriginValue(argument))
-                continue;
-
-            _semanticInfo.ClearCharMaterialization(argument!);
-            withdrawn.Add(i);
-        }
-
-        return withdrawn;
-    }
-
-    /// <summary>
     /// Returns true when <paramref name="memberName"/> is a member of the Optional API itself
     /// (e.g. unwrap, unwrap_or, unwrap_or_else, map, is_some, is_none) — the only members that may
     /// be accessed directly on a <c>T?</c> receiver. Resolved from the registered Optional
@@ -2472,6 +2422,16 @@ internal partial class TypeChecker
             var closedClrType = TryGetClrType(objectType);
             if (closedClrType != null)
             {
+                // The KEY is checked before the element type is read off an indexer, because the
+                // indexer that answers depends on the key: `d["wrong"]` on a Dictionary[int, str] used
+                // to infer `str` off the int-keyed indexer and hand Roslyn CS1503 (#1798, indexer
+                // route). The acceptance question is the CLR call seam's, the same one every other
+                // route asks.
+                var isIndexStore = ReferenceEquals(indexAccess, _indexStoreTarget?.Target)
+                    && _indexStoreTarget?.IsAugmented == false;
+                if (!ClrIndexerAcceptsKey(indexAccess, closedClrType, indexType, isIndexStore))
+                    return SemanticType.Unknown;
+
                 var keyClrType = TryGetClrType(indexType);
                 var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType, keyClrType);
                 if (clrIndexerType != null)

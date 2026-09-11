@@ -320,6 +320,25 @@ internal static class ClrExtensionMethodResolver
             .ToList();
     }
 
+    /// <summary>
+    /// The distinct NON-RECEIVER parameter counts of every candidate answering to
+    /// <paramref name="memberName"/>, receiver-unchecked like <see cref="CandidateParameterNames"/>.
+    /// The consumer is the CLR call seam's arity refusal: <see cref="TryResolveAllFromReceiver"/>
+    /// returns nothing both when no overload accepts the receiver and when the COUNT does not match,
+    /// and only this distinguishes the two. Empty when the name is off the surface.
+    /// </summary>
+    internal static IReadOnlyList<int> CandidateArities(string memberName)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return Array.Empty<int>();
+
+        return candidates
+            .Select(method => method.GetParameters().Length - 1)
+            .Distinct()
+            .OrderBy(count => count)
+            .ToList();
+    }
+
     internal static IReadOnlyList<PartialResolution> TryResolveAllFromReceiver(
         Type receiverType, string memberName, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
     {

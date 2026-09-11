@@ -1,0 +1,7 @@
+Cannot pass argument of type 'int32' to parameter of type 'str' @8:29
+Cannot pass argument of type 'bool' to parameter of type 'str' @9:29
+Cannot pass argument of type 'float64' to parameter of type 'str' @10:29
+Cannot pass argument of type 'list[int32]' to parameter of type 'str' @12:29
+Argument 4 of 'Path.combine' expects 'str' but got 'int32' @14:39
+Argument 1 of 'Uri' expects 'str' but got 'int32' @15:18
+Argument 1 of 'StringBuilder.append_line' expects 'IFormatProvider' but got 'str' @17:20
