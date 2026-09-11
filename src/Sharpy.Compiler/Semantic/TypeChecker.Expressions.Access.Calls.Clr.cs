@@ -1174,6 +1174,31 @@ internal partial class TypeChecker
     // The extension route
     // ---------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Whether reflection sees any PUBLIC INSTANCE method on <paramref name="receiverClrType"/> that
+    /// answers to <paramref name="memberName"/> — the same name test the instance candidate surface
+    /// uses, asked WITHOUT that surface's property-suppression and without a resolver's
+    /// one-name-only requirement. The question is "could an instance member take this call", which is
+    /// what C#'s extension precedence turns on; which overload it would pick is not asked here.
+    /// </summary>
+    private static bool ClrInstanceMethodNameExists(Type receiverClrType, string memberName)
+    {
+        try
+        {
+            return receiverClrType
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Any(method => !method.IsGenericMethodDefinition
+                               && !method.IsSpecialName
+                               && ClrMethodAnswersToName(method, memberName));
+        }
+        catch (Exception ex) when (ex is System.Reflection.ReflectionTypeLoadException or TypeLoadException
+                                       or System.IO.FileNotFoundException or NotSupportedException)
+        {
+            // Reflection could not answer, so nothing is proven — and nothing is refused.
+            return true;
+        }
+    }
+
     /// <summary>What asking the extension surface about a call established.</summary>
     private enum ClrExtensionProbe
     {
@@ -1211,18 +1236,37 @@ internal partial class TypeChecker
         if (IsObjectType(receiverType))
             return ClrExtensionProbe.Undecidable;
 
-        // An INSTANCE member answers this name under a CLR-name or Sharpy-verb mapping — `xs.index(20)`
-        // binds `List<int>.IndexOf` through the collection-verb map (#1571) — and C# gives an
-        // applicable instance member priority over every extension. The instance surface above is
-        // built from the WRITTEN name, so such a call arrives here with an empty candidate set;
-        // refusing it on the extension surface's arities would reject a call that binds
-        // (`Enumerable.Index` takes no arguments, `IndexOf` takes one).
-        if (Discovery.ClrTypeHelper.ResolveClrMethodName(receiverClrType, memberName) != null
+        // C# gives an applicable INSTANCE member priority over every extension method, so the extension
+        // surface is not this seam's to refuse whenever reflection can see an instance method of this
+        // name on the receiver — however the instance surface came to be empty. An empty surface is
+        // not a proof of absence: it is also what a Sharpy-verb mapping produces (`xs.index(20)` binds
+        // `List<int>.IndexOf`, #1571), and what the member seam's own conservatism produces when a
+        // PROPERTY shares the name (`Sharpy.List<T>` has both `Count(T)` and a `Count` property, so
+        // the surface is suppressed in case the call is invoking a delegate stored there).
+        //
+        // Asking whether ANY instance method answers to the name is the general question; asking a
+        // name RESOLVER is not, because a resolver has to pick one CLR name and declines when two
+        // map to the same Sharpy spelling — `Count` and `get_Count` both reverse-mangle to `count`,
+        // so `List[int].count(0)` fell through to `Enumerable.Count(source, Func<T, bool>)` and was
+        // refused as "expects '(int32) -> bool'". The call binds; the seam had no business refusing it.
+        if (ClrInstanceMethodNameExists(receiverClrType, memberName)
+            || Discovery.ClrTypeHelper.ResolveClrMethodName(receiverClrType, memberName) != null
             || (Shared.NameMangler.GetClrCollectionVerbMapping(memberName) is { } mappedVerb
-                && ClrInstanceCallSurfaceOf(receiverClrType, mappedVerb).Candidates.Length > 0))
+                && ClrInstanceMethodNameExists(receiverClrType, mappedVerb)))
         {
             return ClrExtensionProbe.Undecidable;
         }
+
+        // A PROPERTY or FIELD of this name is the OTHER reason the instance surface came back empty,
+        // and it is the instance seam's own conservatism: "the call may be invoking a delegate stored
+        // there, which the method surface does not describe". That conservatism has to travel with the
+        // emptiness, or this probe converts it into a refusal — which is exactly what happened to
+        // `recv.count(0)` on a `List[int]`, where `count` is the `Count` PROPERTY: the probe read the
+        // call as an extension call, found `Enumerable.Count(source, Func<T, bool>)`, and refused an
+        // `int` argument the whole program was built around. What such a call MEANS is decided
+        // upstream of this seam, so this seam does not get to refuse it.
+        if (Discovery.ClrTypeHelper.ResolveClrPropertyName(receiverClrType, memberName) != null)
+            return ClrExtensionProbe.Undecidable;
 
         var shapes = new Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape[call.Arguments.Length];
         for (int i = 0; i < call.Arguments.Length; i++)
