@@ -7,8 +7,10 @@ namespace Sharpy.Compiler.Tests.Analysis;
 
 /// <summary>
 /// Family guard for dispatch sites over assignment-target expression kinds.
-/// The universe is the arm set of <c>TypeChecker.IsValidAssignmentTarget</c>
-/// (the sole authority for what the parser admits as an assignment target):
+/// The universe is the arm set of <c>TypeChecker.FirstInvalidAssignmentTarget</c>
+/// (the sole authority for what the parser admits as an assignment target —
+/// <c>IsValidAssignmentTarget</c> is its boolean face, so a shape cannot be valid to one and
+/// invalid to the other, #1841):
 /// {Identifier, MemberAccess, IndexAccess, TupleLiteral, StarExpression}.
 ///
 /// The PARSER canonicalizes every store target through
@@ -21,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Analysis;
 /// <c>ListLiteral</c> store targets are canonicalized to <c>TupleLiteral{IsListDisplay=true}</c>
 /// by <c>CanonicalizeStoreTarget</c> (#1733), so no member site sees a <c>ListLiteral</c>.
 ///
-/// A new assignment-target kind must be added to <c>IsValidAssignmentTarget</c>
+/// A new assignment-target kind must be added to <c>FirstInvalidAssignmentTarget</c>
 /// first, which causes <c>Universe_MatchesAuthority</c> to fail, then to every
 /// member site whose reason does not already cover it.
 ///
@@ -59,16 +61,16 @@ public class AssignmentTargetDispatchTotalityTests
         return set;
     }
 
-    // --- Universe authority: IsValidAssignmentTarget ---
+    // --- Universe authority: FirstInvalidAssignmentTarget ---
 
     [Fact]
     public void Universe_MatchesAuthority()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Semantic/TypeChecker.Utilities.cs",
-            "IsValidAssignmentTarget");
+            "FirstInvalidAssignmentTarget");
         Assert.NotEmpty(arms);
-        _output.WriteLine($"IsValidAssignmentTarget arms: {string.Join(", ", arms.OrderBy(a => a))}");
+        _output.WriteLine($"FirstInvalidAssignmentTarget arms: {string.Join(", ", arms.OrderBy(a => a))}");
         Assert.True(arms.SetEquals(Universe),
             $"Universe authority arms differ from stated universe.\n" +
             $"  Extra in authority: {string.Join(", ", arms.Except(Universe))}\n" +
@@ -80,7 +82,7 @@ public class AssignmentTargetDispatchTotalityTests
     // reaches any of them, so an arm for it is dead code that would hide a seam regression.
     private static readonly (string File, string Method)[] MemberSites =
     {
-        ("src/Sharpy.Compiler/Semantic/TypeChecker.Utilities.cs", "IsValidAssignmentTarget"),
+        ("src/Sharpy.Compiler/Semantic/TypeChecker.Utilities.cs", "FirstInvalidAssignmentTarget"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "CollectBindingKeysInto"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "AddWithTargetBaseReads"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectAssignedNames"),

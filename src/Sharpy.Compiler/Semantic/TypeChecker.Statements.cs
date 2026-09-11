@@ -18,11 +18,16 @@ internal partial class TypeChecker
         // Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (unpacking)
         // Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
         // The target is canonical (no redundant parentheses) — see AstHelper.CanonicalizeStoreTarget.
-        if (!IsValidAssignmentTarget(assignment.Target))
+        if (FirstInvalidAssignmentTarget(assignment.Target) is { } invalidTarget)
         {
-            AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
-                assignment.Target.LineStart, assignment.Target.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                span: assignment.Span);
+            // SPY0225 names the sub-expression that cannot be assigned to, not the group it sits
+            // in: `a, f() = t` and `[a, f()] = t` used to report "expression" for the whole tuple
+            // because the description was taken from the outermost node, and the canonicalized
+            // list display is a TupleLiteral, so even the `ListLiteral => "list literal"` arm was
+            // unreachable from a target position (#1841, #1733).
+            AddError($"Cannot assign to {GetAssignmentTargetDescription(invalidTarget)}",
+                invalidTarget.LineStart, invalidTarget.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                span: invalidTarget.Span);
             return;
         }
 

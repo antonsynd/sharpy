@@ -169,12 +169,28 @@ internal static class AstHelper
     /// switches is dead code; <c>AssignmentTargetDispatchTotalityTests</c> pins their arm sets
     /// without it and <c>StoreTargetCanonicalizationTests</c> pins the parser seam.</para>
     ///
-    /// <para>Refusals that must survive: <c>(*a), b = xs</c> is a Python SyntaxError ("cannot use
-    /// starred expression here") — the parser yields a one-element <see cref="TupleLiteral"/>
-    /// holding the star (not a <c>Parenthesized</c>), which the target authority refuses
-    /// (SPY0225), so this helper never sees it. Parentheses around a walrus target
-    /// (<c>((a) := 1)</c>) and around an <c>except … as</c> name are Python syntax errors too;
-    /// those two parse sites deliberately do not canonicalize.</para>
+    /// <para><b>The starred element is one node in every spelling (#1841).</b> A <c>*</c> inside a
+    /// group reaches this helper as a <see cref="SpreadElement"/> when the group was parsed by the
+    /// <em>expression</em> parser (an assignment's left side, a list display anywhere) and as a
+    /// <see cref="StarExpression"/> when it was parsed by the store-target element parser (an
+    /// unparenthesized <c>for</c>/assignment target list). Everything downstream — the target
+    /// authority <c>IsValidAssignmentTarget</c>, the one unpacking arity rule, the emitter's store
+    /// path — keys on <c>StarExpression</c>, so the expression-parsed spellings silently carried an
+    /// element no store path recognized: <c>(a, *rest) = t</c>, <c>[a, *rest] = t</c>,
+    /// <c>[a, [b, *c]] = t</c> and <c>(a, *rest), b = t</c> were all SPY0225 while <c>a, *rest = t</c>
+    /// and <c>for (a, *rest) in …</c> worked (#1841, #1692). Canonicalizing the spread into the star
+    /// here makes the two parse routes agree at the one seam every store target already passes
+    /// through, in all four unpacking positions at once.</para>
+    ///
+    /// <para>Refusals that must survive: <c>(*a), b = xs</c> and <c>(*a) = xs</c> are Python
+    /// SyntaxErrors ("cannot use starred expression here"), while the comma-suffixed
+    /// <c>(*a,) = xs</c> is legal — and the parser gives all three the same one-element
+    /// <see cref="TupleLiteral"/>, so no rule here can separate them. A group whose <em>only</em>
+    /// element is the star therefore keeps its <c>SpreadElement</c> and stays refused by the target
+    /// authority (SPY0225); <c>(*a,) = xs</c> and <c>[*a] = xs</c> are the legal spellings that stay
+    /// refused with it (#1845). Parentheses around a walrus target (<c>((a) := 1)</c>) and around an
+    /// <c>except … as</c> name are Python syntax errors too; those two parse sites deliberately do
+    /// not canonicalize.</para>
     /// </summary>
     public static Expression CanonicalizeStoreTarget(Expression target)
     {
@@ -183,11 +199,11 @@ internal static class AstHelper
             Parenthesized paren => CanonicalizeStoreTarget(paren.Expression),
             TupleLiteral tuple => tuple with
             {
-                Elements = tuple.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray()
+                Elements = CanonicalizeStoreTargetElements(tuple.Elements)
             },
             ListLiteral list => new TupleLiteral
             {
-                Elements = list.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray(),
+                Elements = CanonicalizeStoreTargetElements(list.Elements),
                 IsListDisplay = true,
                 LineStart = list.LineStart,
                 ColumnStart = list.ColumnStart,
@@ -197,6 +213,31 @@ internal static class AstHelper
             StarExpression star => star with { Operand = CanonicalizeStoreTarget(star.Operand) },
             _ => target,
         };
+    }
+
+    /// <summary>
+    /// Canonicalizes the elements of a tuple/list-display store target, turning an
+    /// expression-parsed <see cref="SpreadElement"/> into the <see cref="StarExpression"/> every
+    /// store path keys on (#1841). A group of one element is left alone: see the
+    /// <c>(*a)</c> / <c>(*a,)</c> note on <see cref="CanonicalizeStoreTarget"/>.
+    /// </summary>
+    private static ImmutableArray<Expression> CanonicalizeStoreTargetElements(
+        ImmutableArray<Expression> elements)
+    {
+        var soleElement = elements.Length <= 1;
+        return elements
+            .Select(e => e is SpreadElement spread && !soleElement
+                ? new StarExpression
+                {
+                    Operand = CanonicalizeStoreTarget(spread.Value),
+                    LineStart = spread.LineStart,
+                    ColumnStart = spread.ColumnStart,
+                    LineEnd = spread.LineEnd,
+                    ColumnEnd = spread.ColumnEnd,
+                    Span = spread.Span,
+                }
+                : CanonicalizeStoreTarget(e))
+            .ToImmutableArray();
     }
 
     /// <summary>
