@@ -963,8 +963,20 @@ internal partial class TypeChecker
                 for (int i = 0; i < sourceFt.ParameterTypes.Count; i++)
                 {
                     var invokeParamType = delegateInvoke.Parameters[i].Type;
+
+                    // Either direction, and each direction falls back to IsAssignable — the same
+                    // rule the RETURN position below already uses, and the same rule an ordinary
+                    // argument slot uses. Without the fallback a parameter position answered
+                    // STRICTER here than everywhere else: `str` into `object | None` is accepted at
+                    // a call (`take("hi")` runs) and was refused as a delegate parameter, so
+                    // `f: Act = show` with `show(msg: object | None)` drew SPY0220 for a conversion
+                    // C# performs. That gap only became reachable from ordinary code once
+                    // `print`'s `params object?[]` was typed faithfully (#1847), which is how it
+                    // was found; it is refused at f84701e04 too.
                     if (!invokeParamType.IsAssignableTo(sourceFt.ParameterTypes[i])
-                        && !sourceFt.ParameterTypes[i].IsAssignableTo(invokeParamType))
+                        && !sourceFt.ParameterTypes[i].IsAssignableTo(invokeParamType)
+                        && !IsAssignable(invokeParamType, sourceFt.ParameterTypes[i])
+                        && !IsAssignable(sourceFt.ParameterTypes[i], invokeParamType))
                         return false;
                 }
 

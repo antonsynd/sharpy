@@ -1,0 +1,2 @@
+Cannot assign type 'list[str]' to variable of type 'list[int32]' @6:5
+!SPY0908

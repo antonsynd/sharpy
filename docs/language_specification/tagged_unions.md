@@ -169,57 +169,79 @@ def main():
 
 ## Creating Values
 
-Tagged union cases are created using the union type name followed by the case name:
+A USER-DEFINED union's cases are created with the union type name followed by the case name:
 
 ```python
-union Result[T, E]:
-    case Ok(value: T)
-    case Err(error: E)
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)
 
 # Create values using Type.Case() syntax
-success: Result[int, str] = Result.Ok(42)
-failure: Result[int, str] = Result.Err("Something went wrong")
+c: Shape = Shape.Circle(1.5)
+s: Shape = Shape.Square(2.0)
 ```
 
-**Note:** Case names follow the same casing as defined in the union declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
+**Note:** Case names follow the same casing as defined in the union declaration (typically
+`PascalCase`). The syntax `Shape.Circle(1.5)` is a constructor call that creates an instance of the
+`Circle` case. That casing is a convention and is not enforced by the compiler.
+
+The BUILTIN unions — `Optional[T]` and `Result[T, E]` — are the exception: their cases are written
+BARE (`Some(v)`, `None()`, `Ok(v)`, `Err(e)`) and only bare. The qualified spellings
+`Optional.Some(…)`, `Optional.None()`, `Result.Ok(…)` and `Result.Err(…)` are refused by name with
+SPY0608 and a steer to the bare form, and the four case names are reserved: a declaration that would
+make the bare name resolve to something else — `def Some`, `class Ok`, a variable `Err` — is refused
+with SPY0212 rather than shadowing the constructor, and the steer offers the backtick-escaped
+spelling (`` `Some` ``) for a declaration that really wants the name (#1758). A CLASS MEMBER may take
+the name (`Box.Some`): it is reached through its receiver and the bare form still resolves to the
+builtin. See [Optional Type](tagged_unions_optional.md#creating-optional-values).
 
 **Type Inference in Return Statements:**
 
-When returning from a function with a tagged union return type, the type name can be omitted and the case name used directly:
+When returning from a function whose return type is a tagged union, the type name is omitted and the
+case name used directly:
 
 ```python
 def divide(a: float, b: float) -> Result[float, str]:
     if b == 0:
-        return Err("Division by zero")  # Short for Result.Err(...)
-    return Ok(a / b)                     # Short for Result.Ok(...)
+        return Err("Division by zero")
+    return Ok(a / b)
 ```
 
-The compiler infers the full type from the function's return type annotation, allowing for more concise code.
+`divide(4.0, 2.0)` then matches `case Ok(v)` with `v == 2.0`.
+
+The compiler infers the full type from the function's return type annotation.
 
 **Type Inference in Variable and Argument Assignments:**
 
-The type name can also be omitted when assigning to variables, arguments, or default parameters with an explicit tagged union type annotation:
+The same applies to variables and to arguments with an explicit tagged union type annotation:
 
 ```python
-# Variable assignments with type annotations
-result: Result[int, str] = Ok(42)           # Short for Result.Ok(42)
-error: Result[int, str] = Err("failed")     # Short for Result.Err("failed")
-
-# Function parameters with default values
-def process(status: Result[int, str] = Ok(0)) -> None:
+def process(status: Result[int, str]) -> None:
     match status:
-        case Ok(value): print(f"Value: {value}")
-        case Err(msg): print(f"Error: {msg}")
+        case Ok(value):
+            print(f"Value: {value}")
+        case Err(msg):
+            print(f"Error: {msg}")
 
-# Argument passing
 def handle_result(res: Result[int, str]) -> None:
     pass
 
-handle_result(Ok(123))      # Short for Result.Ok(123)
-handle_result(Err("bad"))   # Short for Result.Err("bad")
+def main() -> None:
+    result: Result[int, str] = Ok(42)
+    error: Result[int, str] = Err("failed")
+    process(result)                 # Value: 42
+    process(error)                  # Error: failed
+    handle_result(Ok(123))
+    handle_result(Err("bad"))
 ```
 
-The compiler infers the full type from the variable's type annotation or the parameter's type signature.
+The compiler infers the full type from the variable's type annotation or the parameter's type
+signature.
+
+A DEFAULT parameter value is not one of those positions: a default must be a compile-time constant
+and a `Result`/`Optional` value is not, so `def process(status: Result[int, str] = Ok(0))` is refused
+with SPY0401 and the steer to make the parameter required (#1857). A case-arm body also goes on its
+own line — `case Ok(value): print(value)` on one line is a parse error (SPY0102).
 
 **Bare vs. qualified spelling.** The bare form (`Ok(42)`, `Err("e")`, `Some(v)`, `None()`) is
 the builtin unions' only spelling. User-defined unions are always constructed with the qualified

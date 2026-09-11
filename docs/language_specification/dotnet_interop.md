@@ -318,6 +318,20 @@ If the compiler cannot unambiguously resolve an overload, it reports a compile-t
 
 Sharpy reads the nullable reference type (NRT) annotations that .NET members declare. A member returning `string?` is typed `str | None`; a member returning `string` is typed `str`. This applies to properties, fields, method returns, and parameters through one projection.
 
+The annotation is read at EVERY position of the declared type, not only the outermost one: a member declared `List<object?>` is `list[object | None]`, one declared `IDictionary<string, string?>` is `dict[str, str | None]`, and `string?[]` is `array[str | None]`. Because a generic argument position is invariant, that is also the spelling a caller has to write.
+
+```python
+import yaml
+
+def main() -> None:
+    # yaml.safe_load_all is declared List<object?> — one document per element,
+    # and an empty document reads back as None.
+    docs: list[object | None] = yaml.safe_load_all("a: 1\n---\nb: 2\n")
+    print(len(docs))                        # 2
+    print("---" in yaml.safe_dump_all(docs))  # True
+```
+
+
 ```python
 import system.io
 
@@ -334,7 +348,7 @@ import system.io
 
 def main():
     # error SPY0229: Cannot pass 'None' to parameter 'path1' of
-    # 'combine' — it is declared non-nullable ('str')
+    # 'Path.combine' — it is declared non-nullable ('str')
     system.io.Path.combine(None, "b")
 ```
 

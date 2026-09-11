@@ -1,0 +1,7 @@
+# #1678 / R-Q: a CLR method group referenced as a VALUE is refused by name. The CALLEE position,
+# parenthesized or not, is a call and is unaffected — see clr_paren_callee_1678.
+from system import Math
+
+def main() -> None:
+    h = Math.abs
+    print(h(-1))

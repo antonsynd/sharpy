@@ -1,0 +1,5 @@
+# R-S (#1758): the builtin unions' cases are bare-only. The qualified spelling is refused by name
+# with the bare-form steer, not left to bind by accident.
+def main() -> None:
+    w: int? = Optional.Some(42)
+    print(w)

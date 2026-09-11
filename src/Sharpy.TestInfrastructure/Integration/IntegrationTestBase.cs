@@ -308,19 +308,16 @@ public abstract class IntegrationTestBase
 
             if (!emitResult.Success)
             {
-                var errors = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => d.ToString())
-                    .ToList();
+                var mapped = WithGeneratedCodeDiagnostics(
+                    rawDiagnostics, emitResult, alreadyFailed: compilationErrors.Count > 0);
 
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = errors,
+                    CompilationErrors = RenderCompilationErrors(mapped, emitResult),
                     CompilationWarnings = compilationWarnings,
                     GeneratedCSharp = generatedCSharp,
-                    RawDiagnostics = WithGeneratedCodeDiagnostics(
-                        rawDiagnostics, emitResult, alreadyFailed: compilationErrors.Count > 0)
+                    RawDiagnostics = mapped
                 };
             }
 
@@ -791,6 +788,40 @@ public abstract class IntegrationTestBase
     /// SPY0908 when the compilation had already reported errors of its own) applies identically.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// The error TEXT a <c>.error</c> sidecar is matched against on the C#-compile-failure path,
+    /// rendered from the MAPPED diagnostics in the CLI's own form (<c>error[SPYxxxx]: message</c>).
+    ///
+    /// <para>It used to be <c>Roslyn.Diagnostic.ToString()</c>, which never contains the string
+    /// <c>SPY0908</c> whatever the program does — so the nine <c>!SPY0908</c> expectations in the
+    /// fixture corpus were green BY CONSTRUCTION, and no positive SPY0908 expectation existed that
+    /// would have failed loudly and shown it (#1827). The mapped message keeps Roslyn's own
+    /// <c>CSxxxx</c> id and wording inside it, so a sidecar naming a CS code still matches; the
+    /// sweep found exactly one (<c>collections/collection_constructor_unknown.error</c>,
+    /// <c>CS0305</c>).</para>
+    ///
+    /// <para>The raw Roslyn strings are the FALLBACK, not the primary: when the net-disarming rule
+    /// suppresses SPY0908 (the compilation already reported errors of its own) the mapped list can
+    /// carry no generated-code diagnostic at all, and an empty error list would turn a real failure
+    /// into an unhelpful one.</para>
+    /// </summary>
+    private static List<string> RenderCompilationErrors(
+        List<CompilerDiagnostic> mapped, EmitResult emitResult)
+    {
+        var rendered = mapped
+            .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
+            .Select(d => $"error[{d.Code}]: {d.Message}")
+            .ToList();
+
+        if (rendered.Count > 0)
+            return rendered;
+
+        return emitResult.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.ToString())
+            .ToList();
+    }
+
     private static List<CompilerDiagnostic> WithGeneratedCodeDiagnostics(
         List<CompilerDiagnostic>? sharpyDiagnostics,
         EmitResult emitResult,
@@ -857,25 +888,22 @@ public abstract class IntegrationTestBase
 
             if (!emitResult.Success)
             {
-                var errors = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => d.ToString())
-                    .ToList();
+                var mapped = WithGeneratedCodeDiagnostics(
+                    rawDiagnostics,
+                    emitResult,
+                    alreadyFailed: rawDiagnostics?.Any(
+                        d => d.Severity == CompilerDiagnosticSeverity.Error) == true);
 
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = errors,
+                    CompilationErrors = RenderCompilationErrors(mapped, emitResult),
                     // The single-file arm carries the warnings through its own C#-failure return;
                     // dropping them here would make a `.warning` sidecar behave differently across
                     // the two arms for a harness reason (#1171).
                     CompilationWarnings = compilationWarnings,
                     GeneratedCSharp = generatedCSharpReport,
-                    RawDiagnostics = WithGeneratedCodeDiagnostics(
-                        rawDiagnostics,
-                        emitResult,
-                        alreadyFailed: rawDiagnostics?.Any(
-                            d => d.Severity == CompilerDiagnosticSeverity.Error) == true)
+                    RawDiagnostics = mapped
                 };
             }
 

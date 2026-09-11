@@ -26,9 +26,22 @@ empty: int? = None()
 ```
 
 `Some(…)` and `None()` are the only spellings that work. The fully-qualified forms
-`Optional.Some(…)` and `Optional.None()` are **not supported today** (#1758): `Optional.None()`
-does not compile at all, and `Optional.Some(42)` is typed `Unknown`, so a mistyped destination
-leaks a C# error instead of SPY0220. Use the bare constructors.
+`Optional.Some(…)` and `Optional.None()` are **refused by name** with SPY0608 and a steer to the
+bare form (#1758) — they are not a second way to write the same thing:
+
+```python
+v: int? = Some(42)              # the spelling
+# w: int? = Optional.Some(42)   # SPY0608 — use the bare form `Some(42)`
+# e: int? = Optional.None()     # SPY0608 — use the bare form `None()`
+```
+
+The four builtin case names `Some`, `None`, `Ok` and `Err` are RESERVED for the same reason: a
+declaration that takes one would shadow the constructor, so it is refused with SPY0212 rather than
+warned — `def Some(x: int) -> int` draws *"'Some' is a builtin tagged-union constructor; rebinding
+this name would shadow the builtin form"*. The steer offers the backtick-escaped spelling
+(`` def `Some` ``) for a declaration that really wants the name. Two spellings escape the rule today
+and are tracked by #1856: the indexed receiver `Optional[int].Some(42)`, and a USER union whose own
+case is named `Some`.
 
 A bare value or bare `None` is **not** accepted for `T?` — use `Some(…)` or `None()`:
 

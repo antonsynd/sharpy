@@ -1,0 +1,7 @@
+# #1765: `Path` collides with nothing after the emitted CLR name is read from the reflected type
+# rather than re-derived from the Sharpy spelling.
+from system.io import Path
+
+def main() -> None:
+    print(Path.combine("a", "b"))
+    print(Path.get_extension("x.txt"))

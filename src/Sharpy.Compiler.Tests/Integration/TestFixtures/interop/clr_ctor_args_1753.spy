@@ -1,0 +1,7 @@
+# #1753: a CLR CONSTRUCTOR's arguments go through the same applicability check as a method call's.
+# The mistyped third argument drew SPY0908 (CS1503) three times before the ctor route joined the seam.
+from system import DateTime
+
+def main() -> None:
+    d = DateTime(2020, 1, "x")
+    print(d.year)

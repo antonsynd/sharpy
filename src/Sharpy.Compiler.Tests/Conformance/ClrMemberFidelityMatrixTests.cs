@@ -199,24 +199,6 @@ public class ClrMemberFidelityMatrixTests
             "System.Text.StringBuilder declares no public static member, so the "
             + "static-receiver cells of the non-generic-class row have no member to name.");
 
-        yield return new NotApplicable("nrt.closed-generic-annotated-T-return",
-            "`List[str].find(...)` is typed `str`, not `str | None`, although `List<T>.Find` returns "
-            + "`T?`: the suppression that keeps a BARE `T` non-nullable also swallows the annotated "
-            + "case, and NullabilityInfoContext reports the same state for both on a generic "
-            + "definition (measured in ClrNullabilityConsumerTotalityTests). #1828.");
-
-        yield return new NotApplicable("nrt.extension-annotated-T-return",
-            "`xs.first_or_default()` on `list[str]` is typed `str` for the same reason — "
-            + "`Enumerable.FirstOrDefault<TSource>` returns `TSource?`. The extension route now "
-            + "applies declared nullability (BuiltinRegistry.WrapIfDeclaredNullable, "
-            + "GenericReferenceResolver's staged symbol), so a `string?` extension return DOES "
-            + "carry it; only the type-parameter shape is blind. #1828.");
-
-        yield return new NotApplicable("nrt.nested-type-argument",
-            "`ProcessStartInfo.environment` (`IDictionary<string, string?>`) is `dict[str, str]`: "
-            + "ClrDeclaredNullability reads the TOP-LEVEL state only, by design — `List<string?>` "
-            + "stays `list[str]`. Not a bypass; the rule is stated in the type's remarks.");
-
         yield return new NotApplicable("char.parameter-computed-str",
             "a COMPUTED `str` in a reflected `char` slot is refused by name at the call seam "
             + "(#1402: only a one-character literal converts), which is a call-route cell owned by "
@@ -486,7 +468,60 @@ public class ClrMemberFidelityMatrixTests
             SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    print(v.no_such_member_xyz)"),
             Expect.AbsentMember);
 
-        // ── User class INHERITING a CLR type: class IntList(List[int]) ──
+        // ── ANNOTATED type parameter: List<T>.Find returns `T?`, Enumerable.FirstOrDefault<TSource>
+        // returns `TSource?`. Both were typed `str` on a `list[str]`/`List[str]` receiver because the
+        // suppression that keeps a BARE `T` non-nullable swallowed the annotated case too (#1828).
+        // The bare-`T` twin below is what that suppression exists for and must NOT move.
+
+        yield return new Cell("nrt.closed-generic-annotated-T-return",
+            Src("List", "xs: List[str] = List[str]()\n    b: bool = xs.find(lambda s: s == \"z\")"),
+            Expect.TypeMismatch, MustName: "str | None");
+
+        yield return new Cell("nrt.extension-annotated-T-return",
+            "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    b: bool = xs.first_or_default()\n",
+            Expect.TypeMismatch, MustName: "str | None");
+
+        yield return new Cell("nrt.closed-generic-bare-T-return-twin",
+            Src("Stack", "s = Stack[str]()\n    s.push(\"a\")\n    b: bool = s.peek()"),
+            Expect.TypeMismatchNonNullable);
+
+        // `T?` with `T` instantiated as a VALUE type is plain `int` in C# — `default(int)`, not
+        // `Nullable<int>` — so the annotated arm must not wrap it. Found by mutation: withholding the
+        // value-type guard in `Wrap` typed this `int32 | None` and no cell noticed.
+        yield return new Cell("nrt.closed-generic-annotated-T-return-value-payload",
+            Src("List", "xs: List[int] = List[int]()\n    b: bool = xs.find(lambda v: v == 1)"),
+            Expect.TypeMismatchNonNullable);
+
+        yield return new Cell("nrt.sharpy-list-bare-T-return-twin",
+            "def _use() -> None:\n    xs: list[str] = [\"a\"]\n    b: bool = xs.pop(0)\n",
+            Expect.TypeMismatchNonNullable);
+
+                // ── NESTED type argument: ProcessStartInfo.environment is IDictionary<string, string?> ──
+        // The N/A this replaces said the top-level state was read "by design". It was the defect
+        // (#1847): a member whose declared nullability sits one level down came back as the
+        // non-nullable type, and the faithful spelling a caller must write was then refused by
+        // invariance. MustName is the discriminating half — `dict[str, str]` and
+        // `dict[str, str | None]` are both SPY0220 against a `bool` destination, and only the name
+        // says which type the member got.
+
+        yield return new Cell("nrt.nested-type-argument-value",
+            SrcFrom("system.diagnostics", "ProcessStartInfo",
+                "p = ProcessStartInfo()\n    x: bool = p.environment"),
+            Expect.TypeMismatch, MustName: "str | None");
+
+        yield return new Cell("nrt.nested-type-argument-display",
+            SrcFrom("system.diagnostics", "ProcessStartInfo",
+                "p = ProcessStartInfo()\n    x: bool = p.environment"),
+            Expect.TypeMismatch, MustName: "dict[str, str | None]");
+
+        // The un-annotated twin on the same route: a projection that wrapped every nested position
+        // would pass the two cells above and fail this one.
+        yield return new Cell("nrt.nested-type-argument-twin",
+            SrcFrom("system.diagnostics", "ProcessStartInfo",
+                "p = ProcessStartInfo()\n    x: bool = p.argument_list"),
+            Expect.TypeMismatchNonNullable);
+
+                // ── User class INHERITING a CLR type: class IntList(List[int]) ──
 
         yield return new Cell("IntList(List[int]).count-correct-pythonic",
             SrcInherited("v = IntList()\n    v.add(1)\n    n: int = v.count"), Expect.Compiles);
@@ -682,9 +717,21 @@ public class ClrMemberFidelityMatrixTests
             "member-kind axis value(s) with no cell: " + string.Join(", ", missing));
 
         // Every axis value that CANNOT be measured is named, with an issue or a design rule.
-        Assert.Contains(naLabels, l => l == "nrt.closed-generic-annotated-T-return");
-        Assert.Contains(naLabels, l => l == "nrt.extension-annotated-T-return");
         Assert.Contains(naLabels, l => l == "route.warm-incremental");
+
+        // DRAINED (#1828, #1847): these three were N/A and are now measured cells. The assertion is
+        // kept in the opposite direction so re-adding an N/A entry for an axis value that HAS cells
+        // fails here rather than quietly re-hiding it.
+        foreach (var drained in new[]
+                 {
+                     "nrt.closed-generic-annotated-T-return",
+                     "nrt.extension-annotated-T-return",
+                     "nrt.nested-type-argument"
+                 })
+        {
+            Assert.DoesNotContain(naLabels, l => l.StartsWith(drained, StringComparison.Ordinal));
+            Assert.Contains(labels, l => l.StartsWith(drained, StringComparison.Ordinal));
+        }
     }
 
     private static string Src(string type, string body) =>
