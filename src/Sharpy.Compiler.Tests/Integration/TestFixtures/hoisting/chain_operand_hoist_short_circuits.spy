@@ -1,0 +1,21 @@
+# A chained comparison short-circuits: the third operand runs only if the first link held. Its
+# comprehension used to be hoisted above the whole chain and ran unconditionally.
+def take(xs: list[int]) -> list[int]:
+    print("evaluated")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    if 5 < 1 < len([v for v in take(xs)]):
+        print("yes")
+    else:
+        print("no")
+    print("left", len(xs))
+    # The positive control: the first link holds, so the third operand DOES run exactly once.
+    ys: list[int] = [1, 2, 3]
+    if 1 < 5 < len([v for v in take(ys)]):
+        print("yes")
+    else:
+        print("no")
+    print("left", len(ys))

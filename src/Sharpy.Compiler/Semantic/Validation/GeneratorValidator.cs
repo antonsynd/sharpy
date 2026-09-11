@@ -159,8 +159,8 @@ internal class GeneratorValidator : SemanticValidatorBase
         if (yieldInSuppWith != null)
         {
             AddError(context,
-                "'yield' cannot be used inside a 'with' block whose '__exit__' can suppress exceptions (4-parameter form); " +
-                "use a 1-parameter '__exit__' or collect values before yielding",
+                "'yield' cannot be used inside a 'with' block whose '__exit__' can suppress exceptions; " +
+                "use an '__exit__' that cannot suppress, or collect values before yielding",
                 yieldInSuppWith.LineStart, yieldInSuppWith.ColumnStart,
                 code: DiagnosticCodes.ValidationOverflow.YieldInSuppressingWith,
                 span: yieldInSuppWith.Span);

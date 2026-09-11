@@ -92,6 +92,16 @@ internal sealed class BasicBlock
     public List<Parser.Ast.Expression> Expressions { get; } = new();
 
     /// <summary>
+    /// Expressions evaluated on ENTRY to this block, before its statements — a match case's guard.
+    /// <see cref="Expressions"/> is the other position: evaluated after the statements, as an
+    /// <c>if</c>/<c>while</c> condition or a match subject is. Keeping them apart is what lets
+    /// definite assignment credit a guard's walrus to the arm body that reads it (#1739 a07); when
+    /// the guard sat in <see cref="Expressions"/> it was credited only after the body's reads had
+    /// already been judged, so `case 1 if (w2 := f()) > 0: print(w2)` reported SPY0600.
+    /// </summary>
+    public List<Parser.Ast.Expression> EntryExpressions { get; } = new();
+
+    /// <summary>
     /// For async analysis: true if any statement in this block contains an await expression.
     /// Set during CFG construction by scanning for AwaitExpression nodes.
     /// </summary>

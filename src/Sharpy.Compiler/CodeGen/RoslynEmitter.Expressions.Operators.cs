@@ -41,7 +41,7 @@ internal partial class RoslynEmitter
         // Pipe-forward is decided BEFORE the operands are generated: its lowering re-generates
         // the left operand itself (the piped value becomes a call argument), so generating it
         // here first produced the value twice and discarded one. GenerateExpression is not pure —
-        // it can push into `_hoistedStatements`, which are flushed unconditionally — so a
+        // it can push into the enclosing sink, which is flushed unconditionally — so a
         // speculative generation is a duplicated side effect waiting for the right operand
         // (#1228's rule, found live by the re-entry tripwire, #1334).
         if (binOp.Operator == BinaryOperator.PipeForward)
@@ -55,8 +55,19 @@ internal partial class RoslynEmitter
             return GenerateShortCircuitOp(binOp);
         }
 
-        var left = GenerateExpression(binOp.Left);
-        var right = GenerateExpression(binOp.Right);
+        // `??` evaluates its right operand ONLY when the left is absent, so it owns a conditional
+        // evaluation and needs its own sink — decided before the operands are generated, like
+        // and/or above (plan-0667c5 Design Decision 6).
+        if (binOp.Operator == BinaryOperator.NullCoalesce)
+        {
+            return GenerateNullCoalesceOp(binOp);
+        }
+
+        // Left-to-right: a hoist producer in the right operand must not move its effects ahead
+        // of an effectful left operand (plan-0667c5 Design Decision 6, ordering axis).
+        var operandsInOrder = GenerateExpressionsInOrder(new[] { binOp.Left, binOp.Right });
+        var left = operandsInOrder[0];
+        var right = operandsInOrder[1];
 
         // Special cases that need method calls or casts
         switch (binOp.Operator)
@@ -87,7 +98,7 @@ internal partial class RoslynEmitter
                     // What this replaced was unsound in two ways. It called
                     // GenerateExpression(binOp.Left) a second time with NO gate at all — the
                     // IsSideEffectFree check covered only the right operand — and
-                    // GenerateExpression is not pure: it can push into _hoistedStatements
+                    // GenerateExpression is not pure: it can push into the enclosing sink
                     // (the #1198 tuple-spread hoist), so `sum(make_tuple()) ** 2` emitted the
                     // hoist twice and called make_tuple() twice. And when the gate DID fire it
                     // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
@@ -193,28 +204,6 @@ internal partial class RoslynEmitter
                         .AddArgumentListArguments(
                             Argument(left),
                             Argument(right)));
-
-            case BinaryOperator.NullCoalesce:
-                {
-                    var coalesceKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
-                    if (coalesceKind == OperatorLoweringKind.OptionalCoalesceBothOptional)
-                    {
-                        var (safeLeft, captureLeft) = EnsureSingleEvaluation(left, binOp.Left);
-                        ExpressionSyntax coalesceCondition = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            ParenthesizedExpression(safeLeft), IdentifierName("IsSome"));
-                        if (captureLeft != null)
-                            coalesceCondition = BinaryExpression(SyntaxKind.LogicalAndExpression, captureLeft, coalesceCondition);
-                        return ConditionalExpression(coalesceCondition, safeLeft, right);
-                    }
-                    if (coalesceKind == OperatorLoweringKind.OptionalUnwrapOr)
-                    {
-                        return InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
-                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
-                    }
-                    return Binary(SyntaxKind.CoalesceExpression, left, right);
-                }
 
             case BinaryOperator.Multiply:
                 {
@@ -662,25 +651,39 @@ internal partial class RoslynEmitter
             }
         }
 
-        ExpressionSyntax? result = null;
+        // A chain short-circuits like `&&`: only operands 0 and 1 are evaluated
+        // unconditionally. Generate every operand under an evaluation sink so a hoist producer
+        // (comprehension, spread, `?`) inside operand k lands in the block that owns operand k's
+        // evaluation, not above the whole chain (plan-0667c5 Design Decision 6).
+        var operandCount = chain.Operands.Length;
+        var operandExprs = new ExpressionSyntax[operandCount];
+        var operandEvals = new List<StatementSyntax>[operandCount];
+        for (int i = 0; i < operandCount; i++)
+        {
+            int captured = i;
+            operandEvals[i] = WithEvaluationSink(
+                () => operandExprs[captured] = GenerateExpression(chain.Operands[captured]));
+        }
 
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            ExpressionSyntax left;
+            if (MapComparisonOperator(chain.Operators[i]) == SyntaxKind.None)
+            {
+                return EmitNotImplementedExpression(
+                    $"Unsupported operator in code generation: comparison operator '{chain.Operators[i]}' in chains",
+                    DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
+            }
+        }
+
+        // Builds link i (operator between operands i and i+1), applying the recorded lowering and
+        // the `is var` capture for an intermediate operand read twice.
+        ExpressionSyntax BuildLink(int i)
+        {
+            ExpressionSyntax left = i > 0 && tempNames[i] != null
+                ? IdentifierName(tempNames[i]!)
+                : operandExprs[i];
+
             ExpressionSyntax right;
-
-            // Left operand: use temp name from previous iteration if available
-            if (i > 0 && tempNames[i] != null)
-            {
-                left = IdentifierName(tempNames[i]!);
-            }
-            else
-            {
-                left = GenerateExpression(chain.Operands[i]);
-            }
-
-            // Right operand: capture into temp if this is an intermediate with side effects
-            var rightExpr = GenerateExpression(chain.Operands[i + 1]);
             if (tempNames[i + 1] != null)
             {
                 // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
@@ -688,37 +691,108 @@ internal partial class RoslynEmitter
                 right = ParenthesizedExpression(
                     ConditionalExpression(
                         IsPattern(
-                            rightExpr,
+                            operandExprs[i + 1],
                             VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
                         IdentifierName(tempNames[i + 1]!),
                         IdentifierName(tempNames[i + 1]!)));
             }
             else
             {
-                right = rightExpr;
-            }
-
-            var op = chain.Operators[i];
-            var kind = MapComparisonOperator(op);
-
-            if (kind == SyntaxKind.None)
-            {
-                return EmitNotImplementedExpression(
-                    $"Unsupported operator in code generation: comparison operator '{op}' in chains",
-                    DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
+                right = operandExprs[i + 1];
             }
 
             var link = chainLowering.Links[i];
-            var comparison = GenerateLoweredComparison(
-                kind, left, right, chain.Operands[i], chain.Operands[i + 1],
+            return GenerateLoweredComparison(
+                MapComparisonOperator(chain.Operators[i]), left, right,
+                chain.Operands[i], chain.Operands[i + 1],
                 link.Kind, link.Equality ?? BinaryOpLowering.NativeOperator);
-
-            result = result == null
-                ? comparison
-                : BinaryExpression(SyntaxKind.LogicalAndExpression, result, comparison);
         }
 
-        return result ?? throw new InvalidOperationException("Empty comparison chain");
+        // Operands 2..n-1 are evaluated only if every earlier link held. A hoist there must run
+        // inside the conditional block, so the chain becomes imperative.
+        bool hasConditionalHoist = false;
+        for (int i = 2; i < operandCount; i++)
+        {
+            if (operandEvals[i].Count > 0)
+                hasConditionalHoist = true;
+        }
+
+        if (!hasConditionalHoist)
+        {
+            // Operands 0 and 1 always run, in that order. Operand 1's hoists are flushed as
+            // statements before the chain expression, so an effectful operand 0 must be captured
+            // first or it would be evaluated after them (the ordering rule of
+            // GenerateExpressionsInOrder, applied to the chain).
+            if (operandEvals[1].Count > 0 && !IsSideEffectFree(chain.Operands[0]))
+            {
+                var orderTemp = GenerateTempVarName("cmpOrder");
+                HoistEvaluation(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(orderTemp))
+                                .WithInitializer(EqualsValueClause(operandExprs[0]))))));
+                operandExprs[0] = IdentifierName(orderTemp);
+            }
+
+            foreach (var stmt in operandEvals[0])
+                HoistEvaluation(stmt);
+            foreach (var stmt in operandEvals[1])
+                HoistEvaluation(stmt);
+
+            ExpressionSyntax? result = null;
+            for (int i = 0; i < chain.Operators.Length; i++)
+            {
+                var comparison = BuildLink(i);
+                result = result == null
+                    ? comparison
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, result, comparison);
+            }
+
+            return result ?? throw new InvalidOperationException("Empty comparison chain");
+        }
+
+        // Manufactured sink, nested so each operand's `is var` capture stays in scope:
+        //   bool __chainTmp = link0;
+        //   if (__chainTmp) { evals[2]; __chainTmp = link1; if (__chainTmp) { evals[3]; … } }
+        var chainTmp = GenerateTempVarName("chain");
+
+        StatementSyntax BuildTail(int linkIndex)
+        {
+            var body = new List<StatementSyntax>();
+            body.AddRange(operandEvals[linkIndex + 1]);
+            body.Add(ExpressionStatement(
+                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    EscapedIdentifierName(chainTmp), BuildLink(linkIndex))));
+            if (linkIndex + 1 < chain.Operators.Length)
+                body.Add(BuildTail(linkIndex + 1));
+            return IfStatement(EscapedIdentifierName(chainTmp), Block(body));
+        }
+
+        if (operandEvals[1].Count > 0 && !IsSideEffectFree(chain.Operands[0]))
+        {
+            var orderTemp = GenerateTempVarName("cmpOrder");
+            HoistEvaluation(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(orderTemp))
+                            .WithInitializer(EqualsValueClause(operandExprs[0]))))));
+            operandExprs[0] = IdentifierName(orderTemp);
+        }
+
+        foreach (var stmt in operandEvals[0])
+            HoistEvaluation(stmt);
+        foreach (var stmt in operandEvals[1])
+            HoistEvaluation(stmt);
+
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(chainTmp))
+                        .WithInitializer(EqualsValueClause(BuildLink(0)))))));
+
+        HoistEvaluation(BuildTail(1));
+
+        return EscapedIdentifierName(chainTmp);
     }
 
     /// <summary>
@@ -752,6 +826,127 @@ internal partial class RoslynEmitter
             or NoneLiteral;
     }
 
+    /// <summary>
+    /// Emits <c>a ?? b</c>. The right operand is evaluated only when the left is absent, so it is
+    /// generated under an evaluation sink; when it hoists, the expression becomes a manufactured
+    /// conditional sink so those statements run only on the absent path. Without the sink a
+    /// comprehension/spread/walrus in <c>b</c> ran on every evaluation, including when <c>a</c> had
+    /// a value.
+    /// </summary>
+    private ExpressionSyntax GenerateNullCoalesceOp(BinaryOp binOp)
+    {
+        var left = GenerateExpression(binOp.Left);
+
+        ExpressionSyntax right = null!;
+        var rightEvals = WithEvaluationSink(() => { right = GenerateExpression(binOp.Right); });
+
+        var coalesceKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+
+        if (rightEvals.Count == 0)
+        {
+            return BuildCoalesceValue(binOp, coalesceKind, left, right);
+        }
+
+        // Manufactured sink. The left operand is captured once into a temp so the absent-test and
+        // the value read cannot evaluate it twice:
+        //   T __coalesce_0 = <left-as-result-when-present>;
+        //   if (<absent test>) { evals; __coalesce_0 = <right>; }
+        var resultType = GetExpressionSemanticType(binOp);
+        if (resultType == null)
+        {
+            throw new InvalidOperationException(
+                "No semantic type recorded for a '??' expression whose right operand hoists; the "
+                + "TypeChecker must type every coalesce node (plan-0667c5 Design Decision 6).");
+        }
+
+        var tmpName = GenerateTempVarName("coalesce");
+        var leftTmpName = GenerateTempVarName("coalesceLeft");
+
+        // var __coalesceLeft_0 = <left>;
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(leftTmpName))
+                        .WithInitializer(EqualsValueClause(left))))));
+
+        var leftRef = EscapedIdentifierName(leftTmpName);
+
+        // The present-value expression and the absent test differ per lowering: Optional carries
+        // IsSome/Unwrap, a nullable reference/value carries a null test.
+        ExpressionSyntax presentValue;
+        ExpressionSyntax absentTest;
+        if (coalesceKind is OperatorLoweringKind.OptionalCoalesceBothOptional
+            or OperatorLoweringKind.OptionalUnwrapOr)
+        {
+            absentTest = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    ParenthesizedExpression(leftRef), IdentifierName("IsSome")));
+            presentValue = coalesceKind == OperatorLoweringKind.OptionalCoalesceBothOptional
+                ? leftRef
+                : InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesizedExpression(leftRef), IdentifierName("Unwrap")));
+        }
+        else
+        {
+            absentTest = BinaryExpression(SyntaxKind.EqualsExpression, leftRef,
+                LiteralExpression(SyntaxKind.NullLiteralExpression));
+            presentValue = leftRef;
+        }
+
+        // T __coalesce_0;  — bare, assigned on exactly one of the two paths below. An
+        // initializer of `(left)!` would be correct as a TREE and reparse as a cast of a logical
+        // not (`(T)!;`), which is the hazard AssertEmittedTreePrecedence exists for.
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(_typeMapper.MapSemanticType(resultType))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(tmpName))))));
+
+        var absentBody = new List<StatementSyntax>(rightEvals.Count + 1);
+        absentBody.AddRange(rightEvals);
+        absentBody.Add(ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(tmpName), right)));
+
+        var presentBody = SingletonList<StatementSyntax>(ExpressionStatement(
+            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(tmpName), presentValue)));
+
+        HoistEvaluation(IfStatement(absentTest, Block(absentBody), ElseClause(Block(presentBody))));
+
+        return EscapedIdentifierName(tmpName);
+    }
+
+    /// <summary>
+    /// The expression form of <c>a ?? b</c> for the case where the right operand hoists nothing:
+    /// Optional carries a ternary on <c>IsSome</c> or an <c>UnwrapOr</c> call, everything else the
+    /// native <c>??</c>.
+    /// </summary>
+    private ExpressionSyntax BuildCoalesceValue(
+        BinaryOp binOp, OperatorLoweringKind? coalesceKind,
+        ExpressionSyntax left, ExpressionSyntax right)
+    {
+        if (coalesceKind == OperatorLoweringKind.OptionalCoalesceBothOptional)
+        {
+            var (safeLeft, captureLeft) = EnsureSingleEvaluation(left, binOp.Left);
+            ExpressionSyntax coalesceCondition = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                ParenthesizedExpression(safeLeft), IdentifierName("IsSome"));
+            if (captureLeft != null)
+                coalesceCondition = BinaryExpression(SyntaxKind.LogicalAndExpression, captureLeft, coalesceCondition);
+            return ConditionalExpression(coalesceCondition, safeLeft, right);
+        }
+
+        if (coalesceKind == OperatorLoweringKind.OptionalUnwrapOr)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
+        }
+
+        return Binary(SyntaxKind.CoalesceExpression, left, right);
+    }
+
     private ExpressionSyntax GenerateShortCircuitOp(BinaryOp binOp)
     {
         var isAnd = binOp.Operator == BinaryOperator.And;
@@ -759,9 +954,9 @@ internal partial class RoslynEmitter
         var wrappedLeft = WrapTruthinessIfNeeded(left, binOp.Left);
 
         ExpressionSyntax right = null!;
-        var (decls, evals) = WithSink(() => { right = GenerateExpression(binOp.Right); });
+        var evals = WithEvaluationSink(() => { right = GenerateExpression(binOp.Right); });
 
-        if (decls.Count == 0 && evals.Count == 0)
+        if (evals.Count == 0)
         {
             var wrappedRight = WrapTruthinessIfNeeded(right!, binOp.Right);
             var logicalKind = isAnd
@@ -783,11 +978,6 @@ internal partial class RoslynEmitter
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(tmpName))
                         .WithInitializer(EqualsValueClause(wrappedLeft))))));
-
-        // Re-hoist captured declarations to the outer scope so walrus variables
-        // remain visible after the manufactured if-block.
-        foreach (var decl in decls)
-            HoistDeclaration(decl);
 
         var wrappedRight2 = WrapTruthinessIfNeeded(right!, binOp.Right);
         var bodyStatements = new List<StatementSyntax>();
@@ -814,19 +1004,18 @@ internal partial class RoslynEmitter
         var test = WrapTruthinessIfNeeded(GenerateExpression(cond.Test), cond.Test);
 
         ExpressionSyntax whenTrue = null!;
-        var (trueDecls, trueEvals) = WithSink(() =>
+        var trueEvals = WithEvaluationSink(() =>
         {
             whenTrue = ApplyConditionalBranchNarrowing(cond.ThenValue, GenerateExpression(cond.ThenValue));
         });
 
         ExpressionSyntax whenFalse = null!;
-        var (falseDecls, falseEvals) = WithSink(() =>
+        var falseEvals = WithEvaluationSink(() =>
         {
             whenFalse = ApplyConditionalBranchNarrowing(cond.ElseValue, GenerateExpression(cond.ElseValue));
         });
 
-        if (trueDecls.Count == 0 && trueEvals.Count == 0
-            && falseDecls.Count == 0 && falseEvals.Count == 0)
+        if (trueEvals.Count == 0 && falseEvals.Count == 0)
         {
             return Conditional(test, whenTrue!, whenFalse!);
         }
@@ -842,10 +1031,6 @@ internal partial class RoslynEmitter
             VariableDeclaration(typeSyntax)
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(tmpName))))));
-
-        // Re-hoist captured declarations to the outer scope
-        foreach (var d in trueDecls) HoistDeclaration(d);
-        foreach (var d in falseDecls) HoistDeclaration(d);
 
         var trueBody = new List<StatementSyntax>();
         trueBody.AddRange(trueEvals);

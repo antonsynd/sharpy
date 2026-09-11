@@ -110,6 +110,13 @@ internal partial class TypeChecker
         SemanticType bodyType;
         SemanticType returnType;
 
+        // `?` inside the BODY is refused by name (SPY0462); see _inLambdaBody. Parameter defaults
+        // above are deliberately outside this scope — they run in the enclosing function.
+        var previousInLambdaBody = _inLambdaBody;
+        _inLambdaBody = true;
+        try
+        {
+
         if (lambda.ReturnType != null)
         {
             var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
@@ -153,6 +160,12 @@ internal partial class TypeChecker
         {
             bodyType = CheckExpression(lambda.Body);
             returnType = bodyType;
+        }
+
+        }
+        finally
+        {
+            _inLambdaBody = previousInLambdaBody;
         }
 
         if (returnType is VoidType && UnwrapParenthesized(lambda.Body) is NoneLiteral)

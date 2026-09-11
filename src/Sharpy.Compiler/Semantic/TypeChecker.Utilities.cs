@@ -2080,6 +2080,52 @@ internal partial class TypeChecker
     /// so the only <c>Parenthesized</c> that can reach the default arm is the refused
     /// <c>(*a)</c> shape (a Python SyntaxError) — do not add an unwrap here.
     /// </summary>
+    /// <summary>
+    /// The syntactic position an unpacking happens in. SPY0239 names it as a SUFFIX so every
+    /// position reports one wording (plan-0667c5 Design Decision 5): before this there were two
+    /// wordings per position — the `with` position had lost its suffix entirely, and the `for`
+    /// position carried one on the nested path and not the flat one.
+    /// </summary>
+    private enum UnpackingPosition
+    {
+        Assignment,
+        ForLoop,
+        WithStatement,
+        ComprehensionForClause,
+    }
+
+    private static string UnpackingPositionSuffix(UnpackingPosition position)
+    {
+        return position switch
+        {
+            // An assignment is the unmarked position: `a, b = t` needs no "in assignment".
+            UnpackingPosition.Assignment => "",
+            UnpackingPosition.ForLoop => " in for loop",
+            UnpackingPosition.WithStatement => " in with statement",
+            UnpackingPosition.ComprehensionForClause => " in comprehension for clause",
+            _ => throw new ArgumentOutOfRangeException(nameof(position), position,
+                "Every unpacking position must name its suffix (Design Decision 5)."),
+        };
+    }
+
+    /// <summary>The ONE arity wording for SPY0239, with the position as a suffix.</summary>
+    private static string UnpackArityMessage(
+        int sourceArity, int targetCount, UnpackingPosition position, bool nested = false)
+    {
+        var target = nested ? " in nested tuple" : string.Empty;
+        return $"Cannot unpack {sourceArity} values into {targetCount} variables{target}"
+            + UnpackingPositionSuffix(position);
+    }
+
+    /// <summary>The ONE non-tuple wording for SPY0239, with the position as a suffix.</summary>
+    private static string UnpackNonTupleMessage(
+        string typeDisplayName, UnpackingPosition position, bool nested = false)
+    {
+        var target = nested ? "nested tuple target" : "tuple target";
+        return $"Cannot unpack non-tuple type '{typeDisplayName}' into {target}"
+            + UnpackingPositionSuffix(position);
+    }
+
     private bool IsValidAssignmentTarget(Expression target)
     {
         return target switch

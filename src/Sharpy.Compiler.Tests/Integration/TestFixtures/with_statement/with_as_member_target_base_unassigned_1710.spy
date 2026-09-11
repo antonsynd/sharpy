@@ -1,0 +1,18 @@
+# A `with … as` target is a WRITE, but a NON-identifier target reads its base: `as p.x` stores into
+# p.x and therefore reads p. A bare-declared `p` is reported at the TARGET, not only at a later use
+# (#1710). There is deliberately no read of `p` after the with: two SPY0600s with the same message
+# would let the .error matcher bind the wrong one.
+class Holder:
+    x: int
+
+class CM:
+    def __enter__(self) -> int:
+        return 7
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    p: Holder
+    with CM() as p.x:
+        print("body")

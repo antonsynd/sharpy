@@ -227,7 +227,7 @@ internal partial class RoslynEmitter
             // Decided BEFORE the generic argument generation: this lowering builds its own
             // argument list from the same AST nodes, so generating them here first produced every
             // argument and the key expression twice and discarded one set. GenerateExpression is
-            // not pure — it can push into `_hoistedStatements`, which are flushed unconditionally
+            // not pure — it can push into the enclosing sink, which is flushed unconditionally
             // — so a speculative generation is a duplicated side effect waiting for the right
             // argument (#1228's rule, found live by the re-entry tripwire, #1334).
             if (isBuiltinFunc)

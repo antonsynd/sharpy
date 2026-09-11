@@ -1,0 +1,19 @@
+# Design Decision 6: a guard containing a hoist producer lowers the match to an `is`-chain, so the
+# guard's side effects execute exactly once and only when its pattern matched. `case 0`'s pattern
+# never matches, so `take` is never called and xs keeps all three elements.
+def take(xs: list[int]) -> list[int]:
+    print("guard-eval")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    match m:
+        case 0 if len([v for v in take(xs)]) > 0:
+            print("zero")
+        case 1:
+            print("one")
+        case _:
+            print("other")
+    print("left", len(xs))

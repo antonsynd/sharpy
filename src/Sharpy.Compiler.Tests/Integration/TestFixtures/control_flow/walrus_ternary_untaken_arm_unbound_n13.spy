@@ -1,0 +1,12 @@
+# Design Decision 7: a walrus in a ternary arm is assigned only on that arm's path, so reading it
+# after the ternary is a use-before-assign. python3 raises UnboundLocalError on the same program;
+# before the rule this printed `0 0` silently.
+def f() -> int:
+    print("f")
+    return 3
+
+def main() -> None:
+    c: bool = False
+    w: int
+    v: int = (w := f()) if c else 0
+    print(v, w)

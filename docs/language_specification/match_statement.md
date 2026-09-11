@@ -171,34 +171,46 @@ if condition:
 
 Guards evaluate **per arm, in order, only for arms whose pattern matched**. A guard with a
 side-effecting expression (a comprehension, a `?` operator, a walrus, or any call) runs only
-when its arm's pattern matches the scrutinee. Unmatched arms' guards are never evaluated:
+when its arm's pattern matches the scrutinee. Unmatched arms' guards are never evaluated.
+
+The example uses a **comprehension** in the guard, not a plain call: a plain call in a guard
+evaluates per arm on either lowering, so it cannot tell the two apart. A comprehension is a
+hoist-producing expression, and if its statements were placed above the match instead of inside the
+arm, `take` would run and `xs` would lose an element:
 
 ```python
-def probe(label: str) -> bool:
-    print(f"guard {label}")
-    return True
+def take(xs: list[int]) -> list[int]:
+    print("guard-eval")
+    xs.pop(0)
+    return xs
 
 def main() -> None:
+    xs: list[int] = [1, 2, 3]
     m: int = 1
     match m:
-        case 0 if probe("zero"):
-            print("matched zero")
-        case 1 if probe("one"):
-            print("matched one")
+        case 0 if len([v for v in take(xs)]) > 0:
+            print("zero")
+        case 1:
+            print("one")
         case _:
             print("other")
+    print("left", len(xs))
 ```
 
 ```
-guard one
-matched one
+one
+left 3
 ```
 
-Only case 1's guard evaluates; case 0's guard is skipped because the pattern does not match.
+Case 0's pattern does not match, so its guard never runs: `take` is not called and `xs` keeps all
+three elements. python3 prints the same two lines for the same program.
 
 When a guard contains a hoist-producing expression (a comprehension, spread, or `?`), the
 compiler lowers the guarded match to an `is`-chain block so that each guard's side effects
-execute exactly once, only when the pattern matches.
+execute exactly once, only when the pattern matches. The same lowering applies to the
+match **expression** form, where an arm's **result** is likewise evaluated only
+when that arm is selected. Because the `is`-chain manufactures no `switch`, a `break` in a guarded
+arm body inside a loop targets the enclosing loop, as it does in Python.
 
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*

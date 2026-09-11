@@ -1,0 +1,21 @@
+# `a ?? b` evaluates b only when a is absent, so b's hoisted statements belong inside that branch.
+def take(xs: list[int]) -> list[int]:
+    print("evaluated")
+    xs.pop(0)
+    return xs
+
+def find(n: int) -> str | None:
+    if n > 0:
+        return "hit"
+    return None
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    present: str = find(1) ?? str(len([q for q in take(xs)]))
+    print(present)
+    print("left", len(xs))
+    # Positive control: the left side IS absent, so the right operand runs exactly once.
+    ys: list[int] = [1, 2, 3]
+    absent: str = find(0) ?? str(len([q for q in take(ys)]))
+    print(absent)
+    print("left", len(ys))

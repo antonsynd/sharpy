@@ -1,0 +1,17 @@
+# The match EXPRESSION form takes the same `is`-chain: a switch-expression arm is an expression
+# position and cannot host the guard's hoisted statements, so they used to run above the whole
+# switch — once for the match, even when no pattern matched (#1739 acceptance cell 8).
+def take(xs: list[int]) -> list[int]:
+    print("guard-eval")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    label: str = match m:
+        case 0 if len([v for v in take(xs)]) > 0: "zero"
+        case 1: "one"
+        case _: "other"
+    print(label)
+    print("left", len(xs))

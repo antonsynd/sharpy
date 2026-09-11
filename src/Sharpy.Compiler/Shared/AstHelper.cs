@@ -99,24 +99,20 @@ internal static class AstHelper
     }
 
     /// <summary>
-    /// Checks whether an expression tree contains a walrus (assignment) expression.
-    /// Walks the full descendant tree via <see cref="Node.GetChildNodes"/>, stopping at
-    /// <see cref="LambdaExpression"/> boundaries (walrus in a lambda binds in lambda scope).
+    /// True when <paramref name="root"/> or any descendant satisfies <paramref name="predicate"/>.
+    /// A structural descendant walk over <see cref="Node.GetChildNodes"/> — there is no kind list
+    /// to go stale, which is how the member-call, index, keyword-argument, star-argument,
+    /// container-element and conditional hosts are all covered by one walk.
     /// </summary>
-    /// <summary>
-    /// True when <paramref name="expr"/> contains a <see cref="WalrusExpression"/> that a
-    /// <c>while</c> test must re-evaluate per iteration (#1723). This is a structural descendant
-    /// walk over <see cref="Node.GetChildNodes"/> — there is no kind list to go stale, which is
-    /// how the member-call, index, keyword-argument, star-argument, container-element and
-    /// conditional hosts are covered (fixtures <c>walrus_while_host_*</c>).
-    ///
-    /// <para>Boundaries: the walk stops at <see cref="LambdaExpression"/> — a walrus in a lambda
-    /// body binds in the lambda's scope and is the lambda lowering's business (#1725, still
-    /// hoisted out of the lambda today). It deliberately does NOT stop at comprehensions: Sharpy's
-    /// comprehension-local walrus (<c>walrus_operator.md</c>) is still re-evaluated per outer
-    /// iteration when the comprehension sits in the <c>while</c> test, so it must count; the
-    /// comprehension lowering under inline mode is the open half (#1724 — CS0103 today,
-    /// an infinite loop before the walk was structural).</para>
+    /// <param name="root">The node to search, inclusive of itself.</param>
+    /// <param name="predicate">What the caller is looking for.</param>
+    /// <param name="stopAt">
+    /// An optional boundary. A caller looking for a construct whose meaning is scoped — a walrus,
+    /// say, whose target binds the enclosing Python scope — stops at
+    /// <see cref="LambdaExpression"/>, since a lambda body is its own scope. Comprehensions are
+    /// deliberately NOT a boundary for that use: Sharpy's comprehension walrus binds the enclosing
+    /// scope (<c>walrus_operator.md</c>).
+    /// </param>
     internal static bool ContainsDescendant(Node root, Func<Node, bool> predicate, Func<Node, bool>? stopAt = null)
     {
         if (predicate(root))

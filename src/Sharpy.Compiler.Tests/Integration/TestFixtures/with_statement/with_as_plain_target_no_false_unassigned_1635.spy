@@ -1,0 +1,14 @@
+# The positive control for the fixture above: a plain `as name` target is a PURE write, so the name
+# the with itself binds must NOT be reported as read-before-assigned. Adding the whole target to the
+# CFG's expression list produced exactly that false SPY0600 (#1635), which is why the write was
+# removed; only the non-identifier target's BASE read is recorded now.
+class CM:
+    def __enter__(self) -> int:
+        return 7
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    with CM() as v:
+        print(v)

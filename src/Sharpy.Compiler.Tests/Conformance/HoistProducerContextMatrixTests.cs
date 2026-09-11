@@ -29,6 +29,13 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
 
     private sealed record Cell(string Label, string Source, string ExpectedOutput);
 
+    /// <summary>
+    /// A cell whose program must be REFUSED, by the named diagnostic code. Separate from
+    /// <see cref="Cell"/> because a refusal is not an output: asserting these as "runs and prints X"
+    /// is how a silently-wrong value or an SPY0908 gets recorded as a pass.
+    /// </summary>
+    private sealed record RefusedCell(string Label, string Source, string ExpectedCode);
+
     [Fact]
     [Trait("Category", "Conformance")]
     public void HoistProducerContextMatrix_AllCellsPass()
@@ -53,15 +60,168 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
                 failures.Add($"{cell.Label}: output mismatch — expected '{cell.ExpectedOutput}', got '{actual}'");
         }
 
-        Output.WriteLine($"Hoist cells: {cells.Count}  Failures: {failures.Count}");
+        var refused = RefusedCells().ToList();
+        Assert.Equal(refused.Count, refused.Select(c => c.Label).Distinct().Count());
+
+        foreach (var cell in refused)
+        {
+            var result = CompileAndExecute(cell.Source, executionTimeoutMs: 15_000);
+
+            if (result.Success)
+            {
+                failures.Add($"{cell.Label}: expected {cell.ExpectedCode}, but the program compiled "
+                    + $"and ran (stdout '{result.StandardOutput.Trim()}')");
+                continue;
+            }
+
+            // Assert on the CODE, not the message: a message match would pass on a renamed code and
+            // a code match survives any wording change (RawDiagnostics carries both).
+            var codes = result.RawDiagnostics.Select(d => d.Code).Where(c => c != null).ToList();
+            if (!codes.Contains(cell.ExpectedCode, StringComparer.Ordinal))
+            {
+                failures.Add($"{cell.Label}: expected {cell.ExpectedCode}, got codes "
+                    + $"[{string.Join(", ", codes)}] / {string.Join("; ", result.CompilationErrors)}");
+            }
+        }
+
+        Output.WriteLine($"Hoist cells: {cells.Count}  Refused cells: {refused.Count}  Failures: {failures.Count}");
         foreach (var na in NotApplicableCells())
             Output.WriteLine($"  N/A {na.label}: {na.reason}");
+        foreach (var kr in KnownRedCells())
+            Output.WriteLine($"  KNOWN-RED {kr.label}: {kr.reason}");
         foreach (var f in failures)
             Output.WriteLine($"  {f}");
 
         Assert.True(failures.Count == 0,
-            $"Hoist producer × context matrix (#1680, #1739): {failures.Count} of {cells.Count} cells failed.\n" +
-            string.Join("\n", failures.Select(f => "  " + f)));
+            $"Hoist producer × context matrix (#1680, #1739): {failures.Count} of "
+            + $"{cells.Count + refused.Count} cells failed.\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    /// <summary>
+    /// Every AST operand LIST whose elements are evaluated left to right, as a literal roster. This
+    /// is the ordering axis's own totality check: the fix that started it integrated
+    /// <c>GenerateExpressionsInOrder</c> into call argument generation ONLY, so the class stayed
+    /// open for binary operands, display elements and comparison-chain operands. A position added
+    /// to the language must arrive with its cell.
+    /// </summary>
+    private static readonly string[] OperandListPositions =
+    {
+        "call-arguments",
+        "binary-operands",
+        "list-elements",
+        "tuple-elements",
+        "dict-entries",
+        "set-elements",
+        "comparison-chain-operand",
+        "with-items",
+    };
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void EveryOperandListPosition_HasAnOrderingCell()
+    {
+        Assert.Equal(8, OperandListPositions.Length);
+
+        var labels = GenerateCells().Select(c => c.Label).ToList();
+        var missing = OperandListPositions
+            .Where(position => !labels.Any(l => l.Contains(position, StringComparison.Ordinal)))
+            .ToList();
+
+        Assert.True(missing.Count == 0,
+            "Operand-list positions with no ordering cell (the ordering axis is not total): "
+            + string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// Totality pin. The counts are LITERALS, not derived from the generators — a pin that recounts
+    /// the same source it guards cannot notice a cell being deleted. Raise them deliberately when a
+    /// cell is added, and never lower one without saying which cell went away and why.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void Matrix_HasThePinnedCellCounts()
+    {
+        Assert.Equal(47, GenerateCells().Count());
+        Assert.Equal(3, RefusedCells().Count());
+        Assert.Equal(2, NotApplicableCells().Count());
+    }
+
+    /// <summary>
+    /// The cells that must be REFUSED by name. Two are the definite-assignment rule reading a
+    /// walrus that a conditional construct may never have evaluated (python3 raises
+    /// UnboundLocalError on both, and both printed a silently wrong value at 311252e33); the third
+    /// is `?` inside a lambda body, which the spec documents as SPY0462 and which was SPY0908
+    /// (CS0029) before.
+    /// </summary>
+    private static IEnumerable<RefusedCell> RefusedCells()
+    {
+        yield return new RefusedCell("DA.walrus-ternary-arm-read-after",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    c: bool = False
+    w: int
+    v: int = (w := f()) if c else 0
+    print(v, w)",
+            "SPY0600");
+
+        yield return new RefusedCell("DA.walrus-comparison-chain-read-after",
+            @"def f() -> int:
+    return 3
+
+def main() -> None:
+    w: int
+    if 5 < 1 < (w := f()):
+        print(""in"")
+    print(""after"", w)",
+            "SPY0600");
+
+        yield return new RefusedCell("P10.lambda-body",
+            @"def ok() -> Result[int, str]:
+    return Ok(5)
+
+def use() -> Result[int, str]:
+    g = lambda: ok()? + 1
+    return Ok(g())
+
+def main() -> None:
+    print(use())",
+            "SPY0462");
+    }
+
+    /// <summary>
+    /// Cells that are a live defect of an adjacent class, parked with their issue rather than
+    /// asserted — asserting the current behaviour would PIN it (CLAUDE.md Rule 1), and asserting the
+    /// correct behaviour would leave a red in the suite. Each reason names its issue and the entry is
+    /// deleted in the commit that fixes it. <see cref="KnownRedCellReasons_CiteAnIssue"/> keeps the
+    /// citation honest.
+    /// </summary>
+    private static IEnumerable<(string label, string reason)> KnownRedCells()
+    {
+        yield return ("with.suppression-capable-body-assigns-bare-local",
+            "#1839 — a bare local assigned UNCONDITIONALLY in a suppression-capable with body and "
+            + "read after the with is SPY0600. The suppression edge leaves from the with-body ENTRY "
+            + "block, so a body with no raise is treated as possibly aborting before its first "
+            + "statement. Ran at 5bac4cf71 and in python3 (prints 5); an owner ruling is pending on "
+            + "whether to model the edge per raise-capable statement or adopt the C# CS0165 reading.");
+
+        yield return ("coalesce-assign.rhs-hoist",
+            "#1835 — `x ??= rhs` runs the rhs's hoists even when the target already has a value; the "
+            + "expression form `a ?? b` is sunk. Found by SinkPushingTotalityTests, which parks the "
+            + "site in its own KnownRedSites roster.");
+    }
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void KnownRedCellReasons_CiteAnIssue()
+    {
+        foreach (var (label, reason) in KnownRedCells())
+        {
+            Assert.Contains("#", reason, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(reason), $"Known-red cell '{label}' has no reason.");
+        }
     }
 
     private static IEnumerable<(string label, string reason)> NotApplicableCells()
@@ -72,8 +232,9 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
         yield return ("P9-partial-arg×while",
             "partial application in a while test would require functools import — " +
             "the ordering axis covers the argument-capture mechanic");
-        yield return ("P10-?×lambda",
-            "? inside a lambda body is refused by name (SPY0704) — Design Decision 8");
+        // P10 × lambda is NOT not-applicable: `?` in a lambda body is a refused cell, asserted by
+        // RefusedCells below. The old reason was false twice over — it was not refused at all, and
+        // SPY0704 is WalrusInProhibitedPosition, a different code.
     }
 
     private static IEnumerable<Cell> GenerateCells()
@@ -95,27 +256,48 @@ public class HoistProducerContextMatrixTests : IntegrationTestBase
     print(""done"", len(xs))",
             "iter 3\niter 2\niter 1\niter 0\ndone 0");
 
+        // `if True and …` evaluates the rhs on both the sunk and the unsunk lowering, so it cannot
+        // discriminate. `if False and …` can: with no sink the comprehension runs anyway and its
+        // side effect shows. Same for or-rhs below (`if True or …`) and the ternary (untaken arm).
         yield return new Cell("P1.and-rhs",
-            @"def main() -> None:
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
     xs: list[int] = [1, 2, 3]
-    if True and len([v for v in xs]) > 0:
-        print(""yes"", len(xs))",
-            "yes 3");
+    if False and len([v for v in take(xs)]) > 0:
+        print(""yes"")
+    print(""left"", len(xs))",
+            "left 3");
 
         yield return new Cell("P1.or-rhs",
-            @"def main() -> None:
-    xs: list[int] = [1, 2]
-    if False or len([v for v in xs]) > 0:
-        print(""taken"", len(xs))",
-            "taken 2");
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    if True or len([v for v in take(xs)]) > 0:
+        print(""taken"")
+    print(""left"", len(xs))",
+            "taken\nleft 3");
 
         yield return new Cell("P1.ternary",
-            @"def main() -> None:
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
     xs: list[int] = [1, 2, 3]
     empty: list[int] = []
-    r = [v for v in xs] if True else empty
-    print(len(r))",
-            "3");
+    r = [v for v in take(xs)] if False else empty
+    print(len(r))
+    print(""left"", len(xs))",
+            "0\nleft 3");
 
         yield return new Cell("P1.lambda-body",
             @"def main() -> None:
@@ -251,9 +433,10 @@ def main() -> None:
     return [1, 2]
 
 def main() -> None:
-    if True and len([0, *make()]) > 0:
-        print(""yes"")",
-            "spread\nyes");
+    if False and len([0, *make()]) > 0:
+        print(""yes"")
+    print(""done"")",
+            "done");
 
         yield return new Cell("P3.lambda-body",
             @"def main() -> None:
@@ -286,9 +469,10 @@ def main() -> None:
     return (1, 2)
 
 def main() -> None:
-    if True and len((0, *make())) > 0:
-        print(""yes"")",
-            "spread\nyes");
+    if False and len((0, *make())) > 0:
+        print(""yes"")
+    print(""done"")",
+            "done");
 
         // ══════════════════════════════════════════════════════════════════════════
         // P10: ? operator — early return lowering
@@ -353,7 +537,7 @@ def main() -> None:
         // Ordering axis: argument-after-side-effect
         // ══════════════════════════════════════════════════════════════════════════
 
-        yield return new Cell("ordering.args-after-side-effect",
+        yield return new Cell("ordering.call-arguments-after-side-effect",
             @"def f(a: int, b: list[int]) -> None:
     print(a, b)
 
@@ -362,23 +546,210 @@ def main() -> None:
     f(xs.pop(0), [v for v in xs])",
             "1 [2, 3]");
 
+        // The comprehension must iterate an iterable the EARLIER operand mutates, or hoisting it
+        // above that operand changes nothing and the cell is vacuous. python3: 1 + 2 == 3.
         yield return new Cell("ordering.binary-operands",
-            @"def side() -> int:
-    print(""left"")
-    return 1
+            @"def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    r: int = xs.pop(0) + len([x for x in xs])
+    print(r)
+    print(""left"", len(xs))",
+            "3\nleft 2");
 
-def main() -> None:
-    r = side() + len([x for x in range(3)])
-    print(r)",
-            "left\n4");
-
+        // A REAL list display: the label named a context the old source never constructed (it was
+        // two separate statements, each already at its own boundary). python3: [1, 2].
         yield return new Cell("ordering.list-elements",
             @"def main() -> None:
     xs: list[int] = [1, 2, 3]
-    a: int = xs.pop(0)
-    b = [v for v in xs]
-    print(a, b)",
-            "1 [2, 3]");
+    t: list[int] = [xs.pop(0), len([v for v in xs])]
+    print(t)
+    print(""left"", len(xs))",
+            "[1, 2]\nleft 2");
+
+        yield return new Cell("ordering.tuple-elements",
+            @"def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    t: tuple[int, int] = (xs.pop(0), len([v for v in xs]))
+    print(t[0], t[1])",
+            "1 2");
+
+        yield return new Cell("ordering.dict-entries",
+            @"def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    d: dict[int, int] = {xs.pop(0): len([v for v in xs])}
+    print(d)",
+            "{1: 2}");
+
+        yield return new Cell("ordering.set-elements",
+            @"def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    s: set[int] = {xs.pop(0), len([v for v in xs])}
+    print(sorted(s))",
+            "[1, 2]");
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // The six contexts P3 left unsunk, plus the `??` sibling this harness found
+        // ══════════════════════════════════════════════════════════════════════════
+
+        yield return new Cell("P1.comparison-chain-operand",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    if 5 < 1 < len([v for v in take(xs)]):
+        print(""yes"")
+    print(""left"", len(xs))",
+            "left 3");
+
+        yield return new Cell("P1.comparison-chain-operand-taken",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    if 1 < 5 < len([v for v in take(xs)]):
+        print(""yes"")
+    print(""left"", len(xs))",
+            "evaluated\nleft 2");
+
+        yield return new Cell("P1.match-statement-guard",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""guard-eval"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    match m:
+        case 0 if len([v for v in take(xs)]) > 0:
+            print(""zero"")
+        case _:
+            print(""other"")
+    print(""left"", len(xs))",
+            "other\nleft 3");
+
+        yield return new Cell("P1.match-expression-guard",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""guard-eval"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    label: str = match m:
+        case 0 if len([v for v in take(xs)]) > 0: ""zero""
+        case _: ""other""
+    print(label)
+    print(""left"", len(xs))",
+            "other\nleft 3");
+
+        yield return new Cell("P1.match-expression-arm-result",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""result-eval"")
+    xs.pop(0)
+    return xs
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    m: int = 1
+    got: list[int] = match m:
+        case 0: [v for v in take(xs)]
+        case _: [10]
+    print(got)
+    print(""left"", len(xs))",
+            "[10]\nleft 3");
+
+        yield return new Cell("P1.with-items-context-order",
+            @"class Appender:
+    label: str
+    src: list[int]
+
+    def __init__(self, label: str, src: list[int]) -> None:
+        self.label = label
+        self.src = src
+
+    def __enter__(self) -> str:
+        print(""enter"", self.label)
+        self.src.append(9)
+        return self.label
+
+    def __exit__(self) -> None:
+        pass
+
+class Counter:
+    seen: list[int]
+
+    def __init__(self, seen: list[int]) -> None:
+        self.seen = seen
+
+    def __enter__(self) -> int:
+        return len(self.seen)
+
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    src: list[int] = []
+    with Appender(""a"", src) as first, Counter([v for v in src]) as count:
+        print(""body"", count)",
+            "enter a\nbody 1");
+
+        yield return new Cell("P1.coalesce-rhs",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def find(n: int) -> str | None:
+    if n > 0:
+        return ""hit""
+    return None
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    v: str = find(1) ?? str(len([q for q in take(xs)]))
+    print(v)
+    print(""left"", len(xs))",
+            "hit\nleft 3");
+
+        yield return new Cell("P1.coalesce-rhs-taken",
+            @"def take(xs: list[int]) -> list[int]:
+    print(""evaluated"")
+    xs.pop(0)
+    return xs
+
+def find(n: int) -> str | None:
+    if n > 0:
+        return ""hit""
+    return None
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    v: str = find(0) ?? str(len([q for q in take(xs)]))
+    print(v)
+    print(""left"", len(xs))",
+            "evaluated\n2\nleft 2");
+
+        yield return new Cell("P2.match-statement-guard-walrus",
+            @"def f() -> int:
+    print(""f"")
+    return 3
+
+def main() -> None:
+    m: int = 1
+    match m:
+        case 1 if (w := f()) > 0:
+            print(""one"", w)
+        case _:
+            print(""other"")",
+            "f\none 3");
 
         // ══════════════════════════════════════════════════════════════════════════
         // Walrus DA cells — positive controls for the when-true/when-false rule

@@ -112,7 +112,7 @@ public class BlockExpressionTotalityTests
     }
 
     [Fact]
-    public void MatchStatement_Guard_AppearsInBlockExpressions()
+    public void MatchStatement_Guard_AppearsInBlockEntryExpressions()
     {
         var scrutinee = Id("value");
         var guard = Bool(true);
@@ -131,9 +131,15 @@ public class BlockExpressionTotalityTests
 
         var cfg = _builder.Build(func);
 
-        var allExpressions = cfg.Blocks.SelectMany(b => b.Expressions).ToList();
-        Assert.Contains(scrutinee, allExpressions);
-        Assert.Contains(guard, allExpressions);
+        // The two positions are distinct and the distinction is load-bearing: the subject is
+        // evaluated AFTER its block's statements (like an `if` condition), the guard BEFORE the
+        // arm body's statements. Definite assignment credits a guard walrus to the body that reads
+        // it only because the guard sits in EntryExpressions (#1739 a07).
+        var conditionExpressions = cfg.Blocks.SelectMany(b => b.Expressions).ToList();
+        var entryExpressions = cfg.Blocks.SelectMany(b => b.EntryExpressions).ToList();
+        Assert.Contains(scrutinee, conditionExpressions);
+        Assert.Contains(guard, entryExpressions);
+        Assert.DoesNotContain(guard, conditionExpressions);
     }
 
     private static FunctionDef CreateFunction(string name, ImmutableArray<Statement> body)

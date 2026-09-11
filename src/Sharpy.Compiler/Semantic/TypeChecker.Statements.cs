@@ -113,7 +113,7 @@ internal partial class TypeChecker
             // Value must be a tuple type
             if (tupleValueType is not TupleType tupleType2)
             {
-                AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
+                AddError(UnpackNonTupleMessage(tupleValueType.GetDisplayName(), UnpackingPosition.Assignment),
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                     span: assignment.Span);
                 return;
@@ -122,7 +122,7 @@ internal partial class TypeChecker
             // Check element count matches
             if (targetTuple.Elements.Length != tupleType2.ElementTypes.Count)
             {
-                AddError($"Cannot unpack {tupleType2.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
+                AddError(UnpackArityMessage(tupleType2.ElementTypes.Count, targetTuple.Elements.Length, UnpackingPosition.Assignment),
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                     span: assignment.Span);
                 return;
@@ -1388,11 +1388,12 @@ internal partial class TypeChecker
                 if (hasStar)
                 {
                     BindStarredUnpackingTargets(targetTuple, tupleType,
-                        forStmt.LineStart, forStmt.ColumnStart, forStmt.Target.Span);
+                        forStmt.LineStart, forStmt.ColumnStart, forStmt.Target.Span,
+                        UnpackingPosition.ForLoop);
                 }
                 else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
                 {
-                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
+                    AddError(UnpackArityMessage(tupleType.ElementTypes.Count, targetTuple.Elements.Length, UnpackingPosition.ForLoop),
                         forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: forStmt.Target.Span);
                 }
@@ -1409,7 +1410,7 @@ internal partial class TypeChecker
             }
             else
             {
-                AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}'",
+                AddError(UnpackNonTupleMessage(elementType.GetDisplayName(), UnpackingPosition.ForLoop),
                     forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                     span: forStmt.Target.Span);
             }
@@ -2082,11 +2083,12 @@ internal partial class TypeChecker
                     if (hasStar)
                     {
                         BindStarredUnpackingTargets(withTuple, asTupleType,
-                            withTuple.LineStart, withTuple.ColumnStart, withTuple.Span);
+                            withTuple.LineStart, withTuple.ColumnStart, withTuple.Span,
+                            UnpackingPosition.WithStatement);
                     }
                     else if (withTuple.Elements.Length != asTupleType.ElementTypes.Count)
                     {
-                        AddError($"Cannot unpack {asTupleType.ElementTypes.Count} values into {withTuple.Elements.Length} variables",
+                        AddError(UnpackArityMessage(asTupleType.ElementTypes.Count, withTuple.Elements.Length, UnpackingPosition.WithStatement),
                             withTuple.LineStart, withTuple.ColumnStart,
                             code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
                     }
@@ -2106,7 +2108,7 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    AddError($"Cannot unpack non-tuple type '{asVarType.GetDisplayName()}'",
+                    AddError(UnpackNonTupleMessage(asVarType.GetDisplayName(), UnpackingPosition.WithStatement),
                         withTuple.LineStart, withTuple.ColumnStart,
                         code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
                 }
@@ -2485,7 +2487,7 @@ internal partial class TypeChecker
             {
                 if (elemType is not TupleType nestedTupleType)
                 {
-                    AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}' into nested tuple in for loop",
+                    AddError(UnpackNonTupleMessage(elemType.GetDisplayName(), UnpackingPosition.ForLoop, nested: true),
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: targetElem.Span);
                     continue;
@@ -2493,7 +2495,7 @@ internal partial class TypeChecker
 
                 if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
                 {
-                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables in for loop",
+                    AddError(UnpackArityMessage(nestedTupleType.ElementTypes.Count, nestedTuple.Elements.Length, UnpackingPosition.ForLoop, nested: true),
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: targetElem.Span);
                     continue;
@@ -2510,7 +2512,8 @@ internal partial class TypeChecker
 
     private void BindStarredUnpackingTargets(
         TupleLiteral targetTuple, TupleType sourceType,
-        int errLine, int errCol, Text.TextSpan? errSpan)
+        int errLine, int errCol, Text.TextSpan? errSpan,
+        UnpackingPosition position)
     {
         int starIndex = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
         int targetsBefore = starIndex;
@@ -2519,7 +2522,7 @@ internal partial class TypeChecker
 
         if (sourceArity < targetsBefore + targetsAfter)
         {
-            AddError($"Cannot unpack {sourceArity} values into {targetTuple.Elements.Length} variables",
+            AddError(UnpackArityMessage(sourceArity, targetTuple.Elements.Length, position),
                 errLine, errCol, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                 span: errSpan);
             return;

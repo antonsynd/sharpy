@@ -68,14 +68,52 @@ internal partial class RoslynEmitter : ICodeEmitter
         => _generationRecorder = recorder;
 
     /// <summary>
-    /// A sink captures hoisted declarations and evaluation statements. The emitter
-    /// maintains a stack of sinks; producers push to the innermost sink via
-    /// <see cref="HoistDeclaration"/> and <see cref="HoistEvaluation"/>. Statement
-    /// boundaries and manufactured sinks (while, elif, and/or, ternary, …) push and
-    /// pop via <see cref="WithSink"/>.
+    /// Which of the two hoist channels a sink terminates. A hoist producer emits into one of two
+    /// channels and they route differently (plan-0667c5 Design Decision 6):
+    /// <list type="bullet">
+    /// <item><description><b>Evaluation</b> — a statement that must run exactly where the
+    /// construct owning the evaluation runs it. It lands in the innermost sink of either kind, so
+    /// a manufactured conditional/repeated sink captures it.</description></item>
+    /// <item><description><b>Declaration</b> — a bare <c>T x = default!;</c> naming a variable
+    /// whose lifetime is the enclosing <i>Python scope</i>, not the enclosing evaluation. It skips
+    /// every manufactured evaluation sink and lands in the innermost
+    /// <see cref="HoistSinkKind.Scope"/> sink. Routing it to the innermost sink of either kind
+    /// puts it inside a manufactured <c>while(true)</c> or <c>if</c> block, and every read after
+    /// the construct is then CS0103 (#1724).</description></item>
+    /// </list>
+    /// </summary>
+    private enum HoistSinkKind
+    {
+        /// <summary>
+        /// A statement position whose enclosing C# block is the Python scope: a statement boundary
+        /// (<see cref="GenerateStatement"/>), a lambda body block, a comprehension loop body.
+        /// Declarations terminate here.
+        /// </summary>
+        Scope,
+
+        /// <summary>
+        /// A manufactured sink for a construct that owns a conditional, repeated or deferred
+        /// evaluation (and/or rhs, ternary arm, <c>while</c>/<c>elif</c> test, comparison-chain
+        /// operand, match guard and arm result, assert message, ordering capture). Declarations
+        /// pass through to the enclosing scope sink.
+        /// </summary>
+        Evaluation
+    }
+
+    /// <summary>
+    /// A sink captures hoisted declarations and evaluation statements. The emitter maintains a
+    /// stack of sinks; producers push via <see cref="HoistDeclaration"/> and
+    /// <see cref="HoistEvaluation"/>, which select their target by channel (see
+    /// <see cref="HoistSinkKind"/>). Statement boundaries and scope-introducing lowerings push via
+    /// <see cref="WithScopeSink"/>; every construct that owns a conditional, repeated or deferred
+    /// evaluation pushes via <see cref="WithEvaluationSink"/>.
     /// </summary>
     private sealed class HoistSink
     {
+        public HoistSink(HoistSinkKind kind) => Kind = kind;
+
+        public HoistSinkKind Kind { get; }
+
         public readonly List<StatementSyntax> Declarations = new();
         public readonly List<StatementSyntax> Evaluations = new();
 
@@ -94,49 +132,127 @@ internal partial class RoslynEmitter : ICodeEmitter
 
     private readonly Stack<HoistSink> _sinks = new();
 
+    /// <summary>
+    /// Routes a scope-lifetime declaration to the innermost <see cref="HoistSinkKind.Scope"/>
+    /// sink, skipping every manufactured evaluation sink in between. See
+    /// <see cref="HoistSinkKind"/>.
+    /// </summary>
     private void HoistDeclaration(StatementSyntax stmt)
-        => _sinks.Peek().Declarations.Add(stmt);
+    {
+        // Stack<T> enumerates top-of-stack first.
+        foreach (var sink in _sinks)
+        {
+            if (sink.Kind == HoistSinkKind.Scope)
+            {
+                sink.Declarations.Add(stmt);
+                return;
+            }
+        }
 
+        throw new InvalidOperationException(
+            "Hoist stack has no scope sink: the emitter's root sink must be a scope sink.");
+    }
+
+    /// <summary>
+    /// Routes an evaluation statement to the innermost sink of either kind — the construct that
+    /// owns this evaluation. See <see cref="HoistSinkKind"/>.
+    /// </summary>
     private void HoistEvaluation(StatementSyntax stmt)
         => _sinks.Peek().Evaluations.Add(stmt);
 
-    private (List<StatementSyntax> Declarations, List<StatementSyntax> Evaluations)
-        WithSink(System.Action generate)
+    /// <summary>
+    /// Runs <paramref name="generate"/> under a manufactured evaluation sink and returns the
+    /// evaluation statements it produced, for the caller to place where the construct evaluates
+    /// them. Scope-lifetime declarations bypass this sink (see <see cref="HoistSinkKind"/>), so
+    /// the caller has nothing to re-hoist.
+    /// </summary>
+    private List<StatementSyntax> WithEvaluationSink(System.Action generate)
     {
-        var sink = new HoistSink();
+        var sink = new HoistSink(HoistSinkKind.Evaluation);
         _sinks.Push(sink);
-        generate();
-        _sinks.Pop();
-        return (sink.Declarations, sink.Evaluations);
+        try
+        {
+            generate();
+        }
+        finally
+        {
+            _sinks.Pop();
+        }
+
+        if (sink.Declarations.Count != 0)
+        {
+            throw new InvalidOperationException(
+                "An evaluation sink captured a scope-lifetime declaration; HoistDeclaration must "
+                + "route past evaluation sinks.");
+        }
+
+        return sink.Evaluations;
     }
 
-    private ExpressionSyntax[] GenerateExpressionsInOrder(System.Collections.Generic.IReadOnlyList<Expression> operands)
+    /// <summary>
+    /// Runs <paramref name="generate"/> under a scope sink and returns everything it hoisted,
+    /// declarations first. Used where the generated statements land in a block that is itself the
+    /// Python scope for anything declared inside it (a lambda body, a comprehension loop body).
+    /// </summary>
+    private List<StatementSyntax> WithScopeSink(System.Action generate)
     {
+        var sink = new HoistSink(HoistSinkKind.Scope);
+        _sinks.Push(sink);
+        try
+        {
+            generate();
+        }
+        finally
+        {
+            _sinks.Pop();
+        }
+
+        return sink.Drain();
+    }
+
+    /// <summary>
+    /// Generates a left-to-right operand list so that each operand's side effects happen in source
+    /// order. A hoist producer in operand k (comprehension, spread, walrus value, <c>?</c>) flushes
+    /// statements before the expression the operands sit in, which would move operand k's effects
+    /// ahead of operands 0..k-1; an effectful earlier operand is therefore captured into a temp
+    /// first. Every evaluation-owning operand list routes through here: call arguments, binary
+    /// operands, and list/tuple/set/dict display elements.
+    /// </summary>
+    /// <param name="operands">The operands, in source order.</param>
+    /// <param name="generate">
+    /// Per-operand generator; defaults to <see cref="GenerateExpression(Expression)"/>. A caller
+    /// that post-processes each operand (e.g. a tuple element's Optional store wrap) passes its own
+    /// so the wrap happens inside the operand's own sink.
+    /// </param>
+    private ExpressionSyntax[] GenerateExpressionsInOrder(
+        System.Collections.Generic.IReadOnlyList<Expression> operands,
+        Func<Expression, ExpressionSyntax>? generate = null)
+    {
+        generate ??= GenerateExpression;
+
         if (operands.Count <= 1)
         {
             var single = new ExpressionSyntax[operands.Count];
             for (int i = 0; i < operands.Count; i++)
-                single[i] = GenerateExpression(operands[i]);
+                single[i] = generate(operands[i]);
             return single;
         }
 
         var results = new ExpressionSyntax[operands.Count];
-        var capturedDecls = new List<StatementSyntax>[operands.Count];
         var capturedEvals = new List<StatementSyntax>[operands.Count];
 
         for (int i = 0; i < operands.Count; i++)
         {
             ExpressionSyntax expr = null!;
-            var (decls, evals) = WithSink(() => expr = GenerateExpression(operands[i]));
+            int captured = i;
+            capturedEvals[i] = WithEvaluationSink(() => expr = generate(operands[captured]));
             results[i] = expr;
-            capturedDecls[i] = decls;
-            capturedEvals[i] = evals;
         }
 
         var needsCapture = new bool[operands.Count];
         for (int k = 1; k < operands.Count; k++)
         {
-            if (capturedDecls[k].Count == 0 && capturedEvals[k].Count == 0)
+            if (capturedEvals[k].Count == 0)
                 continue;
             for (int j = 0; j < k; j++)
             {
@@ -147,8 +263,6 @@ internal partial class RoslynEmitter : ICodeEmitter
 
         for (int i = 0; i < operands.Count; i++)
         {
-            foreach (var decl in capturedDecls[i])
-                HoistDeclaration(decl);
             foreach (var eval in capturedEvals[i])
                 HoistEvaluation(eval);
 
@@ -476,7 +590,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         _nameResolutionService = new NameResolutionService(context.Logger);
         _cancellationToken = cancellationToken;
         _dunderRegistry = BuildDunderRegistry();
-        _sinks.Push(new HoistSink());
+        _sinks.Push(new HoistSink(HoistSinkKind.Scope));
     }
 
     /// <summary>

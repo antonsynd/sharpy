@@ -1546,7 +1546,7 @@ internal partial class TypeChecker
 
                 if (nestedType is not TupleType nestedTupleType)
                 {
-                    AddError($"Cannot unpack non-tuple type '{nestedType.GetDisplayName()}' into nested tuple",
+                    AddError(UnpackNonTupleMessage(nestedType.GetDisplayName(), UnpackingPosition.Assignment, nested: true),
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: targetElem.Span);
                     continue;
@@ -1554,7 +1554,7 @@ internal partial class TypeChecker
 
                 if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
                 {
-                    AddError($"Cannot unpack {nestedTupleType.ElementTypes.Count} values into {nestedTuple.Elements.Length} variables",
+                    AddError(UnpackArityMessage(nestedTupleType.ElementTypes.Count, nestedTuple.Elements.Length, UnpackingPosition.Assignment, nested: true),
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: targetElem.Span);
                     continue;

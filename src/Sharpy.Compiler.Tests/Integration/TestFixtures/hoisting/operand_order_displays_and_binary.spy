@@ -1,0 +1,19 @@
+# Left-to-right operand order outside call argument lists. A hoist producer in a later operand
+# flushes statements before the expression, so an effectful earlier operand must be captured first.
+# Each line's expected value is python3's.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    t: list[int] = [xs.pop(0), len([v for v in xs])]
+    print(t)
+    ys: list[int] = [1, 2, 3]
+    n: int = ys.pop(0) + len([v for v in ys])
+    print(n)
+    zs: list[int] = [1, 2, 3]
+    pair: tuple[int, int] = (zs.pop(0), len([v for v in zs]))
+    print(pair[0], pair[1])
+    ws: list[int] = [1, 2, 3]
+    d: dict[int, int] = {ws.pop(0): len([v for v in ws])}
+    print(d)
+    vs: list[int] = [1, 2, 3]
+    s: set[int] = {vs.pop(0), len([v for v in vs])}
+    print(sorted(s))

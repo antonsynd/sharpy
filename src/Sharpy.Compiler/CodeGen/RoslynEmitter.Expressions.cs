@@ -836,7 +836,7 @@ internal partial class RoslynEmitter
     /// // expression value → __qm_N.Unwrap()
     /// </code>
     ///
-    /// The temp declaration and if-check are hoisted via <see cref="_hoistedStatements"/>
+    /// The temp declaration and if-check are hoisted via <see cref="HoistEvaluation"/>
     /// so they appear before the containing statement (same mechanism as walrus operator).
     /// </summary>
     private ExpressionSyntax GenerateQuestionMarkExpression(QuestionMarkExpression qm)

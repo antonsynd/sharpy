@@ -1,0 +1,15 @@
+# A DECLARING walrus in a `while` test: its pre-declaration is scope-lifetime, so the
+# `while … else` and the statements after the loop can read it. Routing the declaration to the
+# innermost EVALUATION sink put it inside the manufactured `while(true)` block — CS0103 behind
+# SPY0908 (#1724).
+def probe(xs: list[int]) -> int:
+    print("probe", len(xs))
+    return len(xs)
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    while (n := probe(xs)) > 1:
+        xs.pop(0)
+    else:
+        print("else", n)
+    print("after", n)

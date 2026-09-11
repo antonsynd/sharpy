@@ -222,6 +222,14 @@ internal partial class TypeChecker
     // Track whether we're inside a finally block (for ? operator validation)
     private bool _inFinally = false;
 
+    // Track whether we're inside a LAMBDA BODY (for ? operator validation). A lambda has no
+    // declared Result/Optional return type for `?`'s early return to target, and the C# lambda the
+    // emitter builds cannot return the enclosing function's Result — so `?` there is refused by
+    // name (SPY0462) instead of becoming CS0029 behind SPY0908 (#1739 b5_20,
+    // docs/language_specification/question_mark_operator.md). Scoped to the BODY: a lambda
+    // parameter default is evaluated in the enclosing function, where `?` is legal.
+    private bool _inLambdaBody = false;
+
     // Track whether we're inside an except* block (PEP 654 — restricts break/continue/return)
     private bool _inExceptStarBlock = false;
 

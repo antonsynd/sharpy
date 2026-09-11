@@ -234,6 +234,16 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.CollectBindingKeysInto"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectAssignedNames"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
+        // ComputeWalrusWhenTrueFalse: one arm per construct that evaluates a sub-expression
+        // conditionally (and/or/not, ternary, comparison chain, `??`, comprehension, lambda, walrus)
+        // plus a default arm that unions every child. The default arm is the SAFE direction for an
+        // unlisted kind — it credits the walrus, which is what the pre-existing behaviour did — so
+        // partiality cannot refuse a legal program; the behaviour of the cells that MUST be
+        // conditional is pinned by the DA rows of HoistProducerContextMatrixTests.
+        ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.ComputeWalrusWhenTrueFalse"] = "documented-by-design:Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs:ComputeWalrusWhenTrueFalse",
+        // AddWithTargetBaseReads: an assignment-target-shape dispatch, the same universe the other
+        // target walkers range over.
+        ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.AddWithTargetBaseReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTupleTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTupleTypeExpression",
         // ValueIsDefinitelyNotNone — the RemoveNone-survival predicate of Kill (plan-757fbb Decision 4): a
         // shape it does not list answers "possibly None" and kills, so partiality is the safe direction.

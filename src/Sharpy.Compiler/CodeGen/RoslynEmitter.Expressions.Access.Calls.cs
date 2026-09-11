@@ -69,10 +69,7 @@ internal partial class RoslynEmitter
         List<StatementSyntax> capturedHoists;
         using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
         {
-            var (decls, evals) = WithSink(() => { body = GenerateExpression(lambda.Body); });
-            capturedHoists = new List<StatementSyntax>(decls.Count + evals.Count);
-            capturedHoists.AddRange(decls);
-            capturedHoists.AddRange(evals);
+            capturedHoists = WithScopeSink(() => { body = GenerateExpression(lambda.Body); });
         }
 
         if (capturedHoists.Count > 0)
@@ -134,10 +131,7 @@ internal partial class RoslynEmitter
         List<StatementSyntax> capturedHoists;
         using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
         {
-            var (decls, evals) = WithSink(() => { body = GenerateExpression(lambda.Body); });
-            capturedHoists = new List<StatementSyntax>(decls.Count + evals.Count);
-            capturedHoists.AddRange(decls);
-            capturedHoists.AddRange(evals);
+            capturedHoists = WithScopeSink(() => { body = GenerateExpression(lambda.Body); });
         }
 
         if (capturedHoists.Count > 0)

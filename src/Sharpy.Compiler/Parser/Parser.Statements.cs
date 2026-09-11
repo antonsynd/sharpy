@@ -255,9 +255,89 @@ public partial class Parser
     /// binding name never reach semantic analysis (#1170). The <c>except … as</c> site passes
     /// false: <c>except E as (e)</c> is a Python SyntaxError and must stay refused.
     /// </param>
+    /// <summary>
+    /// True when the parenthesized group starting at the current <c>(</c> contains a <c>*</c> at its
+    /// own nesting depth — <c>(a, *rest)</c>, not <c>(a, (b * c))</c>. A parenthesized STORE target
+    /// otherwise falls to <see cref="ParsePrimary"/>, which parses the group as a value expression
+    /// and turns <c>*rest</c> into a <c>SpreadElement</c> (the <c>(*a, *b)</c> tuple-spread form).
+    /// The unpacking rule and the emitter's store path both key on <see cref="StarExpression"/>, so
+    /// the starred target silently became an ordinary element: <c>(a, *rest) = t</c> was SPY0225 and
+    /// <c>with CM() as (a, *rest)</c> was SPY0239, while the unparenthesized spellings
+    /// <c>a, *rest = t</c> and <c>for a, *rest in …</c> worked (#1692).
+    /// </summary>
+    private bool ParenthesizedStoreTargetHasStar()
+    {
+        int depth = 0;
+        for (int offset = 0; _position + offset < _tokens.Count; offset++)
+        {
+            var type = _tokens[_position + offset].Type;
+            switch (type)
+            {
+                case TokenType.LeftParen:
+                case TokenType.LeftBracket:
+                case TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen:
+                case TokenType.RightBracket:
+                case TokenType.RightBrace:
+                    depth--;
+                    if (depth == 0)
+                        return false;
+                    break;
+                case TokenType.Star:
+                    if (depth == 1)
+                        return true;
+                    break;
+                case TokenType.Newline:
+                case TokenType.Eof:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Parses <c>( target, *rest, … )</c> in a store position, using the same element parser the
+    /// unparenthesized for-target list uses, so a parenthesized starred target reaches the ONE
+    /// unpacking arity rule. Only entered when <see cref="ParenthesizedStoreTargetHasStar"/> says
+    /// the group has a top-level <c>*</c>, so every parenthesized target that already parsed
+    /// correctly keeps its existing path.
+    /// </summary>
+    private Expression ParseParenthesizedStarredStoreTarget()
+    {
+        var startToken = Current;
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        Expect(TokenType.LeftParen);
+
+        var elements = new List<Expression> { ParseForTargetElement() };
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            if (Current.Type == TokenType.RightParen)
+                break;  // trailing comma
+            elements.Add(ParseForTargetElement());
+        }
+
+        Expect(TokenType.RightParen);
+
+        return new TupleLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Length,
+            Span = GetSpanFromTokens(startToken, Previous)
+        };
+    }
+
     private Expression ParseStoreTarget(bool canonicalize = true)
     {
-        var expr = ParsePrimary();
+        var expr = Current.Type == TokenType.LeftParen && ParenthesizedStoreTargetHasStar()
+            ? ParseParenthesizedStarredStoreTarget()
+            : ParsePrimary();
         while (true)
         {
             if (!CheckLoopProgress())
