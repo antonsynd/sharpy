@@ -47,8 +47,11 @@ internal class StructRulesValidator : ValidatingAstWalker
             if (stmt is not VariableDeclaration varDecl)
                 continue;
 
-            // Skip static fields
-            if (varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            // Class-level storage (a `const`, a `@static` field) is not an instance field, so it
+            // is neither ordered nor defaulted-ness-checked. A `const` always carries an
+            // initializer, so counting it as "a field with a default" made every instance field
+            // declared after it SPY0435 (#1794).
+            if (!MemberClassification.IsInstanceField(varDecl))
                 continue;
 
             bool hasDefault = varDecl.InitialValue != null;
@@ -97,19 +100,29 @@ internal class StructRulesValidator : ValidatingAstWalker
         var cfg = Context.ControlFlowGraphs.GetOrBuild(constructorDef);
         var definitelyAssigned = DefiniteFieldAssignmentAnalysis.FindDefinitelyAssignedFields(cfg);
 
-        // Collect the names of fields that have default values in their declaration
+        // Collect the names of fields that have default values in their declaration, and the
+        // class-level storage an explicit __init__ never assigns (`const`, `@static`).
         var fieldsWithDefaults = new HashSet<string>();
+        var nonInstanceFields = new HashSet<string>();
         foreach (var stmt in structDef.Body)
         {
-            if (stmt is VariableDeclaration varDecl && varDecl.InitialValue != null)
+            if (stmt is not VariableDeclaration varDecl)
+                continue;
+            if (!MemberClassification.IsInstanceField(varDecl))
             {
-                fieldsWithDefaults.Add(varDecl.Name);
+                nonInstanceFields.Add(varDecl.Name);
+                continue;
             }
+            if (varDecl.InitialValue != null)
+                fieldsWithDefaults.Add(varDecl.Name);
         }
 
-        // Fields with defaults are exempt from the "must initialize" check
+        // Fields with defaults are exempt from the "must initialize" check; so is class-level
+        // storage, which the constructor has nothing to assign (#1794).
         var uninitializedFields = structSymbol.Fields
-            .Where(f => !definitelyAssigned.Contains(f.Name) && !fieldsWithDefaults.Contains(f.Name))
+            .Where(f => !definitelyAssigned.Contains(f.Name)
+                && !fieldsWithDefaults.Contains(f.Name)
+                && !nonInstanceFields.Contains(f.Name))
             .ToList();
 
         if (uninitializedFields.Count > 0)

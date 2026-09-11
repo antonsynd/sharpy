@@ -96,8 +96,10 @@ internal static class DataclassSynthesis
 
         foreach (var fieldDecl in classDef.Body.OfType<VariableDeclaration>())
         {
-            // Static fields are not instance fields, so they are not dataclass fields.
-            if (fieldDecl.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            // Class-level storage (`const`, `@static`) is not per-instance state, so it is not a
+            // dataclass field: not a constructor parameter, not part of `__eq__`/`__repr__`, and
+            // not subject to the defaulted-field ordering rule (#1794).
+            if (!MemberClassification.IsInstanceField(fieldDecl))
                 continue;
 
             if (fieldDecl.Type == null)

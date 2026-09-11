@@ -76,6 +76,25 @@ internal static class MemberClassification
     }
 
     /// <summary>
+    /// Whether <paramref name="def"/> declares an INSTANCE field — the roster every synthesized
+    /// member of a struct or dataclass is built from.
+    ///
+    /// <para>A <c>const</c> and a <c>@static</c> field are class-level storage, not per-instance
+    /// state: neither is a constructor parameter, neither is assigned in a constructor body, and
+    /// neither participates in the "non-default field cannot follow a defaulted one" ordering rule
+    /// — a <c>const</c> always has an initializer, so reading it as a defaulted INSTANCE field made
+    /// every instance field after it SPY0435 (#1794). One predicate, because the struct validator,
+    /// the dataclass field vector and the synthesized-constructor roster were three copies of it
+    /// and only one of them knew about <c>const</c>.</para>
+    ///
+    /// <para>CodeGen must NOT call this: the emitter reads the same fact materialized on the field
+    /// symbol (<c>VariableSymbol.IsStatic</c>, <c>CodeGenInfo.IsConstant</c>), per Critical
+    /// Rule 2.</para>
+    /// </summary>
+    public static bool IsInstanceField(VariableDeclaration def)
+        => !def.IsConst && !def.Decorators.Any(d => d.Name == DecoratorNames.Static);
+
+    /// <summary>
     /// Whether a member carries the Sharpy <c>@abstract</c> DECORATOR.
     /// </summary>
     /// <remarks>

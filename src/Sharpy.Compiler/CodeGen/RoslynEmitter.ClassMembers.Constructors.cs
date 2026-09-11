@@ -228,30 +228,25 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates auto-constructor(s) for a struct that has fields but no explicit __init__.
-    /// Required fields (no default) become required parameters; fields with defaults become
-    /// optional parameters. Required parameters precede optional ones.
-    /// When all fields have defaults, also generates an explicit parameterless constructor
-    /// so that <c>new T()</c> uses the declared defaults rather than zero-initialization.
+    /// Whether <paramref name="decl"/> is an INSTANCE field of the type being emitted, and so a
+    /// member of the synthesized struct constructor's roster: a parameter, an assignment in the
+    /// parameterless body, an assignment in the parameter body, and a vote in the caller's
+    /// "does this struct need a constructor at all" gate. One predicate for all four reads.
+    ///
+    /// <para>Critical Rule 2: the answer comes ONLY from materialized facts — the field symbol's
+    /// <see cref="Semantic.VariableSymbol.IsStatic"/> and its
+    /// <see cref="Semantic.CodeGenInfo.IsConstant"/>. The emitter does not read the AST's decorator
+    /// list or its <c>IsConst</c> flag; the semantic side's own copy of this rule is
+    /// <c>MemberClassification.IsInstanceField</c>. A declaration with no field symbol is not a
+    /// field of this type, so it is not on the roster.</para>
     /// </summary>
     private bool IsSynthesizedConstructorField(VariableDeclaration decl)
     {
-        if (decl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
-            return false;
-
         var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == decl.Name);
-        if (fieldSymbol != null)
-        {
-            var codeGenInfo = GetCodeGenInfo(fieldSymbol);
-            if (codeGenInfo?.IsConstant == true)
-                return false;
-        }
-        else if (decl.IsConst)
-        {
+        if (fieldSymbol == null || fieldSymbol.IsStatic)
             return false;
-        }
 
-        return true;
+        return GetCodeGenInfo(fieldSymbol)?.IsConstant != true;
     }
 
     private List<ConstructorDeclarationSyntax> GenerateStructAutoConstructors(

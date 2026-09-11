@@ -2250,6 +2250,29 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
             }
+
+            // An interface CONSTANT is not inherited into an implementing type's static surface:
+            // C# binds `App.K` on `App` alone, so every lookup above misses and the reference used
+            // to leave the checker untyped and come back as CS0117 behind SPY0908 — a compiler-bug
+            // report for a program that simply names the wrong type (#1794). Base-CLASS statics are
+            // deliberately not covered: C# does inherit those, and `Derived.K` is a real program.
+            var declaringInterface = TypeHierarchyService
+                .GetAllInterfaces(typeSym, SemanticBinding)
+                .FirstOrDefault(i => i.Fields.Any(
+                    f => f.Name == memberAccess.Member && f.IsConstant));
+            if (declaringInterface != null)
+            {
+                AddError(
+                    $"Constant '{memberAccess.Member}' is declared on interface "
+                    + $"'{declaringInterface.Name}'. An interface constant is not inherited into an "
+                    + $"implementing type's static surface — read it through the interface: "
+                    + $"'{declaringInterface.Name}.{memberAccess.Member}'",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedMember,
+                    span: memberAccess.Span,
+                    data: SuggestionData($"{declaringInterface.Name}.{memberAccess.Member}"));
+                return SemanticType.Unknown;
+            }
         }
 
         return null;
