@@ -1,0 +1,13 @@
+# #1847: a CLR member's declared nullability is a TREE. `ProcessStartInfo.Environment` is
+# `IDictionary<string, string?>`, so its Sharpy type is `dict[str, str | None]`.
+# `dict[str, str]` and
+# `dict[str, str | None]` are both refused at a `bool` destination, and only the NAME in the
+# message says which one the member got. With the nested position dropped this said 'dict[str, str]'.
+# The STORE cell (`e: dict[str, str | None] = p.environment`) is not here: it reports SPY0908/CS1503
+# at both shas and for BOTH spellings, which is the container-materialization gap #1866, not this one.
+from system.diagnostics import ProcessStartInfo
+
+def main() -> None:
+    p = ProcessStartInfo()
+    b: bool = p.environment
+    print(b)

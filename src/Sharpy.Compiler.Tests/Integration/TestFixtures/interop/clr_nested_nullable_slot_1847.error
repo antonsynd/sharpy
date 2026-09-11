@@ -1,0 +1,2 @@
+Cannot assign type 'dict[str, str | None]' to variable of type 'bool' @8:5
+!SPY0908

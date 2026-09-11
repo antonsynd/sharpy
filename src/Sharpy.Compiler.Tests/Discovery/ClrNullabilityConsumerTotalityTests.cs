@@ -92,11 +92,13 @@ public class ClrNullabilityConsumerTotalityTests
         new Site("Semantic/Registry/BuiltinRegistry.cs",
             "CreateTypeSignatureFromClr(method.ReturnType, typeMapper),",
             Verdict.AppliesDeclaredNullability,
-            "an extension method's RETURN — migrated: WrapIfDeclaredNullable reads the MethodInfo"),
+            "an extension method's RETURN — migrated: the MethodInfo's declared nullability is "
+            + "projected onto the signature beside this call (ClrDeclaredNullability.Apply)"),
         new Site("Semantic/Registry/BuiltinRegistry.cs",
             "CreateTypeSignatureFromClr(param.ParameterType, typeMapper),",
             Verdict.AppliesDeclaredNullability,
-            "an extension method's PARAMETER — migrated: WrapIfDeclaredNullable reads the ParameterInfo"),
+            "an extension method's PARAMETER — migrated: the ParameterInfo's declared nullability is "
+            + "projected onto the signature beside this call (ClrDeclaredNullability.Apply)"),
         new Site("Semantic/Registry/BuiltinRegistry.cs",
             ".Select(t => CreateTypeSignatureFromClr(t, typeMapper))",
             Verdict.NotMemberDerived,
@@ -215,7 +217,9 @@ public class ClrNullabilityConsumerTotalityTests
         public string NonNullableRef { get; set; } = "";
         public string? NullableRef { get; set; }
         public T BareReturn() => default!;
+        public T? AnnotatedReturn() => default;
         public void BareParameter(T value) { _ = value; }
+        public void AnnotatedParameter(T? value) { _ = value; }
         public void NullableRefParameter(string? value) { _ = value; }
         public void NonNullableRefParameter(string value) { _ = value; }
     }
@@ -258,6 +262,59 @@ public class ClrNullabilityConsumerTotalityTests
             definition.GetMethod("NullableRefParameter")!.GetParameters()[0]));
         Assert.False(ClrDeclaredNullability.DeclaresNullableArgument(
             definition.GetMethod("NonNullableRefParameter")!.GetParameters()[0]));
+    }
+
+    /// <summary>
+    /// The other half of the definition arm (#1828): a type parameter DECLARED <c>T?</c> is
+    /// nullable, on every route, while its bare twin on the same type is not. The distinction comes
+    /// from the metadata byte, not from <see cref="NullabilityInfoContext"/> — the test below pins
+    /// the measurement that the context cannot make it.
+    ///
+    /// <para>The bare assertions are the positive control: an arm that answered "nullable" for
+    /// every type parameter would pass the annotated half on its own, and that is exactly the state
+    /// this arm replaced (<c>list[str].pop(0)</c> typed <c>str | None</c>).</para>
+    /// </summary>
+    [Fact]
+    public void AnnotatedTypeParameterMember_OnTheDefinition_IsDeclaredNullable()
+    {
+        var definition = typeof(BareAndAnnotated<>);
+
+        Assert.True(ClrDeclaredNullability.DeclaresNullable(definition.GetProperty("Annotated")!));
+        Assert.False(ClrDeclaredNullability.DeclaresNullable(definition.GetProperty("Bare")!));
+
+        Assert.True(ClrDeclaredNullability.DeclaresNullableReturn(definition.GetMethod("AnnotatedReturn")!));
+        Assert.False(ClrDeclaredNullability.DeclaresNullableReturn(definition.GetMethod("BareReturn")!));
+
+        Assert.True(ClrDeclaredNullability.DeclaresNullableArgument(
+            definition.GetMethod("AnnotatedParameter")!.GetParameters()[0]));
+        Assert.False(ClrDeclaredNullability.DeclaresNullableArgument(
+            definition.GetMethod("BareParameter")!.GetParameters()[0]));
+    }
+
+    /// <summary>
+    /// The BCL members the cells in <c>ClrMemberFidelityMatrixTests</c> name, read at the seam:
+    /// <c>List&lt;T&gt;.Find</c> is declared <c>T? Find(Predicate&lt;T&gt;)</c> and
+    /// <c>Enumerable.FirstOrDefault&lt;TSource&gt;</c> is declared <c>TSource?</c>. A repository-local
+    /// surface can only prove the reader works on code this repository compiles; these two prove it
+    /// works on the metadata the framework actually ships, which is what the user's program meets.
+    /// </summary>
+    [Fact]
+    public void AnnotatedTypeParameterMember_IsReadFromFrameworkMetadata()
+    {
+        var find = typeof(List<>).GetMethod("Find")!;
+        Assert.True(ClrDeclaredNullability.DeclaresNullableReturn(find));
+
+        var firstOrDefault = typeof(System.Linq.Enumerable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == "FirstOrDefault"
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 1);
+        Assert.True(ClrDeclaredNullability.DeclaresNullableReturn(firstOrDefault));
+
+        // Bare-`T` controls from the same two surfaces.
+        Assert.False(ClrDeclaredNullability.DeclaresNullableReturn(typeof(Stack<>).GetMethod("Peek")!));
+        Assert.False(ClrDeclaredNullability.DeclaresNullableArgument(
+            typeof(List<>).GetMethod("Add")!.GetParameters()[0]));
     }
 
     /// <summary>
