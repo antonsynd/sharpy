@@ -182,6 +182,8 @@ internal class SignatureValidator : SemanticValidatorBase
     {
         var methodName = funcDef.Name;
 
+        ValidateMemberTypeParametersAreEmittable(funcDef, owningType);
+
         // Check operator dunders
         if (OperatorRegistry.IsOperatorDunder(methodName))
         {
@@ -202,6 +204,48 @@ internal class SignatureValidator : SemanticValidatorBase
                 code: DiagnosticCodes.Validation.UnknownDunderMethod,
                 span: funcDef.Span);
         }
+    }
+
+    /// <summary>
+    /// Refuses a member's OWN type parameter list on a member whose C# form cannot carry one
+    /// (#1836): <c>__init__</c> lowers to a constructor and every operator dunder lowers to an
+    /// <c>operator</c>/conversion declaration, and C# §15.11/§15.10 make neither generic.
+    ///
+    /// <para>The contract is "a member's own type parameters are EMITTED on the member". Every
+    /// other member kind honours it — module function, instance method, static method,
+    /// <c>__call__</c>. These two kinds accepted the declaration and emitted the parameter list
+    /// nowhere, so <c>def __init__[V](self, v: V)</c> reached Roslyn as CS0246 ("the type or
+    /// namespace name 'V' could not be found") behind SPY0908 and <c>def __add__[V]</c> did the
+    /// same. Under the SPY0908 policy an ICE is not an acceptable answer; a refusal by name is.
+    /// The cell matrix is member kind × type-parameter source, in
+    /// <c>MemberTypeParameterEmissionMatrixTests</c>.</para>
+    ///
+    /// <para>CLASS-level type parameters are unaffected: <c>class C[T]</c> with
+    /// <c>def __init__(self, v: T)</c> and <c>def __add__(self, o: C[T])</c> are emitted on the
+    /// type and resolve normally. That is also the cure the refusal steers to.</para>
+    /// </summary>
+    private void ValidateMemberTypeParametersAreEmittable(FunctionDef funcDef, TypeSymbol owningType)
+    {
+        if (funcDef.TypeParameters.Length == 0)
+            return;
+
+        var memberKind = funcDef.Name == DunderNames.Init
+            ? "a constructor"
+            : OperatorRegistry.IsOperatorDunder(funcDef.Name)
+                ? "an operator"
+                : null;
+        if (memberKind == null)
+            return;
+
+        var names = string.Join(", ", funcDef.TypeParameters.Select(tp => tp.Name));
+        AddError(_context,
+            $"'{funcDef.Name}' on '{owningType.Name}' cannot declare its own type parameters "
+            + $"[{names}]: it is emitted as {memberKind}, and neither a C# constructor nor a C# "
+            + $"operator may be generic. Move [{names}] to the type: "
+            + $"'class {owningType.Name}[{names}]'.",
+            funcDef.LineStart, funcDef.ColumnStart,
+            code: DiagnosticCodes.ValidationOverflow.MemberTypeParametersNotEmittable,
+            span: funcDef.Span);
     }
 
     #region Operator Signature Validation
