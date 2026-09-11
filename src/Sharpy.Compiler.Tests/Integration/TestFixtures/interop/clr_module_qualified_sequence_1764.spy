@@ -1,0 +1,7 @@
+# #1764: a MODULE-QUALIFIED CLR static call is typed by the same static seam as the imported
+# spelling, and its sequence result is materialized rather than left Unknown.
+import system.io
+
+def main() -> None:
+    parts: list[str] = system.io.Path.get_directory_name("/a/b/c").split("/")
+    print(len(parts))

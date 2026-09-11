@@ -1,0 +1,7 @@
+# R-S (#1758): the four builtin case names are RESERVED — a declaration that would make the bare
+# name resolve to something else is refused, with the backtick-escape steer.
+def Some(x: int) -> int:
+    return x
+
+def main() -> None:
+    print(Some(1))

@@ -1,0 +1,6 @@
+# #1705 parameter arm: a `None` argument at a CLR parameter declared NON-nullable is refused by
+# name. Before the arm fired, this compiled and threw ArgumentNullException at runtime.
+import system.io
+
+def main() -> None:
+    system.io.Path.combine(None, "b")

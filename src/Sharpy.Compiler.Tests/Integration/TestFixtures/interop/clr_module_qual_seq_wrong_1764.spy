@@ -1,0 +1,7 @@
+# The wrong-destination twin of clr_module_qualified_sequence_1764: with the sequence left Unknown
+# this drew no diagnostic at all, which is what made the positive fixture pass vacuously.
+import system.io
+
+def main() -> None:
+    ns: list[int] = system.io.Path.get_directory_name("/a/b/c").split("/")
+    print(len(ns))

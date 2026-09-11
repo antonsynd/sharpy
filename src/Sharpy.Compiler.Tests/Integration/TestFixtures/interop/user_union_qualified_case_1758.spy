@@ -1,0 +1,19 @@
+# The positive control for both #1758 refusals: a USER union keeps the qualified `Type.Case(...)`
+# spelling. Without it, an arm that refused every `X.Case(...)` would pass them both.
+union Shape:
+    case Circle(radius: float)
+    case Square(side: float)
+
+def main() -> None:
+    c: Shape = Shape.Circle(1.5)
+    s: Shape = Shape.Square(2.0)
+    match c:
+        case Circle(r):
+            print(r)
+        case Square(x):
+            print(x)
+    match s:
+        case Circle(r):
+            print(r)
+        case Square(x):
+            print(x)

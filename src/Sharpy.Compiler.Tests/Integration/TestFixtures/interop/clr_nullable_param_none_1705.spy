@@ -1,0 +1,8 @@
+# The positive control for clr_none_nonnullable_param_1705: the same `None` argument at a parameter
+# the CLR declares NULLABLE (`StringBuilder(string? value)`) is accepted, so the refusal above is
+# about the declaration and not about `None`.
+from system.text import StringBuilder
+
+def main() -> None:
+    sb = StringBuilder(None)
+    print(sb.length)

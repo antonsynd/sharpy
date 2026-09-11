@@ -1,0 +1,7 @@
+# #1686: a BUILTIN ALIAS in receiver position (`int`, `bool`, `str`) is a static TYPE receiver,
+# not a value — the same receiver kind an imported `Math` or a module-qualified `system.io.Path` is.
+def main() -> None:
+    print(int.max_value)
+    print(int.parse("3"))
+    print(bool.parse("true"))
+    print(str.is_null_or_empty(""))
