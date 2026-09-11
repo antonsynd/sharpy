@@ -71,7 +71,7 @@ internal sealed class ClrMemberTypeResolver
 
             if (Matches(prop.Name, memberName, ReverseNameContext.Property))
             {
-                if (!TryMapFaithfully(prop.PropertyType, ClrDeclaredNullability.DeclaresNullable(prop), out var propType))
+                if (!TryMapFaithfully(prop.PropertyType, ClrDeclaredNullability.Describe(prop), out var propType))
                     return ClrMemberResolution.Inconclusive;
 
                 var clrPropertyName = prop.Name;
@@ -84,7 +84,7 @@ internal sealed class ClrMemberTypeResolver
         {
             if (Matches(field.Name, memberName, ReverseNameContext.Property))
             {
-                if (!TryMapFaithfully(field.FieldType, ClrDeclaredNullability.DeclaresNullable(field), out var fieldType))
+                if (!TryMapFaithfully(field.FieldType, ClrDeclaredNullability.Describe(field), out var fieldType))
                     return ClrMemberResolution.Inconclusive;
 
                 return new ClrMemberResolution.Field(fieldType!, field.Name);
@@ -141,11 +141,13 @@ internal sealed class ClrMemberTypeResolver
     /// <c>TypeResolver</c>. The value-position seam records the <c>ToString()</c> that realizes it,
     /// and the ARGUMENT direction (a char-origin value handed to a reflected <c>char</c> parameter)
     /// drops that conversion at the call seam that owns it (#1402).</item>
-    /// <item><b>Declared nullability.</b> The mapped type is wrapped in <see cref="NullableType"/> when the
-    /// member declares <c>T?</c> — read from the member, never from the Type (#1705).</item>
+    /// <item><b>Declared nullability.</b> The mapped type is wrapped in <see cref="NullableType"/> at
+    /// every position the member declares <c>T?</c> — the top level and each nested type argument
+    /// (<c>List&lt;object?&gt;</c> is <c>list[object | None]</c>) — read from the member, never from
+    /// the Type (#1705, #1847).</item>
     /// </list>
     /// </remarks>
-    private bool TryMapFaithfully(Type clrType, bool declaredNullable, out SemanticType? mapped)
+    private bool TryMapFaithfully(Type clrType, ClrNullabilityShape declaredNullability, out SemanticType? mapped)
     {
         mapped = null;
 
@@ -158,7 +160,7 @@ internal sealed class ClrMemberTypeResolver
 
         // The reflected Type is NRT-blind; the member's own declaration says whether null is a
         // value of it (#1705).
-        mapped = ClrDeclaredNullability.Apply(candidate, declaredNullable);
+        mapped = ClrDeclaredNullability.Apply(candidate, declaredNullability);
         return true;
     }
 
@@ -167,7 +169,7 @@ internal sealed class ClrMemberTypeResolver
         if (methods.Count == 1)
         {
             var method = methods[0];
-            if (!TryMapFaithfully(method.ReturnType, ClrDeclaredNullability.DeclaresNullableReturn(method), out var returnType))
+            if (!TryMapFaithfully(method.ReturnType, ClrDeclaredNullability.DescribeReturn(method), out var returnType))
                 return ClrMemberResolution.Inconclusive;
 
             // A char-returning method is declined so the call seam handles
@@ -195,7 +197,7 @@ internal sealed class ClrMemberTypeResolver
             var parameterTypes = new List<SemanticType>();
             foreach (var parameter in parameters)
             {
-                if (!TryMapFaithfully(parameter.ParameterType, ClrDeclaredNullability.DeclaresNullableArgument(parameter), out var mapped))
+                if (!TryMapFaithfully(parameter.ParameterType, ClrDeclaredNullability.DescribeArgument(parameter), out var mapped))
                     return ClrMemberResolution.Inconclusive;
                 parameterTypes.Add(mapped!);
             }

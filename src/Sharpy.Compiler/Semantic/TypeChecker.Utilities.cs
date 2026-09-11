@@ -1335,8 +1335,16 @@ internal partial class TypeChecker
     /// <c>list[IEnumerable[Dog]]</c> stays out of <c>list[IEnumerable[Animal]]</c> — C#'s rule that an
     /// invariant position admits an identity conversion only.</para>
     /// </summary>
-    private bool IsIdenticalTypeArgument(SemanticType sourceArg, SemanticType targetArg)
+    private bool IsIdenticalTypeArgument(SemanticType source, SemanticType target)
     {
+        // The nullable-reference ANNOTATION is erased FIRST, once, for every arm below: it is not
+        // part of a type's identity at runtime (`Sharpy.List<string?>` and `Sharpy.List<string>` are
+        // one CLR type) and the rule has a single statement so no position can answer it differently
+        // from another (#1848). The leaf arm at the bottom reached the same answer by accident, via
+        // the CLR type of `str | None` being System.String; the nested and symbol arms did not.
+        var sourceArg = SemanticType.EraseNullableReferenceAnnotations(source);
+        var targetArg = SemanticType.EraseNullableReferenceAnnotations(target);
+
         if (sourceArg.CanonicalKey == targetArg.CanonicalKey)
             return true;
 

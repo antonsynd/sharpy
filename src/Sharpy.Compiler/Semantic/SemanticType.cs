@@ -54,6 +54,37 @@ namespace Sharpy.Compiler.Semantic;
 public abstract record SemanticType : ITypeInfo
 {
     // Singleton instances for common types
+    /// <summary>
+    /// <paramref name="type"/> with every nullable-REFERENCE annotation removed — the top level and
+    /// each nested type-argument, array-element and tuple-item position.
+    ///
+    /// <para>An invariant type-argument position compares two types for IDENTITY, and a
+    /// nullable-reference annotation is not part of a type's identity at runtime:
+    /// <c>Sharpy.List&lt;string?&gt;</c> and <c>Sharpy.List&lt;string&gt;</c> are ONE CLR type and C#
+    /// reports at most a nullability warning between them (Axiom 1). Every position that asks the
+    /// identity question must ask it of the erased forms, or the same pair is identical at one
+    /// position and different at another — which is what refused
+    /// <c>(dict[str, object]) -&gt; object</c> at a <c>(dict[str, object | None]) -&gt; object</c>
+    /// delegate formal while accepting <c>list[str | None]</c> at a <c>list[str]</c> argument slot
+    /// on the same build (#1848).</para>
+    ///
+    /// <para>A VALUE payload is NOT erased: <c>int | None</c> is <c>Nullable&lt;int&gt;</c>, a
+    /// genuinely different runtime type from <c>int</c>, and .NET declares no implicit conversion
+    /// between them. Covariance (<c>list[Dog]</c> vs <c>list[Animal]</c>) and value widening
+    /// (<c>list[int8]</c> vs <c>list[int]</c>) are untouched — this erases an annotation, never a
+    /// type.</para>
+    /// </summary>
+    public static SemanticType EraseNullableReferenceAnnotations(SemanticType type) => type switch
+    {
+        NullableType { UnderlyingType: { IsValueType: false } underlying }
+            => EraseNullableReferenceAnnotations(underlying),
+        GenericType generic
+            => generic with { TypeArguments = generic.TypeArguments.ConvertAll(EraseNullableReferenceAnnotations) },
+        TupleType tuple
+            => tuple with { ElementTypes = tuple.ElementTypes.ConvertAll(EraseNullableReferenceAnnotations) },
+        _ => type
+    };
+
     public static readonly SemanticType Unknown = new UnknownType();
     public static readonly SemanticType Void = new VoidType();
     // Names are the CANONICAL spellings from docs/language_specification/primitive_types.md.
@@ -350,7 +381,11 @@ public sealed record GenericType : SemanticType
                 // compatible annotated type.
                 if (TypeArguments[i] is UnknownType || otherGeneric.TypeArguments[i] is UnknownType)
                     continue;
-                if (!TypeArguments[i].Equals(otherGeneric.TypeArguments[i]))
+                // Identity modulo the nullable-reference ANNOTATION, which no runtime type carries
+                // (#1848) — see EraseNullableReferenceAnnotations. Widening and variance stay
+                // refused: only the annotation is erased, on both sides, at every depth.
+                if (!EraseNullableReferenceAnnotations(TypeArguments[i])
+                        .Equals(EraseNullableReferenceAnnotations(otherGeneric.TypeArguments[i])))
                     return false;
             }
             return true;
