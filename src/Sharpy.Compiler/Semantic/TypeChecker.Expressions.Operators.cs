@@ -1122,7 +1122,8 @@ internal partial class TypeChecker
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
-                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'"
+                                + DescribeLogicalResultSteer(kwarg.Value, param.Type),
                                 kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                                 span: kwarg.Span ?? kwarg.Value.Span);
                         }

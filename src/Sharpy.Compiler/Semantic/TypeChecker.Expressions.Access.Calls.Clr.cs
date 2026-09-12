@@ -109,11 +109,11 @@ internal partial class TypeChecker
         return mapped;
     }
 
-    /// <summary>The display this seam names a formal by: its Sharpy spelling when the mapping is
-    /// faithful, its CLR name otherwise (an <c>IFormatProvider</c> is named, not called
+    /// <summary>The display this seam names a formal by: its Sharpy spelling when the bridge maps it,
+    /// its CLR name otherwise (an <c>IFormatProvider</c> is named, not called
     /// <c>object</c>).</summary>
     private string ClrFormalDisplay(ClrFormal formal)
-        => MapClrFormal(formal) is { } mapped && !IsLossyClrMapping(formal.ClrType, mapped)
+        => MapClrFormal(formal) is { } mapped
             ? mapped.GetDisplayName()
             : Shared.ClrNameHelper.StripArity(formal.ClrType.Name);
 
@@ -188,11 +188,7 @@ internal partial class TypeChecker
         Accepted,
         /// <summary>Refused, and the formal's Sharpy spelling states the refusal — a diagnostic may
         /// name it.</summary>
-        RefusedByVocabulary,
-        /// <summary>Refused by .NET on the argument's own CLR type while the Sharpy spelling
-        /// accepted (the lossy-mapping arm, #1573). Naming the spelling would read "cannot pass
-        /// 'int32' to a parameter of type 'int32'", so the refusal stays unexplained.</summary>
-        RefusedByClr
+        RefusedByVocabulary
     }
 
     private readonly record struct ClrArgumentVerdict(ClrAcceptance Kind, string ExpectedDisplay)
@@ -291,12 +287,8 @@ internal partial class TypeChecker
                 literalAdaptation ? node : null,
                 allowConstantConversion: literalAdaptation))
         {
-            // The Sharpy spelling accepted. It stands unless the mapping is lossy and .NET rejects
-            // the argument's own CLR type, in which case the acceptance proved nothing (#1573).
-            if (clrAccepts || argClrType == null || !IsLossyClrMapping(formal.ClrType, mapped))
-                return ClrAccepted;
-
-            return new ClrArgumentVerdict(ClrAcceptance.RefusedByClr, ClrFormalDisplay(formal));
+            // The Sharpy spelling accepted — no lossy-mapping arm remains (#1843).
+            return ClrAccepted;
         }
 
         if (clrAccepts)
@@ -892,9 +884,13 @@ internal partial class TypeChecker
                 ? $"Argument '{argument.Keyword}'"
                 : $"Argument {(argument.Ordinal ?? 0) + 1}";
             var node = argument.Node;
+            var mappedExpected = MapClrFormal(formal);
             AddError(
                 $"{slot} of '{memberDisplay}' expects '{verdict.ExpectedDisplay}' "
-                + $"but got '{argument.Type.GetDisplayName()}'",
+                + $"but got '{argument.Type.GetDisplayName()}'"
+                + (mappedExpected != null
+                    ? DescribeLogicalResultSteer(node, mappedExpected)
+                    : string.Empty),
                 node?.LineStart ?? args.Call?.LineStart ?? 0,
                 node?.ColumnStart ?? args.Call?.ColumnStart ?? 0,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1455,10 +1451,8 @@ internal partial class TypeChecker
             return false;
         }
 
-        // Every indexer refused for a reason the formal's own spelling does not state (the lossy arm):
-        // naming it would be a tautology, so the call stays as permissive as it was.
-        if (refused.Count == 0)
-            return true;
+        // With only Accepted/RefusedByVocabulary verdicts the loop either returns true or adds a
+        // display, so an empty refused list is unreachable here (#1843).
 
         var expected = refused.Count == 1
             ? $"'{refused[0]}'"

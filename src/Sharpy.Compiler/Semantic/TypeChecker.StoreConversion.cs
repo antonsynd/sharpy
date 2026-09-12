@@ -458,6 +458,7 @@ internal partial class TypeChecker
                 AddError(
                     FormatStoreError(position, valueType, targetType, slotName, _storeContext)
                         + DescribeStoreRefusalSteer(position, valueType, targetType)
+                        + DescribeLogicalResultSteer(value, targetType)
                         + (extraSteer ?? string.Empty),
                     anchor?.LineStart ?? reportLine,
                     anchor?.ColumnStart ?? reportColumn,
@@ -555,6 +556,32 @@ internal partial class TypeChecker
 
         return DescribeOptionalArgument(valueType, targetType, noun)
             + DescribeClrCollectionConversionSteer(valueType, targetType);
+    }
+
+    private string DescribeLogicalResultSteer(Expression? value, SemanticType targetType)
+    {
+        if (value == null || targetType.Equals(SemanticType.Bool))
+            return string.Empty;
+
+        var inner = Shared.AstHelper.UnwrapParenthesized(value);
+        if (inner is not BinaryOp { Operator: BinaryOperator.And or BinaryOperator.Or } binOp)
+            return string.Empty;
+
+        var opName = binOp.Operator == BinaryOperator.Or ? "or" : "and";
+        var leftType = _semanticInfo.GetExpressionType(binOp.Left);
+        var isNullable = leftType is NullableType or OptionalType;
+
+        if (isNullable)
+        {
+            return $" — '{opName}' returns bool in Sharpy (logical_operators.md §Return Type);"
+                + " for Python's value-returning fallback use '??' (the left operand is nullable)";
+        }
+
+        var rewrite = binOp.Operator == BinaryOperator.Or
+            ? "<right> if <left> else <left>"
+            : "<left> if <left> else <right>";
+        return $" — '{opName}' returns bool in Sharpy (logical_operators.md §Return Type);"
+            + $" for Python's value-returning fallback use a conditional: '{rewrite}'";
     }
 
     /// <param name="context">

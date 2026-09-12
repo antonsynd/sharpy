@@ -1348,7 +1348,8 @@ internal partial class TypeChecker
             var written = callee is IndexAccess ? $"{memberName}[...]" : memberName;
             AddError(
                 $"Argument {i + 1} of '{written}' expects '{expectedTypes[i].GetDisplayName()}' "
-                + $"but got '{argTypes[i].GetDisplayName()}'",
+                + $"but got '{argTypes[i].GetDisplayName()}'"
+                + DescribeLogicalResultSteer(call.Arguments[i], expectedTypes[i]),
                 call.Arguments[i].LineStart,
                 call.Arguments[i].ColumnStart,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -2378,7 +2379,8 @@ internal partial class TypeChecker
         }
 
         var message = $"Cannot pass argument of type '{failedArgType.GetDisplayName()}' to parameter of type "
-                + DescribeAlternativeTypes(expectedTypes);
+                + DescribeAlternativeTypes(expectedTypes)
+                + DescribeLogicalResultSteer(argNode, expectedTypes[0]);
 
         if (keywordName != null)
         {
@@ -6964,18 +6966,6 @@ internal partial class TypeChecker
 
 
 
-
-    /// <summary>
-    /// Whether the bridge's Sharpy spelling of <paramref name="parameterType"/> names a CLR type .NET
-    /// would NOT accept for the parameter. The enum arm is the standing case: every enum maps to
-    /// <c>int</c>, so a Sharpy <c>int</c> satisfies the spelling while the emitted C# needs the enum
-    /// itself (CS1503 behind SPY0908, #1573). Faithful arms (<c>double</c>→<c>float</c>,
-    /// <c>String</c>→<c>str</c>, a generic collection through its CLR origin) round-trip to a type the
-    /// parameter accepts. A spelling whose CLR type is unknown is not called lossy — there is nothing
-    /// to refute it with, and the mapped acceptance stands.
-    /// </summary>
-    private bool IsLossyClrMapping(Type parameterType, SemanticType mapped)
-        => TryGetClrType(mapped) is { } mappedClrType && !parameterType.IsAssignableFrom(mappedClrType);
 
 
 

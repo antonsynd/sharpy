@@ -267,7 +267,8 @@ internal partial class TypeChecker
                 {
                     AddError(
                         $"Cannot assign type '{resolvedType.GetDisplayName()}' to variable of type "
-                        + $"'{boundExisting.GetDisplayName()}'",
+                        + $"'{boundExisting.GetDisplayName()}'"
+                        + DescribeLogicalResultSteer(modArg.Argument, boundExisting),
                         modArg.Argument.LineStart, modArg.Argument.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch, span: modArg.Span);
                     return SemanticType.Unknown;
