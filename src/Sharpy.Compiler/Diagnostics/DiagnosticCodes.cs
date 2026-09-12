@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0147
-    /// Reserved: SPY0148-SPY0199
+    /// Active: SPY0100-SPY0148
+    /// Reserved: SPY0149-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -230,7 +230,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0148-SPY0199: Reserved for future parser diagnostics
+        #region Pythonic property decorator refusal (SPY0148)
+
+        public const string PropertyDecoratorNotSupported = "SPY0148"; // Active (#1854)
+
+        #endregion
+
+        // SPY0149-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

@@ -966,6 +966,15 @@ public partial class Parser
                 continue;
             }
 
+            if (Current.Type == TokenType.Property)
+                throw ReportError(
+                    "@property is not a decorator in Sharpy — property is a keyword. "
+                    + "Declare 'property get p(self) -> T:' (function-style) "
+                    + "or 'property [get|set|init] p: T [= value]' (auto-property); "
+                    + "a setter is 'property set p(self, value: T) -> None:'",
+                    decoratorStartLine, decoratorStartColumn,
+                    DiagnosticCodes.Parser.PropertyDecoratorNotSupported, span: GetSpanFromTokens(decoratorStartToken, Current));
+
             if (Current.Type != TokenType.Identifier)
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
@@ -983,6 +992,14 @@ public partial class Parser
                 regularBacktickParts.Add(Current.IsBacktickEscaped);
                 Advance();
             }
+
+            if (regularParts.Count == 2 && regularParts[1] is "setter" or "getter" or "deleter")
+                throw ReportError(
+                    $"@{regularParts[0]}.{regularParts[1]} is not a decorator in Sharpy — property is a keyword. "
+                    + $"Declare 'property {(regularParts[1] == "deleter" ? "set" : regularParts[1])} {regularParts[0]}(self, ...) -> ...:' "
+                    + "(function-style) or 'property [get|set|init] p: T [= value]' (auto-property)",
+                    decoratorStartLine, decoratorStartColumn,
+                    DiagnosticCodes.Parser.PropertyDecoratorNotSupported, span: GetSpanFromTokens(decoratorStartToken, Previous));
 
             {
                 // Parse optional argument list: @decorator(args)

@@ -248,5 +248,10 @@ public static partial class DiagnosticExplanations
             "A generator expression used as a function argument must be the sole argument when written without parentheses. When passing a generator expression alongside other arguments, wrap it in parentheses. This matches Python's grammar: 'f(x for x in xs)' is valid (sole argument), but 'f(x for x in xs, 0)' requires parentheses around the generator.",
             "sum(x for x in xs, 0)",
             "Parenthesize the generator expression:\n  sum((x for x in xs), 0)\n\nOr use a list comprehension:\n  sum([x for x in xs], 0)");
+
+        Add(dict, DiagnosticCodes.Parser.PropertyDecoratorNotSupported, "@property decorator not supported", "Parser",
+            "'property' is a keyword in Sharpy, not a decorator. The Python-style @property, @x.setter, @x.getter, and @x.deleter decorators are not supported. Use the 'property' keyword forms instead.",
+            "@property\ndef p(self) -> int: ...",
+            "Use the property keyword:\n  property get p(self) -> int:\n      return self._p\n  property set p(self, value: int) -> None:\n      self._p = value\n\nOr use an auto-property:\n  property p: int");
     }
 }

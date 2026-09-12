@@ -69,6 +69,7 @@ public class DiagnosticExplanationsTests
     [InlineData("SPY0263")]
     [InlineData("SPY0281")]
     [InlineData("SPY0403")]
+    [InlineData("SPY0148")]
     public void CommonCodes_HaveExamplesAndFixes(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
