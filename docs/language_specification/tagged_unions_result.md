@@ -115,50 +115,31 @@ match result:
 
 ## Common Methods
 
-The `Result` type provides several useful methods:
+The builtin `Result[T, E]` type provides properties and methods for inspecting and
+extracting the contained value or error:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `is_ok` | `bool` (property) | `True` when the Result contains a value |
+| `is_err` | `bool` (property) | `True` when the Result contains an error |
+| `unwrap()` | `T` | Returns the Ok value; raises on Err |
+| `unwrap_or(default)` | `T` | Returns the Ok value or `default` |
+| `unwrap_or_else(f)` | `T` | Returns the Ok value or calls `f(error)` |
+| `unwrap_err()` | `E` | Returns the Err value; raises on Ok |
+| `map(f)` | `Result[U, E]` | Transforms the Ok value |
+| `map_err(f)` | `Result[T, F]` | Transforms the Err value |
 
 ```python
-union Result[T, E]:
-    case Ok(value: T)
-    case Err(error: E)
+r: int!str = Ok(42)
+print(r.is_ok)          # True
+print(r.is_err)         # False
+print(r.unwrap())       # 42
+print(r.unwrap_or(0))   # 42
 
-    @property
-    def is_ok(self) -> bool:
-        """Returns True if the result is Ok"""
-        match self:
-            case Ok(_):
-                return True
-            case Err(_):
-                return False
-
-    @property
-    def is_err(self) -> bool:
-        """Returns True if the result is Err"""
-        return not self.is_ok
-
-    def unwrap(self) -> T:
-        """Returns the Ok value or raises an exception"""
-        match self:
-            case Ok(value):
-                return value
-            case Err(error):
-                raise Exception(f"Called unwrap on Err: {error}")
-
-    def unwrap_or(self, default: T) -> T:
-        """Returns the Ok value or the default"""
-        match self:
-            case Ok(value):
-                return value
-            case Err(_):
-                return default
-
-    def unwrap_or_else(self, f: (E) -> T) -> T:
-        """Returns the Ok value or calls f with the error"""
-        match self:
-            case Ok(value):
-                return value
-            case Err(error):
-                return f(error)
+e: int!str = Err("bad")
+print(e.is_ok)          # False
+print(e.is_err)         # True
+print(e.unwrap_or(99))  # 99
 ```
 
 ## Stdlib Conventions

@@ -150,58 +150,29 @@ unwrapped subject could never reach a `None` arm. Both spellings destructure the
 
 ## Common Methods
 
-The `Optional` type provides several useful methods:
+The builtin `Optional[T]` type provides properties and methods for inspecting and
+extracting the contained value:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `is_some` | `bool` (property) | `True` when the Optional contains a value |
+| `is_none` | `bool` (property) | `True` when the Optional is empty |
+| `unwrap()` | `T` | Returns the value; raises on empty |
+| `unwrap_or(default)` | `T` | Returns the value or `default` |
+| `unwrap_or_else(f)` | `T` | Returns the value or calls `f()` |
+| `map(f)` | `U?` | Transforms the contained value if present |
 
 ```python
-union Optional[T]:
-    case Some(value: T)
-    case None()
+o: int? = Some(42)
+print(o.is_some)        # True
+print(o.is_none)        # False
+print(o.unwrap())       # 42
+print(o.unwrap_or(0))   # 42
 
-    @property
-    def is_some(self) -> bool:
-        """Returns True if the optional contains a value"""
-        match self:
-            case Some():
-                return True
-            case None:
-                return False
-
-    @property
-    def is_none(self) -> bool:
-        """Returns True if the optional is empty"""
-        return not self.is_some
-
-    def unwrap(self) -> T:
-        """Returns the value or raises an exception"""
-        match self:
-            case Some(value):
-                return value
-            case None:
-                raise Exception("Called unwrap on empty Optional")
-
-    def unwrap_or(self, default: T) -> T:
-        """Returns the value or the default"""
-        match self:
-            case Some(value):
-                return value
-            case None:
-                return default
-
-    def unwrap_or_else(self, f: () -> T) -> T:
-        """Returns the value or calls f"""
-        match self:
-            case Some(value):
-                return value
-            case None:
-                return f()
-
-    def map(self, f: (T) -> U) -> U?:
-        """Transforms the contained value if present"""
-        match self:
-            case Some(value):
-                return Some(f(value))
-            case None:
-                return None()
+empty: int? = None()
+print(empty.is_some)        # False
+print(empty.is_none)        # True
+print(empty.unwrap_or(99))  # 99
 ```
 
 ## Constructor Shorthand

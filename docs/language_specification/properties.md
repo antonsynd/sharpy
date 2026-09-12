@@ -207,6 +207,27 @@ property set name(self, value: str):
     self._name = value
 ```
 
+## `@property` Is Not Supported
+
+`property` is a keyword in Sharpy — there is no `@property` decorator. The Python-style
+`@property`, `@x.setter`, `@x.getter`, and `@x.deleter` forms are refused by the parser
+with SPY0148. Use the keyword forms instead:
+
+```python
+# WRONG — refused by the parser
+@property
+def size(self) -> int: ...
+
+# RIGHT — function-style property
+property get size(self) -> int:
+    return self._size
+property set size(self, value: int) -> None:
+    self._size = value
+
+# RIGHT — auto-property
+property size: int
+```
+
 ## See Also
 
 - [Properties - Function Style](properties_function_style.md) - Custom property logic, validation, static properties, and access modifiers
