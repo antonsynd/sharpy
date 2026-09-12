@@ -69,6 +69,10 @@ deployment closure (`StandaloneDeploymentTests`).
   check as they are touched.
 - **A stale allowlist row fails the push gate** (#1844): `check_allowlist_issue_state.sh` runs at
   push time and in CI; a row citing a closed issue fails exit 1.
+- **Spec blocks compile or carry a marker** (#1854): `check_spec_blocks.sh` extracts every fenced
+  Sharpy block from `docs/language_specification/`, compiles it, and ratchets against
+  `spec_blocks_allowlist.txt`. An unmarked failing block, a stale allowlist entry, or an
+  error-marker block that compiles clean all fail the gate.
 - **A probe asserts identity, not compilation** (#1829): a sweep that renders a name to reach a
   type asserts the name BOUND that type (the emitted C# is the witness) before probing its members;
   a name that binds elsewhere is `NotAttempted` with the reason, never a row against the member.
