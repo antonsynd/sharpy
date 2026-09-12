@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Diagnostics;
@@ -75,6 +76,68 @@ public class InteropConformanceTests
     private const string PosSubclass = "subclass";
     private const string PosIndex = "index";
     private const string PosMatch = "match";
+
+    private static readonly Dictionary<string, string> SharpyWrapperSpellings = new()
+    {
+        { "List`1", "list" },
+        { "Dict`2", "dict" },
+        { "Set`1", "set" },
+        { "FrozenSet`1", "frozenset" },
+        { "FrozenDict`2", "frozendict" },
+        { "DefaultDict`2", "defaultdict" },
+    };
+
+    [Fact]
+    public void SharpyNamespace_IsCorrect()
+    {
+        var (corePath, _) = ResolveStdlibAssemblyPaths();
+        var listType = Assembly.LoadFrom(corePath).GetType("Sharpy.List`1");
+        Assert.NotNull(listType);
+        Assert.Equal("Sharpy", listType!.Namespace);
+    }
+
+    [Fact]
+    public void SharpyWrapperSpellings_CoverEveryBclCollidingSharpyGeneric()
+    {
+        var (corePath, stdlibPath) = ResolveStdlibAssemblyPaths();
+        var coreAssembly = Assembly.LoadFrom(corePath);
+        var stdlibAssembly = Assembly.LoadFrom(stdlibPath);
+
+        var bclTypes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm.IsDynamic) continue;
+            try
+            {
+                foreach (var t in asm.GetExportedTypes())
+                {
+                    if (t.Namespace is "System" or "System.Collections.Generic" && t.IsGenericTypeDefinition && !t.IsNested)
+                        bclTypes.Add(CleanGenericName(t.Name));
+                }
+            }
+            catch (ReflectionTypeLoadException) { }
+        }
+
+        var collidingNames = new List<string>();
+
+        foreach (var asm in new[] { coreAssembly, stdlibAssembly })
+        {
+            foreach (var t in asm.GetExportedTypes())
+            {
+                if (t.Namespace != "Sharpy" || !t.IsGenericTypeDefinition || t.IsNested)
+                    continue;
+
+                if (bclTypes.Contains(CleanGenericName(t.Name)))
+                    collidingNames.Add(t.Name);
+            }
+        }
+
+        var missing = collidingNames.Where(n => !SharpyWrapperSpellings.ContainsKey(n)).ToList();
+        Assert.True(missing.Count == 0,
+            $"Sharpy generic types that collide with System/System.Collections.Generic but have no row in " +
+            $"SharpyWrapperSpellings: {string.Join(", ", missing)}");
+        Assert.True(collidingNames.Count > 0, "Expected at least one colliding Sharpy generic type (List<T>)");
+    }
 
     [Fact]
     public void InteropSweep_AllPublicStdlibMembers_CompileClean()
@@ -182,15 +245,22 @@ public class InteropConformanceTests
                         }
                         typeRef = $"{qualifier}{cleanName}[{string.Join(", ", Enumerable.Repeat("int", arity.Value))}]";
 
-                        // Core-internal generic types (List, Set, iterators, views) are not
-                        // annotatable under their discovered CamelCase names — the user-facing
-                        // spelling is `list`/`set`/…, so `List[int]` yields SPY0202. Probe the
-                        // closed annotation once and skip the whole type when it doesn't resolve,
-                        // so its methods/properties/subclass don't each fail downstream.
-                        var probe = $"{importLine}def _probe(x: {typeRef}) -> None:\n    pass\n";
-                        if (!CompilesClean(api, probe))
+                        // Identity probe (#1829): assert the rendered name binds the SAME CLR
+                        // type whose members the sweep is about to probe. A collision-rule name
+                        // (e.g. bare `List[int]` → System.Collections.Generic.List<int>) would
+                        // probe the wrong type's surface. Sharpy wrapper types have a Pythonic
+                        // spelling (`list`, `set`, …) that binds Sharpy.List<T> etc.
+                        if (clrType != null && clrType.Namespace == "Sharpy"
+                            && SharpyWrapperSpellings.TryGetValue(typeInfo.Name, out var sharpySpelling))
                         {
-                            RecordNotAttempted(moduleName, typeInfo.Name, "type", PosAnnotate, "generic type not user-annotatable under discovered name");
+                            var arity2 = GenericArity(typeInfo, clrType);
+                            typeRef = $"{qualifier}{sharpySpelling}[{string.Join(", ", Enumerable.Repeat("int", arity2 ?? 1))}]";
+                        }
+
+                        var identityResult = BindsTheEnumeratedType(api, importLine, typeRef, clrType, typeInfo, GenericArity(typeInfo, clrType) ?? 1);
+                        if (identityResult != null)
+                        {
+                            RecordNotAttempted(moduleName, typeInfo.Name, "type", PosAnnotate, identityResult);
                             continue;
                         }
 
@@ -297,6 +367,11 @@ public class InteropConformanceTests
                         if (!IsIdentifier(sharpyProp))
                         {
                             RecordNotAttempted(moduleName, $"{typeInfo.Name}.{sharpyProp}", "property", PosProperty, "non-identifier / compiler-generated member");
+                            continue;
+                        }
+                        if (IsPropertyHiddenFromSurface(clrType, prop.Name))
+                        {
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{sharpyProp}", "property", PosProperty, "EditorBrowsable(Never): compiler-only member, not public surface");
                             continue;
                         }
                         membersEnumerated++;
@@ -995,6 +1070,16 @@ public class InteropConformanceTests
                 == System.ComponentModel.EditorBrowsableState.Never);
     }
 
+    private static bool IsPropertyHiddenFromSurface(Type? clrType, string clrPropertyName)
+    {
+        if (clrType == null)
+            return false;
+
+        var prop = clrType.GetProperty(clrPropertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+        return prop?.GetCustomAttribute<System.ComponentModel.EditorBrowsableAttribute>()?.State
+               == System.ComponentModel.EditorBrowsableState.Never;
+    }
+
     private static bool IsIdentifier(string name)
     {
         if (string.IsNullOrEmpty(name) || char.IsDigit(name[0]))
@@ -1050,6 +1135,56 @@ public class InteropConformanceTests
         {
             return false;
         }
+    }
+
+    private static readonly Regex ProbeParamRegex = new(@"static\s+void\s+_Probe\(([^)]+)\)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Compiles <c>def _probe(x: {typeRef}) -> None: pass</c> and verifies that the emitted C#
+    /// parameter type matches the CLR type whose members the sweep is about to probe. Returns
+    /// null on success, or a notAttempted reason string on failure (#1829).
+    /// </summary>
+    private static string? BindsTheEnumeratedType(
+        CompilerApi api, string importLine, string typeRef,
+        Type? clrType, DiscoveredTypeInfo typeInfo, int arity)
+    {
+        var probe = $"{importLine}def _probe(x: {typeRef}) -> None:\n    pass\n";
+        CompileResult result;
+        try
+        {
+            result = api.Compile(probe, new CompilerOptions { OutputType = "library" });
+        }
+        catch
+        {
+            return "generic type not user-annotatable under discovered name";
+        }
+
+        if (result.Diagnostics.Any(d => d.Severity == CompilerDiagnosticSeverity.Error))
+            return "generic type not user-annotatable under discovered name";
+
+        if (clrType == null || result.GeneratedCSharp == null)
+            return null;
+
+        var match = ProbeParamRegex.Match(result.GeneratedCSharp);
+        if (!match.Success)
+            return null;
+
+        var bound = match.Groups[1].Value;
+        // Strip the parameter name (last word after space)
+        var lastSpace = bound.LastIndexOf(' ');
+        if (lastSpace >= 0)
+            bound = bound.Substring(0, lastSpace).Trim();
+        bound = bound.Replace("global::", "");
+
+        var expectedBase = $"{clrType.Namespace}.{CleanGenericName(typeInfo.Name)}";
+        var expectedFull = arity > 0
+            ? $"{expectedBase}<{string.Join(", ", Enumerable.Repeat("int", arity))}>"
+            : expectedBase;
+
+        if (!string.Equals(bound, expectedFull, StringComparison.Ordinal))
+            return $"discovered name binds '{bound}' (#1625 collision rule), no Sharpy spelling";
+
+        return null;
     }
 
     // ---- Roslyn C# bind of the generated code ----
