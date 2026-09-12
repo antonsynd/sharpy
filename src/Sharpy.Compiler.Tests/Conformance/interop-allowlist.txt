@@ -21,30 +21,3 @@
 
 
 
-
-# #1829: the sweep's own instrument, not a bridge gap. The closed-construction probe for a generic
-# discovered type asks only "does `List[int]` compile", not "did that name bind the type whose
-# members I am about to probe". Since the resolution fix (#1625) `List` answers with
-# System.Collections.Generic.List<T> — the collision rule — so Sharpy.List`1's Python member names
-# are probed against the .NET List<int> and report SPY0203. `list[int]` has all of them.
-# 2cc6e0667 filed these as "genuine API-surface gaps" against the issue it was closing; they are
-# neither gaps nor resolution bugs. Delete all seven when #1829 lands.
-#
-# The other 47 rows this file carried against #1625 DRAINED with the resolution fix: every
-# Sharpy-namespace non-collision type (TmpPathFixture, CapturedStderr, CapturedOutput,
-# StatisticsError, SliceSpec, Attachment, CacheInfo, ITzinfo, IInterpolation) is nameable again, and
-# the sweep reads 2576 pass / 7 fail / 0 crash / 0 stale.
-builtins::property::List`1.length::property             # #1829
-builtins::method::List`1.delete_at::method              # #1829
-builtins::method::List`1.get_item_unchecked::method     # #1829
-builtins::method::List`1.get::method                    # #1829
-builtins::method::List`1.pop::method                    # #1829
-builtins::method::List`1.extend::method                 # #1829
-builtins::method::List`1.copy::method                   # #1829
-# #1829, same wrong-receiver class as the seven rows above: the sweep enumerates Sharpy.List`1's
-# members but spells the receiver as a bare `List[int]`, which is the BCL
-# System.Collections.Generic.List<int> on every tree. `count` is that type's `Count` PROPERTY, so
-# `recv.count(0)` is not callable — the base compiler gave CS1929 behind SPY0908 and the CLR call
-# seam now refuses it by name. The cell was NOT ATTEMPTED at base or on v5/clr-call-seam alone and
-# became attempted on the integration tree (e85d3acb4, merged).
-builtins::method::List`1.count::method                  # #1829
