@@ -51,6 +51,9 @@ namespace Sharpy
         /// </summary>
         private readonly ImmutableArray<TKey> _order;
 
+        private readonly bool _hasNullKey;
+        private readonly TValue _nullValue = default!;
+
         /// <summary>Create an empty frozendict.</summary>
         public FrozenDict()
         {
@@ -70,7 +73,7 @@ namespace Sharpy
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
-            Build(items, out _dict, out _order);
+            Build(items, out _dict, out _order, out _hasNullKey, out _nullValue);
         }
 
         /// <summary>Create a frozendict from an existing <see cref="Dict{K, V}"/>.</summary>
@@ -81,14 +84,17 @@ namespace Sharpy
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
-            Build((IEnumerable<KeyValuePair<TKey, TValue>>)dict, out _dict, out _order);
+            Build((IEnumerable<KeyValuePair<TKey, TValue>>)dict, out _dict, out _order, out _hasNullKey, out _nullValue);
         }
 
         // Private constructor for internal operations (e.g. union).
-        private FrozenDict(ImmutableDictionary<TKey, TValue> dict, ImmutableArray<TKey> order)
+        private FrozenDict(ImmutableDictionary<TKey, TValue> dict, ImmutableArray<TKey> order,
+            bool hasNullKey = false, TValue nullValue = default!)
         {
             _dict = dict;
             _order = order;
+            _hasNullKey = hasNullKey;
+            _nullValue = nullValue;
         }
 
         /// <summary>
@@ -104,19 +110,32 @@ namespace Sharpy
         private static void Build(
             IEnumerable<KeyValuePair<TKey, TValue>> items,
             out ImmutableDictionary<TKey, TValue> dict,
-            out ImmutableArray<TKey> order)
+            out ImmutableArray<TKey> order,
+            out bool hasNullKey,
+            out TValue nullValue)
         {
             var mapBuilder = ImmutableDictionary.CreateBuilder<TKey, TValue>();
             var orderBuilder = ImmutableArray.CreateBuilder<TKey>();
+            hasNullKey = false;
+            nullValue = default!;
 
             foreach (var kv in items)
             {
-                if (!mapBuilder.ContainsKey(kv.Key))
+                if (kv.Key is null)
                 {
-                    orderBuilder.Add(kv.Key);
+                    if (!hasNullKey) orderBuilder.Add(default!);
+                    hasNullKey = true;
+                    nullValue = kv.Value;
                 }
+                else
+                {
+                    if (!mapBuilder.ContainsKey(kv.Key))
+                    {
+                        orderBuilder.Add(kv.Key);
+                    }
 
-                mapBuilder[kv.Key] = kv.Value;
+                    mapBuilder[kv.Key] = kv.Value;
+                }
             }
 
             dict = mapBuilder.ToImmutable();
@@ -124,7 +143,7 @@ namespace Sharpy
         }
 
         /// <summary>Gets the number of key/value pairs in the frozendict.</summary>
-        public int Count => _dict.Count;
+        public int Count => _dict.Count + (_hasNullKey ? 1 : 0);
 
         /// <summary>
         /// Gets the value associated with the specified key.
@@ -134,6 +153,12 @@ namespace Sharpy
         {
             get
             {
+                if (key is null)
+                {
+                    if (_hasNullKey) return _nullValue;
+                    throw new KeyError(Repr(key));
+                }
+
                 if (_dict.TryGetValue(key, out TValue? value))
                 {
                     return value;
@@ -144,12 +169,12 @@ namespace Sharpy
         }
 
         /// <summary>Determines whether the frozendict contains the specified key.</summary>
-        public bool ContainsKey(TKey key) => _dict.ContainsKey(key);
+        public bool ContainsKey(TKey key) => key is null ? _hasNullKey : _dict.ContainsKey(key);
 
         /// <summary>
         /// Compiler hook: supports <c>key in frozendict</c> expressions.
         /// </summary>
-        public bool Contains(TKey key) => _dict.ContainsKey(key);
+        public bool Contains(TKey key) => ContainsKey(key);
 
         /// <summary>
         /// Return the value for <paramref name="key"/> if present, otherwise
@@ -157,6 +182,11 @@ namespace Sharpy
         /// </summary>
         public TValue Get(TKey key, TValue @default = default!)
         {
+            if (key is null)
+            {
+                return _hasNullKey ? _nullValue : @default;
+            }
+
             if (_dict.TryGetValue(key, out TValue? value))
             {
                 return value;
@@ -178,7 +208,14 @@ namespace Sharpy
         {
             foreach (var key in _order)
             {
-                yield return _dict[key];
+                if (key is null)
+                {
+                    yield return _nullValue;
+                }
+                else
+                {
+                    yield return _dict[key];
+                }
             }
         }
 
@@ -187,12 +224,34 @@ namespace Sharpy
         {
             foreach (var key in _order)
             {
-                yield return (key, _dict[key]);
+                if (key is null)
+                {
+                    yield return (key, _nullValue);
+                }
+                else
+                {
+                    yield return (key, _dict[key]);
+                }
             }
         }
 
         /// <summary>Attempts to get the value associated with the specified key.</summary>
-        public bool TryGetValue(TKey key, out TValue value) => _dict.TryGetValue(key, out value!);
+        public bool TryGetValue(TKey key, out TValue value)
+        {
+            if (key is null)
+            {
+                if (_hasNullKey)
+                {
+                    value = _nullValue;
+                    return true;
+                }
+
+                value = default!;
+                return false;
+            }
+
+            return _dict.TryGetValue(key, out value!);
+        }
 
         /// <summary>
         /// Returns an enumerator that iterates through the keys (Python semantics).
@@ -208,7 +267,14 @@ namespace Sharpy
         {
             foreach (var key in _order)
             {
-                yield return new KeyValuePair<TKey, TValue>(key, _dict[key]);
+                if (key is null)
+                {
+                    yield return new KeyValuePair<TKey, TValue>(key, _nullValue);
+                }
+                else
+                {
+                    yield return new KeyValuePair<TKey, TValue>(key, _dict[key]);
+                }
             }
         }
 
@@ -291,8 +357,8 @@ namespace Sharpy
                 pairs.Add(new KeyValuePair<TKey, TValue>(key, value));
             }
 
-            Build(pairs, out var dict, out var order);
-            return new FrozenDict<TKey, TValue>(dict, order);
+            Build(pairs, out var dict, out var order, out var hasNull, out var nullVal);
+            return new FrozenDict<TKey, TValue>(dict, order, hasNull, nullVal);
         }
 
         /// <summary>
@@ -311,7 +377,17 @@ namespace Sharpy
                 return true;
             }
 
-            if (_dict.Count != other._dict.Count)
+            if (Count != other.Count)
+            {
+                return false;
+            }
+
+            if (_hasNullKey != other._hasNullKey)
+            {
+                return false;
+            }
+
+            if (_hasNullKey && !Operator.Eq(_nullValue!, other._nullValue!))
             {
                 return false;
             }
@@ -344,7 +420,6 @@ namespace Sharpy
         /// </summary>
         public override int GetHashCode()
         {
-            // XOR of per-pair hashes -> order-independent and consistent with Equals.
             int hash = 0;
 
             foreach (var kv in _dict)
@@ -355,6 +430,14 @@ namespace Sharpy
                 unchecked
                 {
                     hash ^= (keyHash * 397) ^ valueHash;
+                }
+            }
+
+            if (_hasNullKey)
+            {
+                unchecked
+                {
+                    hash ^= _nullValue?.GetHashCode() ?? 0;
                 }
             }
 
@@ -376,13 +459,13 @@ namespace Sharpy
         /// <summary>Returns true if the frozendict is non-empty.</summary>
         public static bool operator true(FrozenDict<TKey, TValue>? dict)
         {
-            return dict is not null && dict._dict.Count > 0;
+            return dict is not null && dict.Count > 0;
         }
 
         /// <summary>Returns true if the frozendict is empty or null.</summary>
         public static bool operator false(FrozenDict<TKey, TValue>? dict)
         {
-            return dict is null || dict._dict.Count == 0;
+            return dict is null || dict.Count == 0;
         }
 
         /// <summary>Returns a string representation of the frozendict.</summary>

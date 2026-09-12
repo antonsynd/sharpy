@@ -13,12 +13,17 @@ namespace Sharpy
     {
         private readonly System.Collections.Generic.List<KeyValuePair<K, V>> _items;
         private readonly System.Collections.Generic.Dictionary<K, int> _index;
+        private bool _hasNullKey;
+        private int _nullIndex;
+
+        private static bool IsNullKey(K key) => key is null;
 
         /// <summary>Create an empty ordered dictionary.</summary>
         public OrderedDict()
         {
             _items = new System.Collections.Generic.List<KeyValuePair<K, V>>();
             _index = new System.Collections.Generic.Dictionary<K, int>();
+            _nullIndex = -1;
         }
 
         /// <summary>Create an ordered dictionary from key-value pairs.</summary>
@@ -46,6 +51,12 @@ namespace Sharpy
         {
             get
             {
+                if (IsNullKey(key))
+                {
+                    if (!_hasNullKey) throw new KeyError("None");
+                    return _items[_nullIndex].Value;
+                }
+
                 if (!_index.TryGetValue(key, out int idx))
                 {
                     throw new KeyError(key?.ToString() ?? "None");
@@ -54,6 +65,21 @@ namespace Sharpy
             }
             set
             {
+                if (IsNullKey(key))
+                {
+                    if (_hasNullKey)
+                    {
+                        _items[_nullIndex] = new KeyValuePair<K, V>(key, value);
+                    }
+                    else
+                    {
+                        _nullIndex = _items.Count;
+                        _hasNullKey = true;
+                        _items.Add(new KeyValuePair<K, V>(key, value));
+                    }
+                    return;
+                }
+
                 if (_index.TryGetValue(key, out int idx))
                 {
                     _items[idx] = new KeyValuePair<K, V>(key, value);
@@ -76,6 +102,7 @@ namespace Sharpy
         /// </summary>
         public bool ContainsKey(K key)
         {
+            if (IsNullKey(key)) return _hasNullKey;
             return _index.ContainsKey(key);
         }
 
@@ -87,6 +114,14 @@ namespace Sharpy
         /// </summary>
         public V Pop(K key)
         {
+            if (IsNullKey(key))
+            {
+                if (!_hasNullKey) throw new KeyError("None");
+                V val = _items[_nullIndex].Value;
+                RemoveAtIndex(_nullIndex);
+                return val;
+            }
+
             if (!_index.TryGetValue(key, out int idx))
             {
                 throw new KeyError(key?.ToString() ?? "None");
@@ -102,6 +137,14 @@ namespace Sharpy
         /// </summary>
         public V Pop(K key, V @default)
         {
+            if (IsNullKey(key))
+            {
+                if (!_hasNullKey) return @default;
+                V val = _items[_nullIndex].Value;
+                RemoveAtIndex(_nullIndex);
+                return val;
+            }
+
             if (!_index.TryGetValue(key, out int idx))
             {
                 return @default;
@@ -135,9 +178,18 @@ namespace Sharpy
         /// </summary>
         public void MoveToEnd(K key, bool last = true)
         {
-            if (!_index.TryGetValue(key, out int idx))
+            int idx;
+            if (IsNullKey(key))
             {
-                throw new KeyError(key?.ToString() ?? "None");
+                if (!_hasNullKey) throw new KeyError("None");
+                idx = _nullIndex;
+            }
+            else
+            {
+                if (!_index.TryGetValue(key, out idx))
+                {
+                    throw new KeyError(key?.ToString() ?? "None");
+                }
             }
 
             var kvp = _items[idx];
@@ -145,7 +197,15 @@ namespace Sharpy
 
             if (last)
             {
-                _index[key] = _items.Count;
+                if (IsNullKey(key))
+                {
+                    _nullIndex = _items.Count;
+                    _hasNullKey = true;
+                }
+                else
+                {
+                    _index[key] = _items.Count;
+                }
                 _items.Add(kvp);
             }
             else
@@ -162,6 +222,8 @@ namespace Sharpy
         {
             _items.Clear();
             _index.Clear();
+            _hasNullKey = false;
+            _nullIndex = -1;
         }
 
         /// <summary>
@@ -194,9 +256,9 @@ namespace Sharpy
         public OrderedDict<K, V> Copy()
         {
             var copy = new OrderedDict<K, V>();
-            foreach (var kvp in _items)
+            foreach (var (key, value) in Items())
             {
-                copy[kvp.Key] = kvp.Value;
+                copy[key] = value;
             }
             return copy;
         }
@@ -206,6 +268,11 @@ namespace Sharpy
         /// </summary>
         public V Get(K key, V @default = default!)
         {
+            if (IsNullKey(key))
+            {
+                return _hasNullKey ? _items[_nullIndex].Value : @default;
+            }
+
             if (_index.TryGetValue(key, out int idx))
             {
                 return _items[idx].Value;
@@ -217,21 +284,50 @@ namespace Sharpy
         {
             K key = _items[idx].Key;
             _items.RemoveAt(idx);
-            _index.Remove(key);
+
+            if (IsNullKey(key))
+            {
+                _hasNullKey = false;
+                _nullIndex = -1;
+            }
+            else
+            {
+                _index.Remove(key);
+            }
 
             // Rebuild indices for items after the removed one
             for (int i = idx; i < _items.Count; i++)
             {
-                _index[_items[i].Key] = i;
+                K k = _items[i].Key;
+                if (IsNullKey(k))
+                {
+                    _nullIndex = i;
+                }
+                else
+                {
+                    _index[k] = i;
+                }
             }
         }
 
         private void RebuildIndex()
         {
             _index.Clear();
+            _hasNullKey = false;
+            _nullIndex = -1;
+
             for (int i = 0; i < _items.Count; i++)
             {
-                _index[_items[i].Key] = i;
+                K k = _items[i].Key;
+                if (IsNullKey(k))
+                {
+                    _hasNullKey = true;
+                    _nullIndex = i;
+                }
+                else
+                {
+                    _index[k] = i;
+                }
             }
         }
     }

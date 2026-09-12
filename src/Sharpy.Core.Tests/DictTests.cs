@@ -408,25 +408,32 @@ public class Dict_Tests
     }
 
     [Fact]
-    public void Indexer_Get_WithNullKey_ThrowsArgumentNullException()
+    public void Indexer_Get_WithNullKey_ReturnsValue()
     {
-        // Arrange
         var dict = new Dict<string?, int>();
+        dict[null!] = 42;
 
-        // Act & Assert
-        dict.Invoking(d => { var _ = d[null!]; })
-            .Should().Throw<ArgumentNullException>();
+        dict[null!].Should().Be(42);
     }
 
     [Fact]
-    public void Indexer_Set_WithNullKey_ThrowsArgumentNullException()
+    public void Indexer_Get_WithNullKey_ThrowsKeyError_WhenAbsent()
     {
-        // Arrange
         var dict = new Dict<string?, int>();
 
-        // Act & Assert
-        dict.Invoking(d => d[null!] = 42)
-            .Should().Throw<ArgumentNullException>();
+        dict.Invoking(d => { var _ = d[null!]; })
+            .Should().Throw<KeyError>();
+    }
+
+    [Fact]
+    public void Indexer_Set_WithNullKey_SetsValue()
+    {
+        var dict = new Dict<string?, int>();
+
+        dict[null!] = 42;
+
+        dict.Count.Should().Be(1);
+        dict[null!].Should().Be(42);
     }
 
     [Fact]
@@ -441,15 +448,21 @@ public class Dict_Tests
     }
 
     [Fact]
-    public void Contains_WithNullKey_ThrowsException()
+    public void Contains_WithNullKey_ReturnsFalse_WhenAbsent()
     {
-        // Arrange
         var dict = new Dict<string, int>();
         dict["a"] = 1;
 
-        // Act & Assert
-        dict.Invoking(d => d.ContainsKey(null!))
-            .Should().Throw<ArgumentNullException>();
+        dict.ContainsKey(null!).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Contains_WithNullKey_ReturnsTrue_WhenPresent()
+    {
+        var dict = new Dict<string?, int>();
+        dict[null!] = 1;
+
+        dict.ContainsKey(null!).Should().BeTrue();
     }
 
     [Fact]

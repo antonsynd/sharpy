@@ -24,6 +24,16 @@ namespace Sharpy
         where K : notnull
     {
         private readonly Dictionary<K, V> _dict;
+        private bool _hasNullKey;
+        private V _nullValue = default!;
+        private int _nullOrdinal;
+
+        private static bool IsNullKey(K key) => key is null;
+
+        internal bool HasNullKey => _hasNullKey;
+        internal V NullValue => _nullValue;
+        internal int NullOrdinal => _nullOrdinal;
+        internal Dictionary<K, V> InnerDict => _dict;
 
         /// <summary>Create an empty dictionary.</summary>
         public Dict()
@@ -51,7 +61,16 @@ namespace Sharpy
 
             foreach (var kvp in mapping)
             {
-                _dict[kvp.Key] = kvp.Value;
+                if (IsNullKey(kvp.Key))
+                {
+                    _nullValue = kvp.Value;
+                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    _hasNullKey = true;
+                }
+                else
+                {
+                    _dict[kvp.Key] = kvp.Value;
+                }
             }
         }
 
@@ -65,7 +84,16 @@ namespace Sharpy
 
             foreach (var (key, value) in iterable)
             {
-                _dict[key] = value;
+                if (IsNullKey(key))
+                {
+                    _nullValue = value;
+                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    _hasNullKey = true;
+                }
+                else
+                {
+                    _dict[key] = value;
+                }
             }
         }
 
@@ -77,7 +105,16 @@ namespace Sharpy
             var dict = new Dict<K, V>();
             foreach (var kvp in dictionary)
             {
-                dict._dict[kvp.Key] = kvp.Value;
+                if (IsNullKey(kvp.Key))
+                {
+                    dict._nullValue = kvp.Value;
+                    if (!dict._hasNullKey) dict._nullOrdinal = dict._dict.Count;
+                    dict._hasNullKey = true;
+                }
+                else
+                {
+                    dict._dict[kvp.Key] = kvp.Value;
+                }
             }
             return dict;
         }
@@ -90,6 +127,12 @@ namespace Sharpy
         {
             get
             {
+                if (IsNullKey(key))
+                {
+                    if (_hasNullKey) return _nullValue;
+                    throw new KeyError(Repr(key));
+                }
+
                 if (_dict.TryGetValue(key, out V? value))
                 {
                     return value;
@@ -97,7 +140,19 @@ namespace Sharpy
 
                 throw new KeyError(Repr(key));
             }
-            set => _dict[key] = value;
+            set
+            {
+                if (IsNullKey(key))
+                {
+                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    _nullValue = value;
+                    _hasNullKey = true;
+                }
+                else
+                {
+                    _dict[key] = value;
+                }
+            }
         }
 
         /// <summary>
@@ -115,7 +170,17 @@ namespace Sharpy
                 return true;
             }
 
-            if (_dict.Count != other._dict.Count)
+            if (Count != other.Count)
+            {
+                return false;
+            }
+
+            if (_hasNullKey != other._hasNullKey)
+            {
+                return false;
+            }
+
+            if (_hasNullKey && !Operator.Eq(_nullValue, other._nullValue))
             {
                 return false;
             }
@@ -203,6 +268,10 @@ namespace Sharpy
                 int hash = 17;
                 hash = hash * 31 + typeof(Dict<K, V>).GetHashCode();
                 hash = hash * 31 + _dict.GetHashCode();
+                if (_hasNullKey)
+                {
+                    hash = hash * 31 + (_nullValue?.GetHashCode() ?? 0);
+                }
                 return hash;
             }
         }
@@ -215,19 +284,29 @@ namespace Sharpy
             var builder = new StringBuilder();
             builder.Append('{');
 
-            int i = 1;
-            var numItems = _dict.Count;
+            int totalCount = Count;
+            int written = 0;
+            int dictIndex = 0;
 
             foreach (var kv in _dict)
             {
-                builder.Append($"{Repr(kv.Key)}: {Repr(kv.Value)}");
-
-                if (i < numItems)
+                if (_hasNullKey && dictIndex == _nullOrdinal)
                 {
-                    builder.Append(", ");
+                    if (written > 0) builder.Append(", ");
+                    builder.Append($"{Repr(default(K))}: {Repr(_nullValue)}");
+                    ++written;
                 }
 
-                ++i;
+                if (written > 0) builder.Append(", ");
+                builder.Append($"{Repr(kv.Key)}: {Repr(kv.Value)}");
+                ++written;
+                ++dictIndex;
+            }
+
+            if (_hasNullKey && _nullOrdinal >= _dict.Count)
+            {
+                if (written > 0) builder.Append(", ");
+                builder.Append($"{Repr(default(K))}: {Repr(_nullValue)}");
             }
 
             builder.Append('}');
@@ -238,13 +317,13 @@ namespace Sharpy
         /// <summary>Returns true if the dictionary is non-empty.</summary>
         public static bool operator true(Dict<K, V>? dict)
         {
-            return dict is not null && dict._dict.Count > 0;
+            return dict is not null && dict.Count > 0;
         }
 
         /// <summary>Returns true if the dictionary is empty or null.</summary>
         public static bool operator false(Dict<K, V>? dict)
         {
-            return dict is null || dict._dict.Count == 0;
+            return dict is null || dict.Count == 0;
         }
 
         /// <inheritdoc/>
@@ -261,6 +340,15 @@ namespace Sharpy
                     : kvp.Value;
 
                 newDict._dict[copiedKey] = copiedValue;
+            }
+
+            if (_hasNullKey)
+            {
+                newDict._hasNullKey = true;
+                newDict._nullOrdinal = _nullOrdinal;
+                newDict._nullValue = _nullValue != null
+                    ? (V)CopyModule.DeepCopyInternal(_nullValue, memo)
+                    : _nullValue;
             }
 
             return newDict;

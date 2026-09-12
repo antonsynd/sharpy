@@ -17,17 +17,17 @@ namespace Sharpy
           System.IEquatable<Set<K>>
         where K : notnull
     {
-        private readonly Dictionary<K, V>.KeyCollection _keys;
+        private readonly Dict<K, V> _owner;
 
-        internal DictKeyView(Dictionary<K, V>.KeyCollection keys)
+        internal DictKeyView(Dict<K, V> owner)
         {
-            _keys = keys;
+            _owner = owner;
         }
 
         /// <summary>
         /// Gets the number of keys in the view.
         /// </summary>
-        public int Count => _keys.Count;
+        public int Count => _owner.Count;
 
         /// <summary>
         /// Compares the count of this view to another set.
@@ -52,7 +52,7 @@ namespace Sharpy
         /// </summary>
         public bool Contains(K x)
         {
-            return _keys.Contains(x);
+            return _owner.ContainsKey(x);
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace Sharpy
             if (Count != other.Count)
                 return false;
 
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                     return false;
@@ -77,9 +77,10 @@ namespace Sharpy
         /// <summary>Returns an enumerator that iterates through the keys.</summary>
         public IEnumerator<K> GetEnumerator()
         {
-            foreach (var key in _keys)
+            var e = _owner.GetEnumerator();
+            while (e.MoveNext())
             {
-                yield return key;
+                yield return e.Current;
             }
         }
 
@@ -88,7 +89,7 @@ namespace Sharpy
         /// </summary>
         public bool IsDisjoint(Set<K> other)
         {
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (other.Contains(key))
                 {
@@ -104,7 +105,7 @@ namespace Sharpy
         public Set<K> Intersection(Set<K> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (other.Contains(key))
                 {
@@ -153,7 +154,7 @@ namespace Sharpy
                 return false;
             }
 
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {
@@ -173,7 +174,7 @@ namespace Sharpy
                 return false;
             }
 
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {
@@ -189,7 +190,7 @@ namespace Sharpy
         public Set<K> Union(Set<K> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 result.Add(key);
             }
@@ -206,7 +207,7 @@ namespace Sharpy
         public Set<K> Union(DictKeyView<K, V> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 result.Add(key);
             }
@@ -223,7 +224,7 @@ namespace Sharpy
         public Set<K> Intersection(DictKeyView<K, V> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (other.Contains(key))
                 {
@@ -239,7 +240,7 @@ namespace Sharpy
         public Set<K> Difference(DictKeyView<K, V> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {
@@ -255,7 +256,7 @@ namespace Sharpy
         public Set<K> SymmetricDifference(DictKeyView<K, V> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {
@@ -273,7 +274,7 @@ namespace Sharpy
         }
 
         // ---- Python set algebra (PEP 3106) --------------------------------------------------
-        // CPython's dict_keys is set-like: `d.keys() | e.keys()`, `&`, `-`, `^` all return a plain
+        // CPython's dictthis is set-like: `d.keys() | e.keys()`, `&`, `-`, `^` all return a plain
         // `set`, never a view (measured, python3.12). The result type is therefore Set<K> — the
         // view stays a live window onto its dictionary and is never synthesized from an operation.
         // These delegate to the methods above so operator and method spellings cannot drift.
@@ -339,7 +340,7 @@ namespace Sharpy
         public Set<K> Difference(Set<K> other)
         {
             var result = new Set<K>();
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {
@@ -357,7 +358,7 @@ namespace Sharpy
             var result = new Set<K>();
 
             // Add elements from this that are not in other
-            foreach (var key in _keys)
+            foreach (var key in this)
             {
                 if (!other.Contains(key))
                 {

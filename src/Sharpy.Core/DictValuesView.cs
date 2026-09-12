@@ -20,28 +20,24 @@ namespace Sharpy
           ISized
         where K : notnull
     {
-        private readonly Dictionary<K, V>.ValueCollection _values;
+        private readonly Dict<K, V> _owner;
 
-        internal DictValuesView(Dictionary<K, V>.ValueCollection values)
+        internal DictValuesView(Dict<K, V> owner)
         {
-            _values = values;
+            _owner = owner;
         }
 
         /// <summary>
         /// Gets the number of values in the view.
         /// </summary>
-        public int Count => _values.Count;
+        public int Count => _owner.Count;
 
         /// <summary>
         /// Determines whether the view contains the specified value.
         /// </summary>
-        /// <remarks>
-        /// Values don't have a fast Contains check in .NET, so this iterates
-        /// through all values using Sharpy's equality comparison.
-        /// </remarks>
         public bool Contains(V item)
         {
-            foreach (var value in _values)
+            foreach (var value in this)
             {
                 if (Operator.Eq(value, item))
                 {
@@ -56,9 +52,22 @@ namespace Sharpy
         /// </summary>
         public IEnumerator<V> GetEnumerator()
         {
-            foreach (var value in _values)
+            var dict = _owner.InnerDict;
+            int dictIndex = 0;
+            foreach (var kvp in dict)
             {
-                yield return value;
+                if (_owner.HasNullKey && dictIndex == _owner.NullOrdinal)
+                {
+                    yield return _owner.NullValue;
+                }
+
+                yield return kvp.Value;
+                dictIndex++;
+            }
+
+            if (_owner.HasNullKey && _owner.NullOrdinal >= dict.Count)
+            {
+                yield return _owner.NullValue;
             }
         }
 

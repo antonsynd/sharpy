@@ -392,13 +392,13 @@ namespace Sharpy
     [SharpyModuleType("collections", "DefaultDict")]
     public class DefaultDict<TKey, TValue> where TKey : notnull
     {
-        private readonly System.Collections.Generic.Dictionary<TKey, TValue> _dict;
+        private readonly Dict<TKey, TValue> _dict;
         private readonly Func<TValue> _defaultFactory;
 
         /// <summary>Create a defaultdict with the given factory for missing keys.</summary>
         public DefaultDict(Func<TValue> defaultFactory)
         {
-            _dict = new System.Collections.Generic.Dictionary<TKey, TValue>();
+            _dict = new Dict<TKey, TValue>();
             _defaultFactory = defaultFactory ?? throw new TypeError("default_factory cannot be None");
         }
 
@@ -409,7 +409,7 @@ namespace Sharpy
         {
             get
             {
-                if (!_dict.TryGetValue(key, out TValue? value))
+                if (!_dict.TryGetValue(key, out TValue value))
                 {
                     value = _defaultFactory();
                     _dict[key] = value;
@@ -424,7 +424,7 @@ namespace Sharpy
         /// </summary>
         public TValue Get(TKey key, TValue defaultValue = default!)
         {
-            return _dict.TryGetValue(key, out TValue? value) ? value : defaultValue;
+            return _dict.TryGetValue(key, out TValue value) ? value : defaultValue;
         }
 
         /// <summary>
@@ -444,13 +444,12 @@ namespace Sharpy
         /// <summary>
         /// The keys of the dictionary. Python: <c>d.keys()</c>. Returns a copy, not a live view.
         /// </summary>
-        // Methods, not properties — see Counter.Keys (#1391).
-        public IEnumerable<TKey> Keys() => _dict.Keys;
+        public DictKeyView<TKey, TValue> Keys() => _dict.Keys();
 
         /// <summary>
         /// The values of the dictionary. Python: <c>d.values()</c>. Returns a copy, not a live view.
         /// </summary>
-        public IEnumerable<TValue> Values() => _dict.Values;
+        public DictValuesView<TKey, TValue> Values() => _dict.Values();
 
         /// <summary>The default factory function used for missing keys.</summary>
         public Func<TValue> DefaultFactory => _defaultFactory;
@@ -461,9 +460,9 @@ namespace Sharpy
         public DefaultDict<TKey, TValue> Copy()
         {
             var result = new DefaultDict<TKey, TValue>(_defaultFactory);
-            foreach (var kvp in _dict)
+            foreach (var key in _dict)
             {
-                result._dict[kvp.Key] = kvp.Value;
+                result._dict[key] = _dict[key];
             }
             return result;
         }
@@ -482,13 +481,7 @@ namespace Sharpy
         /// </summary>
         public TValue Pop(TKey key)
         {
-            if (_dict.TryGetValue(key, out TValue? value))
-            {
-                _dict.Remove(key);
-                return value;
-            }
-
-            throw new KeyError(Builtins.Repr(key));
+            return _dict.Pop(key);
         }
 
         /// <summary>
@@ -497,13 +490,7 @@ namespace Sharpy
         /// </summary>
         public TValue Pop(TKey key, TValue defaultValue)
         {
-            if (_dict.TryGetValue(key, out TValue? value))
-            {
-                _dict.Remove(key);
-                return value;
-            }
-
-            return defaultValue;
+            return _dict.Pop(key, defaultValue);
         }
 
         /// <summary>
@@ -512,9 +499,9 @@ namespace Sharpy
         public List<(TKey, TValue)> Items()
         {
             var items = new List<(TKey, TValue)>();
-            foreach (var kvp in _dict)
+            foreach (var (k, v) in _dict.Items())
             {
-                items.Add((kvp.Key, kvp.Value));
+                items.Add((k, v));
             }
             return items;
         }
@@ -535,10 +522,7 @@ namespace Sharpy
         /// </summary>
         public void Update(IEnumerable<(TKey, TValue)> other)
         {
-            foreach (var (key, value) in other)
-            {
-                _dict[key] = value;
-            }
+            _dict.Update(other);
         }
 
         /// <summary>
@@ -548,13 +532,7 @@ namespace Sharpy
         /// </summary>
         public TValue SetDefault(TKey key, TValue defaultValue)
         {
-            if (_dict.TryGetValue(key, out TValue? value))
-            {
-                return value;
-            }
-
-            _dict[key] = defaultValue;
-            return defaultValue;
+            return _dict.SetDefault(key, defaultValue);
         }
 
         /// <summary>
@@ -564,14 +542,7 @@ namespace Sharpy
         /// <exception cref="KeyError">Thrown if the defaultdict is empty.</exception>
         public (TKey, TValue) PopItem(bool last = true)
         {
-            if (_dict.Count == 0)
-            {
-                throw new KeyError("popitem(): dictionary is empty");
-            }
-
-            var pair = last ? _dict.Last() : _dict.First();
-            _dict.Remove(pair.Key);
-            return (pair.Key, pair.Value);
+            return _dict.PopItem(last);
         }
 
         /// <summary>
@@ -580,16 +551,13 @@ namespace Sharpy
         /// <exception cref="KeyError">Thrown if the key does not exist.</exception>
         public void Remove(TKey key)
         {
-            if (!_dict.Remove(key))
-            {
-                throw new KeyError(Builtins.Repr(key));
-            }
+            _dict.Remove(key);
         }
 
         /// <summary>Convert to a standard .NET Dictionary.</summary>
         public Dictionary<TKey, TValue> ToDictionary()
         {
-            return new Dictionary<TKey, TValue>(_dict);
+            return _dict.ToDictionary();
         }
 
         /// <summary>The number of items in the defaultdict.</summary>

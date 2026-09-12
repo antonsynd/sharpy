@@ -13,26 +13,25 @@ namespace Sharpy
           ISized
         where K : notnull
     {
-        private readonly Dictionary<K, V> _dict;
+        private readonly Dict<K, V> _owner;
 
-        internal DictItemsView(Dictionary<K, V> dict)
+        internal DictItemsView(Dict<K, V> owner)
         {
-            _dict = dict;
+            _owner = owner;
         }
 
         /// <summary>
         /// Gets the number of items in the view.
         /// </summary>
-        public int Count => _dict.Count;
+        public int Count => _owner.Count;
 
         /// <summary>
         /// Determines whether the view contains the specified key-value pair.
         /// </summary>
         public bool Contains((K, V) item)
         {
-            if (_dict.TryGetValue(item.Item1, out V? value))
+            if (_owner.TryGetValue(item.Item1, out V value))
             {
-                // Use Operator.Eq for proper equality comparison
                 return Operator.Eq(value, item.Item2);
             }
             return false;
@@ -43,9 +42,22 @@ namespace Sharpy
         /// </summary>
         public IEnumerator<(K, V)> GetEnumerator()
         {
-            foreach (var kvp in _dict)
+            var dict = _owner.InnerDict;
+            int dictIndex = 0;
+            foreach (var kvp in dict)
             {
+                if (_owner.HasNullKey && dictIndex == _owner.NullOrdinal)
+                {
+                    yield return (default!, _owner.NullValue);
+                }
+
                 yield return (kvp.Key, kvp.Value);
+                dictIndex++;
+            }
+
+            if (_owner.HasNullKey && _owner.NullOrdinal >= dict.Count)
+            {
+                yield return (default!, _owner.NullValue);
             }
         }
 

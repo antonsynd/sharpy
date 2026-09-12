@@ -132,7 +132,7 @@ public class LogicalResultSteerMatrixTests : IntegrationTestBase
     public void Totality()
     {
         // Anchored to literals, not derived from the axes
-        MatrixCells.Cast<object[]>().Count().Should().BeGreaterOrEqualTo(18,
+        MatrixCells.Cast<object[]>().Count().Should().BeGreaterThanOrEqualTo(18,
             "at least 18 cells (9 positions × 2 operators, partial coverage of 3 left-kinds per position)");
     }
 }

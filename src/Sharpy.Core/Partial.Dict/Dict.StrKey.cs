@@ -20,6 +20,7 @@ namespace Sharpy
             return EnumerateStringKeyEntries();
         }
 
+        // Null key is skipped: kwargs cannot carry a null key.
         private IEnumerable<KeyValuePair<string, object?>> EnumerateStringKeyEntries()
         {
             foreach (var kvp in _dict)
