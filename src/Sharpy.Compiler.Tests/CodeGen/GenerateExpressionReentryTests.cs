@@ -230,7 +230,10 @@ public class GenerateExpressionReentryTests
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 14;
+    // +1: interop/clr_overload_string_compare_1843 (CLR interop, no builtins import in the sweep)
+    // +1: logical/coalesce_nullable_control_1819 (?? operator needs nullable resolution)
+    // -1: optional_result/result_annotation_payload_forms fixed by Phase 6's spec rewrite
+    private const int MaxUncompilableFixtures = 15;
 
     // ----------------------------------------------------------------------------------------- //
 
