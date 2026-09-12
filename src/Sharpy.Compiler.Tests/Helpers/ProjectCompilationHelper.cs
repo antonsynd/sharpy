@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
@@ -445,9 +446,20 @@ public class ProjectCompilationHelper : IDisposable
     /// </summary>
     private ExecutionResult ExecuteAssembly(string assemblyPath)
     {
+        var alc = new AssemblyLoadContext($"sharpy-exec-{Guid.NewGuid():N}", isCollectible: true);
         try
         {
-            var assembly = Assembly.LoadFrom(assemblyPath);
+            var assemblyDir = Path.GetDirectoryName(assemblyPath)!;
+            alc.Resolving += (ctx, name) =>
+            {
+                var candidate = Path.Combine(assemblyDir, name.Name + ".dll");
+                if (!File.Exists(candidate))
+                    return null;
+                if (AssemblyLoadContext.Default.Assemblies.Any(a => a.GetName().Name == name.Name))
+                    return null;
+                return ctx.LoadFromStream(new MemoryStream(File.ReadAllBytes(candidate)));
+            };
+            var assembly = alc.LoadFromStream(new MemoryStream(File.ReadAllBytes(assemblyPath)));
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
 
@@ -537,6 +549,10 @@ public class ProjectCompilationHelper : IDisposable
                 StandardError = string.Empty,
                 Exception = ex
             };
+        }
+        finally
+        {
+            alc.Unload();
         }
     }
 
