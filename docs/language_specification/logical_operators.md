@@ -67,6 +67,22 @@ nested-falsy
 
 `and` and `or` return `bool`, not the operand value. This is a deliberate deviation from Python, where `"" or "Anonymous"` returns `"Anonymous"`. In Sharpy, `"" or "Anonymous"` evaluates to `True`. See `null_coalescing_operator.md` for the `??` operator that provides the Python-style fallback behavior.
 
+Assigning the result of `or`/`and` to a non-`bool` slot is refused with a steer naming the rewrite:
+
+<!-- spec-sweep: error SPY0220 -->
+```python
+name: str | None = None
+fallback: str = name or "Anonymous"  # error: Cannot assign type 'bool' ... use '??'
+```
+
+For nullable or optional left operands, `??` is the Python-style fallback:
+
+```python
+name: str | None = None
+fallback: str = name ?? "Anonymous"  # "Anonymous"
+print(fallback)
+```
+
 ## Examples
 
 ```spy
