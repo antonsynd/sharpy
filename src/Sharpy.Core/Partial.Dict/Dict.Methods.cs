@@ -30,7 +30,8 @@ namespace Sharpy
             {
                 if (IsNullKey(key))
                 {
-                    if (!result._hasNullKey) result._nullOrdinal = result._dict.Count;
+                    if (!result._hasNullKey)
+                        result._nullOrdinal = result._dict.Count;
                     result._nullValue = value;
                     result._hasNullKey = true;
                 }
@@ -443,7 +444,8 @@ namespace Sharpy
 
             if (other._hasNullKey)
             {
-                if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                if (!_hasNullKey)
+                    _nullOrdinal = _dict.Count;
                 _nullValue = other._nullValue;
                 _hasNullKey = true;
             }

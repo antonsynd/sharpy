@@ -123,7 +123,8 @@ namespace Sharpy
             {
                 if (kv.Key is null)
                 {
-                    if (!hasNullKey) orderBuilder.Add(default!);
+                    if (!hasNullKey)
+                        orderBuilder.Add(default!);
                     hasNullKey = true;
                     nullValue = kv.Value;
                 }
@@ -155,7 +156,8 @@ namespace Sharpy
             {
                 if (key is null)
                 {
-                    if (_hasNullKey) return _nullValue;
+                    if (_hasNullKey)
+                        return _nullValue;
                     throw new KeyError(Repr(key));
                 }
 

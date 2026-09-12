@@ -64,7 +64,8 @@ namespace Sharpy
                 if (IsNullKey(kvp.Key))
                 {
                     _nullValue = kvp.Value;
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _hasNullKey = true;
                 }
                 else
@@ -87,7 +88,8 @@ namespace Sharpy
                 if (IsNullKey(key))
                 {
                     _nullValue = value;
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _hasNullKey = true;
                 }
                 else
@@ -108,7 +110,8 @@ namespace Sharpy
                 if (IsNullKey(kvp.Key))
                 {
                     dict._nullValue = kvp.Value;
-                    if (!dict._hasNullKey) dict._nullOrdinal = dict._dict.Count;
+                    if (!dict._hasNullKey)
+                        dict._nullOrdinal = dict._dict.Count;
                     dict._hasNullKey = true;
                 }
                 else
@@ -129,7 +132,8 @@ namespace Sharpy
             {
                 if (IsNullKey(key))
                 {
-                    if (_hasNullKey) return _nullValue;
+                    if (_hasNullKey)
+                        return _nullValue;
                     throw new KeyError(Repr(key));
                 }
 
@@ -144,7 +148,8 @@ namespace Sharpy
             {
                 if (IsNullKey(key))
                 {
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _nullValue = value;
                     _hasNullKey = true;
                 }
@@ -292,12 +297,14 @@ namespace Sharpy
             {
                 if (_hasNullKey && dictIndex == _nullOrdinal)
                 {
-                    if (written > 0) builder.Append(", ");
+                    if (written > 0)
+                        builder.Append(", ");
                     builder.Append($"{Repr(default(K))}: {Repr(_nullValue)}");
                     ++written;
                 }
 
-                if (written > 0) builder.Append(", ");
+                if (written > 0)
+                    builder.Append(", ");
                 builder.Append($"{Repr(kv.Key)}: {Repr(kv.Value)}");
                 ++written;
                 ++dictIndex;
@@ -305,7 +312,8 @@ namespace Sharpy
 
             if (_hasNullKey && _nullOrdinal >= _dict.Count)
             {
-                if (written > 0) builder.Append(", ");
+                if (written > 0)
+                    builder.Append(", ");
                 builder.Append($"{Repr(default(K))}: {Repr(_nullValue)}");
             }
 

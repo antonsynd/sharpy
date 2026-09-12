@@ -15,7 +15,8 @@ namespace Sharpy
             {
                 if (IsNullIKey(key))
                 {
-                    if (_hasNullKey) return _nullValue;
+                    if (_hasNullKey)
+                        return _nullValue;
                     throw new KeyError(Repr(key));
                 }
 
@@ -35,7 +36,8 @@ namespace Sharpy
             {
                 if (IsNullIKey(key))
                 {
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _nullValue = (V)value!;
                     _hasNullKey = true;
                     return;
@@ -107,7 +109,8 @@ namespace Sharpy
 
         bool IDict.Contains(object key)
         {
-            if (IsNullIKey(key)) return _hasNullKey;
+            if (IsNullIKey(key))
+                return _hasNullKey;
             return key is K typedKey && _dict.ContainsKey(typedKey);
         }
 
@@ -204,7 +207,8 @@ namespace Sharpy
         {
             if (IsNullIKey(key))
             {
-                if (_hasNullKey) return _nullValue;
+                if (_hasNullKey)
+                    return _nullValue;
 
                 var typedValue = (V)defaultValue!;
                 _nullOrdinal = _dict.Count;
@@ -241,7 +245,8 @@ namespace Sharpy
             {
                 if (k is null)
                 {
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _nullValue = (V)v!;
                     _hasNullKey = true;
                 }
@@ -258,7 +263,8 @@ namespace Sharpy
             {
                 if (k is null)
                 {
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _nullValue = (V)v!;
                     _hasNullKey = true;
                 }

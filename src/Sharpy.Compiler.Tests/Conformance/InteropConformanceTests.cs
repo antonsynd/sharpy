@@ -106,7 +106,8 @@ public class InteropConformanceTests
         var bclTypes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (asm.IsDynamic) continue;
+            if (asm.IsDynamic)
+                continue;
             try
             {
                 foreach (var t in asm.GetExportedTypes())

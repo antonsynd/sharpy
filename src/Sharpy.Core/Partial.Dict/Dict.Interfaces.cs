@@ -230,7 +230,8 @@ namespace Sharpy
         {
             if (IsNullKey(key))
             {
-                if (!_hasNullKey) return false;
+                if (!_hasNullKey)
+                    return false;
                 _hasNullKey = false;
                 _nullValue = default!;
                 return true;
@@ -347,7 +348,8 @@ namespace Sharpy
             {
                 if (key is null)
                 {
-                    if (_hasNullKey) return _nullValue;
+                    if (_hasNullKey)
+                        return _nullValue;
                     return null;
                 }
 
@@ -357,7 +359,8 @@ namespace Sharpy
             {
                 if (key is null)
                 {
-                    if (!_hasNullKey) _nullOrdinal = _dict.Count;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
                     _nullValue = (V)value!;
                     _hasNullKey = true;
                     return;
@@ -389,7 +392,8 @@ namespace Sharpy
         /// <summary>Determines whether the dictionary contains an element with the specified key (non-generic).</summary>
         bool IDictionary.Contains(object key)
         {
-            if (key is null) return _hasNullKey;
+            if (key is null)
+                return _hasNullKey;
             return ((IDictionary)_dict).Contains(key);
         }
 
