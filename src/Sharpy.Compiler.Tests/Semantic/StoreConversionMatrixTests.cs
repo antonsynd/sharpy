@@ -45,7 +45,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     private const int ShapeCount = 24;
     private const int AcceptedCellCount = 271;
     private const int RefusedCellCount = 203;
-    private const int KnownRedCellCount = 0;
     private const int NotApplicableCellCount = 30;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
@@ -399,32 +398,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["TruthinessTest×ConstantIntoNarrowNullable"] = "a truthiness test has no store slot (the seam pushes Unknown), so the shape's slot cannot vary the answer — truth-testability is BestCommonTypeMatrixTests' axis",
     };
 
-    // ── Known-red cells ──────────────────────────────────────────────────────────────────────
-
-    private enum RedContract
-    {
-        /// <summary>The cell must produce this code and message.</summary>
-        Code,
-
-        /// <summary>The cell must compile and print the stored value.</summary>
-        Accepted,
-
-        /// <summary>Accept or refuse is an open ruling; SPY0908 is not an answer either way.</summary>
-        NotAnIce,
-    }
-
-    private sealed record KnownRed(
-        string Issue,
-        string Observed,
-        RedContract Contract,
-        string? Code = null,
-        string? Message = null,
-        string? Output = null);
-
-    private static readonly Dictionary<string, KnownRed> KnownRedCells = new()
-    {
-    };
-
     // ── Cell resolution ──────────────────────────────────────────────────────────────────────
 
     private static string Key(Position p, Shape s) => $"{p.Name}×{s.Name}";
@@ -438,15 +411,13 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     private static int ExpectedLine(Position p, Shape s)
         => s.Prelude.Count(c => c == '\n') + p.StoreLine;
 
-    private enum Verdict { Accepted, Refused, KnownRed, NotApplicable }
+    private enum Verdict { Accepted, Refused, NotApplicable }
 
     private static Verdict Classify(Position p, Shape s)
     {
         var key = Key(p, s);
         if (NotApplicableCells.ContainsKey(key))
             return Verdict.NotApplicable;
-        if (KnownRedCells.ContainsKey(key))
-            return Verdict.KnownRed;
         if (OperatorRefusalCells.Contains(key)
             || CoalesceLeftRefusalCells.Contains(key)
             || CoalesceNoneRefusalCells.Contains(key)
@@ -504,12 +475,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     public static IEnumerable<object[]> RefusedCells => CellsWhere(Verdict.Refused);
 
-    public static IEnumerable<object[]> KnownRedCellData => CellsWhere(Verdict.KnownRed);
-
-    public static IEnumerable<object[]> KnownRedRefusalCells
-        => CellsWhere(Verdict.KnownRed)
-            .Where(row => KnownRedCells[$"{row[0]}×{row[1]}"].Contract == RedContract.Code);
-
     // ── The cells ────────────────────────────────────────────────────────────────────────────
 
     [Theory]
@@ -562,72 +527,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         matching[0].Line.Should().Be(ExpectedLine(p, s),
             $"[{position} × {shape}] must be reported at the store, not at the enclosing "
             + $"statement\n{source}");
-    }
-
-    /// <summary>
-    /// The half of the known-red set whose contract is a REFUSAL stays executing: the code they
-    /// carry today is the wrong one (#1759, #1760, #1761), but a regression that ADMITS the value
-    /// would be a soundness hole, and this cell catches it while the issue is open.
-    /// </summary>
-    [Theory(Skip = "All known-red cells drained (#1762 closed)")]
-    [MemberData(nameof(KnownRedRefusalCells))]
-    public void KnownRedRefusal_IsStillRefused(string position, string shape)
-    {
-        var p = Pos(position);
-        var s = Shp(shape);
-        var source = Source(p, s);
-        var red = KnownRedCells[Key(p, s)];
-
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse(
-            $"[{position} × {shape}] must not be admitted. It is known red under {red.Issue} "
-            + $"(observed: {red.Observed}) because the CODE is wrong, not because the value is "
-            + $"legal\n{source}");
-    }
-
-    /// <summary>
-    /// The contract for the known-red cells, in full. Skipped while issues are open; deleting
-    /// the Skip is how each issue is verified closed, and a row whose issue is fixed but whose
-    /// entry survives fails <see cref="Matrix_IsTotalOverItsAxes"/>'s stale-key check only after
-    /// the entry is removed — so the drain is: fix, unskip, delete the row.
-    /// </summary>
-    [Theory(Skip = "All known-red cells drained (#1762 closed)")]
-    [MemberData(nameof(KnownRedCellData))]
-    public void KnownRedCell_MeetsTheSeamContract(string position, string shape)
-    {
-        var p = Pos(position);
-        var s = Shp(shape);
-        var source = Source(p, s);
-        var red = KnownRedCells[Key(p, s)];
-
-        var result = CompileAndExecute(source);
-
-        switch (red.Contract)
-        {
-            case RedContract.Accepted:
-                result.Success.Should().BeTrue(
-                    $"[{position} × {shape}] ({red.Issue}) must compile. Diagnostics: "
-                    + $"{string.Join(" | ", result.CompilationErrors)}\n{source}");
-                result.StandardOutput.Should().Be(red.Output, $"[{position} × {shape}]\n{source}");
-                break;
-
-            case RedContract.Code:
-                result.Success.Should().BeFalse($"[{position} × {shape}] ({red.Issue})\n{source}");
-                result.RawDiagnostics.Should().ContainSingle(d => d.Code == red.Code,
-                    $"[{position} × {shape}] ({red.Issue}) must report {red.Code}; observed "
-                    + $"{red.Observed}\n{source}");
-                result.RawDiagnostics.Single(d => d.Code == red.Code).Message.Should().Contain(red.Message!);
-                break;
-
-            case RedContract.NotAnIce:
-                result.RawDiagnostics.Should().NotContain(
-                    d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-                    $"[{position} × {shape}] ({red.Issue}) must be answered at semantic time — "
-                    + $"accept or refuse is an open ruling, an ICE is neither. Observed "
-                    + $"{red.Observed}\n{source}");
-                break;
-        }
     }
 
     // ── Comprehension element hosts (#1776) ────────────────────────────────────────────────
@@ -944,13 +843,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         var product = (from p in Positions from s in Shapes select Key(p, s)).ToHashSet();
         product.Count.Should().Be(PositionCount * ShapeCount);
 
-        foreach (var key in KnownRedCells.Keys)
-        {
-            product.Should().Contain(key,
-                $"known-red row '{key}' names no cell — a stale entry left behind by a renamed "
-                + "axis member hides a cell that is no longer measured");
-        }
-
         foreach (var key in OperatorRefusalCells)
             product.Should().Contain(key, $"operator-refusal row '{key}' names no cell");
 
@@ -965,18 +857,16 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
         var accepted = AcceptedCells.Count();
         var refused = RefusedCells.Count();
-        var red = KnownRedCellData.Count();
         var na = NotApplicableCells.Count;
 
         accepted.Should().Be(AcceptedCellCount, "the accepted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
-        red.Should().Be(KnownRedCellCount, "known-red cells are drained (#1762 closed)");
         na.Should().Be(NotApplicableCellCount,
             "every N/A cell is written down BY NAME with its reason — a position whose slot the "
             + "shape axis cannot vary costs 24 explicit rows, not one set entry");
 
-        (accepted + refused + red + na).Should().Be(PositionCount * ShapeCount,
-            $"live ({accepted + refused}) + known-red ({red}) + N/A ({na}) must be the whole "
+        (accepted + refused + na).Should().Be(PositionCount * ShapeCount,
+            $"live ({accepted + refused}) + N/A ({na}) must be the whole "
             + $"product ({PositionCount} × {ShapeCount})");
     }
 }
