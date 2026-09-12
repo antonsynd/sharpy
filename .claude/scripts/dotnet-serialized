@@ -68,10 +68,6 @@ LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
 LOG_DEQUE_SIZE=3
 LOG_INDEX_FILE="${LOG_DIR}/dotnet-serialized-index"
 
-#: Monotonic count of lock acquisitions, kept OUTSIDE $LOCK_DIR on purpose: cleanup() rm -rf's
-#: that directory on every release, so a counter inside it resets and can never be monotonic.
-GENERATION_FILE="${HOME}/.claude/locks/dotnet.generation"
-
 cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
 }
@@ -181,16 +177,16 @@ acquire_lock() {
         if [ "$waited" -ge "$TIMEOUT" ]; then
             echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
             echo "Lock owner PID: $(cat "$LOCK_PID_FILE" 2>/dev/null || echo unknown)" >&2
-            echo "Do NOT run 'pkill -f dotnet' -- it kills other agents' live test runs." >&2
-            echo "A quiet run is not a hung run: a full suite spends its last minutes in" >&2
-            echo "teardown at 0% CPU with no log growth. Judge by ELAPSED time against the" >&2
-            echo "~18-minute expected duration first, and only then kill the specific PID." >&2
+            echo "Run: .claude/scripts/dotnet-serialized --holder-status" >&2
+            echo "Then REPORT to the lead. Do not kill a holder you did not start." >&2
             exit 124
         fi
         sleep 2
         waited=$((waited + 2))
     done
     echo "$owner_pid" > "$LOCK_PID_FILE"
+    pwd -P > "$LOCK_CWD_FILE"
+    date +%s > "$LOCK_STARTED_FILE"
     bump_generation
     if [ "$owner_pid" = "$$" ]; then
         trap cleanup EXIT
@@ -223,6 +219,10 @@ file_mtime() {
     # [!0-9] guard then reads that block as "no progress" every poll — the watchdog never fires
     # on Linux (measured red on CI 2026-08-15: the four kill cells timed out because of this).
     stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
+}
+
+file_size() {
+    stat -c %s "$1" 2>/dev/null || stat -f %z "$1"
 }
 
 # Holder-side monitor: only the holder knows both its own log file and its own child.
@@ -362,12 +362,52 @@ case "${1:-}" in
         cat "$GENERATION_FILE" 2>/dev/null || echo 0
         exit 0
         ;;
+    --holder-status)
+        if [ ! -d "$LOCK_DIR" ]; then
+            echo "No lock held."
+            exit 0
+        fi
+        echo "pid:     $(cat "$LOCK_PID_FILE" 2>/dev/null || echo '(none)')"
+        echo "child:   $(cat "$LOCK_CHILD_FILE" 2>/dev/null || echo '(none)')"
+        echo "cwd:     $(cat "$LOCK_CWD_FILE" 2>/dev/null || echo '(none)')"
+        _started=$(cat "$LOCK_STARTED_FILE" 2>/dev/null)
+        if [ -n "$_started" ]; then
+            _now=$(date +%s)
+            _age=$((_now - _started))
+            echo "started: ${_started} (${_age}s ago)"
+        else
+            echo "started: (none)"
+        fi
+        _holder_log=$(cat "$LOCK_LOG_FILE" 2>/dev/null)
+        if [ -z "$_holder_log" ]; then
+            echo "log:     no log published (lock-only holder)"
+            exit 0
+        fi
+        echo "log:     $_holder_log"
+        if [ ! -f "$_holder_log" ]; then
+            echo "log file does not exist yet."
+            exit 0
+        fi
+        _probe_seconds="${DOTNET_SERIALIZED_PROBE_SECONDS:-20}"
+        _size1=$(file_size "$_holder_log")
+        echo "Probing log growth for ${_probe_seconds}s..."
+        sleep "$_probe_seconds"
+        _size2=$(file_size "$_holder_log")
+        _growth=$((_size2 - _size1))
+        if [ "$_growth" -gt 0 ]; then
+            echo "LIVE (log grew by $_growth bytes in ${_probe_seconds}s)"
+        else
+            echo "NO GROWTH in ${_probe_seconds}s -- report to the lead, do not kill (scope: measured good under --logger console;verbosity=normal; unestablished for a quieter logger)"
+        fi
+        exit 0
+        ;;
 esac
 
 acquire_lock
 
 SLOT=$(next_log_slot)
 LOG_FILE="${LOG_DIR}/dotnet-serialized-${SLOT}.log"
+echo "$LOG_FILE" > "$LOCK_LOG_FILE"
 
 : > "$LOG_FILE"
 ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
