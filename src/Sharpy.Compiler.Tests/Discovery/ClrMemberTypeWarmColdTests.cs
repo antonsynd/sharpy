@@ -69,16 +69,10 @@ def main() -> None:
     print("warm")
 """);
 
-        // The warm arm is COMPILED, not executed: the harness loads every build of a project from
-        // the same path with Assembly.LoadFrom, so a second execution in one process reads a stale
-        // mapping and fails with corrupt metadata — measured with a CLR-free control, and filed as
-        // #1834. A clean warm compile means the member types the cache served are the ones the
-        // program's typed slots accept (`d: DayOfWeek`, `s: str`, a non-nullable `str` from
-        // `pop`); the refusal differential below shows the warm build still has an OPINION, which is
-        // what a permissive Unknown would not.
-        var warm = helper.Compile();
-        Assert.True(warm.Success, "warm: " + string.Join("; ", warm.Diagnostics.GetErrors().Select(d => d.Message)));
-        helper.AssertWarmBuildSkipped(warm, "clr_member_lib.spy");
+        var warm = helper.CompileAndExecute();
+        Assert.True(warm.Success, "warm: " + string.Join("; ", warm.CompilationErrors));
+        Assert.Equal(Expected + "warm\n", warm.StandardOutput.Replace("\r\n", "\n"));
+        helper.AssertWarmBuildSkipped(helper.LastCompilationResult!, "clr_member_lib.spy");
     }
 
     /// <summary>
