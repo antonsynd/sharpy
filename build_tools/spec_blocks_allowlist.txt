@@ -274,7 +274,6 @@ lexer_implementation.md::071c8f7c95  # SPY0226 first
 lexer_implementation.md::3bb2580b19  # SPY0200 first
 lexer_implementation.md::43a941dd30  # SPY0200 first
 literal_string.md::735f3e373e  # SPY0220 first
-logical_operators.md::a5887b573c  # SPY0220 first
 loop_else.md::87a4b024d1  # SPY0200 first
 match_statement.md::20f9b682cd  # SPY0200 first
 match_statement.md::386d5dfb0f  # SPY0200 first
@@ -420,7 +419,6 @@ program_entry_point.md::daa5d09e86  # SPY0200 first
 properties.md::0f22441582  # SPY0200 first
 properties.md::2cad2b350f  # SPY0203 first
 properties.md::36c5d183b0  # SPY0204 first
-properties.md::88def399b0  # SPY0148 first
 properties_function_style.md::4538adfdac  # SPY0407 first
 properties_function_style.md::86bb0df588  # SPY0496 first
 properties_function_style.md::b43ba33646  # SPY0406 first
