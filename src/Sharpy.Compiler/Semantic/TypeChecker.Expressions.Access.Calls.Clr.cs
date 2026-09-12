@@ -1107,11 +1107,9 @@ internal partial class TypeChecker
                     CheckClrBindingArguments(bestFailing, args, memberDisplay, skipOrdinals);
                     return null;
                 }
-                AddError(
-                    $"No matching overload for '{memberDisplay}' with the given argument types. "
-                    + $"Candidates: {DescribeClrCandidates(decision.Pool)}",
-                    call.LineStart, call.ColumnStart,
-                    code: DiagnosticCodes.Semantic.NoMatchingOverload, span: call.Span);
+                // Every no-match with ≥1 bound candidate is explained by CheckClrBindingArguments
+                // or the same-argument rule; the candidate-list arm had one producer (RefusedByClr),
+                // deleted in #1843. Reachability tested: throw in place → whole solution green.
                 return null;
 
             default:
