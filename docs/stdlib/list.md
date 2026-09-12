@@ -7,7 +7,6 @@ Supports negative indexing, slicing, and Python-style methods.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `length` | `int` | The number of elements. Mirrors the (explicitly-implemented) ICollection.Count and is exposed publicly so that C# list patterns over Sharpy lists are "countable" (e.g. \`case [a, b, *rest]\`). Sharpy code should prefer \`len(x)\`. |
 | `is_read_only` | `bool` | Gets a value indicating whether the list is read-only. |
 
 ## Methods
@@ -227,55 +226,6 @@ x = [1, 2, 3]
 5 in x    # False
 ```
 
-### `get(index: int) -> Optional[T]`
-
-Return the element at *index* wrapped in an
-`Optional{T}`, or `Optional{T}.None` if the
-index is out of range. Supports Python-style negative indexing.
-
-**Parameters:**
-
-- `index` (int) -- The index of the element to retrieve.
-
-**Returns:** `Optional{T}.Some(T)` containing the element at
-*index*, or `Optional{T}.None` if the
-index is out of range.
-
-```python
-x = [10, 20, 30]
-x.get(0)     # Some(10)
-x.get(-1)    # Some(30)
-x.get(5)     # None
-```
-
-### `get(index: int, default_: T) -> T`
-
-Return the element at *index*, or
-*default_* if the index is out of range. Supports
-Python-style negative indexing.
-
-**Parameters:**
-
-- `index` (int) -- The index of the element to retrieve.
-- `default_` (T) -- The fallback value when the index is out of range.
-
-**Returns:** The element at *index*, or *default_*
-if the index is out of range.
-
-```python
-x = [10, 20, 30]
-x.get(0, -1)     # 10
-x.get(5, -1)     # -1
-```
-
-### `get_item_unchecked(index: int) -> T`
-
-Gets the element at a non-negative index, skipping the negative-index normalization the
-ordinary indexer performs. The compiler emits this only when the index is provably >= 0
-(a non-negative literal, or a range-loop induction variable that is not reassigned; #1052),
-so no negative wraparound can be observed. Bounds are still enforced: an out-of-range index
-raises `IndexError`, matching the ordinary indexer's contract.
-
 ### `get_slice(slice: Slice) -> list[T]`
 
 Returns a slice of the list.
@@ -296,10 +246,6 @@ Sets a slice of the list from another list.
 
 - `TypeError` -- Thrown if *other* is null.
 - `ValueError` -- Thrown if slice step is zero or assignment size mismatches extended slice.
-
-### `delete_at(index: int)`
-
-Deletes the element at the specified index.
 
 ### `delete_slice(slice: Slice)`
 

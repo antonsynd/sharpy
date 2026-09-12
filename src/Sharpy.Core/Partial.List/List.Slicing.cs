@@ -15,6 +15,7 @@ namespace Sharpy
         /// exposed publicly so that C# list patterns over Sharpy lists are "countable"
         /// (e.g. <c>case [a, b, *rest]</c>). Sharpy code should prefer <c>len(x)</c>.
         /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public int Length => _list.Count;
 
         /// <summary>
@@ -63,6 +64,7 @@ namespace Sharpy
         /// so no negative wraparound can be observed. Bounds are still enforced: an out-of-range index
         /// raises <see cref="IndexError"/>, matching the ordinary indexer's contract.
         /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public T GetItemUnchecked(int index)
         {
             if ((uint)index >= (uint)_list.Count)
@@ -250,6 +252,7 @@ namespace Sharpy
         /// <summary>
         /// Deletes the element at the specified index.
         /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public void DeleteAt(int index)
         {
             _list.RemoveAt(Sharpy.Index.Normalize(index, _list.Count, false, false));

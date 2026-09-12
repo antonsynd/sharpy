@@ -261,6 +261,7 @@ namespace Sharpy
         /// x.get(5)     # None
         /// </code>
         /// </example>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public Optional<T> Get(int index)
         {
             var actual = index < 0 ? _list.Count + index : index;
@@ -290,6 +291,7 @@ namespace Sharpy
         /// x.get(5, -1)     # -1
         /// </code>
         /// </example>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public T Get(int index, T default_)
         {
             var actual = index < 0 ? _list.Count + index : index;
