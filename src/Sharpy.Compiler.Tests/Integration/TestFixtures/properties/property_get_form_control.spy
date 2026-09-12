@@ -1,0 +1,12 @@
+class Box:
+    _size: int
+
+    def __init__(self, size: int):
+        self._size = size
+
+    property get size(self) -> int:
+        return self._size
+
+def main():
+    b: Box = Box(42)
+    print(b.size)

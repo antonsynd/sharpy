@@ -1,0 +1,9 @@
+class Box:
+    _size: int
+
+    def __init__(self, size: int):
+        self._size = size
+
+    @size.setter
+    def size(self, value: int):
+        self._size = value
