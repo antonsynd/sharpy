@@ -19,6 +19,8 @@ on:
       - 'build_tools/regenerate_spy_tests.sh'
       - 'build_tools/check_spy_staleness.sh'
       - 'build_tools/check_spy_tests_staleness.sh'
+      - 'build_tools/check_allowlist_issue_state.sh'
+      - 'build_tools/allowlist_issue_state.py'
       - '.github/workflows/dev-staleness.yml'
 
 jobs:
@@ -42,3 +44,17 @@ jobs:
       run: bash build_tools/check_spy_staleness.sh
     - name: Verify .spy test C# staleness
       run: bash build_tools/check_spy_tests_staleness.sh
+
+  allowlist-issue-state:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: read
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Verify allowlist rows cite only OPEN issues
+      run: bash build_tools/check_allowlist_issue_state.sh
+      env:
+        GH_TOKEN: ${{ github.token }}

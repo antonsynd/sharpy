@@ -60,6 +60,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 | `src/Sharpy.Core/` or `src/Sharpy.Stdlib/` (public API / doc comments) | `python3 -m build_tools stdlib generate --force` then `git status --short -- docs/stdlib` |
 | `src/Sharpy.Compiler/CodeGen/` or any `generated/` C# | `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` (CI step "Verify generated C# is whitespace-clean (#1641)" — stray emitter trivia lands in generated C#; fix the emitter and regenerate, never hand-format generated files) |
 | `docs/deviations.yaml` or `src/Sharpy.Stdlib.Tests/Spy/cpython/` | `python3 -m build_tools.cpython_oracle ledger --write` then `git status --short -- build_tools/cpython_oracle/ledger.yaml` (commit if dirty — the pytest gate `test_committed_ledger_is_up_to_date` and the dual-execute-oracle CI job both fail on a stale ledger) |
+| `src/**/Conformance/*-allowlist.txt` or any `*.Tests/**/*.cs` | `bash build_tools/check_allowlist_issue_state.sh` (exit 1 = a row or Skip cites a CLOSED issue; drain it) |
 
 - If a staleness check reports STALE/MISSING files: run the corresponding regeneration script (`build_tools/regenerate_spy_stdlib.sh` or `build_tools/regenerate_spy_tests.sh`), commit the regenerated files, and re-run the check.
 - If the docs generator leaves `docs/stdlib` dirty: commit the regenerated docs (`docs(stdlib): regenerate ...`). Never hand-edit generated docs or generated C#.

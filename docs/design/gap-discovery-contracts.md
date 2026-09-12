@@ -67,6 +67,11 @@ deployment closure (`StandaloneDeploymentTests`).
   an allowlisted cell that has started passing — so deleting the lines is part of landing the fix
   rather than a follow-up nobody schedules. The other sweeps' allowlists should acquire the same
   check as they are touched.
+- **A stale allowlist row fails the push gate** (#1844): `check_allowlist_issue_state.sh` runs at
+  push time and in CI; a row citing a closed issue fails exit 1.
+- **A probe asserts identity, not compilation** (#1829): a sweep that renders a name to reach a
+  type asserts the name BOUND that type (the emitted C# is the witness) before probing its members;
+  a name that binds elsewhere is `NotAttempted` with the reason, never a row against the member.
 
 ### Metamorphic sweep — scope notes (#1157)
 
