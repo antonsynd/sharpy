@@ -735,3 +735,144 @@ def test_the_portable_stat_fallback_resolves_on_this_platform(tmp_path: Path):
     assert result.stdout.strip().isdigit(), (
         f"the wrapper's stat fallback did not produce an mtime on this platform: "
         f"command={command!r} {result!r}")
+
+
+class TestHolderIdentity:
+    """
+    The lock's holder-identity files and the ``--holder-status`` verb (#1867, R-AS).
+
+    A waiter that finds the lock held has NO way to identify the holder — the lock
+    directory only has ``pid`` and ``child``. These tests guard the three new identity
+    files (``cwd``, ``started``, ``log``) and the ``--holder-status`` verb that reads them.
+
+    Documented mutations:
+
+    * **Mutation 1:** Remove the ``log`` publish (``echo "$LOG_FILE" > "$LOCK_LOG_FILE"``)
+      → ``test_holder_status_live`` errors (log file missing from lock dir), the status
+      verb reports "no log published (lock-only holder)" for a normal run.
+    * **Mutation 2:** Invert the growth comparison (``_growth -gt 0`` → ``_growth -le 0``)
+      → the LIVE/NO-GROWTH pair swaps: ``test_holder_status_live`` sees NO GROWTH and
+      ``test_holder_status_no_growth`` sees LIVE.
+    """
+
+    def test_holder_publishes_identity_files(self, rig: Rig):
+        """While a run is held, cwd/started/log exist with correct values."""
+        started_sentinel = rig.root / "child_started"
+        rig.fake_dotnet(
+            f': > "{started_sentinel}"\n'
+            f'i=0\n'
+            f'while [ $i -lt 25 ]; do echo "line $i"; sleep 0.2; i=$((i + 1)); done\n'
+            f'echo "Total: 1"\n'
+        )
+
+        holder = rig.spawn("test")
+        try:
+            wait_for(started_sentinel.exists, what="fake dotnet to start")
+
+            assert rig.lock_dir.exists(), "lock dir should exist while held"
+
+            cwd_file = rig.lock_dir / "cwd"
+            started_file = rig.lock_dir / "started"
+            log_file = rig.lock_dir / "log"
+
+            assert cwd_file.exists(), "cwd file not published"
+            assert started_file.exists(), "started file not published"
+            assert log_file.exists(), "log file not published"
+
+            cwd_val = cwd_file.read_text(encoding="utf-8").strip()
+            assert cwd_val == str(rig.root.resolve()), (
+                f"cwd mismatch: got {cwd_val!r}, expected {str(rig.root.resolve())!r}")
+
+            started_val = int(started_file.read_text(encoding="utf-8").strip())
+            now = int(time.time())
+            assert abs(now - started_val) <= 5, (
+                f"started timestamp {started_val} is not within 5s of now ({now})")
+
+            log_val = log_file.read_text(encoding="utf-8").strip()
+            assert log_val.endswith(".log"), f"log pointer doesn't end with .log: {log_val!r}"
+            assert os.path.isabs(log_val) or log_val.startswith(str(rig.logs)), (
+                f"log pointer doesn't look like a slot path: {log_val!r}")
+        finally:
+            holder.terminate()
+            holder.wait(timeout=30)
+
+    def test_holder_status_live(self, rig: Rig):
+        """A holder producing output is reported LIVE by --holder-status."""
+        started_sentinel = rig.root / "child_started"
+        rig.fake_dotnet(
+            f': > "{started_sentinel}"\n'
+            f'i=0\n'
+            f'while [ $i -lt 100 ]; do echo "line $i"; sleep 0.2; i=$((i + 1)); done\n'
+            f'echo "Total: 1"\n'
+        )
+
+        holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="600")
+        try:
+            wait_for(started_sentinel.exists, what="fake dotnet to start")
+            time.sleep(0.5)
+
+            result = rig.run(
+                "--holder-status",
+                DOTNET_SERIALIZED_PROBE_SECONDS="2",
+                DOTNET_SERIALIZED_STALL_SECONDS="600",
+            )
+
+            assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
+            assert "LIVE" in result.stdout, (
+                f"expected LIVE in output, got: {result.stdout!r}")
+            assert "grew by" in result.stdout, (
+                f"expected 'grew by' in output, got: {result.stdout!r}")
+        finally:
+            holder.terminate()
+            holder.wait(timeout=30)
+
+    def test_holder_status_no_growth(self, rig: Rig):
+        """A holder producing no output is reported NO GROWTH."""
+        started_sentinel = rig.root / "child_started"
+        rig.fake_dotnet(
+            f'echo "Total: 1"\n'
+            f': > "{started_sentinel}"\n'
+            f'sleep 30\n'
+        )
+
+        holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="600")
+        try:
+            wait_for(started_sentinel.exists, what="fake dotnet to start")
+            time.sleep(0.5)
+
+            result = rig.run(
+                "--holder-status",
+                DOTNET_SERIALIZED_PROBE_SECONDS="1",
+                DOTNET_SERIALIZED_STALL_SECONDS="600",
+            )
+
+            assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
+            assert "NO GROWTH" in result.stdout, (
+                f"expected NO GROWTH in output, got: {result.stdout!r}")
+        finally:
+            holder.terminate()
+            holder.wait(timeout=30)
+
+    def test_holder_status_lock_only(self, rig: Rig):
+        """A --acquire-lock holder publishes no log; the verb says so."""
+        acquired = rig.run("--acquire-lock", str(os.getpid()))
+        assert acquired.returncode == 0
+
+        try:
+            result = rig.run("--holder-status")
+
+            assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
+            assert "no log published (lock-only holder)" in result.stdout, (
+                f"expected 'no log published' message, got: {result.stdout!r}")
+        finally:
+            rig.run("--release-lock", str(os.getpid()))
+
+    def test_identity_files_absent_after_release(self, rig: Rig):
+        """After the wrapper finishes, the lock dir (and all identity files) are gone."""
+        rig.fake_dotnet('echo "Total: 1"')
+
+        result = rig.run("test")
+
+        assert result.returncode == 0, f"run failed: {result.stderr}"
+        assert not rig.lock_dir.exists(), (
+            "lock dir should be gone after release (cleanup rm -rf's it)")
