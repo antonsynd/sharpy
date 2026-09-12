@@ -71,13 +71,13 @@ public class LogicalResultSteerMatrixTests : IntegrationTestBase
 
                 // Declaration — SPY0220
                 data.Add("Declaration", op, "nullable",
-                    $"name: str | None = None\nx: str = name {op} \"fallback\"\nprint(x)",
+                    $"def main() -> None:\n    name: str | None = None\n    x: str = name {op} \"fallback\"\n    print(x)",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNullable);
                 data.Add("Declaration", op, "optional",
-                    $"name: str? = Some(\"a\")\nx: str = name {op} \"fallback\"\nprint(x)",
+                    $"def main() -> None:\n    name: str? = Some(\"a\")\n    x: str = name {op} \"fallback\"\n    print(x)",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNullable);
                 data.Add("Declaration", op, "non_nullable",
-                    $"name: str = \"hello\"\nx: str = name {op} \"fallback\"\nprint(x)",
+                    $"def main() -> None:\n    name: str = \"hello\"\n    x: str = name {op} \"fallback\"\n    print(x)",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNonNull);
 
                 // Return — SPY0260
@@ -93,17 +93,17 @@ public class LogicalResultSteerMatrixTests : IntegrationTestBase
 
                 // ArgumentPositional — SPY0220
                 data.Add("ArgumentPositional", op, "nullable",
-                    $"def f(s: str) -> None:\n    pass\nname: str | None = None\nf(name {op} \"fallback\")",
+                    $"def f(s: str) -> None:\n    pass\ndef main() -> None:\n    name: str | None = None\n    f(name {op} \"fallback\")",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNullable);
 
                 // ArgumentKeyword — SPY0220
                 data.Add("ArgumentKeyword", op, "nullable",
-                    $"def f(s: str) -> None:\n    pass\nname: str | None = None\nf(s=name {op} \"fallback\")",
+                    $"def f(s: str) -> None:\n    pass\ndef main() -> None:\n    name: str | None = None\n    f(s=name {op} \"fallback\")",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNullable);
 
                 // CollectionElement — SPY0220
                 data.Add("CollectionElement", op, "nullable",
-                    $"name: str | None = None\nxs: list[str] = [name {op} \"fallback\"]\nprint(xs)",
+                    $"def main() -> None:\n    name: str | None = None\n    xs: list[str] = [name {op} \"fallback\"]\n    print(xs)",
                     DiagnosticCodes.Semantic.TypeMismatch, steerNullable);
             }
 
@@ -117,13 +117,13 @@ public class LogicalResultSteerMatrixTests : IntegrationTestBase
         {
             var data = new TheoryData<string, string, string>();
             data.Add("bool_target_accepts_or",
-                "r: bool = \"\" or \"z\"\nprint(r)", "True");
+                "def main() -> None:\n    r: bool = \"\" or \"z\"\n    print(r)", "True");
             data.Add("coalesce_nullable",
-                "name: str | None = None\nfallback: str = name ?? \"Anonymous\"\nprint(fallback)", "Anonymous");
+                "def main() -> None:\n    name: str | None = None\n    fallback: str = name ?? \"Anonymous\"\n    print(fallback)", "Anonymous");
             data.Add("coalesce_optional",
-                "name: str? = None()\nfallback: str = name ?? \"Anonymous\"\nprint(fallback)", "Anonymous");
+                "def main() -> None:\n    name: str? = None()\n    fallback: str = name ?? \"Anonymous\"\n    print(fallback)", "Anonymous");
             data.Add("coalesce_in_argument",
-                "def f(s: str) -> None:\n    print(s)\nname: str | None = None\nf(name ?? \"z\")", "z");
+                "def f(s: str) -> None:\n    print(s)\ndef main() -> None:\n    name: str | None = None\n    f(name ?? \"z\")", "z");
             return data;
         }
     }

@@ -1,3 +1,4 @@
-name: str | None = None
-fallback: str = name or "Anonymous"
-print(fallback)
+def main() -> None:
+    name: str | None = None
+    fallback: str = name or "Anonymous"
+    print(fallback)

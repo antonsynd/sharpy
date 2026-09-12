@@ -1,5 +1,6 @@
 def greet(s: str) -> None:
     print(s)
 
-name: str | None = None
-greet(name or "Anonymous")
+def main() -> None:
+    name: str | None = None
+    greet(name or "Anonymous")

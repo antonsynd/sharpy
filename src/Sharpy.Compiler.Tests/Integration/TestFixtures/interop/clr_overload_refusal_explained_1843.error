@@ -1,1 +1,1 @@
-'bool' or 'StringComparison' but got 'int' @1:15
+'bool' or 'StringComparison' @4:44

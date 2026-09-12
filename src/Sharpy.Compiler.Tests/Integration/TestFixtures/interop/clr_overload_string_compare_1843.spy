@@ -1,2 +1,5 @@
-result: int = String.compare("a", "b", True)
-print(result)
+from System import String
+
+def main() -> None:
+    result: int = String.compare("a", "b", True)
+    print(result)
