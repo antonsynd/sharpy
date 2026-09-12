@@ -7,6 +7,7 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 | Name | Type | Description |
 |------|------|-------------|
+| `current` | `K` |  |
 | `count` | `int` | Gets the number of key/value pairs in the dictionary. |
 
 ## Methods
@@ -52,7 +53,7 @@ d = {"a": 1, "b": 2}
 d.clear()    # {}
 ```
 
-### `contains(key): K = > ContainsKey(key) -> bool`
+### `contains(key): K = > IsNullKey(key) ? _hasNullKey : ContainsKey(key) -> bool`
 
 Check if *key* exists in the dictionary.
 Used by the compiler for `key in dict` expressions.
@@ -216,10 +217,12 @@ Removes the item with the specified key from the dictionary.
 
 Convert to a standard .NET Dictionary.
 
-### `merge(other: dict[K, V]) -> dict[K, V]`
+### `update(other: dict[K, V])`
 
 Returns a new dictionary that is the result of merging this dictionary with other.
 Keys from other take precedence.
+
+### `merge(other: dict[K, V]) -> dict[K, V]`
 
 ### `fromkeys(keys: Iterable[TKey]) -> dict[TKey, object]`
 
@@ -251,6 +254,10 @@ Mirrors Python's `dict.fromkeys(iterable, value)`. All keys share the same value
 ```python
 d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
 ```
+
+### `move_next() -> bool`
+
+### `reset()`
 
 ### `add(key: K, value: V)`
 

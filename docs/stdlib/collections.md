@@ -149,11 +149,11 @@ Get the value for a key, or return a default value if the key is not present.
 Check if the dictionary contains a key (alias for ContainsKey).
 Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
 
-### `keys() -> Iterable[TKey]`
+### `keys()) -> DictKeyView[TKey, TValue]`
 
 The keys of the dictionary. Python: `d.keys()`. Returns a copy, not a live view.
 
-### `values() -> Iterable[TValue]`
+### `values()) -> DictValuesView[TKey, TValue]`
 
 The values of the dictionary. Python: `d.values()`. Returns a copy, not a live view.
 

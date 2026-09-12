@@ -199,7 +199,8 @@ symbol in its consumer project), and a promised spec section that greps to nothi
 
 *Check:* the close-out lists each acceptance bullet with its evidence (`what ran @ sha`). Red =
 an issue closed on a bullet with no evidence, a stale allowlist entry after its fix, a spec
-example that was not executed, or a helper with no callers.
+example that was not executed, a spec block that does not compile and carries no marker, or a
+helper with no callers.
 
 ## 9. Shared-tree contract for agents
 

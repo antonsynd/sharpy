@@ -129,6 +129,8 @@ dotnet test --filter "DisplayName~test_name"                          # By test 
 
 **Gap-discovery sweeps** are standing conformance harnesses that hunt whole defect classes (contracts and roster: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md); run via `/gap-analysis`). They **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite; every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — stale entries fail); allowlists must trend to empty. Never add an entry without an issue reference; never close a member bug by patching one cell — enforce the class contract. Allowlist rows citing closed issues are gated by `build_tools/check_allowlist_issue_state.sh`.
 
+**Spec blocks** are gated by `build_tools/check_spec_blocks.sh` (every fenced Sharpy block in the language spec must compile or carry a marker).
+
 **Commit gate** = the whole solution: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` across all test projects, run in the background while doing read-only work; a filtered run is the edit loop, never the gate. Blast radius of `Semantic/`/`CodeGen/` changes: `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests` (LSP), and the three GapDiscovery sweeps CI runs as separate steps (`InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`). Counts are reported `passed/failed/skipped @ sha (measured)`; a red is attributed only after a control run at the base commit ([verification-contract.md](docs/design/verification-contract.md) §5–§6).
 
 ## Git & Release

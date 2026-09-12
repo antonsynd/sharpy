@@ -213,6 +213,7 @@ property set name(self, value: str):
 `@property`, `@x.setter`, `@x.getter`, and `@x.deleter` forms are refused by the parser
 with SPY0148. Use the keyword forms instead:
 
+<!-- spec-sweep: error SPY0148 -->
 ```python
 # WRONG — refused by the parser
 @property

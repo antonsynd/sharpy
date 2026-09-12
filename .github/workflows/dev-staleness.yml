@@ -21,6 +21,8 @@ on:
       - 'build_tools/check_spy_tests_staleness.sh'
       - 'build_tools/check_allowlist_issue_state.sh'
       - 'build_tools/allowlist_issue_state.py'
+      - 'docs/language_specification/**'
+      - 'build_tools/spec_blocks*'
       - '.github/workflows/dev-staleness.yml'
 
 jobs:
@@ -44,6 +46,8 @@ jobs:
       run: bash build_tools/check_spy_staleness.sh
     - name: Verify .spy test C# staleness
       run: bash build_tools/check_spy_tests_staleness.sh
+    - name: Verify spec-block compilation
+      run: bash build_tools/check_spec_blocks.sh
 
   allowlist-issue-state:
     runs-on: ubuntu-latest
