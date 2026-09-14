@@ -33,11 +33,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 CLI_PROJECT = REPO_ROOT / "src" / "Sharpy.Cli"
 WARMUP_RUNS = 1
-TIMED_RUNS = 3
+TIMED_RUNS = 10
 # Number of warm (--incremental, cache-present) project compiles to median over.
-WARM_COMPILE_RUNS = 5
+WARM_COMPILE_RUNS = 10
 # Number of warm compiles through a persistent 'sharpyc server' to median over (D2, #1049).
-SERVER_WARM_COMPILE_RUNS = 5
+SERVER_WARM_COMPILE_RUNS = 10
 
 
 @dataclass
@@ -46,6 +46,60 @@ class PhaseResult:
     execute_seconds: float = 0.0
     success: bool = True
     error: str = ""
+
+
+@dataclass
+class DistStats:
+    """Distributional statistics for a set of samples."""
+    mean: float
+    median: float
+    stdev: float
+    min: float
+    max: float
+    p90: float
+    p99: float
+    samples: list[float]
+
+    def to_dict(self) -> dict:
+        return {
+            "mean": self.mean,
+            "median": self.median,
+            "stdev": self.stdev,
+            "min": self.min,
+            "max": self.max,
+            "p90": self.p90,
+            "p99": self.p99,
+            "n": len(self.samples),
+            "samples": self.samples,
+        }
+
+
+def compute_stats(values: list[float]) -> DistStats:
+    """Compute distributional statistics from raw samples."""
+    s = sorted(values)
+    n = len(s)
+    mean_val = sum(s) / n
+    variance = sum((x - mean_val) ** 2 for x in s) / n
+    stdev_val = variance ** 0.5
+
+    def percentile(data: list[float], pct: float) -> float:
+        k = (len(data) - 1) * (pct / 100)
+        f = int(k)
+        c = f + 1
+        if c >= len(data):
+            return data[-1]
+        return data[f] + (k - f) * (data[c] - data[f])
+
+    return DistStats(
+        mean=mean_val,
+        median=percentile(s, 50),
+        stdev=stdev_val,
+        min=s[0],
+        max=s[-1],
+        p90=percentile(s, 90),
+        p99=percentile(s, 99),
+        samples=values,
+    )
 
 
 @dataclass
@@ -70,6 +124,9 @@ class BenchResult:
     # after the server is warmed. Sharpy-only; None when the server path is disabled
     # or unavailable, and omitted from JSON when None.
     server_warm_compile_seconds: float | None = None
+    # Distributional statistics (populated when TIMED_RUNS >= 3).
+    execute_stats: DistStats | None = None
+    compile_stats: DistStats | None = None
 
 
 def find_benchmarks(names: list[str] | None = None) -> list[Path]:
@@ -545,9 +602,11 @@ def run_benchmark(
                         exec_ok = False
                         exec_err = err
                         break
-                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                exec_stats = compute_stats(exec_times) if exec_ok and len(exec_times) >= 3 else None
+                exec_t = exec_stats.median if exec_stats else exec_times[0]
                 results["Python"] = BenchResult(
-                    bench_dir.name, "Python", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                    bench_dir.name, "Python", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
+                    execute_stats=exec_stats,
                 )
 
     if "Sharpy" in langs:
@@ -566,7 +625,8 @@ def run_benchmark(
                     compile_ok = False
                     compile_err = err
                     break
-            compile_t = median(compile_times) if compile_ok else compile_times[0]
+            comp_stats = compute_stats(compile_times) if compile_ok and len(compile_times) >= 3 else None
+            compile_t = comp_stats.median if comp_stats else compile_times[0]
 
             if not compile_ok:
                 results["Sharpy"] = BenchResult(bench_dir.name, "Sharpy", compile_t, 0, compile_t, False, compile_err)
@@ -581,13 +641,10 @@ def run_benchmark(
                         exec_ok = False
                         exec_err = err
                         break
-                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                exec_stats = compute_stats(exec_times) if exec_ok and len(exec_times) >= 3 else None
+                exec_t = exec_stats.median if exec_stats else exec_times[0]
                 compile_phases = parse_sharpy_compile_phases(sharpy_metrics_path(tmp_path))
-                # Cold + warm (--incremental) project-compile times. Additive to the
-                # single-file compile above (kept intact for history comparability).
                 cold_t, warm_t, _, _ = measure_project_compile(cli_dll, spy_file, features)
-                # Persistent-server warm compile (D2, #1049). Guarded: a server failure
-                # records None (prints "—") rather than breaking the benchmark run.
                 server_warm_t = None
                 if measure_server:
                     server_warm_t, _, _ = measure_server_compile(cli_dll, spy_file, features)
@@ -597,6 +654,8 @@ def run_benchmark(
                     cold_compile_seconds=cold_t,
                     warm_compile_seconds=warm_t,
                     server_warm_compile_seconds=server_warm_t,
+                    execute_stats=exec_stats,
+                    compile_stats=comp_stats,
                 )
 
     if "C#" in langs:
@@ -616,9 +675,11 @@ def run_benchmark(
                         exec_ok = False
                         exec_err = f"run {len(exec_times)} failed: {err}"
                         break
-                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                exec_stats = compute_stats(exec_times) if exec_ok and len(exec_times) >= 3 else None
+                exec_t = exec_stats.median if exec_stats else exec_times[0]
                 results["C#"] = BenchResult(
-                    bench_dir.name, "C#", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                    bench_dir.name, "C#", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
+                    execute_stats=exec_stats,
                 )
 
     return results
@@ -690,12 +751,48 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
 
         print(f"{name:<22} {py_str:<10} {spy_str:<10} {warm_str:<10} {server_str:<10} {cs_str:<10} {ratio_cs:<8}")
 
+    # Distributional stats table
+    has_stats = any(
+        r.execute_stats is not None
+        for langs in all_results.values() for r in langs.values()
+    )
+    if has_stats:
+        print()
+        print("=== Execution Time Distribution ===")
+        print()
+        print(f"{'Benchmark':<22} {'Lang':<8} {'Mean':<10} {'Median':<10} {'Stdev':<10} {'P90':<10} {'P99':<10} {'Min':<10} {'Max':<10} {'N':<4}")
+        print("-" * 104)
+
+        for name in sorted(all_results):
+            for lang in ["Python", "Sharpy", "C#"]:
+                r = all_results[name].get(lang)
+                if not r or not r.execute_stats:
+                    continue
+                s = r.execute_stats
+                print(
+                    f"{name:<22} {lang:<8} "
+                    f"{format_time(s.mean):<10} {format_time(s.median):<10} "
+                    f"{format_time(s.stdev):<10} {format_time(s.p90):<10} "
+                    f"{format_time(s.p99):<10} {format_time(s.min):<10} "
+                    f"{format_time(s.max):<10} {len(s.samples):<4}"
+                )
+
     print()
     print("Spy/Py < 1.0 = Sharpy faster than Python")
     print("Spy/C# ~ 1.0 = Sharpy matches raw C# (minimal overhead)")
     print("Sharpy = cold single-file compile; Warm = warm --incremental project compile")
     print("Server = end-to-end warm compile through a persistent 'sharpyc server' (D2, #1049)")
     print()
+
+
+def _stats_from_dict(d: dict | None) -> DistStats | None:
+    if d is None:
+        return None
+    return DistStats(
+        mean=d["mean"], median=d["median"], stdev=d["stdev"],
+        min=d["min"], max=d["max"], p90=d["p90"], p99=d["p99"],
+        samples=d.get("samples", []),
+    )
 
 
 def merge_results(
@@ -710,6 +807,8 @@ def merge_results(
         if name not in all_results:
             all_results[name] = {}
         if lang not in all_results[name]:
+            exec_stats_raw = entry.get("execute_stats")
+            comp_stats_raw = entry.get("compile_stats")
             all_results[name][lang] = BenchResult(
                 name=name,
                 language=lang,
@@ -722,6 +821,8 @@ def merge_results(
                 cold_compile_seconds=entry.get("cold_compile_seconds"),
                 warm_compile_seconds=entry.get("warm_compile_seconds"),
                 server_warm_compile_seconds=entry.get("server_warm_compile_seconds"),
+                execute_stats=_stats_from_dict(exec_stats_raw),
+                compile_stats=_stats_from_dict(comp_stats_raw),
             )
     return all_results
 
@@ -739,17 +840,18 @@ def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict
                 "success": r.success,
                 "error": r.error,
             }
-            # Per-phase Sharpy breakdown is optional; other languages omit the key.
             if r.compile_phases:
                 entry["compile_phases"] = r.compile_phases
-            # Cold/warm project-compile times are Sharpy-only; omit when absent.
             if r.cold_compile_seconds is not None:
                 entry["cold_compile_seconds"] = r.cold_compile_seconds
             if r.warm_compile_seconds is not None:
                 entry["warm_compile_seconds"] = r.warm_compile_seconds
-            # Persistent-server warm compile (D2, #1049); Sharpy-only, omit when absent.
             if r.server_warm_compile_seconds is not None:
                 entry["server_warm_compile_seconds"] = r.server_warm_compile_seconds
+            if r.execute_stats is not None:
+                entry["execute_stats"] = r.execute_stats.to_dict()
+            if r.compile_stats is not None:
+                entry["compile_stats"] = r.compile_stats.to_dict()
             output.append(entry)
     return output
 
@@ -801,7 +903,7 @@ def main():
     if verbose:
         print(f"Running {len(bench_dirs)} benchmarks: {', '.join(d.name for d in bench_dirs)}")
         print(f"  Languages: {', '.join(sorted(active_langs))}")
-        print(f"  Warmup runs: {WARMUP_RUNS}, Timed runs: {TIMED_RUNS} (median)")
+        print(f"  Warmup runs: {WARMUP_RUNS}, Timed runs: {TIMED_RUNS} (reporting mean/median/p90/p99/stdev)")
         print()
 
     cli_dll: Path | None = None

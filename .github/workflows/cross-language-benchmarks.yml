@@ -115,7 +115,7 @@ jobs:
             f"# Cross-Language Benchmark Results ({now})",
             "",
             f"**Runner:** `ubuntu-latest` | **Python:** 3.12 | **.NET:** 10.0 | "
-            f"**Runs:** 3 (median) + warmup",
+            f"**Runs:** 10 (median) + warmup | **Stats:** mean, median, stdev, p90, p99",
             "",
             "## Execution Time (runtime only)",
             "",
@@ -192,7 +192,35 @@ jobs:
                 cells = " | ".join(fmt(phases.get(p, 0)) for p in PHASE_ORDER)
                 lines.append(f"| {name} | {cells} |")
 
+        # Execution time distribution table
+        has_stats = any(
+            r.get("execute_stats") for r in results if r.get("success")
+        )
+        if has_stats:
+            lines += [
+                "",
+                "## Execution Time Distribution",
+                "",
+                "| Benchmark | Lang | Mean | Median | Stdev | P90 | P99 | Min | Max | N |",
+                "|-----------|------|------|--------|-------|-----|-----|-----|-----|---|",
+            ]
+            for name in sorted(benchmarks):
+                for lang_key in ["Python", "Sharpy", "C#"]:
+                    r = benchmarks[name].get(lang_key, {})
+                    stats = r.get("execute_stats")
+                    if not stats or not r.get("success"):
+                        continue
+                    lines.append(
+                        f"| {name} | {lang_key} | {fmt(stats['mean'])} | {fmt(stats['median'])} | "
+                        f"{fmt(stats['stdev'])} | {fmt(stats['p90'])} | {fmt(stats['p99'])} | "
+                        f"{fmt(stats['min'])} | {fmt(stats['max'])} | {stats['n']} |"
+                    )
+
         lines += [
+            "",
+            "## Performance Trend",
+            "",
+            "![Spy/Py and Spy/C# ratio over time](trend.svg)",
             "",
             "> **Spy/Py < 1.0** = Sharpy execution faster than Python. "
             "**Spy/C# ≈ 1.0** = minimal overhead vs hand-written C#.",
@@ -230,6 +258,10 @@ jobs:
             f.write("\n")
 
         SCRIPT
+
+    - name: Generate trend chart
+      run: |
+        python3 benchmarks/cross-language/generate_chart.py --months 6
 
     - name: Post to job summary
       run: |

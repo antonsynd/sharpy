@@ -93,7 +93,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     // Fixed CsCheck seed so the generated arm (and hence the whole default corpus) is deterministic
     // run-to-run — a sweep whose inputs drift cannot be ratcheted.
-    private const string GeneratedSeed = "0000DifferentialExec";
+    // CsCheck 4.9.0 requires 12-17 character seeds.
+    private const string GeneratedSeed = "0DifferentExec";
 
     // Sharpy execution is capped tighter than the 30 s base default: a functions-only program that
     // needs longer is a perf outlier we would rather skip than let dominate the wall.
