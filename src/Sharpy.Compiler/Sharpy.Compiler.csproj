@@ -43,7 +43,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
 
     <!-- File system globbing for .spyproj file patterns -->
-    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.12" />
   </ItemGroup>
 
 </Project>
