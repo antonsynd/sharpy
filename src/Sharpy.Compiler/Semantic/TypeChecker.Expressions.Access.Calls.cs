@@ -4941,9 +4941,10 @@ internal partial class TypeChecker
                 positions = GetBuiltinIterableKeyPositions(id.Name, call.Arguments.Length);
                 // A user-defined function shadowing the builtin name takes over (Python scoping); its
                 // dict parameter is not projected. Builtin collection type names (list/set/tuple) are
-                // reserved, so a user shadow there is not a concern.
+                // reserved, so a user shadow there is not a concern. Builtins have DeclarationLine ==
+                // null; a non-null line means the symbol is user-defined and shadows the builtin.
                 if (_symbolTable.Lookup(id.Name) is FunctionSymbol lookupFs
-                    && SemanticBinding.HasCodeGenInfo(lookupFs))
+                    && lookupFs.DeclarationLine != null)
                     return;
                 break;
 
@@ -4973,7 +4974,7 @@ internal partial class TypeChecker
                 // check the call against the builtin while the emitter calls the user's symbol
                 // (#1240, #1241).
                 if (_symbolTable.Lookup(generic.Name) is FunctionSymbol shadowFs
-                    && SemanticBinding.HasCodeGenInfo(shadowFs))
+                    && shadowFs.DeclarationLine != null)
                     return;
                 positions = GetBuiltinIterableKeyPositions(generic.Name, call.Arguments.Length);
                 break;

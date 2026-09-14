@@ -20,7 +20,7 @@ public class LargeProgramPropertyTests
         _output = output;
     }
 
-    [Fact(Timeout = 180000, Skip = "Requires > 5 GB heap — incompatible with HeapHardLimit constraint")]
+    [Fact(Timeout = 180000, Skip = "no-issue: Requires > 5 GB heap — incompatible with HeapHardLimit constraint")]
     public async Task HighFuelPrograms_LexerParserDoNotCrash()
     {
         int completed = 0;
@@ -43,7 +43,7 @@ public class LargeProgramPropertyTests
         Assert.True(completed > 0, "No high-fuel programs completed");
     }
 
-    [Fact(Timeout = 180000, Skip = "Requires > 5 GB heap — incompatible with HeapHardLimit constraint")]
+    [Fact(Timeout = 180000, Skip = "no-issue: Requires > 5 GB heap — incompatible with HeapHardLimit constraint")]
     public async Task DeepNestingPrograms_LexerParserDoNotCrash()
     {
         int completed = 0;

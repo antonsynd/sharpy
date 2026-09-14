@@ -29,7 +29,7 @@
 # does NOT produce (compile stops at parse errors — DD6). This is by design: the
 # LSP needs the extra diagnostics for squiggles, but compile's door stays shut.
 #
-# Governance: unlike the drifts above, this block is exempt from drain-on-fix —
+# drain-exempt: unlike the drifts above, this block is exempt from drain-on-fix —
 # the asymmetry IS the designed behavior (plan-57177f DD6), not drift, and the
 # entries outlive #1360's close (cited for provenance, not as an open tracker).
 # If a key here ever stops mismatching, the design changed and the entry must go
@@ -72,4 +72,4 @@ compile::errors/parser_recovery_deeply_nested
 compile::exception_handling/raise_from_variable_0001
 compile::errors/parser_recovery_expression_error
 compile::lambdas/lambda_operand_not
-compile::generators/genexp_kwarg_refused_1774   # parse-refused keyword genexp (#1774): compile stops at SPY0147, Analyze continues (SPY0200, SPY0451) — #1360 block
+compile::generators/genexp_kwarg_refused_1774   # drain-exempt: parse-refused keyword genexp (#1774): compile stops at SPY0147, Analyze continues (SPY0200, SPY0451) — #1360 block

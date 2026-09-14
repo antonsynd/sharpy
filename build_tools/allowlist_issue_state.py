@@ -22,6 +22,7 @@ SKIP_RE = re.compile(
     r'\[\s*(?:Fact|Theory)\s*\(\s*(?:[^)]*,\s*)?Skip\s*=\s*"([^"]*)"'
 )
 DEVIATIONS_YAML = "deviations.yaml"
+DRAIN_EXEMPT = "drain-exempt:"
 NO_ISSUE_EXEMPT = "no-issue:"
 
 
@@ -66,12 +67,13 @@ def scan_allowlist(path: str) -> list[Row]:
         if _is_comment(stripped):
             in_paragraph = True
             paragraph_cites.extend(_extract_issues(stripped))
-            if DEVIATIONS_YAML in stripped:
+            if DEVIATIONS_YAML in stripped or DRAIN_EXEMPT in stripped:
                 paragraph_has_deviations = True
             continue
 
         cites = _extract_issues(stripped)
-        exempt = DEVIATIONS_YAML in stripped or paragraph_has_deviations
+        exempt = (DEVIATIONS_YAML in stripped or DRAIN_EXEMPT in stripped
+                  or paragraph_has_deviations)
 
         if not cites:
             cites = list(paragraph_cites)

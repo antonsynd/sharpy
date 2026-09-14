@@ -507,7 +507,7 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
     /// Comprehensions are the one form that does not receive the contextual expectation
     /// @ c68a2683d. The cells exist and are counted so the fix has a target to turn green.
     /// </summary>
-    [Theory(Skip = "F51 — comprehension contextual typing, lead's Wave B")]
+    [Theory(Skip = "Comprehension contextual typing (#1882)")]
     [MemberData(nameof(KnownRedCellIds))]
     public void KnownRedFormCell(string id) => AssertCell(KnownRedCellsById[id]);
 

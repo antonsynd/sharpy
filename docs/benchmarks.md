@@ -5,13 +5,13 @@ These benchmarks compare equivalent programs across three runtimes.
 
 ## Latest Results
 
-See **[`benchmarks/cross-language/results/latest.md`](../benchmarks/cross-language/results/latest.md)** for execution times, compilation times (cold/warm/server), and Spy/Py and Spy/C# ratios. Updated weekly by CI.
+See **[`benchmarks/cross-language/results/latest.md`](https://github.com/antonsynd/sharpy/blob/dev/benchmarks/cross-language/results/latest.md)** for execution times, compilation times (cold/warm/server), and Spy/Py and Spy/C# ratios. Updated weekly by CI.
 
-Full history (17 weekly data points): [`history.json`](../benchmarks/cross-language/results/history.json).
+Full history (17 weekly data points): [`history.json`](https://github.com/antonsynd/sharpy/blob/dev/benchmarks/cross-language/results/history.json).
 
 ## Performance Trend
 
-![Spy/Py and Spy/C# ratio over time](../benchmarks/cross-language/results/trend.svg)
+![Spy/Py and Spy/C# ratio over time](https://raw.githubusercontent.com/antonsynd/sharpy/dev/benchmarks/cross-language/results/trend.svg)
 
 ## Methodology
 
