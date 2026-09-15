@@ -131,6 +131,19 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Node, TypeTestLowering> _typeTestLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1816: the loop a break/continue binds to. Keyed on the transfer node; recorded by
+    // LoopTransferBindingValidator. The emitter reads TargetLoop to clear the correct loop-else flag,
+    // and CrossesMatch to know a match sits between the transfer and its loop. Absent ⇒ the transfer
+    // has no enclosing loop (ControlFlowValidator refuses it) or was never a break/continue.
+    private readonly ConcurrentDictionary<Node, LoopTransferTarget> _loopTransferTargets =
+        new(ReferenceEqualityComparer.Instance);
+
+    // #1816: match statements a break crosses to reach its loop. A hosted match lowers to the
+    // is-chain (not a C# switch) so a plain break escapes to the loop. Keyed on the MatchStatement;
+    // present-and-true iff a break inside one of its arms targets a loop outside the match.
+    private readonly ConcurrentDictionary<MatchStatement, bool> _matchHostsLoopTransfer =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map generic function calls to their inferred type arguments
     // Used by codegen to emit explicit type arguments in generated C#
     private readonly ConcurrentDictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
@@ -879,6 +892,41 @@ public class SemanticInfo : ISemanticQuery
     public TypeTestLowering? GetTypeTestLowering(Node typeOperand)
     {
         return _typeTestLowerings.TryGetValue(typeOperand, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records the loop a break/continue binds to (#1816). Set by
+    /// <see cref="Validation.LoopTransferBindingValidator"/>.
+    /// </summary>
+    public void SetLoopTransferTarget(Node transferNode, LoopTransferTarget target)
+    {
+        _loopTransferTargets[transferNode] = target;
+    }
+
+    /// <summary>
+    /// Gets the loop a break/continue targets, or <c>null</c> when the transfer has no enclosing loop
+    /// (ControlFlowValidator refuses it) or the node is not a break/continue.
+    /// </summary>
+    public LoopTransferTarget? GetLoopTransferTarget(Node transferNode)
+    {
+        return _loopTransferTargets.TryGetValue(transferNode, out var target) ? target : null;
+    }
+
+    /// <summary>
+    /// Marks a match statement as hosting a loop transfer — a <c>break</c> inside one of its arms
+    /// targets a loop outside the match (#1816). The emitter lowers such a match to the is-chain.
+    /// </summary>
+    public void SetMatchHostsLoopTransfer(MatchStatement match)
+    {
+        _matchHostsLoopTransfer[match] = true;
+    }
+
+    /// <summary>
+    /// True iff a <c>break</c> inside one of this match's arms targets a loop outside the match.
+    /// </summary>
+    public bool GetMatchHostsLoopTransfer(MatchStatement match)
+    {
+        return _matchHostsLoopTransfer.TryGetValue(match, out var hosts) && hosts;
     }
 
     /// <summary>
@@ -1826,6 +1874,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._typeTestLowerings)
             _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._loopTransferTargets)
+            _loopTransferTargets.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._matchHostsLoopTransfer)
+            _matchHostsLoopTransfer.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._inferredTypeArguments)
             _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);

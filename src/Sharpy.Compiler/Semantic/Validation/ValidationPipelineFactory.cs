@@ -34,6 +34,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new EqualityContractValidator())  // Order: 160 (warns on __eq__ without object overload)
             .AddValidator(new ConstantPositionValidator())  // Order: 250
             .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
+            .AddValidator(new LoopTransferBindingValidator()) // Order: 401 (records the loop each break/continue targets — #1816)
             .AddValidator(new DefiniteAssignmentValidator()) // Order: 402 (bare-declared variable use-before-assign — #1559)
             .AddValidator(new ExhaustivenessValidator())    // Order: 405 (match exhaustiveness)
             .AddValidator(new MatchArmOrderValidator())    // Order: 406 (irrefutable arm not last — #1624)
