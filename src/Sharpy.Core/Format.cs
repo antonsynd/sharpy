@@ -1,5 +1,3 @@
-using System.Globalization;
-using System;
 namespace Sharpy
 {
     public static partial class Builtins
@@ -20,24 +18,7 @@ namespace Sharpy
         /// </example>
         public static string Format(object? value, string formatSpec = "")
         {
-            if (value is null)
-            {
-                return "None";
-            }
-
-            if (string.IsNullOrEmpty(formatSpec))
-            {
-                return value.ToString() ?? "None";
-            }
-
-            // For numeric types, use standard .NET formatting
-            if (value is IFormattable formattable)
-            {
-                return formattable.ToString(formatSpec, System.Globalization.CultureInfo.InvariantCulture);
-            }
-
-            // For other types, just return ToString()
-            return value.ToString() ?? "None";
+            return PyFormat.Apply(value, formatSpec);
         }
 
     }

@@ -61,9 +61,9 @@ public class BuiltinPredicate_Tests
     [Fact]
     public void Format_DoubleWithLowerF2_ReturnsTwoDecimals()
     {
-        // Python: format(3.14159, ".2f") == "3.14"
-        // .NET equivalent: "F2" format specifier
-        Format(3.14159, "F2").Should().Be("3.14");
+        // Python: format(3.14159, ".2f") == "3.14". The former ".NET F2" spelling now correctly
+        // raises ValueError (Invalid format specifier), matching CPython — see FormatApplyTests.
+        Format(3.14159, ".2f").Should().Be("3.14");
     }
 
     [Fact]

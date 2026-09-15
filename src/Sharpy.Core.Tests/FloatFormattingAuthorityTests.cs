@@ -114,7 +114,7 @@ public class FloatFormattingAuthorityTests
     private static readonly Exemption[] FormatFloatDeclarationExemptions =
     {
         new(AuthorityFile, "the authority itself"),
-        new("StringExtensions.Format.cs", "precision-directed formatting for f\"{x:.6f}\" — a different CPython rule, deliberately not merged"),
+        new("PyFormat.cs", "precision-directed formatting for f\"{x:.6f}\" — a different CPython rule, deliberately not merged"),
     };
 
     [Fact]

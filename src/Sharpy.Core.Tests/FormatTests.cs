@@ -51,7 +51,9 @@ public class Format_Tests
         double value = 3.14159;
 
         // When
-        var result = Format(value, "F2");
+        // Python format spec (".2f"), not the .NET "F2" that the deleted IFormattable path accepted:
+        // python3 -c "print(format(3.14159, '.2f'))"  =>  3.14  (format(3.14159, 'F2') raises ValueError)
+        var result = Format(value, ".2f");
 
         // Then
         result.Should().Be("3.14");
