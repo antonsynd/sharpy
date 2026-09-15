@@ -82,7 +82,13 @@ internal partial class RoslynEmitter
                 matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
                 _context.SemanticInfo);
 
-        if (arms.Any(a => a.GuardEvaluations.Count > 0))
+        // A match hosting a loop transfer (a break in an arm targeting an enclosing loop, #1816) must
+        // lower to the is-chain: a C# switch would capture the break itself. The fact is recorded by
+        // LoopTransferBindingValidator so the emitter does not re-walk the arm bodies (which would
+        // wrongly trigger on a break in a nested loop inside the arm).
+        bool hostsLoopTransfer = _context.SemanticInfo?.GetMatchHostsLoopTransfer(matchStmt) == true;
+
+        if (hostsLoopTransfer || arms.Any(a => a.GuardEvaluations.Count > 0))
         {
             return GenerateMatchAsIsChain(scrutineeExpr, arms, needsUnreachableDefault);
         }

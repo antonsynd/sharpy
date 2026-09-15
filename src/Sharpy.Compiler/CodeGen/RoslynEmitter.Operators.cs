@@ -1007,58 +1007,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Transform loop body statements for else clause support.
-    /// Wraps break statements with flag assignment: { flag = false; break; }
-    /// </summary>
-    private ImmutableArray<Statement> TransformLoopBodyForElse(IReadOnlyList<Statement> body, string flagName)
-    {
-        var builder = ImmutableArray.CreateBuilder<Statement>(body.Count);
-        foreach (var stmt in body)
-        {
-            builder.Add(TransformStatementForLoopElse(stmt, flagName));
-        }
-        return builder.ToImmutable();
-    }
-
-    /// <summary>
-    /// Transform a single statement for loop else support.
-    /// Recursively handles nested structures.
-    /// </summary>
-    private Statement TransformStatementForLoopElse(Statement stmt, string flagName)
-    {
-        return stmt switch
-        {
-            // Transform break statements to set flag before breaking
-            BreakStatement breakStmt => new BreakWithFlagStatement
-            {
-                FlagName = flagName,
-                LineStart = breakStmt.LineStart,
-                ColumnStart = breakStmt.ColumnStart,
-                LineEnd = breakStmt.LineEnd,
-                ColumnEnd = breakStmt.ColumnEnd
-            },
-
-            // Recursively transform if statements
-            IfStatement ifStmt => ifStmt with
-            {
-                ThenBody = TransformLoopBodyForElse(ifStmt.ThenBody, flagName),
-                ElifClauses = ifStmt.ElifClauses.Select(e => e with
-                {
-                    Body = TransformLoopBodyForElse(e.Body, flagName)
-                }).ToImmutableArray(),
-                ElseBody = TransformLoopBodyForElse(ifStmt.ElseBody, flagName)
-            },
-
-            // Don't transform nested loops - their break statements apply to their own loop
-            WhileStatement _ => stmt,
-            ForStatement _ => stmt,
-
-            // All other statements pass through unchanged
-            _ => stmt
-        };
-    }
-
-    /// <summary>
     /// Generates a floored-modulo call: <c>global::Sharpy.Builtins.FloorMod(left, right)</c>.
     /// The Core helper carries the sign-of-divisor adjust and the ZeroDivisionError guard, so
     /// no operand is spliced more than once (unlike an inline sign-adjust).

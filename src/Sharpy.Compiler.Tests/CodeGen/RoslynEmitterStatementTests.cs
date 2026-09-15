@@ -87,11 +87,24 @@ public class RoslynEmitterStatementTests
     [Fact]
     public void GenerateStatement_BreakStatement_GeneratesBreak()
     {
-        var stmt = new Sharpy.Compiler.Parser.Ast.BreakStatement();
+        // A break is emitted from its recorded loop binding (#1816); emit one inside a real loop so
+        // LoopTransferBindingValidator records the target. With no else clause the break is bare.
+        var stmt = new ForStatement
+        {
+            Target = new Identifier { Name = "i" },
+            Iterator = new ListLiteral
+            {
+                Elements = ImmutableArray.Create<Expression>(
+                    new IntegerLiteral { Value = "1" },
+                    new IntegerLiteral { Value = "2" },
+                    new IntegerLiteral { Value = "3" })
+            },
+            Body = ImmutableArray.Create<Statement>(new Sharpy.Compiler.Parser.Ast.BreakStatement())
+        };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, System.Array.Empty<string>());
 
-        Assert.Equal("break;", result);
+        Assert.Contains("break;", result);
     }
 
     [Fact]
@@ -682,23 +695,30 @@ public class RoslynEmitterStatementTests
     [Fact]
     public void GenerateStatement_ForLoopWithBreak_GeneratesForeachWithBreak()
     {
+        // Route through full semantics so LoopTransferBindingValidator records the break's target
+        // loop (#1816); the emitter reads that fact rather than re-deriving it.
         var stmt = new ForStatement
         {
             Target = new Identifier { Name = "item" },
-            Iterator = new Identifier { Name = "items" },
+            Iterator = new ListLiteral
+            {
+                Elements = ImmutableArray.Create<Expression>(
+                    new IntegerLiteral { Value = "1" },
+                    new IntegerLiteral { Value = "2" },
+                    new IntegerLiteral { Value = "3" })
+            },
             Body = new List<Statement>
             {
                 new Sharpy.Compiler.Parser.Ast.BreakStatement()
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, System.Array.Empty<string>());
 
         // Note: For loops use a temporary variable pattern to allow modification of
         // the loop variable inside the body (C# foreach iteration variables are read-only).
-        // The pattern is: foreach (var __loopVar_N in items) { var item = __loopVar_N; ... }
+        // The pattern is: foreach (var __loopVar_N in <iter>) { var item = __loopVar_N; ... }
         Assert.Contains("foreach (var", result);
-        Assert.Contains("in items)", result);
         Assert.Contains("var item =", result);  // Loop variable is declared inside body
         Assert.Contains("break;", result);
     }

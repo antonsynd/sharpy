@@ -18,19 +18,46 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    // #1816: the loop-else completion flag for each loop currently being generated, keyed by the
+    // loop's AST node. Populated by GenerateFor/GenerateWhile/GenerateWhileWithElse for the duration
+    // of body generation; GenerateBreak reads it via the break's recorded target loop so a break
+    // nested in ANY statement kind (try/with/match/if) clears the correct loop's flag — replacing the
+    // old AST rewrite (TransformStatementForLoopElse) that only descended into `if`.
+    private readonly Dictionary<Node, string> _loopElseFlags = new(ReferenceEqualityComparer.Instance);
+
     /// <summary>
-    /// Generate a break statement with flag assignment for loop else support.
-    /// Generates: { flagName = false; break; }
+    /// Generate a user <c>break</c> (#1816). The target loop is the one
+    /// <c>LoopTransferBindingValidator</c> recorded; when that loop has an <c>else</c> clause its
+    /// completion flag is registered in <see cref="_loopElseFlags"/>, so the break clears it before
+    /// jumping (<c>{ flag = false; break; }</c>). Otherwise a bare <c>break;</c>. The recorded target
+    /// is looked up by node identity, so the flag is cleared no matter how deeply the break is nested
+    /// (try/with/match), and a match hosting the break has already been lowered to the is-chain so a
+    /// plain C# <c>break</c> reaches the loop rather than a manufactured <c>switch</c>.
     /// </summary>
-    private StatementSyntax GenerateBreakWithFlag(BreakWithFlagStatement breakStmt)
+    private StatementSyntax GenerateBreak(BreakStatement breakStmt)
     {
-        return Block(
-            ExpressionStatement(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName(breakStmt.FlagName),
-                    LiteralExpression(SyntaxKind.FalseLiteralExpression))),
-            SyntaxFactory.BreakStatement());
+        var target = _context.SemanticInfo?.GetLoopTransferTarget(breakStmt);
+        if (target == null)
+        {
+            throw new InvalidOperationException(
+                "No loop-transfer target recorded for a break statement — "
+                + "LoopTransferBindingValidator (Order 401) records one for every break inside a "
+                + "loop (#1816); a break with no enclosing loop is refused earlier by "
+                + "ControlFlowValidator, so reaching codegen without a fact is a bug.");
+        }
+
+        if (_loopElseFlags.TryGetValue(target.TargetLoop, out var flagName))
+        {
+            return Block(
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(flagName),
+                        LiteralExpression(SyntaxKind.FalseLiteralExpression))),
+                SyntaxFactory.BreakStatement());
+        }
+
+        return SyntaxFactory.BreakStatement();
     }
 
     private StatementSyntax GenerateAssert(AssertStatement assert)
@@ -484,8 +511,17 @@ internal partial class RoslynEmitter
                         .WithInitializer(EqualsValueClause(
                             LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
-        var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
-        var transformedBodyBlock = GenerateSuiteBlock(transformedBody);
+        // A break inside the body clears flagName via _loopElseFlags[whileStmt] (#1816), at any depth.
+        _loopElseFlags[whileStmt] = flagName;
+        StatementSyntax transformedBodyBlock;
+        try
+        {
+            transformedBodyBlock = GenerateSuiteBlock(whileStmt.Body);
+        }
+        finally
+        {
+            _loopElseFlags.Remove(whileStmt);
+        }
 
         loopBodyStatements.AddRange(transformedBodyBlock is BlockSyntax tBlock
             ? tBlock.Statements
@@ -513,8 +549,17 @@ internal partial class RoslynEmitter
                         .WithInitializer(EqualsValueClause(
                             LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
-        var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
-        var bodyBlock = GenerateSuiteBlock(transformedBody);
+        // A break inside the body clears flagName via _loopElseFlags[whileStmt] (#1816), at any depth.
+        _loopElseFlags[whileStmt] = flagName;
+        StatementSyntax bodyBlock;
+        try
+        {
+            bodyBlock = GenerateSuiteBlock(whileStmt.Body);
+        }
+        finally
+        {
+            _loopElseFlags.Remove(whileStmt);
+        }
 
         statements.Add(WhileStatement(condition, bodyBlock));
 
@@ -571,11 +616,19 @@ internal partial class RoslynEmitter
                     VariableDeclarator(EscapedIdentifier(flagName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
-        // Transform the body to set flag to false before break
-        var transformedBody = TransformLoopBodyForElse(forStmt.Body, flagName);
-
-        // foreach (...) { transformedBody }
-        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody, iteratorType, forStmt.IsAsync));
+        // foreach (...) { body } — a break inside clears flagName via _loopElseFlags[forStmt] (#1816),
+        // at any depth (try/with/match), replacing the old if-only AST rewrite.
+        _loopElseFlags[forStmt] = flagName;
+        StatementSyntax forEachStmt;
+        try
+        {
+            forEachStmt = GenerateForEachCore(forStmt.Target, iterator, forStmt.Body, iteratorType, forStmt.IsAsync);
+        }
+        finally
+        {
+            _loopElseFlags.Remove(forStmt);
+        }
+        statements.Add(forEachStmt);
 
         // if (_loopCompleted) { elseBody }
         var elseBodyBlock = GenerateSuiteBlock(forStmt.ElseBody);
