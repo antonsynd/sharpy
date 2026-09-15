@@ -209,8 +209,13 @@ When a guard contains a hoist-producing expression (a comprehension, spread, or 
 compiler lowers the guarded match to an `is`-chain block so that each guard's side effects
 execute exactly once, only when the pattern matches. The same lowering applies to the
 match **expression** form, where an arm's **result** is likewise evaluated only
-when that arm is selected. Because the `is`-chain manufactures no `switch`, a `break` in a guarded
-arm body inside a loop targets the enclosing loop, as it does in Python.
+when that arm is selected.
+
+A `break` or `continue` inside **any** arm targets the enclosing loop, exactly as in Python — not
+the C# `switch` that a match would otherwise manufacture. A `match` hosting a `break` that targets an
+outer loop therefore lowers to the `is`-chain (which manufactures no `switch`), so the `break`
+reaches the loop and clears the loop's `else` flag (#1816). A `continue` needs no such lowering: a
+C# `switch` already forwards `continue` to the enclosing loop.
 
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*

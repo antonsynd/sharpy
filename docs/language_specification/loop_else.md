@@ -38,8 +38,42 @@ def risky_search(items: list[int]) -> int:
 
 This is the natural behavior from the lowered boolean-flag pattern—the flag is only checked if control flow reaches that point.
 
+## A `break` at any depth suppresses the `else`
+
+The `else` runs only when no `break` **targeting this loop** executed — regardless of how deeply
+the `break` is nested. A `break` inside a `match` arm, a `try`, or a `with` block still targets the
+enclosing loop and still suppresses its `else`, exactly as in Python:
+
+```python
+def main() -> None:
+    for i in range(4):
+        match i:
+            case 2:
+                break            # targets the for-loop, not the match
+            case _:
+                print(i)
+    else:
+        print("else")           # skipped: a break targeting this loop ran
+    print("done")
+```
+
+Output:
+
+```
+0
+1
+done
+```
+
+A `continue` never suppresses the `else` (the loop still completes normally); a `break` in a
+*nested* loop targets that inner loop and leaves this loop's `else` intact.
+
 *Implementation*
-- *🔄 Lowered - Boolean flag pattern:*
+- *🔄 Lowered - Boolean flag pattern. The loop declares `bool _loopCompleted = true;`, and each
+  `break` that targets this loop clears the flag at the break site — no matter how deeply nested —
+  because the loop each `break`/`continue` binds to is recorded during semantic analysis and the
+  emitter reads it (#1816). A `match` hosting such a `break` lowers to the `is`-chain rather than a
+  C# `switch`, so the `break` reaches the loop instead of the switch.*
 ```csharp
 bool _loopCompleted = true;
 foreach (var item in items) {

@@ -1,0 +1,17 @@
+# #1816: a break nested in a `with` inside a for-else clears the loop-else flag, so the else does
+# NOT run. Python prints `0 1 done`; before the fix Sharpy printed `0 1 else done`.
+class CM:
+    def __enter__(self) -> Self:
+        return self
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    for i in range(4):
+        with CM():
+            if i == 2:
+                break
+            print(i)
+    else:
+        print("else")
+    print("done")

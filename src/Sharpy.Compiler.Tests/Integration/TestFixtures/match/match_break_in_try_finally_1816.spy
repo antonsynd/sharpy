@@ -1,0 +1,14 @@
+# #1816: a break in a try/finally inside a match arm inside a loop targets the enclosing loop; the
+# finally still runs. Python prints `0 fin 0 1 fin 1 fin 2 done`.
+def main() -> None:
+    for i in range(4):
+        match i:
+            case 2:
+                try:
+                    break
+                finally:
+                    print("fin", i)
+            case _:
+                print(i)
+                print("fin", i)
+    print("done")

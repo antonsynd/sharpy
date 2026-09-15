@@ -1,0 +1,15 @@
+# #1816: a break nested in a try inside a while-else clears the loop-else flag, so the else does
+# NOT run. Python prints `0 1 done`; before the fix Sharpy printed `0 1 else done`.
+def main() -> None:
+    i: int = 0
+    while i < 4:
+        try:
+            if i == 2:
+                break
+            print(i)
+        finally:
+            pass
+        i += 1
+    else:
+        print("else")
+    print("done")
