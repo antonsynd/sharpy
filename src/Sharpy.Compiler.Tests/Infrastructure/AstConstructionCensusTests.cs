@@ -22,10 +22,10 @@ public class AstConstructionCensusTests
 
     public AstConstructionCensusTests(ITestOutputHelper output) => _output = output;
 
-    private static readonly Dictionary<string, string> SynthesizedOutsideParser = new()
-    {
-        ["BreakWithFlagStatement"] = "CodeGen/RoslynEmitter.Operators.cs",
-    };
+    // No AST kind is synthesized outside Parser/ any more: #1816 deleted BreakWithFlagStatement, the
+    // only CodeGen-synthesized node that lived in the parser's AST namespace. Every concrete AST kind
+    // is now parser-constructed. A future synthesized node adds a checked row here.
+    private static readonly Dictionary<string, string> SynthesizedOutsideParser = new();
 
     private static HashSet<string> GetUniverse()
     {
@@ -211,8 +211,7 @@ public class AstConstructionCensusTests
     /// census — that is the manual mutation the contract requires (§2): add
     /// <c>public record PhantomPattern : Pattern;</c> to <c>Parser/Ast/Pattern.cs</c>, rebuild so the
     /// universe sees it → <see cref="EveryConcreteAstKind_IsParserConstructedOrRostered"/> goes red
-    /// naming it (recorded red/green in the commit body); delete the <c>BreakWithFlagStatement</c>
-    /// roster row → red naming it.
+    /// naming it (recorded red/green in the commit body).
     /// </summary>
     [Fact]
     [Trait("Category", "Infrastructure")]
@@ -224,7 +223,7 @@ public class AstConstructionCensusTests
         {
             "Module", "Identifier", "FunctionDef", "IfStatement", "BinaryOp",
             "TypeAnnotation", "FunctionType", "ElifClause", "Parameter", "Decorator",
-            "WildcardPattern", "BreakWithFlagStatement", "MatchStatement",
+            "WildcardPattern", "MatchStatement",
         };
         foreach (var known in knownTypes)
             universe.Should().Contain(known,

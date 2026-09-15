@@ -173,11 +173,6 @@ internal class AstDumper : AstVisitor
         DefaultVisit(node);
     }
 
-    public override void VisitBreakWithFlagStatement(BreakWithFlagStatement node)
-    {
-        DefaultVisit(node);
-    }
-
     #endregion
 
     #region Statements - Compound

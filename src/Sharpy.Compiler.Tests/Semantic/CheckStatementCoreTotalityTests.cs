@@ -6,10 +6,9 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Totality guard for <c>TypeChecker.CheckStatementCore</c>: 31 concrete <see cref="Statement"/>
-/// kinds, all handled — the default arm is loud (SPY0200 + log warning). The one kind that
-/// reaches the default is <see cref="BreakWithFlagStatement"/>, which is emitter-synthesized
-/// and never appears in user-facing ASTs.
+/// Totality guard for <c>TypeChecker.CheckStatementCore</c>: every concrete <see cref="Statement"/>
+/// kind has a switch arm — the default arm is loud (SPY0200 + log warning) and no concrete kind
+/// reaches it (since #1816 deleted the emitter-synthesized <c>BreakWithFlagStatement</c>).
 /// </summary>
 public class CheckStatementCoreTotalityTests
 {
@@ -66,10 +65,9 @@ public class CheckStatementCoreTotalityTests
         nameof(MatchStatement),
     };
 
-    private static readonly HashSet<string> LoudDefault = new()
-    {
-        nameof(BreakWithFlagStatement),
-    };
+    // No concrete Statement kind reaches the loud default arm — every kind has an explicit arm
+    // (#1816 deleted the emitter-synthesized BreakWithFlagStatement, the last one that did).
+    private static readonly HashSet<string> LoudDefault = new();
 
     [Fact]
     public void AllConcreteStatementSubtypes_AreClassified()

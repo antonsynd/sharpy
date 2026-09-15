@@ -118,7 +118,6 @@ public class HoverDispatchTotalityTests
 
         // Statement kinds without an arm.
         [nameof(DecoratedStatement)] = "UNREACHABLE: unwrapped through Statement.UnwrapDecorated at the top of GetHoverMarkdownForNode before the switch",
-        [nameof(BreakWithFlagStatement)] = Synthesized,
         [nameof(BreakStatement)] = KeywordOnly,
         [nameof(ContinueStatement)] = KeywordOnly,
         [nameof(PassStatement)] = KeywordOnly,
@@ -263,7 +262,6 @@ public class HoverDispatchTotalityTests
         roster[nameof(Assignment)] = SuppressWrapped;
         roster[nameof(DecoratedStatement)] =
             "CONTRACTUAL: carries only statement-scoped @suppress decorators, which are never bracket attributes — the sole consumer looks for `@[Generator]`";
-        roster[nameof(BreakWithFlagStatement)] = Synthesized;
         LspDispatchTotality.Verify(
             _output,
             "src/Sharpy.Lsp/HoverService.cs",
@@ -304,7 +302,6 @@ public class HoverDispatchTotalityTests
         roster[nameof(TryStatement)] = Suite;
         roster[nameof(WithStatement)] = Suite;
         roster[nameof(MatchStatement)] = Suite;
-        roster[nameof(BreakWithFlagStatement)] = Synthesized;
         LspDispatchTotality.Verify(
             _output,
             "src/Sharpy.Lsp/HoverService.cs",

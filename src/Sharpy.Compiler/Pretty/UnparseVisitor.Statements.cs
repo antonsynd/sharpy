@@ -70,12 +70,6 @@ internal sealed partial class UnparseVisitor
         _w.WriteLine("break");
     }
 
-    public override void VisitBreakWithFlagStatement(BreakWithFlagStatement node)
-    {
-        _w.Write("break ");
-        _w.WriteLine(node.FlagName);
-    }
-
     public override void VisitContinueStatement(ContinueStatement node)
     {
         _w.WriteLine("continue");

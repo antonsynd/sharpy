@@ -141,7 +141,6 @@ public class ConstEligibleTypeTotalityTests
         nameof(AssertStatement),
         nameof(PassStatement),
         nameof(BreakStatement),
-        nameof(BreakWithFlagStatement),
         nameof(ContinueStatement),
         nameof(ReturnStatement),
         nameof(YieldStatement),

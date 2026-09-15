@@ -193,9 +193,6 @@ public abstract class AstVisitor
             case BreakStatement n:
                 VisitBreakStatement(n);
                 break;
-            case BreakWithFlagStatement n:
-                VisitBreakWithFlagStatement(n);
-                break;
             case ContinueStatement n:
                 VisitContinueStatement(n);
                 break;
@@ -469,7 +466,6 @@ public abstract class AstVisitor
     public virtual void VisitAssertStatement(AssertStatement node) => VisitStatement(node);
     public virtual void VisitPassStatement(PassStatement node) => VisitStatement(node);
     public virtual void VisitBreakStatement(BreakStatement node) => VisitStatement(node);
-    public virtual void VisitBreakWithFlagStatement(BreakWithFlagStatement node) => VisitStatement(node);
     public virtual void VisitContinueStatement(ContinueStatement node) => VisitStatement(node);
     public virtual void VisitReturnStatement(ReturnStatement node) => VisitStatement(node);
     public virtual void VisitYieldStatement(YieldStatement node) => VisitStatement(node);
@@ -639,7 +635,6 @@ public abstract class AstVisitor<T>
             AssertStatement n => VisitAssertStatement(n),
             PassStatement n => VisitPassStatement(n),
             BreakStatement n => VisitBreakStatement(n),
-            BreakWithFlagStatement n => VisitBreakWithFlagStatement(n),
             ContinueStatement n => VisitContinueStatement(n),
             ReturnStatement n => VisitReturnStatement(n),
             YieldStatement n => VisitYieldStatement(n),
@@ -832,7 +827,6 @@ public abstract class AstVisitor<T>
     public virtual T VisitAssertStatement(AssertStatement node) => VisitStatement(node);
     public virtual T VisitPassStatement(PassStatement node) => VisitStatement(node);
     public virtual T VisitBreakStatement(BreakStatement node) => VisitStatement(node);
-    public virtual T VisitBreakWithFlagStatement(BreakWithFlagStatement node) => VisitStatement(node);
     public virtual T VisitContinueStatement(ContinueStatement node) => VisitStatement(node);
     public virtual T VisitReturnStatement(ReturnStatement node) => VisitStatement(node);
     public virtual T VisitYieldStatement(YieldStatement node) => VisitStatement(node);

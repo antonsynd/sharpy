@@ -174,15 +174,6 @@ public record PassStatement : Statement;
 public record BreakStatement : Statement;
 
 /// <summary>
-/// Break statement with flag assignment (internal, generated for loop else support)
-/// Sets the flag to false before breaking.
-/// </summary>
-public record BreakWithFlagStatement : Statement
-{
-    public string FlagName { get; init; } = "";
-}
-
-/// <summary>
 /// Continue statement
 /// </summary>
 public record ContinueStatement : Statement;

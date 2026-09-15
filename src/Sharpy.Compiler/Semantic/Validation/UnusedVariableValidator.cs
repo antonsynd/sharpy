@@ -321,7 +321,6 @@ internal class UnusedVariableValidator : ValidatingAstWalker
 
             case PassStatement:
             case BreakStatement:
-            case BreakWithFlagStatement:
             case ContinueStatement:
             case ImportStatement:
             case FromImportStatement:

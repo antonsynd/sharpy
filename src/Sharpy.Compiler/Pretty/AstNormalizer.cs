@@ -240,7 +240,6 @@ public sealed class AstNormalizer : AstVisitor<Node>
 
     public override Node VisitPassStatement(PassStatement node) => Zero(node);
     public override Node VisitBreakStatement(BreakStatement node) => Zero(node);
-    public override Node VisitBreakWithFlagStatement(BreakWithFlagStatement node) => Zero(node);
     public override Node VisitContinueStatement(ContinueStatement node) => Zero(node);
 
     public override Node VisitReturnStatement(ReturnStatement node) =>

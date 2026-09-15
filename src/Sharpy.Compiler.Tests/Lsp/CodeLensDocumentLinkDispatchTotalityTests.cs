@@ -45,7 +45,6 @@ public class CodeLensDocumentLinkDispatchTotalityTests
         [nameof(PropertyDef)] = "CONTRACTUAL: a type member — Handle walks module.Body only, and a module-level spelling is a semantic error",
         [nameof(EventDef)] = "CONTRACTUAL: a type member — Handle walks module.Body only, and a module-level spelling is a semantic error",
         [nameof(DecoratedStatement)] = "UNREACHABLE: as a declaration — the parser wraps only import / from-import / expression / assignment statements (statement-scoped @suppress, Parser.cs); a decorated definition is a FunctionDef/ClassDef/… carrying its own Decorators",
-        [nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed)",
         [nameof(AssertStatement)] = NoDeclaration,
         [nameof(Assignment)] = NoDeclaration,
         [nameof(BreakStatement)] = NoDeclaration,
@@ -94,7 +93,6 @@ public class CodeLensDocumentLinkDispatchTotalityTests
             "CONTRACTUAL: document links exist only for import statements (handler doc) — no other kind names a navigable module");
         roster[nameof(DecoratedStatement)] =
             "UNREACHABLE: unwrapped through Statement.UnwrapDecorated before the switch (DocumentLinkHandler.CollectLinks), so a suppress-decorated import still links";
-        roster[nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed)";
         return roster;
     }
 

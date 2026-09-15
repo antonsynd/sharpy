@@ -68,7 +68,6 @@ public class InlayHintDispatchTotalityTests
         [nameof(BreakStatement)] = "CONTRACTUAL: keyword-only statement",
         [nameof(ContinueStatement)] = "CONTRACTUAL: keyword-only statement",
         [nameof(PassStatement)] = "CONTRACTUAL: keyword-only statement",
-        [nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed)",
     };
 
     [Fact]

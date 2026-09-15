@@ -59,7 +59,6 @@ public class SemanticTokensDispatchTotalityTests
         [nameof(BreakStatement)] = "CONTRACTUAL: keyword-only statement — the legend carries no keyword token for plain keywords; the client grammar colors them",
         [nameof(ContinueStatement)] = "CONTRACTUAL: keyword-only statement — the client grammar colors it",
         [nameof(PassStatement)] = "CONTRACTUAL: keyword-only statement — the client grammar colors it",
-        [nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed) — it has no source position to tokenize",
         [nameof(ImportStatement)] = "CONTRACTUAL: the legend has no namespace/module token type; imported names are left to the client grammar",
         [nameof(FromImportStatement)] = "CONTRACTUAL: the legend has no namespace/module token type; imported names are left to the client grammar",
     };

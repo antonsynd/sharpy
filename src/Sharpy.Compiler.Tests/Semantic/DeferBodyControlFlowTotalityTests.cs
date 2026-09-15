@@ -55,7 +55,6 @@ public class DeferBodyControlFlowTotalityTests
         nameof(PropertyDef),
         nameof(TypeAlias),
         nameof(EventDef),
-        nameof(BreakWithFlagStatement),
     };
 
     [Fact]

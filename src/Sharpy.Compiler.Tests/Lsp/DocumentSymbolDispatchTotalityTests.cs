@@ -68,7 +68,6 @@ public class DocumentSymbolDispatchTotalityTests
         [nameof(BreakStatement)] = KeywordOnly,
         [nameof(ContinueStatement)] = KeywordOnly,
         [nameof(PassStatement)] = KeywordOnly,
-        [nameof(BreakWithFlagStatement)] = Synthesized,
     };
 
     [Fact]
@@ -123,7 +122,6 @@ public class DocumentSymbolDispatchTotalityTests
         [nameof(BreakStatement)] = KeywordOnly,
         [nameof(ContinueStatement)] = KeywordOnly,
         [nameof(PassStatement)] = KeywordOnly,
-        [nameof(BreakWithFlagStatement)] = Synthesized,
     };
 
     [Fact]

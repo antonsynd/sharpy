@@ -63,7 +63,6 @@ public class FoldingRangeDispatchTotalityTests
         [nameof(ContinueStatement)] = "CONTRACTUAL: keyword-only statement",
         [nameof(PassStatement)] = "CONTRACTUAL: keyword-only statement",
         [nameof(DecoratedStatement)] = "UNREACHABLE: as a suite — the parser wraps only import / from-import / expression / assignment statements (statement-scoped @suppress, Parser.cs), none of which fold",
-        [nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed)",
     };
 
     [Fact]

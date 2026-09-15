@@ -81,7 +81,6 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             AssertStatement a => Equals(a.Test, ((AssertStatement)y).Test) && NullableNodeEquals(a.Message, ((AssertStatement)y).Message),
             PassStatement => true,
             BreakStatement => true,
-            BreakWithFlagStatement a => a.FlagName == ((BreakWithFlagStatement)y).FlagName,
             ContinueStatement => true,
             ReturnStatement a => NullableNodeEquals(a.Value, ((ReturnStatement)y).Value),
             YieldStatement a => a.IsFrom == ((YieldStatement)y).IsFrom && Equals(a.Value, ((YieldStatement)y).Value),

@@ -196,12 +196,6 @@ internal class ControlFlowGraphBuilder
                 BuildBreak(breakStmt);
                 break;
 
-            case BreakWithFlagStatement breakWithFlag:
-                // BreakWithFlagStatement is an internal statement for loop-else support.
-                // It sets a flag variable then breaks. We treat it as a break for CFG purposes.
-                BuildBreakWithFlag(breakWithFlag);
-                break;
-
             case ContinueStatement contStmt:
                 BuildContinue(contStmt);
                 break;
@@ -373,32 +367,6 @@ internal class ControlFlowGraphBuilder
         {
             // Error: break outside loop - use BreakTerminator with null target
             // so ControlFlowValidator can detect and report the error
-            _currentBlock.Terminator = new BreakTerminator(null!)
-            {
-                SourceStatement = stmt
-            };
-            return;
-        }
-
-        var loop = _loopStack.Peek();
-        Connect(_currentBlock, loop.Exit);
-        _currentBlock.Terminator = new BreakTerminator(loop.Exit)
-        {
-            SourceStatement = stmt
-        };
-    }
-
-    private void BuildBreakWithFlag(BreakWithFlagStatement stmt)
-    {
-        // BreakWithFlagStatement is generated internally for loop-else support.
-        // It sets a flag to false before breaking, so the else clause knows not to run.
-        // For CFG purposes, we treat it the same as a regular break.
-
-        AddStatement(stmt);
-
-        if (_loopStack.Count == 0)
-        {
-            // Shouldn't happen with internally generated statements, but handle it
             _currentBlock.Terminator = new BreakTerminator(null!)
             {
                 SourceStatement = stmt

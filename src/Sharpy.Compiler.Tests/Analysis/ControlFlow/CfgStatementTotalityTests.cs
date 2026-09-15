@@ -26,7 +26,6 @@ public class CfgStatementTotalityTests
         nameof(WhileStatement),
         nameof(ForStatement),
         nameof(BreakStatement),
-        nameof(BreakWithFlagStatement),
         nameof(ContinueStatement),
         nameof(TryStatement),
         nameof(WithStatement),

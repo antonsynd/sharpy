@@ -81,7 +81,7 @@ public class AstExhaustivenessTests
             // DecoratedStatement (#1024): unwrapped to its inner statement in GenerateBodyStatements.
             "DecoratedStatement",
             "AssertStatement", "PassStatement", "BreakStatement",
-            "BreakWithFlagStatement", "ContinueStatement", "ReturnStatement",
+            "ContinueStatement", "ReturnStatement",
             "YieldStatement", "RaiseStatement",
             // Compound
             "IfStatement", "WhileStatement", "ForStatement", "TryStatement",
