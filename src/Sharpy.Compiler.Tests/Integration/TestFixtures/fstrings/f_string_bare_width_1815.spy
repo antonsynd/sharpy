@@ -1,0 +1,4 @@
+# A bare width with no alignment ({5:5}) pads to `width` columns — the emitter-side translator used
+# to drop it silently (#1815).
+def main() -> None:
+    print(f"[{5:5}]")

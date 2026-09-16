@@ -1,0 +1,5 @@
+# A STATIC invalid spec is refused by name at compile time: 'd' is not a format code for a str, so
+# SPY0609 carries CPython's exact ValueError wording (#1815).
+def main() -> None:
+    x: str = "a"
+    print(f"[{x:d}]")

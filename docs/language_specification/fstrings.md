@@ -1,128 +1,259 @@
 # F-Strings (Formatted String Literals)
 
+An f-string interpolates expressions into a string. Each replacement field is
+`{expr[=][!conversion][:format_spec]}`: the expression is evaluated, an optional `=` self-documents
+it, an optional `!r`/`!s`/`!a` conversion is applied, and an optional format spec after `:` controls
+padding, sign, precision and presentation. Sharpy follows Python 3.12 (PEP 701) semantics.
+
 ```python
-name = "Alice"
-age = 30
-msg = f"My name is {name} and I'm {age} years old"
+def main() -> None:
+    name: str = "Alice"
+    age: int = 30
+    print(f"My name is {name} and I'm {age} years old")
 
-# Expressions in f-strings
-calculation = f"Result: {x * 2}"
+    # Expressions in f-strings
+    print(f"Result: {age * 2}")
 
-# Format specifiers
-pi = 3.14159
-formatted = f"Pi: {pi:.2f}"  # "Pi: 3.14"
+    # Format specifiers
+    pi: float = 3.14159
+    print(f"Pi: {pi:.2f}")
+```
 
-# Multi-line f-strings
-report = f"""
-Name: {name}
-Age: {age}
-Status: Active
-"""
+```
+My name is Alice and I'm 30 years old
+Result: 60
+Pi: 3.14
+```
+
+## One Format Engine
+
+Every hole is rendered by a single Python-format engine, `Sharpy.PyFormat.Apply`, which `str.format`,
+the `format()` builtin and every f-string / t-string hole share. There is no separate emitter-side
+translator, so the format spec behaves exactly as it does in Python (the same engine, the same
+rounding, the same padding).
+
+| Hole shape | Renders as | Example → output |
+|------------|-----------|------------------|
+| `{v}` (plain) | `str(v)` | `f"{None}"` → `None` |
+| `{v!r}` | `repr(v)` | `f"{'ab'!r}"` → `'ab'` |
+| `{v!s}` | `str(v)` | `f"{None!s}"` → `None` |
+| `{v!a}` | `ascii(v)` | `f"{'café'!a}"` → `'caf\xe9'` |
+| `{v=}` | `"v=" + repr(v)` | `f"{age=}"` → `age=30` |
+| `{v:spec}` | `PyFormat.Apply(v, spec)` | `f"{3.14159:.2f}"` → `3.14` |
+| `{v=:spec}` | `"v=" + PyFormat.Apply(v, spec)` | `f"{pi=:.2f}"` → `pi=3.14` |
+
+### None Renders `None`
+
+A plain hole calls `str(value)`, so a `None` value renders `None` — not the empty string. This holds
+for a bare `None`, a `T | None` variable, an `object` holding null, and an `int?` that is `None()`:
+
+```python
+def main() -> None:
+    n: int | None = None
+    print(f"value: {n}")
+    print(f"[{None}]")
+```
+
+```
+value: None
+[None]
+```
+
+## Format Spec Grammar
+
+The format spec is `[[fill]align][sign][z][#][0][width][grouping][.precision][type]`. Each component
+has the same meaning as in Python, and is applied by the one engine:
+
+| Component | Python meaning | Sharpy | Example → output |
+|-----------|----------------|--------|------------------|
+| `align` `<^>=` | left / center / right / pad-after-sign | same engine | `f"{5:<4}"` → `5   ` |
+| `fill` + align | pad with a fill char | same engine | `f"{5:*^7}"` → `***5***` |
+| `sign` `+`/`-`/space | force / default / leading-space sign | same engine | `f"{5:+}"` → `+5` |
+| `z` | coerce negative zero (PEP 682) | same engine | `f"{-0.0:z.1f}"` → `0.0` |
+| `#` | alternate form | same engine | `f"{5:#x}"` → `0x5` |
+| `0` + width | zero-pad | same engine | `f"{5:05}"` → `00005` |
+| `width` | minimum field width | same engine | `f"{5:5}"` → `    5` |
+| grouping `,` / `_` | thousands separator | same engine | `f"{1234567:,}"` → `1,234,567` |
+| `.precision` | digits / significant figures | same engine | `f"{3.14159:.2f}"` → `3.14` |
+| type `d f e g x X o b c n % s` | presentation | same engine | `f"{255:X}"` → `FF` |
+
+A bare width with no alignment (`{5:5}`) pads to the field width — a case the old emitter-side
+translator dropped:
+
+```python
+def main() -> None:
+    print(f"[{5:5}]")
+    print(f"[{5:<5}]")
+    print(f"[{1234567:,}]")
+    print(f"[{255:X}]")
+    print(f"[{3.14159:.2f}]")
+```
+
+```
+[    5]
+[5    ]
+[1,234,567]
+[FF]
+[3.14]
+```
+
+Because the engine is value-kind aware, the same spec formats differently by type (this is Python's
+behavior, not a Sharpy quirk): `{x:4}` right-aligns an int, `{s:4}` left-aligns a str, and a `bool`
+under a non-empty spec formats as its integer value:
+
+```python
+def main() -> None:
+    x: int = 5
+    s: str = "ab"
+    b: bool = True
+    print(f"[{x:4}]")
+    print(f"[{s:4}]")
+    print(f"[{b:6}]")
+```
+
+```
+[   5]
+[ab  ]
+[     1]
+```
+
+## Nested Replacement Fields
+
+A format spec is itself a mini f-string: a `{...}` inside the spec is a nested replacement field —
+an ordinary expression the AST owns, evaluated at runtime. This makes dynamic width and precision
+work (the previous implementation dropped the nested field and never type-checked it):
+
+```python
+def main() -> None:
+    name: str = "Sam"
+    width: int = 10
+    print(f"[{name:>{width}}]")
+
+    precision: int = 3
+    pi: float = 3.14159
+    print(f"[{pi:.{precision}f}]")
+```
+
+```
+[       Sam]
+[3.142]
+```
+
+## Evaluation Order
+
+Holes — and the nested fields inside their specs — evaluate strictly left to right, in source order,
+exactly once each. In `f"{a} {b}"`, `a` is evaluated before `b`; in `f"{x:{w}}"`, `x` is evaluated
+before `w`. A hole with a side effect therefore observes the same order Python does:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(f"{xs.pop(0)} {len([v for v in xs])}")
+```
+
+```
+1 2
+```
+
+`xs.pop(0)` runs first (returning `1` and shortening the list), so `len(...)` sees the two remaining
+elements — `1 2`, not `1 3`.
+
+## Invalid Format Specs
+
+A **static** spec (no nested fields) whose type is known is validated at compile time and refused by
+name as **SPY0609**, carrying CPython's exact `ValueError`/`TypeError` wording:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    x: str = "a"
+    print(f"[{x:d}]")   # SPY0609: Unknown format code 'd' for object of type 'str'
+```
+
+A non-empty spec on a `None` literal is refused the same way
+(`unsupported format string passed to NoneType.__format__`).
+
+A **dynamic** spec (one with a nested field, or a hole whose type is not statically known) is
+validated by the engine at runtime and raises the same `ValueError`/`TypeError` Python would. The
+program below compiles, then raises `ValueError: Unknown format code 'q' for object of type 'int'`
+when run:
+
+<!-- spec-sweep: fragment -->
+```python
+def main() -> None:
+    x: int = 5
+    spec: str = "q"
+    print(f"[{x:{spec}}]")   # runtime ValueError
 ```
 
 ## Implicit String Conversion
 
-Non-string expressions in f-strings are automatically converted to strings via `str()` (which calls `__str__` or `.ToString()`):
+Non-string expressions in a plain hole are converted to strings via `str()` (which calls `__str__`
+or `.ToString()`), matching both Python's f-string behavior and C#'s string interpolation:
 
+<!-- spec-sweep: fragment -->
 ```python
-x = 42
-point = Point(10, 20)
-
-f"Value: {x}"           # Implicitly calls str(42)
-f"Location: {point}"    # Implicitly calls str(point) -> point.__str__() or point.ToString()
+f"Value: {x}"           # str(x)
+f"Location: {point}"    # str(point) -> point.__str__() or point.ToString()
 ```
-
-This matches both Python's f-string behavior and C#'s string interpolation.
-
-## F-String Nesting Rules
-
-Sharpy supports nested f-strings, matching Python 3.12+ behavior. The lexer uses a mode stack to track nested interpolation contexts.
-
-**Nested f-strings:**
-```python
-# Nested f-string with different quote types
-name = "Alice"
-msg = f"Hello, {f'dear {name}'}!"  # "Hello, dear Alice!"
-
-# Multiple nesting levels (use alternating quote styles)
-result = f"A{f'B{f\"C\"}B'}A"  # "ABCBA"
-```
-
-**Literal braces:**
-
-Use doubled braces to include literal `{` or `}` in f-strings:
-
-```python
-f"Set: {{{1, 2, 3}}}"     # "Set: {1, 2, 3}"
-f"Empty dict: {{}}"        # "Empty dict: {}"
-```
-
-**Dictionary literals in f-strings:**
-
-Dictionary literals must be wrapped in parentheses to avoid ambiguity with format specifiers:
-
-```python
-# ❌ Ambiguous - looks like format spec
-f"result: {{'key': value}}"    # ERROR
-
-# ✅ Use parentheses
-f"result: {({'key': value})}"  # OK: prints dict
-
-# ✅ Or use a variable
-d = {'key': value}
-f"result: {d}"                  # OK
-```
-
-**Format specifiers with expressions:**
-
-Format specifiers can contain expressions, including nested f-strings:
-
-```python
-precision = 3
-f"{pi:.{precision}f}"      # Dynamic precision: "3.142"
-
-width = 10
-f"{name:>{width}}"         # Right-align in 10 chars
-```
-
-## Lexer State Machine for F-Strings
-
-The lexer maintains a stack of modes to handle f-string parsing:
-
-1. **Normal mode**: Regular tokenization
-2. **F-string mode**: Inside f-string, scanning for `{` or end quote
-3. **Interpolation mode**: Inside `{...}`, regular expression parsing with brace counting
-
-**State transitions:**
-
-| Current State | Input | Action |
-|---------------|-------|--------|
-| Normal | `f"` | Push F-string mode |
-| F-string | `{` (not `{{`) | Push Interpolation mode |
-| F-string | `}` | Error (unbalanced) |
-| F-string | `"` | Pop F-string mode |
-| Interpolation | `{` | Increment brace count |
-| Interpolation | `}` (count > 0) | Decrement brace count |
-| Interpolation | `}` (count = 0) | Pop Interpolation mode |
-| Interpolation | `f"` | Push nested F-string mode |
-
-**Nesting depth limit:** The lexer should support at least 3 levels of f-string nesting. Deeper nesting is rarely needed and may be limited for implementation simplicity.
 
 ## Interpolation Hole Type
 
-Each interpolation hole in an f-string is typed as an `object` slot. This means any expression is accepted in a hole, including conditional expressions with unrelated branch types:
+Each interpolation hole is typed as an `object` slot, so any expression is accepted — including a
+conditional with unrelated branch types (both branches are admitted to `object`):
 
+<!-- spec-sweep: fragment -->
 ```python
 c = True
 print(f"{Dog() if c else Cat()}")  # OK — both branches admitted to object
 ```
 
+Because the hole (and any nested spec field) is a real expression the AST owns, a variable used only
+inside a spec is a genuine use — an unused-variable warning is not raised for it.
+
+## F-String Nesting Rules
+
+Sharpy supports nested f-strings, matching Python 3.12+ behavior. The lexer uses a mode stack to
+track nested interpolation contexts. Use alternating quote styles for each level:
+
+```python
+def main() -> None:
+    name: str = "Alice"
+    print(f"Hello, {f'dear {name}'}!")
+```
+
+```
+Hello, dear Alice!
+```
+
+**Literal braces:** double a brace to include a literal `{` or `}`:
+
+```python
+def main() -> None:
+    print(f"Set: {{{1}, {2}, {3}}}")
+    print(f"Empty dict: {{}}")
+```
+
+```
+Set: {1, 2, 3}
+Empty dict: {}
+```
+
+**Dictionary literals in f-strings:** wrap a dict literal in parentheses so its `{` is not read as a
+replacement field, or bind it to a variable first:
+
+<!-- spec-sweep: fragment -->
+```python
+f"result: {({'key': value})}"   # OK: prints the dict
+d = {'key': value}
+f"result: {d}"                   # OK
+```
+
 ## Hole Delimiter Rules
 
-Inside an f-string interpolation hole (`{…}`), a `:` at brace depth 1 starts a **format
-specifier**. However, when the `:` is inside parentheses or brackets (paren depth > 0), it is
-part of the expression — not a format spec delimiter. This allows parenthesized expressions that
-contain `:` to appear in holes:
+Inside a hole (`{…}`), a `:` at brace depth 1 starts a format spec. When the `:` is inside
+parentheses or brackets, it is part of the expression — not a spec delimiter. This lets a
+parenthesized expression that contains `:` appear in a hole:
 
 ```python
 def f() -> str:
@@ -146,14 +277,12 @@ hello hello
 [1, 2]
 ```
 
-Without parentheses, `{s := f()}` would parse `:` as the format spec start. The same
-applies to `{lambda: 42}` (parsed as `lambda` with format spec `42}`) and bare slices.
-
-A bare `{x:=10}` (no parentheses) is intentionally a **format specifier** — it formats `x`
-with the spec `=10`, matching Python's behavior. Only the parenthesized form is a walrus.
+Without parentheses, `{s := f()}` would parse `:` as the format-spec start. The same applies to
+`{lambda: 42}` (parsed as `lambda` with format spec `42}`) and bare slices. A bare `{x:=10}` (no
+parentheses) is intentionally a **format specifier** — it formats `x` with the spec `=10`, matching
+Python; only the parenthesized form is a walrus.
 
 *Implementation*
-- *✅ Native - Maps to C# interpolated strings `$"..."`.*
-- *Nested f-strings require lexer mode stack.*
-- *C# interpolated strings support similar nesting via `$"outer {$"inner"} outer"`.*
-- *Each hole pushes `StorePosition.FStringHole` with slot `object`.*
+- *Every hole lowers to `Builtins.Str`/`Repr`/`Ascii(v)` or `Sharpy.PyFormat.Apply(v, spec)` — one Python-format engine, no emitter-side translator.*
+- *Holes and nested spec fields are generated through the ordered-operand helper (source order).*
+- *Nested f-strings require the lexer mode stack; each hole pushes `StorePosition.FStringHole` with slot `object`.*

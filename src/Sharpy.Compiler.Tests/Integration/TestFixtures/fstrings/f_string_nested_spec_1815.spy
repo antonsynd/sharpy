@@ -1,0 +1,6 @@
+# A format spec is a mini f-string: the nested {width} field is an expression the AST owns and
+# evaluates at runtime, so {name:>{width}} right-aligns in `width` columns (#1815).
+def main() -> None:
+    name: str = "hi"
+    width: int = 5
+    print(f"[{name:>{width}}]")

@@ -1,0 +1,3 @@
+# A plain f-string hole renders None as "None" (str(value)), not empty (#1814).
+def main() -> None:
+    print(f"[{None}]")

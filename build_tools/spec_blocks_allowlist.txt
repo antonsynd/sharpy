@@ -173,13 +173,6 @@ feature_roadmap.md::efebf56c1b  # SPY0202 first
 flexible_arguments.md::49aed5aea1  # SPY0300 first
 flexible_arguments.md::b47620477b  # SPY0370 first
 for_statement.md::dd90c145b2  # SPY0200 first
-fstrings.md::0f28cf4a78  # SPY0200 first
-fstrings.md::237704424c  # SPY0200 first
-fstrings.md::2c69686c69  # SPY0200 first
-fstrings.md::817be9e420  # SPY0104 first
-fstrings.md::b7e8cc5fe5  # SPY0200 first
-fstrings.md::ce5f2e6446  # SPY0200 first
-fstrings.md::d363fedb16  # SPY0015 first
 function_default_parameters.md::4399937f5e  # SPY0104 first
 function_default_parameters.md::45774faf7f  # SPY0104 first
 function_default_parameters.md::579f4dc249  # SPY0401 first

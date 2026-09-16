@@ -1,0 +1,6 @@
+# A t-string builds its Interpolations in source order too: rendering the Template joins the values
+# left-to-right, so xs.pop(0) precedes len(...) and the output is "1 2" (#1862).
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    tmpl: Template = t"{xs.pop(0)} {len([v for v in xs])}"
+    print(tmpl)

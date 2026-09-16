@@ -19,6 +19,30 @@ x = 10
 result = t"Value: {x * 2}"
 ```
 
+## Format Specs and Nested Fields
+
+A t-string hole may carry a format spec (`{expr:spec}`), including nested replacement fields inside
+the spec (`{expr:>{width}}`), exactly like an f-string. Each `Interpolation` keeps its evaluated
+value and its spec; rendering the `Template` applies the spec through the same one Python-format
+engine (`Sharpy.PyFormat.Apply`) that f-strings, `str.format` and `format()` use — a t-string is not
+a fourth format authority. Holes and their nested spec fields evaluate left to right, in source
+order:
+
+```python
+def main() -> None:
+    pi: float = 3.14159
+    print(t"Pi is {pi:.2f}")
+
+    name: str = "hi"
+    width: int = 8
+    print(t"[{name:>{width}}]")
+```
+
+```
+Pi is 3.14
+[      hi]
+```
+
 ## Template Type
 
 T-strings produce a value of type `Template`. You can annotate variables explicitly:
