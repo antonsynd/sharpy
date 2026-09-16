@@ -1,0 +1,6 @@
+# The bare (*a) — no trailing comma, not a list display — is a python SyntaxError
+# ("cannot use starred expression here"); it must stay refused. Its positive twin is
+# sole_star_group_1845.spy (the legal (*a,) / [*a] spellings).
+def main() -> None:
+    (*a) = (1, 2)
+    print(a)

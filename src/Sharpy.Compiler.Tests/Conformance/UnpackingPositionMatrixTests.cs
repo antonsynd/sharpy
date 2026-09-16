@@ -8,19 +8,23 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>
-/// Unpacking position × target shape × source kind × arity matrix (#1692, #1733):
-/// the four tuple-unpacking positions {assignment, for, comprehension for-clause, with-as}
-/// share one target grammar (list display ≡ tuple via parser normalization), one arity rule
-/// (a star absorbs ≥ 0 elements), and one binder/lowering.
+/// Unpacking position × depth × star position × source kind × group spelling matrix
+/// (#1692, #1733, #1845, #1846): the four tuple-unpacking positions {assignment, for,
+/// comprehension for-clause, with-as} share ONE target grammar, ONE arity rule ("a star absorbs
+/// ≥ 0 elements"), and ONE binder/lowering — at every depth.
 ///
 /// <para>
 /// Axes:
 /// <list type="bullet">
 /// <item><b>position</b> — assignment, for statement, comprehension for-clause, with-as</item>
-/// <item><b>target shape</b> — flat tuple, starred first/middle/last, list display (normalized)</item>
+/// <item><b>depth</b> — 0 (flat), 1 (one nested tuple), 2 (nested-in-nested)</item>
+/// <item><b>star position</b> — none, first, middle, last, sole</item>
 /// <item><b>source kind</b> — tuple (fixed arity), list[T] (starred-only; non-starred stays SPY0239)</item>
-/// <item><b>arity</b> — exact, star with 0 rest, star with n rest, mismatch (refused SPY0239)</item>
+/// <item><b>group spelling</b> — paren+comma <c>(*a,)</c>, list display <c>[*a]</c>,
+///   paren-no-comma <c>(*a)</c> (the one spelling Python refuses)</item>
 /// </list>
+/// Every legal cell's expected output is python3's; every refusal is by DIRECTION (the program
+/// python runs is refused only where python refuses it).
 /// </para>
 /// </summary>
 [Collection("HeavyCompilation")]
@@ -28,17 +32,22 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
 {
     public UnpackingPositionMatrixTests(ITestOutputHelper output) : base(output) { }
 
-    private enum Expect { Runs, SPY0239, SPY0225, KnownRed }
+    private enum Expect { Runs, SPY0239, SPY0225, SPY0356, KnownRed }
 
     /// <param name="Expected">
     /// <see cref="Expect.KnownRed"/> is a cell the contract says must RUN and that does not yet:
     /// it asserts the cell is still refused and that <paramref name="Reason"/> names an OPEN issue,
     /// so the entry fails the moment the defect is fixed and has to be deleted (drain on fix). It
-    /// never pins a refusal as correct — <see cref="Expect.SPY0239"/> / <see cref="Expect.SPY0225"/>
-    /// are for cells whose refusal IS the contract.
+    /// never pins a refusal as correct — <see cref="Expect.SPY0239"/>, <see cref="Expect.SPY0225"/>
+    /// and <see cref="Expect.SPY0356"/> are for cells whose refusal IS the contract.
+    /// </param>
+    /// <param name="MessageSubstring">
+    /// When set, the refusal's diagnostic message must contain it — used to pin the POSITION suffix
+    /// on SPY0239 (e.g. "in with statement" for the with-as position, #1846).
     /// </param>
     private sealed record Cell(
-        string Label, string Source, Expect Expected, string? ExpectedOutput = null, string? Reason = null);
+        string Label, string Source, Expect Expected,
+        string? ExpectedOutput = null, string? Reason = null, string? MessageSubstring = null);
 
     [Fact]
     [Trait("Category", "Conformance")]
@@ -70,23 +79,15 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
                     break;
 
                 case Expect.SPY0239:
-                    if (result.Success)
-                    {
-                        failures.Add($"{cell.Label}: expected SPY0239 but compiled and ran");
-                        continue;
-                    }
-                    if (!result.RawDiagnostics.Any(d => d.Code == DiagnosticCodes.Semantic.InvalidTupleUnpacking))
-                        failures.Add($"{cell.Label}: expected SPY0239 but got: {string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}");
+                    CheckRefusal(cell, result, DiagnosticCodes.Semantic.InvalidTupleUnpacking, "SPY0239", failures);
                     break;
 
                 case Expect.SPY0225:
-                    if (result.Success)
-                    {
-                        failures.Add($"{cell.Label}: expected SPY0225 but compiled and ran");
-                        continue;
-                    }
-                    if (!result.RawDiagnostics.Any(d => d.Code == DiagnosticCodes.Semantic.InvalidAssignmentTarget))
-                        failures.Add($"{cell.Label}: expected SPY0225 but got: {string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}");
+                    CheckRefusal(cell, result, DiagnosticCodes.Semantic.InvalidAssignmentTarget, "SPY0225", failures);
+                    break;
+
+                case Expect.SPY0356:
+                    CheckRefusal(cell, result, DiagnosticCodes.Semantic.MultipleStarExpressions, "SPY0356", failures);
                     break;
 
                 case Expect.KnownRed:
@@ -103,26 +104,47 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
         }
 
         Output.WriteLine($"Unpacking cells: {cells.Count}  Failures: {failures.Count}");
-        foreach (var na in NotApplicableCells())
-            Output.WriteLine($"  N/A {na.label}: {na.reason}");
         foreach (var f in failures)
             Output.WriteLine($"  {f}");
 
         Assert.True(failures.Count == 0,
-            $"Unpacking position matrix (#1692, #1733): {failures.Count} of {cells.Count} cells failed.\n" +
+            $"Unpacking position matrix (#1845, #1846): {failures.Count} of {cells.Count} cells failed.\n" +
             string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    private static void CheckRefusal(
+        Cell cell, ExecutionResult result, string code, string name, List<string> failures)
+    {
+        if (result.Success)
+        {
+            failures.Add($"{cell.Label}: expected {name} but compiled and ran");
+            return;
+        }
+        if (!result.RawDiagnostics.Any(d => d.Code == code))
+        {
+            failures.Add($"{cell.Label}: expected {name} but got: "
+                + string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+            return;
+        }
+        if (cell.MessageSubstring != null
+            && !result.RawDiagnostics.Any(d => d.Code == code && d.Message.Contains(cell.MessageSubstring)))
+        {
+            failures.Add($"{cell.Label}: expected {name} message to contain '{cell.MessageSubstring}' but got: "
+                + string.Join("; ", result.RawDiagnostics.Where(d => d.Code == code).Select(d => d.Message)));
+        }
     }
 
     /// <summary>
     /// Every parked cell names an issue, so none can be parked on a private opinion and every one
-    /// has a place to be deleted from (§8, drain on fix).
+    /// has a place to be deleted from (§8, drain on fix). The roster is allowed to be EMPTY — the
+    /// #1846 rows all drained when the one unpacking rule landed; the type stays so a future
+    /// parking is possible.
     /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
     public void KnownRedCells_CiteAnIssue()
     {
         var parked = GenerateCells().Where(c => c.Expected == Expect.KnownRed).ToList();
-        Assert.NotEmpty(parked);
         foreach (var cell in parked)
         {
             Assert.False(string.IsNullOrWhiteSpace(cell.Reason),
@@ -131,20 +153,23 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
         }
     }
 
-    /// <summary>
-    /// Cells that cannot be expressed at all. Empty: the two entries this roster used to carry
-    /// were not inexpressible, they were unwritten — a non-starred target over a <c>list[T]</c>
-    /// source in the <c>with-as</c> position, and an augmented list-display target. Both are now
-    /// cells (<c>with-as.list.non-starred</c>, <c>augmented.list-display</c>), which is what an
-    /// N/A entry that describes a real, measurable cell always means (§8, drain on fix).
-    /// </summary>
-    private static IEnumerable<(string label, string reason)> NotApplicableCells()
-        => Enumerable.Empty<(string, string)>();
+    // A context manager whose __enter__ returns the given tuple/list expression of the given type.
+    private static string WithSource(string enterType, string enterExpr, string asTarget, string body) =>
+        $@"class CM:
+    def __enter__(self) -> {enterType}:
+        return {enterExpr}
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    with CM() as {asTarget}:
+{body}";
 
     private static IEnumerable<Cell> GenerateCells()
     {
-        // ── Assignment position ──
+        // ══ Assignment position ══════════════════════════════════════════════════════════════
 
+        // depth 0, star ∈ {none, last, first, middle}
         yield return new Cell("assign.tuple.flat.exact",
             "def main() -> None:\n    a, b, c = (1, 2, 3)\n    print(a, b, c)",
             Expect.Runs, "1 2 3");
@@ -181,12 +206,9 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             "def main() -> None:\n    a, b = [1, 2]",
             Expect.SPY0239);
 
-        // ── Assignment position: the starred element in every SPELLING of the group (#1841) ──
-        // The `for`/`with-as` positions reach the store-target element parser, which builds a
-        // StarExpression; an assignment's left side is parsed by the EXPRESSION parser, which
-        // builds a SpreadElement. Both canonicalize to StarExpression at the one store-target seam,
-        // so the four spellings below bind exactly as `a, *rest = t` does.
-
+        // The starred element in every SPELLING of the group (#1841): the for/with-as element parser
+        // builds a StarExpression, the assignment expression parser a SpreadElement; both canonicalize
+        // at the one store-target seam, so all spellings bind as `a, *rest = t` does.
         yield return new Cell("assign.tuple.starred-parenthesized",
             "def main() -> None:\n    (a, *rest) = (1, 2, 3)\n    print(a, rest)",
             Expect.Runs, "1 [2, 3]");
@@ -199,25 +221,76 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             "def main() -> None:\n    [a, *rest] = (1, 2, 3)\n    print(a, rest)",
             Expect.Runs, "1 [2, 3]");
 
-        yield return new Cell("assign.list.starred-list-display",
-            "def main() -> None:\n    [a, *rest] = [1, 2, 3]\n    print(a, rest)",
-            Expect.Runs, "1 [2, 3]");
-
         yield return new Cell("assign.tuple.starred-parenthesized-first",
             "def main() -> None:\n    (*rest, c) = (1, 2, 3)\n    print(rest, c)",
             Expect.Runs, "[1, 2] 3");
 
-        // The sole starred element of a group stays refused: `(*a)` (python SyntaxError) and
-        // `(*a,)` / `[*a]` (legal python) all parse to the same one-element tuple (#1845).
-        yield return new Cell("assign.sole-star-parenthesized",
+        // ── The sole-starred group, all three spellings (#1845) ──
+        // `(*a,)` (paren+comma) and `[*a]` (list display) are legal python and BIND; the bare `(*a)`
+        // (paren-no-comma) is a python SyntaxError and is refused SPY0225 "cannot use starred
+        // expression here" — the same wording in all four positions.
+        yield return new Cell("assign.sole-star.paren-comma",
             "def main() -> None:\n    (*a,) = (1, 2)\n    print(a)",
-            Expect.SPY0225);
+            Expect.Runs, "[1, 2]");
 
-        yield return new Cell("assign.sole-star-list-display",
+        yield return new Cell("assign.sole-star.list-display",
             "def main() -> None:\n    [*a] = (1, 2)\n    print(a)",
+            Expect.Runs, "[1, 2]");
+
+        yield return new Cell("assign.sole-star.paren-no-comma-refused",
+            "def main() -> None:\n    (*a) = (1, 2)\n    print(a)",
             Expect.SPY0225);
 
-        // ── For-statement position ──
+        yield return new Cell("assign.sole-star.list-and-tail",
+            "def main() -> None:\n    t: tuple[list[int], int] = ([1, 2], 3)\n    [*a], b = t\n    print(a, b)",
+            Expect.Runs, "[1, 2] 3");
+
+        // `(*a), b = xs` — the bare paren-no-comma group beside a tail is a python SyntaxError.
+        yield return new Cell("assign.paren-no-comma-and-tail-refused",
+            "def main() -> None:\n    (*a), b = [1, 2, 3]\n    print(a, b)",
+            Expect.SPY0225);
+
+        // ── depth 1: a star at nested depth (#1846) ──
+        yield return new Cell("assign.nested.exact",
+            "def main() -> None:\n    (a, (b, c)) = (1, (2, 3))\n    print(a, b, c)",
+            Expect.Runs, "1 2 3");
+
+        yield return new Cell("assign.nested.starred-inner-last",
+            "def main() -> None:\n    (a, (b, *c)) = (1, (2, 3, 4))\n    print(a, b, c)",
+            Expect.Runs, "1 2 [3, 4]");
+
+        yield return new Cell("assign.nested.starred-inner-first",
+            "def main() -> None:\n    (a, (*b, c)) = (1, (2, 3, 4))\n    print(a, b, c)",
+            Expect.Runs, "1 [2, 3] 4");
+
+        yield return new Cell("assign.nested.starred-inner-middle",
+            "def main() -> None:\n    (a, (b, *c, d)) = (1, (2, 3, 4, 5))\n    print(a, b, c, d)",
+            Expect.Runs, "1 2 [3, 4] 5");
+
+        yield return new Cell("assign.nested.starred-outer-element",
+            "def main() -> None:\n    (a, *rest), b = ((1, 2, 3), 4)\n    print(a, rest, b)",
+            Expect.Runs, "1 [2, 3] 4");
+
+        // ── a nested arity mismatch is SPY0239 with the "in nested tuple" marker ──
+        yield return new Cell("assign.nested.arity-mismatch",
+            "def main() -> None:\n    t: tuple[int, tuple[int, int, int]] = (1, (2, 3, 4))\n    a, (b, c) = t\n    print(a)",
+            Expect.SPY0239, MessageSubstring: "in nested tuple");
+
+        // ── two stars at the SAME depth → SPY0356, python "multiple starred expressions" ──
+        yield return new Cell("assign.two-star.depth0.refused",
+            "def main() -> None:\n    a, *b, *c = [1, 2, 3]\n    print(a)",
+            Expect.SPY0356);
+
+        yield return new Cell("assign.two-star.depth1.refused",
+            "def main() -> None:\n    t: tuple[int, tuple[int, int, int]] = (1, (2, 3, 4))\n    a, (*b, *c) = t\n    print(a)",
+            Expect.SPY0356);
+
+        // ── depth 2 ──
+        yield return new Cell("assign.depth2.starred-innermost",
+            "def main() -> None:\n    a, (b, (c, *d)) = (1, (2, (3, 4, 5)))\n    print(a, b, c, d)",
+            Expect.Runs, "1 2 3 [4, 5]");
+
+        // ══ For-statement position ═══════════════════════════════════════════════════════════
 
         yield return new Cell("for.tuple.flat.exact",
             "def main() -> None:\n    for a, b in [(1, 2), (3, 4)]:\n        print(a, b)",
@@ -247,7 +320,34 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             "def main() -> None:\n    for [a, b] in [(1, 2), (3, 4)]:\n        print(a, b)",
             Expect.Runs, "1 2\n3 4");
 
-        // ── Comprehension for-clause position ──
+        // sole-starred group in the for position: (*a,) and [*a] bind; bare (*a) refused.
+        yield return new Cell("for.sole-star.paren-comma",
+            "def main() -> None:\n    for (*a,) in [(1, 2), (3, 4)]:\n        print(a)",
+            Expect.Runs, "[1, 2]\n[3, 4]");
+
+        yield return new Cell("for.sole-star.list-display",
+            "def main() -> None:\n    for [*a] in [(1, 2), (3, 4)]:\n        print(a)",
+            Expect.Runs, "[1, 2]\n[3, 4]");
+
+        yield return new Cell("for.sole-star.paren-no-comma-refused",
+            "def main() -> None:\n    for (*a) in [(1, 2)]:\n        print(a)",
+            Expect.SPY0225);
+
+        // depth 1 in the for position (#1846)
+        yield return new Cell("for.nested.exact",
+            "def main() -> None:\n    for a, (b, c) in [(1, (2, 3))]:\n        print(a, b, c)",
+            Expect.Runs, "1 2 3");
+
+        yield return new Cell("for.nested.starred-inner",
+            "def main() -> None:\n    for a, (b, *c) in [(1, (2, 3, 4))]:\n        print(a, b, c)",
+            Expect.Runs, "1 2 [3, 4]");
+
+        // depth 1 over a list[T] element source (#1846): the inner is a list, the star absorbs it.
+        yield return new Cell("for.nested.list-source",
+            "def main() -> None:\n    xs: list[tuple[int, list[int]]] = [(1, [2, 3, 4])]\n    for a, (b, *c) in xs:\n        print(a, b, c)",
+            Expect.Runs, "1 2 [3, 4]");
+
+        // ══ Comprehension for-clause position ════════════════════════════════════════════════
 
         yield return new Cell("comp.tuple.flat.exact",
             "def main() -> None:\n    r = [a + b for a, b in [(1, 2), (3, 4)]]\n    print(r)",
@@ -273,118 +373,51 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
             "def main() -> None:\n    r = [a + b for [a, b] in [(1, 2), (3, 4)]]\n    print(r)",
             Expect.Runs, "[3, 7]");
 
-        // ── With-as position ──
+        // depth 1 in the comprehension position (#1846)
+        yield return new Cell("comp.nested.starred-inner",
+            "def main() -> None:\n    r = [a for a, (b, *c) in [(1, (2, 3, 4))]]\n    print(r)",
+            Expect.Runs, "[1]");
+
+        // ══ With-as position ═════════════════════════════════════════════════════════════════
 
         yield return new Cell("with-as.tuple.flat",
-            @"class CM:
-    vals: tuple[int, int]
-    def __init__(self, a: int, b: int):
-        self.vals = (a, b)
-    def __enter__(self) -> tuple[int, int]:
-        return self.vals
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    with CM(5, 6) as (a, b):
-        print(a, b)",
+            WithSource("tuple[int, int]", "(5, 6)", "(a, b)", "        print(a, b)"),
             Expect.Runs, "5 6");
 
         yield return new Cell("with-as.tuple.starred",
-            @"class CM:
-    vals: tuple[int, int, int]
-    def __init__(self, a: int, b: int, c: int):
-        self.vals = (a, b, c)
-    def __enter__(self) -> tuple[int, int, int]:
-        return self.vals
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    with CM(1, 2, 3) as (a, *rest):
-        print(a, rest)",
+            WithSource("tuple[int, int, int]", "(1, 2, 3)", "(a, *rest)", "        print(a, rest)"),
             Expect.Runs, "1 [2, 3]");
 
         yield return new Cell("with-as.tuple.mismatch",
-            @"class CM:
-    def __enter__(self) -> tuple[int, int, int]:
-        return (1, 2, 3)
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    with CM() as (a, b):
-        print(a, b)",
-            Expect.SPY0239);
+            WithSource("tuple[int, int, int]", "(1, 2, 3)", "(a, b)", "        print(a, b)"),
+            // The position suffix must read "in with statement", not "in for loop" (#1846).
+            Expect.SPY0239, MessageSubstring: "in with statement");
 
         yield return new Cell("with-as.list-display-target",
-            @"class CM:
-    vals: tuple[int, int]
-    def __init__(self, a: int, b: int):
-        self.vals = (a, b)
-    def __enter__(self) -> tuple[int, int]:
-        return self.vals
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    with CM(7, 8) as [a, b]:
-        print(a, b)",
+            WithSource("tuple[int, int]", "(7, 8)", "[a, b]", "        print(a, b)"),
             Expect.Runs, "7 8");
 
-        // ── Nested target shapes ──
-
-        yield return new Cell("assign.nested-tuple",
-            "def main() -> None:\n    (a, (b, c)) = (1, (2, 3))\n    print(a, b, c)",
-            Expect.Runs, "1 2 3");
-
-        yield return new Cell("for.nested-tuple",
-            "def main() -> None:\n    for a, (b, c) in [(1, (2, 3))]:\n        print(a, b, c)",
-            Expect.Runs, "1 2 3");
-
-        // The star absorbs at depth 0 only: the nested arm compares arities with no star
-        // awareness, so these four cells are refused where python3 binds (#1846).
-        const string Nested1846 =
-            "#1846 — the arity rule ignores a star at nested depth (python3 binds all four)";
-
-        yield return new Cell("assign.nested-tuple.starred-inner",
-            "def main() -> None:\n    (a, (b, *c)) = (1, (2, 3, 4))\n    print(a, b, c)",
-            Expect.KnownRed, Reason: Nested1846);
-
-        yield return new Cell("assign.nested-tuple.starred-outer-element",
-            "def main() -> None:\n    (a, *rest), b = ((1, 2, 3), 4)\n    print(a, rest, b)",
-            Expect.KnownRed, Reason: Nested1846);
-
-        yield return new Cell("for.nested-tuple.starred-inner",
-            "def main() -> None:\n    for a, (b, *c) in [(1, (2, 3, 4))]:\n        print(a, b, c)",
-            Expect.KnownRed, Reason: Nested1846);
-
-        yield return new Cell("comp.nested-tuple.starred-inner",
-            "def main() -> None:\n    r = [a for a, (b, *c) in [(1, (2, 3, 4))]]\n    print(r)",
-            Expect.KnownRed, Reason: Nested1846);
-
-        // Drained from NotApplicableCells: a non-starred target over a list[T] source has no
-        // static arity and stays SPY0239 in the with-as position too — one refusal in all four.
         yield return new Cell("with-as.list.non-starred",
-            @"class CM:
-    def __enter__(self) -> list[int]:
-        return [1, 2]
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    with CM() as (a, b):
-        print(a, b)",
+            WithSource("list[int]", "[1, 2]", "(a, b)", "        print(a, b)"),
             Expect.SPY0239);
 
-        // ── Augmented assignment stays refused ──
+        // depth 1 in the with-as position (#1846) — the nested arity refusal also carries the suffix.
+        yield return new Cell("with-as.nested.starred-inner",
+            WithSource("tuple[int, tuple[int, int, int]]", "(1, (2, 3, 4))", "(a, (b, *c))",
+                "        print(a, b, c)"),
+            Expect.Runs, "1 2 [3, 4]");
+
+        yield return new Cell("with-as.nested.mismatch",
+            WithSource("tuple[int, tuple[int, int, int]]", "(1, (2, 3, 4))", "(a, (b, c))",
+                "        print(a, b, c)"),
+            Expect.SPY0239, MessageSubstring: "in with statement");
+
+        // ══ Augmented assignment stays refused, in both display spellings ════════════════════
 
         yield return new Cell("augmented.tuple-display",
             "def main() -> None:\n    a: int = 1\n    b: int = 2\n    (a, b) += (3, 4)",
             Expect.SPY0225);
 
-        // Drained from NotApplicableCells: the list-display spelling of the same refusal, so the
-        // parser's display normalization cannot accidentally admit one and refuse the other.
         yield return new Cell("augmented.list-display",
             "def main() -> None:\n    a: int = 1\n    b: int = 2\n    [a, b] += [3, 4]",
             Expect.SPY0225);

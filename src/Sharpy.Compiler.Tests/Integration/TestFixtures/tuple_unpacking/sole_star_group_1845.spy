@@ -1,0 +1,6 @@
+# The sole-starred group is legal python in its comma and list-display spellings (#1845):
+# (*a,) = (1, 2) and [*b] = (3, 4) both bind a list. It is the positive twin of the bare (*a).
+def main() -> None:
+    (*a,) = (1, 2)
+    [*b] = (3, 4)
+    print(a, b)

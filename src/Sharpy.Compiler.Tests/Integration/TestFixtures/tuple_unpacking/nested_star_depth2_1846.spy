@@ -1,0 +1,6 @@
+# One unpacking rule at every depth (#1846): a star at nested depth 2 absorbs its slice, exactly
+# as a top-level star does. python3: a, (b, (c, *d)) = (1, (2, (3, 4, 5))) -> 1 2 3 [4, 5]
+def main() -> None:
+    t: tuple[int, tuple[int, tuple[int, int, int]]] = (1, (2, (3, 4, 5)))
+    a, (b, (c, *d)) = t
+    print(a, b, c, d)

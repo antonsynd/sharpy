@@ -229,7 +229,19 @@ internal sealed partial class UnparseVisitor
                 _w.Write(node.ElementNames[i]!);
                 _w.Write("=");
             }
-            Visit(node.Elements[i]);
+            // A nested target that itself renders bare (a multi-element star tuple `c, *d`) must be
+            // parenthesized as an element, or `(b, (c, *d))` would flatten to `(b, c, *d)` and lose a
+            // level of nesting on reparse (#1846).
+            if (node.Elements[i] is TupleLiteral nestedBare && RendersAsBareTuple(nestedBare))
+            {
+                _w.Write("(");
+                Visit(nestedBare);
+                _w.Write(")");
+            }
+            else
+            {
+                Visit(node.Elements[i]);
+            }
         }
         // A single non-star, non-list-display tuple always needs its comma (`(x,)` vs `(x)`); every
         // tuple round-trips a source trailing comma (`(*a,)`, `(1, 2,)`). A list display never does

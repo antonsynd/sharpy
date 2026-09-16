@@ -133,6 +133,37 @@ def main() -> None:
 An arity error names the position as a suffix — `… in with statement`, `… in for loop`,
 `… in comprehension for clause` — so one wording covers every position (SPY0239).
 
+### The sole-starred group
+
+A group whose only target is the star is legal in its comma spelling `(*a,)` and its list-display
+spelling `[*a]` — both bind the whole sequence to a list, in every position:
+
+```python
+def main() -> None:
+    (*a,) = (1, 2)
+    print(a)               # [1, 2]
+    [*b] = (3, 4)
+    print(b)               # [3, 4]
+    for (*c,) in [(5, 6), (7, 8)]:
+        print(c)           # [5, 6] then [7, 8]
+```
+
+```
+[1, 2]
+[3, 4]
+[5, 6]
+[7, 8]
+```
+
+The bare parenthesized form `(*a)` — no trailing comma, not a list display — is a Python
+`SyntaxError` and is refused with Python's own wording, in every position (SPY0225):
+
+```python
+(*a) = xs            # error SPY0225: cannot use starred expression here
+for (*a) in xs: ...  # error SPY0225: cannot use starred expression here
+(*a), b = xs         # error SPY0225: cannot use starred expression here
+```
+
 ## Nested Tuple Unpacking
 
 Targets can themselves be tuple patterns, enabling nested destructuring:
@@ -157,6 +188,35 @@ print(d)  # 4
 ```
 
 Each nested target must match the structure and element count of the corresponding tuple element.
+
+### Stars at nested depth
+
+The star rule holds at *every* depth: a star inside a nested target absorbs its slice exactly as a
+top-level star does, in all four positions. Two stars at the same depth are refused with Python's
+wording (SPY0356, `multiple starred expressions`):
+
+```python
+def main() -> None:
+    a, (b, *c) = (1, (2, 3, 4))
+    print(a, b, c)                      # 1 2 [3, 4]
+    (a2, *rest), d = ((1, 2, 3), 4)
+    print(a2, rest, d)                  # 1 [2, 3] 4
+    a3, (b3, (c3, *d3)) = (1, (2, (3, 4, 5)))
+    print(a3, b3, c3, d3)               # 1 2 3 [4, 5]
+    for x, (y, *z) in [(1, (2, 3, 4))]:
+        print(x, y, z)                  # 1 2 [3, 4]
+```
+
+```
+1 2 [3, 4]
+1 [2, 3] 4
+1 2 3 [4, 5]
+1 2 [3, 4]
+```
+
+```python
+a, (*b, *c) = (1, (2, 3, 4))   # error SPY0356: multiple starred expressions
+```
 
 *Implementation*
 - *🔄 Lowered - Temporary variables with `.Item1`, `.Item2`, etc. access:*
