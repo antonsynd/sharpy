@@ -360,32 +360,35 @@ def main():
     /// look for a C#-stage failure — on a program whose generated C# genuinely does not compile.
     /// Without it, "no CS0411" is a claim about the probe rather than about the compiler.
     ///
-    /// <para>The subject here is deliberately a DIFFERENT defect from the one under test: static
-    /// member access through a generic type reference emits an indexer on the OPEN generic
-    /// (<b>#1817</b>, open). If that is fixed, this control must be re-pointed at another C#-stage
-    /// failure, not deleted.</para>
+    /// <para>The subject here is deliberately a DIFFERENT defect from the one under test: a nested
+    /// .NET type reached through a Sharpy-collection-mapped generic reference —
+    /// <c>List[int].Enumerator</c> — types Unknown and emits <c>List&lt;int&gt;.Enumerator</c> in a
+    /// value position where a type is not valid (<b>#1886</b>, open). If that is fixed, this control
+    /// must be re-pointed at another C#-stage failure, not deleted.</para>
     ///
-    /// <para>It used to be pointed at <c>def __init__[V](self, v: V)</c> (#1836), which was
-    /// accepted and never emitted. That is now refused by name (SPY0705), so it is no longer a
-    /// C#-stage failure and cannot serve as this control — the re-pointing the previous version of
-    /// this remark asked for.</para>
+    /// <para>It used to be pointed at <c>G[int].K</c> (#1817), which emitted an indexer on the open
+    /// generic (CS0305). P4b Phase 2 typed the constructed reference and emits the closed type, so
+    /// <c>G[int].K</c> now compiles and runs — it is no longer a C#-stage failure and cannot serve as
+    /// this control, the re-pointing the previous version of this remark asked for. (Before that it
+    /// was <c>def __init__[V](self, v: V)</c>, #1836, now SPY0705.)</para>
     /// </summary>
     [Fact]
     public void InferenceConflict_TheICEProbe_HitsWhenTheConflictIsNotRefused()
     {
-        // #1817: `G[int].K` emits an indexer on the open generic, so the generated C# names
-        // `G<T>` without its type argument (CS0305) — an ICE the same probe must see.
+        // #1886: `List[int].Enumerator` — a nested .NET type reached through a Sharpy-mapped generic —
+        // types Unknown and emits `List<int>.Enumerator` as a value, which is a type in a value
+        // position (CS0119): an ICE the same probe must see.
         var source = @"
-struct G[T]:
-    const K: int = 1
+from system.collections.generic import List
 
 def main():
-    print(G[int].K)
+    e = List[int].Enumerator
+    print(e)
 ";
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeFalse("the generated C# does not compile");
-        result.CompilationErrors.Should().Contain(e => e.Contains("CS0305", StringComparison.Ordinal),
+        result.CompilationErrors.Should().Contain(e => e.Contains("CS0119", StringComparison.Ordinal),
             "the probe must be able to see a C#-stage failure at all, or 'no CS0411' above says "
             + "nothing: " + string.Join(" | ", result.CompilationErrors));
     }
