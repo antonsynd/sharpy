@@ -18,16 +18,31 @@ content = File.read_all_text("data.txt")
 
 ### Import Name Fidelity
 
-CLR type and namespace names bind verbatim from the reflected metadata. The Pythonic→PascalCase name mangler applies only to Sharpy-defined identifiers and member accesses — import targets use the exact spelling from `System.Type`:
+CLR type and namespace names bind verbatim from the reflected metadata. The Pythonic→PascalCase name mangler applies only to Sharpy-defined identifiers and member accesses — import targets use the exact spelling from `System.Type`. This holds for every spelling that denotes the type: an `as` alias binds the same type the un-aliased spelling binds and is emitted from the same reflected name (`from system import Guid as G` emits `System.Guid`, never the mangled `System.GUID`), and a bare CLR-only type name used as an annotation resolves through the well-known namespaces and is always emitted fully qualified.
 
 ```python
-from system import Guid         # System.Guid (not GUID)
-from system import Uri           # System.Uri (not URI)
-from system.net.http import HttpClient  # System.Net.Http (not HTTP)
+from system import Guid          # System.Guid (not GUID)
+from system import Guid as G     # the alias binds System.Guid, not System.GUID
+from sharpy import ISized as IS  # a Sharpy-namespace type; the alias binds the same symbol
 
-def main():
-    g = Guid.new_guid()
-    print(len(str(g)))  # 36
+
+class Ruler:
+    def __len__(self) -> int:
+        return 12
+
+
+def measure(x: IS) -> int:
+    return len(x)
+
+
+def take(sb: StringBuilder) -> int:  # bare CLR-only annotation, no import — resolves and is qualified
+    return sb.length
+
+
+def main() -> None:
+    g = G.new_guid()
+    print(len(str(g)))       # 36
+    print(measure(Ruler()))  # 12
 ```
 
 ## .NET Properties
