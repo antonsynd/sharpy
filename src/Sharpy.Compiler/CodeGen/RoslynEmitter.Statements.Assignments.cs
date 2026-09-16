@@ -147,6 +147,9 @@ internal partial class RoslynEmitter
                     if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
                         value = WrapInOptionalSome(value, wrapOpt);
 
+                    // A store to a runtime-checked local sets its assigned-flag inline (#1839).
+                    value = MaybeWrapRuntimeAssignedStore(name, value);
+
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -1192,8 +1195,67 @@ internal partial class RoslynEmitter
             ? TokenList(Token(SyntaxKind.ConstKeyword))
             : TokenList();
 
+        // A local a suppression-capable `with` can leave unset (#1839) declares a companion
+        // `bool __n_assigned = false;` beside `T n = default!;` (the default! arm above fired because
+        // the flagged local has no genuine violation). Stores set it, runtime-checked reads test it.
+        if (localCodeGenInfo is { HasRuntimeAssignedFlag: true } flagInfo)
+        {
+            HoistDeclaration(LocalDeclarationStatement(
+                VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(RuntimeAssignedFlagName(flagInfo)))
+                            .WithInitializer(EqualsValueClause(
+                                LiteralExpression(SyntaxKind.FalseLiteralExpression)))))));
+        }
+
         return LocalDeclarationStatement(declaration)
             .WithModifiers(modifiers);
+    }
+
+    /// <summary>The C# name of a runtime-checked local's assigned-flag (#1839).</summary>
+    private static string RuntimeAssignedFlagName(CodeGenInfo info) => "__" + info.CSharpName + "_assigned";
+
+    /// <summary>
+    /// The assigned-flag name for a local carrying a runtime assigned-flag (#1839), keyed on the
+    /// binding-chain root (the flagged declaration), so every version of the local sets and tests the
+    /// SAME flag. Returns null when the local is not runtime-checked.
+    /// </summary>
+    private string? RuntimeAssignedFlagFor(Identifier id)
+    {
+        // Inside a with body (a nested emitter scope) LookupSymbol by name can miss the local, so
+        // resolve the node-keyed symbol the checker recorded for THIS identifier first.
+        var symbol = _context.SemanticInfo?.GetIdentifierSymbol(id) ?? _context.LookupSymbol(id.Name);
+        if (symbol == null)
+            return null;
+        var chain = _context.SemanticInfo?.GetBindingChain(symbol);
+        var root = chain is { Count: > 0 } ? (Symbol)chain[0] : symbol;
+        if (root is VariableSymbol rootVar
+            && _context.SemanticInfo?.HasRuntimeAssignedFlagLocal(rootVar) == true
+            && GetCodeGenInfo(root) is { } rootInfo)
+        {
+            return RuntimeAssignedFlagName(rootInfo);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Wraps a store's value in <c>Builtins.Assigned(ref __n_assigned, value)</c> when
+    /// <paramref name="target"/> is a runtime-checked local (#1839), so the store sets the local's
+    /// assigned-flag inline; otherwise returns <paramref name="value"/> unchanged.
+    /// </summary>
+    private ExpressionSyntax MaybeWrapRuntimeAssignedStore(Identifier target, ExpressionSyntax value)
+    {
+        if (RuntimeAssignedFlagFor(target) is not { } flagName)
+            return value;
+
+        return InvocationExpression(
+            MakeGlobalQualifiedName("Sharpy", "Builtins", "Assigned"))
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(IdentifierName(flagName))
+                    .WithRefKindKeyword(Token(SyntaxKind.RefKeyword)),
+                Argument(value),
+            })));
     }
 
     /// <summary>
@@ -1361,6 +1423,10 @@ internal partial class RoslynEmitter
                     var symbol = _context.LookupSymbol(id.Name);
                     var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
                     var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
+
+                    // A store to a runtime-checked local sets its assigned-flag inline (#1839):
+                    // `n = Builtins.Assigned(ref __n_assigned, value)`.
+                    value = MaybeWrapRuntimeAssignedStore(id, value);
 
                     if (existsAsModuleLevel || existsAsLocal)
                     {

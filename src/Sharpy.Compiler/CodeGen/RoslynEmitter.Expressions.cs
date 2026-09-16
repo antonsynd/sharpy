@@ -328,6 +328,23 @@ internal partial class RoslynEmitter
             return IdentifierName(rewrite.Target);
         }
 
+        // A runtime-checked read (#1839): the local may be unset when a suppression-capable `with`
+        // swallowed a body exception before its assignment, so the bare read is wrapped in
+        // Builtins.CheckedLocal(flag, value, "name") — an UnboundLocalError at runtime, not a default.
+        if (_context.SemanticInfo?.IsRuntimeCheckedRead(name) == true
+            && RuntimeAssignedFlagFor(name) is { } runtimeCheckedFlag)
+        {
+            var readName = GetMangledVariableName(name, isNewDeclaration: false);
+            return InvocationExpression(
+                MakeGlobalQualifiedName("Sharpy", "Builtins", "CheckedLocal"))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(IdentifierName(runtimeCheckedFlag)),
+                    Argument(EscapedIdentifierName(readName)),
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(name.Name))),
+                })));
+        }
+
         // A builtin type name the TypeChecker pinned to a concrete signature (#1182). The recorded
         // fact decides the shape and supplies the types; nothing is re-derived here.
         if (_context.SemanticInfo?.GetConstructorReferenceLowering(name) is { } constructorReference)

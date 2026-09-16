@@ -70,6 +70,48 @@ internal class DefiniteAssignmentValidator : ValidatingAstWalker
                     Context.SemanticInfo.RecordRuntimeAssignedFlagLocal(symbol);
                 }
             }
+
+            // A nested `def` is skipped by the flow CFG (it runs when CALLED), so its reads of a
+            // flagged ENCLOSING local are collected here instead — runtime-checked, like a lambda's
+            // (#1839). Lambdas are already handled inside the flow analysis.
+            if (result.FlaggedNames.Count > 0)
+            {
+                foreach (var stmt in func.Body)
+                    RecordNestedDefFlaggedReads(stmt, result.FlaggedNames, bareDecls);
+            }
         }
+    }
+
+    /// <summary>
+    /// Records every read of a flagged local that occurs inside a nested <c>def</c> body as
+    /// runtime-checked (#1839), recursing into further nested defs. Does not descend into lambda
+    /// bodies (the flow analysis already judged those).
+    /// </summary>
+    private void RecordNestedDefFlaggedReads(
+        Node node,
+        IReadOnlyCollection<string> flagged,
+        IReadOnlyDictionary<string, VariableDeclaration> bareDecls)
+    {
+        if (node is FunctionDef nestedDef)
+        {
+            foreach (var bodyStmt in nestedDef.Body)
+                RecordFlaggedReadsIn(bodyStmt, flagged, bareDecls);
+            return;
+        }
+
+        foreach (var child in node.GetChildNodes())
+            RecordNestedDefFlaggedReads(child, flagged, bareDecls);
+    }
+
+    private void RecordFlaggedReadsIn(
+        Node node,
+        IReadOnlyCollection<string> flagged,
+        IReadOnlyDictionary<string, VariableDeclaration> bareDecls)
+    {
+        if (node is Identifier id && flagged.Contains(id.Name) && bareDecls.TryGetValue(id.Name, out var decl))
+            Context.SemanticInfo.RecordRuntimeCheckedRead(id, decl);
+
+        foreach (var child in node.GetChildNodes())
+            RecordFlaggedReadsIn(child, flagged, bareDecls);
     }
 }

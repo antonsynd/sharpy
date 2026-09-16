@@ -265,8 +265,15 @@ internal static class DefiniteAssignmentAnalysis
                 continue;
 
             var definitelyAssigned = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets,
-                edgeWalrus, honourSuppression)
-                ?? new HashSet<string>();
+                edgeWalrus, honourSuppression);
+
+            // A block with no predecessors of any honoured kind is unreachable in THIS pass — its
+            // reads cannot execute, so they are not use-before-assign. Skipping it (rather than
+            // treating it as the empty set) is what lets the strict pass leave a suppression-only
+            // successor to the lenient pass: a `with Sup(): n = 5; raise` body reaches its exit only
+            // by suppression, so the read after is runtime-checked, not refused (#1839).
+            if (definitelyAssigned == null)
+                continue;
 
             var localAssigned = new HashSet<string>(definitelyAssigned);
             foreach (var key in block.EntryRebinds)

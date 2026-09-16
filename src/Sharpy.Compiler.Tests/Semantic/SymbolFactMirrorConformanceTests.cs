@@ -992,6 +992,7 @@ def main() -> None:
         ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",
         ["SynthesizedInterfaces"] = "derived — restored from InterfaceReference.SynthesizedVia on warm restore (#1746)",
         ["OperatorParameterShape"] = "same-file-only — read at RoslynEmitter.Operators.cs equality synthesis (#1719)",
+        ["HasRuntimeAssignedFlag"] = "same-file-only — a runtime-checked LOCAL fact recomputed by LocalNameAllocator every build (never module-level, so never served from a warm cache); read at RoslynEmitter.Statements.Assignments.cs (declaration flag + MaybeWrapRuntimeAssignedStore) and RoslynEmitter.Expressions.cs (CheckedLocal read) (#1839)",
     };
 
     /// <summary>
