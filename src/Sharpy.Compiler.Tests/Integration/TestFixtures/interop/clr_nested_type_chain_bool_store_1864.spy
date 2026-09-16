@@ -1,0 +1,8 @@
+# The discriminating twin of clr_nested_type_chain_value: the nested chain is a resolved TYPE, so a
+# `bool` store is a typed refusal (SPY0220), never the SPY0908 ICE it was before #1864.
+from system import Environment
+
+
+def main() -> None:
+    f: bool = Environment.SpecialFolder.Desktop
+    print(f)

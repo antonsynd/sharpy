@@ -1,0 +1,20 @@
+# A static member reached through a CONSTRUCTED generic reference `G[int].K` — class, struct
+# and interface hosts. The reference is emitted as the closed type (`G<int>.K`), never the open
+# generic that was CS0305 before (#1817).
+class GClass[T]:
+    const K: int = 3
+
+
+struct GStruct[T]:
+    @static
+    n: int = 5
+
+
+interface GInterface[T]:
+    const K: int = 3
+
+
+def main() -> None:
+    print(GClass[int].K)
+    print(GStruct[int].n)
+    print(GInterface[int].K)

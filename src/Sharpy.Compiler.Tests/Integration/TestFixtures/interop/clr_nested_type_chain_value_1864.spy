@@ -1,0 +1,8 @@
+# A nested .NET type chain in value position: `Environment.SpecialFolder.Desktop` is the enum
+# value, resolved through the declaring type and emitted global::-qualified (#1864).
+from system import Environment
+
+
+def main() -> None:
+    f = Environment.SpecialFolder.Desktop
+    print(f)
