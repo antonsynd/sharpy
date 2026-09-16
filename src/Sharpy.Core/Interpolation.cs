@@ -1,5 +1,3 @@
-using System;
-
 namespace Sharpy
 {
     /// <summary>
@@ -26,19 +24,13 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Formats the value using the format spec if present, otherwise calls Value.ToString().
+        /// Formats the value through the one Python format-spec engine (<see cref="PyFormat.Apply"/>),
+        /// so a t-string renders a value identically to <c>str.format</c>, <c>format()</c> and every
+        /// f-string hole instead of being a fourth authority.
         /// </summary>
         public override string ToString()
         {
-            if (Value == null)
-                return "None";
-
-            if (!string.IsNullOrEmpty(FormatSpec) && Value is IFormattable formattable)
-            {
-                return formattable.ToString(FormatSpec, System.Globalization.CultureInfo.InvariantCulture);
-            }
-
-            return Value.ToString() ?? "";
+            return PyFormat.Apply(Value, FormatSpec);
         }
 
         /// <summary>

@@ -222,7 +222,9 @@ public class InterpolationTests
     [Fact]
     public void ToString_WithFormatSpec_FormatsValue()
     {
-        var interp = new Interpolation(3.14159, "pi", "F2");
+        // The spec is a Python format spec (routed through PyFormat.Apply), the same language
+        // str.format / format() / f-strings use — not a .NET format string.
+        var interp = new Interpolation(3.14159, "pi", ".2f");
 
         Assert.Equal("3.14", interp.ToString());
     }

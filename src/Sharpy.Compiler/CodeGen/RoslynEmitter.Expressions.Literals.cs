@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -339,372 +338,186 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateFString(FStringLiteral fstring)
     {
-        // f"Hello {name}" -> $"Hello {name}"
-        var parts = new List<InterpolatedStringContentSyntax>();
+        // Every hole renders to a STRING — Builtins.Str/Repr/Ascii(v), or Sharpy.PyFormat.Apply(v,
+        // spec) for a spec'd hole — so the FormattableString.Invariant($"...") shell is now a no-op
+        // that only keeps the snapshot shape recognisable. Pre-generate every operand — hole
+        // expressions AND nested spec expressions — in SOURCE order so a hoisting later operand does
+        // not reorder an effectful earlier one (#1862, #1853).
+        var operands = new List<Expression>();
+        CollectInterpolationOperands(fstring.Parts, operands);
+        var map = MapInterpolationOperands(operands);
 
+        var parts = new List<InterpolatedStringContentSyntax>();
         foreach (var part in fstring.Parts)
         {
             if (part.Text != null)
             {
-                // Escape literal braces for C# interpolated strings:
-                // The lexer already converts Python's {{ → { and }} → },
-                // so we re-escape { → {{ and } → }} for C# interpolation syntax.
-                var sourceText = EscapeForInterpolatedStringSource(
-                    part.Text).Replace("{", "{{", StringComparison.Ordinal)
-                              .Replace("}", "}}", StringComparison.Ordinal);
-                parts.Add(InterpolatedStringText()
-                    .WithTextToken(Token(
-                        TriviaList(),
-                        SyntaxKind.InterpolatedStringTextToken,
-                        sourceText,
-                        part.Text,
-                        TriviaList())));
+                parts.Add(InterpolatedTextFor(part.Text));
             }
             else if (part.Expression != null)
             {
-                // IMPORTANT: All interpolation expressions are wrapped in parentheses to prevent
-                // C# parser ambiguity with ':' in interpolation holes. Without parens, expressions
-                // like global::Sharpy.Builtins.Len(x) would be misparsed as
-                // expression 'global' with format '::Sharpy.Builtins.Len(x)'.
-
-                // Effective conversion: an explicit !r/!s/!a always wins; otherwise a '='
-                // self-documenting field defaults to repr() *unless* a format spec is present
-                // (then the value side uses normal formatting). Matches CPython semantics.
-                char? effectiveConversion = part.Conversion
-                    ?? (part.IsSelfDocumenting && string.IsNullOrEmpty(part.FormatSpec) ? 'r' : null);
-
                 // '=' self-documenting prefix: print the verbatim captured source (incl. '=')
-                // before the value, e.g. f'{x = }' → "x = 42".
+                // before the value, e.g. f'{x = }' -> "x = 42".
                 if (part.IsSelfDocumenting && part.SourceText != null)
-                {
-                    var prefixSource = EscapeForInterpolatedStringSource(part.SourceText)
-                        .Replace("{", "{{", StringComparison.Ordinal)
-                        .Replace("}", "}}", StringComparison.Ordinal);
-                    parts.Add(InterpolatedStringText()
-                        .WithTextToken(Token(
-                            TriviaList(),
-                            SyntaxKind.InterpolatedStringTextToken,
-                            prefixSource,
-                            part.SourceText,
-                            TriviaList())));
-                }
+                    parts.Add(InterpolatedTextFor(part.SourceText));
 
-                if (effectiveConversion != null)
-                {
-                    // Conversion turns the value into a string via Builtins.Repr/Str/Ascii; any
-                    // format spec then applies to that string (alignment is the meaningful case).
-                    parts.Add(GenerateConvertedInterpolation(part.Expression, effectiveConversion.Value, part.FormatSpec));
-                }
-                // Special handling for percent format (.N%) - Python's % format doesn't add
-                // a space before %, but .NET's P format does (even with InvariantCulture).
-                // Generate: {value * 100:FN}% instead of {value:PN}
-                else if (!string.IsNullOrEmpty(part.FormatSpec) && IsPercentFormat(part.FormatSpec, out var percentPrecision))
-                {
-                    // Generate: value * 100
-                    var multipliedExpr = Binary(
-                        SyntaxKind.MultiplyExpression,
-                        GenerateExpression(part.Expression),
-                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(100)));
-
-                    var interpolation = Interpolation(ParenthesizedExpression(multipliedExpr))
-                        .WithFormatClause(
-                            InterpolationFormatClause(
-                                Token(SyntaxKind.ColonToken),
-                                Token(
-                                    TriviaList(),
-                                    SyntaxKind.InterpolatedStringTextToken,
-                                    "F" + percentPrecision,
-                                    "F" + percentPrecision,
-                                    TriviaList())));
-
-                    parts.Add(interpolation);
-
-                    // Add the literal "%" after the interpolation
-                    parts.Add(InterpolatedStringText()
-                        .WithTextToken(Token(
-                            TriviaList(),
-                            SyntaxKind.InterpolatedStringTextToken,
-                            "%",
-                            "%",
-                            TriviaList())));
-                }
-                else if (!string.IsNullOrEmpty(part.FormatSpec))
-                {
-                    var result = TranslatePythonFormatSpec(part.FormatSpec);
-
-                    if (result.NeedsExpressionRewrite && result.Base.HasValue)
-                    {
-                        // Binary/octal: f"{x:b}" -> $"{Convert.ToString(x, 2)}"
-                        var innerExpr = GenerateExpression(part.Expression);
-                        var convertCall = InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName("Convert"), IdentifierName("ToString")))
-                            .WithArgumentList(ArgumentList(SeparatedList(new[]
-                            {
-                                Argument(innerExpr),
-                                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                    Literal(result.Base.Value)))
-                            })));
-                        ExpressionSyntax formatted = convertCall;
-                        if (result.Width.HasValue && result.Width.Value > 0)
-                        {
-                            if (result.AlignmentMode.HasValue && result.AlignmentMode.Value != '>')
-                            {
-                                // Non-right alignment: Sharpy.Builtins.FormatAlign(formatted, width, fill, align)
-                                formatted = InvocationExpression(
-                                    MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
-                                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                                    {
-                                        Argument(formatted),
-                                        Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                            Literal(result.Width.Value))),
-                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                            Literal(result.FillChar ?? ' '))),
-                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                            Literal(result.AlignmentMode!.Value)))
-                                    })));
-                            }
-                            else
-                            {
-                                // Right-align (default): PadLeft
-                                formatted = InvocationExpression(Member(formatted, "PadLeft"))
-                                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                                    {
-                                        Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                            Literal(result.Width.Value))),
-                                        Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                            Literal(result.FillChar ?? '0')))
-                                    })));
-                            }
-                        }
-                        parts.Add(Interpolation(ParenthesizedExpression(formatted)));
-                    }
-                    else if (result.NeedsExpressionRewrite && result.Grouping == '_')
-                    {
-                        // Underscore grouping: f"{x:_}" ->
-                        //   $"{x.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(",", "_")}"
-                        var innerExpr = GenerateExpression(part.Expression);
-                        var toStringCall = InvocationExpression(Member(innerExpr, "ToString"))
-                            .WithArgumentList(ArgumentList(SeparatedList(new[]
-                            {
-                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                                    Literal("N0"))),
-                                Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                            IdentifierName("System"),
-                                            IdentifierName("Globalization")),
-                                        IdentifierName("CultureInfo")),
-                                    IdentifierName("InvariantCulture")))
-                            })));
-                        var replaceCall = InvocationExpression(Member(toStringCall, "Replace"))
-                            .WithArgumentList(ArgumentList(SeparatedList(new[]
-                            {
-                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                                    Literal(","))),
-                                Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                                    Literal("_")))
-                            })));
-                        parts.Add(Interpolation(ParenthesizedExpression(replaceCall)));
-                    }
-                    else if (result.NeedsExpressionRewrite && result.AlignmentMode.HasValue)
-                    {
-                        // Center-align or custom fill: f"{x:*^10}" ->
-                        //   $"{Sharpy.Builtins.FormatAlign(x.ToString(), 10, '*', '^')}"
-                        var innerExpr = GenerateExpression(part.Expression);
-                        ExpressionSyntax toStringExpr;
-                        if (!string.IsNullOrEmpty(result.FormatString))
-                        {
-                            toStringExpr = InvocationExpression(Member(innerExpr, "ToString"))
-                                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                                        Literal(result.FormatString))))));
-                        }
-                        else
-                        {
-                            toStringExpr = InvocationExpression(Member(innerExpr, "ToString"))
-                                .WithArgumentList(ArgumentList());
-                        }
-                        var alignCall = InvocationExpression(
-                            MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
-                            .WithArgumentList(ArgumentList(SeparatedList(new[]
-                            {
-                                Argument(toStringExpr),
-                                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                    Literal(result.Width ?? 0))),
-                                Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                    Literal(result.FillChar ?? ' '))),
-                                Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression,
-                                    Literal(result.AlignmentMode!.Value)))
-                            })));
-                        parts.Add(Interpolation(ParenthesizedExpression(alignCall)));
-                    }
-                    else
-                    {
-                        // General case: simple format string with optional C# alignment
-                        var innerExpr = GenerateInterpolationOperand(part.Expression);
-                        var interpolation = Interpolation(ParenthesizedExpression(innerExpr));
-
-                        if (result.Alignment.HasValue)
-                        {
-                            ExpressionSyntax alignmentExpr;
-                            if (result.Alignment.Value < 0)
-                            {
-                                alignmentExpr = PrefixUnaryExpression(
-                                    SyntaxKind.UnaryMinusExpression,
-                                    LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                        Literal(Math.Abs(result.Alignment.Value))));
-                            }
-                            else
-                            {
-                                alignmentExpr = LiteralExpression(
-                                    SyntaxKind.NumericLiteralExpression,
-                                    Literal(result.Alignment.Value));
-                            }
-                            interpolation = interpolation.WithAlignmentClause(
-                                InterpolationAlignmentClause(
-                                    Token(SyntaxKind.CommaToken),
-                                    alignmentExpr));
-                        }
-
-                        if (!string.IsNullOrEmpty(result.FormatString))
-                        {
-                            interpolation = interpolation.WithFormatClause(
-                                InterpolationFormatClause(
-                                    Token(SyntaxKind.ColonToken),
-                                    Token(
-                                        TriviaList(),
-                                        SyntaxKind.InterpolatedStringTextToken,
-                                        result.FormatString,
-                                        result.FormatString,
-                                        TriviaList())));
-                        }
-
-                        parts.Add(interpolation);
-                    }
-                }
-                else
-                {
-                    // No format spec — default formatting
-                    var innerExpr = GenerateInterpolationOperand(part.Expression);
-
-                    // For floating-point types without a format spec, wrap in FormatFloat()
-                    // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
-                    var exprType = GetExpressionSemanticType(part.Expression);
-                    if (exprType == SemanticType.Float ||
-                        exprType == SemanticType.Double ||
-                        exprType == SemanticType.Float32)
-                    {
-                        innerExpr = InvocationExpression(
-                            MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatFloat"))
-                            .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                                Argument(innerExpr))));
-                    }
-
-                    parts.Add(Interpolation(ParenthesizedExpression(innerExpr)));
-                }
+                parts.Add(Interpolation(ParenthesizedExpression(RenderInterpolationHole(part, map))));
             }
         }
 
-        // Wrap with FormattableString.Invariant() to ensure consistent formatting
-        // regardless of locale (e.g., percent format uses space before % in some locales)
         var interpolatedString = InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
 
-        // Wrap with FormattableString.Invariant($"...") to ensure consistent formatting
-        var invariantCall = InvocationExpression(
+        // Wrap with FormattableString.Invariant($"...") — a no-op over all-string holes, retained so
+        // the emitted shape stays recognisable to snapshots.
+        return InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName("FormattableString"),
                 IdentifierName("Invariant")))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(
                 Argument(interpolatedString))));
-
-        return invariantCall;
     }
 
     /// <summary>
-    /// Generates a PLAIN interpolation operand — one with no <c>!s</c>/<c>!r</c>/<c>!a</c>
-    /// conversion flag — applying the node-keyed <c>InterpolationStrWrapping</c> fact the
-    /// TypeChecker recorded for it, if any.
+    /// Collects every interpolation operand — each hole expression followed by its spec's nested
+    /// hole expressions, recursively — in the order CPython evaluates them (the value, then the
+    /// spec's fields, left to right across holes), so <see cref="GenerateExpressionsInOrder"/> can
+    /// capture an effectful earlier operand ahead of a later hoisting one.
     /// </summary>
-    /// <remarks>
-    /// The emitter decides nothing here: whether an operand needs wrapping is a question about its
-    /// resolved semantic type and the Exception hierarchy, answered once in
-    /// <c>TypeChecker.RecordInterpolationStrWrapping</c> and applied verbatim (Critical Rule 2
-    /// pattern (b), #1480). Operands carrying a conversion flag never reach this — they go through
-    /// <see cref="GenerateConvertedInterpolation"/>, which already emits Str/Repr/Ascii.
-    /// </remarks>
-    private ExpressionSyntax GenerateInterpolationOperand(Expression expression)
+    private static void CollectInterpolationOperands(
+        ImmutableArray<FStringPart> parts, List<Expression> operands)
     {
-        var inner = GenerateExpression(expression);
-
-        if (_context.SemanticInfo?.GetInterpolationStrWrapping(expression)
-            is not InterpolationStrWrapping.Str)
+        foreach (var part in parts)
         {
-            return inner;
+            if (part.Expression == null)
+                continue;
+            operands.Add(part.Expression);
+            if (part.Spec is { } spec)
+                CollectInterpolationOperands(spec, operands);
+        }
+    }
+
+    /// <summary>
+    /// Generates <paramref name="operands"/> through the source-order helper and returns a
+    /// reference-keyed map from each operand node to its generated C# expression, so the parts can be
+    /// re-walked and each hole built from the ALREADY-generated (correctly ordered) expression rather
+    /// than regenerated (which would reintroduce the ordering bug and double-evaluate).
+    /// </summary>
+    private Dictionary<Expression, ExpressionSyntax> MapInterpolationOperands(List<Expression> operands)
+    {
+        var generated = GenerateExpressionsInOrder(operands);
+        var map = new Dictionary<Expression, ExpressionSyntax>(ReferenceEqualityComparer.Instance);
+        for (int i = 0; i < operands.Count; i++)
+            map[operands[i]] = generated[i];
+        return map;
+    }
+
+    /// <summary>
+    /// Renders one replacement field to a string expression, reading the TypeChecker's
+    /// <c>InterpolationLowering</c> (Critical Rule 2 pattern (b)): a plain hole is
+    /// <c>Builtins.Str/Repr/Ascii(v)</c>; a spec'd hole is <c>Sharpy.PyFormat.Apply(base, spec)</c>
+    /// where <c>base</c> is the converted string (<c>!s/!r/!a</c>) or the raw value, and <c>spec</c>
+    /// is a string literal (static) or an interpolated string over the nested spec fields (dynamic).
+    /// </summary>
+    private ExpressionSyntax RenderInterpolationHole(
+        FStringPart part, IReadOnlyDictionary<Expression, ExpressionSyntax> map)
+    {
+        var value = map[part.Expression!];
+
+        // A bare `None` literal generates C# `null`, which binds Builtins.Str(null) to the more
+        // specific Str(string) overload — that returns null and renders empty (#1814). Typing it as
+        // object routes it to Str(object)/Repr/Ascii, which spell None. (Typed None holes — object,
+        // int | None, int? — already carry an object-ish static type and need no cast.)
+        if (part.Expression is NoneLiteral)
+            value = Cast(PredefinedType(Token(SyntaxKind.ObjectKeyword)), value);
+
+        var lowering = _context.SemanticInfo?.GetInterpolationLowering(part.Expression!);
+        var kind = lowering?.Kind ?? InterpolationKind.Format;
+
+        if (part.Spec == null)
+        {
+            // No spec: str/repr/ascii of the value. Format (no conversion) is plain str().
+            return kind switch
+            {
+                InterpolationKind.Repr => BuiltinConversionCall("Repr", value),
+                InterpolationKind.Ascii => BuiltinConversionCall("Ascii", value),
+                _ => BuiltinConversionCall("Str", value),
+            };
         }
 
-        return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "Builtins", "Str"))
-            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(inner))));
-    }
-
-    /// <summary>
-    /// Wraps an interpolation expression in the runtime conversion implied by an f-string
-    /// conversion flag ('r' → repr, 's' → str, 'a' → ascii), producing a string value, then
-    /// applies an optional (alignment-oriented) format spec to that string.
-    /// </summary>
-    private InterpolatedStringContentSyntax GenerateConvertedInterpolation(
-        Expression expression, char conversion, string? formatSpec)
-    {
-        var method = conversion switch
+        // A spec: the base is the converted string for an explicit conversion, else the raw value.
+        var baseValue = kind switch
         {
-            'r' => "Repr",
-            's' => "Str",
-            'a' => "Ascii",
-            _ => "Str",
+            InterpolationKind.Repr => BuiltinConversionCall("Repr", value),
+            InterpolationKind.Str => BuiltinConversionCall("Str", value),
+            InterpolationKind.Ascii => BuiltinConversionCall("Ascii", value),
+            _ => value,
         };
 
-        var converted = InvocationExpression(
-            MakeGlobalQualifiedName("Sharpy", "Builtins", method))
-            .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                Argument(GenerateExpression(expression)))));
+        var specExpr = lowering is { SpecIsStatic: false }
+            ? BuildDynamicSpec(part.Spec.Value, map)
+            : MakeStringLiteral(lowering?.StaticSpec ?? "");
 
-        var interpolation = Interpolation(ParenthesizedExpression(converted));
-
-        if (string.IsNullOrEmpty(formatSpec))
-            return interpolation;
-
-        // The value is already a string, so only alignment/width is meaningful. Center
-        // alignment ('^') and custom fills need FormatAlign; '>'/'<' map to C# alignment.
-        var result = TranslatePythonFormatSpec(formatSpec);
-
-        if (result.NeedsExpressionRewrite && result.AlignmentMode == '^')
-        {
-            var alignCall = InvocationExpression(
-                MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
-                .WithArgumentList(ArgumentList(SeparatedList(new[]
-                {
-                    Argument(converted),
-                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(result.Width ?? 0))),
-                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(result.FillChar ?? ' '))),
-                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal('^'))),
-                })));
-            return Interpolation(ParenthesizedExpression(alignCall));
-        }
-
-        if (result.Alignment.HasValue)
-        {
-            ExpressionSyntax alignmentExpr = result.Alignment.Value < 0
-                ? PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(Math.Abs(result.Alignment.Value))))
-                : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(result.Alignment.Value));
-            interpolation = interpolation.WithAlignmentClause(
-                InterpolationAlignmentClause(Token(SyntaxKind.CommaToken), alignmentExpr));
-        }
-
-        return interpolation;
+        return PyFormatApplyCall(baseValue, specExpr);
     }
+
+    /// <summary>
+    /// Builds a dynamic format spec — one containing nested replacement fields — as an interpolated
+    /// string over its parts: literal text verbatim and each nested field rendered (to a string) by
+    /// <see cref="RenderInterpolationHole"/>, recursively (so depth-2 nesting works).
+    /// </summary>
+    private ExpressionSyntax BuildDynamicSpec(
+        ImmutableArray<FStringPart> spec,
+        IReadOnlyDictionary<Expression, ExpressionSyntax> map)
+    {
+        var contents = new List<InterpolatedStringContentSyntax>();
+        foreach (var specPart in spec)
+        {
+            if (specPart.Expression != null)
+                contents.Add(Interpolation(ParenthesizedExpression(RenderInterpolationHole(specPart, map))));
+            else if (specPart.Text != null)
+                contents.Add(InterpolatedTextFor(specPart.Text));
+        }
+
+        return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
+            .WithContents(List(contents));
+    }
+
+    /// <summary>
+    /// Builds a literal-text segment of an interpolated string, re-escaping C# interpolation
+    /// metacharacters (the lexer already collapsed Python's <c>{{</c>/<c>}}</c>, so braces are
+    /// re-doubled here).
+    /// </summary>
+    private static InterpolatedStringContentSyntax InterpolatedTextFor(string text)
+    {
+        var sourceText = EscapeForInterpolatedStringSource(text)
+            .Replace("{", "{{", StringComparison.Ordinal)
+            .Replace("}", "}}", StringComparison.Ordinal);
+        return InterpolatedStringText()
+            .WithTextToken(Token(
+                TriviaList(),
+                SyntaxKind.InterpolatedStringTextToken,
+                sourceText,
+                text,
+                TriviaList()));
+    }
+
+    /// <summary>
+    /// <c>global::Sharpy.Builtins.&lt;method&gt;(value)</c> — the str/repr/ascii conversion a hole
+    /// applies to its value (the same functions <c>str()</c>/<c>repr()</c>/<c>ascii()</c> use).
+    /// </summary>
+    private ExpressionSyntax BuiltinConversionCall(string method, ExpressionSyntax value) =>
+        InvocationExpression(MakeGlobalQualifiedName("Sharpy", "Builtins", method))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+
+    /// <summary>
+    /// <c>global::Sharpy.PyFormat.Apply(value, spec)</c> — the one Python format-spec engine, shared
+    /// with <c>str.format</c> and <c>format()</c>.
+    /// </summary>
+    private ExpressionSyntax PyFormatApplyCall(ExpressionSyntax value, ExpressionSyntax spec) =>
+        InvocationExpression(MakeGlobalQualifiedName("Sharpy", "PyFormat", "Apply"))
+            .WithArgumentList(ArgumentList(SeparatedList(new[] { Argument(value), Argument(spec) })));
 
     private static string EscapeForInterpolatedStringSource(string text)
     {
@@ -721,234 +534,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Result of parsing a Python format spec into C#-compatible components.
+    /// The spec argument passed to a t-string <c>Interpolation</c> (PEP 750): an empty literal when
+    /// the field had no <c>:</c>, a static-spec literal, or an interpolated string built from the
+    /// nested spec fields for a dynamic spec.
     /// </summary>
-    private readonly record struct FormatSpecResult(
-        string FormatString,
-        int? Alignment,
-        bool NeedsExpressionRewrite,
-        char? FillChar,
-        char? AlignmentMode,
-        int? Width,
-        int? Base,
-        char? Grouping = null);
-
-    /// <summary>
-    /// Parses Python's format specification mini-language into C#-compatible components.
-    /// Python: [[fill]align][sign][z][#][0][width][grouping_option][.precision][type]
-    /// </summary>
-    private static FormatSpecResult TranslatePythonFormatSpec(string pythonSpec)
+    private ExpressionSyntax InterpolationSpecArgument(
+        FStringPart part, IReadOnlyDictionary<Expression, ExpressionSyntax> map)
     {
-        if (string.IsNullOrEmpty(pythonSpec))
-            return new FormatSpecResult(pythonSpec, null, false, null, null, null, null);
+        if (part.Spec == null)
+            return MakeStringLiteral(string.Empty);
 
-        var pos = 0;
-        char? fillChar = null;
-        char? alignmentMode = null;
-        // char? sign = null; — sign is not currently mapped to C# output
-        bool zeroPad = false;
-        int? width = null;
-        char? grouping = null;
-        int? precision = null;
-        char? typeChar = null;
-
-        // Step 1: Parse optional [fill]align
-        if (pos < pythonSpec.Length)
-        {
-            if (pos + 1 < pythonSpec.Length && IsAlignChar(pythonSpec[pos + 1]))
-            {
-                fillChar = pythonSpec[pos];
-                alignmentMode = pythonSpec[pos + 1];
-                pos += 2;
-            }
-            else if (IsAlignChar(pythonSpec[pos]))
-            {
-                alignmentMode = pythonSpec[pos];
-                pos += 1;
-            }
-        }
-
-        // Step 2: Parse optional sign (+, -, space)
-        if (pos < pythonSpec.Length && (pythonSpec[pos] == '+' || pythonSpec[pos] == '-' || pythonSpec[pos] == ' '))
-        {
-            // sign = pythonSpec[pos]; — not mapped to C# output currently
-            pos++;
-        }
-
-        // Step 3: Skip optional 'z' (coerce negative zero)
-        if (pos < pythonSpec.Length && pythonSpec[pos] == 'z')
-            pos++;
-
-        // Step 4: Skip optional '#' (alternate form)
-        if (pos < pythonSpec.Length && pythonSpec[pos] == '#')
-            pos++;
-
-        // Step 5: Parse optional '0' (zero-pad flag)
-        if (pos < pythonSpec.Length && pythonSpec[pos] == '0')
-        {
-            zeroPad = true;
-            pos++;
-        }
-
-        // Step 6: Parse optional width (digits)
-        var widthStart = pos;
-        while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
-            pos++;
-        if (pos > widthStart)
-            width = int.Parse(pythonSpec.Substring(widthStart, pos - widthStart), CultureInfo.InvariantCulture);
-
-        // Step 7: Parse optional grouping (, or _)
-        if (pos < pythonSpec.Length && (pythonSpec[pos] == ',' || pythonSpec[pos] == '_'))
-        {
-            grouping = pythonSpec[pos];
-            pos++;
-        }
-
-        // Step 8: Parse optional .precision
-        if (pos < pythonSpec.Length && pythonSpec[pos] == '.')
-        {
-            pos++; // skip '.'
-            var precStart = pos;
-            while (pos < pythonSpec.Length && char.IsDigit(pythonSpec[pos]))
-                pos++;
-            if (pos > precStart)
-                precision = int.Parse(pythonSpec.Substring(precStart, pos - precStart), CultureInfo.InvariantCulture);
-            else
-                precision = 0;
-        }
-
-        // Step 9: Parse optional type char
-        if (pos < pythonSpec.Length && IsTypeChar(pythonSpec[pos]))
-        {
-            typeChar = pythonSpec[pos];
-            pos++;
-        }
-
-        // Compose result
-        return ComposeFormatSpecResult(fillChar, alignmentMode, zeroPad, width, grouping, precision, typeChar);
-    }
-
-    private static bool IsAlignChar(char c) => c == '<' || c == '>' || c == '^' || c == '=';
-
-    private static bool IsTypeChar(char c) => "bcdeEfFgGnosxX%".IndexOf(c, StringComparison.Ordinal) >= 0;
-
-    private static FormatSpecResult ComposeFormatSpecResult(
-        char? fillChar, char? alignmentMode, bool zeroPad,
-        int? width, char? grouping, int? precision, char? typeChar)
-    {
-        // Binary and octal need expression rewriting
-        if (typeChar == 'b')
-        {
-            var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
-            var padChar = fillChar ?? (zeroPad ? '0' : ' ');
-            return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 2);
-        }
-
-        if (typeChar == 'o')
-        {
-            var padWidth = (zeroPad && width.HasValue) ? width.Value : (width ?? 0);
-            var padChar = fillChar ?? (zeroPad ? '0' : ' ');
-            return new FormatSpecResult("", null, true, padChar, alignmentMode, padWidth > 0 ? padWidth : null, 8);
-        }
-
-        // Percent format — handled by special-case in caller (IsPercentFormat)
-        if (typeChar == '%')
-        {
-            var prec = precision?.ToString(CultureInfo.InvariantCulture) ?? "6";
-            return new FormatSpecResult("P" + prec, null, false, null, null, null, null);
-        }
-
-        // Build the C# format string from type + precision + grouping
-        var formatString = BuildCSharpFormatString(typeChar, precision, grouping, zeroPad, width,
-            alignmentMode.HasValue);
-
-        // Alignment handling
-        if (alignmentMode.HasValue)
-        {
-            bool needsRewrite = alignmentMode == '^' || alignmentMode == '='
-                || (fillChar.HasValue && fillChar != ' ');
-            if (needsRewrite)
-            {
-                return new FormatSpecResult(formatString, null, true, fillChar ?? ' ',
-                    alignmentMode, width, null);
-            }
-
-            // Simple space-fill alignment: use C# alignment component
-            int alignment = alignmentMode == '<' ? -(width ?? 0) : (width ?? 0);
-            if (alignment != 0)
-                return new FormatSpecResult(formatString, alignment, false, null, null, null, null);
-        }
-
-        // Underscore grouping needs expression rewrite
-        if (grouping == '_')
-        {
-            return new FormatSpecResult(formatString, null, true, null, null, null, null, '_');
-        }
-
-        // Zero-pad without alignment for integer types: 05 -> D5
-        if (zeroPad && width.HasValue && typeChar == null && precision == null && grouping == null)
-            return new FormatSpecResult("D" + width.Value, null, false, null, null, null, null);
-
-        return new FormatSpecResult(formatString, null, false, null, null, null, null);
-    }
-
-    private static string BuildCSharpFormatString(char? typeChar, int? precision, char? grouping,
-        bool zeroPad, int? width, bool hasAlignment)
-    {
-        // Grouping only: "," -> "N0", ",.2f" -> "N2"
-        if (grouping == ',')
-        {
-            if (typeChar == 'f' || typeChar == 'F')
-                return "N" + (precision?.ToString(CultureInfo.InvariantCulture) ?? "0");
-            if (typeChar == null)
-                return "N" + (precision?.ToString(CultureInfo.InvariantCulture) ?? "0");
-        }
-
-        // Map type characters to C# format specifiers
-        var csharpType = typeChar switch
-        {
-            'd' => "D",
-            'f' or 'F' => "F",
-            'e' => "E",
-            'E' => "E",
-            'g' => "G",
-            'G' => "G",
-            'x' => "x",
-            'X' => "X",
-            'n' => "N",
-            's' => "",
-            'c' => "",
-            _ => ""
-        };
-
-        if (precision.HasValue && csharpType.Length > 0)
-            return csharpType + precision.Value;
-
-        if (csharpType.Length > 0)
-            return csharpType;
-
-        // Zero-pad without type: "05" -> "D5" (handled in ComposeFormatSpecResult for no-alignment case)
-        if (zeroPad && width.HasValue && !hasAlignment)
-            return "D" + width.Value;
-
-        return "";
-    }
-
-    /// <summary>
-    /// Checks if a Python format spec is a percent format (.N%) and extracts the precision.
-    /// </summary>
-    private static bool IsPercentFormat(string pythonSpec, out string precision)
-    {
-        precision = "6";
-        if (string.IsNullOrEmpty(pythonSpec))
-            return false;
-        var result = TranslatePythonFormatSpec(pythonSpec);
-        if (result.FormatString.StartsWith("P") && !result.NeedsExpressionRewrite)
-        {
-            precision = result.FormatString.Length > 1 ? result.FormatString.Substring(1) : "6";
-            return true;
-        }
-        return false;
+        var lowering = _context.SemanticInfo?.GetInterpolationLowering(part.Expression!);
+        return lowering is { SpecIsStatic: false }
+            ? BuildDynamicSpec(part.Spec.Value, map)
+            : MakeStringLiteral(lowering?.StaticSpec ?? string.Empty);
     }
 
     // ============================================================
@@ -973,6 +572,11 @@ internal partial class RoslynEmitter
         // Track current text accumulator (for merging adjacent text parts)
         var currentText = string.Empty;
 
+        // Pre-generate every operand — hole values AND nested spec fields — in SOURCE order (#1862).
+        var operands = new List<Expression>();
+        CollectInterpolationOperands(tstring.Parts, operands);
+        var map = MapInterpolationOperands(operands);
+
         foreach (var part in tstring.Parts)
         {
             if (part.Text != null)
@@ -986,8 +590,8 @@ internal partial class RoslynEmitter
                 stringElements.Add(MakeStringLiteral(currentText));
                 currentText = string.Empty;
 
-                // Generate the interpolation expression value
-                var valueExpr = GenerateExpression(part.Expression);
+                // The interpolation value, generated in source order.
+                var valueExpr = map[part.Expression];
 
                 // Box value types to object for the Interpolation constructor
                 var exprType = GetExpressionSemanticType(part.Expression);
@@ -1001,10 +605,12 @@ internal partial class RoslynEmitter
                 // Derive expression text from the AST node
                 var exprText = DeriveExpressionText(part.Expression);
 
-                // Format spec (empty string if none)
-                var formatSpec = part.FormatSpec ?? string.Empty;
+                // The spec is a string evaluated at construction (PEP 750): a literal for a static
+                // spec, an interpolated string over the nested fields for a dynamic one. Empty when
+                // the field had no ':'. Interpolation.ToString() applies it through PyFormat.Apply.
+                var specArg = InterpolationSpecArgument(part, map);
 
-                // new global::Sharpy.Interpolation(value, "exprText", "formatSpec")
+                // new global::Sharpy.Interpolation(value, "exprText", spec)
                 var interpolationExpr = ObjectCreationExpression(
                     QualifiedName(
                         AliasQualifiedName(
@@ -1015,7 +621,7 @@ internal partial class RoslynEmitter
                     {
                         Argument(valueExpr),
                         Argument(MakeStringLiteral(exprText)),
-                        Argument(MakeStringLiteral(formatSpec))
+                        Argument(specArg)
                     })));
 
                 interpolationElements.Add(interpolationExpr);

@@ -109,8 +109,6 @@ public class OperandOrderEntryPointTotalityTests
         ["GenerateImperativeComprehension"] = "#1853 — a dict comprehension's key and value are siblings of one entry",
         ["TryGetApproxParts"] = "#1853 — expected, actual and the tolerance are siblings of one call",
         ["BuildProductCapacityArgs"] = "#1853 — one clause iterator per factor of the capacity product, all siblings",
-        ["GenerateFString"] = "#1862 — interpolation holes are siblings; a later hole's hoists run first (measured wrong)",
-        ["GenerateTString"] = "#1862 — the t-string twin of GenerateFString",
     };
 
     [Fact]
