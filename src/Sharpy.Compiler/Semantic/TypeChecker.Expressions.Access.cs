@@ -886,7 +886,7 @@ internal partial class TypeChecker
         // discovery on a receiver this seam does not reflect (an imported CLR generic whose reflection
         // was Inconclusive; an `object` member the proof kept) — the same residual the drained
         // UserDefinedType arm above returns as plain Unknown. No longer marked DeliberatelyPermissive
-        // (#1678, R-Q drained).
+        // (R-Q; the allowlist row records the drain).
         return SemanticType.Unknown;
     }
 
@@ -999,7 +999,7 @@ internal partial class TypeChecker
         // ClrReceiverTypeOf) or ClrMemberTypeFromReflection already answered it — typed, or
         // Inconclusive -> UnmappedClrType, or MethodGroup -> SPY0336. No receiver shape was measured
         // reaching here after those seams; the plain Unknown is the honest recovery if one ever does.
-        // No longer marked DeliberatelyPermissive (#1678, R-Q drained).
+        // No longer marked DeliberatelyPermissive (R-Q; the allowlist row records the drain).
         return SemanticType.Unknown;
     }
 
