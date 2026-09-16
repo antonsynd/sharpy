@@ -186,14 +186,16 @@ s: Shape = Shape.Square(2.0)
 `Circle` case. That casing is a convention and is not enforced by the compiler.
 
 The BUILTIN unions — `Optional[T]` and `Result[T, E]` — are the exception: their cases are written
-BARE (`Some(v)`, `None()`, `Ok(v)`, `Err(e)`) and only bare. The qualified spellings
-`Optional.Some(…)`, `Optional.None()`, `Result.Ok(…)` and `Result.Err(…)` are refused by name with
-SPY0608 and a steer to the bare form, and the four case names are reserved: a declaration that would
-make the bare name resolve to something else — `def Some`, `class Ok`, a variable `Err` — is refused
-with SPY0212 rather than shadowing the constructor, and the steer offers the backtick-escaped
-spelling (`` `Some` ``) for a declaration that really wants the name (#1758). A CLASS MEMBER may take
-the name (`Box.Some`): it is reached through its receiver and the bare form still resolves to the
-builtin. See [Optional Type](tagged_unions_optional.md#creating-optional-values).
+BARE (`Some(v)`, `None()`, `Ok(v)`, `Err(e)`) and only bare. Every spelling of the qualified form —
+`Optional.Some`, the indexed `Optional[int].Some`, and an aliased or module-qualified `Optional` — is
+refused by name with SPY0608 and a steer to the bare form, in call and in value position alike, and
+the four case names are reserved: a declaration that would make the bare name resolve to something
+else — `def Some`, `class Ok`, a variable `Err`, a union case `` case Some(v) `` — is refused with
+SPY0212 rather than shadowing the constructor, and the steer offers the backtick-escaped spelling
+(`` `Some` ``, `` case `Some` ``) for a declaration that really wants the name (#1758, #1856). A
+member reached only through its receiver — a class member (`Box.Some`) or an enum member (`E.Ok`) —
+may take the name: the bare form still resolves to the builtin, so no ambiguity arises. See
+[Optional Type](tagged_unions_optional.md#creating-optional-values).
 
 **Type Inference in Return Statements:**
 

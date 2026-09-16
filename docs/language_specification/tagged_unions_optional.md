@@ -25,23 +25,24 @@ value: int? = Some(42)
 empty: int? = None()
 ```
 
-`Some(…)` and `None()` are the only spellings that work. The fully-qualified forms
-`Optional.Some(…)` and `Optional.None()` are **refused by name** with SPY0608 and a steer to the
-bare form (#1758) — they are not a second way to write the same thing:
+`Some(…)` and `None()` are the only spellings that work. Every spelling of the qualified form —
+`Optional.Some(…)`, the indexed `Optional[int].Some(…)`, and an aliased or module-qualified
+`Optional` — is **refused by name** with SPY0608 and a steer to the bare form (#1758, #1856), in call
+and in value position alike; none is a second way to write the same thing:
 
 ```python
-v: int? = Some(42)              # the spelling
-# w: int? = Optional.Some(42)   # SPY0608 — use the bare form `Some(42)`
-# e: int? = Optional.None()     # SPY0608 — use the bare form `None()`
+v: int? = Some(42)                    # the spelling
+# w: int? = Optional.Some(42)         # SPY0608 — use the bare form `Some(42)`
+# x: int? = Optional[int].Some(42)    # SPY0608 — the indexed receiver is refused too
+# e: int? = Optional.None()           # SPY0608 — use the bare form `None()`
 ```
 
 The four builtin case names `Some`, `None`, `Ok` and `Err` are RESERVED for the same reason: a
 declaration that takes one would shadow the constructor, so it is refused with SPY0212 rather than
-warned — `def Some(x: int) -> int` draws *"'Some' is a builtin tagged-union constructor; rebinding
-this name would shadow the builtin form"*. The steer offers the backtick-escaped spelling
-(`` def `Some` ``) for a declaration that really wants the name. Two spellings escape the rule today
-and are tracked by #1856: the indexed receiver `Optional[int].Some(42)`, and a USER union whose own
-case is named `Some`.
+warned — `def Some(x: int) -> int`, and a user union whose own case is named `Some`, both draw
+*"'Some' is a builtin tagged-union constructor; rebinding this name would shadow the builtin form"*.
+The steer offers the backtick-escaped spelling (`` def `Some` ``, `` case `Some` ``) for a declaration
+that really wants the name.
 
 A bare value or bare `None` is **not** accepted for `T?` — use `Some(…)` or `None()`:
 

@@ -1,0 +1,7 @@
+union Maybe:
+    case Some(v: int)
+    case Nothing()
+
+
+def main() -> None:
+    print(1)

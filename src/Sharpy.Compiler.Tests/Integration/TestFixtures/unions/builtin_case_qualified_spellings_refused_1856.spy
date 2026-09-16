@@ -1,0 +1,11 @@
+import sharpy
+import sharpy as sh
+from sharpy import Result as R
+
+
+def main() -> None:
+    print(Optional.Some(1))
+    print(Optional[int].None())
+    print(R.Ok(1))
+    print(sharpy.Result.Err("x"))
+    print(sh.Result.Ok(3))

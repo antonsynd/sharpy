@@ -1,0 +1,5 @@
+'Optional.Some' is not supported; use the bare form 'Some(...)' instead @7:11
+'Optional.None' is not supported; use the bare form 'None(...)' instead @8:11
+'R.Ok' is not supported; use the bare form 'Ok(...)' instead @9:11
+'Result.Err' is not supported; use the bare form 'Err(...)' instead @10:11
+'Result.Ok' is not supported; use the bare form 'Ok(...)' instead @11:11

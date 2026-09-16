@@ -1,0 +1,7 @@
+union M:
+    case `Some`(v: int)
+    case Other()
+
+
+def main() -> None:
+    print("declared")
