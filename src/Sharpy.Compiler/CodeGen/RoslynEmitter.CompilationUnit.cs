@@ -459,7 +459,12 @@ internal partial class RoslynEmitter
                 // (e.g., Sharpy.Math would shadow a using Math = global::System.Math alias).
                 foreach (var importedName in fromImport.Names)
                 {
-                    var symbol = _context.LookupSymbol(importedName.Name);
+                    // Dereference the alias to the symbol the import actually bound (#1863):
+                    // "from system import Guid as G" registers the symbol under "G", so looking
+                    // it up by the original name "Guid" misses and ResolveClrTypeName falls back
+                    // to ToNamespacePart("Guid") = "GUID". Look up AsName first so a CLR-backed
+                    // symbol reaches its reflected clrType.Name.
+                    var symbol = _context.LookupSymbol(importedName.AsName ?? importedName.Name);
                     if (symbol is TypeSymbol { IsGeneric: true })
                         continue;
 
