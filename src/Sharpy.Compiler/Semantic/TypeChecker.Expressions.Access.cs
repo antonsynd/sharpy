@@ -843,6 +843,22 @@ internal partial class TypeChecker
         // is only accessible through an explicitly-implemented interface (#1572).
         TryRecordInterfaceCastLowering(memberAccess, memberLookupType);
 
+        // An extension method referenced in VALUE position is a method group nothing can type: the
+        // callee route stages the CALL (TryBeginStagedExtensionCall, opened from CheckCall), but a bare
+        // `f = xs.select` / `e = Enumerable.count` has no call to stage and emitted verbatim it leaks
+        // CS8917 behind SPY0908 (#1858). This is the value-position twin of gates 1-4 of that staging:
+        // an acceptance-surface name (2), on a CLR-formed receiver (3), where no instance member could
+        // bind (4) — so the name can only be an extension/static method group. Refused by the ONE helper
+        // the instance and static routes reach (SPY0336). Callee position is excluded so a02/a03 keep
+        // staging and printing.
+        if (!IsCurrentCallCallee(memberAccess)
+            && Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member)
+            && TryGetClrType(memberLookupType) != null
+            && NoClrInstanceMemberCouldBind(memberLookupType, memberAccess.Member))
+        {
+            return RefuseClrMethodGroupInValuePosition(memberAccess);
+        }
+
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
@@ -2334,6 +2350,19 @@ internal partial class TypeChecker
                         span: memberAccess.Span,
                         data: SuggestionData(staticSuggestion));
                     return SemanticType.Unknown;
+                }
+
+                // A generic extension method named through the declaring TYPE in VALUE position
+                // (`e = Enumerable.count`) is a static method group nothing can type: the resolver
+                // above declined it (Count<TSource> is a generic method definition, excluded from the
+                // static method surface), the absence proof kept it permissive (it IS a reachable
+                // extension method), and emitted verbatim it leaks CS8917 behind SPY0908. It is the
+                // static twin of the instance/extension value-position group, refused by the ONE helper
+                // (#1858). Callee position stays permissive so `Enumerable.count(xs)` still binds.
+                if (!IsCurrentCallCallee(memberAccess)
+                    && Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member))
+                {
+                    return RefuseClrMethodGroupInValuePosition(memberAccess);
                 }
             }
 

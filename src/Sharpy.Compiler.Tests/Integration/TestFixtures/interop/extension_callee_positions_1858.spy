@@ -1,0 +1,8 @@
+# #1858 positive control: an extension method in CALLEE position — parenthesized or not — is a
+# call and stays permissive, so it binds and runs. Only the VALUE-position reference (a bare
+# `xs.first_or_default` with no call) is refused (SPY0336); see
+# extension_method_group_value_refused_1858.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.first_or_default())
+    print((xs.first_or_default)())
