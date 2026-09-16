@@ -117,10 +117,18 @@ public class ClrImportNameFidelityTests : IntegrationTestBase
             + "    print(Environment.get_folder_path(Environment.SpecialFolder.Desktop) != \"\")\n",
             Expect.Resolves);
 
+        // #1864 FIXED: the nested type chain is now a resolved type on the value route, so the
+        // discriminating `bool` store is a TYPED refusal (SPY0220 'SpecialFolder' → 'bool'), never the
+        // SPY0908 ICE it was before. The untyped-store twin below prints the enum name.
         yield return new Cell("nested-type-chain.value-position", "nested type chain",
             "from system import Environment\n\ndef main() -> None:\n"
             + "    f: bool = Environment.SpecialFolder.Desktop\n    print(f)\n",
-            Expect.KnownSpy0908, Issue: "#1864");
+            Expect.Refused, Code: DiagnosticCodes.Semantic.TypeMismatch);
+
+        yield return new Cell("nested-type-chain.untyped-store", "nested type chain",
+            "from system import Environment\n\ndef main() -> None:\n"
+            + "    f = Environment.SpecialFolder.Desktop\n    print(f)\n",
+            Expect.Resolves);
 
         // ── the REFUSAL half: an absent member and an absent import, by name ──
         yield return new Cell("absent-member.refused", "bare import",

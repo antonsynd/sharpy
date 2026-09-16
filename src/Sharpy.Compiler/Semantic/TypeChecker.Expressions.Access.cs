@@ -1268,6 +1268,17 @@ internal partial class TypeChecker
                 // str-vs-str comparison rather than an `object` refusal (#1705).
                 return ProjectClrChar(memberAccess, field.Type);
 
+            case Discovery.ClrMemberResolution.NestedType nested:
+                // A nested .NET type reached through its declaring type (`Environment.SpecialFolder`).
+                // It denotes a TYPE, so it is typed as the nested type's own UserDefinedType and marked
+                // a type reference on EVERY route, including the callee position of a nested-type
+                // constructor call — the next segment (`.Desktop`, `.Inner()`) then resolves against the
+                // nested type's surface and the emitter reads the denoted type (#1864).
+                var nestedSym = _bclGenericMethodBridge.GetOrCreateClrDefinitionSymbol(nested.ClrType);
+                var nestedTypeUdt = new UserDefinedType { Name = nestedSym.Name, Symbol = nestedSym };
+                _semanticInfo.MarkTypeReference(memberAccess);
+                return nestedTypeUdt;
+
             case Discovery.ClrMemberResolution.InconclusiveResult:
                 // The bridge cannot express the member's TYPE (an open generic, an unmappable
                 // interface shape) but the member itself exists. In CALL position the call seam

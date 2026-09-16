@@ -91,6 +91,21 @@ internal sealed class ClrMemberTypeResolver
             }
         }
 
+        // 4. Try nested types — a nested .NET type is reached only through the declaring TYPE in C#
+        // (`Environment.SpecialFolder`, never `env.SpecialFolder`), so this half of the surface is
+        // asked only for a static-type receiver. The both-spellings rule applies: the verbatim CLR
+        // name or its reverse-mangled Sharpy spelling. The nested type DENOTES a type, so the caller
+        // marks it a type reference and its member seam resolves against the nested type's own
+        // surface (#1864).
+        if (receiverKind == ClrReceiverKind.StaticType)
+        {
+            foreach (var nested in clrType.GetNestedTypes(BindingFlags.Public))
+            {
+                if (Matches(nested.Name, memberName, ReverseNameContext.Method))
+                    return new ClrMemberResolution.NestedType(nested);
+            }
+        }
+
         // The name is absent from the half of the surface this receiver can reach. When the OTHER
         // half has it (`dt.max_value`, `DateTime.year`) the reference is a static/instance mix-up,
         // not a typo: this seam declines rather than refuses, because naming that error is a
@@ -273,5 +288,16 @@ internal abstract class ClrMemberResolution
         internal SemanticType Type { get; }
         internal string ClrName { get; }
         internal Field(SemanticType type, string clrName) { Type = type; ClrName = clrName; }
+    }
+
+    /// <summary>
+    /// A nested .NET type reached through its declaring type (<c>Environment.SpecialFolder</c>).
+    /// It denotes a TYPE, not a value: the caller maps it to a <see cref="UserDefinedType"/> and
+    /// marks the reference a type reference so its own member seam resolves the next segment (#1864).
+    /// </summary>
+    internal sealed class NestedType : ClrMemberResolution
+    {
+        internal Type ClrType { get; }
+        internal NestedType(Type clrType) { ClrType = clrType; }
     }
 }

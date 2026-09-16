@@ -986,7 +986,7 @@ internal class ClrTypeBridge
     /// </summary>
     internal TypeSymbol GetOrCreateClrDefinitionSymbol(Type clrDef)
     {
-        return _interfaceSymbolCache.GetOrAdd(clrDef, static def =>
+        return _interfaceSymbolCache.GetOrAdd(clrDef, def =>
         {
             var clrArgs = def.IsGenericTypeDefinition
                 ? def.GetGenericArguments()
@@ -1016,6 +1016,13 @@ internal class ClrTypeBridge
                 if (invoke != null)
                     sym.Methods.Add(invoke);
             }
+
+            // A nested definition records its declaring chain so the denoted type carries the
+            // enclosing type (`Environment.SpecialFolder` knows `Environment`). Emission still reads
+            // the reflected FullName for the `global::`-qualified spelling; this is the symbol-level
+            // record downstream passes key on (#1864).
+            if (def.DeclaringType is { } declaring)
+                sym.DeclaringType = GetOrCreateClrDefinitionSymbol(declaring);
 
             return sym;
         });
