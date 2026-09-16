@@ -190,7 +190,7 @@ internal partial class TypeChecker
                 ?? _symbolTable.Lookup(starId.Name, searchParents: true)) as VariableSymbol;
             if (predecessor != null
                 && DeclaredBindingType(predecessor) is GenericType
-                    { Name: BuiltinNames.List, TypeArguments: { Count: > 0 } declaredArgs })
+                { Name: BuiltinNames.List, TypeArguments: { Count: > 0 } declaredArgs })
                 slot = declaredArgs[0];
         }
 

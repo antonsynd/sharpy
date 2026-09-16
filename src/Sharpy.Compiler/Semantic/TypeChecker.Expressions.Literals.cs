@@ -768,8 +768,10 @@ internal partial class TypeChecker
 
         if (type is BuiltinType { ClrType: { } clr })
         {
-            if (clr == typeof(string)) return FormatOperandKind.Str;
-            if (clr == typeof(bool)) return FormatOperandKind.Bool;
+            if (clr == typeof(string))
+                return FormatOperandKind.Str;
+            if (clr == typeof(bool))
+                return FormatOperandKind.Bool;
             if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
                 return FormatOperandKind.Float;
             if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)

@@ -2248,9 +2248,12 @@ internal partial class RoslynEmitter
             var dim = multiAxis.Dimensions[i];
             if (lowering.Dimensions[i] == MultiAxisDimensionKind.Slice)
             {
-                if (dim.Start != null) orderedOperands.Add(dim.Start);
-                if (dim.Stop != null) orderedOperands.Add(dim.Stop);
-                if (dim.Step != null) orderedOperands.Add(dim.Step);
+                if (dim.Start != null)
+                    orderedOperands.Add(dim.Start);
+                if (dim.Stop != null)
+                    orderedOperands.Add(dim.Stop);
+                if (dim.Step != null)
+                    orderedOperands.Add(dim.Step);
             }
             else
             {
