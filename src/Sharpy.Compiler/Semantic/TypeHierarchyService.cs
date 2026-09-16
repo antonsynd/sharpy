@@ -250,6 +250,17 @@ internal static class TypeHierarchyService
         if (ReferenceEquals(a, b))
             return true;
 
+        // Same CLR backing type == same logical type, even when the Sharpy spellings differ. A
+        // from-import alias of a registry-owned type is a renamed COPY (CreateReExportedTypeSymbol's
+        // `with { Name = alias }`) that preserves ClrType, so `from sharpy import ISized as IS` makes
+        // the parameter type "IS" and the synthesized ISized interface two distinct symbols with the
+        // same ClrType — the un-aliased spelling binds one symbol, the alias another, and identity
+        // must see through the rename or `Bag` (which synthesizes ISized via __len__) is not an `IS`
+        // (SPY0220, #1863 sibling, b17). This is the same same-ClrType-is-same-type rule
+        // UserDefinedType.IsAssignableTo already applies for the nullable-struct overloads (#890).
+        if (a.ClrType != null && a.ClrType == b.ClrType)
+            return true;
+
         // Cross-module: both have DefiningModule set
         if (a.DefiningModule != null && b.DefiningModule != null)
             return a.DefiningModule == b.DefiningModule && a.Name == b.Name;
