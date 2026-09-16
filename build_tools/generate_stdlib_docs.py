@@ -143,6 +143,8 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "IEnumerable": "Iterable",
     "System.Collections.Generic.IEnumerable": "Iterable",
     "IEnumerator": "Iterator",
+    "Iterator": "Iterator",
+    "Sharpy.Iterator": "Iterator",
     "Optional": "Optional",
     "Result": "Result",
     "Tuple": "tuple",
@@ -693,10 +695,14 @@ def _join_declaration(lines: list[str], start: int) -> tuple[str, int]:
 
 
 # Regex patterns applied to joined (single-line) declarations
+# The type character classes include ':' so a fully-qualified return type
+# (`global::Sharpy.Iterator<T>`, emitted since every CLR-backed/Sharpy-namespace
+# type is qualified — #1830/#1831/R-AQ) still matches; map_type() strips the
+# `global::` prefix before rendering.
 _METHOD_PATTERN = re.compile(
     r"^public\s+"
     r"((?:(?:static|override|virtual|sealed|new|async|unsafe)\s+)*)"  # modifiers
-    r"([\w<>\[\],\s\?\.]+?)\s+"  # return type
+    r"([\w<>\[\],\s\?\.:]+?)\s+"  # return type
     r"(\w+)"  # method name
     r"(?:<([^>]+)>)?"  # optional type params
     r"\((.*)\)"  # parameters (greedy to handle nested parens in type args)
@@ -704,14 +710,14 @@ _METHOD_PATTERN = re.compile(
 
 _CONST_PATTERN = re.compile(
     r"^public\s+(?:const|static\s+readonly)\s+"
-    r"([\w<>\[\],\s\?\.]+?)\s+"  # type
+    r"([\w<>\[\],\s\?\.:]+?)\s+"  # type
     r"(\w+)\s*=\s*(.+?)\s*;"
 )
 
 _PROPERTY_PATTERN = re.compile(
     r"^public\s+"
     r"((?:(?:static|override|virtual|sealed|new)\s+)*)"  # modifiers
-    r"([\w<>\[\],\s\?\.]+?)\s+"  # type
+    r"([\w<>\[\],\s\?\.:]+?)\s+"  # type
     r"(\w+)\s*"  # name
     r"(?:=>|{\s*get)"
 )

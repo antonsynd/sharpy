@@ -464,6 +464,31 @@ class TestParseCsFile:
         assert m.return_type == "float"
         assert "square root" in m.summary
 
+    def test_method_with_globally_qualified_return_type(self, tmp_path):
+        # Since #1830/#1831/R-AQ, every CLR-backed/Sharpy-namespace type is
+        # emitted fully qualified in the generated stdlib C# — a method whose
+        # return type reads `global::Sharpy.Iterator<T>` must still be parsed
+        # (the signature regex accepts ':') and rendered bare (`Iterator[T]`).
+        # Regression guard for the itertools docs dropping every function.
+        cs = textwrap.dedent(
+            """\
+            public partial class ItertoolsModule
+            {
+                /// <summary>Make an iterator of evenly spaced values.</summary>
+                public static global::Sharpy.Iterator<int> Count(int start = 0, int step = 1)
+                {
+                    return null;
+                }
+            }
+        """
+        )
+        f = tmp_path / "Itertools.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        assert len(members) == 1, "global::-qualified return type must not drop the method"
+        assert members[0].name == "count"
+        assert members[0].return_type == "Iterator[int]"
+
     def test_constant_extraction(self, tmp_path):
         cs = textwrap.dedent(
             """\

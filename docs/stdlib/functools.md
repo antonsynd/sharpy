@@ -16,6 +16,12 @@ Apply function of two arguments cumulatively to the items of iterable, so as to 
 
 Apply function of two arguments cumulatively to the items of iterable, starting with initial value.
 
+### `functools.cmp_to_key(cmp: (T, T) -> int) -> Comparer[T]`
+
+Convert a comparison function into a key function for sorting.
+The comparison function should return a negative number for less-than,
+zero for equality, or a positive number for greater-than.
+
 ### `functools.cache_info(hits: int, misses: int, max_size: int | None, current_size: int) -> record`
 
 Snapshot of cache statistics returned by

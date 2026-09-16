@@ -20,6 +20,10 @@ Return the filename prefix used to create temporary files.
 
 Create and return a unique temporary directory.
 
+### `tempfile.mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]`
+
+Create and return a unique temporary file.
+
 ### `tempfile.write(data: str) -> int`
 
 Write a string to the file, returning the number of characters written.

@@ -74,6 +74,10 @@ Test whether a path exists.
 
 Perform the equivalent of a stat() system call on the given path.
 
+### `os.walk(top: str) -> Iterator[tuple[str, list[str], list[str]]]`
+
+Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
+
 ### `os.join(a: str, b: str) -> str`
 
 Join two pathname components, inserting '/' as needed.
@@ -113,6 +117,14 @@ Return the final component of a pathname.
 ### `os.dirname(path: str) -> str`
 
 Return the directory component of a pathname.
+
+### `os.split(path: str) -> tuple[str, str]`
+
+Split a pathname. Return tuple (head, tail) where tail is everything after the final slash.
+
+### `os.splitext(path: str) -> tuple[str, str]`
+
+Split the extension from a pathname.
 
 ### `os.abspath(path: str) -> str`
 

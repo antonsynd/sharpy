@@ -36,6 +36,14 @@ Return the string obtained by replacing occurrences using a string.
 
 Return the string obtained by replacing occurrences using a callable.
 
+### `re.subn(repl: str, s: str, count: int = 0) -> tuple[str, int]`
+
+Like sub(), but returns (new_string, number_of_subs_made).
+
+### `re.subn(repl: (MatchResult) -> str, s: str, count: int = 0) -> tuple[str, int]`
+
+Like sub() with callable, but returns (new_string, number_of_subs_made).
+
 ### `re.split(s: str, maxsplit: int = 0) -> list[str]`
 
 Split string by the occurrences of the pattern.
@@ -63,6 +71,10 @@ Start index of the matched group.
 ### `re.end(group_num: int = 0) -> int`
 
 End index of the matched group.
+
+### `re.span(group_num: int = 0) -> tuple[int, int]`
+
+Returns (start, end) for the matched group.
 
 ### `re.expand(template: str) -> str`
 
@@ -99,6 +111,14 @@ Return the string obtained by replacing occurrences.
 ### `re.sub(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a callable.
+
+### `re.subn(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]`
+
+Like sub(), but returns (new_string, number_of_subs_made).
+
+### `re.subn(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]`
+
+Like sub() with callable, but returns (new_string, number_of_subs_made).
 
 ### `re.split(pattern: str, s: str, maxsplit: int = 0, flags: int = 0) -> list[str]`
 

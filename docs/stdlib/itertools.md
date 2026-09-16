@@ -44,6 +44,10 @@ Make an iterator that returns selected elements from the iterable.
 
 Make an iterator that returns selected elements from the iterable with start, stop, and step.
 
+### `itertools.pairwise(iterable: list[T]) -> Iterator[tuple[T, T]]`
+
+Return successive overlapping pairs taken from the input iterable.
+
 ### `itertools.accumulate(iterable: list[int]) -> Iterator[int]`
 
 Make an iterator that returns accumulated sums.
@@ -71,6 +75,22 @@ Make an iterator that chains all iterables from a single list of iterables.
 ### `itertools.starmap(func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> Iterator[R]`
 
 Make an iterator that computes the function using arguments obtained from the iterable.
+
+### `itertools.zip_longest(first: list[T], second: list[T], fillvalue: T) -> Iterator[tuple[T, T]]`
+
+Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue.
+
+### `itertools.groupby(iterable: list[T], key: (T) -> K) -> Iterable[tuple[K, list[T]]]`
+
+Make an iterator that returns consecutive keys and groups from the iterable.
+
+### `itertools.product(first: list[T1], second: list[T2]) -> Iterator[tuple[T1, T2]]`
+
+Cartesian product of two input iterables, equivalent to nested for-loops.
+
+### `itertools.product(first: list[T1], second: list[T2], third: list[T3]) -> Iterator[tuple[T1, T2, T3]]`
+
+Cartesian product of three input iterables, equivalent to nested for-loops.
 
 ### `itertools.combinations(iterable: list[T], r: int) -> Iterator[list[T]]`
 

@@ -31,3 +31,7 @@ Recursively move a file or directory to another location.
 ### `shutil.which(name: str) -> str | None`
 
 Return the path to an executable which would be run if name were called, or None if not found.
+
+### `shutil.disk_usage(path: str) -> tuple[long, long, long]`
+
+Return disk usage statistics about the given path as a (total, used, free) tuple.
