@@ -1,5 +1,9 @@
-# The `as` target is block-scoped in Sharpy; a BODY assignment beside a distinct `as`
-# target is runtime-checked like any other (#1839). No-raise here, so it prints.
+# "The as-target cell runs" (#1839 close criterion): a BODY assignment to `n`, inside a suppressing
+# `with` that HAS an as-target `s`, is runtime-checked exactly like plain-suppressing — the
+# as-target's presence does not disturb the two-pass. No-raise here, so it prints. (The as-target
+# itself is block-scoped in Sharpy and does NOT persist — reading it outside its block is SPY0200,
+# "block-scoped … unlike Python" — so DD4's "binding precedes the edge → assigned" premise is void;
+# that control is pinned in SuppressionWithDefiniteAssignmentMatrixTests, not here.)
 class Sup:
     def __enter__(self) -> int:
         return 1

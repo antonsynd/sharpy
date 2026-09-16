@@ -182,15 +182,11 @@ public class SuppressionWithDefiniteAssignmentMatrixTests : IntegrationTestBase
             "def main() -> None:\n    n: int = 0\n    with Sup():\n        maybe_raise(True)\n        n = 5\n    print(n)",
             Expect.Prints, "0");
 
-        // ── manager = suppressing-with-as. Sharpy BLOCK-SCOPES the `as` target, so a pre-declared
-        // outer local rebound by `with … as n` does NOT persist — the read after is a genuine
-        // use-before-assign (SPY0600), consistent with the emitted C# (measured; diverges from
-        // Python, whose as-target persists). A BODY assignment beside a distinct `as` target is
-        // runtime-checked as usual. ──
-        yield return new Cell("sup-as.bare.as-target.after",
-            "def main() -> None:\n    n: int\n    with Sup() as n:\n        pass\n    print(n)",
-            Expect.SPY0600);
-
+        // ── manager = suppressing-with-as (owner ruling, refined-A). Two cells:
+        //
+        // PRIMARY (the #1839 content — "the as-target cell RUNS"): a body assignment to the read
+        // variable, inside a suppressing `with` that HAS an as-target `s`, is runtime-checked exactly
+        // like plain-suppressing — the as-target's mere presence does not disturb the two-pass.
         yield return new Cell("sup-as.bare.body-assign.after",
             "def main() -> None:\n    n: int\n    with Sup() as s:\n        n = 5\n    print(n)",
             Expect.Prints, "5");
@@ -198,5 +194,14 @@ public class SuppressionWithDefiniteAssignmentMatrixTests : IntegrationTestBase
         yield return new Cell("sup-as.bare.body-assign.raise-before",
             "def main() -> None:\n    n: int\n    with Sup() as s:\n        maybe_raise(True)\n        n = 5\n    print(n)",
             Expect.RaisesUnbound);
+
+        // CONTROL (governed by block-scoping, NOT #1839): reading a pre-declared outer local rebound
+        // by `with … as n` after the block is a genuine use-before-assign (SPY0600). Sharpy
+        // BLOCK-SCOPES the `as` target — it does not persist (reading a fresh as-target outside its
+        // block is SPY0200 "block-scoped … unlike Python"; Axiom 1), so DD4's "the binding precedes
+        // the edge → definitely assigned" premise is VOID here. Not runtime-checked.
+        yield return new Cell("sup-as.bare.as-target.after",
+            "def main() -> None:\n    n: int\n    with Sup() as n:\n        pass\n    print(n)",
+            Expect.SPY0600);
     }
 }
