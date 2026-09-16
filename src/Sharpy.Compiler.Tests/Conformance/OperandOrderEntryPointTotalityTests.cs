@@ -87,7 +87,6 @@ public class OperandOrderEntryPointTotalityTests
         ["GenerateWhile"] = "the loop test is re-evaluated per iteration under its own sink",
         ["GenerateLambdaExpression"] = "the body is a deferred scope with its own scope sink",
         ["GenerateTypedLambdaExpression"] = "the body is a deferred scope with its own scope sink",
-        ["GenerateAssignment"] = "a store's target and value are not siblings of one expression; the `??=` value has its own sink (#1835)",
     };
 
     /// <summary>

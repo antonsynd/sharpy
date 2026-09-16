@@ -1,0 +1,37 @@
+# GenerateAssignment's IndexAccess-target arms (#1885, a sibling of the #1853 operand-order class):
+# the receiver and index of a subscript store are sibling operands that evaluate left to right, so an
+# effectful receiver (a helper that pops) must run before a hoist producer in the index (the
+# comprehension in `len([...])`). Covers all three arms: simple `=` (Assignments.cs:257-258),
+# augmented `+=` non-mutation (:257-269), and augmented mutation `+= [..]` (:242-254).
+#
+# python3 3.12 (each helper pops the leading element, so `len` measures what remains — 1, not 2):
+#   get_row(state, grid)[len([v for v in state])] = 9    -> grid[0][1] = 9
+#   ... += 9                                              -> grid[0][1] = 9
+#   get_grid(state, data)[len([v for v in state])] += [9] -> data[1] extends
+#   measured: [[0, 9, 0], [0, 0, 0]] / [[0, 9, 0], [0, 0, 0]] / [[1], [2, 9], [3]]
+# Before the fix each read the un-popped length (2), writing one column/row too far to the right.
+def get_row(state: list[int], grid: list[list[int]]) -> list[int]:
+    state.pop(0)
+    return grid[0]
+
+
+def get_grid(state: list[int], data: list[list[int]]) -> list[list[int]]:
+    state.pop(0)
+    return data
+
+
+def main() -> None:
+    grid1: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
+    state1: list[int] = [1, 2]
+    get_row(state1, grid1)[len([v for v in state1])] = 9
+    print(grid1)
+
+    grid2: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
+    state2: list[int] = [1, 2]
+    get_row(state2, grid2)[len([w for w in state2])] += 9
+    print(grid2)
+
+    data3: list[list[int]] = [[1], [2], [3]]
+    state3: list[int] = [1, 2]
+    get_grid(state3, data3)[len([u for u in state3])] += [9]
+    print(data3)

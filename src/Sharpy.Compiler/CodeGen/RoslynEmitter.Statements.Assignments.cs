@@ -239,8 +239,13 @@ internal partial class RoslynEmitter
             var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
             if (mutationMethod != null)
             {
-                var receiver = GenerateExpression(indexAccess.Object);
-                var idx = GenerateExpression(indexAccess.Index);
+                // Receiver and index are sibling operands of one subscript: order them left-to-right
+                // so a hoist producer in the index cannot run before an effectful receiver (#1885,
+                // #1853 class).
+                var mutOperands = GenerateExpressionsInOrder(
+                    new Expression[] { indexAccess.Object, indexAccess.Index });
+                var receiver = mutOperands[0];
+                var idx = mutOperands[1];
                 var element = ElementAccessExpression(receiver)
                     .WithArgumentList(BracketedArgumentList(
                         SingletonSeparatedList(Argument(idx))));
@@ -254,8 +259,15 @@ internal partial class RoslynEmitter
                         ArgumentList(SingletonSeparatedList(GenerateMutationArgument(assign, value)))));
             }
 
-            var obj = GenerateExpression(indexAccess.Object);
-            var index = GenerateExpression(indexAccess.Index);
+            // Receiver and index are sibling operands of one subscript: order them left-to-right so a
+            // hoist producer in the index cannot run before an effectful receiver (#1885, #1853 class).
+            // The augmented double-splice / single-evaluation handling below (#1227) then wraps the
+            // ordered pieces; a simple `=` splices each once and this stays byte-identical when nothing
+            // hoists.
+            var targetOperands = GenerateExpressionsInOrder(
+                new Expression[] { indexAccess.Object, indexAccess.Index });
+            var obj = targetOperands[0];
+            var index = targetOperands[1];
 
             // An augmented index target is spliced TWICE — once into the read (`obj[index]` or
             // ArrayHelpers.GetItem(obj, index)) and once into the write — so `xs[idx()] += 1`
