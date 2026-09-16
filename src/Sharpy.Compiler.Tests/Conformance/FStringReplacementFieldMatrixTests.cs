@@ -32,10 +32,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// exact-matchable (the stdout is compared byte-for-byte after CRLF normalization — no trimming, no
 /// whitespace collapse, unlike a trace-style matrix).</para>
 ///
-/// <para>Depth-2 spec nesting (<c>f"{x:{y:{z}}}"</c>) is NOT a cell: python accepts it (→ <c>  5</c>)
-/// but Sharpy @ dev refuses it with SPY0022, a regression from the Phase 2 lexer rewrite. Reported to
-/// the lead (2026-09-15); the cell is added when the sibling issue lands. Depth-1 nesting is fully
-/// covered.</para>
+/// <para>Depth-2 spec nesting (<c>f"{x:{y:{z}}}"</c>) is the <c>nest.depth2</c> cell: python accepts it (→ <c>  5</c>)
+/// and Sharpy matches it after the #1884 lexer fix — a self-introduced Phase 2 regression this
+/// matrix surfaced and the lead repaired before landing. Both depths are covered.</para>
 ///
 /// <para><see cref="KnownRed"/> is EMPTY at landing: every cell is green. A cell that regresses is a
 /// real defect, not an allowlist entry.</para>
@@ -136,8 +135,8 @@ public class FStringReplacementFieldMatrixTests : IntegrationTestBase
         {
             "conv.repr_str", "conv.str_int", "conv.ascii", "conv.selfdoc", "conv.selfdoc_spec",
         };
-        // Nesting totality anchor (depth-1; depth-2 held pending the SPY0022 regression).
-        var nesting = new[] { "nest.width", "nest.prec", "nest.fill_align_w", "nest.fillalignw_vars" };
+        // Nesting totality anchor (depth-1 and depth-2).
+        var nesting = new[] { "nest.width", "nest.prec", "nest.fill_align_w", "nest.fillalignw_vars", "nest.depth2" };
         // Refusal totality anchor: static SPY0609 and a dynamic runtime error.
         var refusals = new[] { "refuse.str_d", "refuse.none_spec", "refuse.dynamic_int_q" };
 
@@ -273,6 +272,9 @@ public class FStringReplacementFieldMatrixTests : IntegrationTestBase
         yield return Out("nest.fillalignw_vars",
             "    w: int = 3\n    fill: str = \"*\"\n    align: str = \">\"\n",
             "[{5:{fill}{align}{w}}]", "[**5]\n");
+        // Depth-2: the inner field {z} formats y, whose result is the width spec for the hole (#1884).
+        // python3 -c 'y=3; z="d"; print(f"[{5:{y:{z}}}]")'  -> "[  5]"  (format(3,"d")="3" -> width 3)
+        yield return Out("nest.depth2", "    y: int = 3\n    z: str = \"d\"\n", "[{5:{y:{z}}}]", "[  5]\n");
 
         // ---- ordering (#1862): holes and nested fields evaluate left-to-right ----------------------
         // The list has 3 elements so the correct output (pop first) differs from the buggy output
