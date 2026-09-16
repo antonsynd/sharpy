@@ -1,0 +1,21 @@
+# GeneratePipeForward: the piped value and the call's own arguments are sibling operands of one call
+# and evaluate left to right (#1853). `x |> add(len(...))` lowers to add(take(xs), len(...)); `take`
+# pops first (returning 1, leaving [2, 3]) so len is 2 and the sum is 3. Before the fix the piped
+# value was generated outside the ordering, so the comprehension in the argument hoisted above it and
+# ran first: len 3 -> sum 4.
+#
+# python3 3.12:
+#   def take(xs): return xs.pop(0)
+#   def add(a, b): return a + b
+#   xs=[1,2,3]; print(add(take(xs), len([v for v in xs])))  # measured: 3
+def take(xs: list[int]) -> int:
+    return xs.pop(0)
+
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(take(xs) |> add(len([v for v in xs])))

@@ -2048,16 +2048,24 @@ internal partial class RoslynEmitter
         // types with params int[] indexers (e.g., NdArray), instead of a[(1, 2)].
         if (lowering == IndexAccessLowering.ParamsSpread && indexAccess.Index is TupleLiteral tuple)
         {
-            var objExprSpread = GenerateExpression(indexAccess.Object);
+            // Receiver and the spread index elements are sibling operands of one subscript, so they
+            // evaluate left-to-right: a hoist producer in a later element must not run before an
+            // effectful receiver or earlier element (#1853).
+            var spreadOperands = new List<Expression> { indexAccess.Object };
+            spreadOperands.AddRange(tuple.Elements);
+            var spreadGenerated = GenerateExpressionsInOrder(spreadOperands);
             var args = new List<ArgumentSyntax>();
-            foreach (var elem in tuple.Elements)
-                args.Add(Argument(GenerateExpression(elem)));
-            return ApplyNarrowedReadLowering(indexAccess, Element(objExprSpread)
+            for (int i = 1; i < spreadGenerated.Length; i++)
+                args.Add(Argument(spreadGenerated[i]));
+            return ApplyNarrowedReadLowering(indexAccess, Element(spreadGenerated[0])
                 .AddArgumentListArguments(args.ToArray()));
         }
 
-        var objExpr = GenerateExpression(indexAccess.Object);
-        var index = GenerateExpression(indexAccess.Index);
+        // Receiver and index are sibling operands of one subscript — order them left-to-right (#1853).
+        var mainOperands = GenerateExpressionsInOrder(
+            new Expression[] { indexAccess.Object, indexAccess.Index });
+        var objExpr = mainOperands[0];
+        var index = mainOperands[1];
 
         // Compose the container access with any narrowed-read accessor the TypeChecker recorded for
         // this index node (e.g. list[int?] → xs.GetItemUnchecked(0).Unwrap(); list[int | None] →
@@ -2228,7 +2236,30 @@ internal partial class RoslynEmitter
                 $"subscript with {multiAxis.Dimensions.Length} dimensions (#1621)");
         }
 
-        var obj = GenerateExpression(multiAxis.Object);
+        // The receiver and every present dimension bound are sibling operands of one subscript, so
+        // they evaluate left-to-right: a hoist producer in a later dimension must not run before an
+        // earlier dimension's (or the receiver's) side effect (#1853). Collect them in source order —
+        // receiver, then per dimension its index (index dim) or present start/stop/step (slice dim) —
+        // route the whole list through the shared ordering helper once, then reassemble each axis from
+        // the ordered pieces.
+        var orderedOperands = new List<Expression> { multiAxis.Object };
+        for (int i = 0; i < multiAxis.Dimensions.Length; i++)
+        {
+            var dim = multiAxis.Dimensions[i];
+            if (lowering.Dimensions[i] == MultiAxisDimensionKind.Slice)
+            {
+                if (dim.Start != null) orderedOperands.Add(dim.Start);
+                if (dim.Stop != null) orderedOperands.Add(dim.Stop);
+                if (dim.Step != null) orderedOperands.Add(dim.Step);
+            }
+            else
+            {
+                orderedOperands.Add(dim.Index!);
+            }
+        }
+        var generated = GenerateExpressionsInOrder(orderedOperands);
+        var obj = generated[0];
+        var cursor = 1;
 
         switch (lowering.Kind)
         {
@@ -2239,8 +2270,8 @@ internal partial class RoslynEmitter
                     // an IndexAccess with a tuple index), so this arm is reached only from a
                     // constructed AST today; it stays because the fact's kind set includes it (D6).
                     var args = new List<ArgumentSyntax>();
-                    foreach (var dim in multiAxis.Dimensions)
-                        args.Add(Argument(GenerateExpression(dim.Index!)));
+                    foreach (var _ in multiAxis.Dimensions)
+                        args.Add(Argument(generated[cursor++]));
                     return ApplyNarrowedReadLowering(multiAxis,
                         Element(obj)
                             .AddArgumentListArguments(args.ToArray()));
@@ -2259,7 +2290,10 @@ internal partial class RoslynEmitter
 
             if (lowering.Dimensions[i] == MultiAxisDimensionKind.Slice)
             {
-                sliceArgs.Add(Argument(GenerateSliceSpec(dim)));
+                var start = dim.Start != null ? generated[cursor++] : null;
+                var stop = dim.Stop != null ? generated[cursor++] : null;
+                var step = dim.Step != null ? generated[cursor++] : null;
+                sliceArgs.Add(Argument(BuildSliceSpecSyntax(start, stop, step)));
             }
             else
             {
@@ -2269,7 +2303,7 @@ internal partial class RoslynEmitter
                             MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
                             IdentifierName("At")))
                     .AddArgumentListArguments(
-                        Argument(GenerateExpression(dim.Index!)))));
+                        Argument(generated[cursor++]))));
             }
         }
 
@@ -2278,15 +2312,28 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(sliceArgs.ToArray()));
     }
 
-    private ExpressionSyntax GenerateSliceSpec(SubscriptDimension dim)
-        => GenerateSliceSpec(dim.Start, dim.Stop, dim.Step);
-
     /// <summary>
     /// Builds the <c>Sharpy.SliceSpec</c> value for one axis: <c>SliceSpec.All</c> when every
     /// bound is absent, otherwise <c>new SliceSpec((int?)start, (int?)stop[, (int?)step])</c>.
-    /// Shared by multi-axis dimensions and single-axis ndarray slices (#1608).
+    /// Used by single-axis ndarray slices; multi-axis dimensions build their specs from
+    /// pre-ordered bounds via <see cref="BuildSliceSpecSyntax"/> (#1608, #1853).
     /// </summary>
     private ExpressionSyntax GenerateSliceSpec(Expression? start, Expression? stop, Expression? step)
+    {
+        // Sibling operands of one axis — see GenerateOptionalExpressionsInOrder (#1849).
+        var bounds = GenerateOptionalExpressionsInOrder(start, stop, step);
+        return BuildSliceSpecSyntax(bounds[0], bounds[1], bounds[2]);
+    }
+
+    /// <summary>
+    /// Assembles the <c>Sharpy.SliceSpec</c> value for one axis from ALREADY-GENERATED bound
+    /// expressions (a <c>null</c> slot is an absent bound): <c>SliceSpec.All</c> when every bound is
+    /// absent, otherwise <c>new SliceSpec((int?)start, (int?)stop[, (int?)step])</c>. Splitting the
+    /// syntax build from the operand generation lets a multi-axis subscript order every dimension's
+    /// bounds through the shared helper once, then reassemble each axis from the ordered pieces (#1853).
+    /// </summary>
+    private ExpressionSyntax BuildSliceSpecSyntax(
+        ExpressionSyntax? start, ExpressionSyntax? stop, ExpressionSyntax? step)
     {
         if (start == null && stop == null && step == null)
         {
@@ -2298,20 +2345,17 @@ internal partial class RoslynEmitter
         var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
         var args = new List<ArgumentSyntax>();
 
-        // Sibling operands of one axis — see GenerateOptionalExpressionsInOrder (#1849).
-        var bounds = GenerateOptionalExpressionsInOrder(start, stop, step);
-
-        args.Add(Argument(bounds[0] != null
-            ? Cast(nullableInt, bounds[0]!)
+        args.Add(Argument(start != null
+            ? Cast(nullableInt, start)
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        args.Add(Argument(bounds[1] != null
-            ? Cast(nullableInt, bounds[1]!)
+        args.Add(Argument(stop != null
+            ? Cast(nullableInt, stop)
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        if (bounds[2] != null)
+        if (step != null)
         {
-            args.Add(Argument(Cast(nullableInt, bounds[2]!)));
+            args.Add(Argument(Cast(nullableInt, step)));
         }
 
         return ObjectCreationExpression(

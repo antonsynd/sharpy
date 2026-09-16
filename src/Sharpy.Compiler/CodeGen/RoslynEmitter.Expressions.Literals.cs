@@ -894,14 +894,18 @@ internal partial class RoslynEmitter
             }
             else
             {
+                // key and value are sibling operands of one dict entry — order them left-to-right so
+                // a hoist producer in the value cannot run before an effectful key (#1853).
+                var entryOperands = GenerateExpressionsInOrder(
+                    new Expression[] { entry.Key!, entry.Value });
                 // __spread_N[key] = value
                 HoistEvaluation(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         ElementAccessExpression(IdentifierName(tempName))
                             .WithArgumentList(BracketedArgumentList(
-                                SingletonSeparatedList(Argument(GenerateExpression(entry.Key))))),
-                        GenerateExpression(entry.Value))));
+                                SingletonSeparatedList(Argument(entryOperands[0])))),
+                        entryOperands[1])));
             }
         }
 

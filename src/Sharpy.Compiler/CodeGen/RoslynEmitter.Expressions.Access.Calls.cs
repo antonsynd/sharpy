@@ -729,6 +729,16 @@ internal partial class RoslynEmitter
         => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument);
 
     /// <summary>
+    /// Generates call arguments with an un-generated expression prepended as the first argument (the
+    /// pipe forward's piped value). Unlike the pre-built <see cref="ArgumentSyntax"/> overload, the
+    /// piped value participates in the left-to-right operand ordering with the call's own arguments,
+    /// so a hoist producer in a later argument cannot run before the piped value's side effect (#1853).
+    /// </summary>
+    private ArgumentSyntax[] GenerateReorderedCallArguments(
+        FunctionCall call, FunctionSymbol? funcSymbol, Expression prependedExpression)
+        => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument: null, prependedExpression);
+
+    /// <summary>
     /// Lowers the variadic value form of <c>min()</c>/<c>max()</c> with a <c>key=</c> keyword
     /// argument (<c>min(a, b, …, key=f)</c> with ≥2 positional args) to the iterable+key overload
     /// <c>Min&lt;T,TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T,TKey&gt;)</c>, emitting
@@ -805,13 +815,36 @@ internal partial class RoslynEmitter
     /// (pipe forward scenario: <c>x |> f(y)</c> → <c>f(x, y)</c>).
     /// </summary>
     private ArgumentSyntax[] GenerateReorderedCallArgumentsCore(
-        FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax? prependedArgument)
+        FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax? prependedArgument,
+        Expression? prependedExpression = null)
     {
         if (!NeedsParameterReordering(funcSymbol))
         {
-            var preGenerated = call.Arguments.Length > 1
-                ? GenerateExpressionsInOrder(call.Arguments)
-                : null;
+            // Fold a piped value (prependedExpression) into the operand ordering so it is captured
+            // into a temp when a later call argument hoists (#1853). Spread/modified args re-generate
+            // in GeneratePositionalArguments, so a piped value alongside one is generated eagerly (its
+            // pre-order relationship is preserved by being emitted first) rather than folded.
+            ExpressionSyntax[]? preGenerated;
+            ArgumentSyntax? head = prependedArgument;
+            var hasComplexArg = call.Arguments.Any(
+                a => a is Parser.Ast.SpreadElement or Parser.Ast.ModifiedArgument);
+            if (prependedExpression != null && !hasComplexArg)
+            {
+                var operands = new List<Expression>(call.Arguments.Length + 1) { prependedExpression };
+                operands.AddRange(call.Arguments);
+                var orderedAll = GenerateExpressionsInOrder(operands);
+                head = Argument(orderedAll[0]);
+                preGenerated = new ExpressionSyntax[call.Arguments.Length];
+                System.Array.Copy(orderedAll, 1, preGenerated, 0, call.Arguments.Length);
+            }
+            else
+            {
+                if (prependedExpression != null)
+                    head = Argument(GenerateExpression(prependedExpression));
+                preGenerated = call.Arguments.Length > 1
+                    ? GenerateExpressionsInOrder(call.Arguments)
+                    : null;
+            }
             var positionalArgs = GeneratePositionalArguments(call.Arguments, funcSymbol, preGenerated);
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
             {
@@ -841,10 +874,15 @@ internal partial class RoslynEmitter
                 return Argument(kwargValue)
                     .WithNameColon(NameColon(EscapedIdentifierName(csharpName)));
             });
-            if (prependedArgument != null)
-                return new[] { prependedArgument }.Concat(positionalArgs).Concat(keywordArgs).ToArray();
+            if (head != null)
+                return new[] { head }.Concat(positionalArgs).Concat(keywordArgs).ToArray();
             return positionalArgs.Concat(keywordArgs).ToArray();
         }
+
+        // Reordering path: materialize a piped value up front — it maps to the first parameter, and
+        // this path emits named arguments so ordering is by name, not source position (#1853).
+        if (prependedArgument == null && prependedExpression != null)
+            prependedArgument = Argument(GenerateExpression(prependedExpression));
 
         // Build the non-self/cls parameter list in Sharpy declaration order
         var paramList = funcSymbol!.Parameters

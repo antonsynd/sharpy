@@ -81,6 +81,7 @@ public class OperandOrderEntryPointTotalityTests
         ["BuildCombinedVariadicArray"] = "each spread becomes its own Concat call over already-generated arrays",
         ["GeneratePositionalArguments"] = "the callers' argument list is ordered by GenerateReorderedCallArgumentsCore",
         ["GenerateCall"] = "routes its argument list through GenerateReorderedCallArgumentsCore",
+        ["GeneratePipeForward"] = "the piped value and the call's arguments are ordered together by GenerateReorderedCallArgumentsCore (#1853)",
 
         // --- Conditional / deferred, found by the first run of this scan. ---
         ["GenerateWhile"] = "the loop test is re-evaluated per iteration under its own sink",
@@ -92,24 +93,12 @@ public class OperandOrderEntryPointTotalityTests
     /// <summary>
     /// Entry points that DO build a sibling operand list and do not route through the helper — live
     /// defects of this class, parked with their issue until fixed. Deleted in the commit that routes
-    /// the method through the helper (drain on fix).
+    /// the method through the helper (drain on fix). Drained to EMPTY by #1853: every sibling operand
+    /// list now routes through the ordering helper (directly, or via GenerateReorderedCallArgumentsCore
+    /// for the call/pipe sites, which are ExemptSites). The dictionary stays so a future regression can
+    /// be parked with its issue.
     /// </summary>
-    private static readonly Dictionary<string, string> KnownRedSites = new()
-    {
-        ["GenerateTestAssert"] = "#1853 — the two compared operands, generated right-then-left for xUnit's (expected, actual)",
-        ["GenerateAssertAlmostEqual"] = "#1853 — actual, expected and the tolerance are siblings of one call",
-        ["GenerateAssertRegex"] = "#1853 — text and pattern are siblings of one call",
-        ["GenerateComparisonAssert"] = "#1853 — lhs and rhs are siblings of one call",
-        ["GenerateContainsAssert"] = "#1853 — item and collection are siblings of one call",
-        ["GenerateStore"] = "#1853 — an index target's receiver and index are siblings of one subscript",
-        ["GeneratePipeForward"] = "#1853 — the piped value and the call's own arguments are siblings",
-        ["GenerateIndexAccess"] = "#1853 — a tuple/spread index's elements are siblings of one subscript",
-        ["GenerateMultiAxisAccess"] = "#1853 — the per-dimension indices are siblings of one subscript",
-        ["GenerateSpreadDictBuilder"] = "#1853 — a spread builder's key and value are siblings of one entry",
-        ["GenerateImperativeComprehension"] = "#1853 — a dict comprehension's key and value are siblings of one entry",
-        ["TryGetApproxParts"] = "#1853 — expected, actual and the tolerance are siblings of one call",
-        ["BuildProductCapacityArgs"] = "#1853 — one clause iterator per factor of the capacity product, all siblings",
-    };
+    private static readonly Dictionary<string, string> KnownRedSites = new();
 
     [Fact]
     [Trait("Category", "Conformance")]
@@ -121,11 +110,13 @@ public class OperandOrderEntryPointTotalityTests
 
     [Fact]
     [Trait("Category", "Conformance")]
-    public void KnownRedReasons_CiteAnIssue()
+    public void KnownRedRoster_IsEmpty()
     {
-        Assert.NotEmpty(KnownRedSites);
+        // Drained on fix (#1853). Every parked entry cites an issue; the roster is empty when no
+        // sibling operand list skips the ordering helper.
         foreach (var (site, reason) in KnownRedSites)
             Assert.Contains("#", reason, StringComparison.Ordinal);
+        Assert.Empty(KnownRedSites);
     }
 
     [Fact]

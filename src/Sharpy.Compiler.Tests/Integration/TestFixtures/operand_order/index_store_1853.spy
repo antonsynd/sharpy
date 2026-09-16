@@ -1,0 +1,22 @@
+# GenerateStore's index-target arm (reached when a subscript is a tuple-unpacking target): the
+# receiver and index of the subscript are sibling operands that evaluate left to right (#1853).
+# `get_row` pops `state` (leaving [2]) and returns grid[0]; the index len is then 1, so
+# grid[0][1] = 9. Before the fix the comprehension in the index hoisted above the whole store and
+# ran before `get_row`: len 2 -> grid[0][2] = 9.
+#
+# python3 3.12:
+#   def get_row(state, grid): state.pop(0); return grid[0]
+#   state=[1,2]; grid=[[0,0,0],[0,0,0]]
+#   (get_row(state, grid)[len([v for v in state])], sink) = (9, 0)
+#   print(grid); print(sink)   # measured: [[0, 9, 0], [0, 0, 0]] / 0
+def get_row(state: list[int], grid: list[list[int]]) -> list[int]:
+    state.pop(0)
+    return grid[0]
+
+
+def main() -> None:
+    state: list[int] = [1, 2]
+    grid: list[list[int]] = [[0, 0, 0], [0, 0, 0]]
+    get_row(state, grid)[len([v for v in state])], sink = 9, 0
+    print(grid)
+    print(sink)

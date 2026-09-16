@@ -520,14 +520,29 @@ internal partial class RoslynEmitter
             return ExpressionStatement(GenerateExpression(call));
         }
 
-        var actual = GenerateExpression(call.Arguments[0]);
-        var expected = GenerateExpression(call.Arguments[1]);
-
+        // The actual value, the expected value and the tolerance/precision are sibling operands of
+        // one call. Resolve the third operand (delta > 3rd positional > places= > default), then order
+        // actual, expected and it left-to-right so an effectful earlier operand is captured before a
+        // hoist producer in a later one (#1853).
         // delta keyword takes precedence over places: assert_almost_equal(a, b, delta=0.001)
         var deltaKw = call.KeywordArguments.FirstOrDefault(k => k.Name == "delta");
-        if (deltaKw != null)
+        bool isDelta = deltaKw != null;
+        Expression? thirdExpr;
+        if (isDelta)
+            thirdExpr = deltaKw!.Value;
+        else if (call.Arguments.Length >= 3)
+            thirdExpr = call.Arguments[2];
+        else
+            thirdExpr = call.KeywordArguments.FirstOrDefault(k => k.Name == "places")?.Value;
+
+        var ordered = GenerateOptionalExpressionsInOrder(
+            call.Arguments[0], call.Arguments[1], thirdExpr);
+        var actual = ordered[0]!;
+        var expected = ordered[1]!;
+
+        if (isDelta)
         {
-            var delta = GenerateExpression(deltaKw.Value);
+            var delta = ordered[2]!;
             // global::System.Math.Abs(actual - expected) <= delta
             var absExpr = InvocationExpression(
                 MemberAccessExpression(
@@ -545,18 +560,8 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(condition)));
         }
 
-        ExpressionSyntax precision;
-        if (call.Arguments.Length >= 3)
-        {
-            precision = GenerateExpression(call.Arguments[2]);
-        }
-        else
-        {
-            var placesKw = call.KeywordArguments.FirstOrDefault(k => k.Name == "places");
-            precision = placesKw != null
-                ? GenerateExpression(placesKw.Value)
-                : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
-        }
+        var precision = ordered[2]
+            ?? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
 
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
@@ -637,8 +642,10 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateAssertRegex(FunctionCall call)
     {
-        var text = GenerateExpression(call.Arguments[0]);
-        var pattern = GenerateExpression(call.Arguments[1]);
+        // text and pattern are sibling operands of one call — generate them left-to-right (text then
+        // pattern, Python's order) so an effectful text is captured before a hoist producer in the
+        // pattern, then fill Matches's (pattern, text) positions from the ordered results (#1853).
+        var ordered = GenerateExpressionsInOrder(new Expression[] { call.Arguments[0], call.Arguments[1] });
 
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
@@ -646,8 +653,8 @@ internal partial class RoslynEmitter
                     ParseQualifiedName("Xunit.Assert"),
                     IdentifierName("Matches")))
             .AddArgumentListArguments(
-                Argument(pattern),
-                Argument(text)));
+                Argument(ordered[1]),
+                Argument(ordered[0])));
     }
 
     /// <summary>
@@ -730,8 +737,11 @@ internal partial class RoslynEmitter
         if (call.Arguments.Length < 2)
             return null;
 
-        var lhs = GenerateExpression(call.Arguments[0]);
-        var rhs = GenerateExpression(call.Arguments[1]);
+        // lhs and rhs are sibling operands of one comparison — order them left-to-right so an
+        // effectful lhs is captured before a hoist producer in the rhs (#1853).
+        var ordered = GenerateExpressionsInOrder(new Expression[] { call.Arguments[0], call.Arguments[1] });
+        var lhs = ordered[0];
+        var rhs = ordered[1];
         var comparison = Binary(compareKind, lhs, rhs);
         var message = LiteralExpression(
             SyntaxKind.StringLiteralExpression,
@@ -749,8 +759,11 @@ internal partial class RoslynEmitter
         if (call.Arguments.Length < 2)
             return null;
 
-        var item = GenerateExpression(call.Arguments[0]);
-        var collection = GenerateExpression(call.Arguments[1]);
+        // item and collection are sibling operands of one call — order them left-to-right so an
+        // effectful item is captured before a hoist producer in the collection (#1853).
+        var ordered = GenerateExpressionsInOrder(new Expression[] { call.Arguments[0], call.Arguments[1] });
+        var item = ordered[0];
+        var collection = ordered[1];
         var method = contains ? "Contains" : "DoesNotContain";
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(

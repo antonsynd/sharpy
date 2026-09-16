@@ -1,0 +1,18 @@
+# GenerateIndexAccess: a subscript read's receiver and index are sibling operands that evaluate left
+# to right (#1853). `take_list` pops `state` (leaving [2]) and returns `data`; the index len is then
+# 1, so data[1] = 20. Before the fix the comprehension in the index hoisted above the subscript and
+# ran before the pop: len 2 -> data[2] = 30.
+#
+# python3 3.12:
+#   def take_list(state, data): state.pop(0); return data
+#   state=[1,2]; data=[10,20,30]
+#   print(take_list(state, data)[len([v for v in state])])  # measured: 20
+def take_list(state: list[int], data: list[int]) -> list[int]:
+    state.pop(0)
+    return data
+
+
+def main() -> None:
+    state: list[int] = [1, 2]
+    data: list[int] = [10, 20, 30]
+    print(take_list(state, data)[len([v for v in state])])

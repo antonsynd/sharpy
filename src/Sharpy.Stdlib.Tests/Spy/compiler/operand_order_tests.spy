@@ -1,0 +1,108 @@
+# Operand-order drain for the @test / unittest assert rewrites and the numpy multi-axis subscript
+# (#1853). Each assertion's compared operands are siblings of one C# call, and must evaluate left to
+# right: an effectful earlier operand (a list pop) is captured before a hoist producer in a later one
+# (a comprehension). Every cell below PASSES in source order and FAILS under the wrong order, so a
+# reverted routing turns exactly its cell red (Rule 12).
+#
+# python3 3.12 pins the correct-order values (a `take` pops the first element, then the comprehension
+# measures what remains):
+#   xs=[2,9,9]: take->2, len([9,9])==2                 -> 2 == 2
+#   xs=[3,9,9]: take->3, len([9,9])==2                 -> 3 != 2, 3 > 2
+#   xs=[9,1,2]: take->9, [1,2]                         -> 9 not in [1, 2]
+#   state=[9,2,3]: take_str pops 9, "".join(["2","3"]) -> "23" matches "23"
+#   a[take0(xs), len([2,3]):] on 2x3 -> a[0, 2:] == array([30.0])
+import numpy as np
+from unittest import assert_almost_equal, assert_regex, assert_greater, assert_not_in, approx
+
+
+def take(xs: list[int]) -> int:
+    return xs.pop(0)
+
+
+def take0(xs: list[int]) -> int:
+    xs.pop(0)
+    return 0
+
+
+def takef(xs: list[float]) -> float:
+    return xs.pop(0)
+
+
+def take_str(state: list[int], s: str) -> str:
+    state.pop(0)
+    return s
+
+
+# GenerateTestAssert: `assert a == b` -> Xunit.Assert.Equal(b, a). Left (a) is effectful, right (b)
+# hoists; the operands generate left-to-right and fill the (expected, actual) positions (#1853).
+@test
+def test_assert_equal_operand_order_1853():
+    xs: list[int] = [2, 9, 9]
+    assert take(xs) == len([v for v in xs])
+
+
+# GenerateTestAssert: `assert a != b` -> Xunit.Assert.NotEqual(b, a).
+@test
+def test_assert_not_equal_operand_order_1853():
+    xs: list[int] = [3, 9, 9]
+    assert take(xs) != len([v for v in xs])
+
+
+# GenerateTestAssert: `assert a not in b` -> Xunit.Assert.DoesNotContain(a, b).
+@test
+def test_assert_not_in_operand_order_1853():
+    xs: list[int] = [9, 1, 2]
+    assert take(xs) not in [v for v in xs]
+
+
+# TryGetApproxParts: `assert x == approx(y)` -> Xunit.Assert.Equal(expected, actual, tolerance).
+# actual (x) is effectful, the approx expected (y) hoists; they order by which side approx sits on.
+@test
+def test_assert_approx_operand_order_1853():
+    xs: list[float] = [2.0, 9.0, 9.0]
+    assert takef(xs) == approx(len([v for v in xs]) * 1.0)
+
+
+# GenerateAssertAlmostEqual: assert_almost_equal(actual, expected) -> Xunit.Assert.Equal(expected,
+# actual, precision). actual (arg 0) is effectful, expected (arg 1) hoists.
+@test
+def test_assert_almost_equal_operand_order_1853():
+    xs: list[float] = [2.0, 9.0, 9.0]
+    assert_almost_equal(takef(xs), len([v for v in xs]) * 1.0)
+
+
+# GenerateComparisonAssert: assert_greater(a, b) -> Xunit.Assert.True(a > b). a (arg 0) is effectful,
+# b (arg 1) hoists.
+@test
+def test_assert_greater_operand_order_1853():
+    xs: list[int] = [3, 9, 9]
+    assert_greater(take(xs), len([v for v in xs]))
+
+
+# GenerateContainsAssert: assert_not_in(item, collection) -> Xunit.Assert.DoesNotContain(item,
+# collection). item (arg 0) is effectful, collection (arg 1) hoists.
+@test
+def test_assert_helper_not_in_operand_order_1853():
+    xs: list[int] = [9, 1, 2]
+    assert_not_in(take(xs), [v for v in xs])
+
+
+# GenerateAssertRegex: assert_regex(text, pattern) -> Xunit.Assert.Matches(pattern, text). text
+# (arg 0) is effectful, pattern (arg 1) hoists. take_str pops the leading 9 so the pattern joins to
+# "23" and matches; under the wrong order the pattern joins the un-popped list ("923") and fails.
+@test
+def test_assert_regex_operand_order_1853():
+    state: list[int] = [9, 2, 3]
+    assert_regex(take_str(state, "23"), "".join([str(v) for v in state]))
+
+
+# GenerateMultiAxisAccess: a[i, j:] — the receiver and per-dimension bounds are siblings of one
+# subscript. take0 (dim 0 index) is effectful, the slice start len([...]) (dim 1) hoists; correct
+# order reads a[0, 2:] == [30.0], the wrong order reads a[0, 3:] == [] and the element read throws.
+@test
+def test_multiaxis_operand_order_1853():
+    xs: list[int] = [1, 2, 3]
+    a = np.array([[10.0, 20.0, 30.0], [40.0, 50.0, 60.0]])
+    r = a[take0(xs), len([v for v in xs]):]
+    assert r.size == 1
+    assert r[0] == 30.0

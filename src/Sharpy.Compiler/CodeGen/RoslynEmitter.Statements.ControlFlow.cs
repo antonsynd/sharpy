@@ -223,24 +223,29 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(GenerateExpression(nonNoneOperand))));
         }
 
-        // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order)
+        // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order). The operands are
+        // siblings of one comparison, generated left-to-right so an effectful `a` is captured before
+        // a hoist producer in `b` — the (expected, actual) arg positions are then filled from the
+        // ordered results (#1853).
         if (test is BinaryOp { Operator: BinaryOperator.Equal } eq)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { eq.Left, eq.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Equal")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(eq.Right)),
-                    Argument(GenerateExpression(eq.Left))));
+                    Argument(ordered[1]),
+                    Argument(ordered[0])));
         }
 
         // assert a != b → Xunit.Assert.NotEqual(b, a)
         if (test is BinaryOp { Operator: BinaryOperator.NotEqual } neq)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { neq.Left, neq.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotEqual")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(neq.Right)),
-                    Argument(GenerateExpression(neq.Left))));
+                    Argument(ordered[1]),
+                    Argument(ordered[0])));
         }
 
         // assert a is None → Xunit.Assert.Null(a)
@@ -262,41 +267,45 @@ internal partial class RoslynEmitter
         // assert a is b → Xunit.Assert.Same(b, a)
         if (test is BinaryOp { Operator: BinaryOperator.Is } isSame)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { isSame.Left, isSame.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Same")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(isSame.Right)),
-                    Argument(GenerateExpression(isSame.Left))));
+                    Argument(ordered[1]),
+                    Argument(ordered[0])));
         }
 
         // assert a is not b → Xunit.Assert.NotSame(b, a)
         if (test is BinaryOp { Operator: BinaryOperator.IsNot } isNotSame)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { isNotSame.Left, isNotSame.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotSame")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(isNotSame.Right)),
-                    Argument(GenerateExpression(isNotSame.Left))));
+                    Argument(ordered[1]),
+                    Argument(ordered[0])));
         }
 
         // assert a in b → Xunit.Assert.Contains(a, b)
         if (test is BinaryOp { Operator: BinaryOperator.In } inOp)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { inOp.Left, inOp.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Contains")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(inOp.Left)),
-                    Argument(GenerateExpression(inOp.Right))));
+                    Argument(ordered[0]),
+                    Argument(ordered[1])));
         }
 
         // assert a not in b → Xunit.Assert.DoesNotContain(a, b)
         if (test is BinaryOp { Operator: BinaryOperator.NotIn } notInOp)
         {
+            var ordered = GenerateExpressionsInOrder(new Expression[] { notInOp.Left, notInOp.Right });
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("DoesNotContain")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(notInOp.Left)),
-                    Argument(GenerateExpression(notInOp.Right))));
+                    Argument(ordered[0]),
+                    Argument(ordered[1])));
         }
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
@@ -928,25 +937,42 @@ internal partial class RoslynEmitter
             return null;
         }
 
-        var actualExpr = AsApproxCall(approxEq.Left) != null ? approxEq.Right : approxEq.Left;
-        var expected = GenerateExpression(approxCall.Arguments[0]);
-        var actual = GenerateExpression(actualExpr);
+        var approxIsLeft = AsApproxCall(approxEq.Left) != null;
+        var actualExpr = approxIsLeft ? approxEq.Right : approxEq.Left;
+        var expectedExpr = approxCall.Arguments[0];
 
         var absKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "abs");
         var placesKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "places");
 
-        ExpressionSyntax toleranceArg;
+        Expression? toleranceExpr;
         bool isPlaces;
         if (absKw != null)
-        { toleranceArg = GenerateExpression(absKw.Value); isPlaces = false; }
+        { toleranceExpr = absKw.Value; isPlaces = false; }
         else if (approxCall.Arguments.Length >= 3)
-        { toleranceArg = GenerateExpression(approxCall.Arguments[2]); isPlaces = false; }
+        { toleranceExpr = approxCall.Arguments[2]; isPlaces = false; }
         else if (placesKw != null)
-        { toleranceArg = GenerateExpression(placesKw.Value); isPlaces = true; }
+        { toleranceExpr = placesKw.Value; isPlaces = true; }
         else if (approxCall.Arguments.Length >= 2)
-        { toleranceArg = GenerateExpression(approxCall.Arguments[1]); isPlaces = true; }
+        { toleranceExpr = approxCall.Arguments[1]; isPlaces = true; }
         else
-        { toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7)); isPlaces = true; }
+        { toleranceExpr = null; isPlaces = true; }
+
+        // The expected value, the actual value and the tolerance are sibling operands of one
+        // comparison. Order them left-to-right by which side approx sits on: approx(expected[, tol])
+        // evaluates its own arguments together, and the other `==` operand is the actual value — so an
+        // effectful operand is captured before a hoist producer in a later one (#1853).
+        var ordered = approxIsLeft
+            ? GenerateOptionalExpressionsInOrder(expectedExpr, toleranceExpr, actualExpr)
+            : GenerateOptionalExpressionsInOrder(actualExpr, expectedExpr, toleranceExpr);
+
+        ExpressionSyntax expected, actual;
+        ExpressionSyntax? toleranceArg;
+        if (approxIsLeft)
+        { expected = ordered[0]!; toleranceArg = ordered[1]; actual = ordered[2]!; }
+        else
+        { actual = ordered[0]!; expected = ordered[1]!; toleranceArg = ordered[2]; }
+
+        toleranceArg ??= LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
 
         return new ApproxParts(expected, actual, toleranceArg, isPlaces);
     }

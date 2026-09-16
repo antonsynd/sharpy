@@ -184,17 +184,27 @@ internal partial class RoslynEmitter
     /// </summary>
     private ArgumentListSyntax BuildProductCapacityArgs(ImmutableArray<ComprehensionClause> clauses)
     {
-        ExpressionSyntax? product = null;
+        // The per-factor iterators are sibling operands of one capacity product. This path is taken
+        // only when the lowering pass proved every source sized AND effect-free (E3, #1057), so the
+        // ordering helper never needs to capture one — but routing through it keeps the operand-order
+        // seam total: every sibling operand list flows through GenerateExpressionsInOrder (#1853).
+        var iterators = new List<Expression>();
         foreach (var clause in clauses)
         {
-            if (clause is not ForClause forClause)
-                continue;
+            if (clause is ForClause forClause)
+                iterators.Add(forClause.Iterator);
+        }
 
+        var generated = GenerateExpressionsInOrder(iterators);
+
+        ExpressionSyntax? product = null;
+        foreach (var iter in generated)
+        {
             var count = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 ParenthesizedExpression(Cast(
                     MakeGlobalQualifiedName("Sharpy", "ISized"),
-                    GenerateExpression(forClause.Iterator))),
+                    iter)),
                 IdentifierName("Count"));
 
             product = product is null
@@ -606,14 +616,17 @@ internal partial class RoslynEmitter
         {
             if (collectionKind == BuiltinNames.Dict)
             {
+                // key and value are sibling operands of one dict entry — order them left-to-right so
+                // a hoist producer in the value cannot run before an effectful key (#1853).
+                var dictOperands = GenerateExpressionsInOrder(new Expression[] { keyExpr!, valueExpr! });
                 // __comp_N[key] = value;
                 innerStmt = ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         ElementAccessExpression(IdentifierName(tempName))
                             .WithArgumentList(BracketedArgumentList(
-                                SingletonSeparatedList(Argument(GenerateExpression(keyExpr!))))),
-                        GenerateExpression(valueExpr!)));
+                                SingletonSeparatedList(Argument(dictOperands[0])))),
+                        dictOperands[1]));
             }
             else if (elementIsSpread && element is SpreadElement spreadElem)
             {

@@ -317,8 +317,6 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GeneratePipeForward(Expression leftExpr, Expression rightExpr)
     {
-        var left = GenerateExpression(leftExpr);
-
         // A pipe target is a callee, so it unwraps like one — the same purely structural
         // normalization GenerateCall applies (#1147, #1170). Without it a parenthesized target
         // reaches GenerateExpression and emits `(Double)(...)`, which C# re-parses as a cast.
@@ -337,8 +335,10 @@ internal partial class RoslynEmitter
                 && Shared.AstHelper.UnwrapParenthesized(funcCall.Function) is Identifier pipeFuncId)
                 pipeFuncSymbol = _context.LookupSymbol(pipeFuncId.Name) as FunctionSymbol;
 
-            // Delegate to shared call-site reordering with the piped value prepended
-            var allArgs = GenerateReorderedCallArguments(funcCall, pipeFuncSymbol, Argument(left));
+            // Delegate to shared call-site reordering with the piped value prepended. Passing the
+            // un-generated expression lets it participate in left-to-right operand ordering with the
+            // call's own arguments (#1853).
+            var allArgs = GenerateReorderedCallArguments(funcCall, pipeFuncSymbol, leftExpr);
 
             return InvocationExpression(func)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -351,6 +351,7 @@ internal partial class RoslynEmitter
             && partialLambda.Parameters.Length == 1
             && partialLambda.Body is FunctionCall partialCall)
         {
+            var left = GenerateExpression(leftExpr);
             var placeholderName = partialLambda.Parameters[0].Name;
             var func = GeneratePipeCallTarget(partialCall.Function);
 
@@ -375,9 +376,10 @@ internal partial class RoslynEmitter
 
         // Case 3: Right side is an identifier or member access - call it with left as the only argument
         // x |> f → f(x)
+        var singleArg = GenerateExpression(leftExpr);
         var right = GeneratePipeCallTarget(rightExpr);
         return InvocationExpression(right)
-            .AddArgumentListArguments(Argument(left));
+            .AddArgumentListArguments(Argument(singleArg));
     }
 
     /// <summary>
