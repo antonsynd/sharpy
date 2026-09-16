@@ -2904,6 +2904,41 @@ and center-alignment.
 
 **Returns:** The aligned string, or *value* unchanged if already wider than *width*
 
+### `assigned(flag: ref bool, value: T) -> T`
+
+Records that a runtime-checked local has been assigned and forwards the stored value, so
+a store can set the local's assigned-flag inline — in statement position
+(`n = Builtins.Assigned(ref __n_assigned, 5);`) and in walrus/expression position
+alike. Used by the emitter for a local whose assignment a `with` block can suppress
+(#1839): every store to the local is wrapped so a later read can tell "assigned" from
+"unset" at runtime.
+
+**Parameters:**
+
+- `flag` (ref bool) -- The local's assigned-flag; set to `True`.
+- `value` (T) -- The value being stored.
+
+**Returns:** *value* unchanged.
+
+### `checked_local(flag: bool, value: T, name: str) -> T`
+
+Reads a runtime-checked local: returns *value* when
+*flag* is set, else raises `UnboundLocalError` naming the
+variable — Python's `UnboundLocalError` semantics for a local read before assignment
+(#1839).
+
+**Parameters:**
+
+- `flag` (bool) -- The local's assigned-flag.
+- `value` (T) -- The local's current value (a `default!` placeholder when unset).
+- `name` (str) -- The Python name of the local, for the error message.
+
+**Returns:** *value* when *flag* is set.
+
+**Raises:**
+
+- `UnboundLocalError` -- When *flag* is `false`.
+
 ### `print(*values: object | None)`
 
 Print values to standard output, matching Python's print() behavior.
