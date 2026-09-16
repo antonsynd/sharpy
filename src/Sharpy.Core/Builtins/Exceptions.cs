@@ -358,4 +358,28 @@ namespace Sharpy
             Code = code;
         }
     }
+
+    /// <summary>
+    /// Raised when a local variable is read before it has been assigned. Equivalent to Python's
+    /// <c>UnboundLocalError</c>. The compiler emits a runtime check for a local whose assignment
+    /// can be suppressed by a <c>with</c> block (#1839): a read reachable only through the
+    /// suppression edge is checked, not refused, so the program matches Python at runtime.
+    /// </summary>
+    public class UnboundLocalError : Exception
+    {
+        /// <summary>Create an UnboundLocalError with an explicit message.</summary>
+        public UnboundLocalError(string message) : base(message)
+        {
+        }
+
+        /// <summary>
+        /// Create an UnboundLocalError naming the unset variable, with Python 3.12's exact wording:
+        /// <c>cannot access local variable '{name}' where it is not associated with a value</c>.
+        /// </summary>
+        public static UnboundLocalError ForName(string name)
+        {
+            return new UnboundLocalError(
+                "cannot access local variable '" + name + "' where it is not associated with a value");
+        }
+    }
 }
