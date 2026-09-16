@@ -617,39 +617,11 @@ internal partial class TypeChecker
         }
         else if (forClause.Target is TupleLiteral targetTuple)
         {
-            bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
-
-            if (elemType is TupleType tupleType)
-            {
-                if (hasStar)
-                {
-                    BindStarredUnpackingTargets(targetTuple, tupleType,
-                        forClause.LineStart, forClause.ColumnStart, forClause.Target.Span,
-                        UnpackingPosition.ComprehensionForClause);
-                }
-                else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
-                {
-                    AddError(UnpackArityMessage(tupleType.ElementTypes.Count, targetTuple.Elements.Length, UnpackingPosition.ComprehensionForClause),
-                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                        span: forClause.Target.Span);
-                }
-                else
-                {
-                    DefineForLoopTupleTargets(targetTuple.Elements, tupleType.ElementTypes);
-                }
-            }
-            else if (hasStar && elemType is GenericType { Name: BuiltinNames.List } listType
-                     && listType.TypeArguments.Count > 0)
-            {
-                BindStarredListUnpackingTargets(targetTuple, listType.TypeArguments[0],
-                    forClause.LineStart, forClause.ColumnStart, forClause.Target.Span);
-            }
-            else
-            {
-                AddError(UnpackNonTupleMessage(elemType.GetDisplayName(), UnpackingPosition.ComprehensionForClause),
-                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                    span: forClause.Target.Span);
-            }
+            // The one unpacking rule binds the comprehension for-clause target, star-aware at every
+            // depth, with the "in comprehension for clause" suffix on SPY0239 (#1846).
+            CheckUnpackingTargets(targetTuple.Elements, elemType,
+                UnpackingPosition.ComprehensionForClause,
+                forClause.LineStart, forClause.ColumnStart, forClause.Target.Span);
 
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
             if (elemType is UnknownType)

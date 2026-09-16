@@ -1540,50 +1540,17 @@ internal partial class TypeChecker
             }
             else if (targetElem is TupleLiteral nestedTuple)
             {
-                // Nested tuple unpacking: (a, b), c = expr
-                // When the caller skipped the whole-tuple check (placeholder types), derive
-                // the element type from the source node.
-                var nestedType = valueElemType;
-                if (nestedType is UnknownType && valueElemNode != null)
-                {
-                    // Push the nested TARGETS' declared slots as the inner literal's expectation,
-                    // the same slot push the identifier arm makes for its own declared type. Read
-                    // slot-less, `(x, y), n = (None, "b"), 1` has a bare `None` with nothing to be
-                    // and the per-index seam refuses it (#1796) even though `x: str | None` is
-                    // exactly the slot that decides it (#1707).
-                    var nestedSlot = NestedTargetSlot(nestedTuple);
-                    using (nestedSlot != null
-                        ? EnterStore(StorePosition.TupleElement, nestedSlot, valueElemNode)
-                        : null)
-                    {
-                        nestedType = CheckExpression(valueElemNode);
-                    }
-                }
-
-                if (nestedType is not TupleType nestedTupleType)
-                {
-                    AddError(UnpackNonTupleMessage(nestedType.GetDisplayName(), UnpackingPosition.Assignment, nested: true),
-                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                        span: targetElem.Span);
-                    continue;
-                }
-
-                if (nestedTuple.Elements.Length != nestedTupleType.ElementTypes.Count)
-                {
-                    AddError(UnpackArityMessage(nestedTupleType.ElementTypes.Count, nestedTuple.Elements.Length, UnpackingPosition.Assignment, nested: true),
-                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                        span: targetElem.Span);
-                    continue;
-                }
-
-                // Recurse into nested tuple, then recompose the inner literal's own type from
-                // the elements the recursion just checked under their targets' slots. Without the
-                // recomposition the OUTER recomposition reads the stale inner type and the temp is
-                // still `var __t = ((null, "b"), 1)` — CS0815 (#1707).
-                var nestedValueNodes = TupleLiteralElements(valueElemNode);
-                CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes,
-                    nestedValueNodes);
-                RecomposeTupleLiteralType(valueElemNode, nestedValueNodes);
+                // Nested tuple unpacking: (a, b), c = expr — routed through the ONE unpacking rule so
+                // a nested star `(a, (b, *c)) = …` and a nested arity/non-tuple refusal are the same
+                // check as the top level, at every depth (#1846). When the RHS element is a tuple
+                // literal, the routine checks each of its rows under the nested targets' declared
+                // slots (so `(x, y), n = (None, "b"), 1` types the None under `x: str | None`, #1707)
+                // and recomposes the inner literal's own type; otherwise it binds against the source
+                // type the caller derived.
+                CheckUnpackingTargets(nestedTuple.Elements, valueElemType,
+                    UnpackingPosition.Assignment,
+                    targetElem.LineStart, targetElem.ColumnStart, targetElem.Span,
+                    valueNode: valueElemNode, nested: true);
             }
             else
             {
@@ -1653,14 +1620,14 @@ internal partial class TypeChecker
     /// the star's list and is checked with no slot.
     /// </remarks>
     private IReadOnlyList<SemanticType> CheckStarValueElements(
-        TupleLiteral targetTuple, IReadOnlyList<Expression> valueNodes,
+        ImmutableArray<Expression> targets, IReadOnlyList<Expression> valueNodes,
         int targetsBefore, int targetsAfter)
     {
         var types = new List<SemanticType>(valueNodes.Count);
 
         for (int i = 0; i < valueNodes.Count; i++)
         {
-            var target = StarTargetForValueIndex(targetTuple, valueNodes.Count, i, targetsBefore, targetsAfter);
+            var target = StarTargetForValueIndex(targets, valueNodes.Count, i, targetsBefore, targetsAfter);
             var slot = target is Identifier id
                 && (_symbolTable.Lookup(id.Name, searchParents: false) as VariableSymbol
                     ?? _symbolTable.Lookup(id.Name, searchParents: true) as VariableSymbol)
@@ -1743,14 +1710,14 @@ internal partial class TypeChecker
     /// or null when it falls inside the star's span.
     /// </summary>
     private static Expression? StarTargetForValueIndex(
-        TupleLiteral targetTuple, int valueCount, int valueIndex, int targetsBefore, int targetsAfter)
+        ImmutableArray<Expression> targets, int valueCount, int valueIndex, int targetsBefore, int targetsAfter)
     {
         if (valueIndex < targetsBefore)
-            return targetTuple.Elements[valueIndex];
+            return targets[valueIndex];
 
         int fromEnd = valueCount - valueIndex;
         if (fromEnd <= targetsAfter)
-            return targetTuple.Elements[targetTuple.Elements.Length - fromEnd];
+            return targets[targets.Length - fromEnd];
 
         return null;
     }
@@ -1760,179 +1727,30 @@ internal partial class TypeChecker
     /// type when the RHS was a literal, else the one type derived for the star's list.
     /// </summary>
     private static SemanticType NonStarTargetType(
-        TupleLiteral targetTuple, Identifier target,
+        ImmutableArray<Expression> targets, Identifier target,
         IReadOnlyList<SemanticType>? perElement, SemanticType fallback)
     {
         if (perElement == null)
             return fallback;
 
-        int starPosition = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
-        int targetIndex = targetTuple.Elements.ToList().FindIndex(e => ReferenceEquals(e, target));
+        int starPosition = -1;
+        int targetIndex = -1;
+        for (int i = 0; i < targets.Length; i++)
+        {
+            if (starPosition < 0 && targets[i] is StarExpression)
+                starPosition = i;
+            if (targetIndex < 0 && ReferenceEquals(targets[i], target))
+                targetIndex = i;
+        }
         if (targetIndex < 0)
             return fallback;
 
-        if (targetIndex < starPosition)
+        if (starPosition < 0 || targetIndex < starPosition)
             return targetIndex < perElement.Count ? perElement[targetIndex] : fallback;
 
-        int fromEnd = targetTuple.Elements.Length - targetIndex;
+        int fromEnd = targets.Length - targetIndex;
         int valueIndex = perElement.Count - fromEnd;
         return valueIndex >= 0 && valueIndex < perElement.Count ? perElement[valueIndex] : fallback;
     }
 
-    /// <param name="valueNodes">
-    /// The RHS element EXPRESSIONS when the value is a tuple literal, else null. Given them, each
-    /// non-star target's DECLARED slot is pushed before its own element is checked, exactly as the
-    /// flat unpacking path does (#1785): the whole-expression check types a bare <c>None</c> as
-    /// <c>void</c> before any slot exists, and binding that void to the target made
-    /// <c>x: str | None = "a"; x, *rest = None, 1, 2</c> a SPY0599 void local. It also gives each
-    /// target its OWN element's type instead of the one type derived for the star's list.
-    /// </param>
-    private void CheckStarUnpacking(
-        TupleLiteral targetTuple, Assignment assignment, IReadOnlyList<Expression>? valueNodes)
-    {
-        // Validate only one star expression
-        int starCount = targetTuple.Elements.Count(e => e is StarExpression);
-        if (starCount > 1)
-        {
-            AddError("Only one starred expression is allowed in an unpacking assignment",
-                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.MultipleStarExpressions,
-                span: assignment.Span);
-            return;
-        }
-
-        int starPosition = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
-        int targetsBefore = starPosition;
-        int targetsAfter = targetTuple.Elements.Length - starPosition - 1;
-
-        // Per-element types when the RHS is a literal of sufficient arity; otherwise the whole
-        // expression's type, as before.
-        IReadOnlyList<SemanticType>? perElement = null;
-        SemanticType valueType;
-        if (valueNodes != null && valueNodes.Count >= targetsBefore + targetsAfter)
-        {
-            perElement = CheckStarValueElements(targetTuple, valueNodes, targetsBefore, targetsAfter);
-            RecomposeTupleLiteralType(assignment.Value, valueNodes);
-            valueType = new TupleType { ElementTypes = perElement.ToList() };
-            _semanticInfo.SetExpressionType(assignment.Value, valueType);
-        }
-        else
-        {
-            valueType = CheckExpression(assignment.Value);
-        }
-
-        // Determine element type from the source
-        SemanticType elementType;
-        if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
-        {
-            elementType = listType.TypeArguments[0];
-        }
-        else if (valueType is TupleType tupleType)
-        {
-            // For tuples, compute the starred variable's element type from the rest elements
-            int nBefore = targetsBefore;
-            int nAfter = targetsAfter;
-            int tupleArity = tupleType.ElementTypes.Count;
-
-            // Collect the types of elements that go into the rest variable
-            var restTypes = new List<SemanticType>();
-            for (int ri = nBefore; ri < tupleArity - nAfter; ri++)
-            {
-                if (ri >= 0 && ri < tupleArity)
-                    restTypes.Add(tupleType.ElementTypes[ri]);
-            }
-
-            if (restTypes.Count == 0)
-            {
-                elementType = tupleType.ElementTypes.Count > 0 ? tupleType.ElementTypes[0] : SemanticType.Unknown;
-            }
-            else if (restTypes.All(t => t.Equals(restTypes[0])))
-            {
-                elementType = restTypes[0];
-            }
-            else
-            {
-                elementType = BuiltinType.Object;
-            }
-        }
-        else
-        {
-            AddError($"Cannot use starred unpacking with type '{valueType.GetDisplayName()}'",
-                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
-                span: assignment.Span);
-            return;
-        }
-
-        // Define variables for each target
-        foreach (var targetElem in targetTuple.Elements)
-        {
-            if (targetElem is StarExpression starExpr && starExpr.Operand is Identifier starId)
-            {
-                // Starred variable gets list[T] type
-                var listTypeForStar = new GenericType
-                {
-                    Name = BuiltinNames.List,
-                    TypeArguments = new List<SemanticType> { elementType }
-                };
-                var starSymbol = new VariableSymbol
-                {
-                    Name = starId.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = listTypeForStar,
-                    IsConstant = false,
-                    DeclarationLine = starId.LineStart,
-                    DeclarationColumn = starId.ColumnStart,
-                    NameDeclarationLine = starId.LineStart,
-                    NameDeclarationColumn = starId.ColumnStart,
-                    AccessLevel = AccessLevel.Public
-                };
-                _symbolTable.Define(starSymbol);
-                SemanticBinding.SetVariableType(starSymbol, listTypeForStar);
-                _semanticInfo.SetIdentifierSymbol(starId, starSymbol);
-                _semanticInfo.SetTargetBinding(starId, new TargetBinding(TargetBindingKind.Declares));
-                _semanticInfo.SetExpressionType(starId, listTypeForStar);
-                _semanticInfo.SetExpressionType(starExpr, listTypeForStar);
-            }
-            else if (targetElem is Identifier id)
-            {
-                // A target that already has a declared binding is a STORE into it, not a fresh
-                // local: the emitted C# assigns INTO that local and it keeps its declared type
-                // (#1706). Without this even the non-None control shadowed the declared name —
-                // `x: str | None = "a"; x, *rest = "b", 1, 2` emitted `var x_1 = __t.Item1`, so
-                // `x` ended up `str`.
-                var predecessor = _symbolTable.Lookup(id.Name, searchParents: false)
-                    as VariableSymbol
-                    ?? _symbolTable.Lookup(id.Name, searchParents: true) as VariableSymbol;
-
-                var boundType = predecessor != null
-                    ? DeclaredBindingType(predecessor)
-                    : NonStarTargetType(targetTuple, id, perElement, elementType);
-
-                var symbol = new VariableSymbol
-                {
-                    Name = id.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = boundType,
-                    IsConstant = false,
-                    DeclarationLine = id.LineStart,
-                    DeclarationColumn = id.ColumnStart,
-                    NameDeclarationLine = id.LineStart,
-                    NameDeclarationColumn = id.ColumnStart,
-                    AccessLevel = AccessLevel.Public
-                };
-                _symbolTable.Define(symbol);
-                SemanticBinding.SetVariableType(symbol, boundType);
-                _semanticInfo.SetIdentifierSymbol(id, symbol);
-                if (predecessor != null)
-                {
-                    _semanticInfo.SetRebindingPredecessor(symbol, predecessor);
-                    _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Rebinds));
-                }
-                else
-                {
-                    _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
-                }
-                _semanticInfo.SetExpressionType(id, boundType);
-            }
-        }
-    }
 }

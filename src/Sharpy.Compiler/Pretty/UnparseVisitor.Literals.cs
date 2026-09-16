@@ -235,9 +235,12 @@ internal sealed partial class UnparseVisitor
         // tuple round-trips a source trailing comma (`(*a,)`, `(1, 2,)`). A list display never does
         // (`[x]`, `[*a]`), and a named tuple is written without one.
         bool unnamed = node.ElementNames.IsEmpty || node.ElementNames.All(n => n == null);
+        // A sole StarExpression is the canonical unpacking form and only round-trips with its comma
+        // (`(*b,)` — bare `(*b)` reparses to a SpreadElement, not a StarExpression); a sole
+        // SpreadElement is the bare `(*a)` and keeps no comma unless the source carried one.
         bool soleAutoComma = node.Elements.Length == 1
             && !node.IsListDisplay
-            && node.Elements[0] is not (StarExpression or SpreadElement);
+            && node.Elements[0] is not SpreadElement;
         if (!hasStarUnpack && unnamed && (soleAutoComma || node.HasTrailingComma))
             _w.Write(",");
         if (!hasStarUnpack)
