@@ -7,6 +7,6 @@ def main():
     b = Box[int](42)
     match b:
         case Box[int]() as x:
-            print("matched")
+            print("matched", x.value)
         case _:
             print("no match")

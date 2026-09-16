@@ -417,8 +417,10 @@ def main() -> None:
         // wrong 0-tuple test (which is what the emitter produced before #1670's checker half).
         yield return new object[] { "tuple(v)", DiagnosticCodes.Semantic.OpenGenericTypeTest };
         yield return new object[] { "frozenset(v)", DiagnosticCodes.Semantic.OpenGenericTypeTest };
-        // A pattern cannot name type arguments (parser rule, until #1619).
-        yield return new object[] { "list[int](v)", DiagnosticCodes.Parser.GenericTypeInPattern };
+        // `list[int](v)` is no longer refused: SPY0125 is retired (#1619, #1708) and an explicit
+        // type-argument head is arm 2 of the reification ruling — it resolves to the closed type
+        // `list[int]` and RUNS (on an `object` holding an int it prints "miss"). This whole matrix
+        // is re-cut into the form x scrutinee x spelling class matrix in Phase 7.
     }
 
     [Theory]
