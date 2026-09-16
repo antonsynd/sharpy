@@ -730,8 +730,11 @@ public partial class Lexer
                 return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
             }
 
-            // An unescaped '}' ends this field's spec and closes the field.
-            if (c == '}' && !(_position + 1 < _source.Length && _source[_position + 1] == '}'))
+            // A '}' ends this field's spec and closes the field. Inside a replacement field a '}'
+            // ALWAYS closes — there is no '}}' escape in spec context (python: f"{5:}}}" == "5}", the
+            // first '}' closes the field). Without this, adjacent field-closes at depth >= 2
+            // (f"{x:{y:{z}}}", tail "}}}") were mis-read as a '}}' escape and swallowed (#1884).
+            if (c == '}')
             {
                 _position++;
                 _column++;
@@ -752,13 +755,8 @@ public partial class Lexer
                 _column += 2;
                 continue;
             }
-            if (fsc == '}' && _position + 1 < _source.Length && _source[_position + 1] == '}')
-            {
-                sb.Append('}');
-                _position += 2;
-                _column += 2;
-                continue;
-            }
+            // A '}' always ends spec text (closes the field on the next call); no '}}' escape in
+            // spec context (#1884). '{{' still escapes to a literal '{' in spec text above.
             if (fsc == '{' || fsc == '}')
                 break;
 

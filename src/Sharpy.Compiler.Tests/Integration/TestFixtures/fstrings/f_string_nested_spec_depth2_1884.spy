@@ -1,0 +1,7 @@
+def main() -> None:
+    x: int = 5
+    y: int = 3
+    z: str = "d"
+    # depth-2 replacement-field spec nesting: x formatted with spec {y:{z}},
+    # y=3 formatted with spec "d" -> "3", so x=5 to width 3 -> "  5" (python parity, #1884)
+    print(f"[{x:{y:{z}}}]")
