@@ -505,7 +505,11 @@ public class BestCommonTypeMatrixTests : IntegrationTestBase
     [InlineData("AdmitConditionalBranchesIntoSlot", "TypeChecker.Expressions.Operators.cs", "#1743")]
     [InlineData("DecideTupleIndexTypes", "TypeChecker.Expressions.Literals.cs", "#1796")]
     [InlineData("JoinCollectionOperands", "TypeChecker.BestCommonType.cs", "R-W arm 1")]
-    [InlineData("NestedTargetSlot", "TypeChecker.Statements.Patterns.cs", "#1707")]
+    // #1707's None-into-declared-slot admission moved from NestedTargetSlot to CheckStarValueElements
+    // when the one unpacking routine folded the nested arm into the recursion (Phase 4, 5492fad00):
+    // CheckStarValueElements pushes each RHS element under its target's declared slot (Patterns.cs)
+    // and is called from CheckUnpackingTargets. Re-pointed, not retired — #1707's guard follows its fix.
+    [InlineData("CheckStarValueElements", "TypeChecker.Statements.Patterns.cs", "#1707")]
     public void NamedCheck_ExistsAndIsCalled(string name, string declaringFile, string issue)
     {
         var (files, compilerDir) = CompilerSourceFiles();

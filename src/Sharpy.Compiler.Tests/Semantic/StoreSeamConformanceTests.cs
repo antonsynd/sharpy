@@ -330,8 +330,13 @@ public class StoreSeamConformanceTests
     /// and <c>CheckTStringLiteral</c> now call (and which nested spec holes recurse through), so
     /// both kinds still establish the hole store expectation from the one site
     /// (49 pushes + 14 clears, measured by this scan).
+    /// 63 -> 62 (P3b Phase 4, #1845/#1846): the nested arm of <c>CheckTupleUnpackingElements</c> —
+    /// which pushed its targets' composed slot (<c>NestedTargetSlot</c>) — folded into the one
+    /// <c>CheckUnpackingTargets</c> routine, so that per-element admission now flows through
+    /// <c>CheckStarValueElements</c>' own <c>EnterStore(TupleElement, …)</c> at the nested recursion
+    /// level; the redundant nested call site drops out (48 pushes + 14 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 63;
+    private const int ExpectedSeamCallSiteCount = 62;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

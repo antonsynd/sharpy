@@ -275,6 +275,13 @@ public class DispatchSiteInventoryTests
         ["Semantic/TypeChecker.Statements.Patterns.cs::TypeChecker.CollectPatternBindingNames"] = "walker-default-contract",
         ["Semantic/TypeChecker.Utilities.cs::TypeChecker.GetAssignmentTargetDescription"] = "documented-by-design:Semantic/TypeChecker.Utilities.cs:GetAssignmentTargetDescription",
         ["Semantic/TypeChecker.Utilities.cs::TypeChecker.FirstInvalidAssignmentTarget"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
+        // The SPY0225 message switch — a bare starred group takes python's wording, every other
+        // invalid target reads "Cannot assign to {desc}"; the UnpackingPositionMatrix SPY0225 cells
+        // assert both spellings (#1845, 5492fad00).
+        ["Semantic/TypeChecker.Utilities.cs::TypeChecker.InvalidAssignmentTargetMessage"] = "refusal-net:UnpackingPositionMatrixTests",
+        // The one unpacking-leaf binder: star / identifier / nested tuple / complex-store dispatch,
+        // exercised across every target shape by the UnpackingPositionMatrix (#1846, 5492fad00).
+        ["Semantic/TypeChecker.Statements.Unpacking.cs::TypeChecker.BindUnpackingLeaf"] = "refusal-net:UnpackingPositionMatrixTests",
         // DecoratorValidator.ValidateLruCacheMaxSizeValue: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/Validation/EventValidator.cs::EventValidator.EnumerateAllEvents"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/EventValidator.cs::EventValidator.ValidateInterfaceEvents"] = "guarded-by:MemberKindValidatorTotalityTests",

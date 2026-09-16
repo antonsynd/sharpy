@@ -1677,33 +1677,6 @@ internal partial class TypeChecker
         return types;
     }
 
-    /// <summary>
-    /// The declared slot of a NESTED tuple target — the tuple of its elements' declared binding
-    /// types — or null when any element is not an already-declared identifier. Pushed as the inner
-    /// RHS literal's expectation so each of its rows is admitted at its OWN slot.
-    /// </summary>
-    private TupleType? NestedTargetSlot(TupleLiteral nestedTuple)
-    {
-        var slots = new List<SemanticType>(nestedTuple.Elements.Length);
-        foreach (var elem in nestedTuple.Elements)
-        {
-            if (elem is not Identifier id)
-                return null;
-
-            var predecessor = (_symbolTable.Lookup(id.Name, searchParents: false)
-                ?? _symbolTable.Lookup(id.Name, searchParents: true)) as VariableSymbol;
-            if (predecessor == null)
-                return null;
-
-            var slot = DeclaredBindingType(predecessor);
-            if (slot is UnknownType)
-                return null;
-
-            slots.Add(slot);
-        }
-
-        return new TupleType { ElementTypes = slots };
-    }
 
     /// <summary>
     /// The non-star target a starred unpacking's value at <paramref name="valueIndex"/> lands on,
