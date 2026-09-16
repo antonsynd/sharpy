@@ -1,0 +1,6 @@
+# R-AP (#1851): a PascalCase CLR spelling on a Sharpy builtin receiver is refused by name with the
+# Sharpy-spelling steer. `xs.Count` bound Sharpy.List<T>.Count(T) as a method group and printed a
+# System.Func before this rule. The Sharpy spelling is `len(xs)`.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.Count)

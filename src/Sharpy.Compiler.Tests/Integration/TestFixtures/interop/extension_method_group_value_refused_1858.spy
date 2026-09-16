@@ -1,0 +1,7 @@
+# #1858: an extension method referenced in VALUE position (no call) is a method group nothing can
+# type — it leaked CS8917 behind SPY0908 before this rule. Refused at the one SPY0336 seam, the same
+# as any CLR method group. The callee position stays permissive (see extension_callee_positions_1858).
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    g = xs.select
+    print(g)

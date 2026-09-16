@@ -1,0 +1,2 @@
+has no member 'Count' — a Sharpy builtin exposes its Sharpy names only; use len(xs) @6:11
+!SPY0908

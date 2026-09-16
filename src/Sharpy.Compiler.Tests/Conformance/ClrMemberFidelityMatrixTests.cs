@@ -61,7 +61,13 @@ public class ClrMemberFidelityMatrixTests
         TypeMismatchNonNullable,
 
         /// <summary>A <c>None</c> store into a member declared non-nullable: SPY0229 from the checker (#1705).</summary>
-        NoneRefused
+        NoneRefused,
+
+        /// <summary>
+        /// A reflected CLR method group referenced in VALUE position: SPY0336 from the checker, on
+        /// every route (instance, static, extension, inherited) — never SPY0908/CS8917 (#1678, #1858).
+        /// </summary>
+        MethodGroupRefused
     }
 
     /// <param name="MustName">
@@ -142,6 +148,10 @@ public class ClrMemberFidelityMatrixTests
 
                 case Expect.NoneRefused when !errors.Any(d => d.Code == DiagnosticCodes.Semantic.NullabilityViolation):
                     failures.Add($"{cell.Label}: expected SPY0229, got {Describe(errors)}");
+                    break;
+
+                case Expect.MethodGroupRefused when !errors.Any(d => d.Code == DiagnosticCodes.Semantic.AmbiguousCallableReference):
+                    failures.Add($"{cell.Label}: expected SPY0336, got {Describe(errors)}");
                     break;
             }
 
@@ -687,6 +697,10 @@ public class ClrMemberFidelityMatrixTests
         yield return new Cell("generic-definition-T.parameter-slot-takes-a-union-case",
             "union Box[T]:\n    case Full(v: T)\n    case Empty()\n\ndef _use() -> None:\n"
             + "    xs = [Box.Full(1), Box.Full(2)]\n    xs.append(Box.Empty())\n    print(len(xs))\n", Expect.Compiles);
+
+        // --- Extension route (#1858) and inherited method group (a33): SPY0336 in value position. ---
+        foreach (var cell in ExtensionAndInheritedRouteCells())
+            yield return cell;
     }
 
     /// <summary>
@@ -732,6 +746,42 @@ public class ClrMemberFidelityMatrixTests
             Assert.DoesNotContain(naLabels, l => l.StartsWith(drained, StringComparison.Ordinal));
             Assert.Contains(labels, l => l.StartsWith(drained, StringComparison.Ordinal));
         }
+    }
+
+    /// <summary>
+    /// The EXTENSION route (#1858) and the INHERITED method-group route (a33): a reflected method
+    /// group referenced in VALUE position is SPY0336 on every route, and the CALLEE position stays a
+    /// call. These were the routes the fidelity matrix had no row for — the one extension cell was a
+    /// callee-position NRT return, and there was no inherited method-group cell.
+    /// </summary>
+    private static IEnumerable<Cell> ExtensionAndInheritedRouteCells()
+    {
+        // Extension method group in VALUE position, both spellings that reach it: a LINQ extension on a
+        // Sharpy list receiver (first_or_default, select) and a generic extension (select). SPY0336.
+        yield return new Cell("extension.value.list.first_or_default",
+            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    f = xs.first_or_default\n",
+            Expect.MethodGroupRefused);
+        yield return new Cell("extension.value.list.select",
+            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    g = xs.select\n",
+            Expect.MethodGroupRefused);
+        yield return new Cell("extension.value.static.Enumerable.count",
+            "from system.linq import Enumerable\n\ndef _use() -> None:\n    e = Enumerable.count\n",
+            Expect.MethodGroupRefused);
+
+        // CALLEE position — bare and parenthesized — stays a call and binds (no semantic error).
+        yield return new Cell("extension.callee.list.first_or_default",
+            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    n: int = xs.first_or_default()\n",
+            Expect.Compiles);
+        yield return new Cell("extension.parenthesized-callee.list.first_or_default",
+            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    n: int = (xs.first_or_default)()\n",
+            Expect.Compiles);
+
+        // Inherited method GROUP on a user class deriving a CLR generic — the a33 cell. The overloaded
+        // IndexOf reached through the base clause is a method group in value position -> SPY0336.
+        yield return new Cell("inherited.value.method-group.index_of",
+            "from system.collections.generic import List\n\nclass IntList(List[int]):\n    pass\n\n"
+            + "def _use() -> None:\n    il: IntList = IntList()\n    g = il.index_of\n",
+            Expect.MethodGroupRefused);
     }
 
     private static string Src(string type, string body) =>

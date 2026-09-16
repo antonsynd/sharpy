@@ -225,6 +225,19 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // R-AP (#1851): a Sharpy builtin receiver exposes its Sharpy names only. A verbatim PascalCase
+        // CLR spelling of a wrapper member (`xs.Count`, `s.Length`, `d.Keys`, `xs.Add(4)`, `b.Length`)
+        // is refused by name with the Sharpy-spelling steer — otherwise it binds the wrapper's C#
+        // member and prints a System.Func or an internal view (silent wrong output). Runs BEFORE every
+        // resolution arm because a Sharpy receiver takes several shapes (a GenericType list, a
+        // BuiltinType str, a UserDefinedType bytes) and the UserDefinedType arm would otherwise type
+        // `b.Length` from reflection first. A Sharpy-surface snake name, the backtick escape, and the
+        // reverse-mangled spelling (`s.length`, `s.to_upper()`) are NOT ClrSpelling and fall through to
+        // their normal typing; the tuple receiver is excluded (#1783). Refused in every position,
+        // including a callee — `xs.Count()` is as wrong as `xs.Count`.
+        if (TryRefuseSharpyReceiverClrSpelling(memberAccess, memberLookupType))
+            return SemanticType.Unknown;
+
         // Handle module member access (e.g., config.MAX_SIZE, utils.helper())
         if (memberLookupType is ModuleType moduleType)
         {
@@ -751,35 +764,6 @@ internal partial class TypeChecker
         if (TryRefuseBuiltinExceptionMember(memberAccess, memberLookupType))
             return SemanticType.Unknown;
 
-        // R-AP (#1851): a Sharpy builtin receiver exposes its Sharpy names only. A verbatim PascalCase
-        // CLR spelling of a wrapper member (`xs.Count`, `s.Length`, `d.Keys`, `xs.Add(4)`) is refused
-        // by name with the Sharpy-spelling steer — otherwise it binds the wrapper's C# member and
-        // prints a System.Func or an internal view (silent wrong output). A Sharpy-surface name resolved
-        // above and never reaches here; the backtick escape and the reverse-mangled snake spelling
-        // (`s.length`, `s.to_upper()`) stay typed (they fall through to the reflection seam below); the
-        // tuple receiver is excluded (#1783 keeps item1/Item1). Refused in every position, including a
-        // callee — `xs.Count()` is as wrong as `xs.Count`.
-        if (IsSharpyBuiltinSpellingReceiver(memberLookupType)
-            && TryGetClrType(memberLookupType) is { } sharpyWrapperClr
-            && SharpyReceiverSpelling.Classify(
-                memberAccess.Member, memberAccess.IsMemberBacktickEscaped, sharpyWrapperClr)
-                == SharpyReceiverSpelling.Spelling.ClrSpelling)
-        {
-            var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
-            var steer = SharpyReceiverSpelling.Steer(memberAccess.Member, receiverExpr);
-            var message = $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
-            message += steer != null
-                ? $" — a Sharpy builtin exposes its Sharpy names only; use {steer}"
-                : " — a Sharpy builtin exposes its Sharpy names only";
-
-            AddError(message,
-                memberAccess.LineStart, memberAccess.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedMember,
-                span: memberAccess.Span,
-                data: SuggestionData(steer));
-            return SemanticType.Unknown;
-        }
-
         // Intentional Unknown without error for non-UserDefinedType member access:
         // A RAW BCL member on a builtin receiver is typed from its reflected signature (#1291).
         // `s.to_upper()` is not part of Sharpy's str API — it is System.String.ToUpper reached by
@@ -1181,6 +1165,37 @@ internal partial class TypeChecker
     /// </summary>
     private string DescribeSharpyReceiver(Expression receiver)
         => UnwrapParenthesized(receiver) is Identifier id ? id.Name : "x";
+
+    /// <summary>
+    /// The ONE R-AP refusal (#1851): a verbatim PascalCase CLR spelling of a member on a Sharpy builtin
+    /// receiver's wrapper is refused SPY0203 with the Sharpy-spelling steer. Returns true (and emits)
+    /// when it fires, false when the receiver is not a Sharpy builtin or the spelling is not a verbatim
+    /// CLR one (a Sharpy snake name, a backtick escape, or a reverse-mangled spelling — all left to
+    /// their normal typing).
+    /// </summary>
+    private bool TryRefuseSharpyReceiverClrSpelling(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (!IsSharpyBuiltinSpellingReceiver(receiverType)
+            || TryGetClrType(receiverType) is not { } wrapperClr
+            || SharpyReceiverSpelling.Classify(
+                memberAccess.Member, memberAccess.IsMemberBacktickEscaped, wrapperClr)
+                != SharpyReceiverSpelling.Spelling.ClrSpelling)
+            return false;
+
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.Steer(memberAccess.Member, receiverExpr);
+        var message = $"Type '{receiverType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+        message += steer != null
+            ? $" — a Sharpy builtin exposes its Sharpy names only; use {steer}"
+            : " — a Sharpy builtin exposes its Sharpy names only";
+
+        AddError(message,
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember,
+            span: memberAccess.Span,
+            data: SuggestionData(steer));
+        return true;
+    }
 
     /// <summary>
     /// Whether the bridge COLLAPSES this receiver's CLR definition onto a Sharpy builtin

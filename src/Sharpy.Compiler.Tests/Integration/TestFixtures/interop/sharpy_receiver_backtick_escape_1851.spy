@@ -1,0 +1,6 @@
+# R-AP (#1851): the backtick escape deliberately reaches the wrapper's CLR member verbatim. Sharpy
+# list wraps System-backed storage exposing a `Length` property; the escape binds it, unlike the bare
+# PascalCase spelling which is refused (see sharpy_receiver_pascalcase_refused_1851).
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.`Length`)

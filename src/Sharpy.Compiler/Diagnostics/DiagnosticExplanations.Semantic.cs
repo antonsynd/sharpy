@@ -25,9 +25,10 @@ public static partial class DiagnosticExplanations
             "Define the type or import it:\nclass Widget:\n    name: str");
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedMember, "Undefined member", "Semantic",
-            "An attribute or method was accessed on a type that does not define it. This can occur with field access, method calls, or property access.",
+            "An attribute or method was accessed on a type that does not define it. This can occur with field access, method calls, or property access. "
+            + "A Sharpy builtin receiver (list, dict, set, frozenset, frozendict, array, str, bytes) exposes its Sharpy names only: a PascalCase .NET spelling of a wrapper member — xs.Count, s.Length, d.Keys, xs.Add(4) — is refused here rather than binding the wrapper's C# member and printing a System.Func or an internal view. The diagnostic steers to the Sharpy spelling (len(xs), d.keys(), xs.append(...)). The backtick escape (xs.`Length`) deliberately reaches the wrapper's CLR member, and the reverse-mangled snake spelling (s.length, s.to_upper()) stays typed.",
             "class Point:\n    x: int\n    y: int\n\np = Point(1, 2)\nprint(p.z)  # Point has no member 'z'",
-            "Check the type definition for available members. Fix the member name or add the missing member to the type.");
+            "Check the type definition for available members. Fix the member name or add the missing member to the type. On a Sharpy builtin, use the Sharpy spelling the diagnostic steers to.");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateDefinition, "Duplicate definition", "Semantic",
             "A name was defined more than once in the same scope. Each name can only be defined once per scope (function, class, or module level).",
@@ -295,7 +296,7 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Semantic.AmbiguousCallableReference, "Ambiguous callable reference", "Semantic",
             "A function or method whose overloads take different numbers of arguments was referenced as a value, and nothing at the reference site says which overload was meant. Sharpy will not pick one for you: binding an arbitrary overload makes every later call through the binding fail an arity check against a signature you never chose. Sharpy overload sets that all take the same number of arguments (int, str, len) are unaffected. "
             + "A reflected .NET method group on a TYPE or INSTANCE receiver is refused in value position whatever its shape, same arity included: Math.abs is Abs(int), Abs(long), Abs(double) and six more, and a CLR method group has no Sharpy type to give the binding, so there is nothing to select without the call's arguments. Parentheses around a callee are not a value position — (Math.abs)(-1) is the call Math.abs(-1), and it runs. "
-            + "An EXTENSION method reached through a Sharpy receiver (xs.first_or_default) is resolved on a different route and is not refused here yet; referencing one as a value reports SPY0908 instead (#1858). Call it, or wrap it in a lambda, which is the same cure this refusal steers to.",
+            + "This refusal is reached on every route, including extension methods: an EXTENSION method group referenced through a Sharpy receiver (xs.first_or_default, xs.select) or a static class (Enumerable.count) in value position is refused here too, the same as an instance or static method group — before this it leaked SPY0908/CS8917 (#1858). Call it, or wrap it in a lambda, which is the same cure this refusal steers to.",
             "xs: list[int] = [1, 2, 3]\ng = xs.pop  # pop() and pop(index) both exist\n\nfrom system import Math\nh = Math.abs  # a CLR method group; every overload takes one argument",
             "Call it directly (`xs.pop(0)`, `Math.abs(-1)`), annotate the target so one overload is "
             + "selected (`g: (int) -> int = xs.pop`), or wrap it in a lambda that pins the signature "
