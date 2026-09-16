@@ -6811,18 +6811,9 @@ internal partial class TypeChecker
             return null;
         }
 
-        if (_symbolTable.BuiltinRegistry.IsBuiltinSymbol(receiverTypeSymbol)
-            && receiverTypeSymbol.Name is "Optional" or "Result"
-            && memberAccess.Member is "Some" or "None" or "Ok" or "Err")
-        {
-            AddError(
-                $"'{receiverTypeSymbol.Name}.{memberAccess.Member}' is not supported; use the bare form "
-                + $"'{memberAccess.Member}(...)' instead, which infers its type from the assignment target",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.SemanticOverflow.QualifiedTaggedUnionConstructor,
-                span: call.Span);
-            return SemanticType.Unknown;
-        }
+        // The qualified-builtin-case refusal (SPY0608) that used to key on this receiver's NAME here
+        // now lives at the member seam, keyed on the registry symbol's identity so every spelling and
+        // both positions reach it — TryRefuseQualifiedBuiltinCase, CheckMemberAccessCore (#1856, R-S).
 
         var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
         if (methodName == null)

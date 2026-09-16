@@ -79,6 +79,46 @@ internal partial class TypeChecker
         return memberType;
     }
 
+    /// <summary>
+    /// Refuses a qualified spelling of a builtin tagged-union case (SPY0608). Consulted at the member
+    /// seam so every receiver spelling and both call and value position reach it: a bare
+    /// <c>Optional</c> or aliased <c>O</c> (an <see cref="Identifier"/>), a module-qualified
+    /// <c>sharpy.Optional</c> (a <see cref="MemberAccess"/> chain) and a constructed
+    /// <c>Optional[int]</c> (an <see cref="IndexAccess"/>) all resolve to the SAME registry symbol,
+    /// which <see cref="BuiltinUnionCaseReservation"/> matches by identity, never by name (#1856, R-S).
+    /// The bare case form (<c>Some(42)</c>) is an <see cref="Identifier"/> callee and never reaches
+    /// here. Returns true when it refused (the caller yields Unknown).
+    /// </summary>
+    private bool TryRefuseQualifiedBuiltinCase(MemberAccess memberAccess, SemanticType objectType)
+    {
+        if (!BuiltinUnionCaseReservation.IsReservedCaseName(memberAccess.Member))
+            return false;
+
+        var receiverTypeSymbol = memberAccess.Object switch
+        {
+            Identifier id => _semanticInfo.GetIdentifierSymbol(id) as TypeSymbol,
+            MemberAccess ma => TryResolveTypeSymbolFromMemberAccess(ma),
+            IndexAccess ia => GenericQualifierSymbol(ia),
+            _ => null
+        };
+
+        if (receiverTypeSymbol == null
+            || !BuiltinUnionCaseReservation.IsBuiltinUnionSymbol(receiverTypeSymbol))
+        {
+            return false;
+        }
+
+        AddError(
+            $"'{receiverTypeSymbol.Name}.{memberAccess.Member}' is not supported; use the bare form "
+            + $"'{memberAccess.Member}(...)' instead, which infers its type from the assignment target",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.SemanticOverflow.QualifiedTaggedUnionConstructor,
+            span: memberAccess.Span);
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.AlreadyReported("SPY0608 qualified builtin tagged-union case"));
+        return true;
+    }
+
     private SemanticType CheckMemberAccessCore(MemberAccess memberAccess)
     {
         // Trailing-dot recovery (#1360): the parser produced a MemberAccess with Member = ""
@@ -109,6 +149,13 @@ internal partial class TypeChecker
         // closed type the emitter spells, and a type-alias receiver `A` (of `type A = G[int]`) is
         // normalized to its target so the member resolves against it (#1817, #1864).
         objectType = ClassifyTypeDenotingReceiver(memberAccess.Object, objectType) ?? objectType;
+
+        // A qualified spelling of a builtin tagged-union case — `Optional.Some`, `Optional[int].Some`,
+        // an aliased `O.Some` or a module-qualified `sharpy.Optional.Some`, in call OR value position —
+        // is refused here, on the one seam every receiver spelling and both positions reach. Keyed on
+        // the registry symbol's identity, never its name, so no spelling escapes (#1856, R-S).
+        if (TryRefuseQualifiedBuiltinCase(memberAccess, objectType))
+            return SemanticType.Unknown;
 
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
