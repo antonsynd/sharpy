@@ -32,11 +32,11 @@ internal partial class TypeChecker
         // (`G<int>`) as the receiver instead of the element access it re-derived before (#1817).
         if (receiver is IndexAccess indexAccess
             && _semanticInfo.GetGenericReference(indexAccess) is
-                {
-                    Kind: GenericReferenceKind.GenericTypeRef
+            {
+                Kind: GenericReferenceKind.GenericTypeRef
                         or GenericReferenceKind.NestedTypeRef
                         or GenericReferenceKind.ModuleType
-                }
+            }
             && receiverType is GenericType or UserDefinedType)
         {
             _semanticInfo.MarkTypeReference(receiver);
