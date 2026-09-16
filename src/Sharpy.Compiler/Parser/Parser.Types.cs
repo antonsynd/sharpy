@@ -201,6 +201,38 @@ public partial class Parser
             }
         }
 
+        var (typeArguments, elementNames) =
+            ParseTypeArgumentList(name, startToken, startLine, startColumn);
+
+        var endToken = Previous;
+        var endLine = endToken.Line;
+        var endColumn = endToken.Column + endToken.Length;
+
+        return new TypeAnnotation
+        {
+            Name = name,
+            IsNameBacktickEscaped = isNameBacktickEscaped,
+            TypeArguments = typeArguments,
+            TupleElementNames = elementNames,
+            IsOptional = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    /// <summary>
+    /// Parses a bracketed generic type-argument list (<c>[T, U]</c>) when one follows, including
+    /// tuple named-element syntax (<c>tuple[x: float, y: float]</c>) and the all-or-none validation.
+    /// Returns empty arrays when no <c>[</c> follows (or an empty <c>[]</c>). Shared by
+    /// <see cref="ParseStandardTypeAnnotation"/> and the pattern-head arm (<c>case list[int](xs)</c>)
+    /// so both spell type arguments identically — arm 2 of the reification ruling (#1708/#1619).
+    /// </summary>
+    private (ImmutableArray<TypeAnnotation> TypeArguments, ImmutableArray<string?> TupleElementNames)
+        ParseTypeArgumentList(string name, Token startToken, int startLine, int startColumn)
+    {
         var typeArgs = new List<TypeAnnotation>();
         var tupleElementNames = new List<string?>();
 
@@ -259,28 +291,12 @@ public partial class Parser
             Expect(TokenType.RightBracket);
         }
 
-        var endToken = Previous;
-        var endLine = endToken.Line;
-        var endColumn = endToken.Column + endToken.Length;
-
         // Only include element names if there are named elements
         var elementNames = tupleElementNames.Any(n => n != null)
             ? tupleElementNames.ToImmutableArray()
             : ImmutableArray<string?>.Empty;
 
-        return new TypeAnnotation
-        {
-            Name = name,
-            IsNameBacktickEscaped = isNameBacktickEscaped,
-            TypeArguments = typeArgs.ToImmutableArray(),
-            TupleElementNames = elementNames,
-            IsOptional = false,
-            LineStart = startLine,
-            ColumnStart = startColumn,
-            LineEnd = endLine,
-            ColumnEnd = endColumn,
-            Span = GetSpanFromTokens(startToken, endToken)
-        };
+        return (typeArgs.ToImmutableArray(), elementNames);
     }
 
     /// <summary>

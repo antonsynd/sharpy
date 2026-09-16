@@ -159,7 +159,7 @@ public static class DiagnosticCodes
         public const string RaiseFromNotSupported = "SPY0122";      // Active
         public const string DictSpreadCallNotSupported = "SPY0123"; // Active
         public const string EmptyUnion = "SPY0124";                 // Active
-        public const string GenericTypeInPattern = "SPY0125";       // Active
+        public const string GenericTypeInPattern = "SPY0125";       // Retired — explicit type arguments in pattern heads are arm 2 of the reification ruling (#1708/#1619)
         public const string MultipleStarsInPattern = "SPY0140";     // Active
 
         #endregion

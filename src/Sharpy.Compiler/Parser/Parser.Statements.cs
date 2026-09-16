@@ -1912,7 +1912,8 @@ public partial class Parser
             // qualifier is a lookup instruction rather than a change to what parses (#1445). The
             // discriminator is the same one the bare-identifier arm above uses, so
             // `case lib.Color.RED:` — no parens — keeps producing the MemberAccessPattern below.
-            // A following `[` inherits the bare arm's GenericTypeInPattern diagnostic.
+            // A following `[` carries explicit type arguments (`case lib.Box[int]()`) exactly as the
+            // bare arm does — arm 2 of the reification ruling (#1708/#1619).
             if (Current.Type == TokenType.LeftParen || Current.Type == TokenType.LeftBracket)
             {
                 return ParseTypePatternOrStructural(
@@ -1972,56 +1973,23 @@ public partial class Parser
             Span = GetSpanFromTokens(typeToken, typeNameEnd)
         };
 
-        // Check for generic type arguments in patterns (e.g., Box[int]() in a case)
+        // Explicit generic type arguments in a pattern head (e.g., Box[int](), list[int](xs),
+        // list[int]([1, 2])). Arm 2 of the reification ruling (#1708/#1619): the head names a
+        // CLOSED CLR type, so the pattern's TypeAnnotation carries its TypeArguments exactly as an
+        // annotation in that position would. The head's recorded extent must include the `[args]`
+        // (the #1454 rule) so hover and the semantic reference seam (SetTypeAnnotation) see one node.
         if (Current.Type == TokenType.LeftBracket)
         {
-            var bracketToken = Current;
-            _diagnostics.AddError(
-                "Generic type arguments are not supported in patterns. Use a wildcard or binding pattern instead.",
-                GetSpanFromToken(bracketToken),
-                bracketToken.Line,
-                bracketToken.Column,
-                code: DiagnosticCodes.Parser.GenericTypeInPattern,
-                phase: CompilerPhase.Parser);
-
-            // Skip tokens until matching ']' to recover
-            var depth = 1;
-            Advance(); // consume '['
-            while (depth > 0 && Current.Type != TokenType.Eof)
+            var (typeArguments, tupleElementNames) = ParseTypeArgumentList(
+                typeAnnotation.Name, typeToken, typeToken.Line, typeToken.Column);
+            var argsEndToken = Previous; // the ']'
+            typeAnnotation = typeAnnotation with
             {
-                Advance();
-                if (Previous.Type == TokenType.LeftBracket)
-                    depth++;
-                else if (Previous.Type == TokenType.RightBracket)
-                    depth--;
-            }
-
-            // If '(' follows, consume through matching ')' so we don't produce cascading errors
-            if (Current.Type == TokenType.LeftParen)
-            {
-                var parenDepth = 1;
-                Advance(); // consume '('
-                while (parenDepth > 0 && Current.Type != TokenType.Eof)
-                {
-                    Advance();
-                    if (Previous.Type == TokenType.LeftParen)
-                        parenDepth++;
-                    else if (Previous.Type == TokenType.RightParen)
-                        parenDepth--;
-                }
-            }
-
-            // Return a TypePattern for error recovery (without generic args);
-            // 'as' binding is handled by ParseAsSuffix from ParsePattern.
-            var endToken = Previous;
-            return new TypePattern
-            {
-                Type = typeAnnotation,
-                LineStart = typeToken.Line,
-                ColumnStart = typeToken.Column,
-                LineEnd = endToken.Line,
-                ColumnEnd = endToken.Column + endToken.Length,
-                Span = GetSpanFromTokens(typeToken, endToken)
+                TypeArguments = typeArguments,
+                TupleElementNames = tupleElementNames,
+                LineEnd = argsEndToken.Line,
+                ColumnEnd = argsEndToken.Column + argsEndToken.Length,
+                Span = GetSpanFromTokens(typeToken, argsEndToken)
             };
         }
 
