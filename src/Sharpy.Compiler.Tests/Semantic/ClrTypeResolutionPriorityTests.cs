@@ -21,7 +21,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>CamelCaseAliases</c>, not by excluding the namespace.</para>
 ///
 /// <para><b>Cell matrix.</b> kind {Sharpy-only, collision short name, CLR-only} x spelling {bare,
-/// imported, module-qualified, aliased, backtick-escaped}. Every cell executes or names the
+/// imported, module-qualified, aliased (aliased MODULE), aliased-name (aliased from-import, #1863),
+/// backtick-escaped}. Every cell executes or names the
 /// diagnostic it expects; the emitted C# is asserted where the discriminating fact is the NAME the
 /// emitter chose (a Sharpy answer and a .NET answer both compile, so stdout alone cannot separate
 /// them). The axis sizes are anchored to literals below, not counted off the same collection the
@@ -35,11 +36,11 @@ public class ClrTypeResolutionPriorityTests : IntegrationTestBase
     /// <summary>The three resolution kinds the contract distinguishes.</summary>
     private static readonly string[] Kinds = { "SharpyOnly", "Collision", "ClrOnly" };
 
-    /// <summary>The five spellings a type name can be written in.</summary>
-    private static readonly string[] Spellings = { "bare", "imported", "module-qualified", "aliased", "backtick" };
+    /// <summary>The six spellings a type name can be written in.</summary>
+    private static readonly string[] Spellings = { "bare", "imported", "module-qualified", "aliased", "aliased-name", "backtick" };
 
     private const int KindCount = 3;
-    private const int SpellingCount = 5;
+    private const int SpellingCount = 6;
 
     /// <summary>
     /// A Sharpy class whose <c>__len__</c>/<c>__reversed__</c> make it satisfy the synthesized
@@ -77,7 +78,7 @@ def main() -> None:
     c = Countdown(5)
     print(size(c))
     print(take(c))
-", "sized\nreversible\n", "", "" },   // emitted name is the BARE `ISized` here — #1831
+", "sized\nreversible\n", "", "global::Sharpy.ISized" },   // bare `ISized` now qualifies — #1831 (R-AQ)
 
         new object[] { "SharpyOnly", "imported", @"from sharpy import ISized
 " + Countdown + @"
@@ -100,6 +101,19 @@ def main() -> None:
         new object[] { "SharpyOnly", "aliased", @"import sharpy as sh
 " + Countdown + @"
 def size(s: sh.ISized) -> str:
+    return ""sized""
+
+def main() -> None:
+    print(size(Countdown(5)))
+", "sized\n", "", "global::Sharpy.ISized" },
+
+        // aliased-NAME: `from sharpy import ISized as IS`. The alias binds the SAME registry symbol
+        // the un-aliased spelling binds (#1863 sibling, b17); `Countdown` (which synthesizes ISized
+        // via __len__) is seen as an `IS`, and the emitted name is still global::Sharpy.ISized. The
+        // alias "IS" is not a builtin name, so this import is warning-free (no SPY0484).
+        new object[] { "SharpyOnly", "aliased-name", @"from sharpy import ISized as IS
+" + Countdown + @"
+def size(s: IS) -> str:
     return ""sized""
 
 def main() -> None:
@@ -152,6 +166,16 @@ def main() -> None:
     print(xs.count)
 ", "1\n", "", "new global::System.Collections.Generic.List<int>()" },
 
+        // aliased-NAME: `from System.Collections.Generic import List as L` — the collision resolves to
+        // the .NET type through the alias, and the emitted construction is the qualified BCL type.
+        new object[] { "Collision", "aliased-name", @"from System.Collections.Generic import List as L
+
+def main() -> None:
+    xs: L[int] = L[int]()
+    xs.add(3)
+    print(xs.count)
+", "1\n", "", "new global::System.Collections.Generic.List<int>()" },
+
         // Same escape rule, and the arm that carried the defect: the CamelCase-alias redirect
         // (List -> list) had no escape gate, so `` `List`[int] `` silently resolved to the builtin
         // and emitted `Sharpy.List<int>` with no user declaration anywhere.
@@ -163,6 +187,17 @@ def main() -> None:
 ", "", DiagnosticCodes.Semantic.UndefinedType, "" },
 
         // ---- CLR-only: the name exists only in a .NET namespace -------------------------------
+        // BARE: the fallback finds System.Text.StringBuilder with no import; the emitted annotation is
+        // now fully qualified (previously a short name -> CS0246 behind SPY0908, the #1830 Skip this
+        // row replaces). The emit assertion is the discriminating fact — a short name binds only when a
+        // prelude `using` happens to cover it.
+        new object[] { "ClrOnly", "bare", @"def take(sb: StringBuilder) -> str:
+    return sb.to_string()
+
+def main() -> None:
+    print(""ok"")
+", "ok\n", "", "global::System.Text.StringBuilder" },
+
         new object[] { "ClrOnly", "imported", @"from system.text import StringBuilder
 
 def main() -> None:
@@ -187,6 +222,17 @@ def main() -> None:
     print(sb.to_string())
 ", "al\n", "", "" },
 
+        // aliased-NAME: `from system.text import StringBuilder as SB` — the CLR-only type reaches
+        // Sharpy through the alias and the using-directive spells the reflected type fully qualified
+        // (`using SB = global::System.Text.StringBuilder;`), not the mangled alias (#1863).
+        new object[] { "ClrOnly", "aliased-name", @"from system.text import StringBuilder as SB
+
+def main() -> None:
+    sb: SB = SB()
+    sb.append(""an"")
+    print(sb.to_string())
+", "an\n", "", "global::System.Text.StringBuilder" },
+
         new object[] { "ClrOnly", "backtick", @"def take(sb: `StringBuilder`) -> str:
     return ""x""
 
@@ -194,28 +240,6 @@ def main() -> None:
     print(""ok"")
 ", "", DiagnosticCodes.Semantic.UndefinedType, "" },
     };
-
-    /// <summary>
-    /// The one cell the matrix cannot assert yet: a BARE CLR-only annotation resolves in semantic
-    /// analysis (the fallback finds System.Text.StringBuilder with no import at all) but the
-    /// emitter writes the short name, which binds only when a `using` happens to cover it —
-    /// CS0246 behind SPY0908 for System.Text. Non-generic CLR-fallback types are the half of
-    /// #1765's qualification contract still missing; #1830 owns it and deletes this Skip.
-    /// </summary>
-    [Fact(Skip = "#1830: a bare CLR-only annotation emits an unqualified name (SPY0908 CS0246)")]
-    public void ClrOnly_Bare_ResolvesAndEmitsAQualifiedName()
-    {
-        var result = CompileAndExecute(@"
-def take(sb: StringBuilder) -> str:
-    return sb.to_string()
-
-def main() -> None:
-    print(""ok"")
-");
-
-        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
-        result.GeneratedCSharp.Should().Contain("global::System.Text.StringBuilder");
-    }
 
     [Fact]
     public void Cells_CoverEveryKindAndSpelling_Once()
@@ -227,17 +251,14 @@ def main() -> None:
 
         var cells = Cells.Select(c => ((string)c[0], (string)c[1])).ToList();
 
-        // One cell is carried by the Skip above rather than by a row.
-        cells.Should().HaveCount(KindCount * SpellingCount - 1);
+        // Every kind x spelling is a row: the #1830 Skip that carried `ClrOnly x bare` is drained.
+        cells.Should().HaveCount(KindCount * SpellingCount);
         cells.Should().OnlyHaveUniqueItems();
 
         foreach (var kind in Kinds)
         {
             foreach (var spelling in Spellings)
             {
-                if (kind == "ClrOnly" && spelling == "bare")
-                    continue; // see ClrOnly_Bare_ResolvesAndEmitsAQualifiedName (#1830)
-
                 cells.Should().Contain((kind, spelling), $"{kind} x {spelling} must be a cell");
             }
         }

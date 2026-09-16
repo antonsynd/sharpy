@@ -69,11 +69,22 @@ public class ClrImportNameFidelityTests : IntegrationTestBase
             + "    print(len(Guid.NewGuid().ToString()) > 0)\n",
             Expect.Resolves);
 
-        // ── aliased `from X import T as A` (#1863) ──
+        // ── aliased `from X import T as A` (#1863) — the alias is dereferenced to the bound symbol
+        //    before its CLR name is emitted, so `using G = global::System.Guid;` (not System.GUID) ──
         yield return new Cell("alias.sharpy-names", "aliased import",
             "from system import Guid as G\n\ndef main() -> None:\n"
             + "    print(len(G.new_guid().to_string()) > 0)\n",
-            Expect.KnownSpy0908, Issue: "#1863");
+            Expect.Resolves);
+
+        yield return new Cell("alias.verbatim-clr-names", "aliased import",
+            "from system import Guid as G\n\ndef main() -> None:\n"
+            + "    print(len(G.NewGuid().ToString()) > 0)\n",
+            Expect.Resolves);
+
+        yield return new Cell("alias.static-property", "aliased import",
+            "from system import Environment as E\n\ndef main() -> None:\n"
+            + "    print(len(E.new_line) > 0)\n",
+            Expect.Resolves);
 
         // ── `import X` + fully qualified ──
         yield return new Cell("module.qualified-type", "module import",
