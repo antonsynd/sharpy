@@ -555,11 +555,25 @@ internal partial class NameResolver
         // Create case type symbols as nested types
         foreach (var caseDef in unionDef.Cases)
         {
+            // A case entering the type namespace may not take a reserved builtin case name
+            // (Some/None/Ok/Err): the bare form means the builtin, so a user case that shadowed it
+            // would make `case Some(v):` mean two things by position. The backtick escape is the
+            // sanctioned way to keep the spelling and flows through untouched (#1856, R-S).
+            if (BuiltinNameShadowing.Classify(
+                    _symbolTable, caseDef.Name, caseDef.IsNameBacktickEscaped, isTypeDeclaration: true)
+                == BuiltinShadowVerdict.Refused)
+            {
+                AddError(BuiltinNameShadowing.RefusalMessage(caseDef.Name),
+                    caseDef.NameLineStart, caseDef.NameColumnStart,
+                    code: BuiltinNameShadowing.RefusalCode);
+            }
+
             var caseSymbol = new TypeSymbol
             {
                 Name = caseDef.Name,
                 Kind = SymbolKind.Type,
                 TypeKind = TypeKind.Class,
+                IsNameBacktickEscaped = caseDef.IsNameBacktickEscaped,
                 AccessLevel = AccessLevel.Public,
                 BaseType = unionSymbol,
                 TypeParameters = unionDef.TypeParameters.ToList(),

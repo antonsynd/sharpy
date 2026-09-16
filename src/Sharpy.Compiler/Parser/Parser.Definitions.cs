@@ -1157,6 +1157,7 @@ public partial class Parser
                     NameLineStart = caseNameToken.Line,
                     NameColumnStart = caseNameToken.Column,
                     NameColumnEnd = caseNameToken.Column + caseNameToken.Length,
+                    IsNameBacktickEscaped = caseNameToken.IsBacktickEscaped,
                     Fields = fields.ToImmutableArray(),
                     LineStart = caseStartLine,
                     ColumnStart = caseStartColumn,

@@ -188,6 +188,14 @@ public record UnionCaseDef
     /// </summary>
     public int NameColumnEnd { get; init; }
 
+    /// <summary>
+    /// True when the case name was written backtick-escaped (<c>case `Some`(v: int)</c>). The escape
+    /// is the sanctioned way to spell a name the reserved-case refusal would otherwise reject
+    /// (SPY0212), so it must be carried from the token to the case <c>TypeSymbol</c> — both to let
+    /// <see cref="Sharpy.Compiler.Semantic.BuiltinNameShadowing"/> allow the declaration and to let
+    /// the emitter spell the escaped name as it does every other escaped type name (#1856, R-S).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
 
     /// <summary>
     /// Fields for this case. Empty for singleton cases (e.g., None).
