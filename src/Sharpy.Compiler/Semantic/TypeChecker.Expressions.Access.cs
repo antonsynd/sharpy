@@ -751,6 +751,35 @@ internal partial class TypeChecker
         if (TryRefuseBuiltinExceptionMember(memberAccess, memberLookupType))
             return SemanticType.Unknown;
 
+        // R-AP (#1851): a Sharpy builtin receiver exposes its Sharpy names only. A verbatim PascalCase
+        // CLR spelling of a wrapper member (`xs.Count`, `s.Length`, `d.Keys`, `xs.Add(4)`) is refused
+        // by name with the Sharpy-spelling steer — otherwise it binds the wrapper's C# member and
+        // prints a System.Func or an internal view (silent wrong output). A Sharpy-surface name resolved
+        // above and never reaches here; the backtick escape and the reverse-mangled snake spelling
+        // (`s.length`, `s.to_upper()`) stay typed (they fall through to the reflection seam below); the
+        // tuple receiver is excluded (#1783 keeps item1/Item1). Refused in every position, including a
+        // callee — `xs.Count()` is as wrong as `xs.Count`.
+        if (IsSharpyBuiltinSpellingReceiver(memberLookupType)
+            && TryGetClrType(memberLookupType) is { } sharpyWrapperClr
+            && SharpyReceiverSpelling.Classify(
+                memberAccess.Member, memberAccess.IsMemberBacktickEscaped, sharpyWrapperClr)
+                == SharpyReceiverSpelling.Spelling.ClrSpelling)
+        {
+            var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+            var steer = SharpyReceiverSpelling.Steer(memberAccess.Member, receiverExpr);
+            var message = $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+            message += steer != null
+                ? $" — a Sharpy builtin exposes its Sharpy names only; use {steer}"
+                : " — a Sharpy builtin exposes its Sharpy names only";
+
+            AddError(message,
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span,
+                data: SuggestionData(steer));
+            return SemanticType.Unknown;
+        }
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // A RAW BCL member on a builtin receiver is typed from its reflected signature (#1291).
         // `s.to_upper()` is not part of Sharpy's str API — it is System.String.ToUpper reached by
@@ -823,7 +852,12 @@ internal partial class TypeChecker
             if (member.StartsWith("item") && int.TryParse(member.Substring(4), out var idx)
                 && idx >= 1 && idx <= unmTuple.ElementTypes.Count)
             {
-                // CLR element access — fall through to the permissive channel
+                // The CLR element spellings item1..itemN / Item1..ItemN stay legal (#1783), but they are
+                // TYPED from the element types rather than left to the permissive channel: an untyped
+                // `t.Item1` let `b: bool = t.Item1` through as CS0029 behind SPY0908 (a silent hole),
+                // and the element type is exactly what the emitter's `.ItemN` lowering produces (R-AP,
+                // Decision 1(b)).
+                return unmTuple.ElementTypes[idx - 1];
             }
             else
             {
@@ -1109,6 +1143,38 @@ internal partial class TypeChecker
             && clrType != typeof(object)
             && !clrType.IsGenericTypeDefinition;
     }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is a Sharpy BUILTIN receiver whose spelling is governed by
+    /// R-AP (#1851): the five container kinds <see cref="IsBuiltinContainerReceiver"/> answers, plus
+    /// <c>array</c>, <c>str</c> and <c>bytes</c> — every one a wrapper over a .NET surface whose
+    /// PascalCase members must not leak. A CLR-identity collection (an imported <c>List[int]</c>) is
+    /// NOT one of these (its Name is the .NET name, not the Sharpy builtin), so it keeps the verbatim
+    /// channel; <c>tuple</c> and <c>object</c> are excluded by construction (neither name is listed).
+    /// </summary>
+    private bool IsSharpyBuiltinSpellingReceiver(SemanticType type)
+    {
+        if (IsBuiltinContainerReceiver(type))
+            return true;
+
+        var name = type switch
+        {
+            BuiltinType bt => bt.Name,
+            GenericType gt => gt.Name,
+            UserDefinedType { Symbol.ClrType: not null } udt => udt.Name,
+            _ => null
+        };
+
+        return name is BuiltinNames.Str or BuiltinNames.Bytes or "bytearray" or BuiltinNames.Array
+            && TryGetClrType(type) is { IsGenericTypeDefinition: false };
+    }
+
+    /// <summary>
+    /// The receiver's source spelling for the R-AP steer text (<c>len(xs)</c>) — the identifier when
+    /// the receiver is one (through parentheses), otherwise a neutral <c>x</c>.
+    /// </summary>
+    private string DescribeSharpyReceiver(Expression receiver)
+        => UnwrapParenthesized(receiver) is Identifier id ? id.Name : "x";
 
     /// <summary>
     /// Whether the bridge COLLAPSES this receiver's CLR definition onto a Sharpy builtin

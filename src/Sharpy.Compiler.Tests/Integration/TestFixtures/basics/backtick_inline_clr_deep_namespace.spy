@@ -1,4 +1,7 @@
 # Test inline CLR access through a 3-level namespace chain: System.IO.Path (#730)
+# DirectorySeparatorChar is a CLR char, projected to a one-character `str` at the member seam
+# (#1291) — a Sharpy `str` exposes its Sharpy names only, so the .NET `.ToString()` is refused by
+# R-AP (#1851); the projected value is already the str this test wants.
 def main():
-    sep: str = `System.IO.Path`.DirectorySeparatorChar.ToString()
+    sep: str = `System.IO.Path`.DirectorySeparatorChar
     print("got separator")
