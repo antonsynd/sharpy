@@ -893,12 +893,16 @@ internal partial class TypeChecker
             return RefuseClrMethodGroupInValuePosition(memberAccess);
         }
 
-        // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
-        // are resolved by the codegen layer through CLR member discovery, not the
-        // type checker. Mark as error recovery to suppress SPY0907 false positives.
-        MarkExpressionAsErrorRecovery(memberAccess,
-            ErrorRecoveryReason.DeliberatelyPermissive(
-                PermissiveClrMemberReason(memberAccess)));
+        // The residual after the seams above. Every CLR-origin member that a route can name is now
+        // typed or refused before here: a Sharpy-surface member returned early; a Sharpy-builtin
+        // PascalCase spelling is SPY0203 (R-AP); the tuple element spellings are typed from the element
+        // types; an extension/static method group in value position is SPY0336; a UserDefinedType with a
+        // CLR type is typed or refused through ClrMemberTypeFromReflection; the #1141 absence proof
+        // refuses a proven-absent member. What remains is a member codegen resolves through CLR
+        // discovery on a receiver this seam does not reflect (an imported CLR generic whose reflection
+        // was Inconclusive; an `object` member the proof kept) — the same residual the drained
+        // UserDefinedType arm above returns as plain Unknown. No longer marked DeliberatelyPermissive
+        // (#1678, R-Q drained).
         return SemanticType.Unknown;
     }
 
@@ -1007,9 +1011,11 @@ internal partial class TypeChecker
             && ClrMemberTypeFromReflection(memberAccess, ancestorClrType) is { } reflectedInherited)
             return Substitute(reflectedInherited);
 
-        MarkExpressionAsErrorRecovery(memberAccess,
-            ErrorRecoveryReason.DeliberatelyPermissive(
-                PermissiveClrMemberReason(memberAccess)));
+        // Unreachable for a typed receiver: the ancestor either has no CLR type (no
+        // ClrReceiverTypeOf) or ClrMemberTypeFromReflection already answered it — typed, or
+        // Inconclusive -> UnmappedClrType, or MethodGroup -> SPY0336. No receiver shape was measured
+        // reaching here after those seams; the plain Unknown is the honest recovery if one ever does.
+        // No longer marked DeliberatelyPermissive (#1678, R-Q drained).
         return SemanticType.Unknown;
     }
 
@@ -1459,25 +1465,6 @@ internal partial class TypeChecker
                 _ => ((SemanticType, string)?)null
             }
             : null;
-
-    /// <summary>
-    /// Why a CLR-origin member access reached the permissive channel after the resolver was asked.
-    /// The reason is the resolver's own verdict, so the allowlist entry describes the residual class
-    /// rather than the whole seam (#1678).
-    /// </summary>
-    private string PermissiveClrMemberReason(MemberAccess memberAccess)
-        => _clrMemberResolutions.TryGetValue(memberAccess, out var resolution)
-            ? resolution switch
-            {
-                Discovery.ClrMemberResolution.MethodGroup =>
-                    "a multi-overload CLR method group has no single function type in value position (#1678)",
-                Discovery.ClrMemberResolution.InconclusiveResult =>
-                    "reflection could not map this CLR member's type (#1678)",
-                _ =>
-                    "the member is absent from the reflected surface but the #1141 proof kept it "
-                    + "(an extension method or a spelling the proof models may still bind it) (#1678)",
-            }
-            : "the receiver's CLR type is not one this seam resolves (#1678)";
 
     /// <summary>
     /// Returns true (and emits SPY0215) when <paramref name="memberAccess"/> references a CLR-only

@@ -12,11 +12,11 @@
 # Measured @ 4ee7e49d3 (#1640, #1645); re-cited per site @ #1640's resolver commit.
 #
 # Access.cs sites, in file order:
-#   :280 a module export of an unhandled symbol kind        -> #1674
-#   :413 CLR-origin receiver AFTER ClrMemberTypeResolver    -> #1678 (method group in value
-#        position, reflection inconclusive, or a name the #1141 proof kept)
-#   :792 general tail: a receiver kind the resolver declines -> #1678
-#   :903 inherited CLR member AFTER the resolver             -> #1678
-TypeChecker.Expressions.Access.cs 3 #1674 #1678 #1678
+#   :325 a module export of an unhandled symbol kind        -> #1674
+# The two #1678 CLR-origin tails (general and inherited) drained @ P4b Phase 3: a Sharpy-builtin
+# PascalCase spelling is SPY0203 (R-AP), an extension/static method group in value position is
+# SPY0336, the tuple element spellings are typed, and a UserDefinedType with a CLR type is typed or
+# refused through ClrMemberTypeFromReflection — the tails return plain Unknown, no longer marked.
+TypeChecker.Expressions.Access.cs 1 #1674
 # Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
 TypeChecker.Expressions.cs 2 #1675 #1676
