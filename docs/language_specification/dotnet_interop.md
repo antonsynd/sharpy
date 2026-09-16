@@ -230,6 +230,21 @@ def main() -> None:
 Because the conversion copies, mutating the result does not affect the .NET collection it came
 from, exactly as `b = list(a)` in Python leaves `a` alone.
 
+**A mapping materializes the same way.** A value whose runtime form is a CLR mapping — an
+`IDictionary<K, V>` or `IReadOnlyDictionary<K, V>` — materializes into a `dict[K, V]` exactly as a
+.NET sequence materializes into a `list[T]`:
+
+```python
+from system.diagnostics import ProcessStartInfo
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    env: dict[str, str] = p.environment
+    env["SHARPY_HOME"] = "/opt/sharpy"
+    print(env["SHARPY_HOME"])                 # /opt/sharpy
+```
+
 **An ordered sequence is not collapsed, because a Sharpy list cannot stand in for one.** Everything
 above holds for CLR types a `Sharpy.List<T>` can replace — it *is* an `IEnumerable<T>`, an
 `IList<T>`, an `ICollection<T>` — so materializing loses nothing. `order_by` returns
