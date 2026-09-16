@@ -215,10 +215,13 @@ after
 
 ### Definite assignment across a suppression-capable `with`
 
-The suppression edge cuts both ways. Because `__exit__` may return `True` and swallow an exception
-raised **anywhere** in the body, the statement after the `with` is reachable with the body only
-partly executed. Definite assignment is therefore **conservative** at that edge: a bare declaration
-assigned only inside a suppression-capable body is not definitely assigned after the `with`.
+Because `__exit__` may return `True` and swallow an exception raised **anywhere** in the body, the
+statement after the `with` is reachable with the body only partly executed — a bare local assigned
+inside the body may or may not have been assigned when control reaches the read. Sharpy resolves this
+**at runtime, like Python** ([#1839](https://github.com/antonsynd/sharpy/issues/1839)): such a read
+is *runtime-checked*, not refused. When the body completes normally the read finds the value; when a
+suppressed exception skipped the assignment the read raises `UnboundLocalError` — nothing that runs
+in Python is refused, and nothing prints a silent default.
 
 ```python
 class Suppressor:
@@ -226,28 +229,11 @@ class Suppressor:
         return 1
 
     def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
-        return False
+        return True
 
 def main() -> None:
     n: int
     with Suppressor():
-        n = 5
-    print(n)   # error SPY0600: variable 'n' is used before being assigned
-```
-
-A manager that **cannot** suppress has no such edge, so the same program compiles and runs:
-
-```python
-class Simple:
-    def __enter__(self) -> int:
-        return 1
-
-    def __exit__(self) -> None:
-        pass
-
-def main() -> None:
-    n: int
-    with Simple():
         n = 5
     print(n)
 ```
@@ -256,33 +242,56 @@ def main() -> None:
 5
 ```
 
-This is the same conservatism C# applies (CS0165: "use of unassigned local variable") and it can
-refuse a program that would have run: the example above declares `__exit__` returning `False`, so
-nothing is ever suppressed, and CPython prints `5`. The rule does not read the *value* `__exit__`
-returns — only its **shape** — because the value is a run-time decision. When the manager really
-does suppress, the conservative answer is the correct one and CPython agrees:
+If the body raises before the assignment and `__exit__` swallows it, the read after the `with` finds
+`n` unset and raises `UnboundLocalError` (Python 3.12's exact wording), caught here to show it:
 
 ```python
 class Suppressor:
-    def __enter__(self): return 1
-    def __exit__(self, t, v, tb): return True
+    def __enter__(self) -> int:
+        return 1
 
-try:
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
+def maybe_raise(flag: bool) -> None:
+    if flag:
+        raise ValueError("boom")
+
+def main() -> None:
+    n: int
     with Suppressor():
-        raise ValueError("x")
+        maybe_raise(True)
         n = 5
-    print(n)
-except NameError as e:
-    print("NameError:", e)
+    try:
+        print(n)
+    except UnboundLocalError as e:
+        print(str(e))
 ```
 
 ```
-NameError: name 'n' is not defined
+cannot access local variable 'n' where it is not associated with a value
 ```
 
-Assign the declaration a value before the `with`, or read it inside the body. Narrowing the rule so
-that only statements after a `raise`-capable statement are treated as skippable is tracked by
-[#1839](https://github.com/antonsynd/sharpy/issues/1839); until it is decided, the refusal stands.
+The cost is one `bool` per runtime-checked local (its assigned-flag). A manager that **cannot**
+suppress has no suppression edge, so a body assignment is unconditional and its read after the
+`with` runs with no flag at all. A read that is unassigned even ignoring suppression — a
+*conditional* assignment, say — is a plain definite-assignment hole and is still refused (SPY0600),
+under every manager:
+
+```python
+def main() -> None:
+    c: bool = True
+    n: int
+    with Suppressor():
+        if c:
+            n = 5
+    print(n)   # error SPY0600: variable 'n' is used before being assigned
+```
+
+> **`as` targets are block-scoped.** Unlike Python, a `with … as name` target does not persist after
+> the block (a fresh `as` target read outside is SPY0200). A pre-declared local rebound by
+> `with … as n` therefore is **not** assigned after the block, and reading it is an ordinary
+> use-before-assign — the runtime check above applies to BODY assignments, not to the `as` target.
 
 ### `yield` inside a suppression-capable `with` (SPY0703)
 

@@ -268,13 +268,10 @@ def main() -> None:
     /// </summary>
     private static IEnumerable<(string label, string reason)> KnownRedCells()
     {
-        yield return ("with.suppression-capable-body-assigns-bare-local",
-            "#1839 — a bare local assigned UNCONDITIONALLY in a suppression-capable with body and "
-            + "read after the with is SPY0600. The suppression edge leaves from the with-body ENTRY "
-            + "block, so a body with no raise is treated as possibly aborting before its first "
-            + "statement. Ran at 5bac4cf71 and in python3 (prints 5); an owner ruling is pending on "
-            + "whether to model the edge per raise-capable statement or adopt the C# CS0165 reading.");
-
+        // Drained (#1839, R-AI): a bare local assigned in a suppression-capable with body and read
+        // after is now RUNTIME-CHECKED (an UnboundLocalError on the unset path), not SPY0600. Covered
+        // by SuppressionWithDefiniteAssignmentMatrixTests. The roster stays for a future parking.
+        yield break;
     }
 
     [Fact]

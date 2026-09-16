@@ -1,0 +1,17 @@
+# A bare local assigned in a suppression-capable `with` body and read after is
+# runtime-checked (#1839, R-AI): when the body does not raise, the read finds it set.
+class Sup:
+    def __enter__(self) -> int:
+        return 1
+    def __exit__(self, t: object?, v: Exception?, b: object?) -> bool:
+        return True
+
+def maybe_raise(flag: bool) -> None:
+    if flag:
+        raise ValueError("boom")
+
+def main() -> None:
+    n: int
+    with Sup():
+        n = 5
+    print(n)

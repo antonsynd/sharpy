@@ -1,0 +1,17 @@
+# The `as` target is block-scoped in Sharpy; a BODY assignment beside a distinct `as`
+# target is runtime-checked like any other (#1839). No-raise here, so it prints.
+class Sup:
+    def __enter__(self) -> int:
+        return 1
+    def __exit__(self, t: object?, v: Exception?, b: object?) -> bool:
+        return True
+
+def maybe_raise(flag: bool) -> None:
+    if flag:
+        raise ValueError("boom")
+
+def main() -> None:
+    n: int
+    with Sup() as s:
+        n = 5
+    print(n)

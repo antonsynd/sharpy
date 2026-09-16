@@ -1,0 +1,22 @@
+# The suppression-capable `with` swallows a body exception raised BEFORE the assignment,
+# so the read after finds n unset and raises UnboundLocalError at runtime (#1839) — caught
+# here to pin the python 3.12 message. Positive twin: suppress_with_da_no_raise_1839.
+class Sup:
+    def __enter__(self) -> int:
+        return 1
+    def __exit__(self, t: object?, v: Exception?, b: object?) -> bool:
+        return True
+
+def maybe_raise(flag: bool) -> None:
+    if flag:
+        raise ValueError("boom")
+
+def main() -> None:
+    n: int
+    with Sup():
+        maybe_raise(True)
+        n = 5
+    try:
+        print(n)
+    except UnboundLocalError as e:
+        print(str(e))
