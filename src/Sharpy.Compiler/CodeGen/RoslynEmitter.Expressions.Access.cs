@@ -578,34 +578,24 @@ internal partial class RoslynEmitter
                 }
             }
 
-            // Handle static method calls on generic CLR types: Comparer[object].create(cmp)
-            // IndexAccess(TypeName, TypeArgs) must emit GenericName<TypeArgs> (angle brackets),
-            // not ElementAccess[TypeArgs] (square brackets).
-            if (memberAccess.Object is IndexAccess genericStaticIndexAccess
-                && genericStaticIndexAccess.Object is Identifier genericStaticTypeId)
+            // A nested type CONSTRUCTED through a generic reference: G[int].Inner() → new G<int>.Inner().
+            // The declaring segment carries the type arguments (the nested type declares none), so it is
+            // spelled from the recorded denoted type — not BuildNestedTypeName, which would emit the open
+            // `G.Inner` (CS0305). The type-denoting classifier recorded the denoted type on the receiver
+            // (#1817).
+            if (memberAccess.Object is IndexAccess denotedNestedReceiver
+                && _context.SemanticInfo?.GetDenotedType(denotedNestedReceiver) is Semantic.GenericType denotedNestedOwner
+                && denotedNestedOwner.GenericDefinition is { } denotedNestedDef
+                && denotedNestedDef.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member) is { } denotedNestedType
+                && denotedNestedType.TypeKind is Semantic.TypeKind.Class or Semantic.TypeKind.Struct
+                && _typeMapper.MapSemanticType(denotedNestedOwner) is NameSyntax denotedOwnerName)
             {
-                var genericStaticSym = _context.LookupSymbol(genericStaticTypeId.Name);
-                if (genericStaticSym is TypeSymbol { IsGeneric: true })
-                {
-                    var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(genericStaticIndexAccess.Index);
-                    var csharpTypeName = NameCasing.ResolveType(genericStaticTypeId.Name, genericStaticTypeId.IsNameBacktickEscaped);
-                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpTypeName, typeArgsSyntax);
-
-                    var genericMethodSym = (Symbol?)_context.SemanticInfo?.GetCallTarget(call)
-                        ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member;
-                    var genericClrMethodName = GetClrMethodName(genericMethodSym);
-                    var genericMethodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
-                        ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, genericClrMethodName);
-
-                    var genericCallArgs = GenerateReorderedCallArguments(call, genericMethodSym as FunctionSymbol);
-
-                    return InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            genericTypeSyntax,
-                            IdentifierName(genericMethodName)))
-                        .WithArgumentList(ArgumentList(SeparatedList(genericCallArgs)));
-                }
+                var nestedTypeName = QualifiedName(denotedOwnerName,
+                    IdentifierName(NameCasing.ResolveType(denotedNestedType.Name, denotedNestedType.IsNameBacktickEscaped)));
+                var denotedNestedCtor = ResolveConstructorForCall(denotedNestedType, call);
+                var denotedNestedArgs = GenerateReorderedCallArguments(call, denotedNestedCtor);
+                return ObjectCreationExpression(nestedTypeName)
+                    .WithArgumentList(ArgumentList(SeparatedList(denotedNestedArgs)));
             }
 
             // Narrowed Optional delegate field invocation: self._cb(msg) after
@@ -621,7 +611,14 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(delegateArgs)));
             }
 
-            var obj = GenerateExpression(memberAccess.Object);
+            // A static method reached through a CONSTRUCTED generic reference: Comparer[int].create(cmp)
+            // → global::...Comparer<int>.Create(cmp). The receiver is spelled from the recorded denoted
+            // type (a CLOSED generic), never GenerateExpression on the IndexAccess, which would emit an
+            // element access on the open type (CS0305). This subsumes the former AST re-derivation arm —
+            // one authority, the classifier's denoted type (#1817).
+            var obj = _context.SemanticInfo?.GetDenotedType(memberAccess.Object) is { } denotedCallReceiver
+                ? _typeMapper.MapSemanticType(denotedCallReceiver)
+                : GenerateExpression(memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
             // e.g., self.__lt__(other) → this < other, self.__neg__() → -this
@@ -1632,16 +1629,32 @@ internal partial class RoslynEmitter
         // (self.field, obj.field). The TypeChecker stores the resolved symbol in SemanticInfo
         // so the emitter doesn't re-resolve. For static fields accessed via instance, codegen
         // must rewrite to ClassName.Field because C# disallows instance access (CS0176).
+        // The type a type-denoting receiver denotes, recorded by ClassifyTypeDenotingReceiver: a
+        // constructed generic reference (`G[int]` → `G<int>`), or a type alias target. The emitter
+        // spells the receiver of a static member from this recorded type (Rule 2), never from the AST
+        // shape that made `G.K` an element access or `G.n` an open-generic reference (#1817).
+        var denotedReceiver = _context.SemanticInfo?.GetDenotedType(memberAccess.Object);
+
         var resolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
         if (resolution is { } res && res.Member is VariableSymbol resolvedField)
         {
+            // The owner is the recorded CLOSED denoted type when the receiver denotes one (`G<int>.K`);
+            // otherwise the owner type's name — not the object identifier, which could be a variable
+            // name (e.g., `a.count` → owner is Counter, not `a`).
+            if (denotedReceiver != null)
+                return GenerateStaticFieldAccessOnType(
+                    _typeMapper.MapSemanticType(denotedReceiver), resolvedField, memberAccess.Member);
+
             var classSymbol = res.Owner;
-            // Use the owner type's name — not the object identifier, which could be
-            // a variable name (e.g., `a.count` → owner is Counter, not `a`)
             return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
         }
 
-        var obj = GenerateExpression(memberAccess.Object);
+        // A denoted receiver is spelled from its recorded type, never generated from the AST shape:
+        // `G[int]` would emit an element access on the open generic (CS0305) and a type alias would
+        // emit nothing (CS0103). GenerateIndexAccess is therefore unreachable for a denoted receiver.
+        var obj = denotedReceiver != null
+            ? _typeMapper.MapSemanticType(denotedReceiver)
+            : GenerateExpression(memberAccess.Object);
 
         // Handle special .value and .name properties for enum instances.
         if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))

@@ -1376,9 +1376,18 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateStaticFieldAccess(
         Semantic.TypeSymbol classSymbol, string originalName,
         Semantic.VariableSymbol fieldSymbol, string memberName)
-    {
-        ExpressionSyntax typeExpr = BuildQualifiedTypeAccess(classSymbol, originalName);
+        => GenerateStaticFieldAccessOnType(
+            BuildQualifiedTypeAccess(classSymbol, originalName), fieldSymbol, memberName);
 
+    /// <summary>
+    /// The owner-spelling-agnostic core of <see cref="GenerateStaticFieldAccess"/>: emits
+    /// <c>&lt;typeExpr&gt;.&lt;field&gt;</c>. The owner is the recorded denoted type for a constructed
+    /// generic reference (<c>G&lt;int&gt;.K</c>) or the type-name access for a bare owner — a CLOSED
+    /// type either way, never the open generic that made <c>G.K</c> CS0305 (#1817).
+    /// </summary>
+    private ExpressionSyntax GenerateStaticFieldAccessOnType(
+        ExpressionSyntax typeExpr, Semantic.VariableSymbol fieldSymbol, string memberName)
+    {
         var codeGenInfo = GetCodeGenInfo(fieldSymbol);
         var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(memberName, isBacktickEscaped: fieldSymbol.IsNameBacktickEscaped);
 
