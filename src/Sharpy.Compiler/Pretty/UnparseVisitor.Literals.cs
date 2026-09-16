@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Pretty;
@@ -116,12 +117,33 @@ internal sealed partial class UnparseVisitor
             _w.Write("!");
             _w.Write(part.Conversion.Value.ToString());
         }
-        if (part.FormatSpec != null)
+        if (part.Spec is { } spec)
         {
             _w.Write(":");
-            _w.Write(part.FormatSpec);
+            WriteFStringSpec(spec);
         }
         _w.Write("}");
+    }
+
+    /// <summary>
+    /// Writes a replacement field's format spec: literal text verbatim (braces re-escaped) and each
+    /// nested replacement field via <see cref="WriteFStringReplacementField"/> (recursively).
+    /// </summary>
+    private void WriteFStringSpec(ImmutableArray<FStringPart> spec)
+    {
+        foreach (var part in spec)
+        {
+            if (part.Expression != null)
+            {
+                WriteFStringReplacementField(part);
+            }
+            else if (part.Text != null)
+            {
+                _w.Write(part.Text
+                    .Replace("{", "{{", StringComparison.Ordinal)
+                    .Replace("}", "}}", StringComparison.Ordinal));
+            }
+        }
     }
 
     public override void VisitBooleanLiteral(BooleanLiteral node)

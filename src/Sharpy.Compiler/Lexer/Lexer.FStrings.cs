@@ -9,12 +9,30 @@ public partial class Lexer
     {
         public char QuoteChar { get; set; }
         public bool IsTriple { get; set; }
-        public int BraceDepth { get; set; }
-        public int ParenDepth { get; set; }     // Depth of ()/[] within the current replacement field (for '='/'!' detection)
-        public int ExprStartPosition { get; set; }  // Source position of the first char after '{' (for verbatim '=' self-doc capture)
-        public bool InFormatSpec { get; set; }  // Tracks if we're processing format specification after ':'
         public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
         public bool IsTString { get; set; }     // PEP 750: template string (t"...") — same scanning, different AST
+
+        /// <summary>
+        /// The replacement fields currently open, innermost on top. Empty = reading literal text.
+        /// A field is pushed at each unescaped <c>{</c> (both a top-level hole and a nested hole
+        /// inside a format spec, PEP 701) and popped at its matching <c>}</c>.
+        /// </summary>
+        public Stack<FStringField> Fields { get; } = new();
+    }
+
+    /// <summary>
+    /// One open replacement field being lexed. While <see cref="InFormatSpec"/> is false the field's
+    /// expression is being tokenized (with <see cref="InnerBraceDepth"/> tracking dict/set braces and
+    /// <see cref="ParenDepth"/> tracking ()/[] so '='/'!' specifiers only fire at the field's top
+    /// level); once ':' is consumed the field switches to format-spec text, where an unescaped
+    /// <c>{</c> pushes a nested field.
+    /// </summary>
+    private class FStringField
+    {
+        public bool InFormatSpec { get; set; }     // true once ':' consumed for this field
+        public int ParenDepth { get; set; }        // ()/[] nesting within the field's expression
+        public int InnerBraceDepth { get; set; }   // dict/set {} nesting within the field's expression
+        public int ExprStartPosition { get; set; } // source position of the first char after '{'
     }
 
     /// <summary>
@@ -50,7 +68,6 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
-            BraceDepth = 0
         });
 
         return CreateToken(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn, startPosition);
@@ -86,7 +103,6 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
-            BraceDepth = 0,
             IsTString = true
         });
 
@@ -158,7 +174,6 @@ public partial class Lexer
         {
             QuoteChar = quote,
             IsTriple = isTriple,
-            BraceDepth = 0,
             DedentAmount = dedentAmount
         });
 
@@ -324,35 +339,41 @@ public partial class Lexer
         var startColumn = _column;
         var startPosition = _position;
 
-        // If we're inside an expression (brace depth > 0), tokenize normally
-        if (context.BraceDepth > 0)
+        // If we have an open replacement field, tokenize the field (expression or format spec).
+        if (context.Fields.Count > 0)
         {
+            var field = context.Fields.Peek();
+
+            // A field in format-spec mode reads spec text and pushes nested holes (PEP 701).
+            if (field.InFormatSpec)
+                return NextFStringSpecToken(context, field, atSpecStart: false);
+
             var current = _source[_position];
 
             // Handle closing brace
             if (current == '}')
             {
-                context.BraceDepth--;
                 _position++;
                 _column++;
 
-                if (context.BraceDepth == 0)
+                if (field.InnerBraceDepth == 0)
                 {
-                    // End of expression - reset format spec flag
-                    context.InFormatSpec = false;
+                    // End of this field's expression — pop the field.
+                    context.Fields.Pop();
                     return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
                 }
                 else
                 {
-                    // Nested closing brace within expression
+                    // Nested (dict/set) closing brace within the expression
+                    field.InnerBraceDepth--;
                     return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
 
-            // Handle opening brace (nested within expression)
+            // Handle opening brace (nested dict/set within expression)
             if (current == '{')
             {
-                context.BraceDepth++;
+                field.InnerBraceDepth++;
                 _position++;
                 _column++;
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
@@ -372,35 +393,33 @@ public partial class Lexer
             // Check for braces again after skipping whitespace
             if (current == '}')
             {
-                context.BraceDepth--;
                 _position++;
                 _column++;
 
-                // End of expression if brace depth is zero, otherwise nested closing brace within expression
-                if (context.BraceDepth == 0)
+                if (field.InnerBraceDepth == 0)
                 {
-                    context.InFormatSpec = false;  // Reset format spec flag
+                    context.Fields.Pop();
                     return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
                 }
                 else
                 {
+                    field.InnerBraceDepth--;
                     return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
 
             if (current == '{')
             {
-                context.BraceDepth++;
+                field.InnerBraceDepth++;
                 _position++;
                 _column++;
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
             // Check for the '=' self-documenting specifier at the top level of a replacement
-            // field (#986), e.g. f'{x=}' / f'{x = }'. Only at brace depth 1 and outside any
+            // field (#986), e.g. f'{x=}' / f'{x = }'. Only at the field's top level and outside any
             // ()/[] (so keyword args like dict(a=1) are not misread), and not part of '=='.
-            if (current == '=' && context.BraceDepth == 1 && context.ParenDepth == 0
-                && !context.InFormatSpec
+            if (current == '=' && field.InnerBraceDepth == 0 && field.ParenDepth == 0
                 && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
             {
                 // Consume '=' and any trailing whitespace; the captured SourceText is the
@@ -413,7 +432,7 @@ public partial class Lexer
                     _position++;
                     _column++;
                 }
-                var selfDocText = _source.Substring(context.ExprStartPosition, _position - context.ExprStartPosition);
+                var selfDocText = _source.Substring(field.ExprStartPosition, _position - field.ExprStartPosition);
                 // Value is the verbatim 'expr=' text the emitter prints literally, but the token's
                 // SOURCE span is only the '=' (+trailing whitespace) it owns — the expression chars
                 // are already covered by their own tokens. Without an explicit SourceLength, Length
@@ -426,8 +445,7 @@ public partial class Lexer
             // Check for conversion flag (!r / !s / !a) at the top level of a replacement
             // field, i.e. after the expression and before any ':' format spec or '}'.
             // Guard against the '!=' operator (next char '='), which is tokenized normally.
-            if (current == '!' && context.BraceDepth == 1 && context.ParenDepth == 0
-                && !context.InFormatSpec
+            if (current == '!' && field.InnerBraceDepth == 0 && field.ParenDepth == 0
                 && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
             {
                 bool validFlag = _position + 1 < _source.Length &&
@@ -458,71 +476,16 @@ public partial class Lexer
                     _line, _column, DiagnosticCodes.Lexer.InvalidFStringConversion);
             }
 
-            // Check for format specification start (: at BraceDepth == 1)
-            if (current == ':' && context.BraceDepth == 1 && context.ParenDepth == 0 && !context.InFormatSpec)
+            // Check for format specification start (: at the field's top level). The spec is a
+            // mini f-string: a sequence of literal text and nested replacement fields (PEP 701).
+            // Consume the ':' and switch the field to spec mode; the first token is the leading
+            // spec text (possibly empty — which itself signals to the parser that a spec exists).
+            if (current == ':' && field.InnerBraceDepth == 0 && field.ParenDepth == 0)
             {
-                // Consume the colon
                 _position++;
                 _column++;
-
-                // Mark that we're in format spec mode
-                context.InFormatSpec = true;
-
-                // Now read the format spec until we hit the closing }
-                var formatSpecBuilder = new StringBuilder();
-                var formatSpecStartLine = _line;
-                var formatSpecStartColumn = _column;
-                var formatSpecStartPosition = _position;
-                var nestedBraceDepth = 0;  // Track nested braces in format spec
-
-                while (_position < _source.Length)
-                {
-                    var fsc = _source[_position];
-
-                    // Check for nested opening brace in format spec
-                    if (fsc == '{')
-                    {
-                        nestedBraceDepth++;
-                        formatSpecBuilder.Append(fsc);
-                        _position++;
-                        _column++;
-                    }
-                    // Check for closing brace
-                    else if (fsc == '}')
-                    {
-                        if (nestedBraceDepth > 0)
-                        {
-                            // This is a nested closing brace, include it in format spec
-                            nestedBraceDepth--;
-                            formatSpecBuilder.Append(fsc);
-                            _position++;
-                            _column++;
-                        }
-                        else
-                        {
-                            // This is the end of the expression, emit the format spec token
-                            // Don't consume the }, it will be handled on next call
-                            context.InFormatSpec = false;
-                            return CreateToken(TokenType.FStringFormatSpec, formatSpecBuilder.ToString(), formatSpecStartLine, formatSpecStartColumn, formatSpecStartPosition);
-                        }
-                    }
-                    // Regular character in format spec
-                    else
-                    {
-                        formatSpecBuilder.Append(fsc);
-                        _position++;
-                        _column++;
-
-                        // Handle newlines
-                        if (fsc == '\n')
-                        {
-                            _line++;
-                            _column = 1;
-                        }
-                    }
-                }
-
-                throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+                field.InFormatSpec = true;
+                return NextFStringSpecToken(context, field, atSpecStart: true);
             }
 
             // Nested f-string start (e.g., f"outer {f'inner {x}'}")
@@ -545,9 +508,9 @@ public partial class Lexer
             // Track ()/[] nesting so '='/'!' specifiers are only recognised at the top level
             // of the replacement field (e.g. keyword args in dict(a=1) must not trigger '=').
             if (current == '(' || current == '[')
-                context.ParenDepth++;
-            else if ((current == ')' || current == ']') && context.ParenDepth > 0)
-                context.ParenDepth--;
+                field.ParenDepth++;
+            else if ((current == ')' || current == ']') && field.ParenDepth > 0)
+                field.ParenDepth--;
 
             // Operators and delimiters
             return ReadOperatorOrDelimiter();
@@ -626,12 +589,10 @@ public partial class Lexer
                         return CreateToken(TokenType.FStringText, sb.ToString(), startLine, startColumn, startPosition);
                     }
 
-                    // Start expression - consume the { and increment brace depth
+                    // Start expression - consume the { and push a new replacement field.
                     _position++;
                     _column++;
-                    context.BraceDepth = 1;
-                    context.ParenDepth = 0;
-                    context.ExprStartPosition = _position;
+                    context.Fields.Push(new FStringField { ExprStartPosition = _position });
                     return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
                 }
             }
@@ -735,5 +696,88 @@ public partial class Lexer
 
         // Reached end of source while in f-string
         throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+    }
+
+    /// <summary>
+    /// Emit the next token for a field that is in format-spec mode. The spec is a mini f-string:
+    /// a sequence of literal text (<see cref="TokenType.FStringFormatSpec"/>) and nested replacement
+    /// fields (<c>FStringExprStart … FStringExprEnd</c>, PEP 701). An unescaped <c>{</c> pushes a
+    /// nested field; an unescaped <c>}</c> ends this field's spec and pops it. This is re-entered
+    /// once per call, so it returns exactly one token and advances past it.
+    /// </summary>
+    private Token NextFStringSpecToken(FStringContext context, FStringField field, bool atSpecStart)
+    {
+        if (_position >= _source.Length)
+            throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+
+        var startLine = _line;
+        var startColumn = _column;
+        var startPosition = _position;
+
+        var c = _source[_position];
+
+        // The token right after ':' is ALWAYS the leading spec text (possibly empty), so the parser
+        // sees at least one FStringFormatSpec and knows a spec exists — even for {x:{w}} and {x:}.
+        // Subsequent calls dispatch on a leading '{'/'}' to push a nested field or close this one.
+        if (!atSpecStart)
+        {
+            // An unescaped '{' opens a nested replacement field inside the spec.
+            if (c == '{' && !(_position + 1 < _source.Length && _source[_position + 1] == '{'))
+            {
+                _position++;
+                _column++;
+                context.Fields.Push(new FStringField { ExprStartPosition = _position });
+                return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
+            }
+
+            // An unescaped '}' ends this field's spec and closes the field.
+            if (c == '}' && !(_position + 1 < _source.Length && _source[_position + 1] == '}'))
+            {
+                _position++;
+                _column++;
+                context.Fields.Pop();
+                return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
+            }
+        }
+
+        // Otherwise accumulate literal spec text up to the next unescaped '{' or '}'.
+        var sb = new StringBuilder();
+        while (_position < _source.Length)
+        {
+            var fsc = _source[_position];
+            if (fsc == '{' && _position + 1 < _source.Length && _source[_position + 1] == '{')
+            {
+                sb.Append('{');
+                _position += 2;
+                _column += 2;
+                continue;
+            }
+            if (fsc == '}' && _position + 1 < _source.Length && _source[_position + 1] == '}')
+            {
+                sb.Append('}');
+                _position += 2;
+                _column += 2;
+                continue;
+            }
+            if (fsc == '{' || fsc == '}')
+                break;
+
+            sb.Append(fsc);
+            _position++;
+            if (fsc == '\n')
+            {
+                _line++;
+                _column = 1;
+            }
+            else
+            {
+                _column++;
+            }
+        }
+
+        if (_position >= _source.Length)
+            throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+
+        return CreateToken(TokenType.FStringFormatSpec, sb.ToString(), startLine, startColumn, startPosition);
     }
 }

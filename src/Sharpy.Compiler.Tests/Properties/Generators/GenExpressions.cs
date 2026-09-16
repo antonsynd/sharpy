@@ -317,7 +317,21 @@ internal static class GenExpressions
                 {
                     Expression = e,
                     Conversion = conv,
-                    FormatSpec = spec
+                    // A static spec is a single literal-text part — the canonical form the lexer
+                    // produces (one FStringFormatSpec token for the whole run).
+                    Spec = ImmutableArray.Create(new FStringPart { Text = spec })
+                })),
+            // A nested replacement field inside the spec (PEP 701): {e:<prefix>{w}}. The leading
+            // (possibly empty) text part is mandatory because the lexer always emits it — this is the
+            // canonical form the round-trip must match.
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringNestedSpecPrefixes),
+                GenIdentifier.Name,
+                (e, prefix, wname) => new FStringPart
+                {
+                    Expression = e,
+                    Spec = ImmutableArray.Create(
+                        new FStringPart { Text = prefix },
+                        new FStringPart { Expression = new Identifier { Name = wname } })
                 })),
             (1, GenIdentifier.Name.Select(name => new FStringPart
             {
@@ -325,6 +339,10 @@ internal static class GenExpressions
                 IsSelfDocumenting = true,
                 SourceText = name + "=",
             })));
+
+    // Leading spec text before a nested {w} field, chosen so the whole spec round-trips verbatim
+    // (no '{', '}', ':' or '!' that would re-lex differently).
+    private static readonly string[] FStringNestedSpecPrefixes = { "", ">", "<", "^", ">10." };
 
     public static Gen<FStringLiteral> FStringLiteralExpr(GenContext ctx) =>
         Gen.Int[1, 3].SelectMany(count =>

@@ -677,6 +677,32 @@ internal class AstDumper : AstVisitor
             {
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
                 VisitChild(part.Expression, depth + 3, true);
+                DumpFStringSpec(part, depth);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dumps a replacement field's format spec, if any: literal text inline and each nested
+    /// replacement field's expression as a child so the tree shows spec-only references.
+    /// </summary>
+    private void DumpFStringSpec(FStringPart part, int depth)
+    {
+        if (part.Spec is not { } spec)
+            return;
+
+        var specIndent = new string(' ', (depth + 3) * IndentUnit.Length);
+        foreach (var specPart in spec)
+        {
+            if (specPart.Text != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{specIndent}Spec text: \"{EscapeString(specPart.Text)}\"");
+            }
+            else if (specPart.Expression != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{specIndent}Spec field:");
+                VisitChild(specPart.Expression, depth + 4, true);
+                DumpFStringSpec(specPart, depth + 1);
             }
         }
     }
@@ -700,6 +726,7 @@ internal class AstDumper : AstVisitor
             {
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
                 VisitChild(part.Expression, depth + 3, true);
+                DumpFStringSpec(part, depth);
             }
         }
     }

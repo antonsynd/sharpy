@@ -65,8 +65,8 @@ public record FStringLiteral : Expression
     {
         foreach (var part in Parts)
         {
-            if (part.Expression != null)
-                yield return part.Expression;
+            foreach (var child in part.ChildExpressions())
+                yield return child;
         }
     }
 }
@@ -75,10 +75,37 @@ public record FStringPart
 {
     public string? Text { get; init; }
     public Expression? Expression { get; init; }
-    public string? FormatSpec { get; init; }  // Format specification (e.g., ".2f", ">10")
+
+    /// <summary>
+    /// The replacement field's format specification, as a sequence of literal text parts and
+    /// nested replacement fields (PEP 701: <c>{x:{w}}</c> — <c>w</c> is an expression the AST owns).
+    /// <c>null</c> when the field had no <c>:</c> spec at all; an empty array (or a single empty
+    /// Text part) is the empty spec <c>{x:}</c>. Nested holes recurse to any depth.
+    /// </summary>
+    public ImmutableArray<FStringPart>? Spec { get; init; }
+
     public char? Conversion { get; init; }    // Conversion flag: 'r' (repr), 's' (str), 'a' (ascii)
     public string? SourceText { get; init; }  // Verbatim '=' self-documenting prefix (e.g. "x + 1=" for {x + 1=})
     public bool IsSelfDocumenting { get; init; }  // True when the replacement field used the '=' specifier
+
+    /// <summary>
+    /// Yields every expression this part contributes to the tree — its own hole expression and,
+    /// recursively, the expressions inside nested spec replacement fields — so the checker and LSP
+    /// see references made only inside a spec (<c>{x:{w}}</c> uses <c>w</c>).
+    /// </summary>
+    public IEnumerable<Node> ChildExpressions()
+    {
+        if (Expression != null)
+            yield return Expression;
+        if (Spec is { } spec)
+        {
+            foreach (var specPart in spec)
+            {
+                foreach (var child in specPart.ChildExpressions())
+                    yield return child;
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -101,8 +128,8 @@ public record TStringLiteral : Expression
     {
         foreach (var part in Parts)
         {
-            if (part.Expression != null)
-                yield return part.Expression;
+            foreach (var child in part.ChildExpressions())
+                yield return child;
         }
     }
 }

@@ -172,7 +172,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         {
             if (a[i].Text != b[i].Text)
                 return false;
-            if (a[i].FormatSpec != b[i].FormatSpec)
+            if (!FStringSpecEqual(a[i].Spec, b[i].Spec))
                 return false;
             if (a[i].Conversion != b[i].Conversion)
                 return false;
@@ -184,6 +184,15 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
                 return false;
         }
         return true;
+    }
+
+    private bool FStringSpecEqual(ImmutableArray<FStringPart>? a, ImmutableArray<FStringPart>? b)
+    {
+        if (a is null && b is null)
+            return true;
+        if (a is null || b is null)
+            return false;
+        return FStringPartsEqual(a.Value, b.Value);
     }
 
     private bool MemberAccessEquals(MemberAccess a, MemberAccess b) =>

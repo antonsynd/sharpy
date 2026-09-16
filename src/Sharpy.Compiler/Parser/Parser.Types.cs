@@ -678,8 +678,96 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Parse one replacement field: <c>FStringExprStart Expression [=] [!conv] [: spec] FStringExprEnd</c>.
+    /// Shared by top-level holes and the nested holes inside a format spec (PEP 701), so a spec
+    /// field like <c>{w}</c> in <c>{x:{w}}</c> parses through exactly the same path.
+    /// </summary>
+    private FStringPart ParseFStringField()
+    {
+        Advance(); // Skip FStringExprStart
+
+        // Parse the expression (tokens are already emitted by lexer)
+        var expr = ParseExpression();
+
+        // Optional specifiers, in Python field order: '=' self-doc, '!' conversion, ':' format spec.
+        string? sourceText = null;
+        bool isSelfDocumenting = false;
+        if (Current.Type == TokenType.FStringSelfDoc)
+        {
+            sourceText = Current.Value;
+            isSelfDocumenting = true;
+            Advance();
+        }
+
+        char? conversion = null;
+        if (Current.Type == TokenType.FStringConversion)
+        {
+            conversion = Current.Value.Length > 0 ? Current.Value[0] : null;
+            Advance();
+        }
+
+        var spec = ParseFStringSpec();
+
+        var part = new FStringPart
+        {
+            Text = null,
+            Expression = expr,
+            Spec = spec,
+            Conversion = conversion,
+            SourceText = sourceText,
+            IsSelfDocumenting = isSelfDocumenting,
+        };
+
+        // Expect FStringExprEnd
+        Expect(TokenType.FStringExprEnd);
+        return part;
+    }
+
+    /// <summary>
+    /// Parse a replacement field's format spec — a sequence of literal text
+    /// (<see cref="TokenType.FStringFormatSpec"/>) and nested replacement fields — up to (but not
+    /// consuming) the field's own <see cref="TokenType.FStringExprEnd"/>. Returns <c>null</c> when
+    /// the field had no <c>:</c> at all (the lexer emits at least one FStringFormatSpec token the
+    /// moment a spec exists, even an empty one).
+    /// </summary>
+    private ImmutableArray<FStringPart>? ParseFStringSpec()
+    {
+        if (Current.Type != TokenType.FStringFormatSpec)
+            return null;
+
+        var specParts = new List<FStringPart>();
+        var savedLoopPosition = _lastLoopPosition;
+        _lastLoopPosition = -1;
+        try
+        {
+            // Spec text and nested fields until the field's own FStringExprEnd (or FStringEnd/Eof).
+            while (Current.Type == TokenType.FStringFormatSpec || Current.Type == TokenType.FStringExprStart)
+            {
+                if (!CheckLoopProgress())
+                    break;
+
+                if (Current.Type == TokenType.FStringFormatSpec)
+                {
+                    specParts.Add(new FStringPart { Text = Current.Value, Expression = null });
+                    Advance();
+                }
+                else
+                {
+                    specParts.Add(ParseFStringField());
+                }
+            }
+        }
+        finally
+        {
+            _lastLoopPosition = savedLoopPosition;
+        }
+
+        return specParts.ToImmutableArray();
+    }
+
+    /// <summary>
     /// Parse a segmented f-string (new lexer approach)
-    /// FStringStart, (FStringText | FStringExprStart Expression [: FormatSpec] FStringExprEnd)*, FStringEnd
+    /// FStringStart, (FStringText | FStringExprStart Expression [: spec] FStringExprEnd)*, FStringEnd
     /// </summary>
     private FStringLiteral ParseSegmentedFString(int startLine, int startColumn, Token startToken)
     {
@@ -705,48 +793,7 @@ public partial class Parser
                 }
                 else if (Current.Type == TokenType.FStringExprStart)
                 {
-                    // Expression segment
-                    Advance(); // Skip FStringExprStart
-
-                    // Parse the expression (tokens are already emitted by lexer)
-                    var expr = ParseExpression();
-
-                    // Optional specifiers, in Python field order: '=' self-doc, '!' conversion, ':' format spec.
-                    string? sourceText = null;
-                    bool isSelfDocumenting = false;
-                    if (Current.Type == TokenType.FStringSelfDoc)
-                    {
-                        sourceText = Current.Value;
-                        isSelfDocumenting = true;
-                        Advance();
-                    }
-
-                    char? conversion = null;
-                    if (Current.Type == TokenType.FStringConversion)
-                    {
-                        conversion = Current.Value.Length > 0 ? Current.Value[0] : null;
-                        Advance();
-                    }
-
-                    string? formatSpec = null;
-                    if (Current.Type == TokenType.FStringFormatSpec)
-                    {
-                        formatSpec = Current.Value;
-                        Advance();
-                    }
-
-                    parts.Add(new FStringPart
-                    {
-                        Text = null,
-                        Expression = expr,
-                        FormatSpec = formatSpec,
-                        Conversion = conversion,
-                        SourceText = sourceText,
-                        IsSelfDocumenting = isSelfDocumenting,
-                    });
-
-                    // Expect FStringExprEnd
-                    Expect(TokenType.FStringExprEnd);
+                    parts.Add(ParseFStringField());
                 }
                 else
                 {

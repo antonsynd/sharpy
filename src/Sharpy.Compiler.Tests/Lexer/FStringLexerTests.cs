@@ -464,33 +464,53 @@ line2""""""";
     [Fact]
     public void FString_FormatSpecWithNestedExpression_TokenizesCorrectly()
     {
-        // f"{x:{width}}" - format spec contains nested expression
+        // f"{x:{width}}" — a format spec is a mini f-string (PEP 701): the nested {width} is a
+        // replacement field the lexer tokenizes, not raw text inside one FStringFormatSpec token.
         var tokens = Tokenize("f\"{x:{width}}\"");
 
-        tokens[0].Type.Should().Be(TokenType.FStringStart);
-        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
-        tokens[2].Type.Should().Be(TokenType.Identifier);
-        tokens[2].Value.Should().Be("x");
-        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
-        tokens[3].Value.Should().Be("{width}");  // Nested braces included in format spec
-        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
-        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+        var i = 0;
+        tokens[i++].Type.Should().Be(TokenType.FStringStart);
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[i].Type.Should().Be(TokenType.Identifier);
+        tokens[i++].Value.Should().Be("x");
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be("");   // leading (empty) spec text — always emitted
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);  // nested {width}
+        tokens[i].Type.Should().Be(TokenType.Identifier);
+        tokens[i++].Value.Should().Be("width");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);    // close nested field
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);    // close x field
+        tokens[i].Type.Should().Be(TokenType.FStringEnd);
     }
 
     [Fact]
     public void FString_FormatSpecWithNestedExpressionAndType_TokenizesCorrectly()
     {
-        // f"{x:{width}.{precision}f}" - format spec with multiple nested expressions
+        // f"{x:{width}.{precision}f}" — literal spec text between/after the nested fields comes back
+        // as its own FStringFormatSpec tokens ("", ".", "f").
         var tokens = Tokenize("f\"{x:{width}.{precision}f}\"");
 
-        tokens[0].Type.Should().Be(TokenType.FStringStart);
-        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
-        tokens[2].Type.Should().Be(TokenType.Identifier);
-        tokens[2].Value.Should().Be("x");
-        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
-        tokens[3].Value.Should().Be("{width}.{precision}f");
-        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
-        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+        var i = 0;
+        tokens[i++].Type.Should().Be(TokenType.FStringStart);
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[i].Type.Should().Be(TokenType.Identifier);
+        tokens[i++].Value.Should().Be("x");
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be("");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);  // {width}
+        tokens[i].Type.Should().Be(TokenType.Identifier);
+        tokens[i++].Value.Should().Be("width");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be(".");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);  // {precision}
+        tokens[i].Type.Should().Be(TokenType.Identifier);
+        tokens[i++].Value.Should().Be("precision");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be("f");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);    // close x field
+        tokens[i].Type.Should().Be(TokenType.FStringEnd);
     }
 
     [Fact]
