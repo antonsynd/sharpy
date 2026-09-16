@@ -35,6 +35,33 @@ references (`Box[int, str]` on a one-parameter class) are rejected with the
 same diagnostic annotation positions use, after PEP-696 trailing defaults are
 filled (`Pair[int]` with `class Pair[K, V = str]` constructs `Pair<int, string>`).
 
+### Static members through a constructed type reference
+
+A static member — a `const`, a `@static` field, a `@static` method, or a nested
+type — is reached through a **constructed** type reference: the type arguments
+must be supplied. `Box[int].CAPACITY` reads the constant on the closed type
+`Box<int>`; the bare open reference `Box.CAPACITY` is rejected with SPY0339, the
+same rule that applies to using the reference as a value.
+
+```python
+class Box[T]:
+    const CAPACITY: int = 3
+
+    @static
+    def make() -> int:
+        return 7
+
+
+def main() -> None:
+    print(Box[int].CAPACITY)     # 3
+    print(Box[int].make())       # 7
+```
+
+The reference is emitted as the closed type (`Box<int>.CAPACITY`), never the open
+generic. This also holds for a type alias of a constructed reference
+(`type IntBox = Box[int]` then `IntBox.CAPACITY`) and for a nested type
+constructed through the reference (`Box[int].Inner()` emits `new Box<int>.Inner()`).
+
 ## Generic Functions
 
 ```python

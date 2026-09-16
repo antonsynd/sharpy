@@ -74,6 +74,30 @@ content = File.read_all_text("data.txt")  # Calls System.IO.File.ReadAllText(...
 
 This mapping applies to method names, property names, and static members. The compiler resolves `snake_case` identifiers to their `PascalCase` .NET equivalents at compile time.
 
+## Nested .NET types
+
+A nested .NET type — a type declared inside another, such as `System.Environment.SpecialFolder` — is reached through its declaring type. The chain denotes a type, so it works in every position a type does: as a value (an enum member), as a type annotation, and as an `isinstance` operand.
+
+```python
+from system import Environment
+
+
+def main() -> None:
+    # Value position: the enum member reached through the nested type.
+    folder = Environment.SpecialFolder.Desktop
+    print(folder)                                          # Desktop
+
+    # Annotation position: the nested type names a variable's type.
+    chosen: Environment.SpecialFolder = Environment.SpecialFolder.Desktop
+    print(chosen)                                          # Desktop
+
+    # isinstance position: the nested type is the type being tested against.
+    value = 5
+    print(isinstance(value, Environment.SpecialFolder))    # False
+```
+
+Because the chain resolves to the enum's own type, assigning it into an unrelated slot is a type error, not a silently-accepted value: `flag: bool = Environment.SpecialFolder.Desktop` is refused (SPY0220), the same as any other type mismatch.
+
 ## Extension Methods
 
 `System.Linq.Enumerable`'s extension methods are available on any sequence, under their
