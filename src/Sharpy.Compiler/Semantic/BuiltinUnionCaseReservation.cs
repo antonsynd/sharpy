@@ -1,5 +1,7 @@
 extern alias SharpyRT;
 
+using System.Collections.Frozen;
+
 using Sharpy.Compiler.Semantic.Registry;
 
 namespace Sharpy.Compiler.Semantic;
@@ -24,8 +26,9 @@ namespace Sharpy.Compiler.Semantic;
 internal static class BuiltinUnionCaseReservation
 {
     /// <summary>The four builtin tagged-union case names, reserved in every namespace.</summary>
-    private static readonly HashSet<string> ReservedCaseNames =
-        new(StringComparer.Ordinal) { "Some", "None", "Ok", "Err" };
+    private static readonly FrozenSet<string> ReservedCaseNames =
+        new HashSet<string>(StringComparer.Ordinal) { "Some", "None", "Ok", "Err" }
+            .ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>True when <paramref name="name"/> is one of the four reserved builtin case names.</summary>
     public static bool IsReservedCaseName(string name) => ReservedCaseNames.Contains(name);
@@ -38,13 +41,13 @@ internal static class BuiltinUnionCaseReservation
     /// <c>Some</c>/<c>None</c>/<c>Ok</c>/<c>Err</c> members). All four must match, or the aliased and
     /// module-qualified spellings escape the reservation (#1856, R-S).
     /// </summary>
-    private static readonly HashSet<System.Type> BuiltinUnionClrTypes = new()
+    private static readonly FrozenSet<System.Type> BuiltinUnionClrTypes = new HashSet<System.Type>
     {
         typeof(SharpyRT::Sharpy.Optional<>),
         typeof(SharpyRT::Sharpy.Optional),
         typeof(SharpyRT::Sharpy.Result<,>),
         typeof(SharpyRT::Sharpy.Result),
-    };
+    }.ToFrozenSet();
 
     /// <summary>
     /// True when <paramref name="sym"/> IS the builtin <c>Optional</c> or <c>Result</c> union —

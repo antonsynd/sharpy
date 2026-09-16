@@ -269,6 +269,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/TypeChecker.Expressions.Access.Calls.Overloads.cs::TypeChecker.DescribeReference"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.Overloads.cs:DescribeReference",
         ["Semantic/TypeChecker.Expressions.Access.cs::TypeChecker.ClassifyListBacking"] = "walker-default-contract",
         ["Semantic/TypeChecker.Expressions.Access.cs::TypeChecker.TryFlattenDottedName"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.cs:TryFlattenDottedName",
+        ["Semantic/TypeChecker.Expressions.Access.cs::TypeChecker.TryRefuseQualifiedBuiltinCase"] = "walker-default-contract",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.TryInferLambdaParamTypesFromBody"] = "refusal-net:LambdaTypeInferenceTests",
         ["Semantic/TypeChecker.Expressions.Literals.cs::TypeChecker.CheckComprehensionClauses"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
         ["Semantic/TypeChecker.Statements.cs::ReassignmentFinder.TargetBindsName"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
