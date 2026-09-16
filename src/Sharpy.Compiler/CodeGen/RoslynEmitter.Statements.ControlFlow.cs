@@ -724,7 +724,7 @@ internal partial class RoslynEmitter
             var tempLoopVar = GenerateTempVarName("loopVar");
             var unpackStatements = new List<StatementSyntax>();
             var valueType = GetExpressionSemanticType(target);
-            GenerateStarUnpacking(starTuple.Elements, tempLoopVar, valueType, unpackStatements);
+            GenerateUnpackingStores(starTuple.Elements, tempLoopVar, valueType, unpackStatements);
 
             var loopBody = GenerateSuiteBlock(bodyStatements);
             var combinedStatements = new List<StatementSyntax>(unpackStatements);
@@ -785,7 +785,7 @@ internal partial class RoslynEmitter
             var tempLoopVar = GenerateTempVarName("loopVar");
             var unpackStatements = new List<StatementSyntax>();
             // Generate unpacking first — this declares variables (x, y, name)
-            GenerateRecursiveTupleUnpacking(tuple.Elements, tempLoopVar, unpackStatements);
+            GenerateUnpackingStores(tuple.Elements, tempLoopVar, GetExpressionSemanticType(target), unpackStatements);
 
             // Now generate the body — variables are already declared so references resolve correctly
             var loopBody = GenerateSuiteBlock(bodyStatements);

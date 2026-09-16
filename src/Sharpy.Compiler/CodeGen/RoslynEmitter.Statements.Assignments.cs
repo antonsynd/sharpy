@@ -423,8 +423,7 @@ internal partial class RoslynEmitter
                             VariableDeclarator(EscapedIdentifier(starTempVar))
                                 .WithInitializer(EqualsValueClause(value))))));
 
-                var valueType = starTupleType;
-                GenerateStarUnpacking(tuple.Elements, starTempVar, valueType, starStmts);
+                GenerateUnpackingStores(tuple.Elements, starTempVar, starTupleType, starStmts);
 
                 for (int i = 0; i < starStmts.Count - 1; i++)
                     HoistEvaluation(starStmts[i]);
@@ -615,7 +614,7 @@ internal partial class RoslynEmitter
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(tempVarName))
                             .WithInitializer(EqualsValueClause(value))))));
-            GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, unpackStmts);
+            GenerateUnpackingStores(tuple.Elements, tempVarName, complexTupleType, unpackStmts);
 
             // Hoist all but the last statement; return the last as the result
             for (int i = 0; i < unpackStmts.Count - 1; i++)
@@ -1353,210 +1352,6 @@ internal partial class RoslynEmitter
         return fieldDeclaration;
     }
 
-    /// <summary>
-    /// Generates star/rest unpacking: first, *rest, last = items
-    /// Lowers to indexed access for non-star elements and slicing for the star element.
-    /// </summary>
-    private void GenerateStarUnpacking(
-        ImmutableArray<Expression> elements, string sourceVar, SemanticType? valueType,
-        List<StatementSyntax> statements)
-    {
-        // Find star position
-        int starIndex = -1;
-        for (int i = 0; i < elements.Length; i++)
-        {
-            if (elements[i] is StarExpression)
-            {
-                starIndex = i;
-                break;
-            }
-        }
-
-        int numBefore = starIndex;
-        int numAfter = elements.Length - starIndex - 1;
-
-        // Check if source is a tuple (ValueTuple) — needs .ItemN access instead of indexing
-        var isTupleSource = valueType is Semantic.TupleType;
-        var tupleArity = isTupleSource ? ((Semantic.TupleType)valueType!).ElementTypes.Count : 0;
-
-        // Determine element type for the Sharpy.List<T> wrapper
-        TypeSyntax elementTypeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
-        {
-            elementTypeSyntax = _typeMapper.MapSemanticType(listType.TypeArguments[0]);
-        }
-        else if (valueType is Semantic.TupleType tupleType)
-        {
-            // Collect the rest element types (those that go into the star variable)
-            var restTypes = new List<SemanticType>();
-            for (int ri = numBefore; ri < tupleArity - numAfter; ri++)
-            {
-                if (ri >= 0 && ri < tupleType.ElementTypes.Count)
-                    restTypes.Add(tupleType.ElementTypes[ri]);
-            }
-
-            if (restTypes.Count > 0 && restTypes.All(t => t.Equals(restTypes[0])))
-            {
-                elementTypeSyntax = _typeMapper.MapSemanticType(restTypes[0]);
-            }
-        }
-
-        // Elements before star: name = __t[i] or __t.ItemN (for tuples)
-        for (int i = 0; i < numBefore; i++)
-        {
-            ExpressionSyntax indexExpr;
-            if (isTupleSource)
-            {
-                indexExpr = MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(sourceVar),
-                    IdentifierName($"Item{i + 1}"));
-            }
-            else
-            {
-                indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                        Argument(LiteralExpression(
-                            SyntaxKind.NumericLiteralExpression,
-                            Literal(i))))));
-            }
-
-            statements.Add(GenerateStore(elements[i], indexExpr));
-        }
-
-        // Star element: rest = __t.GetSlice(...) or new Sharpy.List<T> { __t.ItemN, ... } (for tuples)
-        if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
-        {
-            var starBaseName = LocalBaseName(starId.Name, starId.IsNameBacktickEscaped);
-            var starSym = _context.LookupSymbol(starId.Name);
-            var starExistsAsModuleLevel = starSym != null && GetCodeGenInfo(starSym)?.IsModuleLevel == true;
-            var starExistsAsLocal = _context.SemanticInfo?.GetTargetBinding(starId)?.Kind == TargetBindingKind.Rebinds;
-            var starIsExisting = starExistsAsModuleLevel || starExistsAsLocal;
-
-            ExpressionSyntax starValueExpr;
-            if (isTupleSource)
-            {
-                // Build: new Sharpy.List<T> { __t.ItemN, __t.ItemM, ... }
-                var listTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
-                    CSharpTypeNames.SharpyList, elementTypeSyntax);
-                var restItems = new List<ExpressionSyntax>();
-                for (int ri = numBefore; ri < tupleArity - numAfter; ri++)
-                {
-                    restItems.Add(MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(sourceVar),
-                        IdentifierName($"Item{ri + 1}")));
-                }
-
-                starValueExpr = ObjectCreationExpression(listTypeSyntax)
-                    .WithArgumentList(ArgumentList())
-                    .WithInitializer(InitializerExpression(
-                        SyntaxKind.CollectionInitializerExpression,
-                        SeparatedList(restItems)));
-            }
-            else
-            {
-                var startArg = numBefore > 0
-                    ? (ExpressionSyntax)LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore))
-                    : LiteralExpression(SyntaxKind.NullLiteralExpression);
-
-                var endArg = numAfter > 0
-                    ? (ExpressionSyntax)PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
-                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter)))
-                    : LiteralExpression(SyntaxKind.NullLiteralExpression);
-
-                // __t.GetSlice(new global::Sharpy.Slice(start, end))
-                var newSlice = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
-                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                    {
-                        Argument(startArg),
-                        Argument(endArg)
-                    })));
-
-                starValueExpr = InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(sourceVar),
-                        IdentifierName("GetSlice")))
-                    .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(newSlice))));
-            }
-
-            if (starIsExisting)
-            {
-                var currentStarName = GetMangledVariableName(starId, isNewDeclaration: false);
-                statements.Add(ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        EscapedIdentifierName(currentStarName),
-                        starValueExpr)));
-            }
-            else
-            {
-                var starVarName = GetMangledVariableName(starId, isNewDeclaration: true);
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(LocalDeclarationType(DeclaredTargetSymbol(starId), valueType: null))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(EscapedIdentifier(starVarName))
-                                .WithInitializer(EqualsValueClause(starValueExpr))))));
-            }
-        }
-
-        // Elements after star: name = __t[-n] or __t.ItemN (for tuples)
-        for (int i = 0; i < numAfter; i++)
-        {
-            int elemIndex = starIndex + 1 + i;
-
-            ExpressionSyntax afterExpr;
-            if (isTupleSource)
-            {
-                int itemIndex = tupleArity - numAfter + i + 1;
-                afterExpr = MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(sourceVar),
-                    IdentifierName($"Item{itemIndex}"));
-            }
-            else
-            {
-                int negIndex = numAfter - i;
-                afterExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                        Argument(PrefixUnaryExpression(
-                            SyntaxKind.UnaryMinusExpression,
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(negIndex)))))));
-            }
-
-            statements.Add(GenerateStore(elements[elemIndex], afterExpr));
-        }
-    }
-
-    private void GenerateRecursiveTupleUnpacking(
-        ImmutableArray<Expression> targets, string sourceVarName, List<StatementSyntax> statements)
-    {
-        for (int i = 0; i < targets.Length; i++)
-        {
-            var itemAccess = MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(sourceVarName),
-                IdentifierName($"Item{i + 1}"));
-
-            if (targets[i] is TupleLiteral nestedTuple)
-            {
-                var tempVarName = $"__t{_tempVarCounter++}";
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(EscapedIdentifier(tempVarName))
-                                .WithInitializer(EqualsValueClause(itemAccess))))));
-                GenerateRecursiveTupleUnpacking(nestedTuple.Elements, tempVarName, statements);
-            }
-            else
-            {
-                statements.Add(GenerateStore(targets[i], itemAccess));
-            }
-        }
-    }
-
     private StatementSyntax GenerateStore(Expression target, ExpressionSyntax value)
     {
         switch (target)
@@ -1640,10 +1435,7 @@ internal partial class RoslynEmitter
                                 VariableDeclarator(EscapedIdentifier(tempVarName))
                                     .WithInitializer(EqualsValueClause(value))))));
 
-                    if (tuple.Elements.Any(e => e is StarExpression))
-                        GenerateStarUnpacking(tuple.Elements, tempVarName, tupleTargetType, stmts);
-                    else
-                        GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
+                    GenerateUnpackingStores(tuple.Elements, tempVarName, tupleTargetType, stmts);
 
                     for (int i = 0; i < stmts.Count - 1; i++)
                         HoistEvaluation(stmts[i]);

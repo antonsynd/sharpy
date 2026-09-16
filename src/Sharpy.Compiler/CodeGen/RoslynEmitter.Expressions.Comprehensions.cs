@@ -754,12 +754,6 @@ internal partial class RoslynEmitter
                     IdentifierName(sourceVar)));
                 break;
 
-            case TupleLiteral tuple when tuple.Elements.Any(e => e is StarExpression):
-                // Starred target: for a, *rest in items — use star unpacking
-                var starValueType = GetExpressionSemanticType(target);
-                GenerateStarUnpacking(tuple.Elements, sourceVar, starValueType, statements);
-                break;
-
             case TupleLiteral tuple when tuple.Elements.All(e => e is Identifier):
                 // var (a, b, ...) = src;
                 var designations = new List<VariableDesignationSyntax>();
@@ -779,27 +773,9 @@ internal partial class RoslynEmitter
                 break;
 
             case TupleLiteral tuple:
-                // Nested tuple target, e.g. for (x, y), name in items — unpack via src.ItemN.
-                for (int i = 0; i < tuple.Elements.Length; i++)
-                {
-                    var itemAccess = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(sourceVar),
-                        IdentifierName($"Item{i + 1}"));
-
-                    if (tuple.Elements[i] is Identifier elemId)
-                    {
-                        statements.Add(DeclareComprehensionVar(
-                            GetMangledVariableName(elemId, isNewDeclaration: true),
-                            itemAccess));
-                    }
-                    else if (tuple.Elements[i] is TupleLiteral nested)
-                    {
-                        var nestedTemp = GenerateTempVarName("loopVar");
-                        statements.Add(DeclareComprehensionVar(nestedTemp, itemAccess));
-                        BindComprehensionLoopTarget(nested, nestedTemp, statements);
-                    }
-                }
+                // Any starred or nested target (e.g. for (x, y), name in items, or a, *rest in …)
+                // lowers through the one unpacking rule at every depth (#1846).
+                GenerateUnpackingStores(tuple.Elements, sourceVar, GetExpressionSemanticType(target), statements);
                 break;
 
             case MemberAccess:
