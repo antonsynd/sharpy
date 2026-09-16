@@ -154,6 +154,11 @@ internal sealed class LocalNameAllocator
             // call initializer — CS0133 behind SPY0908.
             var isCompileTime = varSym.IsConstant && _binding.GetCompileTimeConstant(varSym);
 
+            // A bare local a suppression-capable `with` can leave unset carries a runtime
+            // assigned-flag (#1839): the flag is a property of the whole rebinding chain, so it is
+            // keyed on the chain root the validator flagged.
+            var hasRuntimeAssignedFlag = _semanticInfo.HasRuntimeAssignedFlagLocal(chainRoot);
+
             _binding.SetCodeGenInfo(varSym, new CodeGenInfo
             {
                 CSharpName = baseSpelling,
@@ -161,7 +166,8 @@ internal sealed class LocalNameAllocator
                 OriginalName = varSym.Name,
                 IsConstant = varSym.IsConstant,
                 IsCompileTimeConstant = isCompileTime,
-                IsModuleLevel = false
+                IsModuleLevel = false,
+                HasRuntimeAssignedFlag = hasRuntimeAssignedFlag
             });
         }
     }

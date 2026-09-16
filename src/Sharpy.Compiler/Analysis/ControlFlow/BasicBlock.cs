@@ -55,6 +55,17 @@ internal sealed class BasicBlock
     private readonly List<BasicBlock> _exceptionPredecessors = new();
 
     /// <summary>
+    /// Suppression predecessor blocks — the entry of a suppression-capable <c>with</c> body, whose
+    /// exception <c>__exit__</c> can swallow so control reaches THIS block (the with-exit) even when
+    /// the body always exits. A THIRD edge kind beside <see cref="Predecessors"/> and
+    /// <see cref="ExceptionPredecessors"/> (#1839, R-AI): definite-assignment runs once honouring
+    /// these edges and once ignoring them, and a read that is unassigned only when they are honoured
+    /// is runtime-checked (an <c>UnboundLocalError</c> at runtime), not refused.
+    /// </summary>
+    public IReadOnlyList<BasicBlock> SuppressionPredecessors => _suppressionPredecessors;
+    private readonly List<BasicBlock> _suppressionPredecessors = new();
+
+    /// <summary>
     /// The terminator instruction that ends this block.
     /// Null only for the exit block.
     /// </summary>
@@ -166,6 +177,12 @@ internal sealed class BasicBlock
     {
         if (!_exceptionPredecessors.Contains(block))
             _exceptionPredecessors.Add(block);
+    }
+
+    internal void AddSuppressionPredecessor(BasicBlock block)
+    {
+        if (!_suppressionPredecessors.Contains(block))
+            _suppressionPredecessors.Add(block);
     }
 
     public override string ToString() =>

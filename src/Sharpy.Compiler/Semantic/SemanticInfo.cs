@@ -47,6 +47,18 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<VariableDeclaration, byte> _definitelyAssignedBareLocals =
         new(ReferenceEqualityComparer.Instance);
 
+    // Reads of a bare local that are assigned when suppression edges are ignored but not when they
+    // are honoured (#1839, R-AI): the emitter lowers each to Builtins.CheckedLocal so an unset read
+    // raises UnboundLocalError at runtime, instead of the read being refused (SPY0600).
+    private readonly ConcurrentDictionary<Identifier, RuntimeCheckedRead> _runtimeCheckedReads =
+        new(ReferenceEqualityComparer.Instance);
+
+    // Bare-local symbols a suppression edge can leave unset (#1839): LocalNameAllocator reads this to
+    // set CodeGenInfo.HasRuntimeAssignedFlag, so the emitter declares the assigned-flag and wraps
+    // every store. Populated by DefiniteAssignmentValidator from the flagged declarations.
+    private readonly ConcurrentDictionary<VariableSymbol, byte> _runtimeAssignedFlagLocals =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map function calls to resolved function symbols
     private readonly ConcurrentDictionary<FunctionCall, FunctionSymbol> _callTargets =
         new(ReferenceEqualityComparer.Instance);
@@ -620,6 +632,30 @@ public class SemanticInfo : ISemanticQuery
     public bool IsDefinitelyAssignedBareLocal(VariableDeclaration decl)
     {
         return _definitelyAssignedBareLocals.ContainsKey(decl);
+    }
+
+    /// <summary>Records that a bare-local read is runtime-checked (#1839).</summary>
+    public void RecordRuntimeCheckedRead(Identifier read, VariableDeclaration declaration)
+    {
+        _runtimeCheckedReads[read] = new RuntimeCheckedRead(declaration);
+    }
+
+    /// <summary>True when this identifier read is one the emitter must guard with CheckedLocal (#1839).</summary>
+    public bool IsRuntimeCheckedRead(Identifier read)
+    {
+        return _runtimeCheckedReads.ContainsKey(read);
+    }
+
+    /// <summary>Flags a bare-local symbol as needing a runtime assigned-flag (#1839).</summary>
+    public void RecordRuntimeAssignedFlagLocal(VariableSymbol symbol)
+    {
+        _runtimeAssignedFlagLocals[symbol] = 0;
+    }
+
+    /// <summary>True when this local carries a runtime assigned-flag (#1839).</summary>
+    public bool HasRuntimeAssignedFlagLocal(VariableSymbol symbol)
+    {
+        return _runtimeAssignedFlagLocals.ContainsKey(symbol);
     }
 
     // #1438: TypeChecker call-node resolution routes must record targets through
@@ -1822,6 +1858,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._definitelyAssignedBareLocals)
             _definitelyAssignedBareLocals.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._runtimeCheckedReads)
+            _runtimeCheckedReads.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._runtimeAssignedFlagLocals)
+            _runtimeAssignedFlagLocals.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._callTargets)
             _callTargets.TryAdd(kvp.Key, kvp.Value);

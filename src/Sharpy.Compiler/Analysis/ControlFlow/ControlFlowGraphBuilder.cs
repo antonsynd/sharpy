@@ -143,6 +143,18 @@ internal class ControlFlowGraphBuilder
         to.AddExceptionPredecessor(from);
     }
 
+    /// <summary>
+    /// A suppression edge (#1839): a suppression-capable <c>with</c> body's <c>__exit__</c> can
+    /// swallow an exception, so control reaches <paramref name="to"/> (the with-exit) from
+    /// <paramref name="from"/> (the body entry) even when the body always exits. Its own edge kind
+    /// so definite-assignment can run once honouring it and once ignoring it.
+    /// </summary>
+    private void ConnectSuppression(BasicBlock from, BasicBlock to)
+    {
+        from.AddSuccessor(to);
+        to.AddSuppressionPredecessor(from);
+    }
+
     private void BuildStatements(IReadOnlyList<Statement> statements)
     {
         for (int i = 0; i < statements.Count; i++)
@@ -886,16 +898,19 @@ internal class ControlFlowGraphBuilder
         BuildStatements(stmt.Body);
 
         var withExitBlock = CreateBlock("with_exit");
+        // The `as` target is block-scoped in Sharpy (SPY0200 outside; a pre-declared local rebound by
+        // `with cm() as n` does NOT persist — measured), so its assignedness is restored to the body's
+        // entry state at the exit, exactly as before (#1635). A BODY assignment, by contrast, stays in
+        // the body block's OUT-set, so it is not assigned along the suppression edge below.
         if (withBindings.Count > 0)
             withExitBlock.RebindScopeEntries = new[] { withBodyBlock };
 
-        // Suppression-capable: the __exit__ can swallow the exception, so the
-        // successor is reachable even when the body always exits. Model this as
-        // an exception edge from the body entry to the exit block (same pattern
-        // as assert_raises). DA sees the binding as assigned because the `as`
-        // target is recorded via EntryRebinds, not as a read expression (#1635).
+        // Suppression-capable: the __exit__ can swallow a body exception, so the exit is reachable
+        // from the BODY ENTRY even when the body always exits. Its own edge kind (not
+        // ConnectException) so DA honours it in the lenient pass and ignores it in the strict one — a
+        // body assignment read after the block is then runtime-checked, not refused (#1839, R-AI).
         if (hasSuppressionCapableItem)
-            ConnectException(withBodyBlock, withExitBlock);
+            ConnectSuppression(withBodyBlock, withExitBlock);
 
         if (_currentBlock.Terminator == null)
         {

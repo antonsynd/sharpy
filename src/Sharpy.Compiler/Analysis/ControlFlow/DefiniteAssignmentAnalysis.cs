@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Analysis.ControlFlow;
@@ -16,6 +17,19 @@ internal static class DefiniteAssignmentAnalysis
     internal readonly record struct Violation(
         VariableDeclaration Declaration,
         Identifier ReadSite);
+
+    /// <summary>
+    /// The result of the two-pass definite-assignment analysis (#1839). A read that is unassigned
+    /// even when suppression edges are IGNORED is a genuine <see cref="Violations"/> (refused,
+    /// SPY0600); a read that is assigned when they are ignored but not when they are HONOURED is
+    /// <see cref="RuntimeChecked"/> (an <c>UnboundLocalError</c> at runtime, not refused).
+    /// <see cref="FlaggedNames"/> are the locals whose assignedness a suppression edge can change —
+    /// the emitter gives each an assigned-flag.
+    /// </summary>
+    internal readonly record struct Result(
+        IReadOnlyList<Violation> Violations,
+        IReadOnlyList<Violation> RuntimeChecked,
+        IReadOnlyCollection<string> FlaggedNames);
 
     /// <summary>
     /// Returns the bare declarations (<c>x: int</c>, no initializer) found in the CFG,
@@ -37,8 +51,11 @@ internal static class DefiniteAssignmentAnalysis
 
     /// <summary>
     /// Finds all use-before-assign violations for bare-declared local variables in the given CFG.
+    /// Runs the dataflow twice — once ignoring suppression edges (strict), once honouring them
+    /// (lenient) — and classifies each read: unassigned even strict → refused; assigned strict but
+    /// not lenient → runtime-checked (#1839, R-AI).
     /// </summary>
-    public static IReadOnlyList<Violation> FindViolations(ControlFlowGraph cfg)
+    public static Result Analyze(ControlFlowGraph cfg)
     {
         var bareDecls = new Dictionary<string, VariableDeclaration>();
         var assignedInBlock = new Dictionary<BasicBlock, HashSet<string>>();
@@ -115,10 +132,76 @@ internal static class DefiniteAssignmentAnalysis
         }
 
         if (bareDecls.Count == 0)
-            return Array.Empty<Violation>();
+            return new Result(Array.Empty<Violation>(), Array.Empty<Violation>(), Array.Empty<string>());
 
         var bareNames = new HashSet<string>(bareDecls.Keys);
+        var edgeWalrusArg = edgeWalrus.Count > 0 ? edgeWalrus : null;
 
+        // Two fixpoints: strict IGNORES suppression edges (the with completes normally), lenient
+        // HONOURS them (a body exception can be swallowed before a body assignment ran). A read
+        // unassigned even strict is a genuine violation; a read assigned strict but not lenient is
+        // runtime-checked (#1839).
+        var (inStrict, outStrict) = RunFixpoint(cfg, bareNames, assignedInBlock, edgeWalrusArg, honourSuppression: false);
+        var (inLenient, outLenient) = RunFixpoint(cfg, bareNames, assignedInBlock, edgeWalrusArg, honourSuppression: true);
+
+        var strictViolations = CollectFlowViolations(cfg, bareNames, bareDecls, readsInBlock, inStrict, outStrict, edgeWalrusArg, honourSuppression: false);
+        var lenientViolations = CollectFlowViolations(cfg, bareNames, bareDecls, readsInBlock, inLenient, outLenient, edgeWalrusArg, honourSuppression: true);
+
+        var genuine = new List<Violation>(strictViolations);
+        var runtimeChecked = new List<Violation>();
+        var strictSites = new HashSet<Identifier>(strictViolations.Select(v => v.ReadSite));
+        foreach (var v in lenientViolations)
+        {
+            if (!strictSites.Contains(v.ReadSite))
+                runtimeChecked.Add(v);
+        }
+
+        // A name is flagged when its assignedness differs between the passes at some point — the
+        // suppression edge can make it unset there. Genuinely-violated names (unassigned in BOTH
+        // passes) are excluded, so a conditionally-assigned local stays refused, not flagged.
+        var flagged = new HashSet<string>();
+        foreach (var block in cfg.Blocks)
+        {
+            if (block == cfg.Entry)
+                continue;
+            foreach (var name in inStrict[block])
+            {
+                if (!inLenient[block].Contains(name))
+                    flagged.Add(name);
+            }
+        }
+
+        // Lambda / nested-def reads run when the closure is CALLED, not where it is written. A local
+        // assigned NOWHERE can never be bound then (python3: NameError → Sharpy UnboundLocalError):
+        // a genuine violation. A local whose only assignment a suppression edge can skip is
+        // runtime-checked — the same UnboundLocalError, but only when actually unset (#1839).
+        if (lambdaReads.Count > 0)
+        {
+            var assignedAnywhere = new HashSet<string>();
+            foreach (var assigned in assignedInBlock.Values)
+                assignedAnywhere.UnionWith(assigned);
+            foreach (var (name, node) in lambdaReads)
+            {
+                if (!bareDecls.ContainsKey(name))
+                    continue;
+                if (!assignedAnywhere.Contains(name))
+                    genuine.Add(new Violation(bareDecls[name], node));
+                else if (flagged.Contains(name))
+                    runtimeChecked.Add(new Violation(bareDecls[name], node));
+            }
+        }
+
+        return new Result(genuine, runtimeChecked, flagged);
+    }
+
+    /// <summary>Runs the must-assign fixpoint to convergence, honouring or ignoring suppression edges.</summary>
+    private static (Dictionary<BasicBlock, HashSet<string>> InSets, Dictionary<BasicBlock, HashSet<string>> OutSets) RunFixpoint(
+        ControlFlowGraph cfg,
+        HashSet<string> bareNames,
+        Dictionary<BasicBlock, HashSet<string>> assignedInBlock,
+        IReadOnlyDictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>? edgeWalrus,
+        bool honourSuppression)
+    {
         var inSets = MustAssignDataflow.InitializeSets(cfg, bareNames);
         var outSets = MustAssignDataflow.InitializeSets(cfg, bareNames);
 
@@ -133,12 +216,12 @@ internal static class DefiniteAssignmentAnalysis
                     continue;
 
                 var inSet = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets,
-                    edgeWalrus.Count > 0 ? edgeWalrus : null);
+                    edgeWalrus, honourSuppression);
                 if (inSet == null)
                     continue;
 
-                // An exception successor reads THIS block's in-set, so a change here must
-                // re-run the fixpoint even when the out-set is unchanged.
+                // An exception/suppression successor reads THIS block's in-set, so a change here
+                // must re-run the fixpoint even when the out-set is unchanged.
                 if (!inSet.SetEquals(inSets[block]))
                 {
                     inSets[block] = inSet;
@@ -156,6 +239,25 @@ internal static class DefiniteAssignmentAnalysis
             }
         }
 
+        return (inSets, outSets);
+    }
+
+    /// <summary>
+    /// Walks each block in program order, computing the definitely-assigned set incrementally, and
+    /// returns every bare-local read that is not definitely assigned when it runs — for the pass
+    /// described by <paramref name="inSets"/>/<paramref name="outSets"/> and
+    /// <paramref name="honourSuppression"/>.
+    /// </summary>
+    private static List<Violation> CollectFlowViolations(
+        ControlFlowGraph cfg,
+        HashSet<string> bareNames,
+        Dictionary<string, VariableDeclaration> bareDecls,
+        Dictionary<BasicBlock, List<(string Name, Identifier Node, int StatementIndex)>> readsInBlock,
+        Dictionary<BasicBlock, HashSet<string>> inSets,
+        Dictionary<BasicBlock, HashSet<string>> outSets,
+        IReadOnlyDictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>? edgeWalrus,
+        bool honourSuppression)
+    {
         var violations = new List<Violation>();
         foreach (var block in cfg.Blocks)
         {
@@ -163,7 +265,7 @@ internal static class DefiniteAssignmentAnalysis
                 continue;
 
             var definitelyAssigned = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets,
-                edgeWalrus.Count > 0 ? edgeWalrus : null)
+                edgeWalrus, honourSuppression)
                 ?? new HashSet<string>();
 
             var localAssigned = new HashSet<string>(definitelyAssigned);
@@ -217,21 +319,6 @@ internal static class DefiniteAssignmentAnalysis
                 {
                     violations.Add(new Violation(bareDecls[name], node));
                 }
-            }
-        }
-
-        // A bare local a lambda reads that is assigned NOWHERE in the function can never be bound
-        // when the lambda runs (python3: NameError). Without this the definite initializer the
-        // emitter adds for DA-proved locals turned the read into a silent `default` (#1635).
-        if (lambdaReads.Count > 0)
-        {
-            var assignedAnywhere = new HashSet<string>();
-            foreach (var assigned in assignedInBlock.Values)
-                assignedAnywhere.UnionWith(assigned);
-            foreach (var (name, node) in lambdaReads)
-            {
-                if (bareDecls.ContainsKey(name) && !assignedAnywhere.Contains(name))
-                    violations.Add(new Violation(bareDecls[name], node));
             }
         }
 

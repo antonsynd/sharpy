@@ -30,8 +30,12 @@ internal class DefiniteAssignmentValidator : ValidatingAstWalker
 
         var cfg = Context.ControlFlowGraphs.GetOrBuild(func);
 
-        var violations = DefiniteAssignmentAnalysis.FindViolations(cfg);
-        foreach (var v in violations)
+        // Two passes (#1839, R-AI): a read unassigned even when suppression edges are ignored is a
+        // genuine violation (refused, SPY0600); a read assigned then but not when they are honoured
+        // is runtime-checked (an UnboundLocalError at runtime, not refused).
+        var result = DefiniteAssignmentAnalysis.Analyze(cfg);
+
+        foreach (var v in result.Violations)
         {
             AddError(
                 $"Variable '{v.ReadSite.Name}' is used before being assigned",
@@ -40,17 +44,31 @@ internal class DefiniteAssignmentValidator : ValidatingAstWalker
                 span: v.ReadSite.Span);
         }
 
+        // A runtime-checked read is lowered to Builtins.CheckedLocal by the emitter.
+        foreach (var v in result.RuntimeChecked)
+            Context.SemanticInfo.RecordRuntimeCheckedRead(v.ReadSite, v.Declaration);
+
         var bareDecls = DefiniteAssignmentAnalysis.FindBareDeclarations(cfg);
         if (bareDecls.Count > 0)
         {
             var violatedNames = new HashSet<string>();
-            foreach (var v in violations)
+            foreach (var v in result.Violations)
                 violatedNames.Add(v.ReadSite.Name);
 
             foreach (var (name, decl) in bareDecls)
             {
+                // A flagged local has no GENUINE violation, so it is still recorded
+                // definitely-assigned — the emitter's `default!` arm fires (T n = default!) and the
+                // assigned-flag is declared beside it (verifier note, DD4).
                 if (!violatedNames.Contains(name))
                     Context.SemanticInfo.RecordDefinitelyAssignedBareLocal(decl);
+
+                // Flag the symbol so LocalNameAllocator sets CodeGenInfo.HasRuntimeAssignedFlag.
+                if (result.FlaggedNames.Contains(name)
+                    && Context.SemanticInfo.GetDeclarationSymbol(decl) is VariableSymbol symbol)
+                {
+                    Context.SemanticInfo.RecordRuntimeAssignedFlagLocal(symbol);
+                }
             }
         }
     }

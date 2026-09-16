@@ -63,6 +63,14 @@ public sealed record CodeGenInfo
     public bool HasExecutionOrderIssues { get; init; }
 
     /// <summary>
+    /// If true, this bare local's assignment can be skipped by a suppression-capable <c>with</c>
+    /// block (#1839, R-AI): the emitter declares a companion <c>bool</c> assigned-flag, sets it at
+    /// every store, and checks it at every runtime-checked read (<c>Builtins.CheckedLocal</c>), so an
+    /// unset read raises <c>UnboundLocalError</c> at runtime instead of being refused.
+    /// </summary>
+    public bool HasRuntimeAssignedFlag { get; init; }
+
+    /// <summary>
     /// For enum types, indicates if this is a string enum (has string values).
     /// String enums are generated as classes with static readonly fields instead of C# enums.
     /// </summary>

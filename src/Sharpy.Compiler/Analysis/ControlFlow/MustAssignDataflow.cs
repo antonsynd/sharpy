@@ -50,9 +50,15 @@ internal static class MustAssignDataflow
         HashSet<string> universe,
         IReadOnlyDictionary<BasicBlock, HashSet<string>> inSets,
         IReadOnlyDictionary<BasicBlock, HashSet<string>> outSets,
-        IReadOnlyDictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>? edgeWalrus)
+        IReadOnlyDictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>? edgeWalrus,
+        bool honourSuppression = true)
     {
-        if (block.Predecessors.Count == 0 && block.ExceptionPredecessors.Count == 0)
+        // A suppression edge is followed only when honoured (#1839). Ignoring it can make the block
+        // reachable-only-via-suppression look unreachable, but the with-exit always has the body's
+        // normal-completion edge too, so this reachability test does not depend on the flag.
+        if (block.Predecessors.Count == 0
+            && block.ExceptionPredecessors.Count == 0
+            && (!honourSuppression || block.SuppressionPredecessors.Count == 0))
             return null;
 
         var inSet = new HashSet<string>(universe);
@@ -76,6 +82,16 @@ internal static class MustAssignDataflow
         }
         foreach (var pred in block.ExceptionPredecessors)
             inSet.IntersectWith(inSets[pred]);
+
+        // A suppression edge contributes its FROM block's IN-set (like an exception edge: the
+        // exception can be raised at any point in the suppression-capable body, so only what was
+        // assigned when the body was ENTERED is guaranteed). Honoured in the lenient pass, ignored
+        // in the strict one — the difference is what marks a read runtime-checked (#1839).
+        if (honourSuppression)
+        {
+            foreach (var pred in block.SuppressionPredecessors)
+                inSet.IntersectWith(inSets[pred]);
+        }
 
         // One or more block-scoped binders (for-target, with-as, except-as) end here: for those
         // names, the state is whatever the binder's block was entered with — the binder itself
