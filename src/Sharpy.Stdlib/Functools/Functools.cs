@@ -61,7 +61,7 @@ namespace Sharpy
         /// </summary>
         public static global::System.Collections.Generic.IComparer<T> CmpToKey<T>(global::System.Func<T, T, int> cmp)
         {
-            return Comparer<T>.Create((a, b) => cmp(a, b));
+            return global::System.Collections.Generic.Comparer<T>.Create((a, b) => cmp(a, b));
         }
     }
 }
