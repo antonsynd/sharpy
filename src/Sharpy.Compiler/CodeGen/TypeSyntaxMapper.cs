@@ -863,15 +863,16 @@ internal class TypeSyntaxMapper
             var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(udt.Symbol);
             var originalName = codeGenInfo?.OriginalImportName ?? udt.Symbol.Name;
 
-            // A raw generic CLR type outside the Sharpy runtime namespace (imported by namespace) may
-            // carry neither DefiningFilePath nor DefiningModule; its correct C# name is always its
-            // ClrType full name. Route it through the authority so an aliased annotation (scg.List[int])
-            // qualifies exactly like the construction position (#1139). Guarded on a generic ClrType so
-            // an interface Sharpy models via a non-generic CLR type stays on the name path; Sharpy-namespace
-            // CLR types and builtin collections (whose GenericDefinition may be a raw BCL type, e.g.
-            // dict → System.Collections.Generic.Dictionary) keep their existing name-based resolution.
-            if (udt.Symbol.ClrType is { IsGenericType: true } clrType
-                && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace)
+            // ONE qualification predicate (R-AQ, #1830/#1831): a CLR-backed symbol whose Sharpy
+            // spelling is not a builtin-collection name is always qualified from its reflected type,
+            // generic or not, Sharpy-namespace or not. Every non-Sharpy `ClrType` — and every
+            // Sharpy-namespace type the registry backs (e.g. ISized) — routes through the
+            // qualification authority so a bare `StringBuilder` becomes global::System.Text.StringBuilder
+            // and a bare `ISized` becomes global::Sharpy.ISized, agreeing with their imported,
+            // module-qualified and aliased spellings on every route. The `TryGetCSharpTypeName` guard
+            // keeps the builtin collections (dict/list/set, whose GenericDefinition may be a raw BCL
+            // type such as System.Collections.Generic.Dictionary) on their existing name-based path.
+            if (udt.Symbol.ClrType != null
                 && ClrTypeBridge.TryGetCSharpTypeName(udt.Name) == null)
             {
                 return GetFullyQualifiedTypeName(udt.Symbol, originalName);

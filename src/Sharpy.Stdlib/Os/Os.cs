@@ -340,7 +340,7 @@ namespace Sharpy
         /// <summary>
         /// Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
         /// </summary>
-        public static Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
+        public static global::Sharpy.Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
         {
             return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(_WalkCore(top));
         }
