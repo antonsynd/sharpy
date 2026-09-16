@@ -75,6 +75,37 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Create a dictionary from any sequence of key-value pairs. This is the constructor that
+        /// materializes a .NET mapping — <c>IDictionary&lt;K,V&gt;</c> as well as
+        /// <c>IReadOnlyDictionary&lt;K,V&gt;</c> — entering a Sharpy <c>dict</c> slot, since both are
+        /// <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> (#1866). The
+        /// <see cref="Dict(IReadOnlyDictionary{K, V})"/> overload stays and wins C# betterness for
+        /// values that are both.
+        /// </summary>
+        public Dict(IEnumerable<KeyValuePair<K, V>> pairs) : this()
+        {
+            if (pairs is null)
+            {
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            foreach (var kvp in pairs)
+            {
+                if (IsNullKey(kvp.Key))
+                {
+                    _nullValue = kvp.Value;
+                    if (!_hasNullKey)
+                        _nullOrdinal = _dict.Count;
+                    _hasNullKey = true;
+                }
+                else
+                {
+                    _dict[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
         /// <summary>Create a dictionary from an iterable of key-value tuples.</summary>
         public Dict(IEnumerable<(K, V)> iterable) : this()
         {
