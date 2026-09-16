@@ -32,7 +32,7 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
 {
     public UnpackingPositionMatrixTests(ITestOutputHelper output) : base(output) { }
 
-    private enum Expect { Runs, SPY0239, SPY0225, SPY0356, KnownRed }
+    private enum Expect { Runs, SPY0239, SPY0225, SPY0356, SPY0227, KnownRed }
 
     /// <param name="Expected">
     /// <see cref="Expect.KnownRed"/> is a cell the contract says must RUN and that does not yet:
@@ -88,6 +88,10 @@ public class UnpackingPositionMatrixTests : IntegrationTestBase
 
                 case Expect.SPY0356:
                     CheckRefusal(cell, result, DiagnosticCodes.Semantic.MultipleStarExpressions, "SPY0356", failures);
+                    break;
+
+                case Expect.SPY0227:
+                    CheckRefusal(cell, result, DiagnosticCodes.Semantic.CannotInferType, "SPY0227", failures);
                     break;
 
                 case Expect.KnownRed:
@@ -284,6 +288,22 @@ def main() -> None:
         yield return new Cell("assign.two-star.depth1.refused",
             "def main() -> None:\n    t: tuple[int, tuple[int, int, int]] = (1, (2, 3, 4))\n    a, (*b, *c) = t\n    print(a)",
             Expect.SPY0356);
+
+        // ── a heterogeneous starred rest has no common element type → Type-Safety refusal (SPY0227),
+        // never `list[object]` (R-W arm 3, #1846). Python ACCEPTS this (rest = ["x"]); Sharpy refuses
+        // because Type Safety outranks Python Syntax (Axiom precedence) — the .spy fixture documents
+        // the divergence. Homogeneous and one-accepts-all rests stay green (the Runs cells above).
+        yield return new Cell("assign.hetero-star-rest",
+            "def main() -> None:\n    a, *rest = (1, \"x\", 2)\n    print(a, rest)",
+            Expect.SPY0227);
+
+        yield return new Cell("for.hetero-star-rest",
+            "def main() -> None:\n    xs: list[tuple[int, str, int]] = [(1, \"x\", 2)]\n    for a, *rest in xs:\n        print(a, rest)",
+            Expect.SPY0227);
+
+        yield return new Cell("assign.hetero-star-rest.nested",
+            "def main() -> None:\n    t: tuple[int, tuple[int, str, int]] = (1, (2, \"x\", 3))\n    a, (b, *c) = t\n    print(a, b, c)",
+            Expect.SPY0227);
 
         // ── depth 2 ──
         yield return new Cell("assign.depth2.starred-innermost",

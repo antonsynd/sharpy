@@ -116,7 +116,9 @@ internal partial class TypeChecker
                 return;
             }
 
-            var restType = StarRestType(tupleType, targetsBefore, targetsAfter);
+            var restType = hasStar
+                ? StarRestElementType(tupleType, targetsBefore, targetsAfter, targets[starIndex], position)
+                : SemanticType.Unknown;
             for (int i = 0; i < targets.Length; i++)
             {
                 SemanticType elemType;
@@ -159,11 +161,17 @@ internal partial class TypeChecker
         new() { Name = BuiltinNames.List, TypeArguments = new List<SemanticType> { elem } };
 
     /// <summary>
-    /// The element type of the star's <c>list[T]</c> from a tuple source: the join of the tuple
-    /// slice the star absorbs (a homogeneous slice keeps its type; a heterogeneous one falls back to
-    /// <c>object</c>; an empty slice reuses the first element's type).
+    /// The element type of the star's <c>list[T]</c> from a tuple source: the R-W join of the tuple
+    /// slice the star absorbs, through the one <see cref="BestCommonType"/> authority — slot-directed
+    /// when the star target is a pre-declared <c>list[U]</c> (arm 1), one-accepts-all otherwise
+    /// (arm 2, e.g. <c>int8</c> under <c>int</c>), and REFUSED by name when the slice has no common
+    /// type (arm 3). <c>object</c> is never invented: a heterogeneous rest is a Type-Safety refusal
+    /// (SPY0227) even though Python accepts it (Axiom precedence, #1846). An empty slice reuses the
+    /// first element's type — the star's list is empty, so the element type is inert.
     /// </summary>
-    private static SemanticType StarRestType(TupleType source, int targetsBefore, int targetsAfter)
+    private SemanticType StarRestElementType(
+        TupleType source, int targetsBefore, int targetsAfter,
+        Expression starTarget, UnpackingPosition position)
     {
         var restTypes = new List<SemanticType>();
         for (int ri = targetsBefore; ri < source.ElementTypes.Count - targetsAfter; ri++)
@@ -171,9 +179,28 @@ internal partial class TypeChecker
 
         if (restTypes.Count == 0)
             return source.ElementTypes.Count > 0 ? source.ElementTypes[0] : SemanticType.Unknown;
-        if (restTypes.All(t => t.Equals(restTypes[0])))
-            return restTypes[0];
-        return BuiltinType.Object;
+
+        // Slot direction: a pre-declared `rest: list[U]` target directs the rest element type to U.
+        SemanticType? slot = null;
+        string restName = "rest";
+        if (starTarget is StarExpression { Operand: Identifier starId })
+        {
+            restName = starId.Name;
+            var predecessor = (_symbolTable.Lookup(starId.Name, searchParents: false)
+                ?? _symbolTable.Lookup(starId.Name, searchParents: true)) as VariableSymbol;
+            if (predecessor != null
+                && DeclaredBindingType(predecessor) is GenericType
+                    { Name: BuiltinNames.List, TypeArguments: { Count: > 0 } declaredArgs })
+                slot = declaredArgs[0];
+        }
+
+        var operands = restTypes
+            .Select(t => ((Expression?)null, t))
+            .ToList();
+        return BestCommonType(
+            operands, slot, StorePosition.TupleElement, starTarget,
+            $"the starred target '{restName}'",
+            new BestCommonTypeOptions(AnnotateSteer: $"'{restName}: list[T] = ...'"));
     }
 
     /// <summary>The RHS node a non-star target at <paramref name="targetIndex"/> lands on, or null.</summary>

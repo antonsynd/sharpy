@@ -1,0 +1,7 @@
+# A heterogeneous starred rest has no best common element type. Python 3.12 ACCEPTS this
+# (`rest = ['x']`), but Sharpy refuses it (SPY0227) rather than invent `list[object]` — Type Safety
+# outranks Python Syntax (Axiom precedence), and R-W forbids inventing object (#1846). The positive
+# twin is sole_star_group_1845.spy / the homogeneous `a, *rest` cells that run.
+def main() -> None:
+    a, *rest = (1, "x", 2)
+    print(a, rest)
