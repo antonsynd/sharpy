@@ -749,4 +749,58 @@ public class ClrMemberFidelityMatrixTests
     private static string SrcInherited(string body) =>
         "from system.collections.generic import List\n\nclass IntList(List[int]):\n    pass\n\n"
         + $"def _use() -> None:\n    {body}\n";
+
+    /// <summary>
+    /// Roster guard for Decision 1(a) (#1678, #1858): a CLR method group referenced in VALUE position
+    /// is refused (SPY0336) at ONE place — <c>RefuseClrMethodGroupInValuePosition</c>. That helper is
+    /// the sole emitter of <c>AmbiguousCallableReference</c> in
+    /// <c>TypeChecker.Expressions.Access.cs</c>, so a <c>grep -c</c> of the code over that file is
+    /// exactly 1. Over the whole <c>Semantic/</c> namespace there are exactly THREE emitters: this one
+    /// plus the two Sharpy-side overload-SET refusals in
+    /// <c>TypeChecker.Expressions.Access.Calls.Overloads.cs</c> (a different class that STAYS). The
+    /// count is anchored to those three literal files so a fourth SPY0336 emitter — or moving this one
+    /// out of the helper — turns this red.
+    /// </summary>
+    [Fact]
+    public void ClrMethodGroupSpy0336_HasOneEmitterInAccess_AndThreeAcrossSemantic()
+    {
+        const string token = "code: DiagnosticCodes.Semantic.AmbiguousCallableReference";
+        var semanticDir = System.IO.Path.Combine(
+            FindRepoRoot(), "src", "Sharpy.Compiler", "Semantic");
+
+        int CountEmittersIn(string relativeFile)
+        {
+            var text = System.IO.File.ReadAllText(System.IO.Path.Combine(semanticDir, relativeFile));
+            return text.Split('\n').Count(line => line.Contains(token));
+        }
+
+        Assert.Equal(1, CountEmittersIn("TypeChecker.Expressions.Access.cs"));
+
+        var totalAcrossSemantic = System.IO.Directory
+            .EnumerateFiles(semanticDir, "*.cs", System.IO.SearchOption.AllDirectories)
+            .Sum(path => System.IO.File.ReadAllText(path)
+                .Split('\n').Count(line => line.Contains(token)));
+
+        Assert.Equal(3, totalAcrossSemantic);
+
+        // The two sites that STAY are the Sharpy-side overload-set refusals (a different class).
+        Assert.Equal(2, CountEmittersIn("TypeChecker.Expressions.Access.Calls.Overloads.cs"));
+    }
+
+    private static string FindRepoRoot()
+    {
+        var current = AppContext.BaseDirectory;
+        while (current != null)
+        {
+            if (System.IO.Directory.Exists(System.IO.Path.Combine(current, ".git"))
+                || System.IO.File.Exists(System.IO.Path.Combine(current, ".git")))
+            {
+                return current;
+            }
+            current = System.IO.Directory.GetParent(current)?.FullName;
+        }
+
+        throw new System.InvalidOperationException(
+            $"Could not find repository root starting from '{AppContext.BaseDirectory}'.");
+    }
 }

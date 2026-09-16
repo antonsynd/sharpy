@@ -1244,12 +1244,7 @@ internal partial class TypeChecker
                 if (IsCurrentCallCallee(memberAccess))
                     return null;
 
-                AddError(
-                    $"'{memberAccess.Member}' is a CLR method group; call it, or wrap it in a lambda",
-                    memberAccess.LineStart, memberAccess.ColumnStart,
-                    code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
-                    span: memberAccess.Span);
-                return SemanticType.Unknown;
+                return RefuseClrMethodGroupInValuePosition(memberAccess);
 
             case Discovery.ClrMemberResolution.Property prop:
                 // A zero-arg CALL onto a property (`s.count()`) is legal Sharpy and lowers to the
@@ -1301,6 +1296,27 @@ internal partial class TypeChecker
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// The ONE place a reflected CLR method group referenced in VALUE position is refused (SPY0336).
+    /// Every route reaches it: the instance/static route (the <c>MethodGroup</c> arm of
+    /// <see cref="ClrMemberTypeFromReflection"/>), the extension route (the value-position gate in
+    /// <see cref="CheckMemberAccessCore"/>, #1858), and the inherited route. Selecting among overloads
+    /// without a call is not something the emitter can spell, so the reference is named here rather than
+    /// left to leak CS8917/CS0428 behind SPY0908 (#1678, #1858, R-Q). This is the sole CLR-method-group
+    /// SPY0336 emitter in this file; the two other SPY0336 sites
+    /// (TypeChecker.Expressions.Access.Calls.Overloads.cs) refuse Sharpy-side overload SETS, a
+    /// different class.
+    /// </summary>
+    private SemanticType RefuseClrMethodGroupInValuePosition(MemberAccess memberAccess)
+    {
+        AddError(
+            $"'{memberAccess.Member}' is a CLR method group; call it, or wrap it in a lambda",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+            span: memberAccess.Span);
+        return SemanticType.Unknown;
     }
 
     /// <summary>
