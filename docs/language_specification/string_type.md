@@ -151,16 +151,20 @@ Sharpy provides Python-compatible string methods as **extension methods** on `st
 
 ### .NET Methods (Direct Access)
 
-Since `str` is `System.String`, all .NET string methods are directly available:
+Since `str` is `System.String`, all .NET string methods are available — under their `snake_case`
+Sharpy spelling, reached by reverse-mangling the .NET name (`Contains` → `contains`, `PadLeft` →
+`pad_left`). A `str` is a Sharpy builtin, so its *`PascalCase`* .NET spelling is refused (SPY0203);
+write the `snake_case` form, or backtick-escape the .NET name to reach it verbatim (``s.`Length` ``).
 
 ```python
-s = "Hello, World!"
+def main() -> None:
+    s = "Hello, World!"
 
-# .NET methods work directly
-s.Contains("World")            # True
-s.Substring(0, 5)              # "Hello"
-s.PadLeft(20)                  # "       Hello, World!"
-s.Insert(7, "Beautiful ")      # "Hello, Beautiful World!"
+    # .NET methods under their snake_case spelling
+    print(s.contains("World"))           # True
+    print(s.substring(0, 5))             # "Hello"
+    print(s.pad_left(20))                # "       Hello, World!"
+    print(s.insert(7, "Beautiful "))     # "Hello, Beautiful World!"
 ```
 
 ### Method Resolution

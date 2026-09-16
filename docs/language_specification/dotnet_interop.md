@@ -74,6 +74,33 @@ content = File.read_all_text("data.txt")  # Calls System.IO.File.ReadAllText(...
 
 This mapping applies to method names, property names, and static members. The compiler resolves `snake_case` identifiers to their `PascalCase` .NET equivalents at compile time.
 
+### Sharpy builtin receivers expose their Sharpy names only
+
+A Sharpy builtin — `list`, `dict`, `set`, `frozenset`, `frozendict`, `array`, `str`, `bytes` — wraps a .NET type, but its surface is the Sharpy one. A `PascalCase` .NET spelling of a wrapper member is **refused** with a steer to the Sharpy spelling, rather than binding the wrapper's C# member and silently producing a `System.Func` or an internal view type:
+
+<!-- spec-sweep: error SPY0203 -->
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.Count)     # error[SPY0203]: no member 'Count' — use len(xs)
+```
+
+Use the Sharpy spelling the diagnostic steers to: `len(xs)` for a length or count, `d.keys()` / `d.values()` for a dictionary's views, `xs.append(...)` for the `Add` verb.
+
+The backtick escape deliberately reaches the wrapper's .NET member, and the reverse-mangled `snake_case` spelling of a .NET member stays typed:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    n: int = xs.`Length`     # the escape binds the wrapper's .NET Length
+    print(n)                 # 3
+
+    s: str = "abc"
+    print(s.to_upper())      # System.String.ToUpper reached by reverse-mangling -> ABC
+```
+
+The `tuple` receiver is exempt: its `.item1` / `.Item1` element spellings are typed from the tuple's element types.
+
 ## Nested .NET types
 
 A nested .NET type — a type declared inside another, such as `System.Environment.SpecialFolder` — is reached through its declaring type. The chain denotes a type, so it works in every position a type does: as a value (an enum member), as a type annotation, and as an `isinstance` operand.
@@ -108,6 +135,16 @@ def main():
     numbers = [1, 2, 3, 4, 5]
     print(list(numbers.where(lambda x: x % 2 == 0)))   # [2, 4]
     print(list(numbers.select(lambda x: x * 2)))       # [2, 4, 6, 8, 10]
+```
+
+An extension method must be **called**. Referenced without calling it — as a value rather than a callee — an extension method group is refused (SPY0336), the same as any other .NET method group in value position; there is no single delegate type to give the reference. Call it, or wrap it in a lambda.
+
+<!-- spec-sweep: error SPY0336 -->
+```python
+def main() -> None:
+    numbers = [1, 2, 3]
+    f = numbers.first_or_default    # error[SPY0336]: 'first_or_default' is a CLR method group
+    print(f)
 ```
 
 ### Type arguments are inferred
