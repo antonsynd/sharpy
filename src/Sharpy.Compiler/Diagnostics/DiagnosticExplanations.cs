@@ -282,6 +282,19 @@ public static partial class DiagnosticExplanations
             "v: int? = Optional.Some(42)  # use Some(42) instead",
             "Use the bare form: Some(value), None(), Ok(value), or Err(error).");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification,
+            "invalid format specification", "Semantic",
+            "A static f-string format spec (one with no nested {..} replacement fields) is not valid " +
+            "for the operand's type. The spec grammar is [[fill]align][sign][z][#][0][width]" +
+            "[grouping][.precision][type], and each type code is valid only for certain kinds — 'd', " +
+            "'x', 'b' are integer codes, 'f', 'e', 'g' are float codes, 's' is the string code — so " +
+            "a mismatch (or an unknown code, trailing text, or a spec on the None literal) is refused " +
+            "by name with CPython's own ValueError/TypeError message. A dynamic spec is validated at " +
+            "runtime instead.",
+            "s: str = \"a\"\nprint(f\"{s:d}\")  # Unknown format code 'd' for object of type 'str'",
+            "Use a type code valid for the operand (e.g. drop 'd' for a str, or convert the value " +
+            "first), or fix the malformed spec.");
+
         return dict;
     }
 

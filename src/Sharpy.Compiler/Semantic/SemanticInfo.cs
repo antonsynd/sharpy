@@ -252,13 +252,13 @@ public class SemanticInfo : ISemanticQuery
     // Map an f-string interpolation OPERAND to the runtime conversion codegen must wrap it in
     // before interpolating. Present only when the default `$"{x}"` rendering — which is
     // x.ToString() — is not what Python prints for that operand's type. Today the only recorded
-    // case is an exception-typed operand: .NET's Exception.ToString() prints the type name, the
-    // message AND a stack trace carrying an absolute build path, where CPython's f"{e}" is just
-    // str(e) (#1480). Deciding this is a semantic question (it needs the operand's resolved type
-    // and the Exception hierarchy), so it is decided once here and codegen applies it verbatim —
-    // Critical Rule 2 pattern (b). Named for the mechanism rather than for exceptions so the
-    // bare-CLR-sequence display case (#1453's f-string half) can join without a second dictionary.
-    private readonly ConcurrentDictionary<Expression, InterpolationStrWrapping> _interpolationStrWrappings =
+    // Per f-string / t-string hole expression: how the emitter renders it — str/repr/ascii of the
+    // value, or PyFormat.Apply(value, spec) when the field carries a ':' spec (#1814, #1815). The
+    // rendering is a semantic question (it needs the operand's resolved conversion and, for a static
+    // spec, the operand's kind against the CPython grammar), so it is decided once here and codegen
+    // applies it verbatim — Critical Rule 2 pattern (b). Supersedes the exception-only
+    // InterpolationStrWrapping (#1480): every plain hole is now Str, so no per-type mark is needed.
+    private readonly ConcurrentDictionary<Expression, InterpolationLowering> _interpolationLowerings =
         new(ReferenceEqualityComparer.Instance);
 
     // Map patterns to their resolved union case type symbols
@@ -1295,18 +1295,17 @@ public class SemanticInfo : ISemanticQuery
     public bool IsTypeFactoryArgument(Expression expr) => _typeFactoryArguments.ContainsKey(expr);
 
     /// <summary>
-    /// Records that an f-string interpolation operand must be wrapped in the given runtime
-    /// conversion before it is interpolated (#1480).
+    /// Records how an f-string / t-string hole expression is rendered (#1814, #1815).
     /// </summary>
-    public void SetInterpolationStrWrapping(Expression expr, InterpolationStrWrapping wrapping) =>
-        _interpolationStrWrappings[expr] = wrapping;
+    public void SetInterpolationLowering(Expression expr, InterpolationLowering lowering) =>
+        _interpolationLowerings[expr] = lowering;
 
     /// <summary>
-    /// The conversion an f-string interpolation operand must be wrapped in, or null when the
-    /// default <c>$"{x}"</c> rendering is already correct (the overwhelmingly common case).
+    /// How an f-string / t-string hole expression is rendered, or null when the expression is not
+    /// an interpolation hole.
     /// </summary>
-    public InterpolationStrWrapping? GetInterpolationStrWrapping(Expression expr) =>
-        _interpolationStrWrappings.TryGetValue(expr, out var wrapping) ? wrapping : null;
+    public InterpolationLowering? GetInterpolationLowering(Expression expr) =>
+        _interpolationLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
 
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
         _returnLowerings[ret] = lowering;
@@ -1908,8 +1907,8 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._typeFactoryArguments)
             _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);
 
-        foreach (var kvp in other._interpolationStrWrappings)
-            _interpolationStrWrappings.TryAdd(kvp.Key, kvp.Value);
+        foreach (var kvp in other._interpolationLowerings)
+            _interpolationLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
@@ -2611,20 +2610,35 @@ public enum CalleeRouting
 }
 
 /// <summary>
-/// The runtime conversion an f-string interpolation operand must be wrapped in before it is
-/// interpolated, when the default <c>$"{x}"</c> rendering (<c>x.ToString()</c>) is not what Python
-/// prints for that operand's type. Recorded by the TypeChecker, applied verbatim by the emitter
-/// (Critical Rule 2 pattern (b), #1480).
+/// The base rendering an f-string / t-string hole applies to its value before any format spec:
+/// <c>str</c>/<c>repr</c>/<c>ascii</c> from a conversion flag, or the raw value under a spec
+/// (<see cref="Format"/>). Chosen by the TypeChecker from the field's conversion and applied
+/// verbatim by the emitter (Critical Rule 2 pattern (b), #1814, #1815).
 /// </summary>
-public enum InterpolationStrWrapping
+public enum InterpolationKind
 {
-    /// <summary>
-    /// Route the operand through <c>Sharpy.Builtins.Str</c> — the same function <c>str(x)</c> and
-    /// the explicit <c>{x!s}</c> conversion already use, so the three spellings agree by
-    /// construction rather than by three parallel implementations.
-    /// </summary>
-    Str
+    /// <summary>No conversion — a plain hole renders <c>Builtins.Str(v)</c>; under a spec the raw
+    /// value <c>v</c> is passed to <c>PyFormat.Apply(v, spec)</c>.</summary>
+    Format,
+
+    /// <summary><c>!s</c> — <c>Builtins.Str(v)</c>; under a spec <c>PyFormat.Apply(Str(v), spec)</c>.</summary>
+    Str,
+
+    /// <summary><c>!r</c> (or a self-documenting <c>=</c> without a spec) — <c>Builtins.Repr(v)</c>.</summary>
+    Repr,
+
+    /// <summary><c>!a</c> — <c>Builtins.Ascii(v)</c>.</summary>
+    Ascii
 }
+
+/// <summary>
+/// How an f-string / t-string hole is lowered: its base rendering (<see cref="Kind"/>) and, when
+/// the field carried a <c>:</c> spec, whether that spec is static (all literal text, validated at
+/// compile time) and its text. A dynamic spec (containing nested replacement fields) is rendered by
+/// the emitter from the nested parts and validated by Core at runtime. Recorded by the TypeChecker,
+/// applied verbatim by the emitter (#1814, #1815).
+/// </summary>
+public sealed record InterpolationLowering(InterpolationKind Kind, bool SpecIsStatic, string? StaticSpec);
 
 public enum ReturnLoweringKind
 {

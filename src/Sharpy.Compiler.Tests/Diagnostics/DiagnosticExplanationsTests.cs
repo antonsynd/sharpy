@@ -16,6 +16,7 @@ public class DiagnosticExplanationsTests
     [InlineData("SPY0403")]
     [InlineData("SPY0507")]
     [InlineData("SPY0450")]
+    [InlineData("SPY0609")]
     public void Get_KnownCode_ReturnsExplanation(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);

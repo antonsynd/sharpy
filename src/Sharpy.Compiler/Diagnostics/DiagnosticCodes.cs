@@ -950,6 +950,7 @@ public static class DiagnosticCodes
         public const string ClassAttributeBareStore = "SPY0606"; // Active (#1786)
         public const string ConflictingInterfaceInstantiation = "SPY0607"; // Active (#1717)
         public const string QualifiedTaggedUnionConstructor = "SPY0608"; // Active (#1758, R-S)
+        public const string InvalidFormatSpecification = "SPY0609"; // Active (#1815)
     }
 
     /// <summary>

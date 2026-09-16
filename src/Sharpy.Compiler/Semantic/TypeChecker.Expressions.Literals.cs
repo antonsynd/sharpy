@@ -696,65 +696,116 @@ internal partial class TypeChecker
     {
         foreach (var part in fstr.Parts)
         {
-            if (part.Expression != null)
-            {
-                SemanticType partType;
-                using (EnterStore(StorePosition.FStringHole, SemanticType.Object, part.Expression))
-                {
-                    partType = CheckExpression(part.Expression);
-                }
-                RecordInterpolationStrWrapping(part, partType);
-            }
+            CheckInterpolationPart(part);
         }
         return SemanticType.Str;
-    }
-
-    /// <summary>
-    /// Marks an f-string interpolation operand whose default <c>$"{x}"</c> rendering would not be
-    /// what Python prints, so codegen wraps it in <c>Builtins.Str</c> instead (#1480).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Exception-typed operands are the recorded case. C# interpolation calls
-    /// <c>Exception.ToString()</c>, which renders the type name, the message AND a stack trace
-    /// carrying the ABSOLUTE build path of the source file — so <c>print(f"failed: {e}")</c> leaked
-    /// a machine path into stdout where CPython prints only the message. <c>str(e)</c>,
-    /// <c>{e!s}</c> and <c>{e!r}</c> were already correct (Core's Str has an exception arm, and the
-    /// conversion flags route through it), which is exactly what made the plain form's divergence
-    /// easy to miss.
-    /// </para>
-    /// <para>
-    /// An explicit conversion flag is left alone: <c>!s</c>/<c>!r</c>/<c>!a</c> already emit
-    /// <c>Builtins.Str</c>/<c>Repr</c>/<c>Ascii</c>, and <c>{e=}</c> (self-documenting) supplies
-    /// <c>!r</c> of its own. Recording here as well would double-wrap or, worse, override the repr
-    /// the user asked for.
-    /// </para>
-    /// </remarks>
-    private void RecordInterpolationStrWrapping(FStringPart part, SemanticType partType)
-    {
-        if (part.Expression == null || part.Conversion != null || part.IsSelfDocumenting)
-            return;
-
-        var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
-        if (exceptionSymbol == null || !IsExceptionSubtype(partType, exceptionSymbol))
-            return;
-
-        _semanticInfo.SetInterpolationStrWrapping(part.Expression, InterpolationStrWrapping.Str);
     }
 
     private SemanticType CheckTStringLiteral(TStringLiteral tstr)
     {
         foreach (var part in tstr.Parts)
         {
-            if (part.Expression != null)
+            CheckInterpolationPart(part);
+        }
+        return TemplateType.Instance;
+    }
+
+    /// <summary>
+    /// Type-checks one replacement field — its hole expression and, recursively, the expressions in
+    /// its format spec (so a variable used only inside a spec, <c>{x:{w}}</c>, is seen as a use and
+    /// SPY0451 stops lying) — and records how the emitter renders it. A STATIC spec (all literal
+    /// text) is validated by name against the operand's kind, raising SPY0609 with CPython's message
+    /// (#1814, #1815); a dynamic spec is validated by Core at runtime.
+    /// </summary>
+    private void CheckInterpolationPart(FStringPart part)
+    {
+        if (part.Expression == null)
+        {
+            return;
+        }
+
+        SemanticType partType;
+        using (EnterStore(StorePosition.FStringHole, SemanticType.Object, part.Expression))
+        {
+            partType = CheckExpression(part.Expression);
+        }
+
+        // Walk the spec: check nested holes (they are expressions the AST owns) and collect the
+        // literal text of an all-static spec.
+        bool specIsStatic = true;
+        string staticSpec = "";
+        if (part.Spec is { } spec)
+        {
+            foreach (var specPart in spec)
             {
-                using (EnterStore(StorePosition.FStringHole, SemanticType.Object, part.Expression))
+                if (specPart.Expression != null)
                 {
-                    CheckExpression(part.Expression);
+                    specIsStatic = false;
+                    CheckInterpolationPart(specPart);
+                }
+                else if (specPart.Text != null)
+                {
+                    staticSpec += specPart.Text;
                 }
             }
         }
-        return TemplateType.Instance;
+
+        // Effective conversion → base rendering. An explicit !r/!s/!a wins; a self-documenting '='
+        // WITHOUT a spec defaults to repr (the value side of '=:spec' formats the raw value).
+        char? effectiveConversion = part.Conversion
+            ?? (part.IsSelfDocumenting && part.Spec == null ? 'r' : null);
+        var kind = effectiveConversion switch
+        {
+            'r' => InterpolationKind.Repr,
+            's' => InterpolationKind.Str,
+            'a' => InterpolationKind.Ascii,
+            _ => InterpolationKind.Format
+        };
+
+        // A static, non-empty spec is validated now. When a conversion applies (Str/Repr/Ascii), the
+        // spec formats a STRING, so validate against Str; otherwise against the value's own kind.
+        if (part.Spec != null && specIsStatic && staticSpec.Length > 0)
+        {
+            var operandKind = kind == InterpolationKind.Format
+                ? FormatOperandKindOf(part.Expression, partType)
+                : FormatOperandKind.Str;
+            var message = FormatSpecGrammar.Validate(staticSpec, operandKind);
+            if (message != null)
+            {
+                AddError(message, part.Expression.LineStart, part.Expression.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification, span: part.Expression.Span);
+            }
+        }
+
+        _semanticInfo.SetInterpolationLowering(part.Expression,
+            new InterpolationLowering(kind, specIsStatic, part.Spec == null ? null : staticSpec));
+    }
+
+    /// <summary>
+    /// The compile-time operand kind a static format spec is validated against — the projection of
+    /// the value kinds <c>Sharpy.PyFormat</c> distinguishes at runtime. A None literal is its own
+    /// kind; anything not a statically-known primitive is <see cref="FormatOperandKind.Unknown"/>
+    /// and is validated by Core at runtime instead.
+    /// </summary>
+    private static FormatOperandKind FormatOperandKindOf(Expression expr, SemanticType type)
+    {
+        if (expr is NoneLiteral)
+        {
+            return FormatOperandKind.NoneLiteral;
+        }
+
+        if (type is BuiltinType { ClrType: { } clr })
+        {
+            if (clr == typeof(string)) return FormatOperandKind.Str;
+            if (clr == typeof(bool)) return FormatOperandKind.Bool;
+            if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
+                return FormatOperandKind.Float;
+            if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)
+                || clr == typeof(sbyte) || clr == typeof(uint) || clr == typeof(ulong) || clr == typeof(ushort))
+                return FormatOperandKind.Integral;
+        }
+
+        return FormatOperandKind.Unknown;
     }
 
     private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)
