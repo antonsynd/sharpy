@@ -278,7 +278,15 @@ suppress has no suppression edge, so a body assignment is unconditional and its 
 *conditional* assignment, say — is a plain definite-assignment hole and is still refused (SPY0600),
 under every manager:
 
+<!-- spec-sweep: error SPY0600 -->
 ```python
+class Suppressor:
+    def __enter__(self) -> int:
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        return True
+
 def main() -> None:
     c: bool = True
     n: int

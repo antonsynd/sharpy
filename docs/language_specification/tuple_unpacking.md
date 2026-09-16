@@ -158,10 +158,14 @@ def main() -> None:
 The bare parenthesized form `(*a)` — no trailing comma, not a list display — is a Python
 `SyntaxError` and is refused with Python's own wording, in every position (SPY0225):
 
+<!-- spec-sweep: error SPY0225 -->
 ```python
-(*a) = xs            # error SPY0225: cannot use starred expression here
-for (*a) in xs: ...  # error SPY0225: cannot use starred expression here
-(*a), b = xs         # error SPY0225: cannot use starred expression here
+def main() -> None:
+    xs: list[tuple[int, int]] = [(1, 2)]
+    (*a) = xs             # error SPY0225: cannot use starred expression here
+    (*a), b = xs          # error SPY0225: cannot use starred expression here
+    for (*a) in xs:       # error SPY0225: cannot use starred expression here
+        pass
 ```
 
 ## Nested Tuple Unpacking
@@ -214,6 +218,7 @@ def main() -> None:
 1 2 [3, 4]
 ```
 
+<!-- spec-sweep: error SPY0356 -->
 ```python
 a, (*b, *c) = (1, (2, 3, 4))   # error SPY0356: multiple starred expressions
 ```

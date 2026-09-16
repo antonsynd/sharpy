@@ -43,9 +43,7 @@ constructors.md::316927b79a  # SPY0224 first
 constructors.md::d86be9af34  # SPY0224 first
 context_managers.md::0a8135cdb6  # SPY0266 first
 context_managers.md::2bee664e22  # SPY0703 first
-context_managers.md::86d5980bf0  # SPY0600 first
 context_managers.md::89c52d46c3  # SPY0203 first
-context_managers.md::ab262c78f4  # SPY0102 first
 conversion_operators.md::05ba3354c1  # SPY0200 first
 conversion_operators.md::27582600e9  # SPY0200 first
 decorators.md::0d527132e3  # SPY0300 first
