@@ -88,6 +88,11 @@ public abstract class IntegrationTestBase
             // System.Numerics.BigInteger (e.g. fractions.Fraction.numerator/denominator).
             // Real net10.0 test projects reference it implicitly via the framework.
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.Numerics").Location),
+            // System.Diagnostics.Process is needed for fixtures that read a CLR IDictionary<K,V>
+            // from ProcessStartInfo.Environment — the type is forwarded to this assembly, so its
+            // metadata must be loadable for the generated C# to bind it (interop/clr_idictionary_store_1866*,
+            // #1866). Real net10.0 test projects reference it implicitly via the framework.
+            MetadataReference.CreateFromFile(Assembly.Load("System.Diagnostics.Process").Location),
         };
 
         string? runtimePath = null;

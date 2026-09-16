@@ -1,0 +1,11 @@
+# The IDictionary materializes into a dict element (an indexed store) whose slot is dict[str, str]
+# (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    envs: dict[str, dict[str, str]] = {}
+    envs["a"] = p.environment
+    envs["a"]["sharpy_marker"] = "elem"
+    print(envs["a"]["sharpy_marker"])

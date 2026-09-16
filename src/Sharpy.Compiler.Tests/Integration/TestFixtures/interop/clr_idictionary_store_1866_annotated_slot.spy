@@ -1,0 +1,12 @@
+# A .NET IDictionary read from ProcessStartInfo.Environment materializes into an annotated
+# dict[str, str] slot — the #1866 store seam emits new Sharpy.Dict<string, string>(p.Environment),
+# which needs the KeyValuePair-sequence constructor. The materialized dict is an independent Sharpy
+# dict, so setting a key on it and reading it back proves it constructed.
+from system.diagnostics import ProcessStartInfo
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    e: dict[str, str] = p.environment
+    e["sharpy_marker"] = "ok"
+    print(e["sharpy_marker"])

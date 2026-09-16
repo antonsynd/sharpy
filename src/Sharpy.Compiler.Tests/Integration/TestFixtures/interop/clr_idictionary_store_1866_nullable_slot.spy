@@ -1,0 +1,10 @@
+# The nullable-faithful destination dict[str, str | None] materializes the same IDictionary; the
+# loose value payload is accepted and the wrapper still constructs (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    e: dict[str, str | None] = p.environment
+    e["sharpy_marker"] = "ok"
+    print(e["sharpy_marker"])

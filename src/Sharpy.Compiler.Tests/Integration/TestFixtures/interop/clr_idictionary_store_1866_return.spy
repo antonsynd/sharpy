@@ -1,0 +1,13 @@
+# The IDictionary materializes at a return destination typed dict[str, str] (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+def snapshot() -> dict[str, str]:
+    p: ProcessStartInfo = ProcessStartInfo()
+    return p.environment
+
+
+def main() -> None:
+    e: dict[str, str] = snapshot()
+    e["sharpy_marker"] = "ret"
+    print(e["sharpy_marker"])

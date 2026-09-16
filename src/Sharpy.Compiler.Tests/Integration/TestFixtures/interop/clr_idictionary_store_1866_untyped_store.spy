@@ -1,0 +1,11 @@
+# The same materialization at an UNTYPED store: e = p.environment collapses to dict[str, str] at the
+# store seam, so the subsequent dict-to-dict assignment carries a real Sharpy dict (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    e = p.environment
+    f: dict[str, str] = e
+    f["sharpy_marker"] = "ok"
+    print(f["sharpy_marker"])

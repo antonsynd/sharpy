@@ -1,0 +1,16 @@
+# The IDictionary materializes directly into a dict[str, str] field (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+class Holder:
+    env: dict[str, str]
+
+    def __init__(self, p: ProcessStartInfo) -> None:
+        self.env = p.environment
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    h: Holder = Holder(p)
+    h.env["sharpy_marker"] = "field"
+    print(h.env["sharpy_marker"])

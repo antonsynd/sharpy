@@ -1,0 +1,12 @@
+# The IDictionary materializes at a parameter destination typed dict[str, str] (#1866).
+from system.diagnostics import ProcessStartInfo
+
+
+def store(m: dict[str, str]) -> str:
+    m["sharpy_marker"] = "param"
+    return m["sharpy_marker"]
+
+
+def main() -> None:
+    p: ProcessStartInfo = ProcessStartInfo()
+    print(store(p.environment))
