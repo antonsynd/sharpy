@@ -315,11 +315,14 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     // ── The f-string hole's own rows ─────────────────────────────────────────────────────────
     // The hole's slot is `object`, so the shape's slot never applies: the value is admitted and
-    // the hole prints its Python str(). These outputs were MEASURED with `sharpyc run`; each one
-    // whose value is a NULL prints the empty string where python3 prints `None` — the open
-    // rendering gap #1814. Those four expectations are the measured output ON PURPOSE, so the
-    // cells go red BY DESIGN when #1814 is fixed and the expectation becomes "None\n"; they are
-    // marked below. Every other row matches python3 exactly.
+    // the hole renders through the canonical str() path (#1814/#1862 unified f-string holes onto
+    // the same Str/PyFormat.Apply lowering that `print(x)` uses). By the Python invariant
+    // f"{x}" == str(x) == print(x), every hole output now equals this shape's plain-store
+    // AcceptedOutput exactly: a NULL renders "None" (the #1814 rendering gap is closed — these were
+    // "\n" under the old divergent hole path), and a Some(v) renders str(v) — its payload, "42",
+    // NOT the union's "Some(42)" (the pre-#1862 hole printed the wrapper, diverging from print).
+    // These outputs were MEASURED with `sharpyc run` and cross-checked against the passing
+    // print-position cells for the same shapes. Every row matches python3 / str() exactly.
     private static readonly Dictionary<string, string> FStringHoleOutputs = new()
     {
         ["FStringHole×InRangeIntConstant"] = "7\n",
@@ -336,14 +339,14 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["FStringHole×ConcatLiteralIntoLiteralString"] = "ab\n",
         ["FStringHole×StrValueIntoLiteralString"] = "a\n",
         ["FStringHole×BareValueIntoOptional"] = "42\n",
-        ["FStringHole×BareNoneIntoOptional"] = "\n",  // #1814: python3 prints `None`
-        ["FStringHole×SomeIntoOptional"] = "Some(42)\n",
-        ["FStringHole×NoneIntoNullable"] = "\n",  // #1814: python3 prints `None`
-        ["FStringHole×NoneIntoNonNullable"] = "\n",  // #1814: python3 prints `None`
-        ["FStringHole×NullableIntoOptional"] = "\n",  // #1814: python3 prints `None`
-        ["FStringHole×OptionalIntoNullable"] = "Some(1)\n",
-        ["FStringHole×OptionalIntoNonOptional"] = "Some(1)\n",
-        ["FStringHole×SomeConstantIntoNarrowOptional"] = "Some(7)\n",
+        ["FStringHole×BareNoneIntoOptional"] = "None\n",  // #1814: renders `None`, matching str()
+        ["FStringHole×SomeIntoOptional"] = "42\n",  // #1862: str(payload), not the `Some(42)` wrapper
+        ["FStringHole×NoneIntoNullable"] = "None\n",  // #1814: renders `None`, matching str()
+        ["FStringHole×NoneIntoNonNullable"] = "None\n",  // #1814: renders `None`, matching str()
+        ["FStringHole×NullableIntoOptional"] = "None\n",  // #1814: renders `None`, matching str()
+        ["FStringHole×OptionalIntoNullable"] = "1\n",  // #1862: str(payload), not the `Some(1)` wrapper
+        ["FStringHole×OptionalIntoNonOptional"] = "1\n",  // #1862: str(payload), not the `Some(1)` wrapper
+        ["FStringHole×SomeConstantIntoNarrowOptional"] = "7\n",  // #1862: str(payload), not `Some(7)`
         ["FStringHole×ConstantIntoNarrowNullable"] = "7\n",
     };
 

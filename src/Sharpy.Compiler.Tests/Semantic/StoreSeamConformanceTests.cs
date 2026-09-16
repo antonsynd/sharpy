@@ -324,8 +324,14 @@ public class StoreSeamConformanceTests
     /// for the slot-directed arm, which is what makes a fresh walrus under a branch a direct
     /// operand and a nested conditional under a truthiness test distribute in turn — plus the
     /// NESTED unpacking arm's push of its targets' composed slot (<c>NestedTargetSlot</c>).
+    /// 64 -> 63 (P3b Phase 2, #1814/#1862): the f-string hole and t-string hole pushes — two
+    /// identical <c>EnterStore(FStringHole, …)</c> call sites, one per string kind — unified into
+    /// the single shared <c>CheckInterpolationPart</c> helper that both <c>CheckFStringLiteral</c>
+    /// and <c>CheckTStringLiteral</c> now call (and which nested spec holes recurse through), so
+    /// both kinds still establish the hole store expectation from the one site
+    /// (49 pushes + 14 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 64;
+    private const int ExpectedSeamCallSiteCount = 63;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {
