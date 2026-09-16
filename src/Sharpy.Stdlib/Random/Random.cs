@@ -91,7 +91,7 @@ namespace Sharpy
         {
             if (stop <= 0)
             {
-                throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() (0, {(stop)})"));
+                throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() (0, {(global::Sharpy.Builtins.Str(stop))})"));
             }
 
             return _Random.Next(stop);
@@ -112,7 +112,7 @@ namespace Sharpy
             {
                 if (width <= 0)
                 {
-                    throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(start)}, {(stop)}, {(step)})"));
+                    throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
                 }
 
                 return start + _Random.Next(width);
@@ -130,7 +130,7 @@ namespace Sharpy
 
             if (n <= 0)
             {
-                throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(start)}, {(stop)}, {(step)})"));
+                throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
             }
 
             return start + step * _Random.Next(n);

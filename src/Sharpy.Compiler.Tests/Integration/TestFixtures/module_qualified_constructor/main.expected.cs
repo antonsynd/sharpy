@@ -58,7 +58,7 @@ namespace Sharpy.Test
 #line 9 "shapes.spy"
             {
 #line (10, 9) - (10, 40) 16 "shapes.spy"
-                return FormattableString.Invariant($"({(this.X)}, {(this.Y)})");
+                return FormattableString.Invariant($"({(global::Sharpy.Builtins.Str(this.X))}, {(global::Sharpy.Builtins.Str(this.Y))})");
 #line hidden
             }
 
@@ -81,7 +81,7 @@ namespace Sharpy.Test
 #line 20 "shapes.spy"
             {
 #line (21, 9) - (21, 44) 16 "shapes.spy"
-                return FormattableString.Invariant($"{(this.Name)}@{(this.Alpha)}");
+                return FormattableString.Invariant($"{(global::Sharpy.Builtins.Str(this.Name))}@{(global::Sharpy.Builtins.Str(this.Alpha))}");
 #line hidden
             }
 

@@ -37,7 +37,7 @@ public static partial class TryElseReturn
             if (__trySucceeded_0)
             {
 #line (10, 9) - (10, 35) 16 "try_else_return.spy"
-                return FormattableString.Invariant($"result: {(total)}");
+                return FormattableString.Invariant($"result: {(global::Sharpy.Builtins.Str(total))}");
 #line hidden
             }
 

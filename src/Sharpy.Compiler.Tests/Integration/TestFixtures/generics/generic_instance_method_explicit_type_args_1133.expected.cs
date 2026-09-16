@@ -14,7 +14,7 @@ public static partial class GenericInstanceMethodExplicitTypeArgs1133
 #line 9 "generic_instance_method_explicit_type_args_1133.spy"
         {
 #line (10, 9) - (10, 38) 12 "generic_instance_method_explicit_type_args_1133.spy"
-            return FormattableString.Invariant($"converted: {(value)}");
+            return FormattableString.Invariant($"converted: {(global::Sharpy.Builtins.Str(value))}");
 #line hidden
         }
 

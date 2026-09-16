@@ -41,7 +41,7 @@ namespace Sharpy.Test
 #line 7 "ui.spy"
                 {
 #line (8, 9) - (8, 34) 20 "ui.spy"
-                    return FormattableString.Invariant($"[{(this.Label)}]");
+                    return FormattableString.Invariant($"[{(global::Sharpy.Builtins.Str(this.Label))}]");
 #line hidden
                 }
 
@@ -81,7 +81,7 @@ namespace Sharpy.Test
 #line 7 "db.spy"
             {
 #line (8, 9) - (8, 38) 16 "db.spy"
-                return FormattableString.Invariant($"Record({(this.Key)})");
+                return FormattableString.Invariant($"Record({(global::Sharpy.Builtins.Str(this.Key))})");
 #line hidden
             }
 

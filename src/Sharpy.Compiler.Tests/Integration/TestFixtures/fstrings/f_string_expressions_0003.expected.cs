@@ -125,21 +125,21 @@ public static partial class FStringExpressions0003
 #line (61, 5) - (61, 40) 8 "f_string_expressions_0003.spy"
         var casual = new CasualPlayer("Bob", 75, 8);
 #line (63, 5) - (63, 69) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(competitive.Name)}, Level: {(competitive.Level)}"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(global::Sharpy.Builtins.Str(competitive.Name))}, Level: {(global::Sharpy.Builtins.Str(competitive.Level))}"));
 #line (64, 5) - (64, 80) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Base: {(competitive.BaseScore)}, Bonus: {(competitive.BonusPoints)}"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Base: {(global::Sharpy.Builtins.Str(competitive.BaseScore))}, Bonus: {(global::Sharpy.Builtins.Str(competitive.BonusPoints))}"));
 #line (65, 5) - (65, 92) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Score: {(competitive.GetFinalScore())} ({(global::Sharpy.Builtins.FormatFloat(competitive.Multiplier))}x multiplier)"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Score: {(global::Sharpy.Builtins.Str(competitive.GetFinalScore()))} ({(global::Sharpy.Builtins.Str(competitive.Multiplier))}x multiplier)"));
 #line (66, 5) - (66, 92) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(competitive.GetRank())}, Status: {(competitive.GetFinalScore() > 100)}"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(global::Sharpy.Builtins.Str(competitive.GetRank()))}, Status: {(global::Sharpy.Builtins.Str(competitive.GetFinalScore() > 100))}"));
 #line (68, 5) - (68, 66) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(casual.Name)}, Games: {(casual.GamesPlayed)}"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(global::Sharpy.Builtins.Str(casual.Name))}, Games: {(global::Sharpy.Builtins.Str(casual.GamesPlayed))}"));
 #line (69, 5) - (69, 75) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Average: {(global::Sharpy.Builtins.FloorDiv(casual.BaseScore, casual.GamesPlayed))} per game"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Average: {(global::Sharpy.Builtins.Str(global::Sharpy.Builtins.FloorDiv(casual.BaseScore, casual.GamesPlayed)))} per game"));
 #line (70, 5) - (70, 54) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Total Score: {(casual.GetFinalScore())}"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Total Score: {(global::Sharpy.Builtins.Str(casual.GetFinalScore()))}"));
 #line (71, 5) - (71, 89) 8 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(casual.GetRank())}, Next level at: {(11 - casual.GamesPlayed)} games"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(global::Sharpy.Builtins.Str(casual.GetRank()))}, Next level at: {(global::Sharpy.Builtins.Str(11 - casual.GamesPlayed))} games"));
 #line hidden
     }
 }

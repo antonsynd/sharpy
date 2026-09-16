@@ -1117,7 +1117,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var i = __loopVar_1;
 #line (506, 9) - (506, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                    items.Append(FormattableString.Invariant($"item-{(i)}"));
+                    items.Append(FormattableString.Invariant($"item-{(global::Sharpy.Builtins.Str(i))}"));
 #line hidden
                 }
 

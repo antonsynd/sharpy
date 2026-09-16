@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (15, 9) - (15, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
 #line (16, 9) - (16, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"starttag:{(tag)} [{(attrStr)}]"));
+                    this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
 #line hidden
                 }
 
@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 19 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (20, 9) - (20, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"endtag:{(tag)}"));
+                    this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
 #line hidden
                 }
 
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (24, 9) - (24, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
 #line (25, 9) - (25, 62) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"startendtag:{(tag)} [{(attrStr)}]"));
+                    this.Events.Append(FormattableString.Invariant($"startendtag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
 #line hidden
                 }
 
@@ -54,7 +54,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 28 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (29, 9) - (29, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"data:{(data)}"));
+                    this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
 #line hidden
                 }
 
@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 32 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (33, 9) - (33, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"comment:{(data)}"));
+                    this.Events.Append(FormattableString.Invariant($"comment:{(global::Sharpy.Builtins.Str(data))}"));
 #line hidden
                 }
 
@@ -70,7 +70,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 36 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (37, 9) - (37, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"entityref:{(name)}"));
+                    this.Events.Append(FormattableString.Invariant($"entityref:{(global::Sharpy.Builtins.Str(name))}"));
 #line hidden
                 }
 
@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 40 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (41, 9) - (41, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"charref:{(name)}"));
+                    this.Events.Append(FormattableString.Invariant($"charref:{(global::Sharpy.Builtins.Str(name))}"));
 #line hidden
                 }
 
@@ -86,7 +86,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 44 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (45, 9) - (45, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"decl:{(decl)}"));
+                    this.Events.Append(FormattableString.Invariant($"decl:{(global::Sharpy.Builtins.Str(decl))}"));
 #line hidden
                 }
 
@@ -94,7 +94,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 48 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (49, 9) - (49, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"pi:{(data)}"));
+                    this.Events.Append(FormattableString.Invariant($"pi:{(global::Sharpy.Builtins.Str(data))}"));
 #line hidden
                 }
 
@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 60 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (61, 9) - (61, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"starttag:{(tag)}"));
+                    this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))}"));
 #line hidden
                 }
 
@@ -124,7 +124,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 64 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (65, 9) - (65, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"endtag:{(tag)}"));
+                    this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
 #line hidden
                 }
 
@@ -132,7 +132,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 68 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (69, 9) - (69, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    this.Events.Append(FormattableString.Invariant($"data:{(data)}"));
+                    this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
 #line hidden
                 }
 
@@ -164,13 +164,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
 #line (76, 13) - (76, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                        result.Append(FormattableString.Invariant($"({(attr.Item1)}, null)"));
+                        result.Append(FormattableString.Invariant($"({(global::Sharpy.Builtins.Str(attr.Item1))}, null)"));
 #line hidden
                     }
                     else
                     {
 #line (78, 13) - (78, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                        result.Append(FormattableString.Invariant($"({(attr.Item1)}, {(attr.Item2!)})"));
+                        result.Append(FormattableString.Invariant($"({(global::Sharpy.Builtins.Str(attr.Item1))}, {(global::Sharpy.Builtins.Str(attr.Item2!))})"));
 #line hidden
                     }
                 }

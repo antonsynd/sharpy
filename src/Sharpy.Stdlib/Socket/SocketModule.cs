@@ -535,7 +535,7 @@ namespace Sharpy
                 int fam = this.Family;
                 int typ = this.type;
                 int pr = this.Proto;
-                return FormattableString.Invariant($"<socket fd={(fd)}, family={(fam)}, type={(typ)}, proto={(pr)}>");
+                return FormattableString.Invariant($"<socket fd={(global::Sharpy.Builtins.Str(fd))}, family={(global::Sharpy.Builtins.Str(fam))}, type={(global::Sharpy.Builtins.Str(typ))}, proto={(global::Sharpy.Builtins.Str(pr))}>");
             }
 
             public int Family

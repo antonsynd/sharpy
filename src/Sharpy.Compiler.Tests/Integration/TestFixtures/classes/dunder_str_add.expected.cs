@@ -17,7 +17,7 @@ public static partial class DunderStrAdd
 #line 12 "dunder_str_add.spy"
         {
 #line (13, 9) - (13, 46) 12 "dunder_str_add.spy"
-            return FormattableString.Invariant($"Vector({(this.X)}, {(this.Y)})");
+            return FormattableString.Invariant($"Vector({(global::Sharpy.Builtins.Str(this.X))}, {(global::Sharpy.Builtins.Str(this.Y))})");
 #line hidden
         }
 
