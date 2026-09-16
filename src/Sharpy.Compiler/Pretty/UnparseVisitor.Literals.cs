@@ -210,9 +210,11 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitTupleLiteral(TupleLiteral node)
     {
-        // A tuple that unpacks is written bare — `first, *rest = items` is the only spelling
-        // the parser accepts for an unpacking target. In operand position the precedence table
-        // ranks it below every operator so the operand helpers parenthesize it instead (#1172).
+        // A multi-element tuple that unpacks is written bare — `first, *rest = items` is the only
+        // spelling the parser accepts for that target. A SOLE starred element cannot be written
+        // bare (`*a` alone is not a target), so it keeps its delimiters: `(*a,)` (paren + comma) or
+        // `[*a]` (list display). In operand position the precedence table ranks a bare tuple below
+        // every operator so the operand helpers parenthesize it instead (#1172).
         bool hasStarUnpack = RendersAsBareTuple(node);
         string open = node.IsListDisplay ? "[" : "(";
         string close = node.IsListDisplay ? "]" : ")";
@@ -229,7 +231,14 @@ internal sealed partial class UnparseVisitor
             }
             Visit(node.Elements[i]);
         }
-        if (!hasStarUnpack && node.Elements.Length == 1 && (node.ElementNames.IsEmpty || node.ElementNames[0] == null))
+        // A single non-star, non-list-display tuple always needs its comma (`(x,)` vs `(x)`); every
+        // tuple round-trips a source trailing comma (`(*a,)`, `(1, 2,)`). A list display never does
+        // (`[x]`, `[*a]`), and a named tuple is written without one.
+        bool unnamed = node.ElementNames.IsEmpty || node.ElementNames.All(n => n == null);
+        bool soleAutoComma = node.Elements.Length == 1
+            && !node.IsListDisplay
+            && node.Elements[0] is not (StarExpression or SpreadElement);
+        if (!hasStarUnpack && unnamed && (soleAutoComma || node.HasTrailingComma))
             _w.Write(",");
         if (!hasStarUnpack)
             _w.Write(close);

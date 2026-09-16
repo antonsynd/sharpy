@@ -247,6 +247,15 @@ public record TupleLiteral : Expression
     /// </summary>
     public bool IsListDisplay { get; init; }
 
+    /// <summary>
+    /// True when the source tuple carried a trailing comma (<c>(*a,)</c>, <c>(1, 2,)</c>).
+    /// This is an AST fact set at parse time, not a semantic annotation (Rule 3): the store-target
+    /// canonicalizer reads it to tell the legal sole-starred group <c>(*a,)</c> from the bare
+    /// <c>(*a)</c> Python refuses (both parse to the same one-element tuple), and the unparser reads
+    /// it to round-trip the comma back (#1845).
+    /// </summary>
+    public bool HasTrailingComma { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {

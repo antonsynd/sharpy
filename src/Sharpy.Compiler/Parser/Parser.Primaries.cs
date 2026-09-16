@@ -360,12 +360,16 @@ public partial class Parser
                     {
                         var spreadFirst = ParseTupleElement();
                         var spreadElements = new List<Expression> { spreadFirst };
+                        bool spreadTrailingComma = false;
 
                         while (Current.Type == TokenType.Comma)
                         {
                             Advance();
                             if (Current.Type == TokenType.RightParen)
+                            {
+                                spreadTrailingComma = true;
                                 break;
+                            }
                             spreadElements.Add(ParseTupleElement());
                         }
 
@@ -373,6 +377,7 @@ public partial class Parser
                         return new TupleLiteral
                         {
                             Elements = spreadElements.ToImmutableArray(),
+                            HasTrailingComma = spreadTrailingComma,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -404,12 +409,16 @@ public partial class Parser
                     if (Current.Type == TokenType.Comma)
                     {
                         var elements = new List<Expression> { expr };
+                        bool tupleTrailingComma = false;
 
                         while (Current.Type == TokenType.Comma)
                         {
                             Advance();
                             if (Current.Type == TokenType.RightParen)
+                            {
+                                tupleTrailingComma = true;
                                 break;
+                            }
                             elements.Add(ParseTupleElement());
                         }
 
@@ -417,6 +426,7 @@ public partial class Parser
                         return new TupleLiteral
                         {
                             Elements = elements.ToImmutableArray(),
+                            HasTrailingComma = tupleTrailingComma,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,

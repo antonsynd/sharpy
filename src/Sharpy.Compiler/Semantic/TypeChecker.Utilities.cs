@@ -2270,6 +2270,19 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The SPY0225 message for an invalid store target. A bare starred group — the sole-element
+    /// <c>(*a)</c> / <c>(*a), b</c> / <c>for (*a) in …</c> that survives canonicalization as a
+    /// <see cref="SpreadElement"/> (#1845) — takes Python's own wording ("cannot use starred
+    /// expression here"); every other invalid shape reads "Cannot assign to {description}".
+    /// One authority so the assignment, for, with and comprehension positions agree.
+    /// </summary>
+    private string InvalidAssignmentTargetMessage(Expression target) => target switch
+    {
+        SpreadElement or StarExpression => "cannot use starred expression here",
+        _ => $"Cannot assign to {GetAssignmentTargetDescription(target)}",
+    };
+
+    /// <summary>
     /// Gets a human-readable description of an invalid assignment target for error messages.
     /// Message rendering only (documented-by-design): the default is a generic placeholder and
     /// no semantic decision keys on this switch — validity is decided by

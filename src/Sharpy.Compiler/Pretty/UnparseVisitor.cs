@@ -265,11 +265,13 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
     /// <summary>
     /// True for a tuple that <see cref="VisitTupleLiteral"/> writes without its own parentheses —
-    /// the unpacking-target form <c>a, *b</c>. Such a tuple supplies no delimiters of its own, so
-    /// it is not self-contained in operand position.
+    /// the multi-element unpacking-target form <c>a, *b</c>. Such a tuple supplies no delimiters of
+    /// its own, so it is not self-contained in operand position. A SOLE starred element is excluded:
+    /// <c>*a</c> alone is not a legal target, so the tuple keeps its delimiters (<c>(*a,)</c> /
+    /// <c>[*a]</c>) and is self-contained (#1845).
     /// </summary>
     private static bool RendersAsBareTuple(TupleLiteral tuple) =>
-        tuple.Elements.Any(e => e is StarExpression);
+        tuple.Elements.Length > 1 && tuple.Elements.Any(e => e is StarExpression);
 
     #endregion
 

@@ -156,7 +156,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     }
 
     private bool TupleLiteralEquals(TupleLiteral a, TupleLiteral b) =>
-        NodesEqual(a.Elements, b.Elements) && a.ElementNames.SequenceEqual(b.ElementNames);
+        NodesEqual(a.Elements, b.Elements)
+        && a.ElementNames.SequenceEqual(b.ElementNames)
+        && a.HasTrailingComma == b.HasTrailingComma;
 
     private bool FStringEquals(FStringLiteral a, FStringLiteral b) =>
         FStringPartsEqual(a.Parts, b.Parts);

@@ -197,27 +197,34 @@ public partial class Parser
         if (Current.Type == TokenType.Comma)
         {
             var elements = new List<Expression> { first };
+            bool trailingComma = false;
 
             while (Current.Type == TokenType.Comma)
             {
                 Advance();
                 if (Current.Type == TokenType.In)
+                {
+                    trailingComma = true;
                     break;  // Trailing comma before 'in'
+                }
                 elements.Add(ParseForTargetElement());
             }
 
-            return new TupleLiteral
+            // Canonicalize so SpreadElement targets become the StarExpression the unpacking rule
+            // keys on, and a bare `for (*a) in …` stays refused (#1845).
+            return AstHelper.CanonicalizeStoreTarget(new TupleLiteral
             {
                 Elements = elements.ToImmutableArray(),
+                HasTrailingComma = trailingComma,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = Current.Line,
                 ColumnEnd = Current.Column,
                 Span = CombineSpans(first.Span, elements[^1].Span)
-            };
+            });
         }
 
-        return first;
+        return AstHelper.CanonicalizeStoreTarget(first);
     }
 
     private Expression ParseForTargetElement()
@@ -229,9 +236,13 @@ public partial class Parser
             var starToken = Current;
             Advance();
             var operand = ParseStoreTarget();
-            return new StarExpression
+            // Build the raw SpreadElement the value parser produces so every store target — for,
+            // with, comprehension and assignment — reaches the ONE canonicalizer, which converts a
+            // SpreadElement to the StarExpression the unpacking rule keys on unless the group is a
+            // bare `(*a)` Python refuses (AstHelper.CanonicalizeStoreTargetElements, #1845).
+            return new SpreadElement
             {
-                Operand = operand,
+                Value = operand,
                 LineStart = starLine,
                 ColumnStart = starColumn,
                 LineEnd = operand.LineEnd,
@@ -312,19 +323,27 @@ public partial class Parser
         Expect(TokenType.LeftParen);
 
         var elements = new List<Expression> { ParseForTargetElement() };
+        bool trailingComma = false;
         while (Current.Type == TokenType.Comma)
         {
             Advance();
             if (Current.Type == TokenType.RightParen)
+            {
+                trailingComma = true;
                 break;  // trailing comma
+            }
             elements.Add(ParseForTargetElement());
         }
 
         Expect(TokenType.RightParen);
 
+        // The sole-starred group `(*a,)` (trailing comma) is legal and canonicalizes to a
+        // StarExpression; a bare `(*a)` keeps its SpreadElement and is refused (#1845). The
+        // canonicalization runs at the ParseStoreTarget seam this result returns through.
         return new TupleLiteral
         {
             Elements = elements.ToImmutableArray(),
+            HasTrailingComma = trailingComma,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,

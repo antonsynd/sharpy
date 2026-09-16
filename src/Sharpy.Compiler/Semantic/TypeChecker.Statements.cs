@@ -25,7 +25,7 @@ internal partial class TypeChecker
             // because the description was taken from the outermost node, and the canonicalized
             // list display is a TupleLiteral, so even the `ListLiteral => "list literal"` arm was
             // unreachable from a target position (#1841, #1733).
-            AddError($"Cannot assign to {GetAssignmentTargetDescription(invalidTarget)}",
+            AddError(InvalidAssignmentTargetMessage(invalidTarget),
                 invalidTarget.LineStart, invalidTarget.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
                 span: invalidTarget.Span);
             return;

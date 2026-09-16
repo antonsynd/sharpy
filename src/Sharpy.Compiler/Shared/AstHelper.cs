@@ -199,11 +199,15 @@ internal static class AstHelper
             Parenthesized paren => CanonicalizeStoreTarget(paren.Expression),
             TupleLiteral tuple => tuple with
             {
-                Elements = CanonicalizeStoreTargetElements(tuple.Elements)
+                Elements = CanonicalizeStoreTargetElements(
+                    tuple.Elements, tuple.HasTrailingComma, tuple.IsListDisplay)
             },
             ListLiteral list => new TupleLiteral
             {
-                Elements = CanonicalizeStoreTargetElements(list.Elements),
+                // A list display `[…]` is its own delimiter, so a sole starred element `[*a]` is
+                // canonical (unlike the bare parenthesized `(*a)`) — pass isListDisplay through.
+                Elements = CanonicalizeStoreTargetElements(
+                    list.Elements, hasTrailingComma: false, isListDisplay: true),
                 IsListDisplay = true,
                 LineStart = list.LineStart,
                 ColumnStart = list.ColumnStart,
@@ -218,15 +222,21 @@ internal static class AstHelper
     /// <summary>
     /// Canonicalizes the elements of a tuple/list-display store target, turning an
     /// expression-parsed <see cref="SpreadElement"/> into the <see cref="StarExpression"/> every
-    /// store path keys on (#1841). A group of one element is left alone: see the
-    /// <c>(*a)</c> / <c>(*a,)</c> note on <see cref="CanonicalizeStoreTarget"/>.
+    /// store path keys on (#1841). A group whose <em>only</em> element is the star keeps its
+    /// <see cref="SpreadElement"/> — and stays refused by the target authority (SPY0225) — unless
+    /// the group is itself a delimiter that makes the sole-starred form legal Python: a trailing
+    /// comma (<c>(*a,)</c>) or a list display (<c>[*a]</c>). The bare <c>(*a)</c> — no comma, not a
+    /// display — is the only spelling that stays a <see cref="SpreadElement"/> (#1845).
     /// </summary>
     private static ImmutableArray<Expression> CanonicalizeStoreTargetElements(
-        ImmutableArray<Expression> elements)
+        ImmutableArray<Expression> elements, bool hasTrailingComma, bool isListDisplay)
     {
-        var soleElement = elements.Length <= 1;
+        // A single element is only the ambiguous `(*a)` / `(*a,)` case when it is the star itself;
+        // a lone plain target (`(a)` / `[a]`) canonicalizes normally.
+        var soleStarKeepsSpread =
+            elements.Length == 1 && !hasTrailingComma && !isListDisplay;
         return elements
-            .Select(e => e is SpreadElement spread && !soleElement
+            .Select(e => e is SpreadElement spread && !soleStarKeepsSpread
                 ? new StarExpression
                 {
                     Operand = CanonicalizeStoreTarget(spread.Value),
