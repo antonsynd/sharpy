@@ -105,6 +105,11 @@ internal partial class TypeChecker
         using (ScopedValue.Push(ref _currentMemberAccessQualifier, memberAccess.Object))
             objectType = CheckExpression(memberAccess.Object);
 
+        // Classify a type-denoting receiver ONCE: a constructed generic reference `G[int]` records the
+        // closed type the emitter spells, and a type-alias receiver `A` (of `type A = G[int]`) is
+        // normalized to its target so the member resolves against it (#1817, #1864).
+        objectType = ClassifyTypeDenotingReceiver(memberAccess.Object, objectType) ?? objectType;
+
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
         RecordResolvedClrMemberName(memberAccess, objectType);
@@ -1680,7 +1685,9 @@ internal partial class TypeChecker
         var (field, fieldOwner) = FindFieldInHierarchy(genDef, member);
         if (field != null && fieldOwner != null)
         {
-            if (field.IsStatic)
+            // A const is reached through the type exactly as a @static field is (`G[int].K`), so the
+            // emitter needs the resolution to spell the owner from the denoted closed type (#1817).
+            if (field.IsStatic || field.IsConstant)
                 _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
             return SubstituteMemberForReceiver(genDef, typeArgs, fieldOwner, GetVariableType(field));
         }
@@ -2212,6 +2219,25 @@ internal partial class TypeChecker
 
         if (typeSym.TypeKind is TypeKind.Class or TypeKind.Struct or TypeKind.Interface)
         {
+            // A static member reached through a BARE user open generic name has no closed type to bind
+            // to — `G.K` is CS0305 in C#. The generic reference must be CONSTRUCTED first (`G[int].K`),
+            // and a constructed reference is an IndexAccess receiver resolved on the generic path, never
+            // here. Refuse by name so the ICE becomes SPY0339, the same code the value-position twin
+            // `A = G[int]` already fires (#1817, #1192). CLR generics keep the permissive channel.
+            if (typeSym.IsGeneric && typeSym.ClrType == null
+                && (typeSym.Fields.Any(f => f.Name == memberAccess.Member && (f.IsStatic || f.IsConstant))
+                    || typeSym.Methods.Any(m => m.Name == memberAccess.Member && m.IsStatic)
+                    || typeSym.NestedTypes.Any(n => n.Name == memberAccess.Member)))
+            {
+                AddError(
+                    $"a generic type reference must be constructed; '{typeName}[...]' "
+                    + "cannot be used as a value",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.GenericTypeReferenceNotConstructed,
+                    span: memberAccess.Span);
+                return SemanticType.Unknown;
+            }
+
             var field = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
             if (field != null && (field.IsConstant || field.IsStatic))
             {

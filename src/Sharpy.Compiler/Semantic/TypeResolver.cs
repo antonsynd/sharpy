@@ -427,6 +427,20 @@ internal class TypeResolver
         for (int i = 1; i < parts.Length && outerSymbol != null; i++)
         {
             var nested = outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
+
+            // A CLR-backed outer type carries no discovered NestedTypes shadow, so a nested .NET type
+            // (`Environment.SpecialFolder`) is reached by reflection and mapped to its cached symbol —
+            // the same DeclaringType-bearing symbol the value route resolves through, so the annotation
+            // and the value agree by TypeKey (#1864). The type-annotation route is a type in every
+            // position exactly as the member seam is.
+            if (nested == null && outerSymbol.ClrType is { } outerClr)
+            {
+                var clrNested = outerClr.GetNestedType(
+                    parts[i], System.Reflection.BindingFlags.Public);
+                if (clrNested != null)
+                    nested = new Discovery.ClrTypeBridge().GetOrCreateClrDefinitionSymbol(clrNested);
+            }
+
             outerSymbol = nested;
         }
 

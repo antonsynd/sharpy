@@ -433,6 +433,16 @@ public class SemanticInfo : ISemanticQuery
     // single lowering face for generic references — the emitter switches on Kind alone rather than
     // re-deriving the callee shape per helper (Critical Rule 2 pattern (b); #1143). The parallel
     // GenericFunctionType / GenericType expression-type recording stays as the type-system face.
+    // Map a member-access/index RECEIVER node that DENOTES a type to the type it denotes — the one
+    // authority the emitter reads to spell the receiver of a static member (`G<int>`, the alias
+    // target, `global::System.Environment.SpecialFolder`) instead of re-deriving it from the AST
+    // shape (Critical Rule 2). Recorded by ClassifyTypeDenotingReceiver for the shapes the emitter's
+    // recursion cannot spell — a constructed generic reference `G[int]` (would emit an element
+    // access) and a type alias `A = G[int]` (never emitted). Absent for every other receiver, so the
+    // default path is byte-identical (#1817, #1864).
+    private readonly ConcurrentDictionary<Expression, SemanticType> _denotedTypes =
+        new(ReferenceEqualityComparer.Instance);
+
     private readonly ConcurrentDictionary<Expression, GenericReference> _genericReferences =
         new(ReferenceEqualityComparer.Instance);
 
@@ -1778,6 +1788,25 @@ public class SemanticInfo : ISemanticQuery
     /// lower the reference by <see cref="GenericReference.Kind"/> without re-deriving the callee shape
     /// (Critical Rule 2 pattern (b); #1143).
     /// </summary>
+    /// <summary>
+    /// Records the type a member-access/index RECEIVER node denotes, for the emitter to spell the
+    /// receiver of a static member from the recorded type rather than re-deriving it from the AST
+    /// shape (Rule 2). Set by <c>ClassifyTypeDenotingReceiver</c> (#1817, #1864).
+    /// </summary>
+    public void SetDenotedType(Expression receiver, SemanticType type)
+    {
+        _denotedTypes[receiver] = type;
+    }
+
+    /// <summary>
+    /// Gets the type a receiver denotes, or <c>null</c> when the node is not a recorded type-denoting
+    /// receiver (the emitter then generates the receiver expression normally).
+    /// </summary>
+    public SemanticType? GetDenotedType(Expression receiver)
+    {
+        return _denotedTypes.TryGetValue(receiver, out var type) ? type : null;
+    }
+
     public void SetGenericReference(Expression indexAccess, GenericReference reference)
     {
         _genericReferences[indexAccess] = reference;
@@ -2014,6 +2043,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._comparisonChainLowerings)
             _comparisonChainLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._denotedTypes)
+            _denotedTypes.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
