@@ -174,13 +174,26 @@ v: int = match x:
 
         switch (outerKind)
         {
-            case "positional": pattern.Should().BeOfType<PositionalPattern>(); break;
-            case "type": pattern.Should().BeOfType<TypePattern>(); break;
-            case "property": pattern.Should().BeOfType<PropertyPattern>(); break;
-            case "list": pattern.Should().BeOfType<ListPattern>(); break;
-            case "or": pattern.Should().BeOfType<OrPattern>(); break;
-            case "as": pattern.Should().BeOfType<AsPattern>(); break;
-            default: throw new Xunit.Sdk.XunitException($"unknown outer kind '{outerKind}'");
+            case "positional":
+                pattern.Should().BeOfType<PositionalPattern>();
+                break;
+            case "type":
+                pattern.Should().BeOfType<TypePattern>();
+                break;
+            case "property":
+                pattern.Should().BeOfType<PropertyPattern>();
+                break;
+            case "list":
+                pattern.Should().BeOfType<ListPattern>();
+                break;
+            case "or":
+                pattern.Should().BeOfType<OrPattern>();
+                break;
+            case "as":
+                pattern.Should().BeOfType<AsPattern>();
+                break;
+            default:
+                throw new Xunit.Sdk.XunitException($"unknown outer kind '{outerKind}'");
         }
 
         var head = FindGenericHeadType(pattern);
