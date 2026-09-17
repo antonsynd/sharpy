@@ -428,13 +428,13 @@ def test_print():
         assert output.getvalue() == "hello\n"
 ```
 
-Generated C# (the compilation unit imports the module via `using static global::Sharpy.Unittest;`,
-so the factory call is unqualified):
+Generated C# (the factory call is emitted fully `global::`-qualified through its module class —
+there is no `using static` directive; see [module_system.md](module_system.md#name-qualification-in-generated-c)):
 ```csharp
 [Xunit.FactAttribute]
 public void TestPrint()
 {
-    using (var output = CapturedOutput())
+    using (var output = global::Sharpy.Unittest.CapturedOutput())
     {
         global::Sharpy.Builtins.Print("hello");
         Xunit.Assert.Equal("hello\n", output.Getvalue());

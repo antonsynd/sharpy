@@ -22,6 +22,35 @@ from utils.helpers import format_string, parse_input
 from utils.math.vectors import Vector2, Vector3
 ```
 
+## Name Qualification in Generated C#
+
+Every reference the compiler emits to a **module-level member** (a module function, variable, or
+constant — imported or defined in the same module) and to a **same-file type** is fully
+`global::`-qualified through its module class. Nothing is bound by an ambient `using static` or
+`using <alias> = ...` directive; those directives are not emitted.
+
+```python
+def greet(name: str) -> str:
+    return "Hello, " + name
+
+def main() -> None:
+    # `greet` is a module-level member, so the call is emitted as
+    # global::<ModuleClass>.Greet("world") — never a bare `Greet(...)`.
+    print(greet("world"))
+```
+
+Because every such reference is `global::`-rooted rather than resolved by name lookup, a
+module-level name is free to equal the root namespace, a namespace segment, or the module class
+itself without a C# name collision. For example, a project whose root namespace is `Poison` may
+define `def poison()` in `lib.poison` and call it from another module — the call is emitted
+`global::Poison.Lib.Poison()`, so it does not collide with the `Poison` namespace (which, before
+universal qualification, produced a `CS0118` "is a namespace but is used like a type" error). A
+local top-level definition that shadows an imported name of the same spelling is left unqualified,
+so the local binding still wins.
+
+A `struct`, `interface`, or `enum` whose name equals the file-derived module class name is still an
+error (`SPY0520`): only a `class` can absorb the module's members and serve as the module class.
+
 ## Circular Import Handling
 
 ### Current Behavior

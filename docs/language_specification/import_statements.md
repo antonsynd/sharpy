@@ -30,7 +30,7 @@ from math import *
 ```
 
 *Implementation*
-- *✅ Native - `using static` or direct reference.*
+- *✅ Native — every imported module-level member is emitted fully `global::`-qualified through its module class (e.g. `global::Sharpy.MathModule.Sqrt(...)`); there is no `using static` directive. See [module_system.md](module_system.md#name-qualification-in-generated-c).*
 
 ### CLR Import Names
 
