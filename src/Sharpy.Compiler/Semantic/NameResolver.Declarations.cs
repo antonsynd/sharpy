@@ -188,12 +188,12 @@ internal partial class NameResolver
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
             }
-            else if (statement is TypeAlias typeAlias)
+            else if (statement.TryGetNestedDeclaration(out _))
             {
-                ResolveTypeAliasDeclaration(typeAlias);
-            }
-            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
-            {
+                // One classifier decides the seven type-declaring kinds; union/delegate/alias
+                // now route here beside class/struct/interface/enum instead of falling through
+                // to a "symbol not found" downstream (#1729, R-I). The alias case both registers
+                // the name in this class scope (bare-inside use) and records it on the host.
                 ResolveNestedTypeDeclaration(statement, typeSymbol);
             }
         }
@@ -275,12 +275,9 @@ internal partial class NameResolver
             {
                 ResolveEventDeclaration(eventDef, typeSymbol);
             }
-            else if (statement is TypeAlias typeAlias)
+            else if (statement.TryGetNestedDeclaration(out _))
             {
-                ResolveTypeAliasDeclaration(typeAlias);
-            }
-            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
-            {
+                // See ResolveClassDeclaration — the same seven-kind classifier, one route.
                 ResolveNestedTypeDeclaration(statement, typeSymbol);
             }
         }
@@ -364,8 +361,12 @@ internal partial class NameResolver
             {
                 ResolveFieldDeclaration(constField, typeSymbol);
             }
-            else if (statement is ClassDef or StructDef or InterfaceDef or EnumDef)
+            else if (statement.TryGetNestedDeclaration(out _))
             {
+                // The interface host now routes through the same classifier, so a nested alias
+                // registers in the interface scope (bare-inside use, n09b) exactly as it does in a
+                // class body — it was SPY0202 here before because the interface loop had no alias
+                // arm at all (#1729, R-I).
                 ResolveNestedTypeDeclaration(statement, typeSymbol);
             }
         }
@@ -627,6 +628,14 @@ internal partial class NameResolver
 
     private void ResolveNestedTypeDeclaration(Statement statement, TypeSymbol enclosingType)
     {
+        if (!statement.TryGetNestedDeclaration(out var declaration))
+            return;
+
+        // The declaration is resolved by the same module-level resolver its top-level twin uses —
+        // the seven kinds diverge only in where the resulting symbol is stored (NestedTypes vs.
+        // NestedTypeAliases) and in the DeclaringType/access-level stamping below (#1729, R-I). The
+        // classifier above gates entry and yields the name/kind used for storage; the dispatch stays
+        // a Statement-typed switch so NameResolverDeclarationsTotalityTests can pin it total.
         switch (statement)
         {
             case ClassDef classDef:
@@ -641,22 +650,35 @@ internal partial class NameResolver
             case EnumDef enumDef:
                 ResolveEnumDeclaration(enumDef);
                 break;
+            case UnionDef unionDef:
+                ResolveUnionDeclaration(unionDef);
+                break;
+            case DelegateDef delegateDef:
+                ResolveDelegateDeclaration(delegateDef);
+                break;
+            case TypeAlias typeAlias:
+                ResolveTypeAliasDeclaration(typeAlias);
+                break;
         }
 
-        var nestedName = statement switch
+        // An alias is a TypeAliasSymbol, not a TypeSymbol: ResolveTypeAliasDeclaration already
+        // registered it in this host scope (so the bare-inside spelling resolves), and it is
+        // recorded on the host so the qualified Outer.Id spelling resolves too.
+        if (declaration.Kind == NestedDeclarationKind.Alias)
         {
-            ClassDef c => c.Name,
-            StructDef s => s.Name,
-            InterfaceDef i => i.Name,
-            EnumDef e => e.Name,
-            _ => null
-        };
+            if (_symbolTable.Lookup(declaration.Name) is TypeAliasSymbol aliasSymbol)
+                enclosingType.NestedTypeAliases.Add(aliasSymbol);
+            return;
+        }
 
-        if (nestedName != null && _symbolTable.Lookup(nestedName) is TypeSymbol nestedSymbol)
+        // Union and delegate are TypeSymbols (TypeKind.Union / .Delegate) and join NestedTypes
+        // beside class/struct/interface/enum, so Outer.Shape and TypeResolver.LookupNestedType find
+        // them.
+        if (_symbolTable.Lookup(declaration.Name) is TypeSymbol nestedSymbol)
         {
             nestedSymbol.DeclaringType = enclosingType;
             var explicitAccess = GetAccessLevel(statement);
-            nestedSymbol.AccessLevel = explicitAccess ?? AccessLevelConventions.FromName(nestedName);
+            nestedSymbol.AccessLevel = explicitAccess ?? AccessLevelConventions.FromName(declaration.Name);
             if (explicitAccess != null)
                 nestedSymbol.ExplicitAccessLevel = explicitAccess;
             enclosingType.NestedTypes.Add(nestedSymbol);
@@ -665,12 +687,18 @@ internal partial class NameResolver
 
     private static AccessLevel? GetAccessLevel(Statement statement)
     {
+        // The seven type-declaring kinds' decorator lists. Delegate and alias carry no decorators
+        // (neither DelegateDef nor TypeAlias has a Decorators property — the classifier reflects
+        // that with an empty array), so they can bear no access modifier and fall through to null.
         var decorators = statement switch
         {
             ClassDef c => c.Decorators,
             StructDef s => s.Decorators,
             InterfaceDef i => i.Decorators,
             EnumDef e => e.Decorators,
+            UnionDef u => u.Decorators,
+            DelegateDef _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty,
+            TypeAlias _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty,
             _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty
         };
 

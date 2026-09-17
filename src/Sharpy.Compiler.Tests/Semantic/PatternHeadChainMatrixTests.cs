@@ -15,9 +15,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// alternatives, and the expression-position control that pins the pattern route and the
 /// <c>GenericReferenceResolver</c> route (isinstance) agree per chain.
 /// <para>
-/// Union-case heads nested in a class body at depth ≥ 2 (<c>case Outer.Shape.Circle():</c>) are
-/// rostered N/A: the union symbol is not found inside the class body (SPY0202) — #1729 (P6), out of
-/// scope here. The refusal is asserted so the roster is falsifiable.
+/// Union-case heads nested in a class body at depth ≥ 2 (<c>case Outer.Shape.Circle():</c>) resolve
+/// semantically since #1729 P1.2 (the SPY0202 drained), but are rostered N/A here because the codegen
+/// emitter arm is P1.3 — they refuse with SPY0510 until it lands. The refusal is asserted so the
+/// roster is falsifiable.
 /// </para>
 /// </summary>
 [Collection("HeavyCompilation")]
@@ -26,6 +27,7 @@ public class PatternHeadChainMatrixTests : IntegrationTestBase
     public PatternHeadChainMatrixTests(ITestOutputHelper output) : base(output) { }
 
     private const string SPY0202 = DiagnosticCodes.Semantic.UndefinedType;
+    private const string SPY0510 = DiagnosticCodes.CodeGen.UnrecognizedStatementType;
 
     // ── Const / enum-member chains at depth 1, 2, 3 (e01/e02/e03/e05, enum depths) ────────────
     // Each cell uses `const A: int = 4` (a compile-time const, not a plain field) or a nested enum,
@@ -299,8 +301,11 @@ def main() -> None:
     }
 
     // ── Rostered N/A: union-case head nested in a class body at depth ≥ 2 (#1729) ──────────────
-    // The union symbol is not found inside the class body — SPY0202. Asserted so the roster is
-    // falsifiable: when #1729 lands this cell will start compiling and this test must be re-cut.
+    // #1729 Phase 1 Task 2 (P1.2) resolved the nested union at NAME RESOLUTION — the SPY0202 that
+    // rostered this cell has drained (the chain and its case head now resolve semantically). What
+    // remains is the CODEGEN emitter arm (P1.2's sibling P1.3): a nested union in a class body is
+    // not yet emitted, so it refuses with SPY0510. Asserted so the roster stays falsifiable — when
+    // P1.3 lands, the SPY0510 drains and this cell must be re-cut to assert execution.
 
     [Fact]
     public void NestedUnionCaseHead_Depth2_RosteredRefused_1729()
@@ -322,8 +327,12 @@ def main() -> None:
     check(Outer.Shape.Circle(3))
 ");
         result.Success.Should().BeFalse(
-            "a union nested in a class body is not resolved yet — #1729 (P6), out of scope here");
-        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0202,
-            "the roster is falsifiable: the depth-2 nested-union head refuses with SPY0202 today");
+            "a union nested in a class body resolves semantically (P1.2) but is not yet emitted — " +
+            "codegen support is P1.3, out of scope here");
+        result.RawDiagnostics.Should().NotContain(d => d.Code == SPY0202,
+            "the semantic refusal drained: name resolution now resolves the nested union (#1729, P1.2)");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0510,
+            "the roster is falsifiable: the depth-2 nested-union head now refuses at codegen (SPY0510) " +
+            "until the emitter arm lands (P1.3)");
     }
 }

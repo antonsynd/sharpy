@@ -1515,6 +1515,17 @@ internal partial class TypeChecker
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // Re-register interface-scoped type aliases in this scope, exactly as the class and struct
+        // paths do (the NameResolver scope is destroyed between passes). Without this a nested alias
+        // used bare inside the interface — `type Id = int` then `-> Id` — was SPY0202 (#1729, n09b).
+        foreach (var statement in interfaceDef.Body)
+        {
+            if (statement is TypeAlias typeAlias)
+            {
+                RegisterScopedTypeAlias(typeAlias);
+            }
+        }
+
         // Re-register nested type symbols in this scope
         foreach (var nestedType in interfaceSymbol.NestedTypes)
         {

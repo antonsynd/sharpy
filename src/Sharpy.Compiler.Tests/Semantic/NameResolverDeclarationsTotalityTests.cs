@@ -120,12 +120,18 @@ public class NameResolverDeclarationsTotalityTests
 
     // --- ResolveNestedTypeDeclaration ---
 
+    // The seven type-declaring kinds route through this dispatcher (#1729, R-I): union and delegate
+    // join NestedTypes, a type alias joins NestedTypeAliases. UnionDef/DelegateDef/TypeAlias moved
+    // out of the Skipped set below when the #1729 refusal drained.
     private static readonly HashSet<string> ResolveNestedTypeDeclaration_Handled = new()
     {
         nameof(ClassDef),
         nameof(StructDef),
         nameof(InterfaceDef),
         nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
+        nameof(TypeAlias),
     };
 
     private static readonly HashSet<string> ResolveNestedTypeDeclaration_Skipped = new()
@@ -148,13 +154,10 @@ public class NameResolverDeclarationsTotalityTests
         nameof(WithStatement),
         nameof(DeferStatement),
         nameof(FunctionDef),
-        nameof(TypeAlias),
         nameof(PropertyDef),
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
-        nameof(DelegateDef),
         nameof(EventDef),
     };
 

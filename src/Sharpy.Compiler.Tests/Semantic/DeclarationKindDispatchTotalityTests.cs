@@ -13,8 +13,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// for any strict subset. A new declaration kind fails all sites at once.
 ///
 /// Sub-families:
-///   - Nested-type extractors: {ClassDef, StructDef, InterfaceDef, EnumDef}
-///   - Type-name refusal: above + {UnionDef, DelegateDef, TypeAlias}
+///   - Nested-type extractors: {ClassDef, StructDef, InterfaceDef, EnumDef, UnionDef, DelegateDef, TypeAlias}
+///   - Type-name refusal: the same seven kinds
 ///   - Base-carrying kinds: {ClassDef, StructDef, InterfaceDef}
 ///   - Generator-attributed: {ClassDef, FunctionDef, StructDef}
 ///   - Module-level classification: the full ResolveDeclaration set + imports
@@ -51,12 +51,14 @@ public class DeclarationKindDispatchTotalityTests
 
     private const string MemberNotType = "a member declaration, not a type declaration";
 
-    // --- Nested-type universe (the 4 kinds extracted as nested type declarations) ---
+    // --- Nested-type universe (the 7 type-declaring kinds extracted as nested declarations) ---
+    // Union, delegate and alias JOINED this universe when #1729 landed: nested union/delegate are
+    // TypeSymbols in NestedTypes and a nested alias is a TypeAliasSymbol in NestedTypeAliases, all
+    // resolved through the one NestedDeclaration classifier on both the single-file and import
+    // routes. The three former #1729 exclusion rows drained here (three rows out); the base-carrying
+    // roster gained matching exclusions (three rows in) because base-carrying is a strict subset.
     private static readonly Dictionary<string, string> NotNestedTypes = new()
     {
-        [nameof(UnionDef)] = "nested union refused SPY0202 on both routes (#1729)",
-        [nameof(DelegateDef)] = "nested delegate refused SPY0202 on both routes (#1729)",
-        [nameof(TypeAlias)] = "nested type alias refused SPY0202 on both routes (#1729)",
         [nameof(FunctionDef)] = MemberNotType,
         [nameof(PropertyDef)] = MemberNotType,
         [nameof(VariableDeclaration)] = MemberNotType,
@@ -76,6 +78,13 @@ public class DeclarationKindDispatchTotalityTests
     private static readonly Dictionary<string, string> NotBaseCarrying = new(NotNestedTypes)
     {
         [nameof(EnumDef)] = "has no base list",
+        // Union, delegate and alias are nested-type kinds (#1729) but carry no base-class/interface
+        // list the #1535 refusal checks — a union declares cases, a delegate a signature, an alias a
+        // target — so IntegrateGeneratedSource does not scan them. These three rows moved here when
+        // the #1729 rows drained out of NotNestedTypes (Design Decision 4: three rows out, three in).
+        [nameof(UnionDef)] = "has no base list",
+        [nameof(DelegateDef)] = "has no base list",
+        [nameof(TypeAlias)] = "has no base list",
     };
     private static readonly HashSet<string> BaseCarryingKinds = Derived(NotBaseCarrying);
 
@@ -159,15 +168,10 @@ public class DeclarationKindDispatchTotalityTests
 
     // ═══════════════════════════════════════════════════════════════════════
     // ExtractNestedTypes — ModuleLoader
-    // Reason for subset: only the 4 type-declaring kinds are extracted as nested types.
-    // MEASURED (plan-950124 verify round, 2026-09-01) for the kinds NOT in the arm set:
-    //   - nested `union` / `delegate` / `type` alias in a class body → refused SPY0202
-    //     ("Union symbol for 'Shape' not found" / "Delegate symbol for 'Handler' not found" /
-    //     "Type 'Outer.Id' not found"), IDENTICALLY on the single-file and cross-module routes
-    //     — no mirrored-route divergence;
-    //   - nested `event` → works; nested `@dataclass class` → works.
-    // The SPY0202 refusals are tracked by #1729; when nested union/delegate/alias are supported,
-    // NestedTypeUniverse gains the kinds and this pin fails for every extractor at once.
+    // The seven type-declaring kinds are extracted as nested declarations (#1729 landed): the six
+    // that produce a TypeSymbol (class/struct/interface/enum/union/delegate) into NestedTypes, and
+    // TypeAlias into the enclosing symbol's NestedTypeAliases. The switch has a case arm per kind so
+    // the scan sees all seven; a new declaration kind fails this pin for every extractor at once.
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]

@@ -434,7 +434,7 @@ internal class ModuleLoader
         // and .Properties, so imported types with these members silently dropped them (#1267).
         var properties = ExtractProperties(classDef.Body, TypeKind.Class, isAbstract);
         var events = ExtractEvents(classDef.Body, TypeKind.Class, isAbstract);
-        var nestedTypes = ExtractNestedTypes(classDef.Body, definingModulePath);
+        var (nestedTypes, nestedAliases) = ExtractNestedTypes(classDef.Body, definingModulePath);
 
         var classSymbol = new TypeSymbol
         {
@@ -466,6 +466,7 @@ internal class ModuleLoader
             Properties = properties,
             Events = events,
             NestedTypes = nestedTypes,
+            NestedTypeAliases = nestedAliases,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods),
             // #1365 — same three facts NameResolver stamps on the same declaration.
             Documentation = classDef.DocString,
@@ -526,7 +527,7 @@ internal class ModuleLoader
 
         var properties = ExtractProperties(structDef.Body, TypeKind.Struct, false);
         var events = ExtractEvents(structDef.Body, TypeKind.Struct, false);
-        var nestedTypes = ExtractNestedTypes(structDef.Body, definingModulePath);
+        var (nestedTypes, nestedAliases) = ExtractNestedTypes(structDef.Body, definingModulePath);
 
         var structSymbol = new TypeSymbol
         {
@@ -552,6 +553,7 @@ internal class ModuleLoader
             Properties = properties,
             Events = events,
             NestedTypes = nestedTypes,
+            NestedTypeAliases = nestedAliases,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods),
             Documentation = structDef.DocString,
             DeprecationMessage = NameResolver.GetDeprecationMessage(structDef.Decorators),
@@ -583,7 +585,7 @@ internal class ModuleLoader
 
         var properties = ExtractProperties(interfaceDef.Body, TypeKind.Interface, true);
         var events = ExtractEvents(interfaceDef.Body, TypeKind.Interface, true);
-        var nestedTypes = ExtractNestedTypes(interfaceDef.Body, definingModulePath);
+        var (nestedTypes, nestedAliases) = ExtractNestedTypes(interfaceDef.Body, definingModulePath);
 
         var interfaceSymbol = new TypeSymbol
         {
@@ -607,6 +609,7 @@ internal class ModuleLoader
             Properties = properties,
             Events = events,
             NestedTypes = nestedTypes,
+            NestedTypeAliases = nestedAliases,
             Documentation = interfaceDef.DocString,
             DeprecationMessage = NameResolver.GetDeprecationMessage(interfaceDef.Decorators),
             IsMustUse = NameResolver.HasMustUse(interfaceDef.Decorators)
@@ -674,28 +677,51 @@ internal class ModuleLoader
     /// for a type the module plainly declares. Recursion is free: the three extractors call back
     /// into this method, so an inner type's own nested types come along.
     /// </summary>
-    private List<TypeSymbol> ExtractNestedTypes(
+    private (List<TypeSymbol> Types, List<TypeAliasSymbol> Aliases) ExtractNestedTypes(
         ImmutableArray<Statement> body, string definingModulePath)
     {
         List<TypeSymbol>? nested = null;
+        List<TypeAliasSymbol>? aliases = null;
         foreach (var stmt in body)
         {
-            TypeSymbol? symbol = stmt switch
+            // Mirrors NameResolver.ResolveNestedTypeDeclaration over the same seven kinds so an
+            // imported type carries its nested union/delegate/alias on the import route exactly as
+            // the same-file route resolves them (#1729, R-I). Union/delegate are TypeSymbols and
+            // join Types; an alias is a TypeAliasSymbol and joins Aliases (→ NestedTypeAliases).
+            switch (stmt)
             {
-                ClassDef classDef => ExtractFullClassSymbol(classDef, definingModulePath),
-                StructDef structDef => ExtractFullStructSymbol(structDef, definingModulePath),
-                InterfaceDef interfaceDef => ExtractFullInterfaceSymbol(interfaceDef, definingModulePath),
-                EnumDef enumDef => ExtractFullEnumSymbol(enumDef, definingModulePath),
-                _ => null
-            };
-
-            if (symbol == null)
-                continue;
-
-            (nested ??= new List<TypeSymbol>()).Add(symbol);
+                case ClassDef classDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullClassSymbol(classDef, definingModulePath));
+                    break;
+                case StructDef structDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullStructSymbol(structDef, definingModulePath));
+                    break;
+                case InterfaceDef interfaceDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullInterfaceSymbol(interfaceDef, definingModulePath));
+                    break;
+                case EnumDef enumDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullEnumSymbol(enumDef, definingModulePath));
+                    break;
+                case UnionDef unionDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullUnionSymbol(unionDef, definingModulePath));
+                    break;
+                case DelegateDef delegateDef:
+                    (nested ??= new List<TypeSymbol>()).Add(
+                        ExtractFullDelegateSymbol(delegateDef, definingModulePath));
+                    break;
+                case TypeAlias typeAlias:
+                    (aliases ??= new List<TypeAliasSymbol>()).Add(
+                        TypeAliasSymbol.CreateFrom(typeAlias));
+                    break;
+            }
         }
 
-        return nested ?? new List<TypeSymbol>();
+        return (nested ?? new List<TypeSymbol>(), aliases ?? new List<TypeAliasSymbol>());
     }
 
     /// <summary>
@@ -763,6 +789,165 @@ internal class ModuleLoader
         }
 
         return enumSymbol;
+    }
+
+    /// <summary>
+    /// Extract full type information from a union definition, mirroring
+    /// <c>NameResolver.ResolveUnionDeclaration</c> on the import route (#1729, R-I): the union is an
+    /// abstract <see cref="TypeKind.Union"/> type, each case a concrete class whose
+    /// <see cref="TypeSymbol.BaseType"/> is the union and whose fields carry the case's declared
+    /// field types, so a from-imported <c>Outer.Shape.Circle(...)</c> constructs and its
+    /// <c>match</c> arms resolve.
+    /// </summary>
+    internal TypeSymbol ExtractFullUnionSymbol(UnionDef unionDef, string definingModulePath)
+    {
+        var typeParamNames = CollectTypeParameterNames(
+            default, unionDef.TypeParameters);
+
+        var unionSymbol = new TypeSymbol
+        {
+            Name = unionDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Union,
+            AccessLevel = GetAccessLevel(unionDef.Name),
+            IsAbstract = true,
+            IsNameBacktickEscaped = unionDef.IsNameBacktickEscaped,
+            TypeParameters = unionDef.TypeParameters.ToList(),
+            DeclarationLine = unionDef.LineStart,
+            DeclarationColumn = unionDef.ColumnStart,
+            NameDeclarationLine = unionDef.NameLineStart,
+            NameDeclarationColumn = unionDef.NameColumnStart,
+            NameDeclarationColumnEnd = unionDef.NameColumnEnd,
+            DeclarationSpan = unionDef.Span,
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
+            DefiningModule = definingModulePath,
+            Documentation = unionDef.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(unionDef.Decorators),
+            IsMustUse = NameResolver.HasMustUse(unionDef.Decorators)
+        };
+
+        foreach (var caseDef in unionDef.Cases)
+        {
+            var caseFields = new List<VariableSymbol>();
+            foreach (var field in caseDef.Fields)
+            {
+                caseFields.Add(new VariableSymbol
+                {
+                    Name = field.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = ConvertTypeAnnotationToSemanticType(field.Type, typeParamNames),
+                    AccessLevel = AccessLevel.Public,
+                    DeclaringFilePath = CurrentModulePath,
+                    DeclarationSpan = field.Span,
+                    DeclarationLine = field.LineStart,
+                    DeclarationColumn = field.ColumnStart
+                });
+            }
+
+            var caseSymbol = new TypeSymbol
+            {
+                Name = caseDef.Name,
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                IsNameBacktickEscaped = caseDef.IsNameBacktickEscaped,
+                AccessLevel = AccessLevel.Public,
+                BaseType = unionSymbol,
+                TypeParameters = unionDef.TypeParameters.ToList(),
+                Fields = caseFields,
+                DeclaringFilePath = CurrentModulePath,
+                DefiningFilePath = CurrentModulePath,
+                DefiningModule = definingModulePath,
+                DeclarationSpan = caseDef.Span,
+                DeclarationLine = caseDef.LineStart,
+                DeclarationColumn = caseDef.ColumnStart,
+                NameDeclarationLine = caseDef.NameLineStart,
+                NameDeclarationColumn = caseDef.NameColumnStart,
+                NameDeclarationColumnEnd = caseDef.NameColumnEnd
+            };
+
+            unionSymbol.UnionCases.Add(caseSymbol);
+        }
+
+        foreach (var stmt in unionDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                unionSymbol.Methods.Add(ExtractMethodSymbol(
+                    method, unionDef.TypeParameters,
+                    ownerKind: TypeKind.Union, ownerIsAbstract: true,
+                    ownerTypeName: unionDef.Name));
+            }
+        }
+
+        return unionSymbol;
+    }
+
+    /// <summary>
+    /// Extract full type information from a delegate definition, mirroring
+    /// <c>NameResolver.ResolveDelegateDeclaration</c> on the import route (#1729, R-I): a
+    /// <see cref="TypeKind.Delegate"/> type carrying a synthetic <c>Invoke</c> method with the
+    /// delegate's resolved parameter and return types, so an imported delegate is usable as a field
+    /// or member type.
+    /// </summary>
+    internal TypeSymbol ExtractFullDelegateSymbol(DelegateDef delegateDef, string definingModulePath)
+    {
+        var typeParamNames = CollectTypeParameterNames(
+            default, delegateDef.TypeParameters);
+
+        var delegateSymbol = new TypeSymbol
+        {
+            Name = delegateDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Delegate,
+            AccessLevel = GetAccessLevel(delegateDef.Name),
+            IsNameBacktickEscaped = delegateDef.IsNameBacktickEscaped,
+            TypeParameters = delegateDef.TypeParameters.ToList(),
+            DeclarationLine = delegateDef.LineStart,
+            DeclarationColumn = delegateDef.ColumnStart,
+            NameDeclarationLine = delegateDef.NameLineStart,
+            NameDeclarationColumn = delegateDef.NameColumnStart,
+            NameDeclarationColumnEnd = delegateDef.NameColumnEnd,
+            DeclarationSpan = delegateDef.Span,
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
+            DefiningModule = definingModulePath,
+            Documentation = delegateDef.DocString
+        };
+
+        var parameters = delegateDef.Parameters.Select(p => new ParameterSymbol
+        {
+            Name = p.Name,
+            IsNameBacktickEscaped = p.IsNameBacktickEscaped,
+            Type = ConvertTypeAnnotationToSemanticType(p.Type, typeParamNames),
+            HasDefault = p.DefaultValue != null,
+            DefaultValue = p.DefaultValue,
+            IsVariadic = p.IsVariadic,
+            IsPositionalOnly = p.Kind == Parser.Ast.ParameterKind.PositionalOnly,
+            IsKeywordOnly = p.Kind == Parser.Ast.ParameterKind.KeywordOnly,
+            Modifier = p.Modifier
+        }).ToList();
+
+        delegateSymbol.Methods.Add(new FunctionSymbol
+        {
+            Name = "Invoke",
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            Parameters = parameters,
+            ReturnType = delegateDef.ReturnType != null
+                ? ConvertTypeAnnotationToSemanticType(delegateDef.ReturnType, typeParamNames)
+                : SemanticType.Void,
+            IsAbstract = true,
+            DeclaringFilePath = CurrentModulePath,
+            DeclarationSpan = delegateDef.Span,
+            DeclarationLine = delegateDef.LineStart,
+            DeclarationColumn = delegateDef.ColumnStart,
+            NameDeclarationLine = delegateDef.NameLineStart,
+            NameDeclarationColumn = delegateDef.NameColumnStart,
+            NameDeclarationColumnEnd = delegateDef.NameColumnEnd
+        });
+
+        return delegateSymbol;
     }
 
     /// <summary>
@@ -1276,6 +1461,10 @@ internal class ModuleLoader
                     moduleInfo.ExportedSymbols.Add(
                         enumDef.Name, ExtractFullEnumSymbol(enumDef, canonicalModuleName));
                     break;
+                    // Module-level union/delegate/alias exports are P5.1's export-totality scope (plan
+                    // Decision 6): the full-export switch (ExtractExportedSymbol) and this circular-stub
+                    // twin become total together there, so the StubExports ⊆ FullExports invariant holds.
+                    // NESTED union/delegate/alias already travel both routes via ExtractFull*/ExtractNestedTypes.
             }
         }
 

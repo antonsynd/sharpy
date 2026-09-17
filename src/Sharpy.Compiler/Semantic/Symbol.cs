@@ -425,6 +425,15 @@ public record TypeSymbol : Symbol
     public List<TypeSymbol> NestedTypes { get; init; } = new();
 
     /// <summary>
+    /// Nested type aliases (<c>type Id = int</c> declared inside a class/struct/interface body).
+    /// A <see cref="TypeAliasSymbol"/> is not a <see cref="TypeSymbol"/>, so it cannot live in
+    /// <see cref="NestedTypes"/>; this is the list <c>TypeResolver.LookupNestedTypeAlias</c> walks to
+    /// answer a qualified <c>Outer.Id</c> (#1729, R-I). The bare-inside form resolves through the
+    /// host scope's symbol table instead — this list carries the qualified spelling only.
+    /// </summary>
+    public List<TypeAliasSymbol> NestedTypeAliases { get; init; } = new();
+
+    /// <summary>
     /// The enclosing type for nested types. Null for top-level types.
     /// </summary>
     public TypeSymbol? DeclaringType { get; internal set; }

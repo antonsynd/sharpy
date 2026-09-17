@@ -104,6 +104,11 @@ internal sealed class NestedTypeIndex
             // An enum declares a type but holds `Members`, not statements — it can contain no
             // nested declaration, so it is indexed as a leaf.
             EnumDef enumDef => (enumDef.Name, ImmutableArray<Statement>.Empty),
+            // A union body holds only methods, and a delegate/alias holds a signature/target — none
+            // can nest a further type declaration, so all three are indexed as leaves (#1729, R-I).
+            UnionDef unionDef => (unionDef.Name, ImmutableArray<Statement>.Empty),
+            DelegateDef delegateDef => (delegateDef.Name, ImmutableArray<Statement>.Empty),
+            TypeAlias typeAlias => (typeAlias.Name, ImmutableArray<Statement>.Empty),
             _ => (null, ImmutableArray<Statement>.Empty)
         };
 }

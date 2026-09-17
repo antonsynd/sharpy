@@ -195,6 +195,7 @@ internal class TypeResolver
         // no way to answer with an alias (#1436). Gated on a bare spelling, like every other
         // qualified lookup here — an escaped name denotes the user's own declaration (#1325).
         else if ((_symbolTable.LookupTypeAlias(annotation.Name)
+                      ?? LookupNestedTypeAlias(annotation.Name)
                       ?? (escaped ? null : LookupModuleQualifiedAlias(annotation.Name)))
                      is TypeAliasSymbol aliasSymbol
                  && (escaped || !aliasSymbol.IsNameBacktickEscaped))
@@ -469,6 +470,31 @@ internal class TypeResolver
         }
 
         return outerSymbol;
+    }
+
+    /// <summary>
+    /// The type-ALIAS twin of <see cref="LookupNestedType"/>: resolves a qualified <c>Outer.Id</c>
+    /// (or <c>Outer.Inner.Id</c>) whose last segment names a nested type alias to its
+    /// <see cref="TypeAliasSymbol"/>, walking <see cref="TypeSymbol.NestedTypes"/> for the leading
+    /// segments and <see cref="TypeSymbol.NestedTypeAliases"/> for the tail (#1729, R-I). A nested
+    /// user alias is escape-insensitive, like a nested user type, so this is called unconditionally —
+    /// the bare-inside spelling resolves through the host scope's <c>LookupTypeAlias</c> instead.
+    /// </summary>
+    private TypeAliasSymbol? LookupNestedTypeAlias(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+        var outerSymbol = _symbolTable.LookupType(parts[0]);
+        if (outerSymbol == null)
+            return null;
+
+        // Walk every segment but the last through NestedTypes; the alias lives on the final host.
+        for (int i = 1; i < parts.Length - 1 && outerSymbol != null; i++)
+            outerSymbol = outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
+
+        return outerSymbol?.NestedTypeAliases.FirstOrDefault(a => a.Name == parts[^1]);
     }
 
     /// <summary>
