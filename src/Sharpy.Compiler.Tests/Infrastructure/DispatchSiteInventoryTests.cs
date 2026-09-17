@@ -308,6 +308,13 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateDictSpreadComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateImperativeComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
 
+        // The seven-kind nested-declaration classifier (#1729, R-I, P6 Phase 1 Task 1). Landed ahead
+        // of its own totality guard: NestedDeclarationMatrixTests (and the DeclarationKindDispatchTotalityTests
+        // wiring that consumes this classifier) land later in Phase 1 once the resolver/loader/emitter
+        // call sites switch onto it.
+        // #1729: upgraded to guarded-by:NestedDeclarationMatrixTests when the Phase 1 matrix lands
+        ["Parser/Ast/StatementExtensions.cs::StatementExtensions.TryGetNestedDeclaration"] = "pending-guard:#1729",
+
         // ══════════════════════════════════════════════════════════════════════
         // LSP sites — all keyed with "Sharpy.Lsp/" prefix
         // ══════════════════════════════════════════════════════════════════════
