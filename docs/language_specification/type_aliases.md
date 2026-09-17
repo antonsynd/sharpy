@@ -28,6 +28,33 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
     return result
 ```
 
+## Class-level aliases
+
+A `type` alias declared inside a type body is a nested member of that type (see
+[Nested Types](nested_types.md)). Inside the host body the alias is referenced
+bare, exactly as `Point3D` is used in `distance` above. From **outside** the host
+it is referenced with the qualified spelling `Outer.Alias` — the same dot notation
+used for any nested type — in addition to the bare-inside form:
+
+```python
+class Box:
+    type Ints = list[int]
+
+    def make(self) -> Box.Ints:      # qualified spelling, legal inside too
+        xs: Box.Ints = [1, 2, 3]
+        return xs
+
+
+def main() -> None:
+    b: Box = Box()
+    result: Box.Ints = b.make()      # qualified from outside the host
+    print(result)                    # [1, 2, 3]
+```
+
+A nested alias emits no runtime member of its own: like a module-level alias it is
+lowered by inline expansion / a `using` alias, so `Box.Ints` is `list[int]` in
+every position.
+
 ## Transparency
 
 An alias is the target type in every position, including call position:

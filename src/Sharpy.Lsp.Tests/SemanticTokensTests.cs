@@ -98,6 +98,52 @@ public class SemanticTokensTests
         tokens.Should().Contain(t => t.TokenType == TVariable && t.Line == 0);
     }
 
+    // ── Nested union / delegate / alias tokens (#1729) ──
+    // CollectTokens recurses into a type body (CollectTokens(c.Body, …)), so a nested union,
+    // delegate or alias emits the same tokens it would at module level, one indent level deeper.
+
+    [Fact]
+    public void NestedUnion_HeadIsTypeToken_CasesAreEnumMemberTokens()
+    {
+        // Line 0: class Host; line 1: union Shape (TType); lines 2-3: cases (TEnumMember).
+        var tokens = CollectTokensFrom(
+            "class Host:\n    union Shape:\n        case Circle(r: float)\n        case Square(s: float)\n");
+
+        tokens.Should().Contain(t => t.TokenType == TClass && t.Line == 0, "the host class head");
+        tokens.Should().Contain(t => t.TokenType == TType && t.Line == 1,
+            "a nested union head colors as a `type` declaration, on its own line");
+        var caseTokens = tokens.Where(t => t.TokenType == TEnumMember).ToList();
+        caseTokens.Should().HaveCount(2, "the two nested union cases each get an enumMember token");
+        caseTokens.Should().Contain(t => t.Line == 2);
+        caseTokens.Should().Contain(t => t.Line == 3);
+    }
+
+    [Fact]
+    public void NestedDelegate_HeadIsTypeToken_ParametersAreParameterTokens()
+    {
+        // Line 0: class Host; line 1: delegate Cb(v: int) -> None.
+        var tokens = CollectTokensFrom("class Host:\n    delegate Cb(v: int) -> None\n");
+
+        tokens.Should().Contain(t => t.TokenType == TType && t.Line == 1,
+            "a nested delegate head colors as a `type` declaration");
+        tokens.Should().Contain(t => t.TokenType == TParameter && t.Line == 1,
+            "the nested delegate's parameter `v` colors as a parameter declaration");
+    }
+
+    [Fact]
+    public void NestedTypeAlias_HeadIsTypeToken()
+    {
+        // Line 0: class Host; line 1: type Id = int. The alias emits no member but is still tokenized.
+        var tokens = CollectTokensFrom("class Host:\n    type Id = int\n    x: int = 0\n");
+
+        tokens.Should().Contain(t => t.TokenType == TType && t.Line == 1,
+            "a nested type-alias head colors as a `type` declaration on its own line");
+        // Positive control: the sibling field `x` on line 2 still tokenizes as a variable, so the
+        // alias arm did not suppress the rest of the body.
+        tokens.Should().Contain(t => t.TokenType == TVariable && t.Line == 2,
+            "the field after the alias is still tokenized");
+    }
+
     [Fact]
     public void Parameter_GetsTokenTypeParameter()
     {

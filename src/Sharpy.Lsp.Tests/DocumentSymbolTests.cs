@@ -214,6 +214,76 @@ def main():
             && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field);
     }
 
+    // ── Nested union / delegate / alias in a type body (#1729) ──
+    // The outline walks the AST (ConvertClassMember dispatches the seven type-declaring kinds),
+    // so a nested union/delegate/alias is surfaced exactly as at module level. These cells assert
+    // the discriminating tree SHAPE, not mere presence.
+
+    [Fact]
+    public async Task NestedUnion_OutlinesAsThreeLevelHostUnionCasesTree()
+    {
+        // host (class) → union (class) → cases (constructor) + method. #1729.
+        var symbols = await GetOutlineAsync(
+            "class Host:\n    union Shape:\n        case Circle(r: float)\n        case Square(s: float)\n        def describe(self) -> str:\n            return \"s\"\n");
+
+        var host = symbols.Should().ContainSingle(s => s.Name == "Host").Which;
+        host.Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Class);
+
+        // Level 2: the union is a child of the host, itself Class-kinded.
+        var union = host.Children!.Should().ContainSingle(c => c.Name == "Shape").Which;
+        union.Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Class,
+            "a nested union outlines as a Class-kind symbol, like at module level");
+
+        // Level 3: the cases and method are children of the union, in source order.
+        var caseNames = union.Children!.ToList();
+        caseNames.Select(c => c.Name).Should().Equal("Circle", "Square", "describe");
+        caseNames[0].Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Constructor);
+        caseNames[1].Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Constructor);
+        caseNames[2].Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Method);
+
+        // The union does NOT leak to the top level — it is nested under Host only.
+        symbols.Should().NotContain(s => s.Name == "Shape",
+            "the nested union appears only as a child of its host, never at module level");
+    }
+
+    [Fact]
+    public async Task NestedDelegate_OutlinesAsAClassKindChildOfItsHost()
+    {
+        var symbols = await GetOutlineAsync(
+            "class Host:\n    delegate Cb(v: int) -> None\n    x: int = 0\n");
+
+        var host = symbols.Should().ContainSingle(s => s.Name == "Host").Which;
+        var del = host.Children!.Should().ContainSingle(c => c.Name == "Cb").Which;
+        del.Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Class,
+            "a nested delegate outlines as a Class-kind symbol, like at module level");
+        // Positive control: the sibling field is a distinct child, so the delegate arm did not
+        // swallow the rest of the body.
+        host.Children!.Should().Contain(c => c.Name == "x"
+            && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field);
+        symbols.Should().NotContain(s => s.Name == "Cb", "the nested delegate is a child of Host only");
+    }
+
+    [Fact]
+    public async Task NestedTypeAlias_OutlinesAsTypeParameterChild_WithNoEmittedMemberBehindIt()
+    {
+        // A nested alias emits no runtime member of its own, but the outline MUST still surface it
+        // (ConvertClassMember dispatches TypeAlias). It appears as a TypeParameter-kind symbol with
+        // no children of its own — the discriminator against a nested class/struct/union, which do
+        // carry members.
+        var symbols = await GetOutlineAsync(
+            "class Host:\n    type Id = int\n    x: int = 0\n");
+
+        var host = symbols.Should().ContainSingle(s => s.Name == "Host").Which;
+        var alias = host.Children!.Should().ContainSingle(c => c.Name == "Id").Which;
+        alias.Kind.Should().Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.TypeParameter,
+            "a nested type alias outlines as a TypeParameter-kind symbol, like at module level");
+        (alias.Children is null || !alias.Children.Any()).Should().BeTrue(
+            "an alias has no members behind it — no nested case/field subtree");
+        host.Children!.Should().Contain(c => c.Name == "x"
+            && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field,
+            "positive control: the sibling field survives beside the alias");
+    }
+
     // ── Plain assignment outline entries (#1734 — BindingScopeWalker) ──
 
     [Fact]

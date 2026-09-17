@@ -167,6 +167,22 @@ public class FoldingRangeTests : IDisposable
     }
 
     [Fact]
+    public async Task NestedUnion_FoldsInsideItsHostBody()
+    {
+        // #1729: CollectFoldingRanges recurses into a class body, so a nested union folds like a
+        // module-level one — a range for the host, a range for the nested union, and a range for
+        // the union's method, each spanning its own suite.
+        var source =
+            "class Host:\n    union Shape:\n        case Circle(r: float)\n        def describe(self) -> str:\n            return \"s\"\n";
+        var ranges = await GetFoldingRangesAsync(source);
+
+        ranges.Should().NotBeNull();
+        ranges!.Should().Contain(r => r.StartLine == 0 && r.EndLine == 4, "the host class body folds");
+        ranges.Should().Contain(r => r.StartLine == 1 && r.EndLine == 4, "the nested union body folds like a class");
+        ranges.Should().Contain(r => r.StartLine == 3 && r.EndLine == 4, "the nested union's method folds");
+    }
+
+    [Fact]
     public async Task FunctionStyleEvent_ProducesFoldingRange()
     {
         var source = "class Box:\n    event add on_click(self, handler: Cb):\n        print(1)\n        print(2)";
