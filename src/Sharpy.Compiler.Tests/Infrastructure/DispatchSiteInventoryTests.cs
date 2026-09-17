@@ -151,10 +151,20 @@ public class DispatchSiteInventoryTests
         // Emitter dispatch — FileBasedIntegrationTests covers via running fixtures
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
+        // Partial classifier over top-level statement kinds collecting locally-defined function and
+        // variable names, so a same-named from-import that a local definition shadows is not
+        // qualified (#1683, #1525); non-matching statements contribute no name. Covered by the
+        // FileBasedIntegrationTests multi-file/import fixtures.
+        ["CodeGen/RoslynEmitter.CompilationUnit.cs::RoslynEmitter.RegisterFromImportMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Literals.cs::RoslynEmitter.DeriveExpressionText"] = "refusal-net:FileBasedIntegrationTests",
+        // Partial classifier over top-level statement kinds collecting the library-mode extracted
+        // type names into the module shape (#1802); `_ => null` default is benign (non-type
+        // statements contribute no name). Extraction correctness is covered by the library-mode
+        // FileBasedIntegrationTests fixtures.
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.ComputeModuleShape"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",

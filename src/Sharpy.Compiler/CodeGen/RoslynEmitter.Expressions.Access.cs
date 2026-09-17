@@ -416,6 +416,14 @@ internal partial class RoslynEmitter
             // If the callee is a narrowed Optional delegate (e.g., `if cb is not None: cb(x)`),
             // or no symbol was found (local variable/parameter in a collapsed scope), generate
             // through GenerateExpression so the node-keyed symbol resolves correctly.
+            // A module-level function (own module or imported) is emitted fully qualified as
+            // global::[Namespace.]ModuleClass.Func so no `using` set can shadow it or collide with a
+            // same-named namespace (#1683) — the callee twin of the identifier read arm. Null for a
+            // local/parameter/class-member callee, which keeps its bare spelling.
+            var calleeContainer = resolvedCalleeSymbol != null
+                ? ModuleMemberContainerSegments(resolvedCalleeSymbol)
+                : null;
+
             ExpressionSyntax calleeExpr;
             if (funcCSharpName == null || _context.SemanticInfo?.GetNarrowedReadLowering(callee) != null)
             {
@@ -431,8 +439,23 @@ internal partial class RoslynEmitter
                 // conversion admitted the literal. The same materialized fact the builtin arm above
                 // already writes; a vector inference left open is not written (Roslyn's own
                 // inference stays the fallback there, as before).
-                calleeExpr = TypeSyntaxMapper.QualifiedGenericName(funcCSharpName,
+                // funcCSharpName is a bare function name, so QualifiedGenericName yields a
+                // GenericName (a SimpleNameSyntax) that can ride behind the module container.
+                var genericName = (SimpleNameSyntax)TypeSyntaxMapper.QualifiedGenericName(funcCSharpName,
                     inferredFnTypeArgs.Select(t => _typeMapper.MapSemanticType(t)).ToArray());
+                calleeExpr = calleeContainer != null
+                    ? MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName(calleeContainer),
+                        genericName)
+                    : genericName;
+            }
+            else if (calleeContainer != null)
+            {
+                calleeExpr = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName(calleeContainer),
+                    EscapedIdentifierName(funcCSharpName));
             }
             else
             {

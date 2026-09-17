@@ -418,9 +418,21 @@ internal partial class RoslynEmitter
         if (_parameterNameOverrides != null
             && _parameterNameOverrides.TryGetValue(mangledName, out var overrideName))
             mangledName = overrideName;
-        ExpressionSyntax expr = _context.SemanticInfo?.ModuleAccessCrossesClassMember(name) == true
-            ? ModuleQualified(mangledName)
-            : EscapedIdentifierName(mangledName);
+        ExpressionSyntax expr;
+        if (_context.SemanticInfo?.ModuleAccessCrossesClassMember(name) == true)
+        {
+            // #1786: a bare name in a type body that binds to a module variable shadowed by a
+            // same-named class member — the checker decided it denotes the module variable.
+            expr = ModuleQualified(mangledName);
+        }
+        else
+        {
+            // Every module-level member (function/variable/const, own module or imported) is emitted
+            // fully qualified so no `using` set can shadow it or collide with a same-named namespace
+            // (#1683). A local, parameter, class member or type keeps its bare spelling.
+            expr = (resolvedSymbol != null ? QualifyModuleMember(resolvedSymbol, mangledName) : null)
+                ?? EscapedIdentifierName(mangledName);
+        }
 
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any
         // (Optional → .Unwrap(), value-nullable → .Value, reference-nullable → !, isinstance → cast).
@@ -443,6 +455,38 @@ internal partial class RoslynEmitter
             SyntaxKind.SimpleMemberAccessExpression,
             IdentifierName(_moduleShape?.ModuleClassName ?? GetModuleClassName()),
             EscapedIdentifierName(csharpName));
+
+    /// <summary>
+    /// The <c>global::</c>-rooted namespace segments of the C# module class that OWNS
+    /// <paramref name="symbol"/>, when it is a <em>from-imported</em> module-level member
+    /// (function/variable/const) recorded by <c>RegisterFromImportMembers</c> — or <c>null</c>
+    /// otherwise. A from-imported member is the one #1683 case: its bare spelling was resolved by a
+    /// <c>using static &lt;Namespace&gt;.&lt;ModuleClass&gt;</c> directive and collided with a
+    /// same-named namespace (<c>Poison() → namespace Poison</c>, CS0118). A same-module member needs
+    /// no qualification — it is a sibling member of the same C# module class — so it keeps its bare
+    /// spelling and no snapshot churns for it.
+    /// </summary>
+    private string[]? ModuleMemberContainerSegments(Symbol symbol)
+        => _importedMemberContainers.TryGetValue(symbol, out var imported) ? imported : null;
+
+    /// <summary>
+    /// A from-imported module-level member reference (function/variable/const), emitted fully
+    /// qualified as <c>global::[Namespace.]ModuleClass.Member</c> so no bare member name is written
+    /// and the <c>using static</c> directive's namespace collision (CS0118) never triggers (#1683).
+    /// Returns <c>null</c> when <paramref name="symbol"/> is not a from-imported member, so the
+    /// caller keeps the bare spelling. The single member-qualification seam: the read arm and the
+    /// call callee both route through it.
+    /// </summary>
+    private ExpressionSyntax? QualifyModuleMember(Symbol symbol, string memberCSharpName)
+    {
+        var segs = ModuleMemberContainerSegments(symbol);
+        if (segs == null)
+            return null;
+        return MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            MakeGlobalQualifiedName(segs),
+            EscapedIdentifierName(memberCSharpName));
+    }
 
     /// <summary>
     /// The store-target twin of the read arm above: the C# spelling of a bare-name STORE target

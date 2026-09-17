@@ -51,6 +51,10 @@ internal partial class RoslynEmitter
         // [MemberData] attribute emitter read one decision instead of re-deriving it (#1683, #1802).
         _moduleShape = ComputeModuleShape(nonImportStatements);
 
+        // Record the owning C# module class of every from-imported member so bare references to
+        // them are emitted fully qualified rather than through a `using static` directive (#1683).
+        RegisterFromImportMembers(module);
+
         // Generate module class with all members nested inside.
         // Module-level @test functions are collected into _pendingTestFunctions during
         // this call (instead of being emitted as static methods on the module class).
@@ -431,6 +435,76 @@ internal partial class RoslynEmitter
         }
     }
 
+    /// <summary>
+    /// Records, for every module-level member (function/variable/const) brought in by a
+    /// <c>from module import name</c> from a USER module, the global::-rooted namespace segments of
+    /// the C# module class that owns it (e.g. <c>poison</c> from <c>from lib import poison</c> →
+    /// <c>["Poison","Lib"]</c>). A bare reference to such a member is then emitted fully qualified
+    /// (<c>global::Poison.Lib.Poison</c>) so no bare member name is written and the <c>using static</c>
+    /// directive's namespace collision (CS0118) never triggers (#1683). Mirrors the module-class
+    /// derivation <see cref="GenerateFromImportUsings"/> emits its directive from.
+    ///
+    /// <para>Stdlib and CLR-namespace from-imports are NOT recorded: their module-class name does not
+    /// collide with a user namespace, and their members stay reachable through the kept
+    /// <c>using static</c> / type-alias directives. Imported TYPES are not recorded either — they
+    /// qualify through the type-naming path.</para>
+    /// </summary>
+    private void RegisterFromImportMembers(Module module)
+    {
+        _importedMemberContainers.Clear();
+
+        // Names a top-level function or variable of THIS module defines. A local definition SHADOWS
+        // a same-named from-import (#1525) and wins the name lookup, so the import must NOT be
+        // qualified (that would route the call to the imported module — calling lib's describe
+        // instead of the local one).
+        var locallyDefined = new HashSet<string>(System.StringComparer.Ordinal);
+        foreach (var stmt in module.Body)
+        {
+            switch (stmt.UnwrapDecorated())
+            {
+                case FunctionDef f:
+                    locallyDefined.Add(f.Name);
+                    break;
+                case Parser.Ast.VariableDeclaration v:
+                    locallyDefined.Add(v.Name);
+                    break;
+            }
+        }
+
+        foreach (var stmt in module.Body)
+        {
+            if (stmt.UnwrapDecorated() is not FromImportStatement fromImport)
+                continue;
+            if (fromImport.Module == "__future__" || IsSyntheticModule(fromImport.Module))
+                continue;
+            // CLR-namespace and stdlib from-imports keep their existing directives (#1683 is a
+            // user-module collision); only explicit-name user-module imports are qualified here.
+            if (IsNetFrameworkNamespace(fromImport.Module) || IsStdlibModule(fromImport.Module))
+                continue;
+            if (fromImport.ImportAll || fromImport.Names.Length == 0)
+                continue;
+
+            var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
+            var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
+            var segs = new List<string>();
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                segs.AddRange(_context.ProjectNamespace!.Split('.'));
+            segs.AddRange(moduleNamespacePath.Split('.'));
+            var containerSegments = segs.ToArray();
+
+            foreach (var imported in fromImport.Names)
+            {
+                var effectiveName = imported.AsName ?? imported.Name;
+                if (locallyDefined.Contains(effectiveName))
+                    continue;
+
+                var symbol = _context.LookupSymbol(effectiveName);
+                if (symbol is FunctionSymbol or VariableSymbol)
+                    _importedMemberContainers[symbol] = containerSegments;
+            }
+        }
+    }
+
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
     {
         // `from __future__ import <feature>` is a compiler directive (feature enablement),
@@ -517,7 +591,12 @@ internal partial class RoslynEmitter
             // Generate using static for the module class
             // e.g., "from config import MAX_SIZE" → "using static TestProject.Config;"
             // e.g., "from lib.math.operations import add" → "using static TestProject.Lib.Math.Operations;"
-
+            //
+            // The directive still stands (imported TYPES and wildcard names resolve through it), but
+            // it no longer resolves an imported MEMBER's bare spelling: every reference to a
+            // from-imported function/variable/const is emitted fully qualified through
+            // RegisterFromImportMembers / QualifyModuleMember, so no bare member name is written and
+            // the `Poison() → namespace Poison` collision (CS0118) never triggers (#1683).
             var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
             var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
 

@@ -353,6 +353,15 @@ internal partial class RoslynEmitter : ICodeEmitter
     // attribute emitter read one decision instead of re-deriving the class name locally (#1802).
     private ModuleShape? _moduleShape;
 
+    // For every module-level member (function/variable/const) brought in by a `from module import
+    // name`, the global::-rooted namespace segments of the C# module class that owns it — e.g.
+    // `poison` from `from lib import poison` maps to ["Poison", "Lib"]. Populated once by
+    // RegisterFromImportMembers before emission, so a bare reference to an imported member is emitted
+    // fully qualified (global::Poison.Lib.Poison) instead of leaning on a `using static` directive
+    // that collides with a same-named namespace (#1683). Reference-keyed on the imported Symbol.
+    private readonly Dictionary<Symbol, string[]> _importedMemberContainers =
+        new(ReferenceEqualityComparer.Instance);
+
     // Module-level variable names (original Sharpy names) referenced by
     // @test.parametrize(VARIABLE) decorators. Populated by a pre-scan in
     // GenerateModuleMembers; each entry gets a companion MemberData wrapper property
