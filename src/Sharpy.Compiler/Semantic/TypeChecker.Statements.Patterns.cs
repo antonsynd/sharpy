@@ -1012,13 +1012,16 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckMemberAccessPattern(MemberAccessPattern memberAccess, SemanticType scrutineeType)
     {
-        // Resolve the dotted path. Consume leading MODULE segments first (so
-        // `lib.Color.RED` works like `Color.RED` after `from lib import Color`), then
-        // read the remainder as <Type>.<Member> (#1524).
+        // Resolve the dotted path as the LONGEST type CHAIN followed by exactly one member (#1799).
+        // Consume leading MODULE segments first (so `lib.Color.RED` works like `Color.RED` after
+        // `from lib import Color`), reach a first type, then walk NESTED types (`Outer.Holder`,
+        // `Outer.Mid.Holder`) as far as they go while always leaving one segment for the member —
+        // depth-2+ chains reported SPY0203 before this walk existed (probes e01/e03/e05/e09) (#1524).
+        var parts = memberAccess.Parts;
         TypeSymbol? typeSymbol = null;
         int typeIndex = 0;
 
-        var firstSymbol = _symbolTable.Lookup(memberAccess.Parts[0]);
+        var firstSymbol = _symbolTable.Lookup(parts[0]);
         if (firstSymbol is TypeSymbol ts)
         {
             typeSymbol = ts;
@@ -1028,9 +1031,9 @@ internal partial class TypeChecker
         {
             // Walk module segments until we find a type.
             var current = moduleSymbol;
-            for (int i = 1; i < memberAccess.Parts.Length; i++)
+            for (int i = 1; i < parts.Length; i++)
             {
-                if (current.Exports.TryGetValue(memberAccess.Parts[i], out var exported))
+                if (current.Exports.TryGetValue(parts[i], out var exported))
                 {
                     if (exported is TypeSymbol exportedType)
                     {
@@ -1051,11 +1054,24 @@ internal partial class TypeChecker
         if (typeSymbol == null)
         {
             AddError(
-                $"Undefined type '{memberAccess.Parts[0]}' in pattern",
+                $"Undefined type '{parts[0]}' in pattern",
                 memberAccess.LineStart, memberAccess.ColumnStart,
                 code: DiagnosticCodes.Semantic.UndefinedType,
                 span: memberAccess.Span);
             return;
+        }
+
+        // Walk nested types (`Outer.Holder`, `Holder.Color`, `Outer.Mid.Holder`) as far as the next
+        // segment names one, but always leave the FINAL segment for the member (const / enum member /
+        // union case). Only advances on a genuine nested type, so a plain field-access chain
+        // (`Type.field.subfield`) whose next part is not a nested type stops here unchanged.
+        while (typeIndex + 1 < parts.Length - 1)
+        {
+            var nested = typeSymbol.NestedTypes.FirstOrDefault(n => n.Name == parts[typeIndex + 1]);
+            if (nested == null)
+                break;
+            typeSymbol = nested;
+            typeIndex++;
         }
 
         _semanticInfo.SetPatternMemberAccessResolution(memberAccess, typeSymbol, typeIndex);

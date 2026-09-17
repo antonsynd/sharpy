@@ -784,13 +784,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     {
         ["Local×MethodDefault"] =
             "a local const lives in function scope — a class member has no enclosing function to own it",
-        ["NestedClassField×MatchCase"] =
-            "a three-part qualified name in a pattern head is SPY0203 'Type Outer has no member Holder' "
-            + "at BASE and HEAD alike — nested-type member access in a pattern head, #1799, not this seam",
-        ["NestedStructField×MatchCase"] =
-            "a three-part qualified name in a pattern head is SPY0203 — nested-type member access in a pattern, #1799",
-        ["NestedInterfaceField×MatchCase"] =
-            "a three-part qualified name in a pattern head is SPY0203 — nested-type member access in a pattern, #1799",
+        // #1799 drained all three nested×MatchCase rows: CheckMemberAccessPattern now walks the
+        // longest nested-type chain, so `Outer.Holder.A` / `Outer.S.A` / `Outer.I.A` in a pattern
+        // head resolve to the const at every depth instead of SPY0203.
     };
 
     private static HostConsumer HC(string name) => HostConsumers.Single(c => c.Name == name);
@@ -802,7 +798,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         select new object[] { h.Name, c.Name };
 
     private const int HostConsumerCount = 5;
-    private const int HostConsumerNotApplicableCount = 4;
+    private const int HostConsumerNotApplicableCount = 1;
 
     [Fact]
     public void HostConsumerMatrix_IsTotalOverItsAxes()
