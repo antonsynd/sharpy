@@ -428,32 +428,15 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Type-checks a list (sequence) pattern: requires the scrutinee to be a sequence
-    /// (<c>list[T]</c> / <c>array[T]</c>), checks each element pattern against the element type,
-    /// and binds a <c>*rest</c> capture as <c>list[T]</c> (#991).
+    /// Type-checks a list (sequence) pattern: decides the element type through
+    /// <see cref="ResolveSequenceSubject"/> (the class-pattern subject rule, Decision 6 / #1702),
+    /// checks each element pattern against the element type, and binds a <c>*rest</c> capture as
+    /// <c>list[T]</c> (#991). A refused subject leaves the element type <see cref="SemanticType.Unknown"/>
+    /// for element-binding recovery, while the reported diagnostic aborts emission.
     /// </summary>
     private void CheckListPattern(ListPattern listPattern, SemanticType scrutineeType)
     {
-        SemanticType? elementType = scrutineeType switch
-        {
-            GenericType { Name: BuiltinNames.List } g when g.TypeArguments.Count > 0 => g.TypeArguments[0],
-            GenericType { Name: BuiltinNames.Array } g when g.TypeArguments.Count > 0 => g.TypeArguments[0],
-            _ => null
-        };
-
-        if (elementType == null)
-        {
-            // Allow Unknown/Object scrutinees through (error recovery), but reject concrete non-sequences.
-            if (scrutineeType != SemanticType.Unknown && scrutineeType != BuiltinType.Object)
-            {
-                AddError(
-                    $"Cannot match non-sequence type '{scrutineeType.GetDisplayName()}' with a list pattern",
-                    listPattern.LineStart, listPattern.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: listPattern.Span);
-            }
-            elementType = SemanticType.Unknown;
-        }
+        var elementType = ResolveSequenceSubject(scrutineeType, listPattern) ?? SemanticType.Unknown;
 
         var restListType = new GenericType
         {
@@ -474,6 +457,77 @@ internal partial class TypeChecker
                 CheckPattern(element, elementType);
             }
         }
+    }
+
+    /// <summary>
+    /// Decides the element type a sequence (list) pattern matches against, by the SAME rule a class
+    /// pattern's head uses (Design Decision 6, #1702): the sequence subject is on the type-test
+    /// classifier, not a private switch.
+    /// <list type="bullet">
+    /// <item>A closed <c>list[T]</c> / <c>array[T]</c> — or a <c>T | None</c>
+    /// (<see cref="NullableType"/>) wrapping one — gives its element type (the class-pattern arm-1
+    /// fill; d04/d05b/d10).</item>
+    /// <item>A <c>T?</c> (<see cref="OptionalType"/>) list is a tagged union: a bare sequence pattern
+    /// cannot see through it, so it is matched through its <c>Some</c> case (SPY0498; a09's twin).</item>
+    /// <item>An open subject — <c>object</c> or a type parameter — determines no element type, so a C#
+    /// list pattern against it is CS8985; refused with the <c>case list[int]([1, 2])</c> steer
+    /// (SPY0345; the class-pattern arm-3 rule; d01/d12/d13/d14/a16). Before this, the open subject
+    /// reached the emitter and left the ICE.</item>
+    /// <item>Any other concrete type — <c>str</c>, <c>tuple</c>, <c>int</c> — is not a sequence
+    /// (SPY0220; d06/d07/d08).</item>
+    /// </list>
+    /// Returns the element type, or null when the pattern was refused (a diagnostic was reported) or
+    /// the subject is <see cref="UnknownType"/> — a recovery shape whose real error is already
+    /// reported, so it stays silent. Every refusal here aborts emission like every pattern refusal.
+    /// </summary>
+    private SemanticType? ResolveSequenceSubject(SemanticType scrutineeType, ListPattern listPattern)
+    {
+        // Arm 1: closed list[T] / array[T], including a `T | None` (NullableType) wrapping one. A
+        // nullable list still tests as a CLR sequence; the null case falls to a later match arm.
+        // An OptionalType is intentionally NOT unwrapped here — it is a tagged union matched through
+        // Some (below), not a nullable reference (this is why a08 fills but a09 refuses).
+        var sequenceType = scrutineeType is NullableType nullable ? nullable.UnderlyingType : scrutineeType;
+        if (sequenceType is GenericType { Name: BuiltinNames.List or BuiltinNames.Array } g
+            && g.TypeArguments.Count > 0)
+        {
+            return g.TypeArguments[0];
+        }
+
+        // A `T?` (OptionalType) list must be matched through its Some case — the sequence-pattern twin
+        // of the class-pattern SPY0498 refusal (a09).
+        if (scrutineeType is OptionalType
+            { UnderlyingType: GenericType { Name: BuiltinNames.List or BuiltinNames.Array } })
+        {
+            AddError(
+                "An Optional scrutinee cannot be matched with a sequence pattern directly. " +
+                "Match through the constructor cases instead: 'case Some([a, b]):' for a present " +
+                "value and 'case None():' for absence (or narrow first with 'if xs is not None:').",
+                listPattern.LineStart, listPattern.ColumnStart,
+                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+                span: listPattern.Span);
+            return null;
+        }
+
+        // An Unknown subject's real error is already reported — stay silent, never a second diagnostic.
+        if (scrutineeType is UnknownType)
+            return null;
+
+        // An open subject — `object` or a type parameter — determines no element type. Refused with the
+        // closed-spelling steer (SPY0345), the class-pattern arm-3 rule, so the C# list pattern is never
+        // emitted against `object` (CS8985).
+        if (scrutineeType.IsObjectLike || scrutineeType is TypeParameterType)
+        {
+            ReportOpenGenericTypeOperand(listPattern, BuiltinNames.List, TypeTestSite.SequencePattern, arity: 1);
+            return null;
+        }
+
+        // Any other concrete type is not a sequence.
+        AddError(
+            $"Cannot match non-sequence type '{scrutineeType.GetDisplayName()}' with a list pattern",
+            listPattern.LineStart, listPattern.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch,
+            span: listPattern.Span);
+        return null;
     }
 
     /// <summary>
