@@ -149,13 +149,14 @@ fixture::builtins/builtin_iterator_reprs_1354
 # deviations.yaml: iterator-repr-no-address. Permanent.
 fixture::bare_clr_sequence_display_1453
 
-# The #1858 extension-callee positive control is not a shared-subset program: `first_or_default()`
+# The extension-callee positive control is not a shared-subset program: `first_or_default()`
 # is a Sharpy .NET-style extension method on `list` (Axiom 1 enriches the collection surface), and
 # CPython's `list` has no such attribute — so CPython raises AttributeError (SharpyOkPythonError)
 # rather than merely disagreeing. Sharpy's stdout (`1\n1`) IS the answer for the cell under test —
 # an extension method in CALLEE position binds and runs — it just cannot be written as one program
 # both languages run. Same shape as `str.reverse()` above (a Sharpy-only method on a builtin type).
-# Cite: #1858 (extension method group in callee vs value position). Permanent.
+# Cite: #1893 (permanent differential divergence — Sharpy-only extension methods on builtins;
+# formerly cited issue 1858, which was the SPY0336 bug and is now fixed/closed). Permanent.
 fixture::interop/extension_callee_positions_1858
 
 # `isinstance(x, (A, B))` means `isinstance(x, tuple[A, B])` in Sharpy — a structural
