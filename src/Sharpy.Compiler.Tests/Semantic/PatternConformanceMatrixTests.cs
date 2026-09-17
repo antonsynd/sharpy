@@ -7,17 +7,27 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Pattern conformance matrix for the #1670 defect class: ClassifyTypeTestAnnotation routing
-/// (2fef25bf2), TypeTestLowering consumption (3e3ba202f), fill-from-subject for closed scrutinees
-/// (c648af831), and subsumption recording.
+/// Pattern-reification conformance matrix (P5, #1708/#1619). A runtime type test on a generic
+/// builtin names a CLOSED reified type, decided once in semantic analysis, and the answer does not
+/// depend on the FORM the test is written in. This matrix is total over
+/// <c>builtin {list, dict, set} × scrutinee {closed, T | None, object, type parameter}
+/// × spelling {bare, explicit, wrong-arity}</c>, run once as a class <b>pattern</b> and once as
+/// <b>isinstance</b>, and the <see cref="CrossForm_PatternAndIsinstance_AgreePerCell"/> test pins
+/// that the two forms return the IDENTICAL verdict for each cell — the permanent version of the
+/// "change axis when every spelling agrees" rule (verification-contract §6).
 /// <para>
-/// <b>Groups 9–13 are the POSITIONAL-CAPTURE arm</b> — <c>case list(xs):</c>, the spelling that had
-/// no test and no use anywhere in the repository. Its cells are total over
-/// builtin {list, dict, set} × subject {object, matching closed generic, non-matching closed
-/// generic, impossible} × position {top level, nested in a sequence pattern, nested in a class
-/// positional pattern}, because the arm is one rule and a position must not be able to opt out of
-/// it. Every runnable cell asserts stdout against python3 3.12 (quoted per group); every refused
-/// cell asserts the diagnostic code.
+/// Verdicts (measured @ HEAD with the built <c>sharpyc</c>; python3 3.12 where python applies):
+/// a closed or <c>T | None</c> scrutinee <b>fills</b> from the subject and runs; an <c>object</c> or
+/// type-parameter scrutinee under a <b>bare</b> head is refused <b>SPY0345</b> (nothing determines
+/// the vector) with the closed-spelling steer; an <b>explicit</b> head names the vector and runs; a
+/// <b>wrong-arity</b> head is <b>SPY0224</b>. The (explicit × type parameter) cell is rostered N/A —
+/// the pattern side over-refuses SPY0361 while isinstance runs (#1889), a live pattern/isinstance
+/// divergence that would otherwise break the cross-form contract.
+/// </para>
+/// <para>
+/// The <c>Sharpy.IList/IDict/ISet</c> erasure and the <c>object</c>-vector capture of earlier
+/// versions are gone: every bare-on-object cell that used to RUN erased is now refused, and the
+/// capture on a closed subject keeps its element type (Group Capture below).
 /// </para>
 /// </summary>
 [Collection("HeavyCompilation")]
@@ -25,99 +35,677 @@ public class PatternConformanceMatrixTests : IntegrationTestBase
 {
     public PatternConformanceMatrixTests(ITestOutputHelper output) : base(output) { }
 
-    // ── Group 1: Builtin × object subject (erased path) ──
+    private const string SPY0345 = DiagnosticCodes.Semantic.OpenGenericTypeTest;
+    private const string SPY0224 = DiagnosticCodes.Semantic.WrongArgumentCount;
+    private const string SPY0361 = DiagnosticCodes.Semantic.TypePatternIncompatible;
+    private const string SPY0202 = DiagnosticCodes.Semantic.UndefinedType;
+    private const string SPY0700 = DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast;
 
-    public static IEnumerable<object[]> BuiltinErasedCells()
+    // ══ Axes (anchored to literals, not to any enum's own totality) ═══════════════════════════
+
+    // The three FILLING builtins. tuple never fills (structural ValueTuple) and frozenset is handled
+    // in its own group; both keep the {list, dict, set} grid honest by contrast.
+    private static readonly string[] Builtins = { "list", "dict", "set" };
+    private static readonly string[] Scrutinees = { "closed", "tnone", "object", "typeparam" };
+    private static readonly string[] Spellings = { "bare", "explicit", "wrongarity" };
+
+    private sealed record BuiltinInfo(string Closed, string Literal, string Explicit, string WrongArity);
+
+    private static BuiltinInfo Info(string b) => b switch
     {
-        yield return new object[] { "list", "[1, 2]", "erased-list" };
-        yield return new object[] { "dict", "{\"a\": 1}", "erased-dict" };
-        yield return new object[] { "set", "{1, 2}", "erased-set" };
+        "list" => new("list[int]", "[1, 2]", "list[int]", "list[int, str]"),
+        "dict" => new("dict[str, int]", "{\"a\": 1}", "dict[str, int]", "dict[str]"),
+        "set" => new("set[int]", "{1, 2}", "set[int]", "set[int, str]"),
+        _ => throw new ArgumentOutOfRangeException(nameof(b), b, null),
+    };
+
+    // A cell's expected outcome: Run(stdout) or Refuse(code).
+    private sealed record Verdict(string? Output, string? Code)
+    {
+        public static Verdict Run(string output = "hit") => new(output, null);
+        public static Verdict Refuse(string code) => new(null, code);
+        public bool IsRun => Code is null;
     }
 
-    [Theory]
-    [MemberData(nameof(BuiltinErasedCells))]
-    public void BuiltinOnObject_Erased_Runs(string builtinName, string literal, string label)
+    // The verdict is a function of (scrutinee, spelling) only — identical for every filling builtin
+    // and for BOTH the pattern and isinstance forms. That identity is the reification contract; the
+    // cross-form test below asserts it independently.
+    private static Verdict VerdictFor(string scrutinee, string spelling) => (scrutinee, spelling) switch
     {
-        var source = $@"
+        (_, "wrongarity") => Verdict.Refuse(SPY0224),
+        ("object", "bare") => Verdict.Refuse(SPY0345),
+        ("typeparam", "bare") => Verdict.Refuse(SPY0345),
+        // ("typeparam", "explicit") is rostered #1889 — never reaches here.
+        (_, _) => Verdict.Run(),
+    };
+
+    // (explicit × type parameter) is the one cell the pattern and isinstance forms DISAGREE on today:
+    // the pattern side reports SPY0361 ("incompatible with scrutinee type 'T'") while
+    // isinstance(v, list[int]) runs. Rostered until #1889 unifies them.
+    private static bool IsRostered(string scrutinee, string spelling)
+        => scrutinee == "typeparam" && spelling == "explicit";
+
+    public static IEnumerable<object[]> GridCells()
+    {
+        foreach (var b in Builtins)
+            foreach (var s in Scrutinees)
+                foreach (var sp in Spellings)
+                    if (!IsRostered(s, sp))
+                        yield return new object[] { b, s, sp };
+    }
+
+    // ── Source builders ──────────────────────────────────────────────────────────────────────
+
+    private static string HeadFor(string builtin, string spelling)
+    {
+        var info = Info(builtin);
+        return spelling switch
+        {
+            "bare" => $"{builtin}()",
+            "explicit" => $"{info.Explicit}()",
+            "wrongarity" => $"{info.WrongArity}()",
+            _ => throw new ArgumentOutOfRangeException(nameof(spelling)),
+        };
+    }
+
+    private static string TypeFor(string builtin, string spelling)
+    {
+        var info = Info(builtin);
+        return spelling switch
+        {
+            "bare" => builtin,
+            "explicit" => info.Explicit,
+            "wrongarity" => info.WrongArity,
+            _ => throw new ArgumentOutOfRangeException(nameof(spelling)),
+        };
+    }
+
+    private static string PatternSource(string builtin, string scrutinee, string spelling)
+    {
+        var info = Info(builtin);
+        var head = HeadFor(builtin, spelling);
+        return scrutinee switch
+        {
+            "closed" => $@"
+def check(xs: {info.Closed}) -> None:
+    match xs:
+        case {head}:
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check(xs)
+",
+            // A wildcard-only tail (no explicit `case None:`) is deliberate: a zero-arg `case list():`
+            // on a `T | None` scrutinee is falsely flagged total when a `case None:` follows it
+            // (#1891); the trailing wildcard is exempt, so the fill-from-payload verdict is testable
+            // without tripping that unrelated bug. The passed value is non-None, so it takes the head.
+            "tnone" => $@"
+def check(xs: {info.Closed} | None) -> None:
+    match xs:
+        case {head}:
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check(xs)
+",
+            "object" => $@"
 def check(o: object) -> None:
     match o:
-        case {builtinName}():
-            print(""{label}"")
+        case {head}:
+            print(""hit"")
         case _:
-            print(""other"")
+            print(""miss"")
 
 def main() -> None:
-    check({literal})
-";
-        var result = CompileAndExecute(source);
+    xs: {info.Closed} = {info.Literal}
+    o: object = xs
+    check(o)
+",
+            "typeparam" => $@"
+def check[T](v: T) -> None:
+    match v:
+        case {head}:
+            print(""hit"")
+        case _:
+            print(""miss"")
 
-        result.Success.Should().BeTrue($"builtin {builtinName} erased on object should compile and run");
-        result.StandardOutput.TrimEnd().Should().Be(label);
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check[{info.Closed}](xs)
+",
+            _ => throw new ArgumentOutOfRangeException(nameof(scrutinee)),
+        };
     }
 
-    // ── Group 2: Builtin × closed subject (fill path) ──
-
-    public static IEnumerable<object[]> BuiltinFilledCells()
+    private static string IsinstanceSource(string builtin, string scrutinee, string spelling)
     {
-        yield return new object[] { "list", "list[int]", "[1, 2]", "filled-list" };
-        yield return new object[] { "dict", "dict[str, int]", "{\"a\": 1}", "filled-dict" };
-        yield return new object[] { "set", "set[int]", "{1, 2}", "filled-set" };
+        var info = Info(builtin);
+        var type = TypeFor(builtin, spelling);
+        return scrutinee switch
+        {
+            "closed" => $@"
+def check(xs: {info.Closed}) -> None:
+    if isinstance(xs, {type}):
+        print(""hit"")
+    else:
+        print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check(xs)
+",
+            "tnone" => $@"
+def check(xs: {info.Closed} | None) -> None:
+    if isinstance(xs, {type}):
+        print(""hit"")
+    else:
+        print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check(xs)
+",
+            "object" => $@"
+def check(o: object) -> None:
+    if isinstance(o, {type}):
+        print(""hit"")
+    else:
+        print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    o: object = xs
+    check(o)
+",
+            "typeparam" => $@"
+def check[T](v: T) -> None:
+    if isinstance(v, {type}):
+        print(""hit"")
+    else:
+        print(""miss"")
+
+def main() -> None:
+    xs: {info.Closed} = {info.Literal}
+    check[{info.Closed}](xs)
+",
+            _ => throw new ArgumentOutOfRangeException(nameof(scrutinee)),
+        };
     }
+
+    private void AssertVerdict(ExecutionResult result, Verdict expected, string label, string source)
+    {
+        if (expected.IsRun)
+        {
+            result.Success.Should().BeTrue(
+                $"[{label}] must compile and run. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+            result.StandardOutput.TrimEnd().Should().Be(expected.Output,
+                $"[{label}] fills from the subject / the explicit head and matches\n{source}");
+        }
+        else
+        {
+            result.Success.Should().BeFalse(
+                $"[{label}] must be refused. Output was: {result.StandardOutput}\n{source}");
+            result.RawDiagnostics.Should().Contain(d => d.Code == expected.Code,
+                $"[{label}] must report {expected.Code}. Diagnostics: "
+                + $"{string.Join(" | ", result.RawDiagnostics.Select(d => d.Code))}\n{source}");
+        }
+    }
+
+    // ── Group Grid-Pattern: builtin × scrutinee × spelling, PATTERN form ──────────────────────
 
     [Theory]
-    [MemberData(nameof(BuiltinFilledCells))]
-    public void BuiltinOnClosed_Filled_Runs(string builtinName, string closedType, string literal, string label)
+    [MemberData(nameof(GridCells))]
+    public void Grid_PatternForm(string builtin, string scrutinee, string spelling)
     {
-        var source = $@"
-def check(xs: {closedType}) -> None:
-    match xs:
-        case {builtinName}():
-            print(""{label}"")
-        case _:
-            print(""other"")
-
-def main() -> None:
-    check({literal})
-";
+        var source = PatternSource(builtin, scrutinee, spelling);
         var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue($"builtin {builtinName} filled on {closedType} should compile and run");
-        result.StandardOutput.TrimEnd().Should().Be(label);
+        AssertVerdict(result, VerdictFor(scrutinee, spelling),
+            $"pattern {builtin}/{scrutinee}/{spelling}", source);
     }
 
-    // ── Group 3: Cross-collection incompatible (SPY0361) ──
+    // ── Group Grid-Isinstance: builtin × scrutinee × spelling, ISINSTANCE form ────────────────
+
+    [Theory]
+    [MemberData(nameof(GridCells))]
+    public void Grid_IsinstanceForm(string builtin, string scrutinee, string spelling)
+    {
+        var source = IsinstanceSource(builtin, scrutinee, spelling);
+        var result = CompileAndExecute(source);
+        AssertVerdict(result, VerdictFor(scrutinee, spelling),
+            $"isinstance {builtin}/{scrutinee}/{spelling}", source);
+    }
+
+    // ── Cross-form: the two forms return the SAME verdict for each cell ───────────────────────
+    // This is the load-bearing agreement assertion: it recomputes the pattern and isinstance
+    // outcomes independently (not from VerdictFor) and asserts they match, so a future divergence
+    // like #1889 in a NON-rostered cell would fail here rather than pass silently.
+
+    [Theory]
+    [MemberData(nameof(GridCells))]
+    public void CrossForm_PatternAndIsinstance_AgreePerCell(string builtin, string scrutinee, string spelling)
+    {
+        var pat = CompileAndExecute(PatternSource(builtin, scrutinee, spelling));
+        var iso = CompileAndExecute(IsinstanceSource(builtin, scrutinee, spelling));
+
+        var label = $"{builtin}/{scrutinee}/{spelling}";
+        pat.Success.Should().Be(iso.Success,
+            $"[{label}] the pattern and isinstance forms must agree on whether the test is refused. "
+            + $"pattern: {string.Join(",", pat.RawDiagnostics.Select(d => d.Code))} | "
+            + $"isinstance: {string.Join(",", iso.RawDiagnostics.Select(d => d.Code))}");
+
+        if (pat.Success)
+        {
+            pat.StandardOutput.TrimEnd().Should().Be(iso.StandardOutput.TrimEnd(),
+                $"[{label}] both forms fill/test the same reified type and print the same result");
+        }
+        else
+        {
+            var patCodes = pat.RawDiagnostics.Select(d => d.Code).ToHashSet();
+            var isoCodes = iso.RawDiagnostics.Select(d => d.Code).ToHashSet();
+            (patCodes.Contains(SPY0345) || patCodes.Contains(SPY0224))
+                .Should().BeTrue($"[{label}] pattern refuses with the shared refusal code");
+            isoCodes.Overlaps(patCodes).Should().BeTrue(
+                $"[{label}] the two forms share their primary refusal code. "
+                + $"pattern: {string.Join(",", patCodes)} | isinstance: {string.Join(",", isoCodes)}");
+        }
+    }
+
+    // ── Totality (against the literal axes, and the rostered cell) ────────────────────────────
 
     [Fact]
-    public void CrossCollection_ListOnDict_SPY0361()
+    public void Grid_IsTotalOverItsAxes()
+    {
+        Builtins.Length.Should().Be(3);
+        Scrutinees.Length.Should().Be(4);
+        Spellings.Length.Should().Be(3);
+
+        var product = Builtins.Length * Scrutinees.Length * Spellings.Length; // 36
+        var executing = GridCells().Count();
+        var rostered = product - executing;
+
+        // Exactly one cell per builtin is rostered: (explicit × type parameter), #1889.
+        rostered.Should().Be(Builtins.Length,
+            "the only N/A cell is (explicit × type parameter) — pattern SPY0361 vs isinstance run (#1889)");
+        (executing + rostered).Should().Be(product);
+    }
+
+    // ── Group 3: cross-collection (R-P5-1) ───────────────────────────────────────────────────
+    // A BARE list head on a determinate-incompatible closed subject (dict[str,int]) hits arm 3 →
+    // SPY0345 (open generic), for BOTH pattern and isinstance — restoring SPY0361 here would require
+    // the default-object vector the reification ruling deletes. The EXPLICIT determinate-incompatible
+    // spelling is arm 2, decided-closed → SPY0361.
+
+    [Fact]
+    public void CrossCollection_BareListOnDict_SPY0345()
     {
         const string source = @"
-def main() -> None:
-    d: dict[str, int] = {""a"": 1}
+def check(d: dict[str, int]) -> None:
     match d:
         case list():
             print(""never"")
         case _:
             print(""dict"")
+
+def main() -> None:
+    d: dict[str, int] = {""a"": 1}
+    check(d)
 ";
         var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse("cross-collection pattern should be refused");
-        result.RawDiagnostics.Should().Contain(d =>
-            d.Code == DiagnosticCodes.Semantic.TypePatternIncompatible,
-            "cross-collection should produce SPY0361");
+        result.Success.Should().BeFalse("a bare cross-collection head is refused, not SPY0361");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "R-P5-1: a bare list head on a dict subject hits arm 3 → SPY0345");
     }
 
-    // ── Group 4: Self-matching positional ──
+    [Fact]
+    public void CrossCollection_BareListOnDict_Isinstance_SPY0345()
+    {
+        const string source = @"
+def check(d: dict[str, int]) -> None:
+    if isinstance(d, list):
+        print(""never"")
+    else:
+        print(""dict"")
 
+def main() -> None:
+    d: dict[str, int] = {""a"": 1}
+    check(d)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "isinstance agrees with the pattern form: a bare cross-collection test is SPY0345");
+    }
+
+    [Fact]
+    public void CrossCollection_ExplicitListOnDict_SPY0361()
+    {
+        const string source = @"
+def check(d: dict[str, int]) -> None:
+    match d:
+        case list[int]():
+            print(""never"")
+        case _:
+            print(""dict"")
+
+def main() -> None:
+    d: dict[str, int] = {""a"": 1}
+    check(d)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("an explicit closed head on a determinate-incompatible subject is SPY0361");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0361,
+            "a dict[str,int] can never be a list[int] — the decided closed type is statically impossible");
+    }
+
+    // ── Group as-cast: as? / as! forms (bare → SPY0345, explicit → run), uniform ──────────────
+
+    [Fact]
+    public void AsOptional_BareListOnObject_SPY0345()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    xs: list[int] = [1, 2]
+    o: object = xs
+    r = o as? list
+    print(r is not None)
+");
+        result.Success.Should().BeFalse("a bare open cast target is refused");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "the cast form joins the shared decider: a bare open generic is SPY0345 (exactly one diagnostic)");
+        result.RawDiagnostics.Count(d => d.Code == SPY0345).Should().Be(1,
+            "the cast-site double report (SPY0345 + SPY0224) was folded — one refusal, one code");
+    }
+
+    [Fact]
+    public void AsChecked_BareListOnObject_SPY0345()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    xs: list[int] = [1, 2]
+    o: object = xs
+    r = o as! list
+    print(len(r))
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "as! refuses the bare open generic uniformly with as?");
+    }
+
+    [Fact]
+    public void AsOptional_ExplicitList_Runs_ReifiedExact()
+    {
+        // Reification is visible at the cast: a list[int] value is NOT a list[object].
+        var result = CompileAndExecute(@"
+def main() -> None:
+    xs: list[int] = [1, 2]
+    o: object = xs
+    same = o as? list[int]
+    other = o as? list[object]
+    print(same is not None)
+    print(other is not None)
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("True\nFalse",
+            "list[int] casts to list[int] (True) but is not a list[object] (False) — reified, exact");
+    }
+
+    // ── Group not-isinstance: the negated form agrees with isinstance ─────────────────────────
+
+    [Fact]
+    public void NotIsinstance_OnClosed_Runs()
+    {
+        var result = CompileAndExecute(@"
+def check(xs: list[int]) -> None:
+    if not isinstance(xs, list):
+        print(""no"")
+    else:
+        print(""yes"")
+
+def main() -> None:
+    check([1])
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.TrimEnd().Should().Be("yes");
+    }
+
+    [Fact]
+    public void NotIsinstance_BareOnObject_SPY0345()
+    {
+        var result = CompileAndExecute(@"
+def check(o: object) -> None:
+    if not isinstance(o, list):
+        print(""no"")
+    else:
+        print(""yes"")
+
+def main() -> None:
+    check(1)
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "`not isinstance` refuses the bare open generic exactly as `isinstance` does");
+    }
+
+    // ── Group frozenset / tuple: fill-vs-structural contrast ──────────────────────────────────
+    // frozenset fills from a closed subject (like list/dict/set); tuple NEVER fills — a Sharpy
+    // tuple is a structural ValueTuple, so even a closed subject under a bare head is SPY0345 and
+    // only the explicit spelling runs.
+
+    [Fact]
+    public void Frozenset_ClosedSubject_BareHead_Fills()
+    {
+        var result = CompileAndExecute(@"
+def check(s: frozenset[int]) -> None:
+    match s:
+        case frozenset():
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check(frozenset([1, 2]))
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.TrimEnd().Should().Be("hit");
+    }
+
+    [Fact]
+    public void Frozenset_ObjectSubject_BareHead_SPY0345()
+    {
+        var result = CompileAndExecute(@"
+def check(o: object) -> None:
+    match o:
+        case frozenset():
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check(1)
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345);
+    }
+
+    [Fact]
+    public void Tuple_ClosedSubject_BareHead_SPY0345_NeverFills()
+    {
+        var result = CompileAndExecute(@"
+def check(t: tuple[int, int]) -> None:
+    match t:
+        case tuple():
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check((1, 2))
+");
+        result.Success.Should().BeFalse(
+            "tuple is a structural ValueTuple and never fills — even a closed subject is SPY0345 for a bare head");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345);
+    }
+
+    [Fact]
+    public void Tuple_ClosedSubject_ExplicitHead_Runs()
+    {
+        var result = CompileAndExecute(@"
+def check(t: tuple[int, int]) -> None:
+    match t:
+        case tuple[int, int]():
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check((1, 2))
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.TrimEnd().Should().Be("hit");
+    }
+
+    // ── Group Refused-names: names that head no generic type test ─────────────────────────────
+
+    public static IEnumerable<object[]> RefusedNameCells()
+    {
+        // Not registered types: the head names nothing to test against.
+        yield return new object[] { "bytearray()", SPY0202 };
+        yield return new object[] { "range()", SPY0202 };
+        // Generic with no filling source on an object subject: honest SPY0345 (no erasure interface).
+        yield return new object[] { "tuple()", SPY0345 };
+        yield return new object[] { "frozenset()", SPY0345 };
+    }
+
+    [Theory]
+    [MemberData(nameof(RefusedNameCells))]
+    public void RefusedName_ReportsItsCode(string head, string expectedCode)
+    {
+        var source = @"
+def check(o: object) -> None:
+    match o:
+        case @P@:
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check(1)
+".Replace("@P@", head, StringComparison.Ordinal);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"`case {head}:` names no testable type. Output: {result.StandardOutput}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == expectedCode,
+            $"`case {head}:` is refused with {expectedCode}. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
+    }
+
+    // ── Group Nested-position: the verdict does not depend on where the head is written ────────
+    // A closed nested subject fills at any depth; an open element is refused at any depth (the same
+    // SPY0345 as at the top level).
+
+    [Fact]
+    public void NestedPosition_ClosedElement_Fills_Runs()
+    {
+        var result = CompileAndExecute(@"
+def seq(xs: list[list[int]]) -> None:
+    match xs:
+        case [list(inner)]:
+            n: int = inner[0]
+            print(""seq"", n)
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    seq([[9]])
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.TrimEnd().Should().Be("seq 9",
+            "the element type list[int] fills the nested bare head; the capture keeps its element type");
+    }
+
+    [Fact]
+    public void NestedPosition_OpenElement_SPY0345()
+    {
+        var result = CompileAndExecute(@"
+def seq(xs: list[object]) -> None:
+    match xs:
+        case [list(inner)]:
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    xs: list[object] = [[1]]
+    seq(xs)
+");
+        result.Success.Should().BeFalse("the element type is object — the nested bare head is refused");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345,
+            "an open head is refused at the nested position exactly as at the top level");
+    }
+
+    // ── Group Capture: what the capture is TYPED as (the annotated destination is the probe) ───
+    // On a CLOSED subject the vector is filled FROM THE SUBJECT, so the capture keeps its elements —
+    // ys[0] is an int and `n: int = ys[0]` type-checks (the erased list[object] capture is gone).
+
+    [Fact]
+    public void Capture_OnClosed_KeepsElementType()
+    {
+        var result = CompileAndExecute(@"
+def check(xs: list[int]) -> None:
+    match xs:
+        case list(ys):
+            ys[0] += 10
+            print(ys)
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    check([1, 2, 3])
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.TrimEnd().Should().Be("[11, 2, 3]",
+            "an erased list[object] capture could not compile `ys[0] += 10`; the reified list[int] does");
+    }
+
+    [Fact]
+    public void Capture_OnObject_Refused_NoErasedSurface()
+    {
+        // The old erased path bound `xs: list[object]` and RAN on an object subject; now the bare
+        // head is refused, so there is no capture to mistype. Positive control for "no erased read".
+        var result = CompileAndExecute(@"
+def check(o: object) -> None:
+    match o:
+        case list(xs):
+            print(""hit"")
+        case _:
+            print(""miss"")
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    o: object = xs
+    check(o)
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0345);
+    }
+
+    // ══ Preserved non-collection groups (these arms are unaffected by reification) ════════════
+
+    // ── Self-matching primitives bind the whole subject ──
     public static IEnumerable<object[]> SelfMatchingCells()
     {
-        yield return new object[] { "int", "42", "int 43", "int(n) binds whole subject" };
-        yield return new object[] { "str", "\"hi\"", "str HI", "str(s) binds whole subject" };
+        yield return new object[] { "int", "42", "int 43" };
+        yield return new object[] { "str", "\"hi\"", "str HI" };
     }
 
     [Theory]
     [MemberData(nameof(SelfMatchingCells))]
-    public void SelfMatching_OnObject_Runs(string typeName, string value, string expected, string desc)
+    public void SelfMatching_OnObject_Runs(string typeName, string value, string expected)
     {
         var source = typeName == "int"
             ? $@"
@@ -145,13 +733,11 @@ def main() -> None:
     print(describe({value}))
 ";
         var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue($"{desc} should compile and run");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.TrimEnd().Should().Be(expected);
     }
 
-    // ── Group 5: User generic fill ──
-
+    // ── User generic fill ──
     [Fact]
     public void UserGeneric_BoxOnBoxInt_Filled_Runs()
     {
@@ -171,325 +757,11 @@ def main() -> None:
             print(""other"")
 ";
         var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue("Box pattern on Box[int] should fill and run");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.TrimEnd().Should().Be("box filled");
     }
 
-    // ── Group 6: Subsumption — total class pattern makes later arm unreachable (SPY0700) ──
-
-    [Fact]
-    public void Subsumption_IntThenLiteral_SPY0700()
-    {
-        const string source = @"
-def main() -> None:
-    x: int = 42
-    match x:
-        case int() as n:
-            print(n)
-        case 99:
-            print(""ninety-nine"")
-";
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse("subsumed arm should be refused");
-        result.RawDiagnostics.Should().Contain(d =>
-            d.Code == DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
-            "subsumption should produce SPY0700");
-    }
-
-    // ── Group 7: Normal int positive control ──
-
-    [Fact]
-    public void NormalInt_LiteralThenWildcard_Runs()
-    {
-        const string source = @"
-def main() -> None:
-    x: int = 99
-    match x:
-        case 99:
-            print(""ninety-nine"")
-        case _:
-            print(""other"")
-";
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue("normal int literal match should compile and run");
-        result.StandardOutput.TrimEnd().Should().Be("ninety-nine");
-    }
-
-    // ── Group 9: positional capture — builtin × subject × position (36 cells) ──
-    //
-    // python3 3.12, one runnable cell per position (list shown; dict/set are identical):
-    //   >>> def check(o):
-    //   ...     match o:
-    //   ...         case list(v): print("hit")
-    //   ...         case _:       print("miss")
-    //   >>> check([1, 2])
-    //   hit
-    //   >>> def seq(xs):
-    //   ...     match xs:
-    //   ...         case [list(v)]: print("hit")
-    //   ...         case _:         print("miss")
-    //   >>> seq([[1, 2]])
-    //   hit
-    //   >>> class Box:
-    //   ...     __match_args__ = ("value",)
-    //   ...     def __init__(self, value): self.value = value
-    //   >>> def cls(b):
-    //   ...     match b:
-    //   ...         case Box(list(v)): print("hit")
-    //   ...         case _:            print("miss")
-    //   >>> cls(Box([1, 2]))
-    //   hit
-    //
-    // The two static-impossibility columns are where Sharpy departs from python3 ON PURPOSE
-    // (owner ruling Q1, #1670): python3 answers `miss` at run time, Sharpy refuses the arm with
-    // SPY0361 because a `str` — or a `dict[str, int]` — can never be a list, so the arm is dead
-    // code, not a run-time outcome. `case list(xs):` had ZERO uses in the repository before this
-    // matrix, which is how it shipped emitting a test against `Sharpy.List<object>` (the erased
-    // CAPTURE type) and silently taking the `_` arm on every object subject.
-
-    private static readonly Dictionary<string, (string Closed, string Literal)> BuiltinSubjects =
-        new()
-        {
-            ["list"] = ("list[int]", "[1, 2]"),
-            ["dict"] = ("dict[str, int]", "{\"a\": 1}"),
-            ["set"] = ("set[int]", "{1, 2}"),
-        };
-
-    public static IEnumerable<object[]> PositionalCaptureCells()
-    {
-        foreach (var builtin in new[] { "list", "dict", "set" })
-        {
-            foreach (var subjectKind in new[] { "object", "closed", "nonmatching", "impossible" })
-            {
-                foreach (var position in new[] { "top", "sequence", "class" })
-                {
-                    yield return new object[] { builtin, subjectKind, position };
-                }
-            }
-        }
-    }
-
-    private static (string Type, string Literal) SubjectFor(string builtin, string subjectKind)
-        => subjectKind switch
-        {
-            "object" => ("object", BuiltinSubjects[builtin].Literal),
-            "closed" => BuiltinSubjects[builtin],
-            // A closed generic of a DIFFERENT collection: statically impossible, and the cell that
-            // reached the C# compiler as CS8121 ("List<int> cannot be handled by Dict<object,object>").
-            "nonmatching" => builtin == "list" ? BuiltinSubjects["dict"] : BuiltinSubjects["list"],
-            "impossible" => ("str", "\"hi\""),
-            _ => throw new ArgumentOutOfRangeException(nameof(subjectKind), subjectKind, null),
-        };
-
-    private static string PositionalCaptureSource(
-        string builtin, string subjectType, string literal, string position)
-    {
-        var template = position switch
-        {
-            "top" => @"
-def check(o: @SUBJ@) -> None:
-    match o:
-        case @B@(v):
-            print(""hit"")
-        case _:
-            print(""miss"")
-
-def main() -> None:
-    x: @SUBJ@ = @LIT@
-    check(x)
-",
-            "sequence" => @"
-def check(xs: list[@SUBJ@]) -> None:
-    match xs:
-        case [@B@(v)]:
-            print(""hit"")
-        case _:
-            print(""miss"")
-
-def main() -> None:
-    x: list[@SUBJ@] = [@LIT@]
-    check(x)
-",
-            "class" => @"
-class Box:
-    value: @SUBJ@
-
-    def __init__(self, value: @SUBJ@):
-        self.value = value
-
-def check(b: Box) -> None:
-    match b:
-        case Box(@B@(v)):
-            print(""hit"")
-        case _:
-            print(""miss"")
-
-def main() -> None:
-    x: @SUBJ@ = @LIT@
-    check(Box(x))
-",
-            _ => throw new ArgumentOutOfRangeException(nameof(position), position, null),
-        };
-
-        return template
-            .Replace("@SUBJ@", subjectType, StringComparison.Ordinal)
-            .Replace("@LIT@", literal, StringComparison.Ordinal)
-            .Replace("@B@", builtin, StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [MemberData(nameof(PositionalCaptureCells))]
-    public void PositionalCapture_BuiltinBySubjectByPosition(
-        string builtin, string subjectKind, string position)
-    {
-        var (subjectType, literal) = SubjectFor(builtin, subjectKind);
-        var source = PositionalCaptureSource(builtin, subjectType, literal, position);
-        var result = CompileAndExecute(source);
-
-        var staticallyImpossible = subjectKind is "nonmatching" or "impossible";
-        if (staticallyImpossible)
-        {
-            result.Success.Should().BeFalse(
-                $"`case {builtin}(v):` cannot match a '{subjectType}' subject at the {position} "
-                + $"position, so the arm is dead code. Output was: {result.StandardOutput}");
-            result.RawDiagnostics.Should().Contain(
-                d => d.Code == DiagnosticCodes.Semantic.TypePatternIncompatible,
-                $"an impossible class pattern is refused with SPY0361, not left to CS8121 behind "
-                + $"SPY0908. Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
-        }
-        else
-        {
-            result.Success.Should().BeTrue(
-                $"`case {builtin}(v):` on a '{subjectType}' subject at the {position} position must "
-                + $"compile. Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
-            result.StandardOutput.TrimEnd().Should().Be(
-                "hit",
-                $"`case {builtin}(v):` must match a real {builtin} at the {position} position — "
-                + "python3 3.12 prints `hit` for every one of these cells");
-        }
-    }
-
-    // ── Group 9b: the two-element nested sequence, the shape #1670 names ──
-
-    [Fact]
-    public void PositionalCapture_NestedSequenceTwoElements_Runs()
-    {
-        // python3 3.12:
-        //   >>> def d(o):
-        //   ...     match o:
-        //   ...         case [list(inner), int(n)]: print('seq')
-        //   ...         case _:                     print('other')
-        //   >>> d([[1], 2])
-        //   seq
-        const string source = @"
-def check(o: list[object]) -> None:
-    match o:
-        case [list(inner), int(n)]:
-            print(""seq"")
-        case _:
-            print(""other"")
-
-def main() -> None:
-    xs: list[object] = [[1], 2]
-    check(xs)
-";
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue(
-            $"nested positional captures compile. Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
-        result.StandardOutput.TrimEnd().Should().Be("seq", "python3 3.12 prints `seq`");
-    }
-
-    // ── Group 10: refusals that stay refusals ──
-
-    public static IEnumerable<object[]> RefusedClassPatternCells()
-    {
-        // `bytearray` and `range` are self-matching NAMES with no registered type: the arm used to
-        // fall back to the scrutinee's own type, which made `case bytearray(v):` an irrefutable
-        // `case object v:` that matched the int 1 and printed "bytearray" (python3 prints "other").
-        yield return new object[] { "bytearray(v)", DiagnosticCodes.Semantic.UndefinedType };
-        yield return new object[] { "range(v)", DiagnosticCodes.Semantic.UndefinedType };
-        // tuple/frozenset ARE generic types with no erasure interface in Sharpy.Core, so nothing
-        // determines their arguments and nothing can be tested — the honest refusal, not a silently
-        // wrong 0-tuple test (which is what the emitter produced before #1670's checker half).
-        yield return new object[] { "tuple(v)", DiagnosticCodes.Semantic.OpenGenericTypeTest };
-        yield return new object[] { "frozenset(v)", DiagnosticCodes.Semantic.OpenGenericTypeTest };
-        // `list[int](v)` is no longer refused: SPY0125 is retired (#1619, #1708) and an explicit
-        // type-argument head is arm 2 of the reification ruling — it resolves to the closed type
-        // `list[int]` and RUNS (on an `object` holding an int it prints "miss"). This whole matrix
-        // is re-cut into the form x scrutinee x spelling class matrix in Phase 7.
-    }
-
-    [Theory]
-    [MemberData(nameof(RefusedClassPatternCells))]
-    public void RefusedClassPattern_ReportsItsCode(string patternText, string expectedCode)
-    {
-        var source = @"
-def check(o: object) -> None:
-    match o:
-        case @P@:
-            print(""hit"")
-        case _:
-            print(""miss"")
-
-def main() -> None:
-    check(1)
-".Replace("@P@", patternText, StringComparison.Ordinal);
-
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse(
-            $"`case {patternText}:` names no testable type. Output was: {result.StandardOutput}");
-        result.RawDiagnostics.Should().Contain(
-            d => d.Code == expectedCode,
-            $"`case {patternText}:` is refused with {expectedCode}. "
-            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
-    }
-
-    // ── Group 11: what the capture is TYPED as (the annotated destination is the probe) ──
-
-    public static IEnumerable<object[]> CaptureTypingCells()
-    {
-        // `object` subject: the test erases to Sharpy.IList, so the capture surface is list[object].
-        yield return new object[] { "object", "[1, 2]", "list[object]" };
-        // Closed subject: the vector is filled FROM THE SUBJECT, so the capture keeps its elements.
-        yield return new object[] { "list[int]", "[1, 2]", "list[int32]" };
-    }
-
-    [Theory]
-    [MemberData(nameof(CaptureTypingCells))]
-    public void PositionalCapture_TypedAs(string subjectType, string literal, string expectedTypeName)
-    {
-        var source = @"
-def check(o: @SUBJ@) -> None:
-    match o:
-        case list(xs):
-            b: bool = xs
-            print(""hit"")
-        case _:
-            print(""miss"")
-
-def main() -> None:
-    x: @SUBJ@ = @LIT@
-    check(x)
-".Replace("@SUBJ@", subjectType, StringComparison.Ordinal)
- .Replace("@LIT@", literal, StringComparison.Ordinal);
-
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse("`b: bool = xs` is the type probe and must not compile");
-        result.RawDiagnostics.Should().Contain(
-            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch
-                && d.Message.Contains(expectedTypeName, StringComparison.Ordinal),
-            $"the capture of `case list(xs):` on a '{subjectType}' subject is typed "
-            + $"'{expectedTypeName}'. Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
-    }
-
-    // ── Group 12: subsumption — an earlier arm that matches every value of its type ──
-
+    // ── Subsumption: a total earlier arm makes a later refutable arm unreachable (SPY0700) ──
     public static IEnumerable<object[]> SubsumingEarlierArmCells()
     {
         yield return new object[] { "int()" };
@@ -514,34 +786,24 @@ def check(o: object) -> None:
 def main() -> None:
     check(1)
 ".Replace("@EARLIER@", earlierPattern, StringComparison.Ordinal);
-
         var result = CompileAndExecute(source);
-
         result.Success.Should().BeFalse(
-            $"`case {earlierPattern}:` matches every int, so `case 99:` is unreachable. "
-            + $"Output was: {result.StandardOutput}");
-        result.RawDiagnostics.Should().Contain(
-            d => d.Code == DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
-            $"the subsumed arm is SPY0700, not CS8120 behind SPY0908. "
-            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
+            $"`case {earlierPattern}:` matches every int, so `case 99:` is unreachable. Output: {result.StandardOutput}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0700);
     }
 
     public static IEnumerable<object[]> SubsumptionPositiveControlCells()
     {
-        // A literal first: it refutes on a VALUE, so the type arm behind it is still reachable.
         yield return new object[]
         {
             "case 99:\n            print(\"ninety-nine\")\n        case int():\n            print(\"int\")",
             "int",
         };
-        // A GUARDED total arm decides nothing statically, so the arm behind it stays reachable (R1′).
         yield return new object[]
         {
             "case int() if always():\n            print(\"int\")\n        case 99:\n            print(\"ninety-nine\")",
             "int",
         };
-        // Different runtime types: `case float():` does not match a boxed int, even though int is
-        // implicitly convertible to float. python3 3.12 prints `one` here too.
         yield return new object[]
         {
             "case float():\n            print(\"float\")\n        case 1:\n            print(\"one\")",
@@ -566,17 +828,14 @@ def check(o: object) -> None:
 def main() -> None:
     check(1)
 ".Replace("@ARMS@", arms, StringComparison.Ordinal);
-
         var result = CompileAndExecute(source);
-
         result.Success.Should().BeTrue(
-            "this arm order is reachable and must NOT be refused — the subsumption rule is only "
-            + $"falsifiable if it lets these through. Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
+            "this arm order is reachable and must NOT be refused. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
         result.StandardOutput.TrimEnd().Should().Be(expected);
     }
 
-    // ── Group 8: As-pattern capture ──
-
+    // ── As-pattern capture ──
     [Fact]
     public void AsPatternCapture_StrOnObject_TypedAsStr()
     {
@@ -591,8 +850,7 @@ def main() -> None:
             print(""other"")
 ";
         var result = CompileAndExecute(source);
-
-        result.Success.Should().BeTrue("as-pattern capture on str should compile and run");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.TrimEnd().Should().Be("HELLO");
     }
 }
