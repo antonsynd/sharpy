@@ -1950,18 +1950,36 @@ internal partial class RoslynEmitter
             }
             else
             {
-                // A user module (no CLR class / namespace) is emitted fully qualified as
-                // global::[ProjectNamespace.]<ModulePath> instead of the `import lib` alias
-                // identifier, whose `using lib = <Ns>.Lib;` directive is deleted (#1683). The module
-                // path comes from the resolved module's CanonicalModuleName, NOT the written segments,
-                // so an aliased import (`import utils as u`) qualifies to Utils, not the alias U.
-                var userModuleName = currentModule.CanonicalModuleName ?? string.Join(".", moduleParts);
-                var userModuleNamespacePath = ConvertModuleNameToNamespace(userModuleName);
-                var moduleSegs = new List<string>();
-                if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                    moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));
-                moduleSegs.AddRange(userModuleNamespacePath.Split('.'));
-                moduleExpr = MakeGlobalQualifiedName(moduleSegs.ToArray());
+                var resolvedModuleName = currentModule.CanonicalModuleName ?? string.Join(".", moduleParts);
+                string? stdlibClassName = IsStdlibModule(resolvedModuleName)
+                    ? _context.SemanticBinding.GetNetModuleCSharpClassName(resolvedModuleName)
+                    : null;
+                if (stdlibClassName != null)
+                {
+                    // A stdlib module whose resolved ModuleSymbol did not carry CSharpClassName (only
+                    // the SemanticBinding mapping did) — qualify to its REAL emitted class,
+                    // global::Sharpy.<ModuleClass>, identical to the `using x = global::Sharpy.XModule;`
+                    // alias RHS. Deriving the namespace from the module name instead produced
+                    // global::Re / global::Os.Path (CS0400), the #1683 P2.2b stdlib regression.
+                    var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(resolvedModuleName);
+                    var full = ConvertNetModuleToFullyQualified(resolvedModuleName, ns, stdlibClassName);
+                    moduleExpr = MakeGlobalQualifiedName(full["global::".Length..].Split('.'));
+                }
+                else
+                {
+                    // A user module (no CLR class / namespace) is emitted fully qualified as
+                    // global::[ProjectNamespace.]<ModulePath> instead of the `import lib` alias
+                    // identifier, whose `using lib = <Ns>.Lib;` directive is deleted (#1683). The
+                    // module path comes from the resolved module's CanonicalModuleName, NOT the
+                    // written segments, so an aliased import (`import utils as u`) qualifies to Utils,
+                    // not the alias U.
+                    var userModuleNamespacePath = ConvertModuleNameToNamespace(resolvedModuleName);
+                    var moduleSegs = new List<string>();
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                        moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));
+                    moduleSegs.AddRange(userModuleNamespacePath.Split('.'));
+                    moduleExpr = MakeGlobalQualifiedName(moduleSegs.ToArray());
+                }
             }
 
             // If the entire path is just the module (no member access), return it
