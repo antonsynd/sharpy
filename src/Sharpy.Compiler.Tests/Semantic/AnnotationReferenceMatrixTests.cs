@@ -78,12 +78,29 @@ public class AnnotationReferenceMatrixTests
     {
         var roster = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var kind in SymbolKinds)
-        {
-            // Pattern head (`case C():`) is rostered N/A for Batch 6 per plan-4e3055.
-            roster[Key(kind, "pattern_head")] = "Batch 6 -- pattern-head type positions are not "
-                + "resolved through the annotation seam yet.";
-        }
+        // Pattern head (`case C():` / union-case head): the classifier records the head as a
+        // reference through the same SetTypeAnnotation seam #1737 uses (#1708/#1703). LIVE for the
+        // kinds that can head a class pattern; the four below cannot, and are rostered with a MEASURED
+        // reason (not "Batch 6"). enum and union do not record a reference to their OWN symbol from a
+        // pattern head — an enum is matched through a member (`case C.RED:`, a member-access pattern
+        // that references C via the recorded chain, not the annotation seam) and a union through its
+        // cases (the case head references the CASE symbol, not the union) — so they stay rostered too;
+        // their member-access chain reference is Phase 5 (#1799/#1735).
+        roster[Key("enum", "pattern_head")] =
+            "an enum is matched through a member (`case C.RED:`), a member-access pattern that "
+            + "references the enum via the recorded chain, not the annotation seam (#1735, Phase 5).";
+        roster[Key("union", "pattern_head")] =
+            "a union is matched through its cases (`case Circle():`); the case head references the "
+            + "CASE symbol, not the union symbol, and the union-symbol chain reference is Phase 5 (#1799).";
+        roster[Key("delegate", "pattern_head")] =
+            "a delegate type cannot head a class pattern (no instance to deconstruct or test).";
+        roster[Key("alias", "pattern_head")] =
+            "a type alias cannot head a class pattern; the aliased type is spelled directly.";
+        roster[Key("generic_alias", "pattern_head")] =
+            "a generic alias application cannot head a class pattern.";
+        roster[Key("type_parameter", "pattern_head")] =
+            "a bare type parameter subject is an OPEN test (SPY0345), not a class-pattern head that "
+            + "names a runtime type (#1619).";
 
         // Base-class list: LIVE. Inheritance is resolved in name resolution, a pass before any
         // SemanticInfo exists, so the base annotation used to miss the seam entirely and
@@ -383,6 +400,7 @@ public class AnnotationReferenceMatrixTests
         // base; neither spelling names C a second time.
         "base_class_list" => $"class Sub({spelling}):\n    def tick(self) -> None:\n        pass\n",
         "as_target" => $"def use(o: object) -> None:\n    v = o as? {spelling}\n    print(v is not None)\n",
+        "pattern_head" => $"def use(o: object) -> None:\n    match o:\n        case {spelling}():\n            print(1)\n        case _:\n            print(2)\n",
         _ => throw new ArgumentException(
             $"Position '{position}' has no host: it is rostered N/A and must not be built.")
     };

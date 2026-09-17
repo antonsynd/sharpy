@@ -273,9 +273,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, InterpolationLowering> _interpolationLowerings =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map patterns to their resolved union case type symbols
-    // Used when a PositionalPattern or MemberAccessPattern matches a union case
-    private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
+    // Map patterns to their resolved union case type symbol AND the scrutinee union's substituted
+    // type-argument vector. Used when a PositionalPattern/TypePattern/PropertyPattern/MemberAccessPattern
+    // matches a union case. The vector is what the emitter needs to spell the closed case type
+    // (Result<int, str>.Ok, not Result<T, E>.Ok) — kept beside the case symbol so the two cannot drift
+    // (#1703, Decision 4). GetPatternUnionCase keeps returning the case symbol alone (18 consumers).
+    private readonly ConcurrentDictionary<Pattern, PatternUnionCaseResolution> _patternUnionCases =
         new(ReferenceEqualityComparer.Instance);
 
     // Map MemberAccessPatterns to their resolved type symbol + the index of the type
@@ -1122,12 +1125,17 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records that a pattern was resolved to a specific union case type symbol.
-    /// Used for PositionalPattern and MemberAccessPattern matching union cases.
+    /// Records that a pattern was resolved to a specific union case type symbol, together with the
+    /// scrutinee union's SUBSTITUTED type-argument vector (<paramref name="parentTypeArgs"/>): the
+    /// closed <c>[int, str]</c> for a <c>Result[int, str]</c> scrutinee, the declaration's own
+    /// <c>TypeParameterType</c>s inside the union's own method, or null for a non-generic union. The
+    /// emitter reads the vector through <see cref="GetPatternUnionCaseTypeArguments"/> to spell the
+    /// closed case type instead of re-deriving it from the scrutinee (#1703, Rule 2).
     /// </summary>
-    public void SetPatternUnionCase(Pattern pattern, TypeSymbol caseSymbol)
+    public void SetPatternUnionCase(
+        Pattern pattern, TypeSymbol caseSymbol, IReadOnlyList<SemanticType>? parentTypeArgs = null)
     {
-        _patternUnionCases[pattern] = caseSymbol;
+        _patternUnionCases[pattern] = new PatternUnionCaseResolution(caseSymbol, parentTypeArgs);
     }
 
     /// <summary>
@@ -1136,7 +1144,18 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public TypeSymbol? GetPatternUnionCase(Pattern pattern)
     {
-        return _patternUnionCases.TryGetValue(pattern, out var symbol) ? symbol : null;
+        return _patternUnionCases.TryGetValue(pattern, out var resolution) ? resolution.CaseSymbol : null;
+    }
+
+    /// <summary>
+    /// Gets the scrutinee union's substituted type-argument vector recorded alongside a pattern's
+    /// union case (<see cref="SetPatternUnionCase"/>), or null when none was recorded or the union is
+    /// non-generic. The sibling accessor to <see cref="GetPatternUnionCase"/> — added so recording the
+    /// vector did not have to change that method's return shape and break its 18 consumers (Decision 4).
+    /// </summary>
+    public IReadOnlyList<SemanticType>? GetPatternUnionCaseTypeArguments(Pattern pattern)
+    {
+        return _patternUnionCases.TryGetValue(pattern, out var resolution) ? resolution.ParentTypeArgs : null;
     }
 
     public void SetPatternMemberAccessResolution(MemberAccessPattern pattern, TypeSymbol typeSymbol, int typeIndex)
@@ -2369,6 +2388,16 @@ public enum CharMaterializationKind
     /// </summary>
     Literal
 }
+
+/// <summary>
+/// A pattern's resolved union case plus the scrutinee union's substituted type-argument vector.
+/// Stored as one value so the case symbol and the vector the emitter needs to spell the closed case
+/// type cannot drift apart (#1703, Decision 4). <see cref="ParentTypeArgs"/> is null for a non-generic
+/// union.
+/// </summary>
+public sealed record PatternUnionCaseResolution(
+    TypeSymbol CaseSymbol,
+    IReadOnlyList<SemanticType>? ParentTypeArgs);
 
 /// <summary>
 /// How codegen emits the type test for a classified <c>isinstance</c> type operand. The TypeChecker's

@@ -130,7 +130,8 @@ internal partial class TypeChecker
                             binding.Name.Name, scrutineeType);
                         if (unionCaseSymbol != null)
                         {
-                            _semanticInfo.SetPatternUnionCase(binding, unionCaseSymbol);
+                            _semanticInfo.SetPatternUnionCase(
+                                binding, unionCaseSymbol, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
 
                             // Design Decision 4: variant wins, but warn if a constant is shadowed
                             var shadowed = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
@@ -210,7 +211,8 @@ internal partial class TypeChecker
                         // Record synthetic None union case for exhaustiveness checking
                         var synth = GetSyntheticOptionalUnion();
                         var noneCase = synth.UnionCases.First(c => c.Name == "None");
-                        _semanticInfo.SetPatternUnionCase(literal, noneCase);
+                        _semanticInfo.SetPatternUnionCase(
+                            literal, noneCase, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
                         break;
                     }
 
@@ -219,7 +221,8 @@ internal partial class TypeChecker
                     {
                         var synth = GetSyntheticOptionalUnion();
                         var noneCase = synth.UnionCases.First(c => c.Name == "None");
-                        _semanticInfo.SetPatternUnionCase(literal, noneCase);
+                        _semanticInfo.SetPatternUnionCase(
+                            literal, noneCase, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
                         break;
                     }
 
@@ -726,6 +729,20 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Records a union-case pattern head as a REFERENCE to its case symbol on the head's type
+    /// annotation, through the same <see cref="Semantic.SemanticInfo.SetTypeAnnotation"/> seam #1737
+    /// uses for class-pattern heads — so hover (#1735) answers for union-case heads and the
+    /// annotation-reference matrix's pattern_head rows drain. Guarded to record ONCE (Decision 8),
+    /// matching <c>ClassifyTypeTestAnnotation</c>'s guard for class-pattern heads.
+    /// </summary>
+    private void RecordUnionCaseHeadReference(
+        TypeAnnotation annotation, SemanticType caseType, TypeSymbol caseSymbol)
+    {
+        if (_semanticInfo.GetTypeAnnotation(annotation) == null)
+            _semanticInfo.SetTypeAnnotation(annotation, caseType, caseSymbol);
+    }
+
+    /// <summary>
     /// Check a type pattern: resolve the type, handle union cases, validate compatibility,
     /// and register any binding variable. Routes through the shared class-pattern classifier so
     /// <see cref="Semantic.SemanticInfo.SetTypeTestLowering"/> is recorded for every path
@@ -738,9 +755,11 @@ internal partial class TypeChecker
             typePattern.Type.Name, scrutineeType);
         if (earlyUnionCase != null)
         {
-            _semanticInfo.SetPatternUnionCase(typePattern, earlyUnionCase);
             var earlyResolved = new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase };
+            _semanticInfo.SetPatternUnionCase(
+                typePattern, earlyUnionCase, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
             _semanticInfo.SetPatternType(typePattern, earlyResolved);
+            RecordUnionCaseHeadReference(typePattern.Type, earlyResolved, earlyUnionCase);
 
             // `case Some():` over an Optional scrutinee lowers to the (has-value, payload)
             // deconstruction, so the type the emitted pattern TESTS is the payload, not the case
@@ -773,7 +792,12 @@ internal partial class TypeChecker
             if (earlyUnionCase != null)
             {
                 typeSymbol = earlyUnionCase;
-                _semanticInfo.SetPatternUnionCase(propertyPattern, earlyUnionCase);
+                _semanticInfo.SetPatternUnionCase(
+                    propertyPattern, earlyUnionCase, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
+                RecordUnionCaseHeadReference(
+                    propertyPattern.Type,
+                    new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase },
+                    earlyUnionCase);
             }
             else
             {
@@ -857,7 +881,12 @@ internal partial class TypeChecker
             if (unionCaseSymbol != null)
             {
                 typeSymbol = unionCaseSymbol;
-                _semanticInfo.SetPatternUnionCase(positionalPattern, unionCaseSymbol);
+                _semanticInfo.SetPatternUnionCase(
+                    positionalPattern, unionCaseSymbol, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
+                RecordUnionCaseHeadReference(
+                    positionalPattern.Type,
+                    new UserDefinedType { Name = unionCaseSymbol.Name, Symbol = unionCaseSymbol },
+                    unionCaseSymbol);
             }
             else
             {
@@ -988,7 +1017,8 @@ internal partial class TypeChecker
             var caseSymbol = typeSymbol.UnionCases.FirstOrDefault(c => c.Name == caseName);
             if (caseSymbol != null)
             {
-                _semanticInfo.SetPatternUnionCase(memberAccess, caseSymbol);
+                _semanticInfo.SetPatternUnionCase(
+                    memberAccess, caseSymbol, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
                 return;
             }
             else
