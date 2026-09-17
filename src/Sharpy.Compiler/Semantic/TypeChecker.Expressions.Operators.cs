@@ -2007,7 +2007,7 @@ internal partial class TypeChecker
         // Possibility is judged on the type the EMITTER actually casts FROM — not the flow-narrowed read
         // type (R-P5-2). See PossibilitySourceType.
         var possibilitySource = PossibilitySourceType(coercion.Value, sourceType);
-        if (CoercionPossibility.Classify(possibilitySource, targetType, SemanticBinding) == CoercionPossibility.Kind.Impossible)
+        if (CoercionPossibility.Classify(possibilitySource, targetType, SemanticBinding) == CoercionPossibility.Verdict.Impossible)
         {
             AddError(
                 BuildImpossibleCoercionMessage(possibilitySource, targetType),

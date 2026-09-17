@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Semantic;
 /// unrelated classes, <c>list[int] as? list[str]</c>) sailed through semantic analysis and blew up in
 /// Roslyn as CS8121/CS0030 — surfaced to the user as SPY0908 "generated C# failed to compile", an
 /// internal-error net rather than a diagnosis. This classifier is TOTAL: every pair lands in exactly
-/// one <see cref="Kind"/>, and only <see cref="Kind.Impossible"/> is refused (SPY0610), by name and with
+/// one <see cref="Verdict"/>, and only <see cref="Verdict.Impossible"/> is refused (SPY0610), by name and with
 /// a steer. The refusal is on the EXPRESSION, uniform across <c>as?</c> and <c>as!</c> and across every
 /// consumption (value, truthiness, assert) — the consumer never enters into it (R-E).</para>
 ///
@@ -22,7 +22,7 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal static class CoercionPossibility
 {
-    internal enum Kind
+    internal enum Verdict
     {
         /// <summary>Source and target are the same type.</summary>
         Identity,
@@ -61,9 +61,9 @@ internal static class CoercionPossibility
     /// <summary>
     /// Classifies the coercion <c>source as?/as! target</c>. The order matters: the earlier, broader
     /// allow-arms (identity, type parameter, object, interface) subsume the narrower ones, and only a
-    /// pair that matches none is <see cref="Kind.Impossible"/>.
+    /// pair that matches none is <see cref="Verdict.Impossible"/>.
     /// </summary>
-    internal static Kind Classify(SemanticType source, SemanticType target, SemanticBinding? binding)
+    internal static Verdict Classify(SemanticType source, SemanticType target, SemanticBinding? binding)
     {
         // Possibility is a property of the UNDERLYING runtime types: `int? as? int` is possible (identity
         // once unwrapped) and `int as? str?` is impossible (int→str, regardless of the target's
@@ -72,7 +72,7 @@ internal static class CoercionPossibility
         target = Unwrap(target);
 
         if (source.Equals(target))
-            return Kind.Identity;
+            return Verdict.Identity;
 
         // Same underlying type symbol: an import alias and its target share one ClrType (and one
         // definition), so `Match as NetMatch` — where NetMatch is `from ... import Match as NetMatch`
@@ -85,36 +85,36 @@ internal static class CoercionPossibility
             var sSym = TypeSymbolOf(source);
             var tSym = TypeSymbolOf(target);
             if (sSym != null && tSym != null && TypeHierarchyService.IsSameType(sSym, tSym))
-                return Kind.Identity;
+                return Verdict.Identity;
         }
 
         // A type parameter on either side is open: the instantiation decides, not this site.
         if (source is TypeParameterType || target is TypeParameterType)
-            return Kind.TypeParameter;
+            return Verdict.TypeParameter;
 
         // Unboxing/downcast: object (or an unmapped CLR value) or an interface SOURCE.
         if (IsObjectLike(source) || IsInterface(source))
-            return Kind.Unboxing;
+            return Verdict.Unboxing;
 
         // Boxing/upcast: object TARGET.
         if (IsObjectLike(target))
-            return Kind.Boxing;
+            return Verdict.Boxing;
 
         // Interface on the target (or source) — an unsealed class could satisfy it.
         if (IsInterface(target))
-            return Kind.InterfaceSatisfiable;
+            return Verdict.InterfaceSatisfiable;
 
         // Enum <-> numeric backing.
         if (IsEnumNumericPair(source, target))
-            return Kind.EnumBacking;
+            return Verdict.EnumBacking;
 
         // Numeric <-> numeric — the numeric lowering owns the runtime narrowing check.
         if (PrimitiveCatalog.IsNumeric(source) && PrimitiveCatalog.IsNumeric(target))
-            return Kind.Numeric;
+            return Verdict.Numeric;
 
         // A user-defined __explicit__ operator in either direction.
         if (HasExplicitConversion(source, target) || HasExplicitConversion(target, source))
-            return Kind.UserExplicit;
+            return Verdict.UserExplicit;
 
         // Inheritance relationship (either direction). Reads the declaring symbol from a user-defined
         // type OR a generic type's definition, so a generic subject reaches its (possibly generic) base
@@ -129,7 +129,7 @@ internal static class CoercionPossibility
             && !TypeHierarchyService.IsSameType(sourceSymbol, targetSymbol)
             && (TypeHierarchyService.InheritsFrom(sourceSymbol, targetSymbol, binding)
                 || TypeHierarchyService.InheritsFrom(targetSymbol, sourceSymbol, binding)))
-            return Kind.Inheritance;
+            return Verdict.Inheritance;
 
         // Same generic definition with the SAME type arguments. Different arguments (list[int] vs
         // list[str]) are NOT castable — Sharpy collections are invariant classes (#1330), so this arm
@@ -138,9 +138,9 @@ internal static class CoercionPossibility
             && SameGenericDefinition(sg, tg)
             && sg.TypeArguments.Count == tg.TypeArguments.Count
             && sg.TypeArguments.SequenceEqual(tg.TypeArguments))
-            return Kind.GenericSameDefinitionSameArgs;
+            return Verdict.GenericSameDefinitionSameArgs;
 
-        return Kind.Impossible;
+        return Verdict.Impossible;
     }
 
     private static SemanticType Unwrap(SemanticType type) => type switch
@@ -157,8 +157,11 @@ internal static class CoercionPossibility
         _ => null,
     };
 
-    private static bool IsObjectLike(SemanticType type)
-        => type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" } or UnmappedClrType;
+    // Identity read: delegate to the canonical SemanticType.IsObjectLike (the #1718 path that
+    // replaced the emitter's string comparison), never a `BuiltinType { Name: ... }` spelling match
+    // — a Name-string test inverts silently when a canonical spelling changes (#1304/#1356).
+    // BuiltinType `object` and UnmappedClrType both return true there.
+    private static bool IsObjectLike(SemanticType type) => type.IsObjectLike;
 
     private static bool IsInterface(SemanticType type)
         => type is UserDefinedType { Symbol.TypeKind: TypeKind.Interface };
