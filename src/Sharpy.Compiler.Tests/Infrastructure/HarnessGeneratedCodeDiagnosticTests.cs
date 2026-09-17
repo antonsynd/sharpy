@@ -37,26 +37,28 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
     /// A program that survives semantic analysis and is refused by ROSLYN — the only shape that can
     /// reach the C#-compile stage, and so the only positive control this harness contract can have.
     ///
-    /// <para><b>#1713 is the reason this source is what it is.</b> A statically-impossible
-    /// <c>as?</c> coercion (<c>bytes as? long</c>: a sealed class against a value type) is typed by
-    /// the checker and emitted as a C# <c>is</c> pattern Roslyn rejects outright. Through
-    /// <c>sharpyc run</c>: <c>error[SPY0908]: internal error: generated C# failed to compile
-    /// (CS8121: An expression of type 'Bytes' cannot be handled by a pattern of type
-    /// 'long'.)</c>.</para>
+    /// <para><b>#1868 is the reason this source is what it is.</b> <c>list(x)</c> types its result
+    /// from the ELEMENT type of its argument; when the argument is not iterable there is no element
+    /// type and the collection constructor falls back to <c>Unknown</c> type arguments rather than
+    /// refusing. <c>Unknown</c> is assignable to anything, so the program type-checks clean and the
+    /// emitted <c>List&lt;&gt;</c> reaches Roslyn with no type argument. Through <c>sharpyc run</c>:
+    /// <c>error[SPY0908]: internal error: generated C# failed to compile (CS0305: Using the generic
+    /// type 'List&lt;T&gt;' requires 1 type arguments)</c>.</para>
     ///
-    /// <para><b>This control has to be re-based when #1713 lands</b>, exactly as it was re-based
-    /// once already. It used to be <c>a: Animal = Dog() if c else "x"</c>, which reached Roslyn as
-    /// CS0029 until R-W arm 1 began admitting or refusing each conditional branch at its own span
-    /// (#1677/#1743) — that program is now a semantic SPY0220 at the <c>"x"</c> branch and can no
-    /// longer exercise the C#-compile stage. The harness contract below is unchanged; only the
-    /// input that reaches it moved. Any remaining SPY0908 gap will do.</para>
+    /// <para><b>This control has to be re-based whenever its ICE is fixed</b>, as it has been twice
+    /// already. It was <c>a: Animal = Dog() if c else "x"</c> (CS0029) until R-W arm 1 turned that
+    /// into a semantic SPY0220 (#1677/#1743); then <c>assert b"hello" as? long</c> (CS8121) until
+    /// #1713 made a statically-impossible coercion a semantic-time SPY0610 refusal — that program no
+    /// longer reaches the C#-compile stage. The harness contract below is unchanged; only the input
+    /// that reaches it moved. When #1868 is fixed (<c>list(x)</c> on a non-iterable becomes a
+    /// semantic refusal), re-base onto whatever SPY0908 gap is still real then; any remaining one
+    /// will do.</para>
     /// </summary>
     private const string RoslynFailingSource = """
-        def compute(data: int) -> None:
-            assert b"hello" as? long, "x"
-
         def main() -> None:
-            compute(1)
+            x: int = 42
+            items = list(x)
+            print(items)
         """;
 
     private const string CleanSource = """
@@ -72,7 +74,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
         Assert.False(result.Success);
 
         // The C# error text must survive on CompilationErrors (unchanged contract) …
-        Assert.Contains("CS8121", string.Join("\n", result.CompilationErrors));
+        Assert.Contains("CS0305", string.Join("\n", result.CompilationErrors));
 
         // … and the fact must also be recorded as a diagnostic, or the suite's
         // "no SPY0908" assertions cannot go red.
@@ -84,7 +86,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
         Assert.Equal(CompilerPhase.Assembly, ice.Phase);
         // Mapped through AssemblyCompiler, so the harness and the CLI carry the same message
         // shape and the original Roslyn id is not lost.
-        Assert.Contains("CS8121", ice.Message);
+        Assert.Contains("CS0305", ice.Message);
         Assert.Contains("generated C# failed to compile", ice.Message);
     }
 
@@ -101,7 +103,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
             var result = CompileAndExecuteEntryFile(entry);
 
             Assert.False(result.Success);
-            Assert.Contains("CS8121", string.Join("\n", result.CompilationErrors));
+            Assert.Contains("CS0305", string.Join("\n", result.CompilationErrors));
 
             var ice = Assert.Single(
                 result.RawDiagnostics,
@@ -109,7 +111,7 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
 
             Assert.Equal(CompilerDiagnosticSeverity.Error, ice.Severity);
             Assert.Equal(CompilerPhase.Assembly, ice.Phase);
-            Assert.Contains("CS8121", ice.Message);
+            Assert.Contains("CS0305", ice.Message);
         }
         finally
         {
