@@ -1,0 +1,17 @@
+# #1708/#1299: a bare collection pattern on an OPEN scrutinee (statically `object`) names no
+# runtime type — the argument vector cannot be filled from the subject, so the arm is refused
+# (SPY0345) rather than erased to a non-generic interface. Write the closed spelling to say
+# which reified collection you mean: `case list[object](xs)` matches an object-typed producer's
+# list, `case list[int](xs)` matches a list built as list[int]. This is the open-scrutinee twin
+# of match/match_collection_pattern_closed_scrutinee, where the bare pattern fills from a closed
+# subject and is accepted.
+
+def classify(x: object) -> str:
+    match x:
+        case list():
+            return "list"
+        case _:
+            return "other"
+
+def main() -> None:
+    print(classify([1, 2, 3]))

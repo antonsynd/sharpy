@@ -1,10 +1,10 @@
-# Match an `object` parameter against a bare `case dict()` collection pattern.
-# Semantic layer infers dict[object, object]; codegen lowers to Sharpy.IDict (#869).
-# Verifies dispatch + len() — the original regression guard.
+# Match an `object` parameter against a reified `case dict[str, int](d)` collection pattern
+# (#869; migrated to the closed spelling under reification, #1708). The scrutinee is built as
+# dict[str, int], so that is the spelling that matches. Verifies dispatch + len().
 
 def process(value: object) -> None:
     match value:
-        case dict() as d:
+        case dict[str, int](d):
             print("dict with " + str(len(d)) + " entries")
         case _:
             print("not a dict")

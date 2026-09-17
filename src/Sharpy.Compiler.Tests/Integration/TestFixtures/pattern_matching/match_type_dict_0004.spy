@@ -1,10 +1,10 @@
-# Bare `case dict() as d` — aliasing / mutation through the binding (#869).
+# Reified `case dict[str, int](d)` — aliasing / mutation through the binding (#869; migrated #1708).
 # Mutation through the pattern-bound `d` must be visible via the original
 # reference (Python aliasing semantics — no copying on match).
 
 def mutate(value: object) -> None:
     match value:
-        case dict() as d:
+        case dict[str, int](d):
             d["c"] = 3
             print("mutated")
 

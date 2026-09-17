@@ -6,7 +6,7 @@ def render(x: object) -> str:
             return "str:" + s.upper()
         case int() as n:
             return "int:" + str(n * n)
-        case list() as items:
+        case list[int](items):
             return "list:" + str(len(items))
         case _:
             return "other"

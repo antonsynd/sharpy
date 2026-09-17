@@ -4,6 +4,10 @@
 # against `object` — a pattern rejected by the very type it matches, and the opposite of CPython,
 # where `case list():` matches a plain list. The erasure rule was guarded on an object scrutinee and
 # the fill-from-subject rule excluded collections, so the closed case fell between them.
+#
+# The open-scrutinee counterpart no longer erases: under reification (#1708) a bare collection
+# pattern on an `object` scrutinee is refused with SPY0345 (see
+# errors/match_bare_collection_open_scrutinee_refused). This fixture pins only the closed-fill arm.
 
 def closed_list(xs: list[int]) -> None:
     match xs:
@@ -26,16 +30,7 @@ def closed_set(s: set[int]) -> None:
         case _:
             print("other")
 
-def erased(o: object) -> None:
-    # Still erases: nothing to fill from, which is what the object-scrutinee rule always meant.
-    match o:
-        case list():
-            print("erased-list")
-        case _:
-            print("other")
-
 def main() -> None:
     closed_list([1, 2, 3])
     closed_dict({"a": 1})
     closed_set({1, 2})
-    erased([1, 2])

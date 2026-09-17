@@ -1,5 +1,5 @@
 def process(x: object) -> None:
-    if isinstance(x, list):
+    if isinstance(x, list[object]):
         x += [4]
 
 def main() -> None:

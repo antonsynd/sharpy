@@ -803,9 +803,11 @@ public class HoverTests : IDisposable
     [Fact]
     public async Task Hover_PatternBoundDict_ShowsSpecializedType()
     {
-        // Line 3: "        case dict() as d:" — d at col 24
+        // #1708: a bare `case dict()` on an `object` scrutinee is refused (SPY0345); the reified
+        // closed spelling narrows the binding to its written arguments.
+        // Line 3: "        case dict[str, object]() as d:" — d capture on line 3
         // Line 4: "            print(d)"     — d at col 19
-        var source = "def process(value: object) -> None:\n    match value:\n        case dict() as d:\n            print(d)\ndef main():\n    pass";
+        var source = "def process(value: object) -> None:\n    match value:\n        case dict[str, object]() as d:\n            print(d)\ndef main():\n    pass";
         _workspace.OpenDocument("file:///test_dict_pattern.spy", source, 1);
 
         var analysis = await _workspace.GetAnalysisAsync("file:///test_dict_pattern.spy");
@@ -824,7 +826,7 @@ public class HoverTests : IDisposable
             var genericType = (GenericType)type!;
             genericType.Name.Should().Be("dict");
             genericType.TypeArguments.Should().HaveCount(2);
-            genericType.GetDisplayName().Should().Be("dict[object, object]");
+            genericType.GetDisplayName().Should().Be("dict[str, object]");
         }
         else
         {

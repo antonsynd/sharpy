@@ -1,9 +1,9 @@
-# Bare `case set() as s` binding with Pythonic operations via Sharpy.ISet (#877).
+# Reified `case set[int](s)` binding with Pythonic operations on the set surface (#877; migrated #1708).
 # Tests add, len(), and containment check.
 
 def process(x: object):
     match x:
-        case set() as s:
+        case set[int](s):
             s.add(99)
             print(len(s))
             print(99 in s)

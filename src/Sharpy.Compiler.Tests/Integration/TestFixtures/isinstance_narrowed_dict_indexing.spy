@@ -1,6 +1,6 @@
 def describe(value: object) -> None:
-    if isinstance(value, dict):
-        # value narrowed to dict[object, object]; indexing must resolve
+    if isinstance(value, dict[str, int]):
+        # value narrowed to dict[str, int]; indexing must resolve
         print(value["key"])
         print(len(value))
 

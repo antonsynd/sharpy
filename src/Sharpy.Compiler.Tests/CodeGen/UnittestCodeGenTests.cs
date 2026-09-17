@@ -2,6 +2,7 @@ using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
@@ -234,12 +235,11 @@ def main():
     }
 
     [Fact]
-    public void AssertRewrite_Isinstance_BareCollectionOperand_ErasesToProtocolInterface()
+    public void AssertRewrite_Isinstance_BareCollectionOperand_RefusedWithClosedSpellingSteer()
     {
-        // #912's erasure reaches the @test rewrite through the SAME classifier every other type-test
-        // position uses, rather than through a private copy of the rule inside GenerateTestAssert.
-        // Deleting that copy and recording the decision had to land together — the copy was
-        // load-bearing for exactly this shape until the classifier covered it.
+        // #1708: the bare `isinstance(x, dict)` no longer erases to a non-generic protocol interface;
+        // reification refuses it (SPY0345) through the SAME classifier every other type-test position
+        // uses, and the @test assert rewrite reads that refusal rather than a private erasure copy.
         var source = @"
 @test
 def test_isinstance_dict():
@@ -249,14 +249,21 @@ def test_isinstance_dict():
 def main():
     print(""ok"")
 ";
-        var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>((object?)x)");
+        var options = new CompilerOptions { TargetsTestHost = true };
+        var result = new Compiler(options).Compile(source, "test.spy");
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+            && d.Message.Contains("Write the closed spelling"));
     }
 
     [Fact]
-    public void AssertRewrite_Isinstance_OrOfSingles_ErasesEachAlternative()
+    public void AssertRewrite_Isinstance_OrOfSingles_RefusesEachBareAlternative()
     {
-        // Union-intent rewritten from (list, dict) to or-of-singles (#1532).
+        // Union-intent rewritten from (list, dict) to or-of-singles (#1532). Under reification (#1708)
+        // each bare alternative is refused with SPY0345 rather than erased — the or-of-singles rewrite
+        // reports the refusal on every arm, not just the first.
         var source = @"
 @test
 def test_isinstance_or():
@@ -266,16 +273,22 @@ def test_isinstance_or():
 def main():
     print(""ok"")
 ";
-        var code = CompileToCSharp(source);
-        code.Should().Contain("global::Sharpy.IList");
-        code.Should().Contain("global::Sharpy.IDict");
+        var options = new CompilerOptions { TargetsTestHost = true };
+        var result = new Compiler(options).Compile(source, "test.spy");
+
+        result.Success.Should().BeFalse();
+        var openGenericRefusals = result.Diagnostics.GetErrors()
+            .Where(d => d.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && d.Message.Contains("Write the closed spelling"))
+            .ToList();
+        openGenericRefusals.Should().HaveCount(2, "both bare alternatives are refused");
     }
 
     [Fact]
-    public void AssertRewrite_NegatedIsinstance_BareCollectionOperand_ErasesToProtocolInterface()
+    public void AssertRewrite_NegatedIsinstance_BareCollectionOperand_RefusedWithClosedSpellingSteer()
     {
-        // The negated arm reads the same recorded decision as the positive one; before this it
-        // carried its own third and fourth copies of the erasure check.
+        // The negated arm reads the same refusal as the positive one (#1708): a bare `isinstance(x, dict)`
+        // inside `not` is refused with SPY0345, not erased to a non-generic protocol interface.
         var source = @"
 @test
 def test_not_isinstance_dict():
@@ -285,8 +298,13 @@ def test_not_isinstance_dict():
 def main():
     print(""ok"")
 ";
-        var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False((object?)x is global::Sharpy.IDict)");
+        var options = new CompilerOptions { TargetsTestHost = true };
+        var result = new Compiler(options).Compile(source, "test.spy");
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+            && d.Message.Contains("Write the closed spelling"));
     }
 
     [Fact]

@@ -1,40 +1,40 @@
 @test
 def test_isinstance_dict():
     x: object = {"a": 1}
-    assert isinstance(x, dict)
+    assert isinstance(x, dict[str, int])
 
 @test
 def test_isinstance_list():
     x: object = [1, 2, 3]
-    assert isinstance(x, list)
+    assert isinstance(x, list[int])
 
 @test
 def test_isinstance_set():
     x: object = {1, 2, 3}
-    assert isinstance(x, set)
+    assert isinstance(x, set[int])
 
 @test
 def test_isinstance_or_of_singles_collections():
     # Union-intent: rewritten from (dict, list) to or-of-singles (#1532).
     x: object = {"a": 1}
-    assert isinstance(x, dict) or isinstance(x, list)
+    assert isinstance(x, dict[str, int]) or isinstance(x, list[int])
 
 @test
 def test_isinstance_negated_dict():
     x: object = "hello"
-    assert not isinstance(x, dict)
+    assert not isinstance(x, dict[str, int])
 
 @test
 def test_isinstance_negated_or_of_singles_collections():
     # Union-intent: rewritten from (list, set) to or-of-singles (#1532).
     x: object = "hello"
-    assert not isinstance(x, list) and not isinstance(x, set)
+    assert not isinstance(x, list[int]) and not isinstance(x, set[int])
 
 @test
 def test_isinstance_or_of_singles_mixed():
     # Union-intent: rewritten from (dict, int, list) to or-of-singles (#1532).
     x: object = [1, 2]
-    assert isinstance(x, dict) or isinstance(x, int) or isinstance(x, list)
+    assert isinstance(x, dict[str, int]) or isinstance(x, int) or isinstance(x, list[int])
 
 def main():
     print("ok")

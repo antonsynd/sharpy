@@ -1,13 +1,13 @@
-# Dispatch correctness: bare set()/list()/dict()/str() patterns resolve to
-# distinct Sharpy protocol interfaces, not overlapping .NET base types (#877).
+# Dispatch correctness: reified set[int]()/list[int]()/dict[str, int]()/str() patterns resolve to
+# distinct runtime types, not overlapping .NET base types (#877; migrated under reification, #1708).
 
 def classify(x: object) -> str:
     match x:
-        case set():
+        case set[int]():
             return "set"
-        case list():
+        case list[int]():
             return "list"
-        case dict():
+        case dict[str, int]():
             return "dict"
         case str():
             return "str"

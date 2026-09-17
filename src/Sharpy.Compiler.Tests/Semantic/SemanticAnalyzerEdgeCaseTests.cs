@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -780,10 +781,16 @@ def foo(x: int) -> int:
 
     #endregion
 
-    #region Bare Collection Pattern Type Specialization (#869)
+    #region Bare Collection Pattern Refusal (#869 → #1708)
+
+    // #869 once typed a bare `case dict()`/`list()`/`set()` on an `object` scrutinee to the erased
+    // element vector (dict[object, object] / list[object] / set[object]). Reification (#1708) refuses
+    // the bare spelling with SPY0345 through the type-test classifier instead — the argument vector
+    // cannot be filled from an open scrutinee. Each cell now pins that refusal and its closed-spelling
+    // steer; the runnable closed-spelling twins live in the match_type_* fixtures.
 
     [Fact]
-    public void BareDict_PatternBinding_NoSPY0907_OnIndexAccess()
+    public void BareDict_PatternBinding_RefusedWithClosedSpellingSteer()
     {
         var source = @"
 def process(value: object) -> None:
@@ -794,13 +801,14 @@ def process(value: object) -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().NotContain(
-            e => e.Code == "SPY0907",
-            "bare dict() binding should be typed dict[object, object], not UnknownType");
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && e.Message.Contains("Write the closed spelling"),
+            "bare dict() on an open scrutinee is refused; the message steers to the closed spelling");
     }
 
     [Fact]
-    public void BareDict_PatternBinding_ItemsCallSucceeds()
+    public void BareDict_PatternBinding_ItemsCall_Refused()
     {
         var source = @"
 def process(value: object) -> None:
@@ -812,12 +820,13 @@ def process(value: object) -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
-            "d.items() should resolve on dict[object, object]");
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && e.Message.Contains("Write the closed spelling"));
     }
 
     [Fact]
-    public void BareList_PatternBinding_NoErrors()
+    public void BareList_PatternBinding_RefusedWithClosedSpellingSteer()
     {
         var source = @"
 def process(value: object) -> None:
@@ -828,12 +837,13 @@ def process(value: object) -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
-            "bare list() binding should be typed list[object]");
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && e.Message.Contains("Write the closed spelling"));
     }
 
     [Fact]
-    public void BareSet_PatternBinding_NoErrors()
+    public void BareSet_PatternBinding_RefusedWithClosedSpellingSteer()
     {
         var source = @"
 def process(value: object) -> None:
@@ -844,8 +854,9 @@ def process(value: object) -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
-            "bare set() binding should be typed set[object]");
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && e.Message.Contains("Write the closed spelling"));
     }
 
     #endregion

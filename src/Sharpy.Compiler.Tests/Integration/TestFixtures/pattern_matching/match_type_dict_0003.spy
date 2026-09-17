@@ -1,10 +1,10 @@
-# Bare `case dict() as d` — indexing + key iteration (#869).
-# d[k] indexing must work through the type-erased IDict surface.
+# Reified `case dict[str, int](d)` — indexing + key iteration (#869; migrated under #1708).
+# d[k] indexing must resolve on the reified dict surface.
 # `for k in d:` must iterate keys (not DictionaryEntry objects).
 
 def process(value: object) -> None:
     match value:
-        case dict() as d:
+        case dict[str, int](d):
             print(d["x"])
             for k in d:
                 print(k)

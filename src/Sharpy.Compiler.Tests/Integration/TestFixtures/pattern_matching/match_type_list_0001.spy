@@ -1,9 +1,10 @@
-# Match an `object` parameter against a bare `case list()` collection pattern.
-# Codegen lowers bare `list()` to a non-generic IList check (#867).
+# Match an `object` parameter against a reified `case list[int](items)` collection pattern
+# (#867; migrated to the closed spelling under reification, #1708). The scrutinee is built as
+# list[int], so that is the spelling that matches; the non-list call falls to `case _`.
 
 def process(value: object) -> None:
     match value:
-        case list() as items:
+        case list[int](items):
             for item in items:
                 print(item)
         case _:

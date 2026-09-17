@@ -1,16 +1,13 @@
-# #1235: a bare generic name in a class pattern gets its argument vector filled from the
-# scrutinee's own static type. Two separate failures collapse into that one rule:
+# #1235/#1708: a bare generic name in a class pattern gets its argument vector filled from the
+# scrutinee's own static type. Against a `Box[int]` scrutinee — the very type that determines the
+# vector — `case Box()` fills to `Box[int]` and matches, rather than being rejected (it used to be
+# refused with SPY0361, a pattern rejected by the very type it matches, the opposite of CPython).
 #
-#   * against an `object` scrutinee the open name reached codegen and emitted `Box<T>`
-#     (CS0305 behind SPY0908) — see errors/match_class_pattern_open_generic_undetermined;
-#   * against a `Box[int]` scrutinee — the very type that determines the vector — the open
-#     name matched neither direction of the pattern compatibility check and was rejected
-#     with SPY0361, which is the case pinned here.
-#
-# `case list()` against an `object` scrutinee is pinned alongside it because the two rules
-# have to coexist: an unparameterized builtin collection still erases to its non-generic
-# protocol interface (#912) rather than being filled or refused, and that erasure keeps
-# living in the pattern channel, not in a second copy of the rule.
+# The bare-collection sibling that once lived here (`case list()` against an `object` scrutinee,
+# pinned as "erased to a non-generic interface") no longer exists: reification (#1708) refuses a
+# bare collection pattern on an open scrutinee with SPY0345. That refusal is pinned by
+# errors/match_bare_collection_open_scrutinee_refused, and the closed-scrutinee fill by
+# match/match_collection_pattern_closed_scrutinee.
 
 class Box[T]:
     value: T
@@ -24,12 +21,5 @@ def main() -> None:
     match b:
         case Box():
             print("box filled")
-        case _:
-            print("other")
-
-    xs: object = [1, 2, 3]
-    match xs:
-        case list():
-            print("list erased")
         case _:
             print("other")

@@ -6,7 +6,7 @@ def describe(x: object) -> str:
     match x:
         case int() | str() as v:
             return f"bound {v}"
-        case (float() as f) | (list() as f):
+        case (float() as f) | (list[int]() as f):
             return f"each {f}"
         case _:
             return "other"

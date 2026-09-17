@@ -55,7 +55,7 @@ def main() -> None:
     {
         var source = @"
 def f(x: object) -> None:
-    if isinstance(x, list):
+    if isinstance(x, list[object]):
         x += [4]
 
 

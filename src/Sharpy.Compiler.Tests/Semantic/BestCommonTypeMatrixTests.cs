@@ -408,7 +408,7 @@ public class BestCommonTypeMatrixTests : IntegrationTestBase
     [InlineData("DictKw_Slot_Values",
         "def main():\n    d: dict[str, object] = dict(a=1, b=\"x\")\n    print(d[\"a\"])\n    print(d[\"b\"])\n", "1\nx\n")]
     [InlineData("OrPattern_Capture_Scrutinee",
-        "def main():\n    o: object = 1.5\n    match o:\n        case float() as v:\n            print(v)\n        case list() as v:\n            print(v)\n        case _:\n            print(\"other\")\n", "1.5\n")]
+        "def main():\n    o: object = 1.5\n    match o:\n        case float() as v:\n            print(v)\n        case list[object]() as v:\n            print(v)\n        case _:\n            print(\"other\")\n", "1.5\n")]
     public void OperandJoinCell_RunsAndPrintsTheJoinedValues(string label, string body, string expected)
     {
         var source = AnimalPrelude + body;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -55,15 +56,9 @@ def f(a: Animal) -> str:
     return """"
 "
         },
-        {
-            "unparameterized builtin collection",
-            @"
-def f(x: object) -> int:
-    if isinstance(x, list):
-        return len(x)
-    return 0
-"
-        },
+        // "unparameterized builtin collection" (bare `isinstance(x, list)`) was an accepted/erased
+        // shape here until reification (#1708) — it is now refused (SPY0345), pinned as a refusal cell
+        // below (UnparameterizedBuiltinCollection_RefusedWithClosedSpellingSteer).
         {
             "parameterized builtin collection",
             @"
@@ -131,6 +126,25 @@ def f(x: object) -> int:
         casts.Should().NotBeEmpty($"the {shape} probe reads the narrowed subject inside the branch");
         casts.Should().OnlyContain(c => c.CastTarget!.Equals(typeTests[0].TestType),
             $"the {shape} narrowing and its emitted type test must come from one resolved type");
+    }
+
+    [Fact]
+    public void UnparameterizedBuiltinCollection_RefusedWithClosedSpellingSteer()
+    {
+        // #1708: a bare `isinstance(x, list)` on an open scrutinee no longer erases and narrows —
+        // it is refused (SPY0345), because the argument vector cannot be filled from the subject.
+        // The closed spelling (`isinstance(x, list[int])`) is the accepted twin above.
+        var errors = AnalyzeDiagnostics(@"
+def f(x: object) -> int:
+    if isinstance(x, list):
+        return len(x)
+    return 0
+");
+
+        errors.Should().Contain(
+            e => e.Code == DiagnosticCodes.Semantic.OpenGenericTypeTest
+                && e.Message.Contains("Write the closed spelling"),
+            "the bare collection operand is refused with the closed-spelling steer");
     }
 
     // RETIRED (#1298): `x is TypeName` is no longer a type test — `is` means reference identity
@@ -323,6 +337,37 @@ def f(x: object, flag: bool) -> int:
             "agreement probe programs must type-check cleanly (a diagnostic would mask the narrowing)");
 
         return (module, semanticInfo);
+    }
+
+    /// <summary>Runs the same pipeline as <see cref="Analyze"/> but returns the errors instead of
+    /// asserting there are none — for refusal cells that must produce a diagnostic.</summary>
+    private static IReadOnlyList<Sharpy.Compiler.Diagnostics.CompilerDiagnostic> AnalyzeDiagnostics(string source)
+    {
+        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var pipeline = ValidationPipelineFactory.CreateDefault(NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance, pipeline)
+        {
+            SemanticBinding = semanticBinding
+        };
+
+        typeChecker.CheckModule(module);
+
+        return typeChecker.Diagnostics.GetErrors().ToList();
     }
 
     private static IEnumerable<Node> Descendants(Node node)

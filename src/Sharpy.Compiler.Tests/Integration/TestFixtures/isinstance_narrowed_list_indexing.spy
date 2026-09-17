@@ -1,6 +1,6 @@
 def describe(value: object) -> None:
-    if isinstance(value, list):
-        # value narrowed to list[object]; indexing must resolve
+    if isinstance(value, list[int]):
+        # value narrowed to list[int]; indexing must resolve
         print(value[0])
         print(len(value))
 

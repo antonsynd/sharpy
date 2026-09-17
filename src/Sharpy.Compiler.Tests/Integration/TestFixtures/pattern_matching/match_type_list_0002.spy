@@ -1,9 +1,9 @@
-# Bare `case list() as l` binding with Pythonic operations via Sharpy.IList (#876).
+# Reified `case list[int](l)` binding with Pythonic operations on the list surface (#876; migrated #1708).
 # Tests append, len(), indexing (positive and negative), and iteration.
 
 def process(x: object):
     match x:
-        case list() as l:
+        case list[int](l):
             l.append(99)
             print(len(l))
             print(l[0])

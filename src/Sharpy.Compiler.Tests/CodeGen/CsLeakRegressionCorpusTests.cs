@@ -189,17 +189,19 @@ public class CsLeakRegressionCorpusTests
                 print(serialize(None))
             """);
 
-        // #867 — `case list()` / `case dict()` emitted non-generic Sharpy.List/Dict
-        // patterns (CS0305) and the bound variable lost its type args (CS1061/CS8130).
+        // #867 — the reified `case list[int]` / `case dict[str, int]` patterns must emit their
+        // full type args so the bound variable keeps them (bare spellings used to emit non-generic
+        // Sharpy.List/Dict patterns — CS0305 — and lost the args, CS1061/CS8130; #1708 refuses the
+        // bare form outright, so the closed spelling is the only one left to guard).
         yield return Case("#867-match-case-list-dict", """
             def serialize(value: object) -> str:
                 match value:
-                    case list() as items:
+                    case list[int](items):
                         parts: list[str] = []
                         for item in items:
                             parts.append(str(item))
                         return ", ".join(parts)
-                    case dict() as d:
+                    case dict[str, int](d):
                         parts2: list[str] = []
                         for k, v in d.items():
                             parts2.append(str(k) + ": " + str(v))

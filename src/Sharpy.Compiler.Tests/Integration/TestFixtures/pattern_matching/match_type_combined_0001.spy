@@ -13,7 +13,7 @@ def serialize(value: object) -> str:
             return str(n)
         case str() as s:
             return f'"{s}"'
-        case list() as items:
+        case list[int](items):
             parts: list[str] = []
             for item in items:
                 parts.append(serialize(item))

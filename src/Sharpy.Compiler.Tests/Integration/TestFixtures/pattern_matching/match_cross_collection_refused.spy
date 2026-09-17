@@ -1,9 +1,9 @@
-# #1299 Design Decision 6: a class pattern naming a different collection than the
-# scrutinee's own closed type is statically impossible, so Sharpy refuses the arm
-# (SPY0361) rather than emitting a branch that can never run. Python would silently
-# never-match. The refusal policy predates #1299 (see match_type_incompatible_0001
-# for the primitive twin); this fixture pins that closing the collection-pattern gap
-# did not soften it.
+# #1708 R-P5-1: a bare collection pattern names no runtime type of its own, so it is refused
+# (SPY0345) even when the scrutinee is a fully closed collection. `case list()` over a
+# `dict[str, int]` scrutinee cannot narrow to any spellable list type, so Sharpy steers to the
+# closed spelling rather than emitting a branch that can never run. Python would silently
+# never-match. Reification (#1708) subsumes the older cross-collection SPY0361 refusal: the
+# pattern is rejected on its own openness before scrutinee compatibility is ever consulted.
 
 def main() -> None:
     d: dict[str, int] = {"a": 1}

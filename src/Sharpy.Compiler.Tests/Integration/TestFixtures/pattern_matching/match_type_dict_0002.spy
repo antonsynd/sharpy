@@ -1,10 +1,10 @@
-# Bare `case dict() as d` — .items() iteration with f-string output (#869).
+# Reified `case dict[str, int](d)` — .items() iteration with f-string output (#869; migrated #1708).
 # The #869 repro: d.items() must yield (key, value) tuples that deconstruct
 # in a for loop. Also tests non-dict falls to case _.
 
 def process(value: object) -> None:
     match value:
-        case dict() as d:
+        case dict[str, int](d):
             for k, v in d.items():
                 print(f"{k}: {v}")
         case _:
