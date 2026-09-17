@@ -97,10 +97,13 @@ public class TypeDenotingReceiverMatrixTests : IntegrationTestBase
             + "    o = 5\n    print(isinstance(o, Environment.SpecialFolder))\n",
             ExpectedOutput: "False\n"),
 
-        // NestedTypeChain × StaticMethod × Argument
+        // NestedTypeChain × StaticMethod × Argument — the nested-chain enum member is the argument to
+        // a static method. Assert the call returns a str (portable), NOT that the path is non-empty:
+        // GetFolderPath(Desktop) is "" on a headless Linux runner but a real path on a dev box, so a
+        // `!= ""` oracle is environment-dependent (green on macOS, red in CI).
         new("NestedTypeChain", "StaticMethod", "Argument",
             "from system import Environment\n\ndef main() -> None:\n"
-            + "    print(Environment.get_folder_path(Environment.SpecialFolder.Desktop) != \"\")\n",
+            + "    print(isinstance(Environment.get_folder_path(Environment.SpecialFolder.Desktop), str))\n",
             ExpectedOutput: "True\n"),
 
         // BracketedGeneric × Const × Value
