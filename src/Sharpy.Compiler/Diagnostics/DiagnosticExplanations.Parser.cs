@@ -135,9 +135,15 @@ public static partial class DiagnosticExplanations
             "Add at least one union case:\nunion Shape:\n    case Circle(radius: float)\n    case Rectangle(width: float, height: float)");
 
         Add(dict, DiagnosticCodes.Parser.GenericTypeInPattern, "Generic type in pattern", "Parser",
-            "Generic type arguments (e.g., Box[int]) are not supported in match case patterns. The compiler matches by the base type name; type arguments are not needed for pattern matching.",
-            "match value:\n    case Box[int]() as x:\n        ...",
-            "Remove the type arguments from the pattern:\nmatch value:\n    case Box() as x:\n        ...");
+            "RETIRED (#1708/#1619): explicit type arguments in a pattern head are now the canonical "
+            + "closed spelling — arm 2 of the reification ruling. `case Box[int]():` and "
+            + "`case list[int](xs):` are accepted; the head names the runtime type to test, exactly as "
+            + "`isinstance(x, list[int])` does. A BARE generic head on an open subject is what is now "
+            + "refused instead — SPY0345 (open generic type test), which steers to the closed spelling. "
+            + "No site emits SPY0125 any longer; this explanation is retained only for historical lookups.",
+            "match value:\n    case Box[int]() as x:  # now accepted — the head names the closed type\n        ...",
+            "Write the closed spelling directly:\nmatch value:\n    case Box[int]() as x:\n        ...\n"
+            + "    case list[int](xs):\n        ...");
 
         Add(dict, DiagnosticCodes.Parser.MultipleStarsInPattern, "Multiple stars in list pattern", "Parser",
             "A list (sequence) pattern may contain at most one '*' capture, which collects the remaining elements. Two or more stars are ambiguous.",

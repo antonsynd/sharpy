@@ -152,4 +152,55 @@ public class DiagnosticExplanationsTests
         Assert.NotNull(explanation.Example);
         Assert.NotNull(explanation.Fix);
     }
+
+    [Fact]
+    public void OpenGenericTypeTest_ExplainsTheThreeArmsAndClosedSpelling()
+    {
+        var explanation = DiagnosticExplanations.Get(DiagnosticCodes.Semantic.OpenGenericTypeTest);
+
+        Assert.NotNull(explanation);
+        Assert.Equal("SPY0345", explanation!.Code);
+        // The reification ruling's three arms, keyed to literals so a regression to the erasure
+        // wording (or dropping an arm) fails this cell.
+        Assert.Contains("FILL", explanation.Description);
+        Assert.Contains("EXPLICIT", explanation.Description);
+        Assert.Contains("REFUSE", explanation.Description);
+        Assert.Contains("reifies generics", explanation.Description);
+    }
+
+    [Fact]
+    public void ImpossibleCoercion_ExplainsTheRefusalAndSteer()
+    {
+        var explanation = DiagnosticExplanations.Get(DiagnosticCodes.SemanticOverflow.ImpossibleCoercion);
+
+        Assert.NotNull(explanation);
+        Assert.Equal("SPY0610", explanation!.Code);
+        Assert.Contains("statically impossible", explanation.Description);
+        Assert.Contains("str(x)", explanation.Fix);
+    }
+
+    [Fact]
+    public void InvalidCast_IsRetiredIntoImpossibleCoercion()
+    {
+        // SPY0228 retired (#1713): folded into SPY0610. The text must say so — no site emits it.
+        var explanation = DiagnosticExplanations.Get(DiagnosticCodes.Semantic.InvalidCast);
+
+        Assert.NotNull(explanation);
+        Assert.Equal("SPY0228", explanation!.Code);
+        Assert.Contains("RETIRED", explanation.Description);
+        Assert.Contains("SPY0610", explanation.Description);
+    }
+
+    [Fact]
+    public void GenericTypeInPattern_IsRetiredIntoTheClosedSpelling()
+    {
+        // SPY0125 retired (#1708/#1619): explicit type arguments in a pattern head are now accepted;
+        // a bare open head is refused SPY0345 instead.
+        var explanation = DiagnosticExplanations.Get(DiagnosticCodes.Parser.GenericTypeInPattern);
+
+        Assert.NotNull(explanation);
+        Assert.Equal("SPY0125", explanation!.Code);
+        Assert.Contains("RETIRED", explanation.Description);
+        Assert.Contains("SPY0345", explanation.Description);
+    }
 }
