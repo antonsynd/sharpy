@@ -22,7 +22,7 @@ public static partial class AccessorParamModuleLevel
     public static int ReadLevel()
     {
 #line (15, 5) - (15, 21) 8 "accessor_param_module_level.spy"
-        return _Backing;
+        return global::AccessorParamModuleLevel._Backing;
 #line hidden
     }
 
@@ -31,7 +31,7 @@ public static partial class AccessorParamModuleLevel
 #line (19, 5) - (19, 14) 8 "accessor_param_module_level.spy"
         Level = 6;
 #line (20, 5) - (20, 24) 8 "accessor_param_module_level.spy"
-        global::Sharpy.Builtins.Print(ReadLevel());
+        global::Sharpy.Builtins.Print(global::AccessorParamModuleLevel.ReadLevel());
 #line hidden
     }
 }

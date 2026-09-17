@@ -61,15 +61,15 @@ public static partial class ClrCharArrayIsStr1291
         }
 
 #line (47, 5) - (47, 16) 8 "clr_char_array_is_str_1291.spy"
-        Take(global::Sharpy.ArrayHelpers.GetItem(cs, 1));
+        global::ClrCharArrayIsStr1291.Take(global::Sharpy.ArrayHelpers.GetItem(cs, 1));
 #line (48, 5) - (48, 24) 8 "clr_char_array_is_str_1291.spy"
-        global::Sharpy.Builtins.Print(FirstOf(cs));
+        global::Sharpy.Builtins.Print(global::ClrCharArrayIsStr1291.FirstOf(cs));
 #line (51, 5) - (51, 46) 8 "clr_char_array_is_str_1291.spy"
         string[] named = global::System.Array.ConvertAll<char, string>("ab".ToCharArray(), char.ToString);
 #line (52, 5) - (52, 22) 8 "clr_char_array_is_str_1291.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(named));
 #line (53, 5) - (53, 26) 8 "clr_char_array_is_str_1291.spy"
-        global::Sharpy.Builtins.Print(Echo(global::Sharpy.ArrayHelpers.GetItem(named, 1)));
+        global::Sharpy.Builtins.Print(global::ClrCharArrayIsStr1291.Echo(global::Sharpy.ArrayHelpers.GetItem(named, 1)));
 #line hidden
     }
 }

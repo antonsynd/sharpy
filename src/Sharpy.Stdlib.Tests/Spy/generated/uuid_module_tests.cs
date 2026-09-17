@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using uuid = global::Sharpy.UuidModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Uuid.UuidModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -140,7 +138,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUuid3KnownValue()
             {
 #line (56, 5) - (56, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
-                global::Sharpy.UUID result = uuid.Uuid3(uuid.NAMESPACE_DNS, "example.com");
+                global::Sharpy.UUID result = uuid.Uuid3(global::Sharpy.UuidModule.NAMESPACE_DNS, "example.com");
 #line (57, 5) - (57, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
                 Xunit.Assert.Equal("9073926b-929f-31c2-abc9-fad77ae3e8eb", global::Sharpy.Builtins.Str(result));
 #line (58, 5) - (58, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
@@ -152,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUuid5KnownValue()
             {
 #line (62, 5) - (62, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
-                global::Sharpy.UUID result = uuid.Uuid5(uuid.NAMESPACE_DNS, "example.com");
+                global::Sharpy.UUID result = uuid.Uuid5(global::Sharpy.UuidModule.NAMESPACE_DNS, "example.com");
 #line (63, 5) - (63, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
                 Xunit.Assert.Equal("cfbff0d1-9375-5685-968c-48ce8b15ae17", global::Sharpy.Builtins.Str(result));
 #line (64, 5) - (64, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"

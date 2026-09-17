@@ -357,9 +357,9 @@ public static partial class TruthinessConditionalReceiverKinds1727
 #line (128, 5) - (128, 17) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         flag = false;
 #line (129, 5) - (129, 35) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        BoolFlag tv = new BoolFlag(true);
+        global::TruthinessConditionalReceiverKinds1727.BoolFlag tv = new global::TruthinessConditionalReceiverKinds1727.BoolFlag(true);
 #line (130, 5) - (130, 36) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        BoolFlag fv = new BoolFlag(false);
+        global::TruthinessConditionalReceiverKinds1727.BoolFlag fv = new global::TruthinessConditionalReceiverKinds1727.BoolFlag(false);
 #line (131, 5) - (134, 47) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         if (flag ? fv.IsTrue : tv.IsTrue)
 #line hidden

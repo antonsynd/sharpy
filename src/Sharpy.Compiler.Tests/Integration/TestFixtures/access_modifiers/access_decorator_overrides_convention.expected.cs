@@ -31,7 +31,7 @@ public static partial class AccessDecoratorOverridesConvention
     public static void Main()
     {
 #line (16, 5) - (16, 26) 8 "access_decorator_overrides_convention.spy"
-        Config c = new Config();
+        global::AccessDecoratorOverridesConvention.Config c = new global::AccessDecoratorOverridesConvention.Config();
 #line (18, 5) - (18, 32) 8 "access_decorator_overrides_convention.spy"
         global::Sharpy.Builtins.Print(c.__ShouldBePublic);
 #line (19, 5) - (19, 33) 8 "access_decorator_overrides_convention.spy"

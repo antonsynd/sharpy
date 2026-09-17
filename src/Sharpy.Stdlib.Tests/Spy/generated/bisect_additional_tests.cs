@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using bisect = global::Sharpy.BisectModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Bisect.BisectAdditionalTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

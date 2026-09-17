@@ -22,7 +22,7 @@ public static partial class OutInlineMultiple
     public static void Main()
     {
 #line (7, 5) - (7, 63) 8 "out_inline_multiple.spy"
-        var success = ParsePair("x", out int first, out int second);
+        var success = global::OutInlineMultiple.ParsePair("x", out int first, out int second);
 #line (8, 5) - (8, 34) 8 "out_inline_multiple.spy"
         global::Sharpy.Builtins.Print(success, first, second);
 #line hidden

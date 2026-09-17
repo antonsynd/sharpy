@@ -10,15 +10,15 @@ using global::Sharpy;
 public static partial class NullCoalescing0003
 {
     public static Optional<int> X = Optional<int>.None;
-    public static int Y = (X).UnwrapOr(42);
+    public static int Y = (global::NullCoalescing0003.X).UnwrapOr(42);
     public static Optional<int> A = Optional<int>.Some(100);
-    public static int B = (A).UnwrapOr(999);
+    public static int B = (global::NullCoalescing0003.A).UnwrapOr(999);
     public static Optional<string> Name = Optional<string>.None;
-    public static string DefaultName = (Name).UnwrapOr("Guest");
+    public static string DefaultName = (global::NullCoalescing0003.Name).UnwrapOr("Guest");
     public static Optional<int> First = Optional<int>.None;
     public static Optional<int> Second = Optional<int>.None;
     public static int Third = 77;
-    public static int Result = ((First).IsSome ? First : Second).UnwrapOr(Third);
+    public static int Result = ((global::NullCoalescing0003.First).IsSome ? global::NullCoalescing0003.First : global::NullCoalescing0003.Second).UnwrapOr(global::NullCoalescing0003.Third);
     public static void Main()
     {
 #line (16, 5) - (16, 13) 8 "null_coalescing_0003.spy"

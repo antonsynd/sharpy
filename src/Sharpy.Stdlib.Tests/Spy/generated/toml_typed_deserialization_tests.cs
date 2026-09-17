@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using toml = global::Sharpy.Toml;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -30,13 +28,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public class AppConfig
             {
                 public string Title = "";
-                public ServerConfig Server = new ServerConfig();
+                public global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig Server = new global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig();
             }
 
             public class DeployConfig
             {
                 public string Name = "";
-                public Sharpy.List<ServerConfig> Servers = new Sharpy.List<ServerConfig>()
+                public Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig> Servers = new Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>()
                 {
                 };
             }
@@ -51,7 +49,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTSimpleConfigDeserializes()
             {
 #line (32, 5) - (32, 89) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
-                var result = toml.Loads<ServerConfig>("host = \"localhost\"\nport = 8080\ndebug = true");
+                var result = toml.Loads<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>("host = \"localhost\"\nport = 8080\ndebug = true");
 #line (33, 5) - (33, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (34, 5) - (34, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
@@ -69,7 +67,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTNestedConfigDeserializes()
             {
 #line (41, 5) - (41, 117) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
-                var result = toml.Loads<AppConfig>("title = \"My App\"\n\n[server]\nhost = \"0.0.0.0\"\nport = 3000\ndebug = false");
+                var result = toml.Loads<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.AppConfig>("title = \"My App\"\n\n[server]\nhost = \"0.0.0.0\"\nport = 3000\ndebug = false");
 #line (42, 5) - (42, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (43, 5) - (43, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
@@ -87,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTMalformedTomlReturnsErr()
             {
 #line (52, 5) - (52, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
-                var result = toml.Loads<ServerConfig>("invalid = [");
+                var result = toml.Loads<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>("invalid = [");
 #line (53, 5) - (53, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line (54, 5) - (54, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
@@ -103,7 +101,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (59, 5) - (59, 128) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 string tomlStr = "name = \"prod\"\n\n[[servers]]\nhost = \"a.com\"\nport = 80\n\n[[servers]]\nhost = \"b.com\"\nport = 443";
 #line (60, 5) - (60, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
-                var result = toml.Loads<DeployConfig>(tomlStr);
+                var result = toml.Loads<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.DeployConfig>(tomlStr);
 #line (61, 5) - (61, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (62, 5) - (62, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
@@ -123,7 +121,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTTypeMismatchReturnsErr()
             {
 #line (70, 5) - (70, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
-                var result = toml.Loads<ServerConfig>("host = 123\nport = \"not_a_number\"");
+                var result = toml.Loads<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>("host = 123\nport = \"not_a_number\"");
 #line (71, 5) - (71, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line hidden

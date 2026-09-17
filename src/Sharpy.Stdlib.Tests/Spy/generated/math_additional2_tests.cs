@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using math = global::Sharpy.MathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Math.MathAdditional2Tests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -39,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSinPiOver2ReturnsOne()
             {
 #line (13, 5) - (13, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Sin(math.Pi / 2.0d), absTol: 1e-15d));
+                Xunit.Assert.True(math.Isclose(1.0d, math.Sin(global::Sharpy.MathModule.Pi / 2.0d), absTol: 1e-15d));
 #line hidden
             }
 
@@ -47,7 +45,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSinPiIsApproximatelyZero()
             {
 #line (17, 5) - (17, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(0.0d, math.Sin(math.Pi), absTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(0.0d, math.Sin(global::Sharpy.MathModule.Pi), absTol: 1e-14d));
 #line hidden
             }
 
@@ -63,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCosPiReturnsNegativeOne()
             {
 #line (25, 5) - (25, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(-1.0d, math.Cos(math.Pi), absTol: 1e-15d));
+                Xunit.Assert.True(math.Isclose(-1.0d, math.Cos(global::Sharpy.MathModule.Pi), absTol: 1e-15d));
 #line hidden
             }
 
@@ -79,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTanPiOver4IsApproximatelyOne()
             {
 #line (33, 5) - (33, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Tan(math.Pi / 4.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(1.0d, math.Tan(global::Sharpy.MathModule.Pi / 4.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -87,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAsinOneReturnsPiOver2()
             {
 #line (39, 5) - (39, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi / 2.0d, math.Asin(1.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Asin(1.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -111,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAcosZeroReturnsPiOver2()
             {
 #line (51, 5) - (51, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi / 2.0d, math.Acos(0.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Acos(0.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -127,7 +125,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAtanOneReturnsPiOver4()
             {
 #line (59, 5) - (59, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi / 4.0d, math.Atan(1.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan(1.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -135,7 +133,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAtan2OneOneReturnsPiOver4()
             {
 #line (63, 5) - (63, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi / 4.0d, math.Atan2(1.0d, 1.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan2(1.0d, 1.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -143,7 +141,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAtan2NegativeXReturnsPi()
             {
 #line (67, 5) - (67, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi, math.Atan2(0.0d, -1.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Atan2(0.0d, -1.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -191,7 +189,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExpOneReturnsE()
             {
 #line (95, 5) - (95, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.E, math.Exp(1.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.E, math.Exp(1.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -207,7 +205,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLogEReturnsOne()
             {
 #line (105, 5) - (105, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Log(math.E), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(1.0d, math.Log(global::Sharpy.MathModule.E), relTol: 1e-14d));
 #line hidden
             }
 
@@ -391,7 +389,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDegreesPiReturns180()
             {
 #line (203, 5) - (203, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(180.0d, math.Degrees(math.Pi), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(180.0d, math.Degrees(global::Sharpy.MathModule.Pi), relTol: 1e-14d));
 #line hidden
             }
 
@@ -407,7 +405,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRadians180ReturnsPi()
             {
 #line (211, 5) - (211, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Pi, math.Radians(180.0d), relTol: 1e-14d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Radians(180.0d), relTol: 1e-14d));
 #line hidden
             }
 
@@ -431,7 +429,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsfinitePositiveInfinityReturnsFalse()
             {
 #line (225, 5) - (225, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isfinite(math.Inf));
+                Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -439,7 +437,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsfiniteNanReturnsFalse()
             {
 #line (229, 5) - (229, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isfinite(math.Nan));
+                Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Nan));
 #line hidden
             }
 
@@ -447,7 +445,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsinfPositiveInfinityReturnsTrue()
             {
 #line (233, 5) - (233, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isinf(math.Inf));
+                Xunit.Assert.True(math.Isinf(global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -455,7 +453,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsinfNegativeInfinityReturnsTrue()
             {
 #line (237, 5) - (237, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isinf(-math.Inf));
+                Xunit.Assert.True(math.Isinf(-global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -471,7 +469,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsnanNanReturnsTrue()
             {
 #line (245, 5) - (245, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isnan(math.Nan));
+                Xunit.Assert.True(math.Isnan(global::Sharpy.MathModule.Nan));
 #line hidden
             }
 
@@ -487,7 +485,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsnanInfinityReturnsFalse()
             {
 #line (253, 5) - (253, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isnan(math.Inf));
+                Xunit.Assert.False(math.Isnan(global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -609,7 +607,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLogZeroReturnsNegativeInfinity()
             {
 #line (311, 5) - (311, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-math.Inf, math.Log(0.0d));
+                Xunit.Assert.Equal(-global::Sharpy.MathModule.Inf, math.Log(0.0d));
 #line hidden
             }
 

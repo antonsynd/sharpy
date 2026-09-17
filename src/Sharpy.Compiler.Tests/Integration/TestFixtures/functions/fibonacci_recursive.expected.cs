@@ -21,15 +21,15 @@ public static partial class FibonacciRecursive
         }
 
 #line (4, 5) - (4, 48) 8 "fibonacci_recursive.spy"
-        return Fibonacci(n - 1) + Fibonacci(n - 2);
+        return global::FibonacciRecursive.Fibonacci(n - 1) + global::FibonacciRecursive.Fibonacci(n - 2);
 #line hidden
     }
 
-    public static int Result = Fibonacci(10);
+    public static int Result = global::FibonacciRecursive.Fibonacci(10);
     public static void Main()
     {
 #line (9, 5) - (9, 18) 8 "fibonacci_recursive.spy"
-        global::Sharpy.Builtins.Print(Result);
+        global::Sharpy.Builtins.Print(global::FibonacciRecursive.Result);
 #line hidden
     }
 }

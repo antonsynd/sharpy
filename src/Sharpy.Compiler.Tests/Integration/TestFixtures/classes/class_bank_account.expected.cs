@@ -78,7 +78,7 @@ public static partial class ClassBankAccount
     public static void Main()
     {
 #line (30, 5) - (30, 41) 8 "class_bank_account.spy"
-        var account = new BankAccount("Alice", 1000);
+        var account = new global::ClassBankAccount.BankAccount("Alice", 1000);
 #line (31, 5) - (31, 33) 8 "class_bank_account.spy"
         global::Sharpy.Builtins.Print(account.GetBalance());
 #line (33, 5) - (33, 25) 8 "class_bank_account.spy"

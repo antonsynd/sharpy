@@ -21,15 +21,15 @@ public static partial class MatchEnumMember0001
         switch (c)
 #line hidden
         {
-            case var __spy_pm_0 when __spy_pm_0 == Color.RED:
+            case var __spy_pm_0 when __spy_pm_0 == global::MatchEnumMember0001.Color.RED:
 #line (9, 13) - (9, 26) 16 "match_enum_member_0001.spy"
                 return "red";
 #line hidden
-            case var __spy_pm_0 when __spy_pm_0 == Color.GREEN:
+            case var __spy_pm_0 when __spy_pm_0 == global::MatchEnumMember0001.Color.GREEN:
 #line (11, 13) - (11, 28) 16 "match_enum_member_0001.spy"
                 return "green";
 #line hidden
-            case var __spy_pm_0 when __spy_pm_0 == Color.BLUE:
+            case var __spy_pm_0 when __spy_pm_0 == global::MatchEnumMember0001.Color.BLUE:
 #line (13, 13) - (13, 27) 16 "match_enum_member_0001.spy"
                 return "blue";
 #line hidden
@@ -43,13 +43,13 @@ public static partial class MatchEnumMember0001
     public static void Main()
     {
 #line (18, 5) - (18, 23) 8 "match_enum_member_0001.spy"
-        global::Sharpy.Builtins.Print(Describe(0));
+        global::Sharpy.Builtins.Print(global::MatchEnumMember0001.Describe(0));
 #line (19, 5) - (19, 23) 8 "match_enum_member_0001.spy"
-        global::Sharpy.Builtins.Print(Describe(1));
+        global::Sharpy.Builtins.Print(global::MatchEnumMember0001.Describe(1));
 #line (20, 5) - (20, 23) 8 "match_enum_member_0001.spy"
-        global::Sharpy.Builtins.Print(Describe(2));
+        global::Sharpy.Builtins.Print(global::MatchEnumMember0001.Describe(2));
 #line (21, 5) - (21, 24) 8 "match_enum_member_0001.spy"
-        global::Sharpy.Builtins.Print(Describe(99));
+        global::Sharpy.Builtins.Print(global::MatchEnumMember0001.Describe(99));
 #line hidden
     }
 }

@@ -8,7 +8,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
-using shapes = Sharpy.Test.Shapes;
 
 namespace Sharpy.Test
 {

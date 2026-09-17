@@ -24,7 +24,7 @@ public static partial class BracketAttrOnField
     public static void Main()
     {
 #line (10, 5) - (10, 19) 8 "bracket_attr_on_field.spy"
-        var s = new Settings();
+        var s = new global::BracketAttrOnField.Settings();
 #line (11, 5) - (11, 23) 8 "bracket_attr_on_field.spy"
         global::Sharpy.Builtins.Print(s.Threshold);
 #line hidden

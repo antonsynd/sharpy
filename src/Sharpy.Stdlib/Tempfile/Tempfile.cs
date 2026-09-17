@@ -116,7 +116,7 @@ namespace Sharpy
                 }
             }
 
-            public NamedTemporaryFile Enter()
+            public global::Sharpy.TempfileModule.NamedTemporaryFile Enter()
             {
                 return this;
             }
@@ -278,7 +278,7 @@ namespace Sharpy
                 }
             }
 
-            public SpooledTemporaryFile Enter()
+            public global::Sharpy.TempfileModule.SpooledTemporaryFile Enter()
             {
                 return this;
             }

@@ -71,7 +71,7 @@ public static partial class NestedUnionInClass1729
     public static void Main()
     {
 #line (18, 5) - (18, 24) 8 "nested_union_in_class_1729.spy"
-        Outer o = new Outer();
+        global::NestedUnionInClass1729.Outer o = new global::NestedUnionInClass1729.Outer();
 #line (19, 5) - (19, 41) 8 "nested_union_in_class_1729.spy"
         global::Sharpy.Builtins.Print(o.Area(new Outer.Shape.Circle(2)));
 #line (20, 5) - (20, 41) 8 "nested_union_in_class_1729.spy"

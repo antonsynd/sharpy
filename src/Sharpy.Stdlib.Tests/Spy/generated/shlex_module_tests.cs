@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using shlex = global::Sharpy.ShlexModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Shlex.ShlexModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

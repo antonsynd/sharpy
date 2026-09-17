@@ -33,11 +33,11 @@ public static partial class ModuleOverloadByArity
     public static void Main()
     {
 #line (11, 5) - (11, 26) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(Greet("World"));
+        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World"));
 #line (12, 5) - (12, 32) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(Greet("World", "Hi"));
+        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World", "Hi"));
 #line (13, 5) - (13, 38) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(Greet("World", "Hey", "!"));
+        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World", "Hey", "!"));
 #line hidden
     }
 }

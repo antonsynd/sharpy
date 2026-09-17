@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using os = global::Sharpy.OsModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -339,9 +337,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (191, 5) - (191, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.True(Contains(entries, "a.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibTests.Contains(entries, "a.txt"));
 #line (192, 5) - (192, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.True(Contains(entries, "b.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibTests.Contains(entries, "b.txt"));
 #line hidden
             }
 
@@ -965,9 +963,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (482, 5) - (482, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.True(Contains(matches, "top.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibTests.Contains(matches, "top.txt"));
 #line (483, 5) - (483, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.True(Contains(matches, "nested.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibTests.Contains(matches, "nested.txt"));
 #line hidden
             }
 

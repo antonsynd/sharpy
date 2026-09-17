@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using re = global::Sharpy.ReModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Re.RePatternTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -285,9 +283,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPatternFlagsReflectsCompileFlags()
             {
 #line (153, 5) - (153, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                var pattern = re.Compile("\\d+", flags: re.IGNORECASE);
+                var pattern = re.Compile("\\d+", flags: global::Sharpy.ReModule.IGNORECASE);
 #line (154, 5) - (154, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Equal(re.IGNORECASE, pattern.Flags);
+                Xunit.Assert.Equal(global::Sharpy.ReModule.IGNORECASE, pattern.Flags);
 #line hidden
             }
 
@@ -317,7 +315,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPatternCompileCombinedFlagsWork()
             {
 #line (169, 5) - (169, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                var pattern = re.Compile("^hello", flags: re.IGNORECASE | re.MULTILINE);
+                var pattern = re.Compile("^hello", flags: global::Sharpy.ReModule.IGNORECASE | global::Sharpy.ReModule.MULTILINE);
 #line (170, 5) - (170, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 var m = pattern.Search("HELLO\nWORLD");
 #line (171, 5) - (171, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
@@ -331,7 +329,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPatternCompileDotallDotMatchesNewline()
             {
 #line (176, 5) - (176, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                var pattern = re.Compile("a.b", flags: re.DOTALL);
+                var pattern = re.Compile("a.b", flags: global::Sharpy.ReModule.DOTALL);
 #line (177, 5) - (177, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 var m = pattern.Fullmatch("a\nb");
 #line (178, 5) - (178, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"

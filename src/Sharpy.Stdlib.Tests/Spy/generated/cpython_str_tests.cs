@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -484,9 +483,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (258, 5) - (258, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                 Xunit.Assert.Equal(9, global::Sharpy.StringExtensions.Index("abcdefghiabc", "abc", 1));
 #line (259, 5) - (259, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-                Xunit.Assert.True(_IndexRaises("abcdefghiabc", "hib"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._IndexRaises("abcdefghiabc", "hib"));
 #line (260, 5) - (260, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-                Xunit.Assert.True(_IndexRaises("abcdefghi", "ghix"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._IndexRaises("abcdefghi", "ghix"));
 #line hidden
             }
 
@@ -502,7 +501,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (273, 5) - (273, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.StringExtensions.Rindex("abcdefghiabc", "abc", 0, -1));
 #line (274, 5) - (274, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-                Xunit.Assert.True(_RindexRaises("abcdefghiabc", "hib"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._RindexRaises("abcdefghiabc", "hib"));
 #line hidden
             }
 

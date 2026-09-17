@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

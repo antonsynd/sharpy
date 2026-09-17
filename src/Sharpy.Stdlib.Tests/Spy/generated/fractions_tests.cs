@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using math = global::Sharpy.MathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Fractions.FractionsTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -141,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (59, 9) - (59, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(math.Nan);
+                    new global::Sharpy.Fraction(global::Sharpy.MathModule.Nan);
 #line hidden
                 }
                 catch (ValueError)
@@ -162,7 +160,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (64, 9) - (64, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(math.Inf);
+                    new global::Sharpy.Fraction(global::Sharpy.MathModule.Inf);
 #line hidden
                 }
                 catch (ValueError)

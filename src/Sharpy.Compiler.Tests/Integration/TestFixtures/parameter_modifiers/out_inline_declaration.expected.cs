@@ -20,7 +20,7 @@ public static partial class OutInlineDeclaration
     public static void Main()
     {
 #line (6, 5) - (6, 46) 8 "out_inline_declaration.spy"
-        var success = TryParse("42", out int value);
+        var success = global::OutInlineDeclaration.TryParse("42", out int value);
 #line (7, 5) - (7, 26) 8 "out_inline_declaration.spy"
         global::Sharpy.Builtins.Print(success, value);
 #line hidden

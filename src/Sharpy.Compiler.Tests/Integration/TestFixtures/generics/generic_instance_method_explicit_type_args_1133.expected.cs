@@ -37,12 +37,12 @@ public static partial class GenericInstanceMethodExplicitTypeArgs1133
 
     public class Holder
     {
-        public Box Box;
+        public global::GenericInstanceMethodExplicitTypeArgs1133.Box Box;
         public Holder()
 #line 19 "generic_instance_method_explicit_type_args_1133.spy"
         {
 #line (20, 9) - (20, 25) 12 "generic_instance_method_explicit_type_args_1133.spy"
-            this.Box = new Box();
+            this.Box = new global::GenericInstanceMethodExplicitTypeArgs1133.Box();
 #line hidden
         }
     }
@@ -50,13 +50,13 @@ public static partial class GenericInstanceMethodExplicitTypeArgs1133
     public static void Main()
     {
 #line (24, 5) - (24, 20) 8 "generic_instance_method_explicit_type_args_1133.spy"
-        Box b = new Box();
+        global::GenericInstanceMethodExplicitTypeArgs1133.Box b = new global::GenericInstanceMethodExplicitTypeArgs1133.Box();
 #line (25, 5) - (25, 29) 8 "generic_instance_method_explicit_type_args_1133.spy"
         global::Sharpy.Builtins.Print(b.Convert<int>(5));
 #line (26, 5) - (26, 33) 8 "generic_instance_method_explicit_type_args_1133.spy"
         global::Sharpy.Builtins.Print(b.Describe<string>("hi"));
 #line (27, 5) - (27, 26) 8 "generic_instance_method_explicit_type_args_1133.spy"
-        Holder h = new Holder();
+        global::GenericInstanceMethodExplicitTypeArgs1133.Holder h = new global::GenericInstanceMethodExplicitTypeArgs1133.Holder();
 #line (28, 5) - (28, 34) 8 "generic_instance_method_explicit_type_args_1133.spy"
         global::Sharpy.Builtins.Print(h.Box.Convert<int>(99));
 #line hidden

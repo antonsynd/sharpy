@@ -43,7 +43,7 @@ public static partial class DunderLen
     public static void Main()
     {
 #line (15, 5) - (15, 18) 8 "dunder_len.spy"
-        var ml = new MyList();
+        var ml = new global::DunderLen.MyList();
 #line (16, 5) - (16, 14) 8 "dunder_len.spy"
         ml.Add(1);
 #line (17, 5) - (17, 14) 8 "dunder_len.spy"
@@ -53,7 +53,7 @@ public static partial class DunderLen
 #line (19, 5) - (19, 19) 8 "dunder_len.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(ml));
 #line (20, 5) - (20, 21) 8 "dunder_len.spy"
-        var empty = new MyList();
+        var empty = new global::DunderLen.MyList();
 #line (21, 5) - (21, 22) 8 "dunder_len.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(empty));
 #line hidden

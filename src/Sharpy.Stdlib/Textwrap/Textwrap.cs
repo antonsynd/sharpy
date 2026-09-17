@@ -28,7 +28,7 @@ namespace Sharpy
             Sharpy.List<string> result = new Sharpy.List<string>()
             {
             };
-            string collapsed = _CollapseWhitespace(text);
+            string collapsed = global::Sharpy.Textwrap._CollapseWhitespace(text);
             if (collapsed.Length == 0)
             {
                 return result;
@@ -90,7 +90,7 @@ namespace Sharpy
         /// </summary>
         public static string Fill(string text, int width = 70)
         {
-            Sharpy.List<string> lines = Wrap(text, width);
+            Sharpy.List<string> lines = global::Sharpy.Textwrap.Wrap(text, width);
             return global::Sharpy.StringExtensions.Join("\n", lines);
         }
 
@@ -110,12 +110,12 @@ namespace Sharpy
             foreach (var __loopVar_1 in lines)
             {
                 var line = __loopVar_1;
-                if (line.Length == 0 || _IsWhitespaceOnly(line))
+                if (line.Length == 0 || global::Sharpy.Textwrap._IsWhitespaceOnly(line))
                 {
                     continue;
                 }
 
-                string leadingWs = _GetLeadingWhitespace(line);
+                string leadingWs = global::Sharpy.Textwrap._GetLeadingWhitespace(line);
                 if (!hasPrefix)
                 {
                     commonPrefix = leadingWs;
@@ -123,7 +123,7 @@ namespace Sharpy
                 }
                 else
                 {
-                    commonPrefix = _CommonPrefix(commonPrefix, leadingWs);
+                    commonPrefix = global::Sharpy.Textwrap._CommonPrefix(commonPrefix, leadingWs);
                 }
 
                 if (commonPrefix.Length == 0)
@@ -183,11 +183,11 @@ namespace Sharpy
             }
 
             global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
-            Sharpy.List<string> lines = _SplitKeepEnds(text);
+            Sharpy.List<string> lines = global::Sharpy.Textwrap._SplitKeepEnds(text);
             foreach (var __loopVar_2 in lines)
             {
                 var line = __loopVar_2;
-                if (!_IsWhitespaceOnly(line))
+                if (!global::Sharpy.Textwrap._IsWhitespaceOnly(line))
                 {
                     sb.Append(prefix);
                 }
@@ -209,7 +209,7 @@ namespace Sharpy
             }
 
             string placeholder = " [...]";
-            string collapsed = _CollapseWhitespace(text);
+            string collapsed = global::Sharpy.Textwrap._CollapseWhitespace(text);
             if (collapsed.Length <= width)
             {
                 return collapsed;

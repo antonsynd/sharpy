@@ -42,13 +42,13 @@ public static partial class DataclassMultiwordKeywordArgument1504
     public static void Main()
     {
 #line (16, 5) - (16, 58) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        TwoWord t = new TwoWord(name: "web", maxConnections: 10);
+        global::DataclassMultiwordKeywordArgument1504.TwoWord t = new global::DataclassMultiwordKeywordArgument1504.TwoWord(name: "web", maxConnections: 10);
 #line (17, 5) - (17, 18) 8 "dataclass_multiword_keyword_argument_1504.spy"
         global::Sharpy.Builtins.Print(t.Name);
 #line (18, 5) - (18, 29) 8 "dataclass_multiword_keyword_argument_1504.spy"
         global::Sharpy.Builtins.Print(t.MaxConnections);
 #line (19, 5) - (19, 36) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        TwoWord u = new TwoWord("db", 20);
+        global::DataclassMultiwordKeywordArgument1504.TwoWord u = new global::DataclassMultiwordKeywordArgument1504.TwoWord("db", 20);
 #line (20, 5) - (20, 29) 8 "dataclass_multiword_keyword_argument_1504.spy"
         global::Sharpy.Builtins.Print(u.MaxConnections);
 #line hidden

@@ -30,7 +30,7 @@ public static partial class AbstractClass0000
         }
     }
 
-    public class Rectangle : Shape
+    public class Rectangle : global::AbstractClass0000.Shape
     {
         public double Width;
         public double Height;
@@ -53,7 +53,7 @@ public static partial class AbstractClass0000
         }
     }
 
-    public class Circle : Shape
+    public class Circle : global::AbstractClass0000.Shape
     {
         public double Radius;
         public override double Area()
@@ -84,9 +84,9 @@ public static partial class AbstractClass0000
     public static void Main()
     {
 #line (46, 5) - (46, 31) 8 "abstract_class_0000.spy"
-        var rect = new Rectangle(4.0d, 5.0d);
+        var rect = new global::AbstractClass0000.Rectangle(4.0d, 5.0d);
 #line (47, 5) - (47, 23) 8 "abstract_class_0000.spy"
-        var circ = new Circle(3.0d);
+        var circ = new global::AbstractClass0000.Circle(3.0d);
 #line (49, 5) - (49, 27) 8 "abstract_class_0000.spy"
         global::Sharpy.Builtins.Print(rect.Describe());
 #line (50, 5) - (50, 23) 8 "abstract_class_0000.spy"

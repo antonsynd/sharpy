@@ -61,7 +61,7 @@ public static partial class ClassWithInit
     public static void Main()
     {
 #line (26, 5) - (26, 66) 8 "class_with_init.spy"
-        var converter = new TemperatureConverter(0.0d, "Water freezing point");
+        var converter = new global::ClassWithInit.TemperatureConverter(0.0d, "Water freezing point");
 #line (27, 5) - (27, 35) 8 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.GetCelsius());
 #line (28, 5) - (28, 37) 8 "class_with_init.spy"
@@ -75,7 +75,7 @@ public static partial class ClassWithInit
 #line (33, 5) - (33, 37) 8 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.ToFahrenheit());
 #line (35, 5) - (35, 60) 8 "class_with_init.spy"
-        var second = new TemperatureConverter(25.0d, "Room temperature");
+        var second = new global::ClassWithInit.TemperatureConverter(25.0d, "Room temperature");
 #line (36, 5) - (36, 32) 8 "class_with_init.spy"
         global::Sharpy.Builtins.Print(second.GetCelsius());
 #line (37, 5) - (37, 30) 8 "class_with_init.spy"

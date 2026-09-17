@@ -12,7 +12,7 @@ public static partial class DelegateBasic0001
     public static void Main()
     {
 #line (5, 5) - (5, 52) 8 "delegate_basic_0001.spy"
-        Greeter greet = name => "Hello, " + name;
+        global::DelegateBasic0001.Greeter greet = name => "Hello, " + name;
 #line (6, 5) - (6, 28) 8 "delegate_basic_0001.spy"
         var result = greet("World");
 #line (7, 5) - (7, 18) 8 "delegate_basic_0001.spy"

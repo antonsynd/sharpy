@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using base64 = global::Sharpy.Base64Module;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Base64.Base64Tests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

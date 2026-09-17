@@ -8,9 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

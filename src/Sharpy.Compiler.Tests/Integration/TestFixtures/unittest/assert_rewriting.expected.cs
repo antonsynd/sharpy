@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
-using static AssertRewriting;
 
 public static partial class AssertRewriting
 {
@@ -98,7 +97,7 @@ public partial class AssertRewritingTests
     public void TestNoneEquality()
     {
 #line (39, 5) - (39, 34) 8 "assert_rewriting.spy"
-        Widget w = new Widget("gadget");
+        global::AssertRewriting.Widget w = new global::AssertRewriting.Widget("gadget");
 #line (40, 5) - (40, 22) 8 "assert_rewriting.spy"
         Xunit.Assert.Null(w);
 #line (41, 5) - (41, 22) 8 "assert_rewriting.spy"

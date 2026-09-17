@@ -48,9 +48,9 @@ public static partial class TryElseReturn
     public static void Main()
     {
 #line (13, 5) - (13, 30) 8 "try_else_return.spy"
-        global::Sharpy.Builtins.Print(SafeDivide(10, 5));
+        global::Sharpy.Builtins.Print(global::TryElseReturn.SafeDivide(10, 5));
 #line (14, 5) - (14, 29) 8 "try_else_return.spy"
-        global::Sharpy.Builtins.Print(SafeDivide(3, 7));
+        global::Sharpy.Builtins.Print(global::TryElseReturn.SafeDivide(3, 7));
 #line hidden
     }
 }

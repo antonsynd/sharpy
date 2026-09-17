@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using itertools = global::Sharpy.Itertools;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsCombinatoricsTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

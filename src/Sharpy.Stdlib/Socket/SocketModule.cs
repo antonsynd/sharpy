@@ -45,9 +45,9 @@ namespace Sharpy
             /// <summary>
             /// Create a socket error from a .NET SocketException.
             /// </summary>
-            public static Error FromSocketException(global::System.Net.Sockets.SocketException ex)
+            public static global::Sharpy.SocketModule.Error FromSocketException(global::System.Net.Sockets.SocketException ex)
             {
-                return new Error(ex.Message, ex, ((int)ex.SocketErrorCode));
+                return new global::Sharpy.SocketModule.Error(ex.Message, ex, ((int)ex.SocketErrorCode));
             }
 
             /// <summary>
@@ -70,7 +70,7 @@ namespace Sharpy
         /// <summary>
         /// Raised when a socket operation times out. Corresponds to Python's socket.timeout.
         /// </summary>
-        public class Timeout : Error
+        public class Timeout : global::Sharpy.SocketModule.Error
         {
             /// <summary>
             /// Create a socket timeout error with the specified message.
@@ -90,7 +90,7 @@ namespace Sharpy
         /// <summary>
         /// Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror.
         /// </summary>
-        public class Gaierror : Error
+        public class Gaierror : global::Sharpy.SocketModule.Error
         {
             /// <summary>
             /// Create a GAI error with the specified message.
@@ -110,7 +110,7 @@ namespace Sharpy
         /// <summary>
         /// Raised for legacy address-related errors. Corresponds to Python's socket.herror.
         /// </summary>
-        public class Herror : Error
+        public class Herror : global::Sharpy.SocketModule.Error
         {
             /// <summary>
             /// Create an herror with the specified message.
@@ -145,7 +145,7 @@ namespace Sharpy
                     var ipAddresses = global::System.Net.Dns.GetHostAddresses(address.Item1);
                     if (global::Sharpy.Builtins.Len(ipAddresses) == 0)
                     {
-                        throw new Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
+                        throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
                     }
 
                     global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
@@ -153,11 +153,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -188,7 +188,7 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
                 }
             }
 
@@ -203,14 +203,14 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
                 }
             }
 
             /// <summary>
             /// Accept a connection, returning (new socket, (remote_host, remote_port)).
             /// </summary>
-            public (Socket conn, (string host, int port) addr) Accept()
+            public (global::Sharpy.SocketModule.Socket conn, (string host, int port) addr) Accept()
             {
                 try
                 {
@@ -218,20 +218,20 @@ namespace Sharpy
                     var remote = accepted.RemoteEndPoint;
                     if (remote == null)
                     {
-                        throw new Error("Accepted connection has no remote endpoint.");
+                        throw new global::Sharpy.SocketModule.Error("Accepted connection has no remote endpoint.");
                     }
 
                     global::System.Net.IPEndPoint remoteEp = (global::System.Net.IPEndPoint)remote!;
-                    Socket conn = new Socket(accepted);
+                    global::Sharpy.SocketModule.Socket conn = new global::Sharpy.SocketModule.Socket(accepted);
                     return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -246,11 +246,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -269,7 +269,7 @@ namespace Sharpy
                         int sent = this._Socket.Send(buffer, totalSent, total - totalSent, global::System.Net.Sockets.SocketFlags.None);
                         if (sent == 0)
                         {
-                            throw new Error("Connection reset by peer", ((int)global::System.Net.Sockets.SocketError.ConnectionReset));
+                            throw new global::Sharpy.SocketModule.Error("Connection reset by peer", ((int)global::System.Net.Sockets.SocketError.ConnectionReset));
                         }
 
                         totalSent = totalSent + sent;
@@ -277,11 +277,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -300,11 +300,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -321,11 +321,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -346,11 +346,11 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
-                    throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
                 catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex_1);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
             }
 
@@ -365,7 +365,7 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
                 }
             }
 
@@ -386,7 +386,7 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
                 }
             }
 
@@ -461,7 +461,7 @@ namespace Sharpy
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
                 }
             }
 
@@ -481,7 +481,7 @@ namespace Sharpy
                 var endpoint = this._Socket.LocalEndPoint;
                 if (endpoint == null)
                 {
-                    throw new Error("Socket is not bound to an address.");
+                    throw new global::Sharpy.SocketModule.Error("Socket is not bound to an address.");
                 }
 
                 global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
@@ -496,7 +496,7 @@ namespace Sharpy
                 var endpoint = this._Socket.RemoteEndPoint;
                 if (endpoint == null)
                 {
-                    throw new Error("Socket is not connected.");
+                    throw new global::Sharpy.SocketModule.Error("Socket is not connected.");
                 }
 
                 global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
@@ -519,7 +519,7 @@ namespace Sharpy
                 this._Socket.Dispose();
             }
 
-            public Socket Enter()
+            public global::Sharpy.SocketModule.Socket Enter()
             {
                 return this;
             }
@@ -572,7 +572,7 @@ namespace Sharpy
             {
                 this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
                 this._Timeout = null;
-                double? @default = _DefaultTimeout;
+                double? @default = global::Sharpy.SocketModule._DefaultTimeout;
                 if (@default != null)
                 {
                     this.Settimeout(@default.Value);
@@ -594,7 +594,7 @@ namespace Sharpy
         /// </summary>
         public static double? Getdefaulttimeout()
         {
-            return _DefaultTimeout;
+            return global::Sharpy.SocketModule._DefaultTimeout;
         }
 
         /// <summary>
@@ -608,9 +608,9 @@ namespace Sharpy
         /// <summary>
         /// Connect to a TCP (host, port) address and return the connected socket.
         /// </summary>
-        public static Socket CreateConnection((string host, int port) address, double? timeout = null)
+        public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address, double? timeout = null)
         {
-            Socket sock = new Socket(AF_INET, SOCK_STREAM, 0);
+            global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM, 0);
             try
             {
                 if (timeout != null)
@@ -647,7 +647,7 @@ namespace Sharpy
                 int i = 0;
                 while (i < global::Sharpy.Builtins.Len(addresses))
                 {
-                    if (((int)global::Sharpy.ArrayHelpers.GetItem(addresses, i).AddressFamily) == AF_INET)
+                    if (((int)global::Sharpy.ArrayHelpers.GetItem(addresses, i).AddressFamily) == global::Sharpy.SocketModule.AF_INET)
                     {
                         return global::Sharpy.ArrayHelpers.GetItem(addresses, i).ToString();
                     }
@@ -660,11 +660,11 @@ namespace Sharpy
                     return global::Sharpy.ArrayHelpers.GetItem(addresses, 0).ToString();
                 }
 
-                throw new Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
+                throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
-                throw new Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
+                throw new global::Sharpy.SocketModule.Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
             }
         }
 
@@ -699,7 +699,7 @@ namespace Sharpy
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
-                throw new Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
+                throw new global::Sharpy.SocketModule.Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
             }
         }
     }

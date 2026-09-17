@@ -21,14 +21,14 @@ public static partial class AccessorParamInterfaceDefault
         }
     }
 
-    public class Speaker : IVolume
+    public class Speaker : global::AccessorParamInterfaceDefault.IVolume
     {
     }
 
     public static void Main()
     {
 #line (15, 5) - (15, 28) 8 "accessor_param_interface_default.spy"
-        IVolume s = new Speaker();
+        global::AccessorParamInterfaceDefault.IVolume s = new global::AccessorParamInterfaceDefault.Speaker();
 #line (16, 5) - (16, 17) 8 "accessor_param_interface_default.spy"
         s.Volume = 4;
 #line hidden

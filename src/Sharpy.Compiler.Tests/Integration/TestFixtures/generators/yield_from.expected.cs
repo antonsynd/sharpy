@@ -20,7 +20,7 @@ public static partial class YieldFrom
     public static System.Collections.Generic.IEnumerable<int> Outer()
     {
 #line (6, 5) - (6, 24) 8 "yield_from.spy"
-        foreach (var __yieldItem_0 in Inner())
+        foreach (var __yieldItem_0 in global::YieldFrom.Inner())
 #line hidden
         {
             yield return __yieldItem_0;
@@ -36,7 +36,7 @@ public static partial class YieldFrom
     public static void Main()
     {
 #line (11, 5) - (12, 17) 8 "yield_from.spy"
-        foreach (var __loopVar_1 in Outer())
+        foreach (var __loopVar_1 in global::YieldFrom.Outer())
 #line hidden
         {
             var x = __loopVar_1;

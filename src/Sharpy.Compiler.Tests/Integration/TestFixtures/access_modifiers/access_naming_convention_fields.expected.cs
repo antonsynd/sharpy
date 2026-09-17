@@ -34,7 +34,7 @@ public static partial class AccessNamingConventionFields
         }
     }
 
-    public class Child : MyClass
+    public class Child : global::AccessNamingConventionFields.MyClass
     {
         public int GetProtected()
 #line 21 "access_naming_convention_fields.spy"
@@ -53,13 +53,13 @@ public static partial class AccessNamingConventionFields
     public static void Main()
     {
 #line (25, 5) - (25, 40) 8 "access_naming_convention_fields.spy"
-        MyClass obj = new MyClass(10, 20, 30);
+        global::AccessNamingConventionFields.MyClass obj = new global::AccessNamingConventionFields.MyClass(10, 20, 30);
 #line (26, 5) - (26, 29) 8 "access_naming_convention_fields.spy"
         global::Sharpy.Builtins.Print(obj.GetPrivate());
 #line (27, 5) - (27, 28) 8 "access_naming_convention_fields.spy"
         global::Sharpy.Builtins.Print(obj.PublicField);
 #line (29, 5) - (29, 28) 8 "access_naming_convention_fields.spy"
-        Child child = new Child();
+        global::AccessNamingConventionFields.Child child = new global::AccessNamingConventionFields.Child();
 #line (30, 5) - (30, 33) 8 "access_naming_convention_fields.spy"
         global::Sharpy.Builtins.Print(child.GetProtected());
 #line (31, 5) - (31, 30) 8 "access_naming_convention_fields.spy"

@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using yaml = global::Sharpy.Yaml;
 using @operator = global::Sharpy.Operator;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

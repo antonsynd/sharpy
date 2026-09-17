@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using os_path = global::Sharpy.OsPathModule;
 using Xunit;
-using static TmpPathBasic;
 
 public static partial class TmpPathBasic
 {
@@ -27,7 +26,7 @@ public partial class TmpPathBasicTests : global::System.IDisposable
     {
         string tmpPath = _tmpPathFixture.Value;
 #line (7, 5) - (7, 54) 8 "tmp_path_basic.spy"
-        string target = os_path.Join(tmpPath, "data.txt");
+        string target = global::Sharpy.OsPathModule.Join(tmpPath, "data.txt");
 #line (8, 5) - (9, 27) 8 "tmp_path_basic.spy"
         using (var f = global::Sharpy.Builtins.Open(target, "w"))
 #line hidden
@@ -38,7 +37,7 @@ public partial class TmpPathBasicTests : global::System.IDisposable
         }
 
 #line (10, 5) - (10, 35) 8 "tmp_path_basic.spy"
-        Xunit.Assert.True(os_path.Exists(target));
+        Xunit.Assert.True(global::Sharpy.OsPathModule.Exists(target));
 #line hidden
     }
 

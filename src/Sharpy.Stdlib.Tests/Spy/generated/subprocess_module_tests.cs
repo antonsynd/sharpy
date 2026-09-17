@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using @operator = global::Sharpy.Operator;
 using subprocess = global::Sharpy.SubprocessModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -32,11 +30,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsMatchPython()
             {
 #line (36, 5) - (36, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Equal(-1, subprocess.PIPE);
+                Xunit.Assert.Equal(-1, global::Sharpy.SubprocessModule.PIPE);
 #line (37, 5) - (37, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Equal(-2, subprocess.STDOUT);
+                Xunit.Assert.Equal(-2, global::Sharpy.SubprocessModule.STDOUT);
 #line (38, 5) - (38, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Equal(-3, subprocess.DEVNULL);
+                Xunit.Assert.Equal(-3, global::Sharpy.SubprocessModule.DEVNULL);
 #line hidden
             }
 
@@ -392,7 +390,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPopenCommunicate()
             {
 #line (212, 5) - (214, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "cat" }, stdin: subprocess.PIPE, stdout: subprocess.PIPE))
+                using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "cat" }, stdin: global::Sharpy.SubprocessModule.PIPE, stdout: global::Sharpy.SubprocessModule.PIPE))
 #line hidden
                 {
 #line (213, 9) - (213, 56) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
@@ -512,7 +510,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPopenDevnullStdout()
             {
 #line (271, 5) - (273, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "discarded" }, stdout: subprocess.DEVNULL))
+                using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "discarded" }, stdout: global::Sharpy.SubprocessModule.DEVNULL))
 #line hidden
                 {
 #line (272, 9) - (272, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
@@ -532,7 +530,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (279, 9) - (279, 69) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                    new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "test" }, stderr: subprocess.STDOUT);
+                    new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "test" }, stderr: global::Sharpy.SubprocessModule.STDOUT);
 #line hidden
                 }
                 catch (NotImplementedError)

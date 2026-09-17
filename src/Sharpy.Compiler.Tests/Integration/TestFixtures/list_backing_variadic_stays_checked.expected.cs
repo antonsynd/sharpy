@@ -18,7 +18,7 @@ public static partial class ListBackingVariadicStaysChecked
     public static void Main()
     {
 #line (8, 5) - (8, 25) 8 "list_backing_variadic_stays_checked.spy"
-        Show(new Sharpy.List<int>() { 1, 2 }, new Sharpy.List<int>() { 3, 4 });
+        global::ListBackingVariadicStaysChecked.Show(new Sharpy.List<int>() { 1, 2 }, new Sharpy.List<int>() { 3, 4 });
 #line hidden
     }
 }

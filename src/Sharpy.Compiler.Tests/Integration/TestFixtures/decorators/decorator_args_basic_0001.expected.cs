@@ -20,7 +20,7 @@ public static partial class DecoratorArgsBasic0001
     public static void Main()
     {
 #line (6, 5) - (6, 19) 8 "decorator_args_basic_0001.spy"
-        global::Sharpy.Builtins.Print(Greet());
+        global::Sharpy.Builtins.Print(global::DecoratorArgsBasic0001.Greet());
 #line hidden
     }
 }

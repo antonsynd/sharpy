@@ -20,8 +20,8 @@ namespace Sharpy
         /// </summary>
         public static double Mean(Sharpy.List<double> data)
         {
-            Sharpy.List<double> values = _Materialize(data);
-            return _Sum(values) / global::Sharpy.Builtins.Len(values);
+            Sharpy.List<double> values = global::Sharpy.Statistics._Materialize(data);
+            return global::Sharpy.Statistics._Sum(values) / global::Sharpy.Builtins.Len(values);
         }
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace Sharpy
         /// </summary>
         public static double Fmean(Sharpy.List<double> data)
         {
-            return Mean(data);
+            return global::Sharpy.Statistics.Mean(data);
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Sharpy
         /// </summary>
         public static double Median(Sharpy.List<double> data)
         {
-            Sharpy.List<double> sortedData = _MaterializeSorted(data);
+            Sharpy.List<double> sortedData = global::Sharpy.Statistics._MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
             int mid = global::Sharpy.Builtins.FloorDiv(n, 2);
             if (global::Sharpy.Builtins.FloorMod(n, 2) == 0)
@@ -53,7 +53,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianLow(Sharpy.List<double> data)
         {
-            Sharpy.List<double> sortedData = _MaterializeSorted(data);
+            Sharpy.List<double> sortedData = global::Sharpy.Statistics._MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
             int mid = global::Sharpy.Builtins.FloorDiv(n, 2);
             if (global::Sharpy.Builtins.FloorMod(n, 2) == 0)
@@ -69,7 +69,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianHigh(Sharpy.List<double> data)
         {
-            Sharpy.List<double> sortedData = _MaterializeSorted(data);
+            Sharpy.List<double> sortedData = global::Sharpy.Statistics._MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
             return sortedData[global::Sharpy.Builtins.FloorDiv(n, 2)];
         }
@@ -131,7 +131,7 @@ namespace Sharpy
         /// </summary>
         public static double Stdev(Sharpy.List<double> data)
         {
-            return global::System.Math.Sqrt(Variance(data));
+            return global::System.Math.Sqrt(global::Sharpy.Statistics.Variance(data));
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace Sharpy
         /// </summary>
         public static double Pstdev(Sharpy.List<double> data)
         {
-            return global::System.Math.Sqrt(Pvariance(data));
+            return global::System.Math.Sqrt(global::Sharpy.Statistics.Pvariance(data));
         }
 
         /// <summary>
@@ -147,14 +147,14 @@ namespace Sharpy
         /// </summary>
         public static double Variance(Sharpy.List<double> data)
         {
-            Sharpy.List<double> values = _Materialize(data);
+            Sharpy.List<double> values = global::Sharpy.Statistics._Materialize(data);
             if (global::Sharpy.Builtins.Len(values) < 2)
             {
                 throw new global::Sharpy.StatisticsError("variance requires at least two data points");
             }
 
-            double m = _Sum(values) / global::Sharpy.Builtins.Len(values);
-            double ss = _SumOfSquaredDeviations(values, m);
+            double m = global::Sharpy.Statistics._Sum(values) / global::Sharpy.Builtins.Len(values);
+            double ss = global::Sharpy.Statistics._SumOfSquaredDeviations(values, m);
             return ss / (global::Sharpy.Builtins.Len(values) - 1);
         }
 
@@ -163,9 +163,9 @@ namespace Sharpy
         /// </summary>
         public static double Pvariance(Sharpy.List<double> data)
         {
-            Sharpy.List<double> values = _Materialize(data);
-            double m = _Sum(values) / global::Sharpy.Builtins.Len(values);
-            double ss = _SumOfSquaredDeviations(values, m);
+            Sharpy.List<double> values = global::Sharpy.Statistics._Materialize(data);
+            double m = global::Sharpy.Statistics._Sum(values) / global::Sharpy.Builtins.Len(values);
+            double ss = global::Sharpy.Statistics._SumOfSquaredDeviations(values, m);
             return ss / global::Sharpy.Builtins.Len(values);
         }
 
@@ -188,7 +188,7 @@ namespace Sharpy
         /// </summary>
         internal static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
         {
-            Sharpy.List<double> result = _Materialize(data);
+            Sharpy.List<double> result = global::Sharpy.Statistics._Materialize(data);
             result.Sort();
             return result;
         }
@@ -263,7 +263,7 @@ namespace Sharpy
         /// </summary>
         public static double Mean(Sharpy.List<int> data)
         {
-            return Mean(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Mean(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -271,7 +271,7 @@ namespace Sharpy
         /// </summary>
         public static double Mean(Sharpy.List<long> data)
         {
-            return Mean(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Mean(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -279,7 +279,7 @@ namespace Sharpy
         /// </summary>
         public static double Fmean(Sharpy.List<int> data)
         {
-            return Mean(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Mean(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -287,7 +287,7 @@ namespace Sharpy
         /// </summary>
         public static double Fmean(Sharpy.List<long> data)
         {
-            return Mean(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Mean(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -295,7 +295,7 @@ namespace Sharpy
         /// </summary>
         public static double Median(Sharpy.List<int> data)
         {
-            return Median(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Median(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -303,7 +303,7 @@ namespace Sharpy
         /// </summary>
         public static double Median(Sharpy.List<long> data)
         {
-            return Median(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Median(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -311,7 +311,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianLow(Sharpy.List<int> data)
         {
-            return MedianLow(_IntsToFloats(data));
+            return global::Sharpy.Statistics.MedianLow(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -319,7 +319,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianLow(Sharpy.List<long> data)
         {
-            return MedianLow(_LongsToFloats(data));
+            return global::Sharpy.Statistics.MedianLow(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -327,7 +327,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianHigh(Sharpy.List<int> data)
         {
-            return MedianHigh(_IntsToFloats(data));
+            return global::Sharpy.Statistics.MedianHigh(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -335,7 +335,7 @@ namespace Sharpy
         /// </summary>
         public static double MedianHigh(Sharpy.List<long> data)
         {
-            return MedianHigh(_LongsToFloats(data));
+            return global::Sharpy.Statistics.MedianHigh(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -343,7 +343,7 @@ namespace Sharpy
         /// </summary>
         public static double Stdev(Sharpy.List<int> data)
         {
-            return Stdev(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Stdev(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -351,7 +351,7 @@ namespace Sharpy
         /// </summary>
         public static double Stdev(Sharpy.List<long> data)
         {
-            return Stdev(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Stdev(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -359,7 +359,7 @@ namespace Sharpy
         /// </summary>
         public static double Variance(Sharpy.List<int> data)
         {
-            return Variance(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Variance(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -367,7 +367,7 @@ namespace Sharpy
         /// </summary>
         public static double Variance(Sharpy.List<long> data)
         {
-            return Variance(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Variance(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -375,7 +375,7 @@ namespace Sharpy
         /// </summary>
         public static double Pstdev(Sharpy.List<int> data)
         {
-            return Pstdev(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Pstdev(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -383,7 +383,7 @@ namespace Sharpy
         /// </summary>
         public static double Pstdev(Sharpy.List<long> data)
         {
-            return Pstdev(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Pstdev(global::Sharpy.Statistics._LongsToFloats(data));
         }
 
         /// <summary>
@@ -391,7 +391,7 @@ namespace Sharpy
         /// </summary>
         public static double Pvariance(Sharpy.List<int> data)
         {
-            return Pvariance(_IntsToFloats(data));
+            return global::Sharpy.Statistics.Pvariance(global::Sharpy.Statistics._IntsToFloats(data));
         }
 
         /// <summary>
@@ -399,7 +399,7 @@ namespace Sharpy
         /// </summary>
         public static double Pvariance(Sharpy.List<long> data)
         {
-            return Pvariance(_LongsToFloats(data));
+            return global::Sharpy.Statistics.Pvariance(global::Sharpy.Statistics._LongsToFloats(data));
         }
     }
 }

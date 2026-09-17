@@ -26,7 +26,7 @@ public static partial class QuestionMarkOptionalBasic
 
     public static Optional<int> Process(int x)
     {
-        var __qm_0 = Find(x);
+        var __qm_0 = global::QuestionMarkOptionalBasic.Find(x);
         if (__qm_0.IsNone)
             return Optional<int>.None;
 #line (7, 5) - (7, 25) 8 "question_mark_optional_basic.spy"
@@ -39,7 +39,7 @@ public static partial class QuestionMarkOptionalBasic
     public static void Main()
     {
 #line (11, 5) - (11, 24) 8 "question_mark_optional_basic.spy"
-        var result = Process(5);
+        var result = global::QuestionMarkOptionalBasic.Process(5);
 #line (12, 5) - (16, 26) 8 "question_mark_optional_basic.spy"
         switch (result)
 #line hidden

@@ -32,7 +32,7 @@ public static partial class AccessorTypeAliasControl
     public static void Main()
     {
 #line (21, 5) - (21, 34) 8 "accessor_type_alias_control.spy"
-        Thermostat t = new Thermostat();
+        global::AccessorTypeAliasControl.Thermostat t = new global::AccessorTypeAliasControl.Thermostat();
 #line (22, 5) - (22, 20) 8 "accessor_type_alias_control.spy"
         t.Target = 21.5d;
 #line (23, 5) - (23, 20) 8 "accessor_type_alias_control.spy"

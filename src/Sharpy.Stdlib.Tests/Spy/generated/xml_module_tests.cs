@@ -8,12 +8,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using os = global::Sharpy.OsModule;
 using tempfile = global::Sharpy.TempfileModule;
 using xml = global::Sharpy.Xml;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

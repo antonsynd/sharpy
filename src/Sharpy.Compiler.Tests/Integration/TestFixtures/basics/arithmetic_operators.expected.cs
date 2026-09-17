@@ -11,11 +11,11 @@ public static partial class ArithmeticOperators
 {
     public static int A = 15;
     public static int B = 4;
-    public static int SumResult = A + B;
-    public static int DiffResult = A - B;
-    public static int ProdResult = A * B;
-    public static int DivResult = global::Sharpy.Builtins.FloorDiv(A, B);
-    public static int ModResult = global::Sharpy.Builtins.FloorMod(A, B);
+    public static int SumResult = global::ArithmeticOperators.A + global::ArithmeticOperators.B;
+    public static int DiffResult = global::ArithmeticOperators.A - global::ArithmeticOperators.B;
+    public static int ProdResult = global::ArithmeticOperators.A * global::ArithmeticOperators.B;
+    public static int DivResult = global::Sharpy.Builtins.FloorDiv(global::ArithmeticOperators.A, global::ArithmeticOperators.B);
+    public static int ModResult = global::Sharpy.Builtins.FloorMod(global::ArithmeticOperators.A, global::ArithmeticOperators.B);
     public static void Main()
     {
 #line (13, 5) - (13, 22) 8 "arithmetic_operators.spy"

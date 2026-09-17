@@ -12,10 +12,10 @@ public static partial class EventInterface0001
     public delegate void SimpleHandler();
     public interface INotifiable
     {
-        event SimpleHandler OnNotify;
+        event global::EventInterface0001.SimpleHandler OnNotify;
     }
 
-    public class Publisher : INotifiable
+    public class Publisher : global::EventInterface0001.INotifiable
     {
         public void Notify()
 #line 10 "event_interface_0001.spy"
@@ -25,7 +25,7 @@ public static partial class EventInterface0001
 #line hidden
         }
 
-        public event SimpleHandler? OnNotify;
+        public event global::EventInterface0001.SimpleHandler? OnNotify;
     }
 
     public static void Handler()
@@ -38,9 +38,9 @@ public static partial class EventInterface0001
     public static void Main()
     {
 #line (17, 5) - (17, 32) 8 "event_interface_0001.spy"
-        Publisher p = new Publisher();
+        global::EventInterface0001.Publisher p = new global::EventInterface0001.Publisher();
 #line (18, 5) - (18, 27) 8 "event_interface_0001.spy"
-        p.OnNotify += Handler;
+        p.OnNotify += global::EventInterface0001.Handler;
 #line (19, 5) - (19, 15) 8 "event_interface_0001.spy"
         p.Notify();
 #line hidden

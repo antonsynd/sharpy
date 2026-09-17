@@ -40,7 +40,7 @@ public static partial class AccessorTypeGenericControl
     public static void Main()
     {
 #line (18, 5) - (18, 32) 8 "accessor_type_generic_control.spy"
-        Holder<int> h = new Holder<int>(3);
+        global::AccessorTypeGenericControl.Holder<int> h = new global::AccessorTypeGenericControl.Holder<int>(3);
 #line (19, 5) - (19, 15) 8 "accessor_type_generic_control.spy"
         h.Item = 9;
 #line (20, 5) - (20, 18) 8 "accessor_type_generic_control.spy"

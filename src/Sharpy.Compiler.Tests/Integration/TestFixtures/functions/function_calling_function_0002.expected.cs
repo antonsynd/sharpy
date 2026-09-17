@@ -26,9 +26,9 @@ public static partial class FunctionCallingFunction0002
     public static int CombinedOperation(int x, int y)
     {
 #line (9, 5) - (9, 37) 8 "function_calling_function_0002.spy"
-        var sumResult = CalculateSum(x, y);
+        var sumResult = global::FunctionCallingFunction0002.CalculateSum(x, y);
 #line (10, 5) - (10, 45) 8 "function_calling_function_0002.spy"
-        var productResult = CalculateProduct(x, y);
+        var productResult = global::FunctionCallingFunction0002.CalculateProduct(x, y);
 #line (11, 5) - (11, 40) 8 "function_calling_function_0002.spy"
         return sumResult + productResult;
 #line hidden
@@ -37,7 +37,7 @@ public static partial class FunctionCallingFunction0002
     public static void Main()
     {
 #line (14, 5) - (14, 38) 8 "function_calling_function_0002.spy"
-        var result = CombinedOperation(3, 7);
+        var result = global::FunctionCallingFunction0002.CombinedOperation(3, 7);
 #line (15, 5) - (15, 18) 8 "function_calling_function_0002.spy"
         global::Sharpy.Builtins.Print(result);
 #line hidden

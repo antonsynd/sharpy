@@ -132,7 +132,7 @@ namespace Sharpy
                 {
                     var line = __loopVar_2;
                     this._LineNum = this._LineNum + 1;
-                    yield return _ParseLine(line);
+                    yield return global::Sharpy.CsvModule._ParseLine(line);
                 }
             }
 
@@ -184,7 +184,7 @@ namespace Sharpy
                     }
 
                     first = false;
-                    sb.Append(_QuoteField(field));
+                    sb.Append(global::Sharpy.CsvModule._QuoteField(field));
                 }
 
                 this._Output.WriteLine(sb.ToString());
@@ -231,7 +231,7 @@ namespace Sharpy
                 foreach (var __loopVar_5 in this._Lines)
                 {
                     var line = __loopVar_5;
-                    Sharpy.List<string> fields = _ParseLine(line);
+                    Sharpy.List<string> fields = global::Sharpy.CsvModule._ParseLine(line);
                     if (isFirstRow)
                     {
                         this._Fieldnames = Optional<Sharpy.List<string>>.Some(fields);
@@ -308,7 +308,7 @@ namespace Sharpy
                     }
 
                     first = false;
-                    sb.Append(_QuoteField(name));
+                    sb.Append(global::Sharpy.CsvModule._QuoteField(name));
                 }
 
                 this._Output.WriteLine(sb.ToString());
@@ -341,7 +341,7 @@ namespace Sharpy
                         value = row[name];
                     }
 
-                    sb.Append(_QuoteField(value));
+                    sb.Append(global::Sharpy.CsvModule._QuoteField(value));
                 }
 
                 this._Output.WriteLine(sb.ToString());
@@ -392,33 +392,33 @@ namespace Sharpy
         /// <summary>
         /// Create a CSV reader from a list of lines.
         /// </summary>
-        public static CsvReader Reader(Sharpy.List<string> lines)
+        public static global::Sharpy.CsvModule.CsvReader Reader(Sharpy.List<string> lines)
         {
-            return new CsvReader(lines);
+            return new global::Sharpy.CsvModule.CsvReader(lines);
         }
 
         /// <summary>
         /// Create a CSV writer that writes to a TextWriter.
         /// </summary>
-        public static CsvWriter Writer(global::System.IO.TextWriter output)
+        public static global::Sharpy.CsvModule.CsvWriter Writer(global::System.IO.TextWriter output)
         {
-            return new CsvWriter(output);
+            return new global::Sharpy.CsvModule.CsvWriter(output);
         }
 
         /// <summary>
         /// Create a CSV DictReader from a list of lines.
         /// </summary>
-        public static CsvDictReader DictReader(Sharpy.List<string> lines, Optional<Sharpy.List<string>> fieldnames = default)
+        public static global::Sharpy.CsvModule.CsvDictReader DictReader(Sharpy.List<string> lines, Optional<Sharpy.List<string>> fieldnames = default)
         {
-            return new CsvDictReader(lines, fieldnames);
+            return new global::Sharpy.CsvModule.CsvDictReader(lines, fieldnames);
         }
 
         /// <summary>
         /// Create a CSV DictWriter that writes to a TextWriter.
         /// </summary>
-        public static CsvDictWriter DictWriter(global::System.IO.TextWriter output, Sharpy.List<string> fieldnames)
+        public static global::Sharpy.CsvModule.CsvDictWriter DictWriter(global::System.IO.TextWriter output, Sharpy.List<string> fieldnames)
         {
-            return new CsvDictWriter(output, fieldnames);
+            return new global::Sharpy.CsvModule.CsvDictWriter(output, fieldnames);
         }
     }
 }

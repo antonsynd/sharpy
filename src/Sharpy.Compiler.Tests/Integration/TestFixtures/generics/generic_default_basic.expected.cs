@@ -31,11 +31,11 @@ public static partial class GenericDefaultBasic
     public static void Main()
     {
 #line (11, 5) - (11, 21) 8 "generic_default_basic.spy"
-        var b = new Box<int>(42);
+        var b = new global::GenericDefaultBasic.Box<int>(42);
 #line (12, 5) - (12, 19) 8 "generic_default_basic.spy"
         global::Sharpy.Builtins.Print(b.Get());
 #line (13, 5) - (13, 26) 8 "generic_default_basic.spy"
-        var s = new Box<string>("hello");
+        var s = new global::GenericDefaultBasic.Box<string>("hello");
 #line (14, 5) - (14, 19) 8 "generic_default_basic.spy"
         global::Sharpy.Builtins.Print(s.Get());
 #line hidden

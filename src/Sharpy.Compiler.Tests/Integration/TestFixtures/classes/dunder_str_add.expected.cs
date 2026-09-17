@@ -21,10 +21,10 @@ public static partial class DunderStrAdd
 #line hidden
         }
 
-        public static Vector operator +(Vector left, Vector right)
+        public static global::DunderStrAdd.Vector operator +(Vector left, global::DunderStrAdd.Vector right)
         {
 #line (16, 9) - (16, 59) 12 "dunder_str_add.spy"
-            return new Vector(left.X + right.X, left.Y + right.Y);
+            return new global::DunderStrAdd.Vector(left.X + right.X, left.Y + right.Y);
 #line hidden
         }
 
@@ -42,11 +42,11 @@ public static partial class DunderStrAdd
     public static void Main()
     {
 #line (19, 5) - (19, 31) 8 "dunder_str_add.spy"
-        Vector v1 = new Vector(1, 2);
+        global::DunderStrAdd.Vector v1 = new global::DunderStrAdd.Vector(1, 2);
 #line (20, 5) - (20, 31) 8 "dunder_str_add.spy"
-        Vector v2 = new Vector(3, 4);
+        global::DunderStrAdd.Vector v2 = new global::DunderStrAdd.Vector(3, 4);
 #line (21, 5) - (21, 26) 8 "dunder_str_add.spy"
-        Vector v3 = v1 + v2;
+        global::DunderStrAdd.Vector v3 = v1 + v2;
 #line (22, 5) - (22, 14) 8 "dunder_str_add.spy"
         global::Sharpy.Builtins.Print(v1);
 #line (23, 5) - (23, 14) 8 "dunder_str_add.spy"

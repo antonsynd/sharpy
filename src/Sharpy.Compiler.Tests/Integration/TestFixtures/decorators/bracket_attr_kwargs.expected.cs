@@ -23,7 +23,7 @@ public static partial class BracketAttrKwargs
     public static void Main()
     {
 #line (8, 5) - (8, 19) 8 "bracket_attr_kwargs.spy"
-        var s = new Settings();
+        var s = new global::BracketAttrKwargs.Settings();
 #line (9, 5) - (9, 37) 8 "bracket_attr_kwargs.spy"
         global::Sharpy.Builtins.Print(s.GetDefaultThreshold());
 #line hidden

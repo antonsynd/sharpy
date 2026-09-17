@@ -32,7 +32,7 @@ public static partial class BracketAttrCustomReflection
     public static void Main()
     {
 #line (18, 5) - (18, 20) 8 "bracket_attr_custom_reflection.spy"
-        var lib = new Library();
+        var lib = new global::BracketAttrCustomReflection.Library();
 #line (19, 5) - (19, 23) 8 "bracket_attr_custom_reflection.spy"
         object obj = lib;
 #line (20, 5) - (20, 23) 8 "bracket_attr_custom_reflection.spy"

@@ -32,11 +32,11 @@ public static partial class GenericClass0005
     public static void Main()
     {
 #line (12, 5) - (12, 27) 8 "generic_class_0005.spy"
-        var intBox = new Box<int>(42);
+        var intBox = new global::GenericClass0005.Box<int>(42);
 #line (13, 5) - (13, 25) 8 "generic_class_0005.spy"
         global::Sharpy.Builtins.Print(intBox.Get());
 #line (15, 5) - (15, 32) 8 "generic_class_0005.spy"
-        var strBox = new Box<string>("hello");
+        var strBox = new global::GenericClass0005.Box<string>("hello");
 #line (16, 5) - (16, 25) 8 "generic_class_0005.spy"
         global::Sharpy.Builtins.Print(strBox.Get());
 #line hidden

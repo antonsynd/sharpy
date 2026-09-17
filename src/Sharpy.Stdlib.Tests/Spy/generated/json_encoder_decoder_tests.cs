@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using json = global::Sharpy.Json;
 using @operator = global::Sharpy.Operator;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -144,7 +142,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (57, 9) - (57, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                    encoder.Default(new Unserializable());
+                    encoder.Default(new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests.Unserializable());
 #line hidden
                 }
                 catch (TypeError)
@@ -228,7 +226,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDecoderWithObjectHookAppliesHookToAllDicts()
             {
 #line (101, 5) - (101, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                var decoder = new global::Sharpy.JSONDecoder(objectHook: _TagHook!);
+                var decoder = new global::Sharpy.JSONDecoder(objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests._TagHook!);
 #line (102, 5) - (102, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = decoder.Decode("{\"a\": {\"b\": 1}}");
 #line (103, 5) - (107, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
@@ -287,7 +285,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsObjectHookParameterAppliesHook()
             {
 #line (124, 5) - (124, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                object result = json.Loads("{\"x\": 1}", objectHook: _TagHook!);
+                object result = json.Loads("{\"x\": 1}", objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests._TagHook!);
 #line (125, 5) - (129, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (result)
 #line hidden

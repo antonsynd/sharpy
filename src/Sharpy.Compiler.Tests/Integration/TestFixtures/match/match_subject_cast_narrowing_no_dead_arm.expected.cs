@@ -73,7 +73,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
         }
     }
 
-    public static void FromMember(Holder h)
+    public static void FromMember(global::MatchSubjectCastNarrowingNoDeadArm.Holder h)
     {
 #line (43, 5) - (43, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         if (!((object?)h.Value is double))
@@ -140,7 +140,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
     public static void Main()
     {
 #line (69, 5) - (69, 25) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        FromIdentifier(3.5d);
+        global::MatchSubjectCastNarrowingNoDeadArm.FromIdentifier(3.5d);
 #line (71, 5) - (71, 31) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
@@ -149,13 +149,13 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
 #line (72, 5) - (72, 20) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         d["key"] = 1.25d;
 #line (73, 5) - (73, 18) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        FromIndex(d);
+        global::MatchSubjectCastNarrowingNoDeadArm.FromIndex(d);
 #line (75, 5) - (75, 29) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        FromMember(new Holder(2.5d));
+        global::MatchSubjectCastNarrowingNoDeadArm.FromMember(new global::MatchSubjectCastNarrowingNoDeadArm.Holder(2.5d));
 #line (76, 5) - (76, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::Sharpy.Builtins.Print(FromMatchExpression(4.75d));
+        global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.FromMatchExpression(4.75d));
 #line (77, 5) - (77, 54) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::Sharpy.Builtins.Print(FromOptionalMatchExpression(Optional<string>.Some("hi")));
+        global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.FromOptionalMatchExpression(Optional<string>.Some("hi")));
 #line hidden
     }
 }

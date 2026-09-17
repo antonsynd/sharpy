@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using math = global::Sharpy.MathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Math.MathAdditionalTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -133,11 +131,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIscloseInfinity()
             {
 #line (62, 5) - (62, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.Inf, math.Inf));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Inf, global::Sharpy.MathModule.Inf));
 #line (63, 5) - (63, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.False(math.Isclose(math.Inf, 1.0d));
+                Xunit.Assert.False(math.Isclose(global::Sharpy.MathModule.Inf, 1.0d));
 #line (64, 5) - (64, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.False(math.Isclose(1.0d, -math.Inf));
+                Xunit.Assert.False(math.Isclose(1.0d, -global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -145,9 +143,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIscloseNan()
             {
 #line (68, 5) - (68, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.False(math.Isclose(math.Nan, math.Nan));
+                Xunit.Assert.False(math.Isclose(global::Sharpy.MathModule.Nan, global::Sharpy.MathModule.Nan));
 #line (69, 5) - (69, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.False(math.Isclose(math.Nan, 1.0d));
+                Xunit.Assert.False(math.Isclose(global::Sharpy.MathModule.Nan, 1.0d));
 #line hidden
             }
 
@@ -490,7 +488,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExpm1LargerValue()
             {
 #line (208, 5) - (208, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.True(math.Isclose(math.E - 1.0d, math.Expm1(1.0d), relTol: 1e-9d));
+                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.E - 1.0d, math.Expm1(1.0d), relTol: 1e-9d));
 #line hidden
             }
 
@@ -516,7 +514,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLog1pLargerValue()
             {
 #line (223, 5) - (223, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Log1p(math.E - 1.0d), relTol: 1e-9d));
+                Xunit.Assert.True(math.Isclose(1.0d, math.Log1p(global::Sharpy.MathModule.E - 1.0d), relTol: 1e-9d));
 #line hidden
             }
 

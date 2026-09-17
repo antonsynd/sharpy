@@ -50,7 +50,7 @@ public static partial class InternalVisibility0001
     public static void Main()
     {
 #line (22, 5) - (22, 28) 8 "internal_visibility_0001.spy"
-        Service s = new Service();
+        global::InternalVisibility0001.Service s = new global::InternalVisibility0001.Service();
 #line (23, 5) - (23, 29) 8 "internal_visibility_0001.spy"
         global::Sharpy.Builtins.Print(s.PublicMethod());
 #line (24, 5) - (24, 19) 8 "internal_visibility_0001.spy"

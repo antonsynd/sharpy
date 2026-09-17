@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -416,14 +415,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                     }
                 };
 #line (161, 5) - (161, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.True(_GetitemRaises(d, "z"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._GetitemRaises(d, "z"));
 #line (162, 5) - (162, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
 #line hidden
                 {
                 };
 #line (163, 5) - (163, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.True(_GetitemRaises(empty, "anything"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._GetitemRaises(empty, "anything"));
 #line hidden
             }
 
@@ -477,7 +476,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (192, 5) - (192, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, d["b"]);
 #line (193, 5) - (193, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.True(_PopRaises(d, "missing"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._PopRaises(d, "missing"));
 #line hidden
             }
 

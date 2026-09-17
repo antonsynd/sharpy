@@ -20,7 +20,7 @@ public static partial class InterfaceImplementation0003
         bool ProcessRefund(int amount);
     }
 
-    public class CreditCardProcessor : IPaymentProcessor, IRefundable
+    public class CreditCardProcessor : global::InterfaceImplementation0003.IPaymentProcessor, global::InterfaceImplementation0003.IRefundable
     {
         public int Fee;
         public int TotalProcessed;
@@ -63,7 +63,7 @@ public static partial class InterfaceImplementation0003
         }
     }
 
-    public class CashProcessor : IPaymentProcessor
+    public class CashProcessor : global::InterfaceImplementation0003.IPaymentProcessor
     {
         public int Fee;
         public virtual bool ProcessPayment(int amount)
@@ -94,9 +94,9 @@ public static partial class InterfaceImplementation0003
     public static void Main()
     {
 #line (42, 5) - (42, 31) 8 "interface_implementation_0003.spy"
-        var cc = new CreditCardProcessor();
+        var cc = new global::InterfaceImplementation0003.CreditCardProcessor();
 #line (43, 5) - (43, 27) 8 "interface_implementation_0003.spy"
-        var cash = new CashProcessor();
+        var cash = new global::InterfaceImplementation0003.CashProcessor();
 #line (45, 5) - (45, 28) 8 "interface_implementation_0003.spy"
         cc.ProcessPayment(100);
 #line (46, 5) - (46, 30) 8 "interface_implementation_0003.spy"

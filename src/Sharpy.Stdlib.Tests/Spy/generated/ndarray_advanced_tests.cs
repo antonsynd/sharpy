@@ -11,7 +11,6 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using math = global::Sharpy.MathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayAdvancedTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -123,9 +122,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAllcloseBothNan()
             {
 #line (80, 5) - (80, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
-                var a = np.Array(new Sharpy.List<double>() { math.Nan });
+                var a = np.Array(new Sharpy.List<double>() { global::Sharpy.MathModule.Nan });
 #line (81, 5) - (81, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
-                var b = np.Array(new Sharpy.List<double>() { math.Nan });
+                var b = np.Array(new Sharpy.List<double>() { global::Sharpy.MathModule.Nan });
 #line (82, 5) - (82, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
                 Xunit.Assert.True(np.Allclose(a, b));
 #line hidden
@@ -147,7 +146,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsnanFlagsNanValues()
             {
 #line (94, 5) - (94, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
-                var arr = np.Array(new Sharpy.List<double>() { 1.0d, math.Nan, 3.0d, math.Nan });
+                var arr = np.Array(new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.Nan, 3.0d, global::Sharpy.MathModule.Nan });
 #line (95, 5) - (95, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
                 var result = np.Isnan(arr);
 #line (96, 5) - (96, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
@@ -159,7 +158,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsinfFlagsInfinities()
             {
 #line (100, 5) - (100, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
-                var arr = np.Array(new Sharpy.List<double>() { 1.0d, math.Inf, -math.Inf, 4.0d });
+                var arr = np.Array(new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.Inf, -global::Sharpy.MathModule.Inf, 4.0d });
 #line (101, 5) - (101, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"
                 var result = np.Isinf(arr);
 #line (102, 5) - (102, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_advanced_tests.spy"

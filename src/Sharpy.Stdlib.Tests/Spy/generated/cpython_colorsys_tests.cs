@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using colorsys = global::Sharpy.Colorsys;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -197,51 +195,51 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (67, 5) - (67, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (h, s, v) = colorsys.RgbToHsv(0.0d, 0.0d, 0.0d);
 #line (68, 5) - (68, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 0.0d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 0.0d, 0.0d, 0.0d);
 #line (69, 5) - (69, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(0.0d, 0.0d, 1.0d);
 #line (70, 5) - (70, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 4.0d / 6.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 4.0d / 6.0d, 1.0d, 1.0d);
 #line (71, 5) - (71, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(0.0d, 1.0d, 0.0d);
 #line (72, 5) - (72, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 2.0d / 6.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 2.0d / 6.0d, 1.0d, 1.0d);
 #line (73, 5) - (73, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(0.0d, 1.0d, 1.0d);
 #line (74, 5) - (74, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 3.0d / 6.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 3.0d / 6.0d, 1.0d, 1.0d);
 #line (75, 5) - (75, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(1.0d, 0.0d, 0.0d);
 #line (76, 5) - (76, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 0.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 0.0d, 1.0d, 1.0d);
 #line (77, 5) - (77, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(1.0d, 0.0d, 1.0d);
 #line (78, 5) - (78, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 5.0d / 6.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 5.0d / 6.0d, 1.0d, 1.0d);
 #line (79, 5) - (79, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(1.0d, 1.0d, 0.0d);
 #line (80, 5) - (80, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 1.0d / 6.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 1.0d / 6.0d, 1.0d, 1.0d);
 #line (81, 5) - (81, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(1.0d, 1.0d, 1.0d);
 #line (82, 5) - (82, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 0.0d, 0.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 0.0d, 0.0d, 1.0d);
 #line (83, 5) - (83, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, s, v) = colorsys.RgbToHsv(0.5d, 0.5d, 0.5d);
 #line (84, 5) - (84, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, s, v, 0.0d, 0.0d, 0.5d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, s, v, 0.0d, 0.0d, 0.5d);
 #line (86, 5) - (86, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (r, g, b) = colorsys.HsvToRgb(4.0d / 6.0d, 1.0d, 1.0d);
 #line (87, 5) - (87, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.0d, 0.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.0d, 0.0d, 1.0d);
 #line (88, 5) - (88, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (r, g, b) = colorsys.HsvToRgb(2.0d / 6.0d, 1.0d, 1.0d);
 #line (89, 5) - (89, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.0d, 1.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.0d, 1.0d, 0.0d);
 #line (90, 5) - (90, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (r, g, b) = colorsys.HsvToRgb(0.0d, 0.0d, 0.5d);
 #line (91, 5) - (91, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.5d, 0.5d, 0.5d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.5d, 0.5d, 0.5d);
 #line hidden
             }
 
@@ -251,35 +249,35 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (95, 5) - (95, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (h, l, s) = colorsys.RgbToHls(0.0d, 0.0d, 0.0d);
 #line (96, 5) - (96, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.0d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.0d, 0.0d, 0.0d);
 #line (97, 5) - (97, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(0.0d, 0.0d, 1.0d);
 #line (98, 5) - (98, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 4.0d / 6.0d, 0.5d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 4.0d / 6.0d, 0.5d, 1.0d);
 #line (99, 5) - (99, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(0.0d, 1.0d, 0.0d);
 #line (100, 5) - (100, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 2.0d / 6.0d, 0.5d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 2.0d / 6.0d, 0.5d, 1.0d);
 #line (101, 5) - (101, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(1.0d, 0.0d, 0.0d);
 #line (102, 5) - (102, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.0d, 0.5d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.0d, 0.5d, 1.0d);
 #line (103, 5) - (103, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(1.0d, 1.0d, 1.0d);
 #line (104, 5) - (104, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.0d, 1.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.0d, 1.0d, 0.0d);
 #line (105, 5) - (105, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(0.5d, 0.5d, 0.5d);
 #line (106, 5) - (106, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.0d, 0.5d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.0d, 0.5d, 0.0d);
 #line (108, 5) - (108, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (r, g, b) = colorsys.HlsToRgb(4.0d / 6.0d, 0.5d, 1.0d);
 #line (109, 5) - (109, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.0d, 0.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.0d, 0.0d, 1.0d);
 #line (110, 5) - (110, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (r, g, b) = colorsys.HlsToRgb(2.0d / 6.0d, 0.5d, 1.0d);
 #line (111, 5) - (111, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.0d, 1.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.0d, 1.0d, 0.0d);
 #line hidden
             }
 
@@ -289,15 +287,15 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (118, 5) - (118, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (h, l, s) = colorsys.RgbToHls(0.9999999999999999d, 1.0d, 1.0d);
 #line (119, 5) - (119, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.5d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.5d, 1.0d, 1.0d);
 #line (120, 5) - (120, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(1.0d, 0.9999999999999999d, 1.0d);
 #line (121, 5) - (121, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.8333333333333334d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.8333333333333334d, 1.0d, 1.0d);
 #line (122, 5) - (122, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (h, l, s) = colorsys.RgbToHls(1.0d, 1.0d, 0.9999999999999999d);
 #line (123, 5) - (123, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(h, l, s, 0.16666666666666666d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(h, l, s, 0.16666666666666666d, 1.0d, 1.0d);
 #line hidden
             }
 
@@ -307,35 +305,35 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (127, 5) - (127, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (y, i, q) = colorsys.RgbToYiq(0.0d, 0.0d, 0.0d);
 #line (128, 5) - (128, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 0.0d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 0.0d, 0.0d, 0.0d);
 #line (129, 5) - (129, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (y, i, q) = colorsys.RgbToYiq(0.0d, 0.0d, 1.0d);
 #line (130, 5) - (130, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 0.11d, -0.3217d, 0.3121d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 0.11d, -0.3217d, 0.3121d);
 #line (131, 5) - (131, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (y, i, q) = colorsys.RgbToYiq(0.0d, 1.0d, 0.0d);
 #line (132, 5) - (132, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 0.59d, -0.2773d, -0.5251d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 0.59d, -0.2773d, -0.5251d);
 #line (133, 5) - (133, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (y, i, q) = colorsys.RgbToYiq(1.0d, 0.0d, 0.0d);
 #line (134, 5) - (134, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 0.3d, 0.599d, 0.213d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 0.3d, 0.599d, 0.213d);
 #line (135, 5) - (135, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (y, i, q) = colorsys.RgbToYiq(1.0d, 1.0d, 1.0d);
 #line (136, 5) - (136, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 1.0d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 1.0d, 0.0d, 0.0d);
 #line (137, 5) - (137, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (y, i, q) = colorsys.RgbToYiq(0.5d, 0.5d, 0.5d);
 #line (138, 5) - (138, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(y, i, q, 0.5d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(y, i, q, 0.5d, 0.0d, 0.0d);
 #line (140, 5) - (140, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 var (r, g, b) = colorsys.YiqToRgb(1.0d, 0.0d, 0.0d);
 #line (141, 5) - (141, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 1.0d, 1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 1.0d, 1.0d, 1.0d);
 #line (142, 5) - (142, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 (r, g, b) = colorsys.YiqToRgb(0.0d, 0.0d, 0.0d);
 #line (143, 5) - (143, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
-                _AssertTriple(r, g, b, 0.0d, 0.0d, 0.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonColorsysTests._AssertTriple(r, g, b, 0.0d, 0.0d, 0.0d);
 #line hidden
             }
         }

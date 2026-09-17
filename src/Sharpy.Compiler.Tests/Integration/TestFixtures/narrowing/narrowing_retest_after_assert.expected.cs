@@ -57,9 +57,9 @@ public static partial class NarrowingRetestAfterAssert
     public static void Main()
     {
 #line (18, 5) - (18, 29) 8 "narrowing_retest_after_assert.spy"
-        global::Sharpy.Builtins.Print(CheckNullable(5));
+        global::Sharpy.Builtins.Print(global::NarrowingRetestAfterAssert.CheckNullable(5));
 #line (19, 5) - (19, 35) 8 "narrowing_retest_after_assert.spy"
-        global::Sharpy.Builtins.Print(CheckOptional(Optional<int>.Some(7)));
+        global::Sharpy.Builtins.Print(global::NarrowingRetestAfterAssert.CheckOptional(Optional<int>.Some(7)));
 #line hidden
     }
 }

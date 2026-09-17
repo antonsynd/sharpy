@@ -84,7 +84,7 @@ public static partial class NullableScoreEvaluator
     public static void Main()
     {
 #line (29, 5) - (29, 35) 8 "nullable_score_evaluator.spy"
-        var evaluator = new ScoreEvaluator(60);
+        var evaluator = new global::NullableScoreEvaluator.ScoreEvaluator(60);
 #line (31, 5) - (31, 35) 8 "nullable_score_evaluator.spy"
         Optional<int> testScore1 = Optional<int>.Some(75);
 #line (32, 5) - (32, 48) 8 "nullable_score_evaluator.spy"

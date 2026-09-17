@@ -36,7 +36,7 @@ namespace Sharpy
                 pat = pat.ToLowerInvariant();
             }
 
-            return Fnmatchcase(name, pat);
+            return global::Sharpy.FnmatchModule.Fnmatchcase(name, pat);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            string regexPattern = Translate(pat);
+            string regexPattern = global::Sharpy.FnmatchModule.Translate(pat);
             return global::System.Text.RegularExpressions.Regex.IsMatch(name, regexPattern);
         }
 
@@ -80,7 +80,7 @@ namespace Sharpy
                 matchPat = matchPat.ToLowerInvariant();
             }
 
-            string regexPattern = Translate(matchPat);
+            string regexPattern = global::Sharpy.FnmatchModule.Translate(matchPat);
             global::System.Text.RegularExpressions.Regex regex = new global::System.Text.RegularExpressions.Regex(regexPattern);
             Sharpy.List<string> result = new Sharpy.List<string>()
             {

@@ -18,7 +18,7 @@ public static partial class NarrowingIsinstancePlainRead
     public static void Main()
     {
 #line (9, 5) - (9, 29) 8 "narrowing_isinstance_plain_read.spy"
-        object r = GetValue();
+        object r = global::NarrowingIsinstancePlainRead.GetValue();
 #line (10, 5) - (10, 31) 8 "narrowing_isinstance_plain_read.spy"
         if (!((object?)r is int))
 #line hidden

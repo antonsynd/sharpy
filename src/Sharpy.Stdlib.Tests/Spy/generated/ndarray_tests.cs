@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

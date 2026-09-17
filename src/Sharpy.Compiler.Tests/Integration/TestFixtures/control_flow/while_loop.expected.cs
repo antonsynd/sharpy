@@ -26,7 +26,7 @@ public static partial class WhileLoop
     public static void Main()
     {
 #line (7, 5) - (7, 17) 8 "while_loop.spy"
-        Countdown(3);
+        global::WhileLoop.Countdown(3);
 #line hidden
     }
 }

@@ -24,7 +24,7 @@ public static partial class SuperInitCall0000
         }
     }
 
-    public class Car : Vehicle
+    public class Car : global::SuperInitCall0000.Vehicle
     {
         public int Doors;
         public int Mileage;
@@ -47,7 +47,7 @@ public static partial class SuperInitCall0000
         }
     }
 
-    public class ElectricCar : Car
+    public class ElectricCar : global::SuperInitCall0000.Car
     {
         public int BatteryCapacity;
         public int ChargeLevel;
@@ -81,7 +81,7 @@ public static partial class SuperInitCall0000
     public static void Main()
     {
 #line (40, 5) - (40, 46) 8 "super_init_call_0000.spy"
-        var tesla = new ElectricCar("Tesla", 2024, 4, 85);
+        var tesla = new global::SuperInitCall0000.ElectricCar("Tesla", 2024, 4, 85);
 #line (41, 5) - (41, 21) 8 "super_init_call_0000.spy"
         tesla.Drive(150);
 #line (42, 5) - (42, 25) 8 "super_init_call_0000.spy"

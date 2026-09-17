@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using re = global::Sharpy.ReModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Re.ReModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -281,7 +279,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchIgnoreCaseMatchesCaseInsensitive()
             {
 #line (152, 5) - (152, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("hello", "HELLO WORLD", flags: re.IGNORECASE);
+                var m = re.Search("hello", "HELLO WORLD", flags: global::Sharpy.ReModule.IGNORECASE);
 #line (153, 5) - (153, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (154, 5) - (154, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -293,7 +291,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchIgnoreCaseShorthandWorks()
             {
 #line (158, 5) - (158, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("hello", "HELLO WORLD", flags: re.I);
+                var m = re.Search("hello", "HELLO WORLD", flags: global::Sharpy.ReModule.I);
 #line (159, 5) - (159, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line hidden
@@ -303,7 +301,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchMultilineMatchesAtLineStart()
             {
 #line (163, 5) - (163, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("^world", "hello\nworld", flags: re.MULTILINE);
+                var m = re.Search("^world", "hello\nworld", flags: global::Sharpy.ReModule.MULTILINE);
 #line (164, 5) - (164, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (165, 5) - (165, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -315,7 +313,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchDotallDotMatchesNewline()
             {
 #line (169, 5) - (169, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Fullmatch("a.b", "a\nb", flags: re.DOTALL);
+                var m = re.Fullmatch("a.b", "a\nb", flags: global::Sharpy.ReModule.DOTALL);
 #line (170, 5) - (170, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line hidden
@@ -325,7 +323,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchCombinedFlagsWork()
             {
 #line (174, 5) - (174, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("^hello", "HELLO\nWORLD", flags: re.IGNORECASE | re.MULTILINE);
+                var m = re.Search("^hello", "HELLO\nWORLD", flags: global::Sharpy.ReModule.IGNORECASE | global::Sharpy.ReModule.MULTILINE);
 #line (175, 5) - (175, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (176, 5) - (176, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -525,7 +523,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (292, 5) - (292, 115) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 string pattern = "\\d+   # one or more digits\n\\s*   # optional whitespace\n\\w+   # one or more word chars\n";
 #line (293, 5) - (293, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search(pattern, "123 hello", flags: re.VERBOSE);
+                var m = re.Search(pattern, "123 hello", flags: global::Sharpy.ReModule.VERBOSE);
 #line (294, 5) - (294, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (295, 5) - (295, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -537,7 +535,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchVerboseShorthandWorks()
             {
 #line (299, 5) - (299, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("\\d+  # digits", "abc 42", flags: re.X);
+                var m = re.Search("\\d+  # digits", "abc 42", flags: global::Sharpy.ReModule.X);
 #line (300, 5) - (300, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (301, 5) - (301, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -549,7 +547,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchAsciiFlagAcceptedWithoutError()
             {
 #line (307, 5) - (307, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("\\w+", "hello", flags: re.ASCII);
+                var m = re.Search("\\w+", "hello", flags: global::Sharpy.ReModule.ASCII);
 #line (308, 5) - (308, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (309, 5) - (309, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -561,7 +559,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSearchUnicodeFlagAcceptedWithoutError()
             {
 #line (313, 5) - (313, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                var m = re.Search("\\w+", "hello", flags: re.UNICODE);
+                var m = re.Search("\\w+", "hello", flags: global::Sharpy.ReModule.UNICODE);
 #line (314, 5) - (314, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (315, 5) - (315, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
@@ -573,29 +571,29 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFlagConstantsHaveCorrectValues()
             {
 #line (319, 5) - (319, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(2, re.IGNORECASE);
+                Xunit.Assert.Equal(2, global::Sharpy.ReModule.IGNORECASE);
 #line (320, 5) - (320, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(2, re.I);
+                Xunit.Assert.Equal(2, global::Sharpy.ReModule.I);
 #line (321, 5) - (321, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(8, re.MULTILINE);
+                Xunit.Assert.Equal(8, global::Sharpy.ReModule.MULTILINE);
 #line (322, 5) - (322, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(8, re.M);
+                Xunit.Assert.Equal(8, global::Sharpy.ReModule.M);
 #line (323, 5) - (323, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(16, re.DOTALL);
+                Xunit.Assert.Equal(16, global::Sharpy.ReModule.DOTALL);
 #line (324, 5) - (324, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(16, re.S);
+                Xunit.Assert.Equal(16, global::Sharpy.ReModule.S);
 #line (325, 5) - (325, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(32, re.UNICODE);
+                Xunit.Assert.Equal(32, global::Sharpy.ReModule.UNICODE);
 #line (326, 5) - (326, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(32, re.U);
+                Xunit.Assert.Equal(32, global::Sharpy.ReModule.U);
 #line (327, 5) - (327, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(64, re.VERBOSE);
+                Xunit.Assert.Equal(64, global::Sharpy.ReModule.VERBOSE);
 #line (328, 5) - (328, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(64, re.X);
+                Xunit.Assert.Equal(64, global::Sharpy.ReModule.X);
 #line (329, 5) - (329, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(256, re.ASCII);
+                Xunit.Assert.Equal(256, global::Sharpy.ReModule.ASCII);
 #line (330, 5) - (330, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                Xunit.Assert.Equal(256, re.A);
+                Xunit.Assert.Equal(256, global::Sharpy.ReModule.A);
 #line hidden
             }
 

@@ -5,9 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static TestAssertRaisesNoCapture;
 
 public static partial class TestAssertRaisesNoCapture
 {

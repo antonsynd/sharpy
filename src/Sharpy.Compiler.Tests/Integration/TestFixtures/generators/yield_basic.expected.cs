@@ -27,7 +27,7 @@ public static partial class YieldBasic
     public static void Main()
     {
 #line (8, 5) - (9, 17) 8 "yield_basic.spy"
-        foreach (var __loopVar_0 in CountUp(5))
+        foreach (var __loopVar_0 in global::YieldBasic.CountUp(5))
 #line hidden
         {
             var x = __loopVar_0;

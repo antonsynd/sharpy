@@ -8,13 +8,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using toml = global::Sharpy.Toml;
 using math = global::Sharpy.MathModule;
 using @operator = global::Sharpy.Operator;
 using datetime = global::Sharpy.Datetime;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -53,7 +51,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (27, 5) - (27, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("count = 42");
 #line (28, 5) - (28, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["count"], 42));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["count"], 42));
 #line hidden
             }
 
@@ -63,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (32, 5) - (32, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = -10");
 #line (33, 5) - (33, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["val"], -10));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["val"], -10));
 #line hidden
             }
 
@@ -110,11 +108,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (57, 13) - (57, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(l));
 #line (58, 13) - (58, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(l[0], 1));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(l[0], 1));
 #line (59, 13) - (59, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(l[1], 2));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(l[1], 2));
 #line (60, 13) - (60, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(l[2], 3));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(l[2], 3));
 #line hidden
                         break;
                     default:
@@ -138,7 +136,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (69, 13) - (69, 61) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(server["host"], "localhost"));
 #line (70, 13) - (70, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(server["port"], 8080));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(server["port"], 8080));
 #line hidden
                         break;
                     default:
@@ -170,7 +168,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                                 {
                                     case Sharpy.Dict<string, object> c:
 #line (83, 29) - (83, 57) 40 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                                        Xunit.Assert.True(EqLong(c["val"], 1));
+                                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(c["val"], 1));
 #line hidden
                                         break;
                                     default:
@@ -213,7 +211,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         {
                             case Sharpy.Dict<string, object> b:
 #line (98, 21) - (98, 48) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                                Xunit.Assert.True(EqLong(b["c"], 42));
+                                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(b["c"], 42));
 #line hidden
                                 break;
                             default:
@@ -243,9 +241,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case Sharpy.Dict<string, object> point:
 #line (109, 13) - (109, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(point["x"], 1));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(point["x"], 1));
 #line (110, 13) - (110, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(point["y"], 2));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(point["y"], 2));
 #line hidden
                         break;
                     default:
@@ -349,7 +347,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (154, 5) - (154, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = 0xff");
 #line (155, 5) - (155, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["val"], 255));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["val"], 255));
 #line hidden
             }
 
@@ -359,7 +357,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (159, 5) - (159, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = 0o77");
 #line (160, 5) - (160, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["val"], 63));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["val"], 63));
 #line hidden
             }
 
@@ -369,7 +367,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (164, 5) - (164, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = 0b1010");
 #line (165, 5) - (165, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["val"], 10));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["val"], 10));
 #line hidden
             }
 
@@ -379,7 +377,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (169, 5) - (169, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = 1_000_000");
 #line (170, 5) - (170, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["val"], 1000000));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["val"], 1000000));
 #line hidden
             }
 
@@ -389,7 +387,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (176, 5) - (176, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = inf");
 #line (177, 5) - (177, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(result["val"], math.Inf));
+                Xunit.Assert.True(@operator.Eq(result["val"], global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -399,7 +397,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (181, 5) - (181, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = -inf");
 #line (182, 5) - (182, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(result["val"], -math.Inf));
+                Xunit.Assert.True(@operator.Eq(result["val"], -global::Sharpy.MathModule.Inf));
 #line hidden
             }
 
@@ -409,7 +407,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (186, 5) - (186, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("val = nan");
 #line (188, 5) - (188, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(result["val"], math.Nan));
+                Xunit.Assert.True(@operator.Eq(result["val"], global::Sharpy.MathModule.Nan));
 #line hidden
             }
 
@@ -675,7 +673,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (302, 5) - (302, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (303, 5) - (303, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["count"], 42));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["count"], 42));
 #line (304, 5) - (304, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(result["active"], true));
 #line (305, 5) - (305, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -712,7 +710,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (317, 13) - (317, 61) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(server["host"], "localhost"));
 #line (318, 13) - (318, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                        Xunit.Assert.True(EqLong(server["port"], 8080));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(server["port"], 8080));
 #line hidden
                         break;
                     default:
@@ -822,7 +820,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (352, 5) - (352, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (353, 5) - (353, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["count"], 42));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["count"], 42));
 #line hidden
             }
 
@@ -848,7 +846,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (363, 5) - (363, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (364, 5) - (364, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(EqLong(result["count"], 42));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests.EqLong(result["count"], 42));
 #line hidden
             }
 

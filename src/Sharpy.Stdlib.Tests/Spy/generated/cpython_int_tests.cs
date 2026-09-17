@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -100,15 +99,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestInvalidSigns()
             {
 #line (67, 5) - (67, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("+"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("+"));
 #line (68, 5) - (68, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("-"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("-"));
 #line (69, 5) - (69, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("- 1"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("- 1"));
 #line (70, 5) - (70, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("+ 1"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("+ 1"));
 #line (71, 5) - (71, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises(" + 1 "));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises(" + 1 "));
 #line hidden
             }
 
@@ -116,19 +115,19 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestInvalidStrings()
             {
 #line (77, 5) - (77, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises(""));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises(""));
 #line (78, 5) - (78, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises(" "));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises(" "));
 #line (79, 5) - (79, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("  \t\t  "));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("  \t\t  "));
 #line (80, 5) - (80, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("1x"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("1x"));
 #line (81, 5) - (81, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("  1x"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("  1x"));
 #line (82, 5) - (82, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("abc"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("abc"));
 #line (83, 5) - (83, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("12.3"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("12.3"));
 #line hidden
             }
 
@@ -136,11 +135,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestStringFloat()
             {
 #line (89, 5) - (89, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("1.5"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("1.5"));
 #line (90, 5) - (90, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises("1e3"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises("1e3"));
 #line (91, 5) - (91, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.True(_IntRaises(".5"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonIntTests._IntRaises(".5"));
 #line hidden
             }
 

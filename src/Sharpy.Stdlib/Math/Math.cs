@@ -194,7 +194,7 @@ namespace Sharpy
         /// </summary>
         public static double Degrees(double x)
         {
-            return x * (180.0d / Pi);
+            return x * (180.0d / global::Sharpy.MathModule.Pi);
         }
 
         /// <summary>
@@ -202,7 +202,7 @@ namespace Sharpy
         /// </summary>
         public static double Radians(double x)
         {
-            return x * (Pi / 180.0d);
+            return x * (global::Sharpy.MathModule.Pi / 180.0d);
         }
 
         /// <summary>
@@ -364,7 +364,7 @@ namespace Sharpy
         /// </summary>
         public static long Perm(int n)
         {
-            return Factorial(n);
+            return global::Sharpy.MathModule.Factorial(n);
         }
 
         /// <summary>
@@ -410,7 +410,7 @@ namespace Sharpy
 
             a = global::System.Math.Abs(a);
             b = global::System.Math.Abs(b);
-            return global::Sharpy.Builtins.FloorDiv(a, Gcd(a, b)) * b;
+            return global::Sharpy.Builtins.FloorDiv(a, global::Sharpy.MathModule.Gcd(a, b)) * b;
         }
 
         /// <summary>

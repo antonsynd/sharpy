@@ -107,8 +107,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
-using static Sharpy.Test.DB;
-using static Sharpy.Test.API.UI;
 
 namespace Sharpy.Test
 {
@@ -136,7 +134,7 @@ namespace Sharpy.Test
 #line (24, 5) - (24, 37) 12 "main.spy"
             global::Sharpy.Builtins.Print(annotatedWidget.Render());
 #line (25, 5) - (25, 55) 12 "main.spy"
-            global::Sharpy.Builtins.Print(Combine(annotatedRecord, annotatedWidget));
+            global::Sharpy.Builtins.Print(global::Sharpy.Test.Program.Combine(annotatedRecord, annotatedWidget));
 #line hidden
         }
     }

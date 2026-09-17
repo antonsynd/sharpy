@@ -39,7 +39,7 @@ public static partial class InheritanceWithOverride
         }
     }
 
-    public class Dog : Animal
+    public class Dog : global::InheritanceWithOverride.Animal
     {
         public string Breed;
         public override int Speak()
@@ -61,7 +61,7 @@ public static partial class InheritanceWithOverride
         }
     }
 
-    public class Cat : Animal
+    public class Cat : global::InheritanceWithOverride.Animal
     {
         public bool Indoor;
         public override int Speak()
@@ -86,11 +86,11 @@ public static partial class InheritanceWithOverride
     public static void Main()
     {
 #line (44, 5) - (44, 33) 8 "inheritance_with_override.spy"
-        var dog = new Dog("Rex", "Shepherd");
+        var dog = new global::InheritanceWithOverride.Dog("Rex", "Shepherd");
 #line (45, 5) - (45, 32) 8 "inheritance_with_override.spy"
-        var cat = new Cat("Whiskers", true);
+        var cat = new global::InheritanceWithOverride.Cat("Whiskers", true);
 #line (46, 5) - (46, 31) 8 "inheritance_with_override.spy"
-        var animal = new Animal("Generic");
+        var animal = new global::InheritanceWithOverride.Animal("Generic");
 #line (48, 5) - (48, 19) 8 "inheritance_with_override.spy"
         animal.Speak();
 #line (49, 5) - (49, 16) 8 "inheritance_with_override.spy"

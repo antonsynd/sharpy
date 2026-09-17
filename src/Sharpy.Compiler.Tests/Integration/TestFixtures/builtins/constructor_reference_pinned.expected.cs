@@ -60,11 +60,11 @@ public static partial class ConstructorReferencePinned
 #line (37, 5) - (37, 16) 8 "constructor_reference_pinned.spy"
         global::Sharpy.Builtins.Print(b(5));
 #line (40, 5) - (40, 22) 8 "constructor_reference_pinned.spy"
-        global::System.Func<string, int> p = MakeParser();
+        global::System.Func<string, int> p = global::ConstructorReferencePinned.MakeParser();
 #line (41, 5) - (41, 18) 8 "constructor_reference_pinned.spy"
         global::Sharpy.Builtins.Print(p("7"));
 #line (44, 5) - (44, 27) 8 "constructor_reference_pinned.spy"
-        global::Sharpy.Builtins.Print(Apply(global::Sharpy.Builtins.Int, "5"));
+        global::Sharpy.Builtins.Print(global::ConstructorReferencePinned.Apply(global::Sharpy.Builtins.Int, "5"));
 #line (49, 5) - (49, 37) 8 "constructor_reference_pinned.spy"
         Sharpy.List<string> xs = new Sharpy.List<string>()
 #line hidden

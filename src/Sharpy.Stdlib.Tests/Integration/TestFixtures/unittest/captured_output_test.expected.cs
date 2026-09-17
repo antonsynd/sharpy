@@ -5,9 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static CapturedOutputTest;
 
 public static partial class CapturedOutputTest
 {
@@ -25,7 +23,7 @@ public partial class CapturedOutputTestTests
     public void TestPrint()
     {
 #line (7, 5) - (9, 47) 8 "captured_output_test.spy"
-        using (var output = CapturedOutput())
+        using (var output = global::Sharpy.Unittest.CapturedOutput())
 #line hidden
         {
 #line (8, 9) - (8, 23) 12 "captured_output_test.spy"

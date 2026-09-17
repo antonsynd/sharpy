@@ -55,29 +55,29 @@ public static partial class DefaultParams
 #line hidden
     }
 
-    public static int Price1 = CalculatePrice(100);
-    public static int Price2 = CalculatePrice(100, 0.2d);
-    public static int Price3 = CalculatePrice(100, 0.15d, 10);
-    public static int Squared = Power(5);
-    public static int Cubed = Power(3, 3);
-    public static int Price4 = CalculatePrice(50, 0.1d, 5);
-    public static int Price5 = CalculatePrice(200, 0.1d, 20);
+    public static int Price1 = global::DefaultParams.CalculatePrice(100);
+    public static int Price2 = global::DefaultParams.CalculatePrice(100, 0.2d);
+    public static int Price3 = global::DefaultParams.CalculatePrice(100, 0.15d, 10);
+    public static int Squared = global::DefaultParams.Power(5);
+    public static int Cubed = global::DefaultParams.Power(3, 3);
+    public static int Price4 = global::DefaultParams.CalculatePrice(50, 0.1d, 5);
+    public static int Price5 = global::DefaultParams.CalculatePrice(200, 0.1d, 20);
     public static void Main()
     {
 #line (35, 5) - (35, 18) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Price1);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Price1);
 #line (38, 5) - (38, 18) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Price2);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Price2);
 #line (41, 5) - (41, 18) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Price3);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Price3);
 #line (44, 5) - (44, 19) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Squared);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Squared);
 #line (47, 5) - (47, 17) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Cubed);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Cubed);
 #line (50, 5) - (50, 18) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Price4);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Price4);
 #line (53, 5) - (53, 18) 8 "default_params.spy"
-        global::Sharpy.Builtins.Print(Price5);
+        global::Sharpy.Builtins.Print(global::DefaultParams.Price5);
 #line hidden
     }
 }

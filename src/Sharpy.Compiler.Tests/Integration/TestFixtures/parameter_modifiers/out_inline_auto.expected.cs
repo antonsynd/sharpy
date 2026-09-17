@@ -20,7 +20,7 @@ public static partial class OutInlineAuto
     public static void Main()
     {
 #line (6, 5) - (6, 47) 8 "out_inline_auto.spy"
-        var success = TryParse("42", out var value);
+        var success = global::OutInlineAuto.TryParse("42", out var value);
 #line (7, 5) - (7, 26) 8 "out_inline_auto.spy"
         global::Sharpy.Builtins.Print(success, value);
 #line hidden

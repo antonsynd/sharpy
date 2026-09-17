@@ -40,7 +40,7 @@ public static partial class FunctionStyleGetterSetter
     public static void Main()
     {
 #line (14, 5) - (14, 27) 8 "function_style_getter_setter.spy"
-        var t = new Temperature(100.0d);
+        var t = new global::FunctionStyleGetterSetter.Temperature(100.0d);
 #line (15, 5) - (15, 21) 8 "function_style_getter_setter.spy"
         global::Sharpy.Builtins.Print(t.Celsius);
 #line (16, 5) - (16, 21) 8 "function_style_getter_setter.spy"

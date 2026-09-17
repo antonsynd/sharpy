@@ -18,7 +18,7 @@ public static partial class AsyncBasic
     public static async System.Threading.Tasks.Task Main()
     {
 #line (5, 5) - (5, 33) 8 "async_basic.spy"
-        string result = await Greet();
+        string result = await global::AsyncBasic.Greet();
 #line (6, 5) - (6, 18) 8 "async_basic.spy"
         global::Sharpy.Builtins.Print(result);
 #line hidden

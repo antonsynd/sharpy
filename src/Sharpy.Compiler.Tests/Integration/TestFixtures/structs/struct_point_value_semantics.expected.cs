@@ -37,7 +37,7 @@ public static partial class StructPointValueSemantics
     public static void Main()
     {
 #line (16, 5) - (16, 23) 8 "struct_point_value_semantics.spy"
-        var p1 = new Point(10, 20);
+        var p1 = new global::StructPointValueSemantics.Point(10, 20);
 #line (17, 5) - (17, 12) 8 "struct_point_value_semantics.spy"
         var p2 = p1;
 #line (18, 5) - (18, 18) 8 "struct_point_value_semantics.spy"

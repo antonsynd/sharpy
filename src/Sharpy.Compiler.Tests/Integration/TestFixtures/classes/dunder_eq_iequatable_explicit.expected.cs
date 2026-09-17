@@ -8,10 +8,10 @@ using global::Sharpy;
 
 public static partial class DunderEqIequatableExplicit
 {
-    public class Foo : global::System.IEquatable<Foo>
+    public class Foo : global::System.IEquatable<global::DunderEqIequatableExplicit.Foo>
     {
         public int Value;
-        public virtual bool Equals(Foo other)
+        public virtual bool Equals(global::DunderEqIequatableExplicit.Foo other)
 #line 9 "dunder_eq_iequatable_explicit.spy"
         {
             if (other is null)
@@ -21,7 +21,7 @@ public static partial class DunderEqIequatableExplicit
 #line hidden
         }
 
-        public static bool operator ==(Foo left, Foo right)
+        public static bool operator ==(Foo left, global::DunderEqIequatableExplicit.Foo right)
         {
             return left?.Equals(right) ?? right is null;
         }
@@ -34,7 +34,7 @@ public static partial class DunderEqIequatableExplicit
 #line hidden
         }
 
-        public static bool operator !=(Foo left, Foo right)
+        public static bool operator !=(Foo left, global::DunderEqIequatableExplicit.Foo right)
         {
             return !(left?.Equals(right) ?? right is null);
         }
@@ -43,9 +43,9 @@ public static partial class DunderEqIequatableExplicit
     public static void Main()
     {
 #line (13, 5) - (13, 15) 8 "dunder_eq_iequatable_explicit.spy"
-        var a = new Foo(1);
+        var a = new global::DunderEqIequatableExplicit.Foo(1);
 #line (14, 5) - (14, 15) 8 "dunder_eq_iequatable_explicit.spy"
-        var b = new Foo(1);
+        var b = new global::DunderEqIequatableExplicit.Foo(1);
 #line (16, 5) - (16, 18) 8 "dunder_eq_iequatable_explicit.spy"
         global::Sharpy.Builtins.Print(a == b);
 #line hidden

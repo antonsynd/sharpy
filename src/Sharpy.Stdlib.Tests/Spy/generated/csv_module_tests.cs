@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using csv = global::Sharpy.CsvModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.CSV.CsvModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -194,13 +193,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsHaveCorrectValues()
             {
 #line (72, 5) - (72, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal(1, csv.QUOTE_ALL);
+                Xunit.Assert.Equal(1, global::Sharpy.CsvModule.QUOTE_ALL);
 #line (73, 5) - (73, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal(0, csv.QUOTE_MINIMAL);
+                Xunit.Assert.Equal(0, global::Sharpy.CsvModule.QUOTE_MINIMAL);
 #line (74, 5) - (74, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal(3, csv.QUOTE_NONE);
+                Xunit.Assert.Equal(3, global::Sharpy.CsvModule.QUOTE_NONE);
 #line (75, 5) - (75, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal(2, csv.QUOTE_NONNUMERIC);
+                Xunit.Assert.Equal(2, global::Sharpy.CsvModule.QUOTE_NONNUMERIC);
 #line hidden
             }
 

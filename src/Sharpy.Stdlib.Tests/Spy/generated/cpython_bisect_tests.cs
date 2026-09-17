@@ -11,7 +11,6 @@ using Sharpy.Stdlib.Tests.Spy;
 using bisect = global::Sharpy.BisectModule;
 using random = global::Sharpy.RandomModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonBisectTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

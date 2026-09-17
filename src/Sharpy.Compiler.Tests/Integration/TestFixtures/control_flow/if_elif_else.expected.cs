@@ -36,11 +36,11 @@ public static partial class IfElifElse
     public static void Main()
     {
 #line (10, 5) - (10, 18) 8 "if_elif_else.spy"
-        Categorize(5);
+        global::IfElifElse.Categorize(5);
 #line (11, 5) - (11, 19) 8 "if_elif_else.spy"
-        Categorize(-3);
+        global::IfElifElse.Categorize(-3);
 #line (12, 5) - (12, 18) 8 "if_elif_else.spy"
-        Categorize(0);
+        global::IfElifElse.Categorize(0);
 #line hidden
     }
 }

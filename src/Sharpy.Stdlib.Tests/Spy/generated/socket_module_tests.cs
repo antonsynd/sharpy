@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using socket = global::Sharpy.SocketModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -31,7 +29,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAfInetHasCorrectValue()
             {
 #line (45, 5) - (45, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(2, socket.AF_INET);
+                Xunit.Assert.Equal(2, global::Sharpy.SocketModule.AF_INET);
 #line hidden
             }
 
@@ -39,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAfInet6HasCorrectValue()
             {
 #line (49, 5) - (49, 84) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.True(socket.AF_INET6 == 23 || socket.AF_INET6 == 10 || socket.AF_INET6 == 30);
+                Xunit.Assert.True(global::Sharpy.SocketModule.AF_INET6 == 23 || global::Sharpy.SocketModule.AF_INET6 == 10 || global::Sharpy.SocketModule.AF_INET6 == 30);
 #line hidden
             }
 
@@ -47,7 +45,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSockStreamHasCorrectValue()
             {
 #line (53, 5) - (53, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(1, socket.SOCK_STREAM);
+                Xunit.Assert.Equal(1, global::Sharpy.SocketModule.SOCK_STREAM);
 #line hidden
             }
 
@@ -55,7 +53,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSockDgramHasCorrectValue()
             {
 #line (57, 5) - (57, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(2, socket.SOCK_DGRAM);
+                Xunit.Assert.Equal(2, global::Sharpy.SocketModule.SOCK_DGRAM);
 #line hidden
             }
 
@@ -63,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSockRawHasCorrectValue()
             {
 #line (61, 5) - (61, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(3, socket.SOCK_RAW);
+                Xunit.Assert.Equal(3, global::Sharpy.SocketModule.SOCK_RAW);
 #line hidden
             }
 
@@ -71,7 +69,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIpprotoTcpHasCorrectValue()
             {
 #line (65, 5) - (65, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(6, socket.IPPROTO_TCP);
+                Xunit.Assert.Equal(6, global::Sharpy.SocketModule.IPPROTO_TCP);
 #line hidden
             }
 
@@ -79,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIpprotoUdpHasCorrectValue()
             {
 #line (69, 5) - (69, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(17, socket.IPPROTO_UDP);
+                Xunit.Assert.Equal(17, global::Sharpy.SocketModule.IPPROTO_UDP);
 #line hidden
             }
 
@@ -87,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestShutRdHasCorrectValue()
             {
 #line (73, 5) - (73, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(0, socket.SHUT_RD);
+                Xunit.Assert.Equal(0, global::Sharpy.SocketModule.SHUT_RD);
 #line hidden
             }
 
@@ -95,7 +93,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestShutWrHasCorrectValue()
             {
 #line (77, 5) - (77, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(1, socket.SHUT_WR);
+                Xunit.Assert.Equal(1, global::Sharpy.SocketModule.SHUT_WR);
 #line hidden
             }
 
@@ -103,7 +101,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestShutRdwrHasCorrectValue()
             {
 #line (81, 5) - (81, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(2, socket.SHUT_RDWR);
+                Xunit.Assert.Equal(2, global::Sharpy.SocketModule.SHUT_RDWR);
 #line hidden
             }
 
@@ -111,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTcpNodelayHasCorrectValue()
             {
 #line (85, 5) - (85, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.NotEqual(0, socket.TCP_NODELAY);
+                Xunit.Assert.NotEqual(0, global::Sharpy.SocketModule.TCP_NODELAY);
 #line hidden
             }
 
@@ -119,7 +117,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSoRcvbufHasCorrectValue()
             {
 #line (89, 5) - (89, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.NotEqual(0, socket.SO_RCVBUF);
+                Xunit.Assert.NotEqual(0, global::Sharpy.SocketModule.SO_RCVBUF);
 #line hidden
             }
 
@@ -127,7 +125,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSoSndbufHasCorrectValue()
             {
 #line (93, 5) - (93, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.NotEqual(0, socket.SO_SNDBUF);
+                Xunit.Assert.NotEqual(0, global::Sharpy.SocketModule.SO_SNDBUF);
 #line hidden
             }
 
@@ -135,7 +133,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSomaxconnIs128()
             {
 #line (97, 5) - (97, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(128, socket.SOMAXCONN);
+                Xunit.Assert.Equal(128, global::Sharpy.SocketModule.SOMAXCONN);
 #line hidden
             }
 
@@ -143,9 +141,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSocketCreatesStreamSocket()
             {
 #line (106, 5) - (106, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (107, 5) - (107, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(socket.AF_INET, s.Family);
+                Xunit.Assert.Equal(global::Sharpy.SocketModule.AF_INET, s.Family);
 #line (108, 5) - (108, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Close();
 #line hidden
@@ -155,9 +153,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSocketCreatesDatagramSocket()
             {
 #line (112, 5) - (112, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_DGRAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_DGRAM);
 #line (113, 5) - (113, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(socket.AF_INET, s.Family);
+                Xunit.Assert.Equal(global::Sharpy.SocketModule.AF_INET, s.Family);
 #line (114, 5) - (114, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Close();
 #line hidden
@@ -169,7 +167,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (118, 5) - (118, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 var s = new global::Sharpy.SocketModule.Socket();
 #line (119, 5) - (119, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(socket.AF_INET, s.Family);
+                Xunit.Assert.Equal(global::Sharpy.SocketModule.AF_INET, s.Family);
 #line (120, 5) - (120, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Close();
 #line hidden
@@ -179,9 +177,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTcpServerBindListenAcceptWorks()
             {
 #line (126, 5) - (126, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var server = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (127, 5) - (127, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                server.Setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
+                server.Setsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR, 1);
 #line (128, 5) - (128, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Bind(("127.0.0.1", 0));
 #line (129, 5) - (129, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -193,7 +191,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (133, 5) - (133, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.True(serverAddr.Item2 > 0);
 #line (135, 5) - (135, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var client = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (136, 5) - (136, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 client.Connect(("127.0.0.1", serverAddr.Item2));
 #line (138, 5) - (138, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -215,9 +213,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTcpSendRecvWorks()
             {
 #line (148, 5) - (148, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var server = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (149, 5) - (149, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                server.Setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
+                server.Setsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR, 1);
 #line (150, 5) - (150, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Bind(("127.0.0.1", 0));
 #line (151, 5) - (151, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -225,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (152, 5) - (152, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 var port = server.Getsockname().Item2;
 #line (154, 5) - (154, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var client = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (155, 5) - (155, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 client.Connect(("127.0.0.1", port));
 #line (157, 5) - (157, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -251,13 +249,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUdpSendtoRecvfromWorks()
             {
 #line (173, 5) - (173, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var receiver = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_DGRAM);
+                var receiver = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_DGRAM);
 #line (174, 5) - (174, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 receiver.Bind(("127.0.0.1", 0));
 #line (175, 5) - (175, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 var port = receiver.Getsockname().Item2;
 #line (177, 5) - (177, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var sender = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_DGRAM);
+                var sender = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_DGRAM);
 #line (178, 5) - (178, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Sharpy.Bytes message = new Sharpy.Bytes(new byte[] { 117, 100, 112, 32, 116, 101, 115, 116 });
 #line (179, 5) - (179, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -320,11 +318,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSetsockoptGetsockoptReuseAddr()
             {
 #line (209, 5) - (209, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (210, 5) - (210, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                s.Setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
+                s.Setsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR, 1);
 #line (211, 5) - (211, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                int val = s.Getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR);
+                int val = s.Getsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR);
 #line (212, 5) - (212, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.NotEqual(0, val);
 #line (213, 5) - (213, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -336,7 +334,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSettimeoutGettimeoutWorks()
             {
 #line (219, 5) - (219, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (220, 5) - (220, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Settimeout(5.0d);
 #line (221, 5) - (221, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -469,11 +467,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (284, 5) - (284, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 string ip = "10.0.0.1";
 #line (285, 5) - (285, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Sharpy.Bytes packed = socket.Inet_pton(socket.AF_INET, ip);
+                Sharpy.Bytes packed = socket.Inet_pton(global::Sharpy.SocketModule.AF_INET, ip);
 #line (286, 5) - (286, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(packed));
 #line (287, 5) - (287, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                string result = socket.Inet_ntop(socket.AF_INET, packed);
+                string result = socket.Inet_ntop(global::Sharpy.SocketModule.AF_INET, packed);
 #line (288, 5) - (288, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal(ip, result);
 #line hidden
@@ -485,11 +483,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (292, 5) - (292, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 string ip = "::1";
 #line (293, 5) - (293, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Sharpy.Bytes packed = socket.Inet_pton(socket.AF_INET6, ip);
+                Sharpy.Bytes packed = socket.Inet_pton(global::Sharpy.SocketModule.AF_INET6, ip);
 #line (294, 5) - (294, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal(16, global::Sharpy.Builtins.Len(packed));
 #line (295, 5) - (295, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                string result = socket.Inet_ntop(socket.AF_INET6, packed);
+                string result = socket.Inet_ntop(global::Sharpy.SocketModule.AF_INET6, packed);
 #line (296, 5) - (296, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal(ip, result);
 #line hidden
@@ -499,9 +497,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSocketIpv6CanCreate()
             {
 #line (302, 5) - (302, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET6, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET6, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (303, 5) - (303, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Equal(socket.AF_INET6, s.Family);
+                Xunit.Assert.Equal(global::Sharpy.SocketModule.AF_INET6, s.Family);
 #line (304, 5) - (304, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Close();
 #line hidden
@@ -511,7 +509,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConnectInvalidAddressRaisesError()
             {
 #line (315, 5) - (315, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (316, 5) - (316, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Settimeout(1.0d);
 #line (317, 5) - (317, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -605,9 +603,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCreateConnectionConnectsToLocalServer()
             {
 #line (356, 5) - (356, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var server = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (357, 5) - (357, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                server.Setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
+                server.Setsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR, 1);
 #line (358, 5) - (358, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Bind(("127.0.0.1", 0));
 #line (359, 5) - (359, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -662,7 +660,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestStrContainsSocketInfo()
             {
 #line (389, 5) - (389, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (390, 5) - (390, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 string text = global::Sharpy.Builtins.Str(s);
 #line (391, 5) - (391, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -680,9 +678,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetpeernameAfterConnectReturnsRemoteAddr()
             {
 #line (400, 5) - (400, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var server = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var server = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (401, 5) - (401, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                server.Setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1);
+                server.Setsockopt(global::Sharpy.SocketModule.SOL_SOCKET, global::Sharpy.SocketModule.SO_REUSEADDR, 1);
 #line (402, 5) - (402, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Bind(("127.0.0.1", 0));
 #line (403, 5) - (403, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -690,7 +688,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (404, 5) - (404, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 var port = server.Getsockname().Item2;
 #line (406, 5) - (406, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var client = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var client = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (407, 5) - (407, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 client.Connect(("127.0.0.1", port));
 #line (409, 5) - (409, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -714,7 +712,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSetblockingFalseSetsNonBlocking()
             {
 #line (422, 5) - (422, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (423, 5) - (423, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Setblocking(false);
 #line (424, 5) - (424, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -728,7 +726,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSetblockingTrueSetsBlocking()
             {
 #line (429, 5) - (429, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var s = new global::Sharpy.SocketModule.Socket(socket.AF_INET, socket.SOCK_STREAM);
+                var s = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM);
 #line (430, 5) - (430, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 s.Setblocking(false);
 #line (431, 5) - (431, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"

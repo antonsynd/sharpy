@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using datetime = global::Sharpy.Datetime;
 using zoneinfo = global::Sharpy.Zoneinfo;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -196,7 +194,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (78, 5) - (78, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var zone = new global::Sharpy.ZoneInfo("America/New_York");
 #line (79, 5) - (79, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset(_WinterDt()).TotalSeconds);
+                Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
 #line hidden
             }
 
@@ -206,7 +204,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (83, 5) - (83, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var zone = new global::Sharpy.ZoneInfo("America/New_York");
 #line (84, 5) - (84, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(-4.0d * 3600.0d, zone.Utcoffset(_SummerDt()).TotalSeconds);
+                Xunit.Assert.Equal(-4.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
 #line hidden
             }
 
@@ -226,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (95, 5) - (95, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var zone = new global::Sharpy.ZoneInfo("America/New_York");
 #line (96, 5) - (96, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(0.0d, zone.Dst(_WinterDt()).TotalSeconds);
+                Xunit.Assert.Equal(0.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
 #line hidden
             }
 
@@ -236,7 +234,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (100, 5) - (100, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var zone = new global::Sharpy.ZoneInfo("America/New_York");
 #line (101, 5) - (101, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(3600.0d, zone.Dst(_SummerDt()).TotalSeconds);
+                Xunit.Assert.Equal(3600.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
 #line hidden
             }
 
@@ -256,9 +254,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (112, 5) - (112, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var zone = new global::Sharpy.ZoneInfo("America/New_York");
 #line (113, 5) - (113, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Tzname(_WinterDt()).Length > 0);
+                Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).Length > 0);
 #line (114, 5) - (114, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Tzname(_SummerDt()).Length > 0);
+                Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).Length > 0);
 #line hidden
             }
 

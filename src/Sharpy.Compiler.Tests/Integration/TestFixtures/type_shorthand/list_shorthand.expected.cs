@@ -41,7 +41,7 @@ public static partial class ListShorthand
             5
         };
 #line (10, 5) - (10, 29) 8 "list_shorthand.spy"
-        global::Sharpy.Builtins.Print(SumList(numbers));
+        global::Sharpy.Builtins.Print(global::ListShorthand.SumList(numbers));
 #line hidden
     }
 }

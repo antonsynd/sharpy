@@ -8,9 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -39,9 +37,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestApproxPassesInNonTestHelper()
             {
 #line (18, 5) - (18, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                _AssertClose(0.1d + 0.2d, 0.3d);
+                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(0.1d + 0.2d, 0.3d);
 #line (19, 5) - (19, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                _AssertClose(1.0d, 1.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 1.0d);
 #line hidden
             }
 
@@ -55,7 +53,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (26, 9) - (26, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                    _AssertClose(1.0d, 2.0d);
+                    global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 2.0d);
 #line hidden
                 }
                 catch (global::Sharpy.AssertionError)

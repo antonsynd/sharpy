@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using fnmatch = global::Sharpy.FnmatchModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Fnmatch.FnmatchTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

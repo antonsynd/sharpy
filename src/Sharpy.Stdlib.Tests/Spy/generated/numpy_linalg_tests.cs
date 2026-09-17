@@ -10,9 +10,7 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using math = global::Sharpy.MathModule;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Numpy.NumpyLinalgTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

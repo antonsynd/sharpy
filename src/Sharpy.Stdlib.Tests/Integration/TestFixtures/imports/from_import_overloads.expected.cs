@@ -5,18 +5,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
-using static global::Sharpy.OsPathModule;
 
 public static partial class FromImportOverloads
 {
     public static void Main()
     {
 #line (6, 5) - (6, 35) 8 "from_import_overloads.spy"
-        string result1 = Join("a", "b");
+        string result1 = global::Sharpy.OsPathModule.Join("a", "b");
 #line (7, 5) - (7, 40) 8 "from_import_overloads.spy"
-        string result2 = Join("a", "b", "c");
+        string result2 = global::Sharpy.OsPathModule.Join("a", "b", "c");
 #line (8, 5) - (8, 45) 8 "from_import_overloads.spy"
-        string result3 = Join("a", "b", "c", "d");
+        string result3 = global::Sharpy.OsPathModule.Join("a", "b", "c", "d");
 #line (9, 5) - (9, 19) 8 "from_import_overloads.spy"
         global::Sharpy.Builtins.Print(result1);
 #line (10, 5) - (10, 19) 8 "from_import_overloads.spy"

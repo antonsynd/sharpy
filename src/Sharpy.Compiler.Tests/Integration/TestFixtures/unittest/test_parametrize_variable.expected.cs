@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
-using static TestParametrizeVariable;
 
 public static partial class TestParametrizeVariable
 {

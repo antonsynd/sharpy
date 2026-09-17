@@ -15,7 +15,7 @@ public static partial class InterfaceDefinition
         int Area();
     }
 
-    public class Circle : IDrawable
+    public class Circle : global::InterfaceDefinition.IDrawable
     {
         public int Radius;
         public virtual string Draw()
@@ -43,7 +43,7 @@ public static partial class InterfaceDefinition
         }
     }
 
-    public class Rectangle : IDrawable
+    public class Rectangle : global::InterfaceDefinition.IDrawable
     {
         public int Width;
         public int Height;
@@ -77,13 +77,13 @@ public static partial class InterfaceDefinition
     public static void Main()
     {
 #line (34, 5) - (34, 35) 8 "interface_definition.spy"
-        IDrawable circle = new Circle(5);
+        global::InterfaceDefinition.IDrawable circle = new global::InterfaceDefinition.Circle(5);
 #line (35, 5) - (35, 25) 8 "interface_definition.spy"
         global::Sharpy.Builtins.Print(circle.Draw());
 #line (36, 5) - (36, 25) 8 "interface_definition.spy"
         global::Sharpy.Builtins.Print(circle.Area());
 #line (38, 5) - (38, 39) 8 "interface_definition.spy"
-        IDrawable rect = new Rectangle(4, 6);
+        global::InterfaceDefinition.IDrawable rect = new global::InterfaceDefinition.Rectangle(4, 6);
 #line (39, 5) - (39, 23) 8 "interface_definition.spy"
         global::Sharpy.Builtins.Print(rect.Draw());
 #line (40, 5) - (40, 23) 8 "interface_definition.spy"

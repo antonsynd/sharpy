@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using yaml = global::Sharpy.Yaml;
 using @operator = global::Sharpy.Operator;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -319,15 +317,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSafeLoadResolvesNonFloat32ExactValues()
             {
 #line (141, 5) - (141, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(0.1d, _LoadFloat("0.1"));
+                Xunit.Assert.Equal(0.1d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("0.1"));
 #line (142, 5) - (142, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(3.141592653589793d, _LoadFloat("3.141592653589793"));
+                Xunit.Assert.Equal(3.141592653589793d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("3.141592653589793"));
 #line (143, 5) - (143, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(2.718281828459045d, _LoadFloat("2.718281828459045"));
+                Xunit.Assert.Equal(2.718281828459045d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("2.718281828459045"));
 #line (144, 5) - (144, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(1e20d, _LoadFloat("1.0e+20"));
+                Xunit.Assert.Equal(1e20d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("1.0e+20"));
 #line (145, 5) - (145, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(-0.30000000000000004d, _LoadFloat("-0.30000000000000004"));
+                Xunit.Assert.Equal(-0.30000000000000004d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("-0.30000000000000004"));
 #line hidden
             }
 

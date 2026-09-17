@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using json = global::Sharpy.Json;
 using math = global::Sharpy.MathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -31,7 +29,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public class NestedRecord
             {
                 public string Label = "";
-                public SimpleRecord Inner = new SimpleRecord();
+                public global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord Inner = new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord();
             }
 
             public class RecordWithList
@@ -68,7 +66,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTSimpleRecordDeserializes()
             {
 #line (45, 5) - (45, 94) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{\"name\": \"Alice\", \"age\": 30, \"active\": true}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{\"name\": \"Alice\", \"age\": 30, \"active\": true}");
 #line (46, 5) - (46, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (47, 5) - (47, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -86,7 +84,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTSnakeCaseMappingDeserializes()
             {
 #line (54, 5) - (54, 106) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<RecordWithOptional>("{\"name\": \"Bob\", \"nickname\": \"Bobby\", \"count\": 5}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.RecordWithOptional>("{\"name\": \"Bob\", \"nickname\": \"Bobby\", \"count\": 5}");
 #line (55, 5) - (55, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (56, 5) - (56, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -104,7 +102,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTNestedRecordDeserializes()
             {
 #line (63, 5) - (63, 130) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<NestedRecord>("{\"label\": \"outer\", \"inner\": {\"name\": \"inner\", \"age\": 10, \"active\": false}}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.NestedRecord>("{\"label\": \"outer\", \"inner\": {\"name\": \"inner\", \"age\": 10, \"active\": false}}");
 #line (64, 5) - (64, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (65, 5) - (65, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -124,7 +122,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTRecordWithListDeserializes()
             {
 #line (73, 5) - (73, 94) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<RecordWithList>("{\"name\": \"Charlie\", \"scores\": [100, 95, 87]}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.RecordWithList>("{\"name\": \"Charlie\", \"scores\": [100, 95, 87]}");
 #line (74, 5) - (74, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (75, 5) - (75, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -148,7 +146,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTRecordWithDictDeserializes()
             {
 #line (85, 5) - (85, 100) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<RecordWithDict>("{\"name\": \"Dave\", \"metadata\": {\"x\": 1, \"y\": 2}}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.RecordWithDict>("{\"name\": \"Dave\", \"metadata\": {\"x\": 1, \"y\": 2}}");
 #line (86, 5) - (86, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (87, 5) - (87, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -168,7 +166,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTOptionalFieldMissingDefaultsToNull()
             {
 #line (95, 5) - (95, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<RecordWithOptional>("{\"name\": \"Eve\", \"count\": 3}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.RecordWithOptional>("{\"name\": \"Eve\", \"count\": 3}");
 #line (96, 5) - (96, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (97, 5) - (97, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -186,7 +184,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTCaseInsensitiveDeserializes()
             {
 #line (104, 5) - (104, 94) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{\"Name\": \"Frank\", \"Age\": 25, \"Active\": true}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{\"Name\": \"Frank\", \"Age\": 25, \"Active\": true}");
 #line (105, 5) - (105, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (106, 5) - (106, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -198,7 +196,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTInvalidJsonReturnsErr()
             {
 #line (112, 5) - (112, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{invalid}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{invalid}");
 #line (113, 5) - (113, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line (114, 5) - (114, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -212,7 +210,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTTypeMismatchReturnsErr()
             {
 #line (119, 5) - (119, 108) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{\"name\": \"Alice\", \"age\": \"not a number\", \"active\": true}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{\"name\": \"Alice\", \"age\": \"not a number\", \"active\": true}");
 #line (120, 5) - (120, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line hidden
@@ -222,7 +220,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTEmptyStringReturnsErr()
             {
 #line (124, 5) - (124, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("");
 #line (125, 5) - (125, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line hidden
@@ -232,7 +230,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTOkResultUnwrapReturnsValue()
             {
 #line (131, 5) - (131, 93) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{\"name\": \"Test\", \"age\": 1, \"active\": false}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{\"name\": \"Test\", \"age\": 1, \"active\": false}");
 #line (132, 5) - (132, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
 #line (133, 5) - (133, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -248,7 +246,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTErrResultUnwrapThrows()
             {
 #line (142, 5) - (142, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("not json");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("not json");
 #line (143, 5) - (143, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line (144, 5) - (144, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -260,7 +258,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsTErrResultErrorHasMessage()
             {
 #line (148, 5) - (148, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var result = json.Loads<SimpleRecord>("{bad}");
+                var result = json.Loads<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>("{bad}");
 #line (149, 5) - (149, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
 #line (150, 5) - (150, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -298,7 +296,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (165, 9) - (165, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                    var result = json.Load<SimpleRecord>(fp2);
+                    var result = json.Load<global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord>(fp2);
 #line (166, 9) - (166, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                     ok = result.IsOk;
 #line (167, 9) - (170, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
@@ -354,7 +352,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpsThenLoadsTRoundTripsNonFinite()
             {
 #line (201, 5) - (201, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                var text = json.Dumps((object?)new Sharpy.List<double>() { 1.0d, math.Inf, math.Nan, -math.Inf });
+                var text = json.Dumps((object?)new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.Inf, global::Sharpy.MathModule.Nan, -global::Sharpy.MathModule.Inf });
 #line (202, 5) - (202, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("[1.0, Infinity, NaN, -Infinity]", text);
 #line (203, 5) - (203, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"

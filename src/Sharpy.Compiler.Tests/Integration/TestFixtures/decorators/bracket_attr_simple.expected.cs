@@ -24,7 +24,7 @@ public static partial class BracketAttrSimple
     public static void Main()
     {
 #line (10, 5) - (10, 19) 8 "bracket_attr_simple.spy"
-        var c = new Config(42);
+        var c = new global::BracketAttrSimple.Config(42);
 #line (11, 5) - (11, 19) 8 "bracket_attr_simple.spy"
         global::Sharpy.Builtins.Print(c.Value);
 #line hidden

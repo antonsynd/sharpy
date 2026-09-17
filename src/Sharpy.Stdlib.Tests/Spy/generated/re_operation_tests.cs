@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using re = global::Sharpy.ReModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Re.ReOperationTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -72,7 +71,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFindallWithFlagsIgnoreCase()
             {
 #line (33, 5) - (33, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
-                var result = re.Findall("[a-z]+", "Hello World", flags: re.IGNORECASE);
+                var result = re.Findall("[a-z]+", "Hello World", flags: global::Sharpy.ReModule.IGNORECASE);
 #line (34, 5) - (34, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (35, 5) - (35, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
@@ -258,7 +257,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSubWithFlagsCaseInsensitive()
             {
 #line (133, 5) - (133, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
-                string result = re.Sub("[a-z]+", "X", "Hello World", flags: re.IGNORECASE);
+                string result = re.Sub("[a-z]+", "X", "Hello World", flags: global::Sharpy.ReModule.IGNORECASE);
 #line (134, 5) - (134, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
                 Xunit.Assert.Equal("X X", result);
 #line hidden

@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using http = global::Sharpy.HttpModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.HTTP.HttpTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -256,7 +254,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestHttpPortIs80()
             {
 #line (119, 5) - (119, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-                Xunit.Assert.Equal(80, http.HTTP_PORT);
+                Xunit.Assert.Equal(80, global::Sharpy.HttpModule.HTTP_PORT);
 #line hidden
             }
 
@@ -264,7 +262,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestHttpsPortIs443()
             {
 #line (123, 5) - (123, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-                Xunit.Assert.Equal(443, http.HTTPS_PORT);
+                Xunit.Assert.Equal(443, global::Sharpy.HttpModule.HTTPS_PORT);
 #line hidden
             }
         }

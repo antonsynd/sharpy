@@ -27,7 +27,7 @@ public static partial class AsyncGeneratorBasic
     public static async System.Threading.Tasks.Task Main()
     {
 #line (8, 5) - (9, 17) 8 "async_generator_basic.spy"
-        await foreach (var __loopVar_0 in CountAsync(3))
+        await foreach (var __loopVar_0 in global::AsyncGeneratorBasic.CountAsync(3))
 #line hidden
         {
             var x = __loopVar_0;

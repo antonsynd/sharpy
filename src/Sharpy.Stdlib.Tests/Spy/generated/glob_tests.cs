@@ -11,7 +11,6 @@ using Sharpy.Stdlib.Tests.Spy;
 using os = global::Sharpy.OsModule;
 using glob = global::Sharpy.GlobModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Glob.GlobTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -128,15 +127,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (47, 5) - (47, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (48, 5) - (48, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/*.txt");
 #line (49, 5) - (49, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
 #line (50, 5) - (50, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "a.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "a.txt"));
 #line (51, 5) - (51, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "b.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "b.txt"));
 #line hidden
             }
 
@@ -145,13 +144,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (56, 5) - (56, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (57, 5) - (57, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/*.py");
 #line (58, 5) - (58, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(results));
 #line (59, 5) - (59, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "c.py"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "c.py"));
 #line hidden
             }
 
@@ -160,7 +159,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (64, 5) - (64, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (66, 5) - (66, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/**/*.txt");
 #line (67, 5) - (67, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -173,7 +172,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (72, 5) - (72, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (74, 5) - (74, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/?.txt");
 #line (75, 5) - (75, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -186,7 +185,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (80, 5) - (80, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (81, 5) - (81, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/*.xyz");
 #line (82, 5) - (82, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -199,7 +198,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (87, 5) - (87, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (88, 5) - (88, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/*.*");
 #line (89, 5) - (89, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -225,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (99, 5) - (99, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (100, 5) - (100, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/nonexistent/*.txt");
 #line (101, 5) - (101, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -238,15 +237,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (106, 5) - (106, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (108, 5) - (108, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/**/*.py");
 #line (109, 5) - (109, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
 #line (110, 5) - (110, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "c.py"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "c.py"));
 #line (111, 5) - (111, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "e.py"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "e.py"));
 #line hidden
             }
 
@@ -255,15 +254,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (116, 5) - (116, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (118, 5) - (118, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/[ab].txt");
 #line (119, 5) - (119, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
 #line (120, 5) - (120, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "a.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "a.txt"));
 #line (121, 5) - (121, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.True(EndsWithAny(results, "b.txt"));
+                Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.EndsWithAny(results, "b.txt"));
 #line hidden
             }
 
@@ -272,7 +271,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (126, 5) - (126, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (128, 5) - (128, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Sharpy.List<string> results = glob.Glob(tmpPath + "/a.txt");
 #line (129, 5) - (129, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -297,7 +296,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (143, 5) - (143, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (145, 5) - (145, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 int count = 0;
 #line (146, 5) - (147, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
@@ -320,7 +319,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (162, 5) - (162, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                BuildTree(tmpPath);
+                global::Sharpy.Stdlib.Tests.Spy.Glob.GlobTests.BuildTree(tmpPath);
 #line (163, 5) - (163, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 var lazy = glob.Iglob(tmpPath + "/*.lazytest");
 #line (164, 5) - (165, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"

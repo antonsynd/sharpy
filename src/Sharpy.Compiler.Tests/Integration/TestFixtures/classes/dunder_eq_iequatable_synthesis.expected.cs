@@ -8,11 +8,11 @@ using global::Sharpy;
 
 public static partial class DunderEqIequatableSynthesis
 {
-    public class Point : System.IEquatable<Point>
+    public class Point : System.IEquatable<global::DunderEqIequatableSynthesis.Point>
     {
         public int X;
         public int Y;
-        public virtual bool Equals(Point other)
+        public virtual bool Equals(global::DunderEqIequatableSynthesis.Point other)
 #line 9 "dunder_eq_iequatable_synthesis.spy"
         {
             if (other is null)
@@ -22,7 +22,7 @@ public static partial class DunderEqIequatableSynthesis
 #line hidden
         }
 
-        public static bool operator ==(Point left, Point right)
+        public static bool operator ==(Point left, global::DunderEqIequatableSynthesis.Point right)
         {
             return left?.Equals(right) ?? right is null;
         }
@@ -37,7 +37,7 @@ public static partial class DunderEqIequatableSynthesis
 #line hidden
         }
 
-        public static bool operator !=(Point left, Point right)
+        public static bool operator !=(Point left, global::DunderEqIequatableSynthesis.Point right)
         {
             return !(left?.Equals(right) ?? right is null);
         }
@@ -46,11 +46,11 @@ public static partial class DunderEqIequatableSynthesis
     public static void Main()
     {
 #line (13, 5) - (13, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var a = new Point(1, 2);
+        var a = new global::DunderEqIequatableSynthesis.Point(1, 2);
 #line (14, 5) - (14, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var b = new Point(1, 2);
+        var b = new global::DunderEqIequatableSynthesis.Point(1, 2);
 #line (15, 5) - (15, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var c = new Point(3, 4);
+        var c = new global::DunderEqIequatableSynthesis.Point(3, 4);
 #line (18, 5) - (18, 18) 8 "dunder_eq_iequatable_synthesis.spy"
         global::Sharpy.Builtins.Print(a == b);
 #line (19, 5) - (19, 18) 8 "dunder_eq_iequatable_synthesis.spy"

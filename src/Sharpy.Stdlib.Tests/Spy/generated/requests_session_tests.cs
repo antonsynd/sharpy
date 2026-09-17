@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using requests = global::Sharpy.Requests;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

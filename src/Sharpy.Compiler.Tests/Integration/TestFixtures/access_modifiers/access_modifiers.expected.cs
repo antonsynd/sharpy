@@ -73,7 +73,7 @@ public static partial class AccessModifiers
         }
     }
 
-    public class SavingsAccount : Account
+    public class SavingsAccount : global::AccessModifiers.Account
     {
         public double WithdrawalLimit;
         public int WithdrawalCount;
@@ -119,7 +119,7 @@ public static partial class AccessModifiers
         }
     }
 
-    public class CheckingAccount : Account
+    public class CheckingAccount : global::AccessModifiers.Account
     {
         public double OverdraftLimit;
         public override bool Withdraw(double amount)
@@ -170,7 +170,7 @@ public static partial class AccessModifiers
     public static void Main()
     {
 #line (78, 5) - (78, 67) 8 "access_modifiers.spy"
-        SavingsAccount savings = new SavingsAccount(101, 5000.0d, 1000.0d);
+        global::AccessModifiers.SavingsAccount savings = new global::AccessModifiers.SavingsAccount(101, 5000.0d, 1000.0d);
 #line (79, 5) - (79, 30) 8 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.AccountId);
 #line (80, 5) - (80, 37) 8 "access_modifiers.spy"
@@ -193,7 +193,7 @@ public static partial class AccessModifiers
 #line (89, 5) - (89, 36) 8 "access_modifiers.spy"
         global::Sharpy.Builtins.Print(savings.WithdrawalCount);
 #line (91, 5) - (91, 69) 8 "access_modifiers.spy"
-        CheckingAccount checking = new CheckingAccount(102, 1000.0d, 500.0d);
+        global::AccessModifiers.CheckingAccount checking = new global::AccessModifiers.CheckingAccount(102, 1000.0d, 500.0d);
 #line (92, 5) - (92, 28) 8 "access_modifiers.spy"
         checking.Deposit(250.0d);
 #line (93, 5) - (93, 28) 8 "access_modifiers.spy"

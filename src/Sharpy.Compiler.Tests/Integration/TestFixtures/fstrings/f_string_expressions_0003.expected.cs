@@ -36,7 +36,7 @@ public static partial class FStringExpressions0003
         }
     }
 
-    public class CompetitivePlayer : Player
+    public class CompetitivePlayer : global::FStringExpressions0003.Player
     {
         public int BonusPoints;
         public int Level;
@@ -87,7 +87,7 @@ public static partial class FStringExpressions0003
         }
     }
 
-    public class CasualPlayer : Player
+    public class CasualPlayer : global::FStringExpressions0003.Player
     {
         public int GamesPlayed;
         public override string GetRank()
@@ -121,9 +121,9 @@ public static partial class FStringExpressions0003
     public static void Main()
     {
 #line (60, 5) - (60, 57) 8 "f_string_expressions_0003.spy"
-        var competitive = new CompetitivePlayer("Alice", 80, 25, 12);
+        var competitive = new global::FStringExpressions0003.CompetitivePlayer("Alice", 80, 25, 12);
 #line (61, 5) - (61, 40) 8 "f_string_expressions_0003.spy"
-        var casual = new CasualPlayer("Bob", 75, 8);
+        var casual = new global::FStringExpressions0003.CasualPlayer("Bob", 75, 8);
 #line (63, 5) - (63, 69) 8 "f_string_expressions_0003.spy"
         global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(global::Sharpy.Builtins.Str(competitive.Name))}, Level: {(global::Sharpy.Builtins.Str(competitive.Level))}"));
 #line (64, 5) - (64, 80) 8 "f_string_expressions_0003.spy"

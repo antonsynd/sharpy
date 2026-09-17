@@ -33,7 +33,7 @@ public static partial class AccessorParamSetterOnly
     public static void Main()
     {
 #line (16, 5) - (16, 20) 8 "accessor_param_setter_only.spy"
-        Box b = new Box();
+        global::AccessorParamSetterOnly.Box b = new global::AccessorParamSetterOnly.Box();
 #line (17, 5) - (17, 18) 8 "accessor_param_setter_only.spy"
         b.Doubled = 5;
 #line (18, 5) - (18, 25) 8 "accessor_param_setter_only.spy"

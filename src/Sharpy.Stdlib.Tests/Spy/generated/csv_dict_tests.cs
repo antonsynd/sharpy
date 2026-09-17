@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using csv = global::Sharpy.CsvModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.CSV.CsvDictTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

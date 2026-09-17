@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using hashlib = global::Sharpy.HashlibModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Hashlib.HashlibCompleteTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using html = global::Sharpy.Html;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -26,7 +25,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 14 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (15, 9) - (15, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
+                    string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests._ToStringList(attrs));
 #line (16, 9) - (16, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
 #line hidden
@@ -44,7 +43,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 23 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (24, 9) - (24, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
+                    string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests._ToStringList(attrs));
 #line (25, 9) - (25, 62) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     this.Events.Append(FormattableString.Invariant($"startendtag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
 #line hidden
@@ -324,7 +323,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserStartTagSimple()
             {
 #line (157, 5) - (157, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (158, 5) - (158, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<div>");
 #line (159, 5) - (159, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -338,7 +337,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserStartTagWithAttributes()
             {
 #line (164, 5) - (164, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (165, 5) - (165, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<p class=\"main\">");
 #line (166, 5) - (166, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -352,7 +351,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserStartTagMultipleAttributes()
             {
 #line (171, 5) - (171, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (172, 5) - (172, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<input disabled type=text name=\"foo\">");
 #line (173, 5) - (173, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -366,7 +365,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserStartTagSingleQuotedAttr()
             {
 #line (178, 5) - (178, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (179, 5) - (179, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<div class='main'>");
 #line (180, 5) - (180, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -380,7 +379,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserEndTag()
             {
 #line (185, 5) - (185, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (186, 5) - (186, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("</div>");
 #line (187, 5) - (187, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -394,7 +393,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserSelfClosingSlash()
             {
 #line (192, 5) - (192, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (193, 5) - (193, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<br/>");
 #line (194, 5) - (194, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -408,7 +407,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserSelfClosingSpaceSlash()
             {
 #line (199, 5) - (199, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (200, 5) - (200, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<br />");
 #line (201, 5) - (201, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -422,7 +421,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserBareBrNotSelfClosing()
             {
 #line (206, 5) - (206, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (207, 5) - (207, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<br>");
 #line (208, 5) - (208, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -436,7 +435,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserDefaultStartendtagCallsStartAndEnd()
             {
 #line (214, 5) - (214, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new DefaultHandlerParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.DefaultHandlerParser();
 #line (215, 5) - (215, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<br/>");
 #line (216, 5) - (216, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -452,7 +451,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserDataSimpleText()
             {
 #line (222, 5) - (222, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (223, 5) - (223, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("hello world");
 #line (224, 5) - (224, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -468,7 +467,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserComment()
             {
 #line (230, 5) - (230, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (231, 5) - (231, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<!-- comment -->");
 #line (232, 5) - (232, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -482,7 +481,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserDoctype()
             {
 #line (237, 5) - (237, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (238, 5) - (238, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<!DOCTYPE html>");
 #line (239, 5) - (239, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -496,7 +495,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserProcessingInstruction()
             {
 #line (244, 5) - (244, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (245, 5) - (245, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<?xml version=\"1.0\"?>");
 #line (246, 5) - (246, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -510,7 +509,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserEntityRefConvertCharrefsOff()
             {
 #line (253, 5) - (253, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser(false);
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser(false);
 #line (254, 5) - (254, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("&amp;");
 #line (255, 5) - (255, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -526,7 +525,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserCharRefDecimalConvertCharrefsOff()
             {
 #line (261, 5) - (261, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser(false);
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser(false);
 #line (262, 5) - (262, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("&#60;");
 #line (263, 5) - (263, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -542,7 +541,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserCharRefHexConvertCharrefsOff()
             {
 #line (269, 5) - (269, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser(false);
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser(false);
 #line (270, 5) - (270, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("&#x3c;");
 #line (271, 5) - (271, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -558,7 +557,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserConvertCharrefsDefault()
             {
 #line (277, 5) - (277, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (278, 5) - (278, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("&amp; &#60; &#x3c;");
 #line (279, 5) - (279, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -589,7 +588,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserEntityRefMixedWithTextConvertCharrefsOff()
             {
 #line (291, 5) - (291, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser(false);
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser(false);
 #line (292, 5) - (292, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("&amp; &#60; &#x3c;");
 #line (293, 5) - (293, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -613,7 +612,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserScriptContent()
             {
 #line (303, 5) - (303, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (304, 5) - (304, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<script>var x = 1 < 2;</script>");
 #line (305, 5) - (305, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -631,7 +630,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserStyleContent()
             {
 #line (312, 5) - (312, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (313, 5) - (313, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<style>h1 > h2 { color: red; }</style>");
 #line (314, 5) - (314, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -649,7 +648,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserTagsAreLowercased()
             {
 #line (321, 5) - (321, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (322, 5) - (322, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<DIV CLASS=\"test\"></DIV>");
 #line (323, 5) - (323, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -665,7 +664,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserMultipleFeedsChunked()
             {
 #line (329, 5) - (329, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (330, 5) - (330, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<di");
 #line (331, 5) - (331, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -691,7 +690,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserCompleteDocument()
             {
 #line (342, 5) - (342, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (343, 5) - (343, 100) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<!DOCTYPE html><html><head><title>Test</title></head><body><p>Hello</p></body></html>");
 #line (344, 5) - (344, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -727,7 +726,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserGetposTracking()
             {
 #line (360, 5) - (360, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (361, 5) - (361, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<div>\nline2</div>");
 #line (362, 5) - (362, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -741,7 +740,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserReset()
             {
 #line (368, 5) - (368, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (369, 5) - (369, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<div>");
 #line (370, 5) - (370, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -765,7 +764,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserMalformedBareAngleBracket()
             {
 #line (382, 5) - (382, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (383, 5) - (383, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("a < b");
 #line (384, 5) - (384, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -798,7 +797,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserGetStarttagTextReturnsLastStartTag()
             {
 #line (395, 5) - (395, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (396, 5) - (396, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 p.Feed("<div class=\"main\">");
 #line (397, 5) - (397, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -810,7 +809,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestParserGetStarttagTextNullBeforeAnyTag()
             {
 #line (401, 5) - (401, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                var p = new TestParser();
+                var p = new global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.TestParser();
 #line (402, 5) - (402, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 Xunit.Assert.Null(p.GetStarttagText());
 #line hidden

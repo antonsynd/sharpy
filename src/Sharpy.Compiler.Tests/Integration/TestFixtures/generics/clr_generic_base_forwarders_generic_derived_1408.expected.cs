@@ -27,7 +27,7 @@ public static partial class ClrGenericBaseForwardersGenericDerived1408
     public static void Main()
     {
 #line (16, 5) - (16, 36) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
-        MyList<string> m = new MyList<string>();
+        global::ClrGenericBaseForwardersGenericDerived1408.MyList<string> m = new global::ClrGenericBaseForwardersGenericDerived1408.MyList<string>();
 #line (17, 5) - (17, 13) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
         m.Add(7);
 #line (18, 5) - (18, 23) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"

@@ -18,29 +18,29 @@ public static partial class EnumComparisonAndAssignment0000
         CANCELLED = 4
     }
 
-    public static string GetStatusDescription(OrderStatus status)
+    public static string GetStatusDescription(global::EnumComparisonAndAssignment0000.OrderStatus status)
     {
 #line (10, 5) - (19, 38) 8 "enum_comparison_and_assignment_0000.spy"
-        if (status == OrderStatus.PENDING)
+        if (status == global::EnumComparisonAndAssignment0000.OrderStatus.PENDING)
 #line hidden
         {
 #line (11, 9) - (11, 35) 12 "enum_comparison_and_assignment_0000.spy"
             return "Order is pending";
 #line hidden
         }
-        else if (status == OrderStatus.PROCESSING)
+        else if (status == global::EnumComparisonAndAssignment0000.OrderStatus.PROCESSING)
         {
 #line (13, 9) - (13, 43) 12 "enum_comparison_and_assignment_0000.spy"
             return "Order is being processed";
 #line hidden
         }
-        else if (status == OrderStatus.SHIPPED)
+        else if (status == global::EnumComparisonAndAssignment0000.OrderStatus.SHIPPED)
         {
 #line (15, 9) - (15, 41) 12 "enum_comparison_and_assignment_0000.spy"
             return "Order has been shipped";
 #line hidden
         }
-        else if (status == OrderStatus.DELIVERED)
+        else if (status == global::EnumComparisonAndAssignment0000.OrderStatus.DELIVERED)
         {
 #line (17, 9) - (17, 47) 12 "enum_comparison_and_assignment_0000.spy"
             return "Order delivered successfully";
@@ -54,17 +54,17 @@ public static partial class EnumComparisonAndAssignment0000
         }
     }
 
-    public static bool CanCancel(OrderStatus status)
+    public static bool CanCancel(global::EnumComparisonAndAssignment0000.OrderStatus status)
     {
 #line (22, 5) - (27, 22) 8 "enum_comparison_and_assignment_0000.spy"
-        if (status == OrderStatus.PENDING)
+        if (status == global::EnumComparisonAndAssignment0000.OrderStatus.PENDING)
 #line hidden
         {
 #line (23, 9) - (23, 21) 12 "enum_comparison_and_assignment_0000.spy"
             return true;
 #line hidden
         }
-        else if (status == OrderStatus.PROCESSING)
+        else if (status == global::EnumComparisonAndAssignment0000.OrderStatus.PROCESSING)
         {
 #line (25, 9) - (25, 21) 12 "enum_comparison_and_assignment_0000.spy"
             return true;
@@ -78,29 +78,29 @@ public static partial class EnumComparisonAndAssignment0000
         }
     }
 
-    public static OrderStatus CurrentStatus = OrderStatus.PENDING;
+    public static global::EnumComparisonAndAssignment0000.OrderStatus CurrentStatus = global::EnumComparisonAndAssignment0000.OrderStatus.PENDING;
     public static void Main()
     {
 #line (33, 5) - (33, 50) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(GetStatusDescription(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.GetStatusDescription(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (34, 5) - (34, 38) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(CanCancel(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.CanCancel(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (36, 5) - (36, 44) 8 "enum_comparison_and_assignment_0000.spy"
-        CurrentStatus = OrderStatus.PROCESSING;
+        CurrentStatus = global::EnumComparisonAndAssignment0000.OrderStatus.PROCESSING;
 #line (37, 5) - (37, 50) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(GetStatusDescription(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.GetStatusDescription(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (38, 5) - (38, 38) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(CanCancel(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.CanCancel(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (40, 5) - (40, 41) 8 "enum_comparison_and_assignment_0000.spy"
-        CurrentStatus = OrderStatus.SHIPPED;
+        CurrentStatus = global::EnumComparisonAndAssignment0000.OrderStatus.SHIPPED;
 #line (41, 5) - (41, 50) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(GetStatusDescription(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.GetStatusDescription(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (42, 5) - (42, 38) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(CanCancel(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.CanCancel(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line (44, 5) - (44, 43) 8 "enum_comparison_and_assignment_0000.spy"
-        CurrentStatus = OrderStatus.DELIVERED;
+        CurrentStatus = global::EnumComparisonAndAssignment0000.OrderStatus.DELIVERED;
 #line (45, 5) - (45, 50) 8 "enum_comparison_and_assignment_0000.spy"
-        global::Sharpy.Builtins.Print(GetStatusDescription(CurrentStatus));
+        global::Sharpy.Builtins.Print(global::EnumComparisonAndAssignment0000.GetStatusDescription(global::EnumComparisonAndAssignment0000.CurrentStatus));
 #line hidden
     }
 }

@@ -41,7 +41,7 @@ public static partial class TypeAliasGameInventory
         }
     }
 
-    public class Weapon : Item
+    public class Weapon : global::TypeAliasGameInventory.Item
     {
         public int Damage;
         public double Durability;
@@ -72,7 +72,7 @@ public static partial class TypeAliasGameInventory
     {
         public int WeaponCount;
         public int TotalDamage;
-        public void AddWeapon(Weapon weapon)
+        public void AddWeapon(global::TypeAliasGameInventory.Weapon weapon)
 #line 51 "type_alias_game_inventory.spy"
         {
 #line (52, 9) - (52, 31) 12 "type_alias_game_inventory.spy"
@@ -113,13 +113,13 @@ public static partial class TypeAliasGameInventory
     public static void Main()
     {
 #line (61, 5) - (61, 40) 8 "type_alias_game_inventory.spy"
-        Inventory inventory = new Inventory();
+        global::TypeAliasGameInventory.Inventory inventory = new global::TypeAliasGameInventory.Inventory();
 #line (63, 5) - (63, 56) 8 "type_alias_game_inventory.spy"
-        Weapon sword = new Weapon(1, "Iron Sword", 50, 100.0d);
+        global::TypeAliasGameInventory.Weapon sword = new global::TypeAliasGameInventory.Weapon(1, "Iron Sword", 50, 100.0d);
 #line (64, 5) - (64, 53) 8 "type_alias_game_inventory.spy"
-        Weapon axe = new Weapon(2, "Battle Axe", 70, 85.5d);
+        global::TypeAliasGameInventory.Weapon axe = new global::TypeAliasGameInventory.Weapon(2, "Battle Axe", 70, 85.5d);
 #line (65, 5) - (65, 58) 8 "type_alias_game_inventory.spy"
-        Weapon dagger = new Weapon(3, "Steel Dagger", 30, 95.0d);
+        global::TypeAliasGameInventory.Weapon dagger = new global::TypeAliasGameInventory.Weapon(3, "Steel Dagger", 30, 95.0d);
 #line (67, 5) - (67, 32) 8 "type_alias_game_inventory.spy"
         inventory.AddWeapon(sword);
 #line (68, 5) - (68, 30) 8 "type_alias_game_inventory.spy"

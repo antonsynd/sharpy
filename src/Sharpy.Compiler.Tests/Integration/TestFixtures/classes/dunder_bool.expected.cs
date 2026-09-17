@@ -43,9 +43,9 @@ public static partial class DunderBool
     public static void Main()
     {
 #line (12, 5) - (12, 18) 8 "dunder_bool.spy"
-        var t = new Truthy(1);
+        var t = new global::DunderBool.Truthy(1);
 #line (13, 5) - (13, 18) 8 "dunder_bool.spy"
-        var f = new Truthy(0);
+        var f = new global::DunderBool.Truthy(0);
 #line (14, 5) - (15, 24) 8 "dunder_bool.spy"
         if (t.IsTrue)
 #line hidden

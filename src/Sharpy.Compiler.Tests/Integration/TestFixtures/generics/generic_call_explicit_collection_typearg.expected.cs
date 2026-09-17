@@ -53,7 +53,7 @@ public static partial class GenericCallExplicitCollectionTypearg
 #line (29, 5) - (29, 18) 8 "generic_call_explicit_collection_typearg.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(s));
 #line (31, 5) - (31, 51) 8 "generic_call_explicit_collection_typearg.spy"
-        Box<int> b = Identity<Box<int>>(new Box<int>(7));
+        global::GenericCallExplicitCollectionTypearg.Box<int> b = Identity<global::GenericCallExplicitCollectionTypearg.Box<int>>(new global::GenericCallExplicitCollectionTypearg.Box<int>(7));
 #line (32, 5) - (32, 19) 8 "generic_call_explicit_collection_typearg.spy"
         global::Sharpy.Builtins.Print(b.Value);
 #line (33, 5) - (33, 30) 8 "generic_call_explicit_collection_typearg.spy"

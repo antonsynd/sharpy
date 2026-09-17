@@ -8,10 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using calendar = global::Sharpy.CalendarModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -139,13 +137,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsWeekdayValuesAreCorrect()
             {
 #line (72, 5) - (72, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(0, calendar.MONDAY);
+                Xunit.Assert.Equal(0, global::Sharpy.CalendarModule.MONDAY);
 #line (73, 5) - (73, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(1, calendar.TUESDAY);
+                Xunit.Assert.Equal(1, global::Sharpy.CalendarModule.TUESDAY);
 #line (74, 5) - (74, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(5, calendar.SATURDAY);
+                Xunit.Assert.Equal(5, global::Sharpy.CalendarModule.SATURDAY);
 #line (75, 5) - (75, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(6, calendar.SUNDAY);
+                Xunit.Assert.Equal(6, global::Sharpy.CalendarModule.SUNDAY);
 #line hidden
             }
 
@@ -153,11 +151,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsDayNameHasSevenEntriesStartingMonday()
             {
 #line (79, 5) - (79, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(7, global::Sharpy.Builtins.Len(calendar.DayName));
+                Xunit.Assert.Equal(7, global::Sharpy.Builtins.Len(global::Sharpy.CalendarModule.DayName));
 #line (80, 5) - (80, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("Monday", calendar.DayName[0]);
+                Xunit.Assert.Equal("Monday", global::Sharpy.CalendarModule.DayName[0]);
 #line (81, 5) - (81, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("Sunday", calendar.DayName[6]);
+                Xunit.Assert.Equal("Sunday", global::Sharpy.CalendarModule.DayName[6]);
 #line hidden
             }
 
@@ -165,11 +163,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsMonthNameFirstEntryEmptyThenJanuary()
             {
 #line (85, 5) - (85, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("", calendar.MonthName[0]);
+                Xunit.Assert.Equal("", global::Sharpy.CalendarModule.MonthName[0]);
 #line (86, 5) - (86, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("January", calendar.MonthName[1]);
+                Xunit.Assert.Equal("January", global::Sharpy.CalendarModule.MonthName[1]);
 #line (87, 5) - (87, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("December", calendar.MonthName[12]);
+                Xunit.Assert.Equal("December", global::Sharpy.CalendarModule.MonthName[12]);
 #line hidden
             }
 
@@ -177,9 +175,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsMonthAbbrFirstEntryEmptyThenJan()
             {
 #line (91, 5) - (91, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("", calendar.MonthAbbr[0]);
+                Xunit.Assert.Equal("", global::Sharpy.CalendarModule.MonthAbbr[0]);
 #line (92, 5) - (92, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal("Jan", calendar.MonthAbbr[1]);
+                Xunit.Assert.Equal("Jan", global::Sharpy.CalendarModule.MonthAbbr[1]);
 #line hidden
             }
 

@@ -19,7 +19,7 @@ public static partial class UnusedTupleUnpack
     public static void Main()
     {
 #line (5, 5) - (5, 22) 8 "unused_tuple_unpack.spy"
-        var (a, b) = GetPair();
+        var (a, b) = global::UnusedTupleUnpack.GetPair();
 #line (6, 5) - (6, 13) 8 "unused_tuple_unpack.spy"
         global::Sharpy.Builtins.Print(a);
 #line hidden

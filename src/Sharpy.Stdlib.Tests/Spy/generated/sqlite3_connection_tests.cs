@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using @operator = global::Sharpy.Operator;
 using sqlite3 = global::Sharpy.Sqlite3;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -33,7 +31,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
 #line (36, 5) - (36, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                conn.RowFactory = sqlite3.Row;
+                conn.RowFactory = global::Sharpy.Sqlite3.Row;
 #line (37, 5) - (37, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 return conn;
 #line hidden
@@ -61,7 +59,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecuteCreateTableSucceeds()
             {
 #line (53, 5) - (53, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (54, 5) - (54, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 var cursor = conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)");
 #line (55, 5) - (55, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -75,7 +73,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecuteInsertAndSelectReturnsData()
             {
 #line (61, 5) - (61, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (62, 5) - (62, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)");
 #line (63, 5) - (63, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -90,7 +88,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (69, 13) - (69, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r[0], 1));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r[0], 1));
 #line (70, 13) - (70, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                         Xunit.Assert.True(@operator.Eq(r[1], "Alice"));
 #line hidden
@@ -111,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecuteWithParametersBindsCorrectly()
             {
 #line (78, 5) - (78, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (79, 5) - (79, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER, name TEXT)");
 #line (80, 5) - (80, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -152,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCommitPersistsData()
             {
 #line (97, 5) - (97, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (98, 5) - (98, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
 #line (99, 5) - (99, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -167,7 +165,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (105, 13) - (105, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r[0], 42));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r[0], 42));
 #line hidden
                         break;
                     default:
@@ -186,7 +184,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRollbackDiscardsUncommittedData()
             {
 #line (113, 5) - (113, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (114, 5) - (114, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
 #line (115, 5) - (115, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -203,7 +201,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (123, 13) - (123, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r[0], 0));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r[0], 0));
 #line hidden
                         break;
                     default:
@@ -358,7 +356,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecutemanyInsertsMultipleRows()
             {
 #line (188, 5) - (188, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (189, 5) - (189, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (id INTEGER, name TEXT)");
 #line (191, 5) - (195, 7) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -393,7 +391,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (202, 13) - (202, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r[0], 3));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r[0], 3));
 #line hidden
                         break;
                     default:
@@ -441,7 +439,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecutescriptExecutesMultipleStatements()
             {
 #line (226, 5) - (226, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (228, 5) - (228, 140) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Executescript("CREATE TABLE t1 (id INTEGER); CREATE TABLE t2 (id INTEGER); INSERT INTO t1 VALUES (1); INSERT INTO t2 VALUES (2);");
 #line (230, 5) - (230, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -452,7 +450,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r1:
 #line (233, 13) - (233, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r1[0], 1));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r1[0], 1));
 #line hidden
                         break;
                     default:
@@ -470,7 +468,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r2:
 #line (240, 13) - (240, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r2[0], 2));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r2[0], 2));
 #line hidden
                         break;
                     default:
@@ -489,7 +487,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExecutescriptCommitsPendingTransaction()
             {
 #line (248, 5) - (248, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                var conn = _Conn();
+                var conn = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._Conn();
 #line (249, 5) - (249, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 conn.Execute("CREATE TABLE t (val INTEGER)");
 #line (250, 5) - (250, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
@@ -504,7 +502,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (256, 13) - (256, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                        Xunit.Assert.True(_EqInt(r[0], 10));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ConnectionTests._EqInt(r[0], 10));
 #line hidden
                         break;
                     default:
@@ -537,7 +535,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (273, 5) - (273, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
 #line (274, 5) - (274, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
-                conn.RowFactory = sqlite3.Row;
+                conn.RowFactory = global::Sharpy.Sqlite3.Row;
 #line (275, 5) - (275, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"
                 Xunit.Assert.NotNull(conn.RowFactory);
 #line (276, 5) - (276, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_connection_tests.spy"

@@ -20,7 +20,7 @@ public static partial class NarrowingAndRhsIsinstance
         }
     }
 
-    public class Dog : Animal
+    public class Dog : global::NarrowingAndRhsIsinstance.Animal
     {
         public string Bark()
 #line 11 "narrowing_and_rhs_isinstance.spy"
@@ -31,17 +31,17 @@ public static partial class NarrowingAndRhsIsinstance
         }
     }
 
-    public static bool IsBarkingDog(Animal a)
+    public static bool IsBarkingDog(global::NarrowingAndRhsIsinstance.Animal a)
     {
 #line (15, 5) - (15, 54) 8 "narrowing_and_rhs_isinstance.spy"
-        return (object?)a is Dog && ((Dog)a!).Bark() == "woof";
+        return (object?)a is Dog && ((global::NarrowingAndRhsIsinstance.Dog)a!).Bark() == "woof";
 #line hidden
     }
 
-    public static string Describe(Animal a)
+    public static string Describe(global::NarrowingAndRhsIsinstance.Animal a)
     {
 #line (18, 5) - (18, 58) 8 "narrowing_and_rhs_isinstance.spy"
-        bool ok = (object?)a is Dog && ((Dog)a!).Bark() == "woof";
+        bool ok = (object?)a is Dog && ((global::NarrowingAndRhsIsinstance.Dog)a!).Bark() == "woof";
 #line (19, 5) - (20, 30) 8 "narrowing_and_rhs_isinstance.spy"
         if (ok)
 #line hidden
@@ -59,17 +59,17 @@ public static partial class NarrowingAndRhsIsinstance
     public static void Main()
     {
 #line (24, 5) - (24, 23) 8 "narrowing_and_rhs_isinstance.spy"
-        Animal d = new Dog();
+        global::NarrowingAndRhsIsinstance.Animal d = new global::NarrowingAndRhsIsinstance.Dog();
 #line (25, 5) - (25, 26) 8 "narrowing_and_rhs_isinstance.spy"
-        Animal a = new Animal();
+        global::NarrowingAndRhsIsinstance.Animal a = new global::NarrowingAndRhsIsinstance.Animal();
 #line (26, 5) - (26, 29) 8 "narrowing_and_rhs_isinstance.spy"
-        global::Sharpy.Builtins.Print(IsBarkingDog(d));
+        global::Sharpy.Builtins.Print(global::NarrowingAndRhsIsinstance.IsBarkingDog(d));
 #line (27, 5) - (27, 29) 8 "narrowing_and_rhs_isinstance.spy"
-        global::Sharpy.Builtins.Print(IsBarkingDog(a));
+        global::Sharpy.Builtins.Print(global::NarrowingAndRhsIsinstance.IsBarkingDog(a));
 #line (28, 5) - (28, 23) 8 "narrowing_and_rhs_isinstance.spy"
-        global::Sharpy.Builtins.Print(Describe(d));
+        global::Sharpy.Builtins.Print(global::NarrowingAndRhsIsinstance.Describe(d));
 #line (29, 5) - (29, 23) 8 "narrowing_and_rhs_isinstance.spy"
-        global::Sharpy.Builtins.Print(Describe(a));
+        global::Sharpy.Builtins.Print(global::NarrowingAndRhsIsinstance.Describe(a));
 #line hidden
     }
 }

@@ -26,7 +26,7 @@ public static partial class QuestionMarkResultBasic
 
     public static Result<int, string> Process(string s)
     {
-        var __qm_0 = ParseInt(s);
+        var __qm_0 = global::QuestionMarkResultBasic.ParseInt(s);
         if (__qm_0.IsErr)
             return Result<int, string>.Err(__qm_0.UnwrapErr());
 #line (7, 5) - (7, 30) 8 "question_mark_result_basic.spy"
@@ -39,7 +39,7 @@ public static partial class QuestionMarkResultBasic
     public static void Main()
     {
 #line (11, 5) - (11, 27) 8 "question_mark_result_basic.spy"
-        var result = Process("42");
+        var result = global::QuestionMarkResultBasic.Process("42");
 #line (12, 5) - (16, 21) 8 "question_mark_result_basic.spy"
         switch (result)
 #line hidden

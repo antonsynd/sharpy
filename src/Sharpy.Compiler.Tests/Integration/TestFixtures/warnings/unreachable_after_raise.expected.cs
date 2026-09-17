@@ -25,7 +25,7 @@ public static partial class UnreachableAfterRaise
 #line hidden
         {
 #line (7, 9) - (7, 14) 12 "unreachable_after_raise.spy"
-            Foo();
+            global::UnreachableAfterRaise.Foo();
 #line hidden
         }
         catch (global::System.Exception e)

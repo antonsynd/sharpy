@@ -41,7 +41,7 @@ namespace Sharpy
 
         public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
         public static string Linesep = global::System.Environment.NewLine;
-        public static string Name = Sep == "\\" ? "nt" : "posix";
+        public static string Name = global::Sharpy.OsModule.Sep == "\\" ? "nt" : "posix";
         public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString());
         public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar.ToString() == global::System.IO.Path.DirectorySeparatorChar.ToString() ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
         /// <summary>
@@ -257,7 +257,7 @@ namespace Sharpy
             get
             {
                 _ = "A mapping object representing the string environment.";
-                return GetEnviron();
+                return global::Sharpy.OsModule.GetEnviron();
             }
         }
 
@@ -272,7 +272,7 @@ namespace Sharpy
         /// <summary>
         /// Perform the equivalent of a stat() system call on the given path.
         /// </summary>
-        public static StatResult Stat(string path)
+        public static global::Sharpy.OsModule.StatResult Stat(string path)
         {
             if (global::System.IO.File.Exists(path))
             {
@@ -280,7 +280,7 @@ namespace Sharpy
                 global::System.DateTimeOffset fw = new global::System.DateTimeOffset(finfo.LastWriteTimeUtc);
                 global::System.DateTimeOffset fc = new global::System.DateTimeOffset(finfo.CreationTimeUtc);
                 global::System.DateTimeOffset fa = new global::System.DateTimeOffset(finfo.LastAccessTimeUtc);
-                return new StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
+                return new global::Sharpy.OsModule.StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
             }
 
             if (global::System.IO.Directory.Exists(path))
@@ -289,7 +289,7 @@ namespace Sharpy
                 global::System.DateTimeOffset dw = new global::System.DateTimeOffset(dinfo.LastWriteTimeUtc);
                 global::System.DateTimeOffset dc = new global::System.DateTimeOffset(dinfo.CreationTimeUtc);
                 global::System.DateTimeOffset da = new global::System.DateTimeOffset(dinfo.LastAccessTimeUtc);
-                return new StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
+                return new global::Sharpy.OsModule.StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
             }
 
             throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
@@ -342,7 +342,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(_WalkCore(top));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(global::Sharpy.OsModule._WalkCore(top));
         }
     }
 }

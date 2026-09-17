@@ -49,7 +49,7 @@ public static partial class VirtualOverrideShapes
         }
     }
 
-    public class Rectangle : Shape
+    public class Rectangle : global::VirtualOverrideShapes.Shape
     {
         public double Width;
         public double Height;
@@ -80,7 +80,7 @@ public static partial class VirtualOverrideShapes
         }
     }
 
-    public class Circle : Shape
+    public class Circle : global::VirtualOverrideShapes.Shape
     {
         public double Radius;
         public override double Area()
@@ -108,14 +108,14 @@ public static partial class VirtualOverrideShapes
         }
     }
 
-    public static Rectangle Rect = new Rectangle(5.0d, 3.0d);
-    public static Circle Circ = new Circle(4.0d);
+    public static global::VirtualOverrideShapes.Rectangle Rect = new global::VirtualOverrideShapes.Rectangle(5.0d, 3.0d);
+    public static global::VirtualOverrideShapes.Circle Circ = new global::VirtualOverrideShapes.Circle(4.0d);
     public static void Main()
     {
 #line (59, 5) - (59, 20) 8 "virtual_override_shapes.spy"
-        Rect.Describe();
+        global::VirtualOverrideShapes.Rect.Describe();
 #line (61, 5) - (61, 20) 8 "virtual_override_shapes.spy"
-        Circ.Describe();
+        global::VirtualOverrideShapes.Circ.Describe();
 #line hidden
     }
 }

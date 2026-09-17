@@ -16,17 +16,17 @@ public static partial class EnumTrafficLight
         GREEN = 2
     }
 
-    public static TrafficLight Current = TrafficLight.RED;
+    public static global::EnumTrafficLight.TrafficLight Current = global::EnumTrafficLight.TrafficLight.RED;
     public static void Main()
     {
 #line (11, 5) - (11, 39) 8 "enum_traffic_light.spy"
-        global::Sharpy.Builtins.Print(Current == TrafficLight.RED);
+        global::Sharpy.Builtins.Print(global::EnumTrafficLight.Current == global::EnumTrafficLight.TrafficLight.RED);
 #line (12, 5) - (12, 41) 8 "enum_traffic_light.spy"
-        global::Sharpy.Builtins.Print(Current == TrafficLight.GREEN);
+        global::Sharpy.Builtins.Print(global::EnumTrafficLight.Current == global::EnumTrafficLight.TrafficLight.GREEN);
 #line (15, 5) - (15, 34) 8 "enum_traffic_light.spy"
-        Current = TrafficLight.YELLOW;
+        Current = global::EnumTrafficLight.TrafficLight.YELLOW;
 #line (16, 5) - (16, 42) 8 "enum_traffic_light.spy"
-        global::Sharpy.Builtins.Print(Current == TrafficLight.YELLOW);
+        global::Sharpy.Builtins.Print(global::EnumTrafficLight.Current == global::EnumTrafficLight.TrafficLight.YELLOW);
 #line hidden
     }
 }

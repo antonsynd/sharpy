@@ -23,7 +23,7 @@ public static partial class AsyncComprehensionAsyncFor
     public static async System.Threading.Tasks.Task Main()
     {
         var __comp_0 = new Sharpy.List<int>();
-        await foreach (var __loopVar_1 in Gen())
+        await foreach (var __loopVar_1 in global::AsyncComprehensionAsyncFor.Gen())
         {
             var x = __loopVar_1;
             if (x > 0)

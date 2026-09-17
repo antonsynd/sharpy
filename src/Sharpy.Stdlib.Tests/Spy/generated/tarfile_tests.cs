@@ -8,11 +8,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using static global::Sharpy.Unittest;
 using tarfile = global::Sharpy.TarfileModule;
-using static global::Sharpy.OsPathModule;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Tarfile.TarfileTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -187,7 +184,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (78, 5) - (78, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.True(Isfile(outDir + "/source.txt"));
+                Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(outDir + "/source.txt"));
 #line (79, 5) - (79, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var content = "";
 #line (80, 5) - (81, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
@@ -653,13 +650,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestModuleConstants()
             {
 #line (242, 5) - (242, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Equal(0, tarfile.REGTYPE);
+                Xunit.Assert.Equal(0, global::Sharpy.TarfileModule.REGTYPE);
 #line (243, 5) - (243, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Equal(5, tarfile.DIRTYPE);
+                Xunit.Assert.Equal(5, global::Sharpy.TarfileModule.DIRTYPE);
 #line (244, 5) - (244, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Equal(2, tarfile.SYMTYPE);
+                Xunit.Assert.Equal(2, global::Sharpy.TarfileModule.SYMTYPE);
 #line (245, 5) - (245, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Equal(1, tarfile.LNKTYPE);
+                Xunit.Assert.Equal(1, global::Sharpy.TarfileModule.LNKTYPE);
 #line hidden
             }
 
@@ -756,23 +753,23 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (290, 5) - (290, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var info = new global::Sharpy.TarInfo();
 #line (291, 5) - (291, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                info.Type = tarfile.REGTYPE;
+                info.Type = global::Sharpy.TarfileModule.REGTYPE;
 #line (292, 5) - (292, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(info.Isfile());
 #line (293, 5) - (293, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.False(info.Isdir());
 #line (295, 5) - (295, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                info.Type = tarfile.DIRTYPE;
+                info.Type = global::Sharpy.TarfileModule.DIRTYPE;
 #line (296, 5) - (296, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(info.Isdir());
 #line (297, 5) - (297, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.False(info.Isfile());
 #line (299, 5) - (299, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                info.Type = tarfile.SYMTYPE;
+                info.Type = global::Sharpy.TarfileModule.SYMTYPE;
 #line (300, 5) - (300, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(info.Issym());
 #line (302, 5) - (302, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                info.Type = tarfile.LNKTYPE;
+                info.Type = global::Sharpy.TarfileModule.LNKTYPE;
 #line (303, 5) - (303, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(info.Islnk());
 #line hidden

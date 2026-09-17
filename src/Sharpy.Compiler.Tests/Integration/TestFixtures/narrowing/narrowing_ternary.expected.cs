@@ -19,9 +19,9 @@ public static partial class NarrowingTernary
     public static void Main()
     {
 #line (9, 5) - (9, 23) 8 "narrowing_ternary.spy"
-        global::Sharpy.Builtins.Print(F(Optional<int>.Some(41)));
+        global::Sharpy.Builtins.Print(global::NarrowingTernary.F(Optional<int>.Some(41)));
 #line (10, 5) - (10, 21) 8 "narrowing_ternary.spy"
-        global::Sharpy.Builtins.Print(F(Optional<int>.None));
+        global::Sharpy.Builtins.Print(global::NarrowingTernary.F(Optional<int>.None));
 #line hidden
     }
 }

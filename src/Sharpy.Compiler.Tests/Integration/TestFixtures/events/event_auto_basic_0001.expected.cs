@@ -20,7 +20,7 @@ public static partial class EventAutoBasic0001
 #line hidden
         }
 
-        public event MsgHandler? OnMsg;
+        public event global::EventAutoBasic0001.MsgHandler? OnMsg;
     }
 
     public static void Handler(string msg)
@@ -33,13 +33,13 @@ public static partial class EventAutoBasic0001
     public static void Main()
     {
 #line (14, 5) - (14, 32) 8 "event_auto_basic_0001.spy"
-        Publisher p = new Publisher();
+        global::EventAutoBasic0001.Publisher p = new global::EventAutoBasic0001.Publisher();
 #line (15, 5) - (15, 24) 8 "event_auto_basic_0001.spy"
-        p.OnMsg += Handler;
+        p.OnMsg += global::EventAutoBasic0001.Handler;
 #line (16, 5) - (16, 22) 8 "event_auto_basic_0001.spy"
         p.Notify("hello");
 #line (17, 5) - (17, 24) 8 "event_auto_basic_0001.spy"
-        p.OnMsg -= Handler;
+        p.OnMsg -= global::EventAutoBasic0001.Handler;
 #line (18, 5) - (18, 33) 8 "event_auto_basic_0001.spy"
         p.Notify("should not print");
 #line (19, 5) - (19, 18) 8 "event_auto_basic_0001.spy"

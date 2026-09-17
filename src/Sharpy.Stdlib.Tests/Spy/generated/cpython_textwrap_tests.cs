@@ -10,7 +10,6 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using textwrap = global::Sharpy.Textwrap;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Cpython.CpythonTextwrapTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {

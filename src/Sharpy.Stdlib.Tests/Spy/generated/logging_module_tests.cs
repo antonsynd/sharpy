@@ -9,9 +9,7 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using logging = global::Sharpy.Logging;
-using static global::Sharpy.Unittest;
 using Xunit;
-using static Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests;
 
 namespace Sharpy.Stdlib.Tests.Spy
 {
@@ -31,15 +29,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstantsHaveCorrectValues()
             {
 #line (15, 5) - (15, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(10, logging.DEBUG);
+                Xunit.Assert.Equal(10, global::Sharpy.Logging.DEBUG);
 #line (16, 5) - (16, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(20, logging.INFO);
+                Xunit.Assert.Equal(20, global::Sharpy.Logging.INFO);
 #line (17, 5) - (17, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(30, logging.WARNING);
+                Xunit.Assert.Equal(30, global::Sharpy.Logging.WARNING);
 #line (18, 5) - (18, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(40, logging.ERROR);
+                Xunit.Assert.Equal(40, global::Sharpy.Logging.ERROR);
 #line (19, 5) - (19, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(50, logging.CRITICAL);
+                Xunit.Assert.Equal(50, global::Sharpy.Logging.CRITICAL);
 #line hidden
             }
 
@@ -49,9 +47,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (26, 5) - (26, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_output");
 #line (27, 5) - (27, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.WARNING);
+                logger.SetLevel(global::Sharpy.Logging.WARNING);
 #line (28, 5) - (30, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (29, 9) - (29, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -68,9 +66,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_filter");
 #line (36, 5) - (36, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.ERROR);
+                logger.SetLevel(global::Sharpy.Logging.ERROR);
 #line (37, 5) - (39, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (38, 9) - (38, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -87,9 +85,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (44, 5) - (44, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_at");
 #line (45, 5) - (45, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.WARNING);
+                logger.SetLevel(global::Sharpy.Logging.WARNING);
 #line (46, 5) - (48, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (47, 9) - (47, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -106,9 +104,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (53, 5) - (53, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("myapp");
 #line (54, 5) - (54, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.DEBUG);
+                logger.SetLevel(global::Sharpy.Logging.DEBUG);
 #line (55, 5) - (65, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (56, 9) - (56, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -139,7 +137,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (70, 5) - (70, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_default");
 #line (71, 5) - (77, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (72, 9) - (72, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -162,9 +160,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (83, 5) - (83, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_higher_sev");
 #line (84, 5) - (84, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.WARNING);
+                logger.SetLevel(global::Sharpy.Logging.WARNING);
 #line (85, 5) - (91, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (86, 9) - (86, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -187,9 +185,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (96, 5) - (96, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_all_above_info");
 #line (97, 5) - (97, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.INFO);
+                logger.SetLevel(global::Sharpy.Logging.INFO);
 #line (98, 5) - (110, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (99, 9) - (99, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -224,9 +222,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (115, 5) - (115, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_empty_msg");
 #line (116, 5) - (116, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.WARNING);
+                logger.SetLevel(global::Sharpy.Logging.WARNING);
 #line (117, 5) - (119, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (118, 9) - (118, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -243,9 +241,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (125, 5) - (125, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_colons");
 #line (126, 5) - (126, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.WARNING);
+                logger.SetLevel(global::Sharpy.Logging.WARNING);
 #line (127, 5) - (129, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (128, 9) - (128, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -262,9 +260,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (134, 5) - (134, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_order");
 #line (135, 5) - (135, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.DEBUG);
+                logger.SetLevel(global::Sharpy.Logging.DEBUG);
 #line (136, 5) - (144, 101) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (137, 9) - (137, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
@@ -287,11 +285,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (150, 5) - (150, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var logger = new global::Sharpy.Logger("test_raise_level");
 #line (151, 5) - (151, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.DEBUG);
+                logger.SetLevel(global::Sharpy.Logging.DEBUG);
 #line (152, 5) - (152, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(logging.ERROR);
+                logger.SetLevel(global::Sharpy.Logging.ERROR);
 #line (153, 5) - (159, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = CapturedStderr())
+                using (var err = global::Sharpy.Unittest.CapturedStderr())
 #line hidden
                 {
 #line (154, 9) - (154, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"

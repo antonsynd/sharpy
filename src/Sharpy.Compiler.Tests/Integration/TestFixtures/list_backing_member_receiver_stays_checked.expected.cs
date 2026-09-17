@@ -36,7 +36,7 @@ public static partial class ListBackingMemberReceiverStaysChecked
     public static void Main()
     {
 #line (14, 5) - (14, 20) 8 "list_backing_member_receiver_stays_checked.spy"
-        Bag b = new Bag();
+        global::ListBackingMemberReceiverStaysChecked.Bag b = new global::ListBackingMemberReceiverStaysChecked.Bag();
 #line (15, 5) - (15, 21) 8 "list_backing_member_receiver_stays_checked.spy"
         global::Sharpy.Builtins.Print(b.First());
 #line hidden
