@@ -717,7 +717,8 @@ internal partial class TypeChecker
             if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDef })
             {
                 ClassifyResolvedTypeOperand(
-                    call, element, element, openDef, DescribeTypeOperand(element), subjectType);
+                    call, element, element, openDef, DescribeTypeOperand(element), subjectType,
+                    isNameEscaped: false);
                 return;
             }
 
@@ -789,9 +790,10 @@ internal partial class TypeChecker
         // spelling drew SPY0345. Same declaration, same rule, whatever the qualifier (#1411).
         if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDefinition })
         {
+            // A module-qualified spelling (`mod.Box`) is never backtick-escaped in this arm.
             ClassifyResolvedTypeOperand(
                 call, operandNode, typeOperand, openDefinition, DescribeTypeOperand(typeOperand),
-                subjectType);
+                subjectType, isNameEscaped: false);
             return;
         }
 
@@ -831,13 +833,18 @@ internal partial class TypeChecker
         if (operandSymbol is not TypeSymbol typeSymbol)
             return;
 
-        ClassifyResolvedTypeOperand(call, operandNode, typeId, typeSymbol, typeId.Name, subjectType);
+        ClassifyResolvedTypeOperand(
+            call, operandNode, typeId, typeSymbol, typeId.Name, subjectType, typeId.IsNameBacktickEscaped);
     }
 
     /// <summary>
     /// The three-outcome rule for an <c>isinstance</c> operand once its declaration is in hand,
     /// shared by the bare spelling (<c>Box</c>) and the module-qualified one (<c>mod.Box</c>) so the
-    /// qualifier cannot buy an exemption from a rule that is about the TYPE (#1411).
+    /// qualifier cannot buy an exemption from a rule that is about the TYPE (#1411). Delegates to the
+    /// single <see cref="DecideBoundTypeTest"/> the match-pattern, cast and except sites use — the
+    /// #912 erasure arm is deleted, so <c>isinstance(x, list)</c> on an open subject is refused
+    /// (SPY0345), not erased to <c>Sharpy.IList</c>, and the array interop and subject fill are shared
+    /// (#1708/#1619).
     /// </summary>
     /// <param name="operandNode">The node the lowering is keyed on (grouping parentheses included,
     /// since that is the node the emitter looks the decision up by).</param>
@@ -848,43 +855,16 @@ internal partial class TypeChecker
     /// <c>typeSymbol.Name</c>, which for a qualified spelling would print a name that does not
     /// resolve at this site.
     /// </param>
+    /// <param name="isNameEscaped">Whether the operand was backtick-escaped — gates the bare
+    /// <c>list</c> array interop, which must not fire for an escaped user class named <c>list</c>.</param>
     private void ClassifyResolvedTypeOperand(
         FunctionCall call, Expression operandNode, Node reportOn, TypeSymbol typeSymbol,
-        string writtenName, SemanticType? subjectType)
+        string writtenName, SemanticType? subjectType, bool isNameEscaped)
     {
-        // list/set/dict written without type arguments: the test cannot know the element types, so it
-        // erases to the non-generic protocol interface. BuildIsInstanceNarrowedType is what narrowing
-        // resolves the same operand to, and it fills default `object` arguments so member access on the
-        // narrowed value still resolves — the two answers stay the same object here by construction.
-        if (typeSymbol.IsGeneric && BuiltinNames.IsErasableCollection(typeSymbol.Name))
-        {
-            _semanticInfo.SetTypeTestLowering(operandNode,
-                new TypeTestLowering(TypeTestLoweringKind.ErasedBuiltinCollection, BuildIsInstanceNarrowedType(typeSymbol)));
-            return;
-        }
-
-        if (!typeSymbol.IsGeneric)
-        {
-            _semanticInfo.SetTypeTestLowering(operandNode,
-                new TypeTestLowering(TypeTestLoweringKind.ClosedType, BuildIsInstanceNarrowedType(typeSymbol)));
-            return;
-        }
-
-        // A generic user type named without its arguments. .NET reifies generics, so `Box` alone names
-        // no runtime type; fill the vector from the subject's own static type when it determines one.
-        if (FillTypeArgumentsFromSubject(typeSymbol, subjectType) is { } closedGeneric)
-        {
-            _semanticInfo.SetTypeTestLowering(operandNode,
-                new TypeTestLowering(TypeTestLoweringKind.ClosedType, closedGeneric));
-            return;
-        }
-
-        // Shares SPY0345's body with the annotation-shaped sites (#1235); the site selects the noun and
-        // the closed-spelling steer. (Task 2.2 routes this whole method through DecideBoundTypeTest; for
-        // now it keeps its own erasure copy but uses the shared refusal.)
-        ReportOpenGenericTypeOperand(
-            reportOn, writtenName, TypeTestSite.Isinstance, typeSymbol.TypeParameters.Count,
-            fallbackSpan: call.Span);
+        DecideBoundTypeTest(
+            reportAt: reportOn, writtenName: writtenName, isNameEscaped: isNameEscaped,
+            lodgeOn: operandNode, subjectType: subjectType, site: TypeTestSite.Isinstance,
+            typeSymbol: typeSymbol, out _, fallbackSpan: call.Span);
     }
 
     /// <summary>

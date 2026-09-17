@@ -117,6 +117,91 @@ def main() -> None:
             "the type-parameter subject must be refused as open, not as incompatible");
     }
 
+    [Theory]
+    [InlineData("def describe(o: list[int]) -> None:", true)]
+    [InlineData("def describe[T](o: T) -> None:", false)]
+    public void PatternAndIsinstanceVerdictsAgreeOnTheSameSubject(string header, bool expectRun)
+    {
+        // Cross-form agreement (#1619): a bare `list` gives the SAME verdict in a match pattern and in
+        // isinstance for one subject — both FILL and run on a `list[int]` subject, both REFUSE
+        // (SPY0345) on a type-parameter subject. Mutation guard 2c: re-introducing an isinstance-side
+        // erasure arm makes isinstance run on the type-parameter subject while the pattern refuses, so
+        // the two verdicts disagree here and this cell goes red.
+        var pattern = CompileAndExecute($@"
+{header}
+    match o:
+        case list(xs):
+            print(""list"")
+        case _:
+            print(""other"")
+
+def main() -> None:
+    describe([1, 2, 3])
+");
+        var isinstance = CompileAndExecute($@"
+{header}
+    if isinstance(o, list):
+        print(""list"")
+    else:
+        print(""other"")
+
+def main() -> None:
+    describe([1, 2, 3])
+");
+
+        pattern.Success.Should().Be(expectRun, string.Join(", ", pattern.CompilationErrors));
+        isinstance.Success.Should().Be(expectRun,
+            "isinstance must reach the same verdict as the match pattern for this subject");
+
+        if (!expectRun)
+        {
+            pattern.RawDiagnostics.Select(d => d.Code)
+                .Should().Contain(DiagnosticCodes.Semantic.OpenGenericTypeTest);
+            isinstance.RawDiagnostics.Select(d => d.Code)
+                .Should().Contain(DiagnosticCodes.Semantic.OpenGenericTypeTest);
+        }
+    }
+
+    [Fact]
+    public void IsinstanceListOnArraySubject_TestsTheArrayAndRuns()
+    {
+        // The array interop moved into the shared decider, so isinstance gets it too: a bare `list`
+        // against an `array[int]` subject tests the array itself (#1708 cell for isinstance).
+        var result = CompileAndExecute(@"
+def describe(a: array[int]) -> None:
+    if isinstance(a, list):
+        print(a[0])
+
+def main() -> None:
+    arr: array[int] = array[int](3)
+    arr[0] = 9
+    describe(arr)
+");
+
+        result.Success.Should().BeTrue(string.Join(", ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("9\n");
+    }
+
+    [Fact]
+    public void IsinstanceListWithEnclosingTypeParameter_Resolves()
+    {
+        // `isinstance(o, list[T])` under `def f[T]` is valid: .NET reifies generics, so C# spells it
+        // `o is List<T>` (#1619 cell (h)). Was SPY0344 "not a type" before the argument arm accepted a
+        // type parameter.
+        var result = CompileAndExecute(@"
+def describe[T](o: object, sample: list[T]) -> None:
+    if isinstance(o, list[T]):
+        print(""match"")
+    else:
+        print(""other"")
+
+def main() -> None:
+    describe([1, 2, 3], [0])
+");
+
+        result.Success.Should().BeTrue(string.Join(", ", result.CompilationErrors));
+    }
+
     [Fact]
     public void CastToBareCollection_ReportsExactlyOneDiagnostic()
     {

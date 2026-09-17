@@ -59,20 +59,33 @@ def f(x: object) -> bool:
     }
 
     [Fact]
-    public void UnparameterizedBuiltinCollection_ClassifiesAsErased()
+    public void UnparameterizedBuiltinCollection_OnOpenSubject_IsRefused()
     {
-        var lowering = SingleTypeTest(@"
+        // The #912 erasure arm is retired (#1708/#1619): a bare `list` on an `object` subject names no
+        // closed CLR type, so isinstance refuses it (SPY0345) exactly as the match-pattern and cast
+        // sites do — the two classifiers now share one decider.
+        var diagnostics = Diagnose(@"
 def f(x: object) -> bool:
     return isinstance(x, list)
 ");
 
-        // The bare name cannot know the element type, so the test erases to the non-generic protocol
-        // interface (#912). The carried type still has default `object` arguments, because that is
-        // what narrowing needs for member access on the narrowed value to resolve.
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ErasedBuiltinCollection);
+        diagnostics.Select(d => d.Code).Should().Contain(DiagnosticCodes.Semantic.OpenGenericTypeTest);
+    }
+
+    [Fact]
+    public void UnparameterizedBuiltinCollection_OnClosedSubject_FillsFromTheSubject()
+    {
+        // The positive control the old erased test lacked: a `list[int]` subject determines the
+        // vector, so the bare name fills to the exact closed instantiation rather than erasing.
+        var lowering = SingleTypeTest(@"
+def f(x: list[int]) -> bool:
+    return isinstance(x, list)
+");
+
+        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
         var generic = lowering.TestType.Should().BeOfType<GenericType>().Which;
         generic.Name.Should().Be("list");
-        generic.TypeArguments.Should().ContainSingle();
+        generic.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
     }
 
     [Fact]

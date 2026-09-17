@@ -3111,10 +3111,29 @@ internal partial class TypeChecker
         {
             if (shapes.HasFlag(TypeOperandShapes.BareNameIsPrimitiveOrNonGeneric))
             {
-                return ResolveBuiltinPrimitiveTypeName(typeId.Name)
-                    ?? (_symbolTable.Lookup(typeId.Name) is TypeSymbol { IsGeneric: false } nonGeneric
-                        ? new UserDefinedType { Symbol = nonGeneric, Name = nonGeneric.Name }
-                        : null);
+                if (ResolveBuiltinPrimitiveTypeName(typeId.Name) is { } primitiveArg)
+                    return primitiveArg;
+
+                var argSymbol = _symbolTable.Lookup(typeId.Name);
+                if (argSymbol is TypeSymbol { IsGeneric: false } nonGeneric)
+                    return new UserDefinedType { Symbol = nonGeneric, Name = nonGeneric.Name };
+
+                // An ENCLOSING type parameter is a reified runtime type in .NET, so
+                // `isinstance(o, list[T])` under `def f[T]` is valid — C# spells it `o is List<T>`
+                // (#1619 cell (h)). Without this the argument resolved as "not a type" (SPY0344).
+                if (argSymbol is TypeParameterSymbol typeParam
+                    && (typeId.IsNameBacktickEscaped || !typeParam.IsNameBacktickEscaped))
+                {
+                    return new TypeParameterType
+                    {
+                        Name = typeId.Name,
+                        DeclaringType = typeParam.DeclaringType,
+                        Constraints = typeParam.Constraints,
+                        Variance = typeParam.Variance
+                    };
+                }
+
+                return null;
             }
 
             // Create a synthetic type annotation and resolve it

@@ -480,7 +480,11 @@ internal partial class TypeChecker
         if (operandSymbol is not TypeSymbol typeSymbol)
             return null;
 
-        var decided = DecideBoundTypeTest(annotation, lodgeOn, subjectType, site, typeSymbol, out refused);
+        var decided = DecideBoundTypeTest(
+            reportAt: annotation, writtenName: annotation.Name,
+            isNameEscaped: annotation.IsNameBacktickEscaped,
+            lodgeOn: lodgeOn, subjectType: subjectType, site: site, typeSymbol: typeSymbol,
+            out refused);
 
         // The spelling is a type POSITION and it named `typeSymbol`, so it is a reference to it
         // (#1737). Recorded ONCE, here, rather than at each arm below — a per-arm recording is how
@@ -499,14 +503,23 @@ internal partial class TypeChecker
     /// <c>list</c> interop tests; (2) the closed type for a non-generic name; (3) null with SPY0345
     /// (the site's steer) when the subject is <c>object</c>, a type parameter, or otherwise determines
     /// nothing. <c>Unknown</c> subjects stay silent — an upstream error is already reported.
+    /// <para>
+    /// Takes the operand's decomposed shape (name, escape state, the node to anchor a diagnostic on)
+    /// rather than a <see cref="TypeAnnotation"/>, because the <c>isinstance</c> operand is an
+    /// <see cref="Expression"/> and both the annotation-shaped and expression-shaped sites share this
+    /// one decider (#1708/#1619) — the cross-form agreement is by construction, not by two copies.
+    /// </para>
     /// </summary>
     private SemanticType? DecideBoundTypeTest(
-        TypeAnnotation annotation,
+        Node reportAt,
+        string writtenName,
+        bool isNameEscaped,
         Node lodgeOn,
         SemanticType? subjectType,
         TypeTestSite site,
         TypeSymbol typeSymbol,
-        out bool refused)
+        out bool refused,
+        Text.TextSpan? fallbackSpan = null)
     {
         refused = false;
 
@@ -515,7 +528,7 @@ internal partial class TypeChecker
         // ClassifyPatternClassTest so `isinstance(arr, list)` gets it too (#1708). Only the bare
         // spelling reaches here (a type-argument spelling is resolved before DecideBoundTypeTest).
         if (typeSymbol.Name == BuiltinNames.List
-            && !annotation.IsNameBacktickEscaped
+            && !isNameEscaped
             && subjectType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
         {
             _semanticInfo.SetTypeTestLowering(
@@ -544,7 +557,7 @@ internal partial class TypeChecker
         // refused silently — never a second diagnostic for the same mistake.
         if (subjectType is not UnknownType)
         {
-            ReportOpenGenericTypeOperand(annotation, annotation.Name, site, typeSymbol.TypeParameters.Count);
+            ReportOpenGenericTypeOperand(reportAt, writtenName, site, typeSymbol.TypeParameters.Count, fallbackSpan);
             refused = true;
         }
 
@@ -651,45 +664,6 @@ internal partial class TypeChecker
     /// </summary>
     private static SemanticType BuildClosedTypeTestType(TypeSymbol typeSymbol)
         => new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
-
-    /// <summary>
-    /// Builds the narrowed type for an <c>isinstance(x, T)</c> check against a user/builtin
-    /// TypeSymbol. Generic builtin collections (list, set, dict) narrow to a parameterized
-    /// <see cref="GenericType"/> with default <c>object</c> type arguments, so downstream member
-    /// access on the narrowed value (indexing, <c>.items()</c>, etc.) resolves at the semantic
-    /// level (#912). Without this they would narrow to a bare <see cref="UserDefinedType"/> with
-    /// no type arguments, and e.g. <c>d[k]</c> on a narrowed <c>dict</c> would fail to lower.
-    /// Mirrors the unparameterized-collection handling in
-    /// <see cref="CheckTypePattern"/>.
-    /// </summary>
-    private SemanticType BuildIsInstanceNarrowedType(TypeSymbol typeSymbol)
-    {
-        var arity = typeSymbol.Name switch
-        {
-            BuiltinNames.List => 1,
-            BuiltinNames.Set => 1,
-            BuiltinNames.Dict => 2,
-            _ => 0
-        };
-
-        if (arity > 0 && typeSymbol.TypeParameters.Count == arity)
-        {
-            var defaultArgs = new List<SemanticType>(arity);
-            for (var i = 0; i < arity; i++)
-            {
-                defaultArgs.Add(SemanticType.Object);
-            }
-
-            return new GenericType
-            {
-                Name = typeSymbol.Name,
-                TypeArguments = defaultArgs,
-                GenericDefinition = typeSymbol
-            };
-        }
-
-        return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
-    }
 
     /// <summary>
     /// Extract a key to use for type narrowing from an expression.
