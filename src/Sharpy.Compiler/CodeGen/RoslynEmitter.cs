@@ -346,10 +346,12 @@ internal partial class RoslynEmitter : ICodeEmitter
     // be emitted into a sibling test class instead of the regular module class.
     private readonly List<FunctionDef> _pendingTestFunctions = new();
 
-    // The resolved module class name (e.g., "TestParametrize" or "Program"). Set early in
-    // GenerateModuleMembers so [MemberData] attributes generated for
-    // @test.parametrize(VARIABLE) decorators can reference the module class via MemberType.
-    private string? _resolvedModuleClassName;
+    // The module-shape decision (module class name, whether a same-named class merges into it, the
+    // top-level types extracted to namespace siblings, and the namespace segments the module class
+    // is nested under). Computed ONCE by ComputeModuleShape at the start of GenerateCompilationUnit,
+    // before any declaration is emitted, so the module-member qualifier and the [MemberData]
+    // attribute emitter read one decision instead of re-deriving the class name locally (#1802).
+    private ModuleShape? _moduleShape;
 
     // Module-level variable names (original Sharpy names) referenced by
     // @test.parametrize(VARIABLE) decorators. Populated by a pre-scan in

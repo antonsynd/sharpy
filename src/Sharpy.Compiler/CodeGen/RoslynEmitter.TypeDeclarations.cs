@@ -1743,7 +1743,7 @@ internal partial class RoslynEmitter
     {
         _memberDataVariables.Add(variableName);
 
-        var moduleClassName = _resolvedModuleClassName ?? GetModuleClassName();
+        var moduleClassName = _moduleShape?.ModuleClassName ?? GetModuleClassName();
         var propertyName = GetMemberDataPropertyName(variableName);
 
         // nameof(Module.VarMemberData) — the invocation target must carry ContextualKind ==

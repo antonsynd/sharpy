@@ -441,7 +441,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax ModuleQualified(string csharpName)
         => MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
-            IdentifierName(_resolvedModuleClassName ?? GetModuleClassName()),
+            IdentifierName(_moduleShape?.ModuleClassName ?? GetModuleClassName()),
             EscapedIdentifierName(csharpName));
 
     /// <summary>

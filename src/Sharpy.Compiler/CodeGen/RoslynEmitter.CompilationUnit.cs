@@ -46,6 +46,11 @@ internal partial class RoslynEmitter
                 .ToList();
         }
 
+        // Compute the module shape (class name, merged class, extracted types, namespace parts)
+        // ONCE before any declaration is emitted, so the module-member qualifier and the
+        // [MemberData] attribute emitter read one decision instead of re-deriving it (#1683, #1802).
+        _moduleShape = ComputeModuleShape(nonImportStatements);
+
         // Generate module class with all members nested inside.
         // Module-level @test functions are collected into _pendingTestFunctions during
         // this call (instead of being emitted as static methods on the module class).
@@ -94,7 +99,7 @@ internal partial class RoslynEmitter
 
         if (testClass != null || fixtureClasses.Count > 0)
         {
-            var moduleClassName = _resolvedModuleClassName ?? GetModuleClassName();
+            var moduleClassName = _moduleShape?.ModuleClassName ?? GetModuleClassName();
             var parts = new List<string>();
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                 parts.Add(_context.ProjectNamespace!);

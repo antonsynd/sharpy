@@ -122,11 +122,13 @@ internal partial class RoslynEmitter
         // - The module is not an entry point (non-entry-point modules always use static fields)
         _forceModuleLevelFields = hasMainFunction || !_context.IsEntryPoint;
 
-        // Resolve the module class name up front so [MemberData] attributes generated for
-        // @test.parametrize(VARIABLE) decorators (emitted both during the statement loop for
-        // class-based tests and after this method for module-level tests) can reference the
-        // module class via MemberType = typeof(...).
-        _resolvedModuleClassName = GetModuleClassName(hasMainFunction);
+        // The module class name and the rest of the module shape were resolved up front by
+        // ComputeModuleShape (called first in GenerateCompilationUnit) so [MemberData] attributes
+        // generated for @test.parametrize(VARIABLE) decorators (emitted both during the statement
+        // loop for class-based tests and after this method for module-level tests) can reference the
+        // module class via MemberType = typeof(...). The shape is computed before any body emission.
+        System.Diagnostics.Debug.Assert(
+            _moduleShape != null, "ComputeModuleShape must run before GenerateModuleMembers");
         _memberDataVariables.Clear();
 
         // First pre-scan: register @test.fixture functions so that test methods declared later
@@ -473,6 +475,81 @@ internal partial class RoslynEmitter
         // Prepend so [SharpyModuleType] appears first, ahead of any existing attribute lists.
         var existing = typeDecl.AttributeLists;
         return typeDecl.WithAttributeLists(existing.Insert(0, attributeList));
+    }
+
+    /// <summary>
+    /// The once-computed module-shape decision read by the module-member qualifier (#1802):
+    /// the module class name, the merged class name (non-null when a same-named ClassDef absorbs
+    /// the module's static members, e.g. animal.spy + class Animal), the emitted C# names of the
+    /// top-level types extracted to namespace siblings in single-file library mode, and the
+    /// namespace segments the module class is nested under (project namespace + directory wrappers).
+    /// </summary>
+    internal sealed record ModuleShape(
+        string ModuleClassName,
+        string? MergedClassName,
+        IReadOnlyList<string> ExtractedTypeNames,
+        IReadOnlyList<string> NamespaceParts);
+
+    /// <summary>
+    /// Computes the <see cref="ModuleShape"/> ONCE, before any declaration is emitted, from the
+    /// module's statements. Mirrors the class-name / merge / extraction / wrapper decisions that
+    /// <see cref="GenerateModuleMembers"/> and <see cref="GenerateCompilationUnit"/> make locally so
+    /// the module-member qualifier can read one authority instead of re-deriving the module class at
+    /// each reference (#1683, #1802). No emission — pure computation stored in <c>_moduleShape</c>.
+    /// </summary>
+    private ModuleShape ComputeModuleShape(List<Statement> statements)
+    {
+        bool hasMainFunction = statements.Any(s => s is FunctionDef f && f.Name == "main");
+        var moduleClassName = GetModuleClassName(hasMainFunction);
+
+        // A user class whose emitted identifier equals the module class name merges INTO the module
+        // class (animal.spy + class Animal). Only a ClassDef merges; a struct/interface/enum/union
+        // of the same name is a collision error, not a merge (see GenerateModuleMembers).
+        string? mergedClassName = null;
+        foreach (var stmt in statements)
+        {
+            if (stmt is ClassDef cd
+                && NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped) == moduleClassName)
+            {
+                mergedClassName = moduleClassName;
+                break;
+            }
+        }
+
+        // Single-file library mode extracts top-level type declarations out of the module class and
+        // emits them as namespace siblings. A merge returns early there, so no extraction happens
+        // when a type merged into the module class. Entry points and multi-file projects keep types
+        // nested inside the module class.
+        var extractedTypeNames = new List<string>();
+        if (!_context.IsEntryPoint
+            && string.IsNullOrEmpty(_context.ProjectNamespace)
+            && mergedClassName == null)
+        {
+            foreach (var stmt in statements)
+            {
+                var name = stmt switch
+                {
+                    ClassDef cd => NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped),
+                    StructDef sd => NameCasing.ResolveType(sd.Name, sd.IsNameBacktickEscaped),
+                    InterfaceDef id => NameCasing.ResolveInterface(id.Name, id.IsNameBacktickEscaped),
+                    EnumDef ed => NameCasing.ResolveType(ed.Name, ed.IsNameBacktickEscaped),
+                    UnionDef ud => NameCasing.ResolveType(ud.Name, ud.IsNameBacktickEscaped),
+                    _ => (string?)null
+                };
+                if (name != null)
+                    extractedTypeNames.Add(name);
+            }
+        }
+
+        // The namespace segments the module class is nested under: the project namespace (if any)
+        // followed by the directory wrapper class names. Empty for single-file compilation, which
+        // emits the module class directly into the global namespace.
+        var namespaceParts = new List<string>();
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            namespaceParts.AddRange(_context.ProjectNamespace!.Split('.'));
+        namespaceParts.AddRange(ComputeWrapperClasses());
+
+        return new ModuleShape(moduleClassName, mergedClassName, extractedTypeNames, namespaceParts);
     }
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
