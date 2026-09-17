@@ -113,6 +113,24 @@ match result:
         print(f"Error: {error}")
 ```
 
+A case pattern may also test the variant **without binding** its payload — `case Ok():` and
+`case Err():` — which emits the scrutinee's own **closed** case type (`Result[int, str].Ok`, not the
+open `Result[T, E].Ok`), so it compiles and runs against a concrete `int ! str` (#1703):
+
+```python
+def make(ok: bool) -> int ! str:
+    if ok:
+        return Ok(1)
+    return Err("bad")
+
+def main() -> None:
+    match make(True):
+        case Ok():
+            print("ok")         # prints "ok"
+        case Err():
+            print("err")
+```
+
 ## Common Methods
 
 The builtin `Result[T, E]` type provides properties and methods for inspecting and

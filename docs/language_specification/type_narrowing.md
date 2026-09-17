@@ -39,6 +39,45 @@ if isinstance(x, int) or isinstance(x, str):
   `is None` (see [#1079])
 - Narrowing only affects the scope of the conditional block
 
+## `isinstance` on reified generics
+
+A generic type is tested by a single **closed** runtime type, decided the same way a class pattern
+decides it (see [Class patterns on generic builtins](match_statement.md#class-patterns-on-generic-builtins-list-dict-set)):
+
+- **Filled** from `x`'s own static type when that already fixes the vector — `isinstance(xs, list)`
+  on `xs: list[int]` tests `list[int]`.
+- **Explicit** in the closed spelling — `isinstance(z, list[object])`.
+- **Refused SPY0345** when neither applies — `isinstance(z, list)` on `z: object`.
+
+Narrowing gives the **full typed surface** of the tested type, not an erased protocol: after
+`isinstance(o, list[int])`, `o[0]` is an `int`, so `print(o[0] + 1)` type-checks — an erased
+`object` surface could not compile the `+ 1`:
+
+```python
+def f(o: object) -> None:
+    if isinstance(o, list[int]):
+        print(o[0] + 1)         # o: list[int]; prints 6 for [5, 6]
+```
+
+Because the test is **exact**, `isinstance` discriminates instantiations that Python cannot: a
+`list[object]` that happens to hold ints is not a `list[int]`, so the test is `False`.
+
+```python
+def main() -> None:
+    xs: list[object] = [1, 2, 3]
+    print(isinstance(xs, list[int]))    # False — a list[object] is not a list[int]
+    print(isinstance(xs, list[object])) # True
+```
+
+```
+False
+True
+```
+
+The narrowed read is a read: an **augmented assignment through the narrowed receiver** is still
+refused **SPY0276** (#1615), because the store is checked against the declared slot, not the narrowed
+type.
+
 ## Stores Use the Declared Type
 
 Narrowing describes what a **read** sees. A **store** is checked against the target's declared

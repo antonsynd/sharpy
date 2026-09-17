@@ -157,10 +157,11 @@ if condition:
 | Wildcard | `case _:` | `default:` or `_` | ✅ Implemented |
 | Binding | `case x:` | `var x` | ✅ Implemented |
 | Tuple | `case (0, 0):` | Direct support | ✅ Implemented |
-| Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
+| Member access | `case Color.RED:`, `case Outer.Holder.A:` | `case Color.RED:` | ✅ Implemented — the head resolves a nested-type chain at every depth (`Outer.Holder.A` binds the const on the deepest nested type), not only a single `Enum.Member` (#1799) |
+| Sequence | `case [a, *rest]:` | list/positional deconstruction | ✅ Implemented — a sequence pattern decides its subject through the type-test classifier: a `list[T]` (or `list[T] \| None`) subject fills, an **open** subject (`object`, type parameter) is refused **SPY0345** with the `case list[int]([...])` steer (#1702) |
 | Guard clause | `case x if x > 0:` | `when` clause | ✅ Implemented |
 | Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
-| Self-matching builtin | `case int(n):` | `case int n:` | ✅ Implemented — PEP 634: a builtin name takes exactly one positional sub-pattern, matched against the whole subject (SPY0363 otherwise). Which names denote a testable type is a separate question — see [Positional Capture on Collections](#positional-capture-on-collections-listxs-dictd-sets) |
+| Self-matching builtin | `case int(n):` | `case int n:` | ✅ Implemented — PEP 634: a builtin name takes exactly one positional sub-pattern, matched against the whole subject (SPY0363 otherwise). Which names denote a testable type is a separate question — see [Class patterns on generic builtins](#class-patterns-on-generic-builtins-list-dict-set) |
 | `as` binding | `case <pattern> as n:` | `case <pattern> and var n` | ✅ Implemented — `as` is the outermost combinator: `case A() \| B() as n:` binds `n` to whichever alternative matched |
 | Or | `case "a" \| "b":` | `case "a" or "b":` | ✅ Implemented |
 | Property | `case Point(x=0):` | `case Point { X: 0 }:` | ✅ Implemented |
@@ -399,42 +400,58 @@ def narrowed(x: str?) -> str:
 *Implementation: ✅ Implemented — the refusal is `SPY0498`, emitted during semantic analysis. All
 examples above were executed against HEAD before being documented.*
 
-### Bare Collection Patterns (`dict()`, `list()`, `set()`)
+### Class patterns on generic builtins (`list`, `dict`, `set`)
 
-When matching an `object` scrutinee against a bare collection type pattern (no type arguments), the compiler specializes the binding type to use `object` type arguments:
+A class pattern is **static**: it tests the scrutinee's declared type against a *closed* runtime
+type, exactly as `isinstance` does, and performs no reflection. Sharpy's generics are **reified** —
+`list[int]` and `list[object]` are distinct runtime types — so a class pattern that heads a generic
+builtin must name a single closed type to test against. That type comes from one of two places, and
+if it comes from neither the pattern is refused:
 
-```python
-def process(value: object) -> None:
-    match value:
-        case dict() as d:
-            # d is typed as dict[object, object]
-            for k, v in d.items():
-                print(f"{k}: {v}")
-            print(d["key"])       # indexing works
-            print("x" in d)       # membership works
-            print(len(d))         # len() works (ISized)
-        case list() as items:
-            # items is typed as list[object]
-            pass
-        case set() as s:
-            # s is typed as set[object]
-            pass
-```
+1. **Filled from a closed scrutinee.** When the scrutinee's static type already fixes the type
+   arguments, a bare head reuses them:
 
-**Semantic behavior:** The binding variable receives the specialized generic type (`dict[object, object]`, `list[object]`, or `set[object]`), so all collection methods are available through normal type-checked member access.
+   ```python
+   def closed(xs: list[int]) -> None:
+       match xs:
+           case list(ys):
+               n: int = ys[0]      # ys: list[int] — the element type survives the match
+               print(n)            # prints 7 for closed([7, 8])
+           case _:
+               print("miss")
+   ```
 
-**Runtime check (`dict`):** The `case dict()` pattern checks against `Sharpy.IDict` — the non-generic Pythonic protocol interface implemented by every `Dict<K, V>` instantiation. This means:
-- Any `Dict[K, V]` matches, regardless of type arguments.
-- The bound variable provides the full dict surface: `.items()`, `.keys()`, `.values()`, `[key]` indexing, `key in d` membership, `len(d)`, `.get()`, `.pop()`, etc.
-- **Aliasing preserved:** The binding is the same object, not a copy. Mutation through `d` is visible via the original reference.
+2. **Written explicitly in the head.** When the scrutinee is open (`object`, a base type, a type
+   parameter), the head must carry the closed spelling:
 
-**Type-erased access semantics (Axiom 1 — .NET first):**
-- Reads with a wrong-typed key behave as if the key is absent: indexer raises `KeyError`, `.get()` returns `None`, `in` returns `False`.
-- Writes cast key/value to the underlying generic types; a type mismatch throws at runtime.
+   ```python
+   def ok(o: object) -> None:
+       match o:
+           case list[object](xs):
+               print("hit", len(xs))   # xs: list[object]; prints "hit 3" for a list[object]
+           case _:
+               print("miss")
+   ```
 
-**Interop note:** Raw .NET `Dictionary<K, V>` boxed as `object` does **not** match bare `case dict()`, because the runtime check is against `Sharpy.IDict` (which only `Sharpy.Dict<K, V>` implements). Sharpy values flow through Sharpy collections; this is an intentional Axiom 1 resolution.
+3. **Refused when nothing determines the arguments.** A bare generic head on an open scrutinee
+   names no single runtime type, so it is a compile error whose message steers to the closed
+   spelling:
 
-**Runtime check (`list`/`set`):** `case list()` checks against `Sharpy.IList` and `case set()` against `Sharpy.ISet` — the dedicated non-generic protocol interfaces (#876, #877), the same shape as `dict`. Every closed instantiation implements them, so the test is independent of the type arguments.
+   <!-- spec-sweep: error SPY0345 -->
+   ```python
+   def erased(o: object) -> None:
+       match o:
+           case list(xs):          # SPY0345: a bare open head names no single reified type;
+               print(len(xs))      #          write case list[object](xs)
+           case _:
+               print("miss")
+   ```
+
+Reification is visible at the match: a `list[int]` value is **not** a `list[object]`, so
+`case list[object](xs)` does not match a `list[int]` subject (it falls through to `case _`), and a
+captured `list[int]` keeps its element type — `ys[0] += 10` type-checks as `int` and prints
+`[11, 2, 3]`. There is no type-erased protocol interface and no `object`-vector fallback; the
+`Sharpy.IList`/`IDict`/`ISet` erasure of earlier versions is retired (#1708, #1619).
 
 **Pattern Forms:**
 
@@ -445,93 +462,64 @@ def process(value: object) -> None:
 | Type with binding | `int() as n` | Check type and bind entire value | ✅ Implemented |
 | Positional capture | `list(xs)` | Check type and bind entire value | ✅ Implemented — see below |
 
-### Positional Capture on Collections (`list(xs)`, `dict(d)`, `set(s)`)
+### Positional capture and the verdict table
 
-A collection name may take a single positional sub-pattern. Per PEP 634 that sub-pattern matches the
-**whole subject**, so `case list(xs):` is the same test as `case list() as xs:` and binds the same
-value:
+Per PEP 634 a collection head takes a single positional sub-pattern that matches the **whole
+subject**, so `case list(xs):` is the same test as `case list() as xs:` and binds the same value.
+The type a pattern tests and the type the capture receives are decided together — filled from a
+closed scrutinee, taken from an explicit head, or refused — and the answer does not depend on where
+the pattern is written. Top level, nested in a sequence pattern, and nested in a class positional
+pattern all agree, and the `isinstance` form agrees with the pattern form for the same
+(builtin, scrutinee, spelling):
 
-```python
-def check(o: object) -> None:
-    match o:
-        case list(xs):
-            xs.append(3)
-            print(len(xs))
-        case _:
-            print("not a list")
-```
+| Scrutinee | Head | Verdict |
+|-----------|------|---------|
+| `list[int]` | `list(ys)` | fill from the subject → `list[int]`, runs |
+| `object` | `list[object](xs)` | test `Sharpy.List<object>` from the head → `list[object]`, runs |
+| `object`, `str`, a type parameter | `list(xs)` | **SPY0345** — nothing determines the arguments |
+| `str` | `list[int](xs)` | **SPY0361** — a `str` is never a `list[int]` |
+| `list[int]` | `list[str](ys)` | **SPY0361** — element type incompatible |
+| any | `list[int, str](xs)` | **SPY0224** — `list` takes one type argument |
 
-The type the pattern **tests** and the type the capture **gets** are both decided from the
-scrutinee's static type. A class pattern is static, exactly like `isinstance`: no reflection happens
-at run time, and the same three outcomes apply.
-
-| Scrutinee | Test emitted | Capture type |
-|-----------|--------------|--------------|
-| `object` | `Sharpy.IList` — erased to the protocol interface | `list[object]` |
-| `list[int]` | `Sharpy.List<int>` — filled from the subject | `list[int]` |
-| `str`, `dict[str, int]`, any type no list can be | refused: **SPY0361** | — |
+Filling works at any depth, so a closed nested scrutinee needs no explicit head:
 
 ```python
-def erased(o: object) -> None:
-    match o:
-        case list(xs):
-            print(len(xs))      # xs: list[object]
-        case _:
-            print("miss")
-
-def closed(xs: list[int]) -> None:
+def seq(xs: list[list[int]]) -> None:
     match xs:
-        case list(ys):
-            n: int = ys[0]      # ys: list[int] — the element type survives the match
-            print(n)
-        case _:
-            print("miss")
-
-def impossible(s: str) -> None:
-    match s:
-        case list(xs):          # SPY0361: a str is never a list, so this arm is dead code
-            print(len(xs))
+        case [list(inner)]:
+            n: int = inner[0]   # inner: list[int]
+            print(f"seq {n}")   # prints "seq 9" for seq([[9]])
         case _:
             print("miss")
 ```
 
-The answer does not depend on where the pattern is written. It is the same at the top level, nested
-in a sequence pattern, and nested in a class positional pattern:
+and an open head is refused at any depth — nested in a sequence pattern or a class positional
+pattern, the verdict is the same SPY0345 as at the top level:
 
+<!-- spec-sweep: error SPY0345 -->
 ```python
-class Box:
-    value: object
-
-    def __init__(self, value: object):
-        self.value = value
-
 def seq(xs: list[object]) -> None:
     match xs:
-        case [list(inner), int(n)]:
-            print(f"seq {len(inner)} {n}")
-        case _:
-            print("miss")
-
-def boxed(b: Box) -> None:
-    match b:
-        case Box(list(xs)):
-            print(f"box {len(xs)}")
+        case [list(inner)]:     # SPY0345 — the element type is object; write case [list[object](inner)]
+            print(len(inner))
         case _:
             print("miss")
 ```
 
-**Which names may head a class pattern.** A class pattern names a *registered type*, and only names
-that denote one can be tested:
+**Which names may head a class pattern.** A class pattern names a *registered type*:
 
 | Spelling | Result |
 |----------|--------|
-| `case list(xs):`, `case dict(d):`, `case set(s):` | tested per the table above |
+| `case list[int](xs):`, `case dict[str, int](d):`, `case set[int](s):` | closed generic test — the head names the vector |
+| `case list(ys):` on a closed scrutinee | filled from the subject |
+| `case list(xs):` on an open scrutinee | **SPY0345** — write the closed spelling |
 | `case int(n):`, `case str(s):`, `case float(f):`, `case bool(b):`, `case bytes(b):` | closed test on the primitive |
-| `case tuple(v):`, `case frozenset(v):` | **SPY0345** — generic types with no type-erased protocol interface, so nothing determines their type arguments and there is no single runtime type to test (spec-vs-implementation tracked in #1693) |
+| `case tuple(v):`, `case frozenset(v):` on an open scrutinee | **SPY0345** — supply the element vector or match a closed instantiation |
 | `case range(x):`, `case bytearray(v):` | **SPY0202** — the name denotes no registered type |
-| `case list[int](xs):` | **SPY0125** — a pattern cannot name type arguments; write `case list(xs):` and let the scrutinee supply the vector |
 
-A refusal is the honest answer at these spellings, not a limitation to route around: `.NET` reifies
+Writing the type arguments in the head is **required, not forbidden**: `case list[int](xs):` is the
+canonical closed spelling and the earlier SPY0125 ("a pattern cannot name type arguments") is
+retired (#1708). A refusal is the honest answer where nothing determines the vector: `.NET` reifies
 generics, so an open name denotes nothing to test against.
 
 ## Guard Patterns

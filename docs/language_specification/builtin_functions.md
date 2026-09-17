@@ -194,15 +194,34 @@ if isinstance(y, Box):
     pass
 ```
 
-An unparameterized builtin collection is the one exception: `list`, `set` and `dict` written without
-type arguments test against their non-generic protocol interface (`Sharpy.IList`/`ISet`/`IDict`),
-which every instantiation implements, so the check succeeds for any element type.
+Builtin collections are **no exception** — `list`, `set` and `dict` are generic and reified the same
+way. A bare `isinstance(x, list)` is accepted only when `x`'s own static type fills the vector; on an
+open `x` it is refused SPY0345, exactly as `Box` is, and the message names the closed spelling to
+reach for (`list[object]` matches what `json.loads` and other object-typed producers build; a
+`list[int]` matches only a value constructed as `list[int]`):
 
 ```python
-# Valid — matches any list[T]
-if isinstance(x, list):
-    pass  # x could be list[int], list[str], etc.
+# Valid — x's static type fills the vector
+def f(xs: list[int]) -> None:
+    if isinstance(xs, list):           # tests list[int]
+        pass
+
+# Valid — the closed spelling names the runtime type
+def g(z: object) -> None:
+    if isinstance(z, list[object]):
+        pass
 ```
+
+<!-- spec-sweep: error SPY0345 -->
+```python
+# SPY0345 — a bare open collection name determines no type arguments
+def h(z: object) -> None:
+    if isinstance(z, list):
+        pass
+```
+
+The earlier type-erased protocol-interface behaviour (`Sharpy.IList`/`ISet`/`IDict`) is retired
+(#1708, #1619).
 
 This matches the behavior of the C# `is` operator the check lowers to — `x is Box<int>` (C#) is
 exact, and `x is Box` (C#) does not compile. Both spellings there are C# target syntax: in Sharpy

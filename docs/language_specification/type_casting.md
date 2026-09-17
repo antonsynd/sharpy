@@ -234,15 +234,44 @@ result = try animal as! Dog      # Parsed as: try (animal as! Dog)
 
 ## Invalid Casts
 
-The compiler rejects casts that are statically known to be impossible:
+A cast is refused at compile time when the coercion is **statically impossible** — no identity,
+boxing/unboxing, numeric, inheritance, interface-satisfiable, enum-backing, or user-defined
+conversion could ever succeed. The refusal is **SPY0610**, and it is the **same for both operators**:
+`as?` and `as!` classify the coercion identically, so a coercion that can never produce a value is a
+compile error rather than a guaranteed-`None` or guaranteed-throw at run time.
 
+| From → To | Possible? | Result |
+|-----------|-----------|--------|
+| `int` → `object` (boxing), `object` → `int` (unboxing) | yes | runs |
+| `int` → `float` (numeric) | yes | runs |
+| `Dog` → `Animal`, `Animal` → `Dog` (inheritance) | yes | runs |
+| `object` → `IPet` where a subtype implements it (interface-satisfiable) | yes | runs |
+| `object` → `Box[str]` (downcast from `object`) | yes | runs |
+| `int` → `str` (no coercion) | no | **SPY0610** — use `str(x)` |
+| `Dog` → `Cat` (unrelated types) | no | **SPY0610** — unrelated, no relationship/interface/conversion |
+
+<!-- spec-sweep: error SPY0610 -->
 ```python
-x: int = 42
-s = x as! str                    # ERROR: int cannot be cast to str (use str(x))
-
-dog: Dog = Dog("Buddy")
-cat = dog as! Cat                # ERROR: Dog cannot be cast to Cat (no inheritance relationship)
+def main() -> None:
+    x: int = 42
+    s = x as! str                    # SPY0610: no int→str coercion — use str(x)
 ```
+
+<!-- spec-sweep: error SPY0610 -->
+```python
+class Dog:
+    x: int = 0
+
+class Cat:
+    y: int = 0
+
+def main() -> None:
+    d: Dog = Dog()
+    c = d as? Cat                    # SPY0610: Dog and Cat are unrelated — as? refuses the same as as!
+```
+
+An import **alias** for a CLR type is the *same* type, not an unrelated one: `Match as NetMatch`
+casting a `Match` to `NetMatch` is an identity coercion and compiles (#1713).
 
 ## Casting `None`
 

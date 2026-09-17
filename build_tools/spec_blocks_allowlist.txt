@@ -21,7 +21,6 @@ builtin_functions.md::78307bf257  # SPY0200 first
 builtin_functions.md::94d9b4c5c0  # SPY0200 first
 builtin_functions.md::aa1ad1a1e0  # SPY0386 first
 builtin_functions.md::b6779a7c12  # SPY0200 first
-builtin_functions.md::c1bf264175  # SPY0200 first
 builtin_functions.md::e9b3164322  # SPY0200 first
 classes.md::574baff3a5  # SPY0203 first
 classes.md::6319e581ce  # SPY0701 first
@@ -275,7 +274,6 @@ match_statement.md::476fc5820c  # SPY0200 first
 match_statement.md::5b2cfd63f1  # SPY0200 first
 match_statement.md::65dc1847ea  # SPY0200 first
 match_statement.md::6c33f6a317  # SPY0200 first
-match_statement.md::6f5b78d7cc  # SPY0361 first
 match_statement.md::88cdbfec92  # SPY0200 first
 match_statement.md::8c64fcd74b  # SPY0200 first
 match_statement.md::99372e1dad  # SPY0104 first
@@ -539,7 +537,6 @@ type_casting.md::944a38bbe7  # SPY0200 first
 type_casting.md::9e1d6ddec7  # SPY0200 first
 type_casting.md::a780847174  # SPY0200 first
 type_casting.md::c7a9a2b5a1  # SPY0200 first
-type_casting.md::d11078297b  # SPY0228 first
 type_casting.md::d66501c4a8  # SPY0220 first
 type_casting.md::ea3874d27c  # SPY0200 first
 type_hierarchy.md::90e8c7a6ca  # SPY0200 first
