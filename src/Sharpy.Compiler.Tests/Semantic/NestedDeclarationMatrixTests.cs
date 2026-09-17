@@ -22,20 +22,22 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///         <c>match</c> inside the host, as a field type, and as a method parameter/return type.</item>
 /// </list></para>
 ///
-/// <para>Three cell classes are rostered to open bugs rather than made to pass, so the matrix does
+/// <para>Two cell classes are rostered to open bugs rather than made to pass, so the matrix does
 /// not lie and each cell flips to a green execution assertion when its bug lands:
 /// <list type="bullet">
 ///   <item><b>[BUG(#1894)]</b> — a bare nested-type reference used AS A TYPE ANNOTATION inside a
 ///         <i>generic</i> host emits <c>Box.Inner</c> dropping the host's <c>&lt;T&gt;</c> → CS0305
 ///         (pre-existing, reproduces for a nested class too). The DECLARATION cells in a generic host
 ///         DO run (nested type not referenced) and are asserted green; only the reference cells fail.</item>
-///   <item><b>[BUG(#1895)]</b> — a <c>union</c> with DATA cases nested in an <i>interface</i> host
-///         drops every case field (zero-arg case constructors) → CS1729 on construction, SPY0367 on a
-///         positional <c>match</c>. The same union in a class/struct host, and a unit-case union in an
-///         interface, run and are asserted green (positive controls). Found @ P1.T.</item>
 ///   <item><b>out-of-scope #1729 (events)</b> — a nested <c>event</c> invocation is SPY0230
 ///         (<c>Action | None</c> not callable, probe n05); out of scope for this plan.</item>
 /// </list></para>
+///
+/// <para>A <c>union</c> with DATA cases nested in an <i>interface</i> host once dropped every case
+/// field (#1895): <c>CheckInterface</c> enumerated only method/property/const members and never
+/// type-checked nested type declarations, so <c>CheckUnion</c> never populated the case fields. Fixed
+/// by routing nested type declarations through the classifier in <c>CheckInterface</c>; the cells now
+/// assert execution alongside their class/struct positive controls.</para>
 ///
 /// <para>The final fact is a <b>scan-vs-roster totality assertion</b>: it reflects over the seven
 /// switch arms of the nested-declaration classifier <c>TryGetNestedDeclaration</c> in
@@ -557,16 +559,17 @@ public class NestedDeclarationMatrixTests : IntegrationTestBase
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // [BUG(#1895)] a union with DATA cases nested in an interface host drops the
-    // case fields (zero-arg case constructors). Found @ P1.T. These assert the
-    // CURRENT failing behavior; each flips to green when #1895 lands. The
-    // unit-case control (union_in_interface_unit, above) already runs.
+    // A union with DATA cases nested in an interface host: its case fields are
+    // populated by CheckUnion, which CheckInterface now reaches (#1895, #1729).
+    // The unit-case control (union_in_interface_unit, above) and the class/struct
+    // hosts (union_in_class, union_in_struct) are the positive controls.
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static IEnumerable<object[]> Bug1895Cells()
+    public static IEnumerable<object[]> UnionDataCaseInInterfaceCells()
     {
-        // construction of a data case → CS1729 (case class has only a zero-arg constructor).
-        yield return Cell("bug1895_union_interface_construct", """
+        // construction of a data case in an interface-nested union (was CS1729: the case class had
+        // only a zero-arg constructor). Construct Flat(9), extract its field by match. python3: 9
+        yield return Cell("union_interface_data_construct", """
             interface IShape:
                 @public
                 union Kind:
@@ -574,12 +577,16 @@ public class NestedDeclarationMatrixTests : IntegrationTestBase
                     case Flat(w: int)
 
             def main():
-                k: IShape.Kind = IShape.Kind.Round(5)
-                print(k)
-            """, "CS1729");
+                k: IShape.Kind = IShape.Kind.Flat(9)
+                match k:
+                    case IShape.Kind.Round(r):
+                        print(r)
+                    case IShape.Kind.Flat(w):
+                        print(w)
+            """, "9\n");
 
-        // positional match on a data case → SPY0367 (type 'Round' has 0 fields).
-        yield return Cell("bug1895_union_interface_match", """
+        // positional match on a data case (was SPY0367: type 'Round' had 0 fields). python3: 5
+        yield return Cell("union_interface_data_match", """
             interface IShape:
                 @public
                 union Kind:
@@ -595,20 +602,23 @@ public class NestedDeclarationMatrixTests : IntegrationTestBase
 
             def main():
                 print(area(IShape.Kind.Round(5)))
-            """, "SPY0367");
+            """, "5\n");
     }
 
     [Theory]
-    [MemberData(nameof(Bug1895Cells))]
-    public void NestedDeclaration_UnionDataCaseInInterface_IsBlockedBy1895(
-        string id, string source, string expectedDiagnostic)
+    [MemberData(nameof(UnionDataCaseInInterfaceCells))]
+    public void NestedDeclaration_UnionDataCaseInInterface_Runs(
+        string id, string source, string expectedStdout)
     {
-        // BUG(#1895): a union with data cases nested in an interface drops every case field; the
-        // same union in a class/struct host, and a unit-case union in an interface, run (controls).
-        // Drains to a green execution assertion when #1895 lands.
-        Output.WriteLine($"[BUG(#1895)] {id}");
+        // A union with data cases nested in an interface runs: CheckInterface type-checks the nested
+        // union so CheckUnion populates the case fields, and the emitter's interface arm carries them
+        // (construction + positional match), exactly as the class/struct hosts do (#1895, #1729).
+        Output.WriteLine($"[execution] {id}");
         var result = CompileAndExecute(source);
-        AssertFailsWith(result, id, expectedDiagnostic);
+        Assert.True(result.Success,
+            $"{id}: expected to compile and run, but failed: "
+            + string.Join(" | ", result.CompilationErrors));
+        Assert.Equal(expectedStdout, result.StandardOutput);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

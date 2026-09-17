@@ -1675,6 +1675,21 @@ internal partial class TypeChecker
             {
                 CheckVariableDeclaration(varDecl);
             }
+            else if (statement.UnwrapDecorated().TryGetNestedDeclaration(out var nested)
+                && nested.Kind != NestedDeclarationKind.Alias)
+            {
+                // A nested type declaration in an interface body is type-checked exactly like any
+                // other host's — CheckClass/CheckStruct reach it through a whole-body CheckStatement
+                // loop, but this loop enumerates only method/property/const members, so a nested
+                // union's case fields (populated by CheckUnion) were never filled: its emitted case
+                // had no constructor/fields (CS1729) and its pattern head saw 0 fields (SPY0367), so a
+                // data-case union nested in an interface did not run (#1895, #1729). Routed through the
+                // one nested-declaration classifier (Design Decision 4). Alias is excluded: an
+                // interface-nested alias is already registered in scope above (n09b), and
+                // CheckStatement's TypeAlias arm re-runs RegisterScopedTypeAlias — including it would
+                // double-register.
+                CheckStatement(statement);
+            }
         }
 
         _currentClass = previousClass;
