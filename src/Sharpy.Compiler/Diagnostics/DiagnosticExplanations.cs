@@ -295,6 +295,21 @@ public static partial class DiagnosticExplanations
             "Use a type code valid for the operand (e.g. drop 'd' for a str, or convert the value " +
             "first), or fix the malformed spec.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ImpossibleCoercion,
+            "impossible coercion", "Semantic",
+            "An `as?`/`as!` coercion is statically impossible — the source and target have no " +
+            "relationship the runtime could satisfy, so no cast, however written, could ever succeed. " +
+            "This is refused by name at semantic time (before it would otherwise reach the C# compiler " +
+            "as CS8121/CS0030). Coercion is allowed when the types are related: identity, an object or " +
+            "interface source, an object target, numeric-to-numeric, a user `__explicit__` operator, an " +
+            "inheritance relationship, an interface either side, an enum and its numeric backing, the " +
+            "same generic type with matching type arguments, or a type parameter. The steer depends on " +
+            "the pair — a value going to `str` wants `str(x)`; text going to a number wants `int(s)` or " +
+            "`try int(s)`; two instantiations of one collection want matching type arguments.",
+            "o: bytes = b\"abc\"\nr = o as? long  # bytes and long are unrelated",
+            "Coerce between related types, or convert instead: str(x), int(s) / try int(s), or write the " +
+            "closed collection spelling with matching type arguments.");
+
         return dict;
     }
 

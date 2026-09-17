@@ -295,7 +295,7 @@ public static class DiagnosticCodes
         public const string InvalidAssignmentTarget = "SPY0225";    // Active
         public const string MissingTypeAnnotation = "SPY0226";      // Active
         public const string CannotInferType = "SPY0227";            // Active
-        public const string InvalidCast = "SPY0228";                // Active
+        public const string InvalidCast = "SPY0228";                // Retired — folded into SPY0610 (#1713)
         public const string NullabilityViolation = "SPY0229";       // Active
         public const string NotCallable = "SPY0230";                // Active
         public const string InvalidPipeTarget = "SPY0231";          // Active
@@ -951,6 +951,7 @@ public static class DiagnosticCodes
         public const string ConflictingInterfaceInstantiation = "SPY0607"; // Active (#1717)
         public const string QualifiedTaggedUnionConstructor = "SPY0608"; // Active (#1758, R-S)
         public const string InvalidFormatSpecification = "SPY0609"; // Active (#1815)
+        public const string ImpossibleCoercion = "SPY0610"; // Active (#1713) — statically-impossible as?/as!; folds retired SPY0228
     }
 
     /// <summary>

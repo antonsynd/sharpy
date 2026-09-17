@@ -1997,51 +1997,56 @@ internal partial class TypeChecker
     /// </summary>
     private void ValidateTypeCoercion(TypeCoercion coercion, SemanticType sourceType, SemanticType targetType)
     {
-        // Unboxing: object to any type is valid (runtime check) - check this first
-        if (IsObjectType(sourceType))
-        {
-            return; // Valid
-        }
-
-        // Numeric to numeric conversions are always valid (may throw at runtime for narrowing)
-        if (PrimitiveCatalog.IsNumeric(sourceType) && PrimitiveCatalog.IsNumeric(targetType))
-        {
-            return; // Valid
-        }
-
-        // Check for invalid numeric/bool to string conversion
-        // This is a common mistake - users should use str(x) instead
-        if (IsStringType(targetType))
-        {
-            var sourceInfo = PrimitiveCatalog.GetPrimitiveInfo(sourceType);
-            if (sourceInfo != null && sourceInfo.ClrType != typeof(string))
-            {
-                // Source is a primitive but not string - reject
-                AddError(
-                    $"Cannot cast '{sourceType.GetDisplayName()}' to 'str'. Use str(...) instead.",
-                    coercion.LineStart, coercion.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidCast,
-                    span: coercion.Span);
-                return;
-            }
-        }
-
-        // Check for user-defined __explicit__ conversion operators
-        if (HasUserDefinedConversion(sourceType, targetType, DunderNames.Explicit)
-            || HasUserDefinedConversion(targetType, sourceType, DunderNames.Explicit))
-        {
-            return; // Valid — C# will invoke the user-defined explicit operator
-        }
-
-        // Check for valid reference type casts (inheritance relationship or interface implementation)
-        if (!CanPotentiallyCast(sourceType, targetType))
+        // A coercion is refused at semantic time iff it is STATICALLY IMPOSSIBLE — no relationship the
+        // runtime could satisfy (#1713, R-E). CoercionPossibility.Classify is total; only the Impossible
+        // verdict is refused, by name with a steer, uniform across `as?`/`as!` and every consumption.
+        // Before this seam existed the impossible pairs reached Roslyn as CS8121/CS0030 and surfaced as
+        // SPY0908 (an internal-error net). SPY0228 (the old primitive→str and unrelated-class refusals)
+        // is folded into SPY0610 here.
+        if (CoercionPossibility.Classify(sourceType, targetType, SemanticBinding) == CoercionPossibility.Kind.Impossible)
         {
             AddError(
-                $"Cannot cast '{sourceType.GetDisplayName()}' to '{targetType.GetDisplayName()}' (no inheritance relationship).",
+                BuildImpossibleCoercionMessage(sourceType, targetType),
                 coercion.LineStart, coercion.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidCast,
+                code: DiagnosticCodes.SemanticOverflow.ImpossibleCoercion,
                 span: coercion.Span);
         }
+    }
+
+    /// <summary>
+    /// Builds the SPY0610 steer for a statically-impossible coercion: it always names the pair, and adds
+    /// a direction-specific hint — <c>str(...)</c>/<c>int(...)</c>/<c>try int(...)</c> for primitive pairs,
+    /// "matching type arguments" for the same-collection-different-arguments pair, and the unrelated-types
+    /// wording otherwise.
+    /// </summary>
+    private string BuildImpossibleCoercionMessage(SemanticType source, SemanticType target)
+    {
+        var s = source.GetDisplayName();
+        var t = target.GetDisplayName();
+
+        // A non-string primitive/bool going to str — the classic mistake; str(...) formats a value.
+        if (IsStringType(target) && !IsStringType(source) && PrimitiveCatalog.GetPrimitiveInfo(source) != null)
+        {
+            return $"Cannot cast '{s}' to 'str' — there is no such coercion. Use str(x) to format a value as text.";
+        }
+
+        // A string going to a number — parse it, don't cast it.
+        if (IsStringType(source) && PrimitiveCatalog.IsNumeric(target))
+        {
+            var conv = PrimitiveCatalog.IsInteger(target) ? "int" : "float";
+            return $"Cannot cast 'str' to '{t}' — there is no such coercion. Use {conv}(s) to parse text, "
+                + $"or 'try {conv}(s)' to handle a parse failure.";
+        }
+
+        // Two instantiations of the same collection with different type arguments (list[int] vs list[str]).
+        if (source is GenericType sg && target is GenericType tg && sg.Name == tg.Name)
+        {
+            return $"Cannot cast '{s}' to '{t}' — same collection type with different type arguments. "
+                + "Write the closed spelling with matching type arguments.";
+        }
+
+        return $"Cannot cast '{s}' to '{t}' — the types are unrelated (no inheritance relationship, "
+            + "interface, or conversion).";
     }
 
     /// <summary>
@@ -2059,101 +2064,6 @@ internal partial class TypeChecker
     {
         return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" } or UnmappedClrType;
     }
-
-    /// <summary>
-    /// Determines if a cast between two types COULD potentially succeed at runtime.
-    /// Returns true if there's an inheritance relationship, interface implementation, or unboxing potential.
-    /// Returns false if the cast is statically impossible.
-    /// </summary>
-    private bool CanPotentiallyCast(SemanticType source, SemanticType target)
-    {
-        // Same type is always castable
-        if (source.Equals(target))
-            return true;
-
-        // Both must be user-defined types for inheritance checks
-        if (source is UserDefinedType sourceUdt && target is UserDefinedType targetUdt)
-        {
-            // Check if source inherits from target (downcast - always safe)
-            if (InheritsFrom(sourceUdt.Symbol, targetUdt.Symbol))
-                return true;
-
-            // Check if target inherits from source (upcast - runtime check)
-            if (InheritsFrom(targetUdt.Symbol, sourceUdt.Symbol))
-                return true;
-
-            // Check if target is an interface that could be implemented
-            if (targetUdt.Symbol?.TypeKind == TypeKind.Interface)
-                return true;
-
-            // Check if source is an interface that the target could implement
-            if (sourceUdt.Symbol?.TypeKind == TypeKind.Interface)
-                return true;
-
-            // No relationship found
-            return false;
-        }
-
-        // Interface casting is always potentially valid at runtime
-        if (source is UserDefinedType && target is UserDefinedType targetType && targetType.Symbol?.TypeKind == TypeKind.Interface)
-            return true;
-
-        // Unboxing from object is always valid
-        if (IsObjectType(source))
-            return true;
-
-        // Boxing to object is always valid
-        if (IsObjectType(target))
-            return true;
-
-        // For generic types, check the base definition
-        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
-        {
-            // Same generic definition with potentially different type args (#1330)
-            if (sourceGeneric.GenericDefinition != null && targetGeneric.GenericDefinition != null
-                && TypeHierarchyService.IsSameType(sourceGeneric.GenericDefinition, targetGeneric.GenericDefinition))
-                return true;
-            if (sourceGeneric.GenericDefinition == null && targetGeneric.GenericDefinition == null
-                && sourceGeneric.Name == targetGeneric.Name)
-                return true;
-        }
-
-        // Default: allow if types don't fit the checked categories (to be conservative)
-        // This handles edge cases and allows the C# compiler to do final validation
-        return true;
-    }
-
-    private bool HasUserDefinedConversion(SemanticType sourceType, SemanticType targetType, string dunderName)
-    {
-        var typeSymbol = sourceType switch
-        {
-            UserDefinedType udt => udt.Symbol,
-            _ => null
-        };
-
-        if (typeSymbol == null)
-            return false;
-
-        foreach (var method in typeSymbol.Methods)
-        {
-            if (method.Name != dunderName || !method.IsStatic)
-                continue;
-
-            if (method.Parameters.Count == 1 && method.ReturnType != null)
-            {
-                if (method.ReturnType.Equals(targetType))
-                    return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Checks if a type symbol inherits from another type symbol (directly or indirectly).
-    /// </summary>
-    private bool InheritsFrom(TypeSymbol? derived, TypeSymbol? baseType)
-        => TypeHierarchyService.InheritsFrom(derived, baseType, SemanticBinding);
 
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)
     {

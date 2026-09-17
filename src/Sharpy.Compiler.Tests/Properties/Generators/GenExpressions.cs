@@ -243,24 +243,31 @@ internal static class GenExpressions
         // the legacy `to`/`to?` forms retired as a parse error (#1127) and were dropped from the
         // pool. The `as` forms carry their failure mode on the operator, so their target is always
         // written non-nullable.
+        //
+        // #1713: a statically-impossible coercion is now refused at semantic time (SPY0610), so an
+        // unrestricted `Expression × SimpleType` draw would mostly be refused, starving the
+        // IL-emission cells this generator feeds (see plan-5379fe Phase 6). Route every source through
+        // an `object` box first: `(expr as! object) as?/as! T` is Boxing (object target) then Unboxing
+        // (object source) — both POSSIBLE for any SimpleType target — so the drawn pair passes semantic
+        // analysis and reaches the emitter regardless of the source expression's type.
         Gen.Select(
             Expression(ctx),
             GenTypes.SimpleType,
             Gen.Int[0, 1],
-            (expr, type, form) => form switch
+            (expr, type, form) =>
             {
-                0 => new TypeCoercion
+                var boxed = new TypeCoercion
                 {
                     Value = expr,
-                    TargetType = type with { IsOptional = false },
+                    TargetType = new TypeAnnotation { Name = "object" },
                     Mode = CastFailureMode.Throw,
-                },
-                _ => new TypeCoercion
+                };
+                return new TypeCoercion
                 {
-                    Value = expr,
+                    Value = boxed,
                     TargetType = type with { IsOptional = false },
-                    Mode = CastFailureMode.Null,
-                },
+                    Mode = form == 0 ? CastFailureMode.Throw : CastFailureMode.Null,
+                };
             });
 
     public static Gen<TypeCheck> TypeCheckExpr(GenContext ctx) =>

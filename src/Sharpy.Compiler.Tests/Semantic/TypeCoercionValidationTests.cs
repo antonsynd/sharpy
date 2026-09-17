@@ -58,7 +58,8 @@ def test():
         typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
         typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("int");
         typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Use str(...)");
+        // #1713: the primitive→str refusal folded into SPY0610; its steer now names str(x).
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Use str(x)");
     }
 
     [Fact]

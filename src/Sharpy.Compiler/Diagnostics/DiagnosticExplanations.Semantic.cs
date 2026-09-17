@@ -106,7 +106,11 @@ public static partial class DiagnosticExplanations
             "Annotate the binding with the type it will hold:\n  x: str | None = None\n  xs: list[object] = [1, \"a\"]\n  a: Animal = Dog() if c else Cat()");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidCast, "Invalid cast", "Semantic",
-            "A type cast is invalid because the source and target types are not compatible. Only related types can be cast to each other.",
+            "RETIRED (#1713): folded into SPY0610 (impossible coercion), which now refuses every " +
+            "statically-impossible as?/as! by name — including the two arms this code used to carry " +
+            "(a non-string primitive to str, and unrelated user classes). No site emits SPY0228 any " +
+            "longer; this explanation is retained only for historical lookups. "
+            + "A type cast is invalid because the source and target types are not compatible. Only related types can be cast to each other.",
             "x: int = int(\"not_a_number\")  # runtime error potential",
             "Ensure the cast is between compatible types or use a conversion function.");
 
