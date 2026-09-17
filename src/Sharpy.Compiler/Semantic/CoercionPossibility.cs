@@ -102,10 +102,19 @@ internal static class CoercionPossibility
         if (HasExplicitConversion(source, target) || HasExplicitConversion(target, source))
             return Kind.UserExplicit;
 
-        // Inheritance relationship (either direction) between user-defined types.
-        if (source is UserDefinedType su && target is UserDefinedType tu
-            && (TypeHierarchyService.InheritsFrom(su.Symbol, tu.Symbol, binding)
-                || TypeHierarchyService.InheritsFrom(tu.Symbol, su.Symbol, binding)))
+        // Inheritance relationship (either direction). Reads the declaring symbol from a user-defined
+        // type OR a generic type's definition, so a generic subject reaches its (possibly generic) base
+        // — Pair[int] as? Box, where Pair[T] derives from Box[list[T]] (#1308).
+        // The two symbols must be DISTINCT: InheritsFrom's CLR self-assignability fallback treats a
+        // symbol as inheriting from itself, which would wrongly admit two instantiations of ONE
+        // definition (list[int] as? list[str]). Same-definition pairs fall through to the arm below,
+        // which requires matching type arguments.
+        var sourceSymbol = TypeSymbolOf(source);
+        var targetSymbol = TypeSymbolOf(target);
+        if (sourceSymbol != null && targetSymbol != null
+            && !TypeHierarchyService.IsSameType(sourceSymbol, targetSymbol)
+            && (TypeHierarchyService.InheritsFrom(sourceSymbol, targetSymbol, binding)
+                || TypeHierarchyService.InheritsFrom(targetSymbol, sourceSymbol, binding)))
             return Kind.Inheritance;
 
         // Same generic definition with the SAME type arguments. Different arguments (list[int] vs
@@ -125,6 +134,13 @@ internal static class CoercionPossibility
         OptionalType opt => Unwrap(opt.UnderlyingType),
         NullableType nul => Unwrap(nul.UnderlyingType),
         _ => type,
+    };
+
+    private static TypeSymbol? TypeSymbolOf(SemanticType type) => type switch
+    {
+        UserDefinedType udt => udt.Symbol,
+        GenericType gt => gt.GenericDefinition,
+        _ => null,
     };
 
     private static bool IsObjectLike(SemanticType type)
