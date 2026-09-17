@@ -318,7 +318,9 @@ internal partial class RoslynEmitter
                     var bindingUnionCase = _context.SemanticInfo?.GetPatternUnionCase(binding);
                     if (bindingUnionCase != null)
                     {
-                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(bindingUnionCase, scrutineeType);
+                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(
+                            bindingUnionCase,
+                            _context.SemanticInfo?.GetPatternUnionCaseTypeArguments(binding));
                         return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
                     }
 
@@ -364,11 +366,15 @@ internal partial class RoslynEmitter
 
             case TuplePattern tuplePattern:
                 {
+                    // Thread each element's scrutinee type so a nested synthetic Optional/Result
+                    // case (`(Ok(), n)`) lowers through Deconstruct rather than a nested-class test
+                    // (#1703).
                     var subPatterns = new SubpatternSyntax[tuplePattern.Elements.Length];
                     for (int i = 0; i < tuplePattern.Elements.Length; i++)
                     {
                         subPatterns[i] = Subpattern(GenerateMatchPattern(
-                            tuplePattern.Elements[i], memberGuards, ref matchVarCounter));
+                            tuplePattern.Elements[i], memberGuards, ref matchVarCounter,
+                            TupleElementScrutinee(scrutineeType, i)));
                     }
                     return RecursivePattern()
                         .WithPositionalPatternClause(
@@ -377,6 +383,9 @@ internal partial class RoslynEmitter
 
             case ListPattern listPattern:
                 {
+                    // Nested list elements carry the sequence's element type for the same reason
+                    // (`[Ok()]` over list[Result[int, str]]) (#1703).
+                    var elementScrutinee = SequenceElementScrutinee(scrutineeType);
                     var elementPatterns = new List<PatternSyntax>();
                     foreach (var element in listPattern.Elements)
                     {
@@ -394,7 +403,7 @@ internal partial class RoslynEmitter
                         else
                         {
                             elementPatterns.Add(GenerateMatchPattern(
-                                element, memberGuards, ref matchVarCounter));
+                                element, memberGuards, ref matchVarCounter, elementScrutinee));
                         }
                     }
                     return SyntaxFactory.ListPattern(SeparatedList(elementPatterns));
@@ -549,7 +558,9 @@ internal partial class RoslynEmitter
                     var unionCase = _context.SemanticInfo?.GetPatternUnionCase(memberAccess);
                     if (unionCase != null)
                     {
-                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
+                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(
+                            unionCase,
+                            _context.SemanticInfo?.GetPatternUnionCaseTypeArguments(memberAccess));
                         return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
                     }
 
@@ -569,8 +580,28 @@ internal partial class RoslynEmitter
                     // Same read as every other class-pattern arm (#1670): the union case when the
                     // checker resolved one, otherwise the recorded type-test lowering.
                     var propertyUnionCase = _context.SemanticInfo?.GetPatternUnionCase(propertyPattern);
+
+                    // A synthetic Optional/Result property form (`case Ok(value=v):`) lowers through
+                    // Deconstruct, mapping each named field to its Deconstruct position — Core
+                    // Result/Optional are structs with no nested case type (#1703).
+                    if (propertyUnionCase != null)
+                    {
+                        var fieldPatterns = new Dictionary<string, PatternSyntax>(StringComparer.Ordinal);
+                        foreach (var field in propertyPattern.Fields)
+                        {
+                            fieldPatterns[field.Name] = GenerateMatchPattern(
+                                field.Pattern, memberGuards, ref matchVarCounter);
+                        }
+                        var syntheticDeconstruct = TryBuildSyntheticUnionCaseDeconstruct(
+                            propertyUnionCase, scrutineeType, fieldPatterns);
+                        if (syntheticDeconstruct != null)
+                            return syntheticDeconstruct;
+                    }
+
                     var typeSyntax = propertyUnionCase != null
-                        ? BuildUnionCaseTypeSyntax(propertyUnionCase, scrutineeType)
+                        ? BuildUnionCaseTypeSyntax(
+                            propertyUnionCase,
+                            _context.SemanticInfo?.GetPatternUnionCaseTypeArguments(propertyPattern))
                         : propertyPattern.Type != null
                             ? PatternTestTypeSyntax(propertyPattern, propertyPattern.Type)
                             : null;
@@ -813,7 +844,9 @@ internal partial class RoslynEmitter
         List<ExpressionSyntax> memberGuards,
         ref int matchVarCounter)
     {
-        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCaseSymbol, scrutineeType);
+        var caseTypeSyntax = BuildUnionCaseTypeSyntax(
+            unionCaseSymbol,
+            _context.SemanticInfo?.GetPatternUnionCaseTypeArguments(positionalPattern));
 
         // Generate positional subpatterns using Deconstruct
         var subPatterns = new SubpatternSyntax[positionalPattern.Elements.Length];
@@ -833,9 +866,13 @@ internal partial class RoslynEmitter
     /// Builds the C# type syntax for a union case nested class.
     /// For non-generic unions: UnionName.CaseName
     /// For generic unions: UnionName{T1, T2}.CaseName
-    /// Type arguments are substituted from the scrutinee type.
+    /// The type-argument vector is the substituted vector recorded by semantic analysis
+    /// (<see cref="SemanticInfo.GetPatternUnionCaseTypeArguments"/>) — the scrutinee's closed
+    /// arguments, or the declaration's own type parameters when the scrutinee is the open union
+    /// inside its own method. The emitter maps it verbatim and never inspects the scrutinee (#1703,
+    /// Critical Rule 2).
     /// </summary>
-    private TypeSyntax BuildUnionCaseTypeSyntax(TypeSymbol unionCaseSymbol, SemanticType? scrutineeType)
+    private TypeSyntax BuildUnionCaseTypeSyntax(TypeSymbol unionCaseSymbol, IReadOnlyList<SemanticType>? parentTypeArgs)
     {
         var caseCSharpName = NameMangler.Transform(unionCaseSymbol.Name, NameContext.Type);
         var unionParent = unionCaseSymbol.BaseType;
@@ -849,10 +886,9 @@ internal partial class RoslynEmitter
 
         // Build the union base type, with type arguments if generic
         NameSyntax unionNameSyntax;
-        if (unionParent.IsGeneric && scrutineeType is GenericType gt
-            && gt.TypeArguments.Count > 0)
+        if (unionParent.IsGeneric && parentTypeArgs is { Count: > 0 })
         {
-            var typeArgsSyntax = gt.TypeArguments
+            var typeArgsSyntax = parentTypeArgs
                 .Select(t => _typeMapper.MapSemanticType(t))
                 .ToArray();
             unionNameSyntax = GenericName(Identifier(unionCSharpName))
@@ -860,10 +896,8 @@ internal partial class RoslynEmitter
         }
         else if (unionParent.IsGeneric)
         {
-            // Scrutinee type carries no concrete type arguments (e.g. 'match self'
-            // inside a generic union method, where self is typed as the open union).
-            // Reference the union with its own type parameter names so the nested
-            // case type is correctly qualified (e.g. Option<T>.Some).
+            // No recorded vector (defensive) — reference the union with its own type parameter
+            // names so the nested case type is still qualified (e.g. Option<T>.Some).
             var typeParamSyntax = unionParent.TypeParameters
                 .Select(tp => (TypeSyntax)TypeParameterIdentifierName(tp.Name))
                 .ToArray();
@@ -877,6 +911,83 @@ internal partial class RoslynEmitter
 
         return QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
     }
+
+    /// <summary>
+    /// Builds the positional Deconstruct pattern for a synthetic Optional/Result union case reached
+    /// through the zero-argument (<c>case Ok():</c>) or property (<c>case Ok(value=v):</c>) spelling.
+    /// The Core <c>Optional&lt;T&gt;</c>/<c>Result&lt;T, E&gt;</c> are structs with a
+    /// <c>Deconstruct</c> and factory methods — there is no nested <c>Ok</c>/<c>Some</c> type — so
+    /// these spellings lower exactly like the positional form <c>Ok(_)</c> does through
+    /// <see cref="TryGenerateOptionalResultPattern"/> (#1703). Returns null when the scrutinee/case
+    /// is not a synthetic Optional/Result.
+    /// <para>
+    /// <paramref name="fieldPatterns"/> maps a payload field name (<c>value</c>/<c>error</c>) to its
+    /// sub-pattern; omitted fields become discards.
+    /// </para>
+    /// </summary>
+    private static PatternSyntax? TryBuildSyntheticUnionCaseDeconstruct(
+        TypeSymbol? unionCase,
+        SemanticType? scrutineeType,
+        IReadOnlyDictionary<string, PatternSyntax>? fieldPatterns = null)
+    {
+        PatternSyntax FieldOrDiscard(string name) =>
+            fieldPatterns != null && fieldPatterns.TryGetValue(name, out var p)
+                ? p
+                : VarPattern(DiscardDesignation());
+
+        static RecursivePatternSyntax Positional(params PatternSyntax[] subs) =>
+            RecursivePattern().WithPositionalPatternClause(
+                PositionalPatternClause(SeparatedList(subs.Select(Subpattern))));
+
+        // Optional[T].Deconstruct(out bool hasValue, out T value): Some → (true, value)
+        if (scrutineeType is OptionalType && unionCase?.Name == WellKnownCaseNames.Some)
+        {
+            return Positional(
+                ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression)),
+                FieldOrDiscard("value"));
+        }
+
+        // Result[T, E].Deconstruct(out bool isOk, out T value, out E error)
+        if (scrutineeType is ResultType && unionCase?.Name == WellKnownCaseNames.Ok)
+        {
+            return Positional(
+                ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression)),
+                FieldOrDiscard("value"),
+                VarPattern(DiscardDesignation()));
+        }
+
+        if (scrutineeType is ResultType && unionCase?.Name == WellKnownCaseNames.Err)
+        {
+            return Positional(
+                ConstantPattern(LiteralExpression(SyntaxKind.FalseLiteralExpression)),
+                VarPattern(DiscardDesignation()),
+                FieldOrDiscard("error"));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Binds the whole matched value to <paramref name="designation"/> (the <c>as n</c> clause) when
+    /// it names a variable; a discard designation adds nothing. Used for synthetic-union patterns
+    /// whose Deconstruct shape carries no type to hang the designation on directly.
+    /// </summary>
+    private static PatternSyntax ApplyWholeDesignation(PatternSyntax pattern, VariableDesignationSyntax designation)
+        => designation is SingleVariableDesignationSyntax
+            ? BinaryPattern(SyntaxKind.AndPattern, pattern, VarPattern(designation))
+            : pattern;
+
+    /// <summary>The static type of a tuple pattern's element at <paramref name="index"/>, or null.</summary>
+    private static SemanticType? TupleElementScrutinee(SemanticType? scrutineeType, int index)
+        => scrutineeType is TupleType tuple && index < tuple.ElementTypes.Count
+            ? tuple.ElementTypes[index]
+            : null;
+
+    /// <summary>The element type of a <c>list[T]</c>/<c>array[T]</c> sequence scrutinee, or null.</summary>
+    private static SemanticType? SequenceElementScrutinee(SemanticType? scrutineeType)
+        => scrutineeType is GenericType { TypeArguments: { Count: > 0 } args }
+            ? args[0]
+            : null;
 
     private ExpressionSyntax? CombineGuards(List<ExpressionSyntax> memberGuards, Expression? userGuardExpr)
     {
@@ -1091,9 +1202,18 @@ internal partial class RoslynEmitter
                     })));
         }
 
+        // A zero-argument synthetic Optional/Result case (`case Ok():`, `case Err():`) parses as a
+        // TypePattern, but Core Result/Optional are structs matched via Deconstruct — lower it the
+        // same way the positional form Ok(_) does, not as a nested-class type test (#1703).
+        var syntheticDeconstruct = TryBuildSyntheticUnionCaseDeconstruct(unionCase, scrutineeType);
+        if (syntheticDeconstruct != null)
+            return ApplyWholeDesignation(syntheticDeconstruct, designation);
+
         if (unionCase != null)
         {
-            var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
+            var caseTypeSyntax = BuildUnionCaseTypeSyntax(
+                unionCase,
+                _context.SemanticInfo?.GetPatternUnionCaseTypeArguments(typePattern));
             return DeclarationPattern(caseTypeSyntax, designation);
         }
 
