@@ -308,12 +308,12 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateDictSpreadComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateImperativeComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
 
-        // The seven-kind nested-declaration classifier (#1729, R-I, P6 Phase 1 Task 1). Landed ahead
-        // of its own totality guard: NestedDeclarationMatrixTests (and the DeclarationKindDispatchTotalityTests
-        // wiring that consumes this classifier) land later in Phase 1 once the resolver/loader/emitter
-        // call sites switch onto it.
-        // #1729: upgraded to guarded-by:NestedDeclarationMatrixTests when the Phase 1 matrix lands
-        ["Parser/Ast/StatementExtensions.cs::StatementExtensions.TryGetNestedDeclaration"] = "pending-guard:#1729",
+        // The seven-kind nested-declaration classifier (#1729, R-I, P6 Phase 1 Tasks 1 + T).
+        // NestedDeclarationMatrixTests exercises the host×kind×route×use matrix AND scans this
+        // classifier's switch arms against a literal roster of the seven type-declaring AST kinds
+        // (Classifier_ArmSet_EqualsSevenTypeDeclaringKinds_ByLiteralRoster), so the row upgraded from
+        // pending-guard:#1729 to guarded-by when the P1.T matrix landed.
+        ["Parser/Ast/StatementExtensions.cs::StatementExtensions.TryGetNestedDeclaration"] = "guarded-by:NestedDeclarationMatrixTests",
 
         // ══════════════════════════════════════════════════════════════════════
         // LSP sites — all keyed with "Sharpy.Lsp/" prefix
