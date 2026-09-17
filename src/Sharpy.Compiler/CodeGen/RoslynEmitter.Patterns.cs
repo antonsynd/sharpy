@@ -906,7 +906,22 @@ internal partial class RoslynEmitter
         }
         else
         {
-            unionNameSyntax = IdentifierName(unionCSharpName);
+            // A NESTED union's full emitted containment chain (Outer.Shape, IShape.Kind) lets a
+            // pattern matched OUTSIDE the enclosing type name the case; a module-level union has a
+            // null DeclaringType and yields its bare name unchanged (#1729). When an enclosing type
+            // is generic the chain would need that type's arguments on its own segment
+            // (Box<int>.Cell), which the nested-reference builder does not supply and #1817 blocks
+            // spelling from outside anyway — fall back to the bare union name, valid for the
+            // in-scope (inside-the-host) match that is the only reachable form there.
+            var hasGenericEnclosing = false;
+            for (var t = unionParent.DeclaringType; t != null; t = t.DeclaringType)
+            {
+                if (t.IsGeneric)
+                { hasGenericEnclosing = true; break; }
+            }
+            unionNameSyntax = hasGenericEnclosing
+                ? IdentifierName(unionCSharpName)
+                : BuildNestedTypeName(unionParent);
         }
 
         return QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));

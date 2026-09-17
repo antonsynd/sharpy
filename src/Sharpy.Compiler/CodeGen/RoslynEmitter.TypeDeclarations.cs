@@ -1843,8 +1843,13 @@ internal partial class RoslynEmitter
 
         var unionName = NameCasing.ResolveType(unionDef.Name, unionDef.IsNameBacktickEscaped);
 
-        // Look up the union symbol for field type information
-        var unionSymbol = _context.LookupSymbol(unionDef.Name) as TypeSymbol;
+        // Look up the union symbol for field type information. A NESTED union's symbol lives on its
+        // enclosing type's NestedTypes (not the global scope the emitter is positioned in), and
+        // `_currentTypeSymbol` still holds that enclosing type here — consulted first so union-case
+        // fields resolve (n17), exactly as GenerateClassMembers resolves a nested type symbol (#1729).
+        var unionSymbol =
+            _currentTypeSymbol?.NestedTypes.FirstOrDefault(n => n.Name == unionDef.Name)
+            ?? _context.LookupSymbol(unionDef.Name) as TypeSymbol;
 
         // Create abstract base class with public modifier
         var classDecl = ClassDeclaration(EscapedIdentifier(unionName))

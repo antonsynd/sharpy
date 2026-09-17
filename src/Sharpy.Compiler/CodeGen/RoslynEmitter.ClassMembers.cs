@@ -242,6 +242,27 @@ internal partial class RoslynEmitter
                     }
                     break;
 
+                // A nested union/delegate reaches here as a UnionDef/DelegateDef statement in the
+                // host body — name resolution leaves the immutable AST in place (#1729, R-I). Reuse
+                // the module-level emitters as members; the union base + sealed cases and the C#
+                // delegate are all legal nested in a class, struct, or interface (C# 8).
+                case UnionDef nestedUnion:
+                    if (GenerateUnionDeclaration(nestedUnion) is MemberDeclarationSyntax nestedUnionMember)
+                    {
+                        if (!HasExplicitAccessDecorator(nestedUnion.Decorators))
+                            nestedUnionMember = ReplaceAccessModifier(nestedUnionMember, GetAccessModifierFromNameConvention(nestedUnion.Name));
+                        members.Add(nestedUnionMember);
+                    }
+                    break;
+
+                // DelegateDef carries no decorators, so the access level is taken purely from the
+                // name convention (a leading underscore → private/protected).
+                case DelegateDef nestedDelegate:
+                    members.Add(ReplaceAccessModifier(
+                        GenerateDelegateDeclaration(nestedDelegate),
+                        GetAccessModifierFromNameConvention(nestedDelegate.Name)));
+                    break;
+
                 default:
                     _context.AddError(
                         $"Internal: unrecognized statement type '{stmt.GetType().Name}' in class body was not emitted. This is a compiler bug — please report it.",
@@ -481,6 +502,10 @@ internal partial class RoslynEmitter
                     // Ignore ellipsis in interface body
                     break;
 
+                case TypeAlias:
+                    // Type aliases are compile-time only, no C# output (#1729)
+                    break;
+
                 case ClassDef nestedClass:
                     members.Add(GenerateClassDeclaration(nestedClass));
                     break;
@@ -497,6 +522,17 @@ internal partial class RoslynEmitter
                     var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
                     if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
                         members.Add(nestedEnumMember);
+                    break;
+
+                // Nested union/delegate in an interface body are legal C# (nested types in
+                // interfaces, C# 8) — supported, not refused (#1729, R-I).
+                case UnionDef nestedUnion:
+                    if (GenerateUnionDeclaration(nestedUnion) is MemberDeclarationSyntax nestedUnionMember)
+                        members.Add(nestedUnionMember);
+                    break;
+
+                case DelegateDef nestedDelegate:
+                    members.Add(GenerateDelegateDeclaration(nestedDelegate));
                     break;
 
                 default:

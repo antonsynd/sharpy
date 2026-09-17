@@ -1,0 +1,20 @@
+# A tagged union nested in a class body: emitted as a member of its host (#1729).
+class Outer:
+    @public
+    union Shape:
+        case Circle(radius: int)
+        case Square(side: int)
+
+    @public
+    def area(self, s: Outer.Shape) -> int:
+        match s:
+            case Outer.Shape.Circle(r):
+                return r * r * 3
+            case Outer.Shape.Square(side):
+                return side * side
+
+
+def main():
+    o: Outer = Outer()
+    print(o.area(Outer.Shape.Circle(2)))
+    print(o.area(Outer.Shape.Square(4)))

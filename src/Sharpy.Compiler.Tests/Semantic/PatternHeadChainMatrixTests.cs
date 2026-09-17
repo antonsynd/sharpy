@@ -300,15 +300,16 @@ def main() -> None:
         result.StandardOutput.TrimEnd().Should().Be("circle 3");
     }
 
-    // ── Rostered N/A: union-case head nested in a class body at depth ≥ 2 (#1729) ──────────────
+    // ── Executes: union-case head nested in a class body at depth ≥ 2 (#1729) ──────────────────
     // #1729 Phase 1 Task 2 (P1.2) resolved the nested union at NAME RESOLUTION — the SPY0202 that
-    // rostered this cell has drained (the chain and its case head now resolve semantically). What
-    // remains is the CODEGEN emitter arm (P1.2's sibling P1.3): a nested union in a class body is
-    // not yet emitted, so it refuses with SPY0510. Asserted so the roster stays falsifiable — when
-    // P1.3 lands, the SPY0510 drains and this cell must be re-cut to assert execution.
+    // once rostered this cell drained there. Task 3 (P1.3) then added the CODEGEN emitter arm, so the
+    // SPY0510 that briefly stood in for it drains too: the depth-2 nested-union head now BOTH resolves
+    // and emits, and the whole program executes end to end (declaration, qualified construction, and
+    // the nested-chain pattern head). The absence assertions keep the drain falsifiable — reintroduce
+    // either refusal and this cell goes red.
 
     [Fact]
-    public void NestedUnionCaseHead_Depth2_RosteredRefused_1729()
+    public void NestedUnionCaseHead_Depth2_Runs_1729()
     {
         var result = CompileAndExecute(@"
 class Outer:
@@ -326,13 +327,12 @@ def check(s: Outer.Shape) -> None:
 def main() -> None:
     check(Outer.Shape.Circle(3))
 ");
-        result.Success.Should().BeFalse(
-            "a union nested in a class body resolves semantically (P1.2) but is not yet emitted — " +
-            "codegen support is P1.3, out of scope here");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.RawDiagnostics.Should().NotContain(d => d.Code == SPY0202,
-            "the semantic refusal drained: name resolution now resolves the nested union (#1729, P1.2)");
-        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0510,
-            "the roster is falsifiable: the depth-2 nested-union head now refuses at codegen (SPY0510) " +
-            "until the emitter arm lands (P1.3)");
+            "the semantic refusal drained: name resolution resolves the nested union (#1729, P1.2)");
+        result.RawDiagnostics.Should().NotContain(d => d.Code == SPY0510,
+            "the codegen refusal drained: the emitter now emits the nested union as a member (#1729, P1.3)");
+        result.StandardOutput.TrimEnd().Should().Be("circle 3",
+            "the depth-2 nested union declares, constructs and matches through the full chain");
     }
 }

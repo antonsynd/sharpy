@@ -455,16 +455,20 @@ internal partial class RoslynEmitter
                 }
             }
 
-            // Check for union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
-            if (memberAccess.Object is Identifier unionId)
+            // Check for union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0), and the
+            // nested spelling Outer.Shape.Circle(5.0) where the union is itself a nested type (#1729).
+            // The union symbol is resolved from the access object whether it is a bare name or a
+            // nested member access; its emitted containment chain comes from the same
+            // BuildNestedTypeName the nested-type construction arm below uses, so a nested union's
+            // full chain (Outer.Shape) and a module-level union's bare name (Shape) both fall out.
             {
-                var unionSym = _context.LookupSymbol(unionId.Name);
-                if (unionSym is TypeSymbol { TypeKind: Semantic.TypeKind.Union } unionTypeSym)
+                var unionTypeSym = ResolveUnionFromAccessObject(memberAccess.Object);
+                if (unionTypeSym is { TypeKind: Semantic.TypeKind.Union })
                 {
-                    var unionCSharpName = NameMangler.Transform(unionId.Name, NameContext.Type);
                     var caseCSharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
 
-                    // For generic unions, include type arguments: Option<int>.Some(42)
+                    // For generic unions, include type arguments on the union segment:
+                    // Option<int>.Some(42) (BuildNestedTypeName carries them on the innermost part).
                     NameSyntax unionNameSyntax;
                     if (unionTypeSym.IsGeneric)
                     {
@@ -475,17 +479,16 @@ internal partial class RoslynEmitter
                             var typeArgsSyntax = resolvedGeneric.TypeArguments
                                 .Select(t => _typeMapper.MapSemanticType(t))
                                 .ToArray();
-                            unionNameSyntax = GenericName(Identifier(unionCSharpName))
-                                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+                            unionNameSyntax = BuildNestedTypeName(unionTypeSym, typeArgsSyntax);
                         }
                         else
                         {
-                            unionNameSyntax = IdentifierName(unionCSharpName);
+                            unionNameSyntax = BuildNestedTypeName(unionTypeSym);
                         }
                     }
                     else
                     {
-                        unionNameSyntax = IdentifierName(unionCSharpName);
+                        unionNameSyntax = BuildNestedTypeName(unionTypeSym);
                     }
 
                     var qualifiedCaseName = QualifiedName(unionNameSyntax, IdentifierName(caseCSharpName));
@@ -2338,6 +2341,30 @@ internal partial class RoslynEmitter
         return ObjectCreationExpression(
                 MakeGlobalQualifiedName("Sharpy", "SliceSpec"))
             .WithArgumentList(ArgumentList(SeparatedList(args)));
+    }
+
+    /// <summary>
+    /// Resolves the union <see cref="TypeSymbol"/> named by a union-case access object — the
+    /// <c>Shape</c> of <c>Shape.Circle(…)</c> (a bare name, resolved in the current scope) or the
+    /// <c>Outer.Shape</c> of a nested union's <c>Outer.Shape.Circle(…)</c> (resolved through the
+    /// nested-type chain, #1729). Returns <c>null</c> for anything that is not a type access, so the
+    /// caller's <c>TypeKind == Union</c> guard decides whether the case-construction arm fires.
+    /// </summary>
+    private TypeSymbol? ResolveUnionFromAccessObject(Expression accessObject)
+    {
+        // Mirrors ResolveNestedTypeFromAccess's if-based shape: a bare name resolves in the current
+        // scope, a member access resolves through the nested-type chain. Not a kind-dispatch site.
+        if (accessObject is Identifier id)
+        {
+            return _context.LookupSymbol(id.Name) as TypeSymbol;
+        }
+
+        if (accessObject is MemberAccess nested)
+        {
+            return ResolveNestedTypeFromAccess(nested);
+        }
+
+        return null;
     }
 
     private TypeSymbol? ResolveNestedTypeFromAccess(MemberAccess memberAccess)

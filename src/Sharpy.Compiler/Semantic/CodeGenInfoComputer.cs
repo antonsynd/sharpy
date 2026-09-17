@@ -377,17 +377,13 @@ internal class CodeGenInfoComputer
                 // A NESTED type's members reach no other pass: the module-body loop sees only
                 // top-level declarations, so a nested class's field consts had no CodeGenInfo at
                 // all and the emitter read the default (`static readonly`) whatever the fact said
-                // (#1791). The nested symbol is its enclosing type's own child.
-                case ClassDef nestedClass:
-                    ProcessNestedTypeMembers(typeSymbol, nestedClass.Name, nestedClass.Body);
-                    break;
-
-                case StructDef nestedStruct:
-                    ProcessNestedTypeMembers(typeSymbol, nestedStruct.Name, nestedStruct.Body);
-                    break;
-
-                case InterfaceDef nestedInterface:
-                    ProcessNestedTypeMembers(typeSymbol, nestedInterface.Name, nestedInterface.Body);
+                // (#1791). The nested symbol is its enclosing type's own child. Routed through the
+                // one nested-declaration classifier (#1729, R-I) so a nested union joins the same
+                // member processing (its body carries methods/consts); enum, delegate and alias
+                // carry no member body — the classifier returns an empty Body and they fall through.
+                default:
+                    if (stmt.TryGetNestedDeclaration(out var nested) && !nested.Body.IsEmpty)
+                        ProcessNestedTypeMembers(typeSymbol, nested.Name, nested.Body);
                     break;
             }
         }
@@ -711,8 +707,10 @@ internal class CodeGenInfoComputer
                     yield return (eventDef.Name,
                         NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped));
                     break;
-                // Nested types occupy the same member namespace as fields and methods.
-                // TypeAlias is deliberately absent: it is compile-time only and emits nothing.
+                // Nested types occupy the same member namespace as fields and methods. A nested
+                // union emits an abstract base class member and a nested delegate a C# delegate
+                // member, so both take a member slot (#1729, R-I). TypeAlias is deliberately absent:
+                // it is compile-time only and emits nothing.
                 case ClassDef nestedClass:
                     yield return (nestedClass.Name,
                         NameCasing.ResolveType(nestedClass.Name, nestedClass.IsNameBacktickEscaped));
@@ -728,6 +726,14 @@ internal class CodeGenInfoComputer
                 case InterfaceDef nestedInterface:
                     yield return (nestedInterface.Name,
                         NameCasing.ResolveInterface(nestedInterface.Name, nestedInterface.IsNameBacktickEscaped));
+                    break;
+                case UnionDef nestedUnion:
+                    yield return (nestedUnion.Name,
+                        NameCasing.ResolveType(nestedUnion.Name, nestedUnion.IsNameBacktickEscaped));
+                    break;
+                case DelegateDef nestedDelegate:
+                    yield return (nestedDelegate.Name,
+                        NameCasing.ResolveType(nestedDelegate.Name, nestedDelegate.IsNameBacktickEscaped));
                     break;
             }
         }
