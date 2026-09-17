@@ -1081,6 +1081,25 @@ internal partial class RoslynEmitter
     /// When there is no capture but a match is present, a temporary local is introduced. Nothing
     /// here names a test framework, which is what lets the form appear outside a @test (#1413).
     /// </summary>
+    /// <summary>
+    /// The catch-clause / Throws-generic exception TYPE for a bare exception identifier. A SAME-FILE
+    /// exception type (SingleError) is qualified through the module shape (global::&lt;ModuleClass&gt;.
+    /// SingleError) so `catch (SingleError)` resolves from the sibling test-class context once the
+    /// `using static` self-import is deleted (#1683) — the catch-clause twin of the annotation and
+    /// construction sites. A builtin/runtime exception (ValueError) is not in OwnTypeNames, so it
+    /// keeps its existing mangled spelling (reachable via `using global::Sharpy`).
+    /// </summary>
+    private TypeSyntax QualifyExceptionTypeName(Identifier typeId)
+    {
+        var csharpName = NameCasing.ResolveType(typeId.Name, typeId.IsNameBacktickEscaped);
+        if (_context.LookupSymbol(typeId.Name) is Semantic.TypeSymbol ts
+            && _typeMapper.QualifySameFileTypeName(ts, csharpName) is { } qualified)
+        {
+            return ParseQualifiedTypeName(qualified);
+        }
+        return IdentifierName(NameMangler.Transform(typeId.Name, NameContext.Type));
+    }
+
     private List<StatementSyntax> GenerateAssertThrowsStatements(
         Expression exceptionTypeExpr,
         IReadOnlyList<Statement> body,
@@ -1089,7 +1108,7 @@ internal partial class RoslynEmitter
     {
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
-            Identifier typeId => IdentifierName(NameMangler.Transform(typeId.Name, NameContext.Type)),
+            Identifier typeId => QualifyExceptionTypeName(typeId),
             // Module-qualified exception type (e.g. zoneinfo.ZoneInfoNotFoundError):
             // resolve the module-exported TypeSymbol to its fully-qualified C# name so we emit
             // Throws<global::...Error> instead of MapTypeFromExpression's object fallback.
