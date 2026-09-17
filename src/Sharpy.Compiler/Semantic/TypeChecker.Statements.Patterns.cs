@@ -714,9 +714,8 @@ internal partial class TypeChecker
             // The classifier records nothing for a name it cannot resolve and reports nothing for it
             // either (it also returns null AFTER reporting SPY0345), so SPY0202 is this site's to
             // raise — and only when the name really resolves to no type.
-            var knownSymbol = _symbolTable.Lookup(annotation.Name) as TypeSymbol;
-            if (knownSymbol == null && !annotation.IsNameBacktickEscaped)
-                knownSymbol = _typeResolver.LookupModuleQualifiedType(annotation.Name) as TypeSymbol;
+            var knownSymbol = _symbolTable.Lookup(annotation.Name) as TypeSymbol
+                ?? _typeResolver.ResolveDottedTypeName(annotation.Name, annotation.IsNameBacktickEscaped);
             if (knownSymbol == null)
             {
                 AddError(
@@ -1174,14 +1173,19 @@ internal partial class TypeChecker
         if (caseSymbol != null)
             return caseSymbol;
 
-        // Long form: "UnionName.CaseName" — the TypeAnnotation name includes the dot
+        // Long form: "UnionName.CaseName" — the TypeAnnotation name includes the dot. Resolve the
+        // type prefix (everything before the final segment) through the one dotted-name resolver so a
+        // nested or module-qualified union is reached the same way every other type chain is (#1799);
+        // fall back to the union's own simple name for the SYNTHETIC unions (Result/Optional), which
+        // have no symbol-table entry the resolver could answer.
         if (typeName.Contains('.', StringComparison.Ordinal))
         {
-            var parts = typeName.Split('.');
-            if (parts.Length == 2 && parts[0] == unionSymbol.Name)
-            {
-                return unionSymbol.UnionCases.FirstOrDefault(c => c.Name == parts[1]);
-            }
+            var lastDot = typeName.LastIndexOf('.');
+            var typePart = typeName[..lastDot];
+            var caseNamePart = typeName[(lastDot + 1)..];
+            var resolvedPrefix = _typeResolver.ResolveDottedTypeName(typePart, escaped: false);
+            if (resolvedPrefix == unionSymbol || typePart == unionSymbol.Name)
+                return unionSymbol.UnionCases.FirstOrDefault(c => c.Name == caseNamePart);
         }
 
         return null;

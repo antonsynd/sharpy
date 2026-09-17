@@ -256,19 +256,10 @@ internal class TypeResolver
         // Look up user-defined type
         else
         {
-            var typeSymbol = _symbolTable.LookupType(annotation.Name)
-                ?? LookupNestedType(annotation.Name);
-
-            // Module-qualified lookup: an escaped spelling never takes the qualified path —
-            // the annotation's own escape names the user's declaration, not a module export
-            // (contract documented at LookupModuleQualifiedType's remarks block).
-            var isModuleQualified = false;
-            if (typeSymbol == null && !escaped)
-            {
-                typeSymbol = LookupModuleQualifiedType(annotation.Name);
-                if (typeSymbol != null)
-                    isModuleQualified = typeSymbol.ClrType == null;
-            }
+            // Flat → nested → module-qualified (escape-gated), through the one dotted-name resolver
+            // (#1799). An escaped spelling never takes the qualified path — the annotation's own
+            // escape names the user's declaration, not a module export.
+            var typeSymbol = ResolveDottedTypeName(annotation.Name, escaped, out var isModuleQualified);
 
             // Identity, not flag equality: an escaped reference never binds the registry's own
             // symbol (that is the namespace the escape exists to escape), a bare reference never
@@ -413,6 +404,39 @@ internal class TypeResolver
 
         return result;
     }
+
+    /// <summary>
+    /// The one dotted type-name resolver (#1799): flat <see cref="SymbolTable.LookupType"/> →
+    /// <see cref="LookupNestedType"/> → <see cref="LookupModuleQualifiedType"/> (escape-gated per
+    /// #1325), in the order <see cref="ResolveTypeAnnotation"/> established. Every position that
+    /// spells a type chain — type annotations, type tests, pattern heads — routes through here so a
+    /// nested (<c>Outer.Holder</c>) or module-qualified (<c>mod.Box</c>) name resolves identically at
+    /// each. The escape gate lives INSIDE, on the module-qualified arm alone (a nested user type is
+    /// escape-insensitive), so no caller can skip it. <see cref="LookupNestedType"/> is called only
+    /// from here.
+    /// </summary>
+    /// <param name="isModuleQualified">True when the name resolved via the module-qualified arm to a
+    /// non-CLR export — the caller uses <see cref="TypeSymbol.Name"/> rather than the dotted spelling
+    /// so a <c>Box[int]</c> instantiation's name matches (see <see cref="ResolveTypeAnnotation"/>).</param>
+    internal TypeSymbol? ResolveDottedTypeName(string name, bool escaped, out bool isModuleQualified)
+    {
+        isModuleQualified = false;
+
+        var typeSymbol = _symbolTable.LookupType(name) ?? LookupNestedType(name);
+
+        if (typeSymbol == null && !escaped)
+        {
+            typeSymbol = LookupModuleQualifiedType(name);
+            if (typeSymbol != null)
+                isModuleQualified = typeSymbol.ClrType == null;
+        }
+
+        return typeSymbol;
+    }
+
+    /// <summary>Overload for callers that do not distinguish the module-qualified arm.</summary>
+    internal TypeSymbol? ResolveDottedTypeName(string name, bool escaped)
+        => ResolveDottedTypeName(name, escaped, out _);
 
     private TypeSymbol? LookupNestedType(string dottedName)
     {
@@ -703,8 +727,14 @@ internal class TypeResolver
             };
         }
 
-        var typeSymbol = _symbolTable.LookupType(annotation.Name)
-            ?? LookupNestedType(annotation.Name);
+        // Flat → nested → module-qualified generic type (e.g. difflib.SequenceMatcher[str],
+        // geometry.Box[int]) through the one dotted-name resolver (#1799). isModuleQualified is
+        // tracked so the GenericType name can be normalized to the bare type name below — the dotted
+        // annotation name would otherwise mismatch the bare name produced by generic instantiation
+        // (Box[int]) and emit a false assignment error. The CLR gate inside the resolver keeps
+        // CLR-discovered types' qualified names intact — their dotted spelling IS the honest identity
+        // codegen's #1090 guard needs (#1446 revert lesson).
+        var typeSymbol = ResolveDottedTypeName(annotation.Name, escaped, out var isModuleQualified);
 
         // Identity rule (#1325): an escaped spelling never binds the registry's own builtin; a
         // bare spelling whose lookup answered an escape-declared user type (e.g. `list[int]`
@@ -716,20 +746,6 @@ internal class TypeResolver
                 typeSymbol = null;
             else if (!escaped && typeSymbol.IsNameBacktickEscaped)
                 typeSymbol = _symbolTable.BuiltinRegistry.GetType(annotation.Name);
-        }
-
-        // Module-qualified generic type (e.g. difflib.SequenceMatcher[str], geometry.Box[int]).
-        // Track this so the GenericType name can be normalized to the bare type name below —
-        // the dotted annotation name would otherwise mismatch the bare name produced by
-        // generic instantiation (Box[int]) and emit a false assignment error. The CLR gate
-        // keeps CLR-discovered types' qualified names intact — their dotted spelling IS the
-        // honest identity codegen's #1090 guard needs (#1446 revert lesson).
-        var isModuleQualified = false;
-        if (typeSymbol == null && !escaped)
-        {
-            typeSymbol = LookupModuleQualifiedType(annotation.Name);
-            if (typeSymbol != null)
-                isModuleQualified = typeSymbol.ClrType == null;
         }
 
         // #1626: the representative from LookupType may be arity-0 (non-generic) while the
