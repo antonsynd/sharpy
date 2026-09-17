@@ -1242,40 +1242,12 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Maps a builtin collection name (<c>list</c>/<c>dict</c>/<c>set</c>) to its non-generic
-    /// Sharpy protocol interface (<c>Sharpy.IList</c>/<c>IDict</c>/<c>ISet</c>), returning null for
-    /// any other name. These type-erased interfaces are implemented by every closed generic
-    /// instantiation via boxing adapters, so they are the correct target for <c>isinstance</c>
-    /// type tests and the resulting narrowing cast against an <c>object</c> receiver — a closed
-    /// generic like <c>Sharpy.List&lt;object&gt;</c> would only match (and only cast from) that
-    /// exact instantiation. The pattern path now reads <see cref="TypeTestLowering"/> via
-    /// <see cref="MapTypeTestTarget"/>, same as <c>isinstance</c>/<c>is</c>/<c>as?</c>.
-    /// </summary>
-    internal static NameSyntax? TryMapBuiltinCollectionToNonGenericInterface(string sharpyTypeName) =>
-        sharpyTypeName switch
-        {
-            BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
-            BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
-            BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
-            _ => null
-        };
-
-    /// <summary>
     /// Renders a classified <c>isinstance</c> type test as the C# type the <c>is</c> operator tests
-    /// against. Pure translation of a decision already made: the kind selects the shape and the
-    /// resolved type supplies the name (#1207, #1213).
+    /// against. Pure translation of a decision already made: the recorded closed type supplies the
+    /// name (#1207, #1213, #1619).
     /// </summary>
     private TypeSyntax MapTypeTestTarget(TypeTestLowering typeTest)
-    {
-        if (typeTest.Kind == TypeTestLoweringKind.ErasedBuiltinCollection
-            && typeTest.TestType is GenericType erasedCollection
-            && TryMapBuiltinCollectionToNonGenericInterface(erasedCollection.Name) is { } protocolInterface)
-        {
-            return protocolInterface;
-        }
-
-        return MapTypeTestTypeName(typeTest.TestType);
-    }
+        => MapTypeTestTypeName(typeTest.TestType);
 
     /// <summary>
     /// Renders a decided test type as C# type syntax. A user/CLR type reaches its name through the
@@ -2128,17 +2100,6 @@ internal partial class RoslynEmitter
                 "every receiver the emitter is asked to generate (#1608)");
 
         var obj = GenerateExpression(sliceAccess.Object);
-
-        // GenerateExpression applies ApplyNarrowedReadLowering, which casts builtin collections
-        // to non-generic protocol interfaces (IList/IDict/ISet). GetSlice<T> needs the concrete
-        // generic type for T inference — re-cast to it when the narrowing erased generics (#1608).
-        var narrowedLowering = _context.SemanticInfo?.GetNarrowedReadLowering(sliceAccess.Object);
-        if (narrowedLowering is { Kind: NarrowedReadKind.Cast, CastTarget: GenericType narrowedGeneric }
-            && TryMapBuiltinCollectionToNonGenericInterface(narrowedGeneric.Name) is not null)
-        {
-            var concreteType = _typeMapper.MapSemanticType(narrowedGeneric);
-            obj = ParenthesizedExpression(CastExpression(concreteType, obj));
-        }
 
         var result = lowering.Kind switch
         {

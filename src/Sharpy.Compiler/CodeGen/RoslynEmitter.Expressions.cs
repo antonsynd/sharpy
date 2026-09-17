@@ -584,14 +584,11 @@ internal partial class RoslynEmitter
             case NarrowedReadKind.Cast:
                 {
                     // isinstance narrowing → parenthesized cast ((Dog)animal) so member access works.
-                    // Builtin collections narrow to the non-generic Sharpy.IList/IDict/ISet protocol
-                    // interface (#912) so the cast against an object receiver succeeds at runtime.
+                    // The cast target is the closed type the type test recorded — a reified
+                    // `list[int]` narrows to `Sharpy.List<int>`, not a non-generic interface (#1619).
                     // Invariant: CastTarget is non-null whenever Kind == Cast — every TypeChecker
                     // construction site passes the narrowed type alongside the kind.
-                    var castType = lowering.CastTarget is GenericType generic
-                        && TryMapBuiltinCollectionToNonGenericInterface(generic.Name) is { } nonGenericInterface
-                            ? nonGenericInterface
-                            : _typeMapper.MapSemanticType(lowering.CastTarget!);
+                    var castType = _typeMapper.MapSemanticType(lowering.CastTarget!);
                     // The narrowing proved the value inhabits the cast target on every path reaching
                     // this read — which also proves it is non-null. Assert that to C#'s nullable flow
                     // with `!` so unboxing casts over nullable receivers (e.g. `(long)obj` where obj

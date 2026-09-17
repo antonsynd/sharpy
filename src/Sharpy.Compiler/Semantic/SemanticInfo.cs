@@ -2413,17 +2413,6 @@ public enum TypeTestLoweringKind
     ClosedType,
 
     /// <summary>
-    /// The operand named an unparameterized builtin collection (<c>list</c>/<c>set</c>/<c>dict</c>),
-    /// whose element types the test cannot know. Emit the test against the non-generic
-    /// <c>Sharpy.IList</c>/<c>ISet</c>/<c>IDict</c> protocol interface — implemented by every closed
-    /// instantiation via boxing adapters — rather than against the default-argument instantiation
-    /// carried in <see cref="TypeTestLowering.TestType"/>, which would only match that one
-    /// instantiation (#912). The parameterized spelling <c>list[int]</c> is
-    /// <see cref="ClosedType"/>: it names the instantiation, so the test can be exact.
-    /// </summary>
-    ErasedBuiltinCollection,
-
-    /// <summary>
     /// <b><c>except</c> clauses only.</b> The operand is a tuple of exception types with an <c>as</c>
     /// binding — <c>except (A, B) as e:</c>. C# has no multi-type catch, so the clause binds at the
     /// common base carried in <see cref="TypeTestLowering.TestType"/> and discriminates with a filter
