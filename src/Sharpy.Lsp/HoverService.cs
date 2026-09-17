@@ -676,10 +676,21 @@ public sealed class HoverService
                 return TryFormatTypeAnnotation(analysis, query, typeAnnotation, line, col);
 
             // Pattern head: a class pattern's type is a TypeAnnotation that is NOT a child node,
-            // so the pattern is innermost on it. (PositionalPattern heads name union cases, which
-            // the semantic layer records no type for — #1735 — so there is nothing to delegate to.)
+            // so the pattern is innermost on it. Both the property-pattern and positional-pattern
+            // heads now record a reference through the annotation seam (#1737, Phase 2), so a
+            // union-case or class head (`case Shape.Circle(r):`, `case Circle(r):`) resolves the
+            // same way a property head does (#1735).
             case PropertyPattern { Type: { } propertyType }:
                 return TryFormatTypeAnnotation(analysis, query, propertyType, line, col);
+
+            case PositionalPattern { Type: { } positionalType }:
+                return TryFormatTypeAnnotation(analysis, query, positionalType, line, col);
+
+            // Member-access pattern head (`Color.RED`, `Outer.Holder.A`): pick the part under the
+            // cursor from the recorded extents and answer for the type it names (parts up to the
+            // type index) or the member it names (enum field / union case / const) (#1735, #1799).
+            case MemberAccessPattern memberPattern:
+                return TryHoverMemberAccessPattern(query, memberPattern, line, col);
 
             case Expression expr:
                 {
@@ -753,6 +764,52 @@ public sealed class HoverService
             return $"```sharpy\n(type) {SymbolFormatter.FormatTypeInfo(semanticType)}\n```";
 
         return null;
+    }
+
+    /// <summary>
+    /// Hover for a member-access pattern head (<c>Color.RED</c>, <c>Outer.Holder.A</c>): the part
+    /// under the cursor names either a TYPE in the chain (index ≤ the recorded type index — walked up
+    /// from the deepest resolved type through <see cref="TypeSymbol.DeclaringType"/>) or the MEMBER
+    /// (the final segment — an enum field, union case, const, or property on that type) (#1735/#1799).
+    /// </summary>
+    private static string? TryHoverMemberAccessPattern(
+        ISemanticQuery query, MemberAccessPattern pattern, int line, int col)
+    {
+        int partIndex = -1;
+        for (var i = 0; i < pattern.PartSpans.Length; i++)
+        {
+            var (partLine, partCol, partLen) = pattern.PartSpans[i];
+            if (line == partLine && col >= partCol && col < partCol + partLen)
+            {
+                partIndex = i;
+                break;
+            }
+        }
+
+        if (partIndex < 0)
+            return null;
+
+        if (query.GetPatternMemberAccessResolution(pattern) is not { } resolution)
+            return null;
+
+        var (typeSymbol, typeIndex) = resolution;
+
+        // A part at or before the type index names a TYPE; walk up from the deepest resolved type.
+        if (partIndex <= typeIndex)
+        {
+            var walked = typeSymbol;
+            for (var step = typeIndex; step > partIndex && walked != null; step--)
+                walked = walked.DeclaringType;
+            return walked != null ? SymbolFormatter.FormatSymbolWithDocs(walked) : null;
+        }
+
+        // The final segment names the member: an enum field / const (a field) or a union case
+        // (Decision 8). A property is not a pattern-head member, so none is looked up here.
+        var memberName = pattern.Parts[partIndex];
+        Symbol? member =
+            (Symbol?)typeSymbol.UnionCases.FirstOrDefault(c => c.Name == memberName)
+            ?? typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
+        return member != null ? SymbolFormatter.FormatSymbolWithDocs(member) : null;
     }
 
     private FunctionSymbol? ResolveSuperMethodCall(SemanticResult analysis, int line, int col, string methodName)

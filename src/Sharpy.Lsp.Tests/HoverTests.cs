@@ -862,6 +862,102 @@ public class HoverTests : IDisposable
             "the function signature must not surface for a parameter reference (#1393)");
     }
 
+    // ── #1735: hover on match-pattern heads ──
+
+    [Fact]
+    public async Task Hover_UnionCaseHead_Bare_ShowsCase()
+    {
+        // Line 7: "        case Circle(r):" — "Circle" starts at col 14
+        var source = "union Shape:\n    case Circle(radius: float)\n    case Point()\n\n"
+            + "def process(s: Shape) -> None:\n    match s:\n        case Circle(r):\n"
+            + "            print(r)\n        case Point():\n            pass\n";
+        _workspace.OpenDocument("file:///hover_union_bare.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///hover_union_bare.spy");
+        analysis.Should().NotBeNull();
+
+        var service = new HoverService(_api);
+        var hover = service.GetHoverMarkdown(analysis!, 7, 16);
+        hover.Should().NotBeNull("hover on a bare union-case head resolves the case (#1735)");
+        hover.Should().Contain("Circle");
+    }
+
+    [Fact]
+    public async Task Hover_UnionCaseHead_Qualified_ShowsCase()
+    {
+        // Line 7: "        case Shape.Circle(r):" — "Circle" starts at col 20
+        var source = "union Shape:\n    case Circle(radius: float)\n    case Point()\n\n"
+            + "def process(s: Shape) -> None:\n    match s:\n        case Shape.Circle(r):\n"
+            + "            print(r)\n        case Point():\n            pass\n";
+        _workspace.OpenDocument("file:///hover_union_qual.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///hover_union_qual.spy");
+        analysis.Should().NotBeNull();
+
+        var service = new HoverService(_api);
+        var hover = service.GetHoverMarkdown(analysis!, 7, 22);
+        hover.Should().NotBeNull("hover on a qualified union-case head resolves the case (#1735)");
+        hover.Should().Contain("Circle");
+    }
+
+    [Fact]
+    public async Task Hover_EnumMemberPattern_Depth1_ShowsMemberAndEnum()
+    {
+        // Line 7: "        case Color.RED:" — "Color" col 14, "RED" col 20
+        var source = "enum Color:\n    RED = 1\n    BLUE = 2\n\n"
+            + "def process(c: Color) -> None:\n    match c:\n        case Color.RED:\n"
+            + "            print(\"red\")\n        case _:\n            pass\n";
+        _workspace.OpenDocument("file:///hover_enum_d1.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///hover_enum_d1.spy");
+        analysis.Should().NotBeNull();
+
+        var service = new HoverService(_api);
+        var onMember = service.GetHoverMarkdown(analysis!, 7, 21);
+        onMember.Should().NotBeNull("hover on the enum member names the member (#1735)");
+        onMember.Should().Contain("RED");
+
+        var onEnum = service.GetHoverMarkdown(analysis!, 7, 16);
+        onEnum.Should().NotBeNull("hover on the enum type names the enum (#1735)");
+        onEnum.Should().Contain("Color");
+    }
+
+    [Fact]
+    public async Task Hover_EnumMemberPattern_Depth2_ShowsEachPart()
+    {
+        // Line 8: "        case Holder.Color.RED:" — Holder col 14, Color col 21, RED col 27
+        var source = "class Holder:\n    enum Color:\n        RED = 1\n        BLUE = 2\n\n"
+            + "def process(c: Holder.Color) -> None:\n    match c:\n        case Holder.Color.RED:\n"
+            + "            print(\"red\")\n        case _:\n            pass\n";
+        _workspace.OpenDocument("file:///hover_enum_d2.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///hover_enum_d2.spy");
+        analysis.Should().NotBeNull();
+
+        var service = new HoverService(_api);
+        service.GetHoverMarkdown(analysis!, 8, 16).Should().Contain("Holder", "the outer type part");
+        service.GetHoverMarkdown(analysis!, 8, 23).Should().Contain("Color", "the nested enum part");
+        service.GetHoverMarkdown(analysis!, 8, 28).Should().Contain("RED", "the enum member part");
+    }
+
+    [Fact]
+    public async Task Hover_ConstHead_Depth2_ShowsTypeAndConst()
+    {
+        // Line 7: "        case Outer.Holder.A:" — Outer col 14-18, Holder col 20-25, A col 27
+        var source = "class Outer:\n    class Holder:\n        const A: int = 4\n\n"
+            + "def process(x: int) -> None:\n    match x:\n        case Outer.Holder.A:\n"
+            + "            print(\"hit\")\n        case _:\n            pass\n";
+        _workspace.OpenDocument("file:///hover_const_d2.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///hover_const_d2.spy");
+        analysis.Should().NotBeNull();
+
+        var service = new HoverService(_api);
+        service.GetHoverMarkdown(analysis!, 7, 16).Should().Contain("Outer", "hover on the outer type part");
+        service.GetHoverMarkdown(analysis!, 7, 22).Should().Contain("Holder", "hover on the nested type part");
+        service.GetHoverMarkdown(analysis!, 7, 27).Should().Contain("A", "hover on the const member part");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

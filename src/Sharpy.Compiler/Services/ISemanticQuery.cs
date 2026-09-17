@@ -57,6 +57,15 @@ public interface ISemanticQuery
     (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(Parser.Ast.MemberAccess memberAccess);
 
     /// <summary>
+    /// Gets the recorded resolution of a member-access PATTERN head (e.g. <c>Outer.Holder.A</c>):
+    /// the deepest resolved type symbol and the index of its final segment in
+    /// <see cref="Parser.Ast.MemberAccessPattern.Parts"/>. Returns null when the checker recorded
+    /// none (the pattern was refused). Used by hover to answer for the part under the cursor (#1735).
+    /// </summary>
+    (TypeSymbol TypeSymbol, int TypeIndex)? GetPatternMemberAccessResolution(
+        Parser.Ast.MemberAccessPattern pattern);
+
+    /// <summary>
     /// Gets all recorded reference locations for a symbol.
     /// Returns an empty list if no references have been recorded.
     /// </summary>

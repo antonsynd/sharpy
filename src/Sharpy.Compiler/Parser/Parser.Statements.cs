@@ -1890,6 +1890,10 @@ public partial class Parser
         {
             // Parse dotted member access pattern (e.g., Color.RED)
             var parts = new List<string> { token.Value };
+            var partSpans = new List<(int Line, int Column, int Length)>
+            {
+                (token.Line, token.Column, token.Length)
+            };
             Token endToken = token;
 
             while (Current.Type == TokenType.Dot)
@@ -1904,6 +1908,7 @@ public partial class Parser
                 }
                 endToken = Current;
                 parts.Add(Current.Value);
+                partSpans.Add((Current.Line, Current.Column, Current.Length));
                 Advance();
             }
 
@@ -1923,6 +1928,7 @@ public partial class Parser
             return new MemberAccessPattern
             {
                 Parts = parts.ToImmutableArray(),
+                PartSpans = partSpans.ToImmutableArray(),
                 LineStart = token.Line,
                 ColumnStart = token.Column,
                 LineEnd = endToken.Line,

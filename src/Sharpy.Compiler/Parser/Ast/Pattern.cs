@@ -115,11 +115,21 @@ public record MemberAccessPattern : Pattern
     /// </summary>
     public ImmutableArray<string> Parts { get; init; } = ImmutableArray<string>.Empty;
 
+    /// <summary>
+    /// The source extent of each part, one per <see cref="Parts"/> entry (the #1454 recorded-extent
+    /// rule). Built by the parser from the dotted-name tokens so hover can pick the part under the
+    /// cursor and answer for the type or member it names (#1735).
+    /// </summary>
+    public ImmutableArray<(int Line, int Column, int Length)> PartSpans { get; init; }
+        = ImmutableArray<(int, int, int)>.Empty;
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
         Debug.Assert(Parts.Length >= 2, "MemberAccessPattern.Parts must have at least 2 elements");
+        Debug.Assert(PartSpans.Length == Parts.Length,
+            "MemberAccessPattern.PartSpans must have one extent per part");
     }
 }
 
