@@ -286,4 +286,66 @@ def main() -> None:
         result.RawDiagnostics.Should().NotContain(d => d.Code == Spy0610);
         result.StandardOutput.Trim().Should().Be("True");
     }
+
+    [Fact]
+    public void AliasedClrType_IsIdentity_Allowed()
+    {
+        // re_module regression: `Match as NetMatch` is an import alias for the SAME CLR type. Casting a
+        // Match-typed value to NetMatch is identity — the classifier must compare by underlying CLR
+        // symbol (IsSameType), not by the display-name spellings, or it over-refuses a valid cast that
+        // compiled and ran pre-Phase-6.
+        var result = CompileAndExecute(@"
+from system.text.regular_expressions import Regex as NetRegex, Match as NetMatch, MatchCollection
+
+def main() -> None:
+    r: NetRegex = NetRegex(""a"")
+    matches: MatchCollection = r.matches(""aaa"")
+    for m_raw in matches:
+        m: NetMatch = m_raw as! NetMatch
+        print(m.value)
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == Spy0610);
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("a\na\na");
+    }
+
+    // ── R-P5-2: possibility is judged on the type the EMITTER casts from, not the flow-narrowed read ──
+
+    [Fact]
+    public void ReassignmentNarrowedObject_AsCoercion_Runs()
+    {
+        // #1712: `o: object` reassigned to a str narrows the checker's live type to str, but the emitted
+        // C# local stays `object` (`o is long`, valid, false at runtime). Possibility must use the
+        // DECLARED type (object → Unboxing), not the narrowed str — refusing here is a false positive.
+        var result = CompileAndExecute(@"
+def main() -> None:
+    o: object = long(42)
+    o = ""not a long""
+    if o as? long:
+        print(""some"")
+    else:
+        print(""none"")
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == Spy0610);
+        result.StandardOutput.Trim().Should().Be("none");
+    }
+
+    [Fact]
+    public void IsinstanceNarrowedOperand_ImpossibleCoercion_Refused()
+    {
+        // The complementary direction: an isinstance/type-guard narrowing DOES make the emitter cast the
+        // read (`(str)o`), so `(str)o as? long` would be the CS8121 the refusal exists to catch. The
+        // Cast read-lowering is recorded here, so possibility uses the narrowed str → SPY0610.
+        var result = CompileAndExecute(@"
+def main() -> None:
+    o: object = ""hi""
+    if isinstance(o, str):
+        x = o as? long
+        print(x is not None)
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == Spy0610,
+            "an isinstance-narrowed str operand casting to long is statically impossible in the emitted C#");
+    }
 }

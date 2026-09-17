@@ -2003,14 +2003,39 @@ internal partial class TypeChecker
         // Before this seam existed the impossible pairs reached Roslyn as CS8121/CS0030 and surfaced as
         // SPY0908 (an internal-error net). SPY0228 (the old primitive→str and unrelated-class refusals)
         // is folded into SPY0610 here.
-        if (CoercionPossibility.Classify(sourceType, targetType, SemanticBinding) == CoercionPossibility.Kind.Impossible)
+        //
+        // Possibility is judged on the type the EMITTER actually casts FROM — not the flow-narrowed read
+        // type (R-P5-2). See PossibilitySourceType.
+        var possibilitySource = PossibilitySourceType(coercion.Value, sourceType);
+        if (CoercionPossibility.Classify(possibilitySource, targetType, SemanticBinding) == CoercionPossibility.Kind.Impossible)
         {
             AddError(
-                BuildImpossibleCoercionMessage(sourceType, targetType),
+                BuildImpossibleCoercionMessage(possibilitySource, targetType),
                 coercion.LineStart, coercion.ColumnStart,
                 code: DiagnosticCodes.SemanticOverflow.ImpossibleCoercion,
                 span: coercion.Span);
         }
+    }
+
+    /// <summary>
+    /// The type the emitter will actually cast FROM at a coercion operand, which is what coercion
+    /// possibility must be judged on (R-P5-2, #1712). The emitted C# local keeps its DECLARED type, so a
+    /// reassignment-narrowed <c>object</c> variable is emitted as <c>object</c> — <c>o is long</c>,
+    /// valid, false at runtime — and refusing it is a false positive. Only an isinstance/type-guard
+    /// narrowing makes the emitter cast the read (<see cref="NarrowedReadKind.Cast"/> → <c>(str)o</c>),
+    /// and THEN <c>(str)o is long</c> is the CS8121 the refusal must catch. So: use the narrowed type
+    /// when a Cast read-lowering is recorded, otherwise the operand's declared binding type; fall back to
+    /// the inferred type for non-identifier operands (whose inferred type is already their static type).
+    /// </summary>
+    private SemanticType PossibilitySourceType(Expression operand, SemanticType inferredType)
+    {
+        if (_semanticInfo.GetNarrowedReadLowering(operand) is { Kind: NarrowedReadKind.Cast })
+            return inferredType;
+
+        if (operand is Identifier id && _semanticInfo.GetIdentifierSymbol(id) is VariableSymbol symbol)
+            return DeclaredBindingType(symbol);
+
+        return inferredType;
     }
 
     /// <summary>

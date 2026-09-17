@@ -74,6 +74,20 @@ internal static class CoercionPossibility
         if (source.Equals(target))
             return Kind.Identity;
 
+        // Same underlying type symbol: an import alias and its target share one ClrType (and one
+        // definition), so `Match as NetMatch` — where NetMatch is `from ... import Match as NetMatch`
+        // — is identity even though the two SemanticType spellings carry different Names and so miss
+        // Equals's CanonicalKey comparison. Restricted to NON-generic types: two instantiations of one
+        // generic definition (list[int] vs list[str]) share a definition symbol but are NOT identity,
+        // and must fall through to the type-argument-matching arm below.
+        if (source is not GenericType && target is not GenericType)
+        {
+            var sSym = TypeSymbolOf(source);
+            var tSym = TypeSymbolOf(target);
+            if (sSym != null && tSym != null && TypeHierarchyService.IsSameType(sSym, tSym))
+                return Kind.Identity;
+        }
+
         // A type parameter on either side is open: the instantiation decides, not this site.
         if (source is TypeParameterType || target is TypeParameterType)
             return Kind.TypeParameter;
