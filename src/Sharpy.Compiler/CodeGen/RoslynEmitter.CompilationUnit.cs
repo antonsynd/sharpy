@@ -50,6 +50,7 @@ internal partial class RoslynEmitter
         // ONCE before any declaration is emitted, so the module-member qualifier and the
         // [MemberData] attribute emitter read one decision instead of re-deriving it (#1683, #1802).
         _moduleShape = ComputeModuleShape(nonImportStatements);
+        _context.ModuleShape = _moduleShape;
 
         // Record the owning C# module class of every from-imported member so bare references to
         // them are emitted fully qualified rather than through a `using static` directive (#1683).
@@ -101,26 +102,11 @@ internal partial class RoslynEmitter
             .Cast<MemberDeclarationSyntax>()
             .ToList();
 
-        if (testClass != null || fixtureClasses.Count > 0)
-        {
-            var moduleClassName = _moduleShape?.ModuleClassName ?? GetModuleClassName();
-            var parts = new List<string>();
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                parts.Add(_context.ProjectNamespace!);
-            parts.AddRange(wrapperNames);
-            parts.Add(moduleClassName);
-            var fqn = string.Join(".", parts);
-
-            var alreadyPresent = usingDirectives.Any(u =>
-                u.StaticKeyword.IsKind(SyntaxKind.StaticKeyword) &&
-                u.Name?.ToString() == fqn);
-            if (!alreadyPresent)
-            {
-                usingDirectives.Add(
-                    UsingDirective(ParseQualifiedName(fqn))
-                        .WithStaticKeyword(Token(SyntaxKind.StaticKeyword)));
-            }
-        }
+        // No `using static <Namespace>.<ModuleClass>` self-import is emitted for the sibling test
+        // class or fixture classes (#1683): every reference they make to a module-level member is
+        // emitted global::-qualified through QualifyModuleMember, and every same-file type through
+        // BuildQualifiedTypeAccess, so the self-import — which resolved a module member/type through a
+        // name that can collide with a same-named namespace (CS0118) — is dead.
 
         // Build wrapper classes from inside out — wrap the module class, test class, and
         // any fixture classes in the same directory wrapper hierarchy so they appear as
@@ -368,22 +354,10 @@ internal partial class RoslynEmitter
                         NameEquals(escapedAlias),
                         ParseQualifiedName(fullModuleClass));
                 }
-                else
-                {
-                    string fullModuleClass;
-                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                    {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}";
-                    }
-                    else
-                    {
-                        fullModuleClass = namespaceName;
-                    }
-
-                    yield return UsingDirective(
-                        NameEquals(escapedAlias),
-                        ParseQualifiedName(fullModuleClass));
-                }
+                // else: a user-module `import lib as l` emits NO `using l = <Ns>.Lib;` alias (#1683,
+                // P2.2b). Every `l.member` access is emitted global::-qualified through
+                // BuildModuleAccessExpression, so the alias — a second directive family that resolves
+                // a member through a name that can collide with a namespace — is dead.
             }
             else
             {
@@ -410,27 +384,9 @@ internal partial class RoslynEmitter
                         NameEquals(EscapedIdentifierName(sanitizedAlias)),
                         ParseQualifiedName(fullModuleClass));
                 }
-                else
-                {
-                    // import module -> using module_alias = ProjectNamespace.Module;
-                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
-
-                    // e.g., "config" → "TestProject.Config"
-                    // e.g., "lib.math.operations" → "TestProject.Lib.Math.Operations"
-                    string fullModuleClass;
-                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                    {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}";
-                    }
-                    else
-                    {
-                        fullModuleClass = namespaceName;
-                    }
-
-                    yield return UsingDirective(
-                        NameEquals(EscapedIdentifierName(sanitizedAlias)),
-                        ParseQualifiedName(fullModuleClass));
-                }
+                // else: a user-module `import lib` emits NO `using lib = <Ns>.Lib;` alias (#1683,
+                // P2.2b). `lib.member` accesses are emitted global::-qualified through
+                // BuildModuleAccessExpression, so the alias directive is dead.
             }
         }
     }
@@ -452,24 +408,26 @@ internal partial class RoslynEmitter
     private void RegisterFromImportMembers(Module module)
     {
         _importedMemberContainers.Clear();
+        _ownTopLevelMemberNames.Clear();
 
-        // Names a top-level function or variable of THIS module defines. A local definition SHADOWS
-        // a same-named from-import (#1525) and wins the name lookup, so the import must NOT be
-        // qualified (that would route the call to the imported module — calling lib's describe
-        // instead of the local one).
-        var locallyDefined = new HashSet<string>(System.StringComparer.Ordinal);
+        // Names a top-level function or variable of THIS module defines. Two uses: (a) a local
+        // definition SHADOWS a same-named from-import (#1525) and wins the name lookup, so the
+        // import must NOT be qualified; (b) same-module member qualification applies ONLY to these
+        // names, so a wildcard-imported member (owned by another module's class) is not mis-qualified
+        // to this module.
         foreach (var stmt in module.Body)
         {
             switch (stmt.UnwrapDecorated())
             {
                 case FunctionDef f:
-                    locallyDefined.Add(f.Name);
+                    _ownTopLevelMemberNames.Add(f.Name);
                     break;
                 case Parser.Ast.VariableDeclaration v:
-                    locallyDefined.Add(v.Name);
+                    _ownTopLevelMemberNames.Add(v.Name);
                     break;
             }
         }
+        var locallyDefined = _ownTopLevelMemberNames;
 
         foreach (var stmt in module.Body)
         {
@@ -477,32 +435,98 @@ internal partial class RoslynEmitter
                 continue;
             if (fromImport.Module == "__future__" || IsSyntheticModule(fromImport.Module))
                 continue;
-            // CLR-namespace and stdlib from-imports keep their existing directives (#1683 is a
-            // user-module collision); only explicit-name user-module imports are qualified here.
-            if (IsNetFrameworkNamespace(fromImport.Module) || IsStdlibModule(fromImport.Module))
+            // CLR-namespace from-imports bind type aliases, not bare module members.
+            if (IsNetFrameworkNamespace(fromImport.Module))
                 continue;
-            if (fromImport.ImportAll || fromImport.Names.Length == 0)
+            if (!fromImport.ImportAll && fromImport.Names.Length == 0)
                 continue;
 
-            var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
-            var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
-            var segs = new List<string>();
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                segs.AddRange(_context.ProjectNamespace!.Split('.'));
-            segs.AddRange(moduleNamespacePath.Split('.'));
-            var containerSegments = segs.ToArray();
-
-            foreach (var imported in fromImport.Names)
+            string[] containerSegments;
+            if (IsStdlibModule(fromImport.Module))
             {
-                var effectiveName = imported.AsName ?? imported.Name;
-                if (locallyDefined.Contains(effectiveName))
+                // Stdlib from-imports (`from math import sqrt`) lost their `using static global::
+                // Sharpy.Math`, so their members are qualified through the same map.
+                var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(fromImport.Module);
+                var className = _context.SemanticBinding.GetNetModuleCSharpClassName(fromImport.Module);
+                if (className == null)
                     continue;
+                var full = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
+                containerSegments = full["global::".Length..].Split('.');
+            }
+            else
+            {
+                var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
+                var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
+                var segs = new List<string>();
+                if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    segs.AddRange(_context.ProjectNamespace!.Split('.'));
+                segs.AddRange(moduleNamespacePath.Split('.'));
+                containerSegments = segs.ToArray();
+            }
 
-                var symbol = _context.LookupSymbol(effectiveName);
+            void Register(string effectiveName, Symbol? symbol)
+            {
+                if (locallyDefined.Contains(effectiveName))
+                    return;
                 if (symbol is FunctionSymbol or VariableSymbol)
                     _importedMemberContainers[symbol] = containerSegments;
             }
+
+            if (fromImport.ImportAll)
+            {
+                // `from m import *`: the module's exported members are bound bare in this scope and
+                // lost the `using static` that resolved them — qualify each through the same map. The
+                // registered symbol is the one the scope actually binds the name to (LookupSymbol),
+                // not the re-export wrapper recorded for codegen, so the reference site's resolved
+                // symbol matches the map key.
+                foreach (var name in GetWildcardImportedMemberNames(fromImport))
+                    Register(name, _context.LookupSymbol(name));
+            }
+            else
+            {
+                foreach (var imported in fromImport.Names)
+                    Register(imported.AsName ?? imported.Name, _context.LookupSymbol(imported.AsName ?? imported.Name));
+            }
         }
+    }
+
+    /// <summary>
+    /// The exported member NAMES a <c>from m import *</c> binds into this scope. Read from the
+    /// re-export table populated during import resolution (for both plain and package-init wildcards),
+    /// falling back to the resolved <see cref="ModuleSymbol.Exports"/>.
+    /// </summary>
+    private IEnumerable<string> GetWildcardImportedMemberNames(FromImportStatement fromImport)
+    {
+        var reExported = GetReExportedSymbols(fromImport);
+        if (reExported != null)
+        {
+            foreach (var name in reExported.Keys)
+                yield return name;
+            yield break;
+        }
+
+        var moduleSymbol = ResolveWildcardModule(fromImport);
+        if (moduleSymbol == null)
+            yield break;
+
+        foreach (var name in moduleSymbol.Exports.Keys)
+            yield return name;
+    }
+
+    /// <summary>
+    /// Resolves the <see cref="ModuleSymbol"/> a <c>from m import *</c> targets: the module may be in
+    /// scope by name, or reachable through the resolved module path recorded during import resolution.
+    /// </summary>
+    private ModuleSymbol? ResolveWildcardModule(FromImportStatement fromImport)
+    {
+        if (_context.LookupSymbol(fromImport.Module) is ModuleSymbol direct)
+            return direct;
+
+        var resolvedPath = GetResolvedModulePath(fromImport);
+        if (resolvedPath != null && _context.LookupSymbol(resolvedPath) is ModuleSymbol byPath)
+            return byPath;
+
+        return null;
     }
 
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
@@ -559,90 +583,15 @@ internal partial class RoslynEmitter
                 }
             }
         }
-        else if (IsStdlibModule(fromImport.Module))
-        {
-            // For type-only imports (e.g., "from argparse import ArgumentParser"),
-            // skip the using static — the types live in the Sharpy namespace and are
-            // already accessible via "using global::Sharpy;".
-            var allImportsAreTypes = !fromImport.ImportAll && fromImport.Names.Length > 0 &&
-                fromImport.Names.All(n => _context.LookupSymbol(n.Name) is TypeSymbol);
-            if (!allImportsAreTypes)
-            {
-                // Generate using static for .NET module class
-                // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
-                // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
-                var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(fromImport.Module);
-                var className = _context.SemanticBinding.GetNetModuleCSharpClassName(fromImport.Module);
-                // Modules whose [SharpyModule] class exports no functions or fields
-                // (e.g. fractions) are not recorded in the overload index, so no class
-                // name is discovered. There is nothing to `using static` — their types
-                // are already reachable via `using global::Sharpy;` — and the PascalCase
-                // fallback would reference a non-existent class (CS0234). (#898)
-                if (className != null)
-                {
-                    var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
-                    yield return UsingDirective(ParseQualifiedName(fullModuleClass))
-                        .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
-                }
-            }
-        }
-        else
-        {
-            // Generate using static for the module class
-            // e.g., "from config import MAX_SIZE" → "using static TestProject.Config;"
-            // e.g., "from lib.math.operations import add" → "using static TestProject.Lib.Math.Operations;"
-            //
-            // The directive still stands (imported TYPES and wildcard names resolve through it), but
-            // it no longer resolves an imported MEMBER's bare spelling: every reference to a
-            // from-imported function/variable/const is emitted fully qualified through
-            // RegisterFromImportMembers / QualifyModuleMember, so no bare member name is written and
-            // the `Poison() → namespace Poison` collision (CS0118) never triggers (#1683).
-            var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
-            var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
-
-            // Module class path = ProjectNamespace.ModulePath
-            string fullModuleClass;
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                fullModuleClass = $"{_context.ProjectNamespace}.{moduleNamespacePath}";
-            }
-            else
-            {
-                fullModuleClass = moduleNamespacePath;
-            }
-
-            yield return UsingDirective(ParseQualifiedName(fullModuleClass))
-                .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
-
-            // For imported types that are re-exported from a different module,
-            // generate additional using static directives for their defining modules.
-            // This handles the pattern: from mypackage import SomeClass
-            // where SomeClass is defined in mypackage.submodule but re-exported via __init__.spy.
-            if (!fromImport.ImportAll && fromImport.Names.Length > 0)
-            {
-                foreach (var importedName in fromImport.Names)
-                {
-                    var symbol = _context.LookupSymbol(importedName.Name);
-                    if (symbol is TypeSymbol typeSymbol &&
-                        !string.IsNullOrEmpty(typeSymbol.DefiningModule) &&
-                        typeSymbol.DefiningModule != moduleName)
-                    {
-                        var definingModulePath = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
-                        string fullDefiningModuleClass;
-                        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                        {
-                            fullDefiningModuleClass = $"{_context.ProjectNamespace}.{definingModulePath}";
-                        }
-                        else
-                        {
-                            fullDefiningModuleClass = definingModulePath;
-                        }
-                        yield return UsingDirective(ParseQualifiedName(fullDefiningModuleClass))
-                            .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
-                    }
-                }
-            }
-        }
+        // No `using static` is emitted for stdlib or user-module from-imports, and no re-export
+        // using static either (#1683, P2.2b). Every reference to a from-imported MEMBER is emitted
+        // global::-qualified through RegisterFromImportMembers / QualifyModuleMember; every reference
+        // to a from-imported TYPE (nested, generic, in a pattern, or a bare receiver) is emitted
+        // qualified through BuildQualifiedTypeAccess / the type-naming path. No bare imported name is
+        // written, so the directive — whose bare-name resolution collides with a same-named namespace
+        // (CS0118) — is dead, and a site the qualifier misses is now a loud CS0103 rather than a
+        // silent-until-collision CS0118. Imported types stay reachable via the kept
+        // `using <ProjectNamespace>` / `using global::Sharpy` directives.
     }
 
     /// <summary>

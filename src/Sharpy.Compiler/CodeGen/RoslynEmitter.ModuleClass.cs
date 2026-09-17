@@ -488,7 +488,8 @@ internal partial class RoslynEmitter
         string ModuleClassName,
         string? MergedClassName,
         IReadOnlyList<string> ExtractedTypeNames,
-        IReadOnlyList<string> NamespaceParts);
+        IReadOnlyList<string> NamespaceParts,
+        IReadOnlySet<string> OwnTypeNames);
 
     /// <summary>
     /// Computes the <see cref="ModuleShape"/> ONCE, before any declaration is emitted, from the
@@ -549,7 +550,29 @@ internal partial class RoslynEmitter
             namespaceParts.AddRange(_context.ProjectNamespace!.Split('.'));
         namespaceParts.AddRange(ComputeWrapperClasses());
 
-        return new ModuleShape(moduleClassName, mergedClassName, extractedTypeNames, namespaceParts);
+        // The emitted C# names of every top-level TYPE this module declares. A same-file type
+        // reference is qualified through the module shape ONLY for these names, so a builtin or a
+        // Sharpy-runtime type that resolves through the same code path (ValueError, Bytes,
+        // RangeIterator) is not mis-qualified as `ModuleClass.ValueError` (#1683).
+        var ownTypeNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var stmt in statements)
+        {
+            var name = stmt switch
+            {
+                ClassDef cd => NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped),
+                StructDef sd => NameCasing.ResolveType(sd.Name, sd.IsNameBacktickEscaped),
+                InterfaceDef id => NameCasing.ResolveInterface(id.Name, id.IsNameBacktickEscaped),
+                EnumDef ed => NameCasing.ResolveType(ed.Name, ed.IsNameBacktickEscaped),
+                UnionDef ud => NameCasing.ResolveType(ud.Name, ud.IsNameBacktickEscaped),
+                DelegateDef dd => NameCasing.ResolveType(dd.Name, dd.IsNameBacktickEscaped),
+                _ => (string?)null
+            };
+            if (name != null)
+                ownTypeNames.Add(name);
+        }
+
+        return new ModuleShape(
+            moduleClassName, mergedClassName, extractedTypeNames, namespaceParts, ownTypeNames);
     }
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)

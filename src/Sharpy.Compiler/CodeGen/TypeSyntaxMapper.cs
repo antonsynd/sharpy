@@ -632,7 +632,8 @@ internal class TypeSyntaxMapper
             // TypeAnnotation carries no flag of its own, so the argument is false there even for an
             // escaped declaration. Reading the symbol is what keeps `class Impl(`class`)` emitting
             // the same identifier the declaration did (#1241).
-            return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
+            var sameFileName = NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
+            return QualifySameFileTypeName(typeSymbol, sameFileName) ?? sameFileName;
         }
 
         // Check if it's a known builtin from the registry (exception types, etc.)
@@ -659,6 +660,36 @@ internal class TypeSyntaxMapper
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
         => QualifyFromSymbol(typeSymbol, sharpyTypeName, NamePosition.Reference);
+
+    /// <summary>
+    /// The <c>global::</c>-rooted C# name of a TOP-LEVEL SAME-FILE type, decided from the once-computed
+    /// <see cref="RoslynEmitter.ModuleShape"/> on the context (#1683, #1802): the merged module class
+    /// and an extracted library-mode sibling live directly under the namespace; every other same-file
+    /// type is nested in the module class. Returns <c>null</c> for a NESTED type (it carries a
+    /// declaring chain handled elsewhere) or when no shape is available — so the caller keeps the bare
+    /// name. This is what lets a same-file type resolve from a sibling class (a test/fixture class)
+    /// once the <c>using static</c> self-import is deleted.
+    /// </summary>
+    internal string? QualifySameFileTypeName(TypeSymbol typeSymbol, string csharpTypeName)
+    {
+        var shape = _context.ModuleShape;
+        if (shape == null || typeSymbol.DeclaringType != null)
+            return null;
+
+        // Qualify ONLY types this module actually declares — never a builtin or Sharpy-runtime type
+        // (ValueError, Bytes, RangeIterator) that resolves through the same current-scope branch.
+        if (!shape.OwnTypeNames.Contains(csharpTypeName))
+            return null;
+
+        var segs = new List<string>(shape.NamespaceParts);
+        bool isModuleClassOrExtractedSibling =
+            csharpTypeName == shape.MergedClassName
+            || shape.ExtractedTypeNames.Contains(csharpTypeName);
+        if (!isModuleClassOrExtractedSibling)
+            segs.Add(shape.ModuleClassName);
+        segs.Add(csharpTypeName);
+        return "global::" + string.Join(".", segs);
+    }
 
     /// <summary>
     /// Where a qualified name is being emitted. Only the branches marked "position-dependent" in

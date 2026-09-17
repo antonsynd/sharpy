@@ -1379,22 +1379,19 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax QualifySameFileType(string csharpTypeName)
     {
-        if (_moduleShape != null
-            && (csharpTypeName == _moduleShape.MergedClassName
-                || _moduleShape.ExtractedTypeNames.Contains(csharpTypeName)))
-        {
+        if (_moduleShape == null)
             return EscapedIdentifierName(csharpTypeName);
-        }
 
-        if (_currentTypeSymbol != null)
-        {
-            return MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(_moduleShape?.ModuleClassName ?? GetModuleClassName()),
-                EscapedIdentifierName(csharpTypeName));
-        }
-
-        return EscapedIdentifierName(csharpTypeName);
+        var segs = new List<string>(_moduleShape.NamespaceParts);
+        // The merged module class and an extracted library-mode sibling live directly under the
+        // namespace; every other same-file type is nested inside the module class.
+        bool isModuleClassOrExtractedSibling =
+            csharpTypeName == _moduleShape.MergedClassName
+            || _moduleShape.ExtractedTypeNames.Contains(csharpTypeName);
+        if (!isModuleClassOrExtractedSibling)
+            segs.Add(_moduleShape.ModuleClassName);
+        segs.Add(csharpTypeName);
+        return MakeGlobalQualifiedName(segs.ToArray());
     }
 
     /// <summary>

@@ -18,6 +18,15 @@ internal class CodeGenContext
     public string? SourceFilePath { get; set; }
 
     /// <summary>
+    /// The module-shape decision (class name, merge, extracted types, namespace parts) computed once
+    /// by the emitter before any declaration is emitted (#1802). Read by <see cref="TypeSyntaxMapper"/>
+    /// to qualify a SAME-FILE type reference (global::[Namespace.]ModuleClass.Type) so it resolves
+    /// from a sibling class (test/fixture class) without a <c>using static</c> self-import (#1683).
+    /// Null only on the AST-only unit-test paths that never ran ComputeModuleShape.
+    /// </summary>
+    public RoslynEmitter.ModuleShape? ModuleShape { get; set; }
+
+    /// <summary>
     /// Whether the emitted C# will be compiled into a TEST HOST — an xUnit project that supplies the
     /// framework reference and runs the result through a test runner (#1495).
     ///

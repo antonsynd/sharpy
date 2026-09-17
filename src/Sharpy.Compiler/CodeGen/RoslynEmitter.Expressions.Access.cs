@@ -310,11 +310,23 @@ internal partial class RoslynEmitter
                 // original type name so we generate "Helper.Config", not "Helper.Cfg".
                 var originalTypeName = GetCodeGenInfo(typeSymbolForName)?.OriginalImportName ?? funcName.Name;
                 var name = GetFullyQualifiedTypeName(typeSymbolForName, originalTypeName);
+                // GetFullyQualifiedTypeName returns the BARE name for a same-file type; qualify it
+                // through the module shape so a construction from a sibling class (a test/fixture
+                // class) resolves without a `using static` self-import (#1683).
+                if (!name.Contains('.', StringComparison.Ordinal)
+                    && _typeMapper.QualifySameFileTypeName(typeSymbolForName, name) is { } qualifiedSameFile)
+                {
+                    name = qualifiedSameFile;
+                }
 
                 // Generic instantiation resolves the name through CSharpTypeNames (builtin
-                // collections: set → Sharpy.Set) with a PascalCase fallback for user types.
+                // collections: set → Sharpy.Set); for a user type it uses the SAME fully-qualified
+                // name as the non-generic path, so an imported generic type constructed bare
+                // (`Slot(1, "a")` from `from genlib import Slot`) emits
+                // global::Sharpy.Test.Genlib.Slot<int, string> and no longer leans on a `using static`
+                // (#1683) — the qualified name subsumes the old bare PascalCase for same-file types.
                 var genericBaseName = ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(funcName.Name)
-                    ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
+                    ?? name;
 
                 var exprType = _context.SemanticInfo?.GetExpressionType(call);
 
@@ -1938,7 +1950,18 @@ internal partial class RoslynEmitter
             }
             else
             {
-                moduleExpr = EscapedIdentifierName(EscapeCSharpKeyword(string.Join("_", moduleParts)));
+                // A user module (no CLR class / namespace) is emitted fully qualified as
+                // global::[ProjectNamespace.]<ModulePath> instead of the `import lib` alias
+                // identifier, whose `using lib = <Ns>.Lib;` directive is deleted (#1683). The module
+                // path comes from the resolved module's CanonicalModuleName, NOT the written segments,
+                // so an aliased import (`import utils as u`) qualifies to Utils, not the alias U.
+                var userModuleName = currentModule.CanonicalModuleName ?? string.Join(".", moduleParts);
+                var userModuleNamespacePath = ConvertModuleNameToNamespace(userModuleName);
+                var moduleSegs = new List<string>();
+                if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));
+                moduleSegs.AddRange(userModuleNamespacePath.Split('.'));
+                moduleExpr = MakeGlobalQualifiedName(moduleSegs.ToArray());
             }
 
             // If the entire path is just the module (no member access), return it

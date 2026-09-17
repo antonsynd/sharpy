@@ -262,10 +262,13 @@ internal partial class RoslynEmitter
 
         var enumSymbol = typeSymbol?.TypeKind == TypeKind.Enum ? typeSymbol : null;
 
-        // Build the type name. For module-qualified patterns (typeIndex > 0), use the
-        // TypeSyntaxMapper to emit the full declaring chain with namespace prefix.
+        // Build the type name from the resolved TypeSymbol whenever one is recorded — both the
+        // module-qualified form (`lib.Color.RED`, typeIndex > 0) and the bare form (`Color.RED`,
+        // typeIndex == 0). The TypeSyntaxMapper emits the full declaring chain with namespace prefix,
+        // so a bare IMPORTED enum in a pattern is qualified (global::Sharpy.Test.Lib.Color) and no
+        // longer leans on a deleted `using static` (#1683); a same-file enum stays its bare name.
         ExpressionSyntax expr;
-        if (typeSymbol != null && typeIndex > 0)
+        if (typeSymbol != null)
         {
             var mappedType = _typeMapper.MapSemanticType(
                 new Semantic.UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol });

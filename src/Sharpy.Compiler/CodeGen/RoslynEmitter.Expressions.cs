@@ -370,6 +370,15 @@ internal partial class RoslynEmitter
             return IdentifierName(netNamespaceName);
         }
 
+        // A user-module identifier (`lib` in `import lib` / `import lib as l`, used as the receiver
+        // of `lib.member`). Emitted as the fully qualified module class (global::[ProjectNamespace.]Lib)
+        // so member access resolves without the deleted `using lib = <Ns>.Lib;` alias directive
+        // (#1683). CLR/stdlib module aliases are kept, so this arm is scoped to user modules.
+        if (resolvedSymbol is ModuleSymbol { IsNetModule: false })
+        {
+            return BuildModuleAccessExpression(new List<string> { name.Name });
+        }
+
         if (resolvedSymbol is not VariableSymbol)
         {
             var symbol = _context.LookupSymbol(name.Name);
@@ -400,6 +409,17 @@ internal partial class RoslynEmitter
                 if (ts?.ClrType != null)
                 {
                     return TypeSyntaxMapper.GlobalClrTypeNameSyntax(ts.ClrType);
+                }
+
+                // A Sharpy-declared type used as a value/receiver (the `Registry` in
+                // `Registry.Level.HIGH`, a bare imported class in a pattern, a same-file class named
+                // from a sibling test class). Emitted through the same qualified path a type
+                // annotation/construction uses — cross-file/module types via their defining module,
+                // same-file types via the module shape — so no `using static` / self-import directive
+                // is needed to resolve it (#1683). BuildQualifiedTypeAccess is the single seam.
+                if (ts != null && !name.IsNameBacktickEscaped && !_context.IsBuiltinFunction(name.Name))
+                {
+                    return BuildQualifiedTypeAccess(ts, name.Name);
                 }
             }
         }
@@ -458,16 +478,41 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// The <c>global::</c>-rooted namespace segments of the C# module class that OWNS
-    /// <paramref name="symbol"/>, when it is a <em>from-imported</em> module-level member
-    /// (function/variable/const) recorded by <c>RegisterFromImportMembers</c> — or <c>null</c>
-    /// otherwise. A from-imported member is the one #1683 case: its bare spelling was resolved by a
-    /// <c>using static &lt;Namespace&gt;.&lt;ModuleClass&gt;</c> directive and collided with a
-    /// same-named namespace (<c>Poison() → namespace Poison</c>, CS0118). A same-module member needs
-    /// no qualification — it is a sibling member of the same C# module class — so it keeps its bare
-    /// spelling and no snapshot churns for it.
+    /// <paramref name="symbol"/>, when it is a module-level member (function/variable/const) —
+    /// from-imported (recorded by <c>RegisterFromImportMembers</c>) OR same-module (owned by THIS
+    /// module's class) — or <c>null</c> when it is not a module-level member (a local, parameter,
+    /// class member or type). Every module-level member reference is qualified, imported or not
+    /// (#1683 ruling: universal, no collision detection). The single containment authority.
     /// </summary>
     private string[]? ModuleMemberContainerSegments(Symbol symbol)
-        => _importedMemberContainers.TryGetValue(symbol, out var imported) ? imported : null;
+    {
+        if (_importedMemberContainers.TryGetValue(symbol, out var imported))
+            return imported;
+
+        if (symbol is FunctionSymbol or VariableSymbol
+            && GetCodeGenInfo(symbol) is { IsModuleLevel: true }
+            && _ownTopLevelMemberNames.Contains(symbol.Name)
+            && _moduleShape != null)
+        {
+            return OwnModuleContainerSegments();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The namespace segments of THIS module's C# module class: the project namespace + directory
+    /// wrapper classes (<see cref="ModuleShape.NamespaceParts"/>) followed by the module class name.
+    /// </summary>
+    private string[] OwnModuleContainerSegments()
+    {
+        var parts = _moduleShape!.NamespaceParts;
+        var segs = new string[parts.Count + 1];
+        for (int i = 0; i < parts.Count; i++)
+            segs[i] = parts[i];
+        segs[^1] = _moduleShape.ModuleClassName;
+        return segs;
+    }
 
     /// <summary>
     /// A from-imported module-level member reference (function/variable/const), emitted fully

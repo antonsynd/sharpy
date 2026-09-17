@@ -362,6 +362,12 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly Dictionary<Symbol, string[]> _importedMemberContainers =
         new(ReferenceEqualityComparer.Instance);
 
+    // The Sharpy names of the top-level functions/variables/consts THIS module declares. A
+    // module-level member reference is qualified through this module's own class only when its name
+    // is one of these — so a wildcard-imported member (IsModuleLevel true, but owned by ANOTHER
+    // module's class) is NOT mis-qualified to this module. Populated by RegisterFromImportMembers.
+    private readonly HashSet<string> _ownTopLevelMemberNames = new(System.StringComparer.Ordinal);
+
     // Module-level variable names (original Sharpy names) referenced by
     // @test.parametrize(VARIABLE) decorators. Populated by a pre-scan in
     // GenerateModuleMembers; each entry gets a companion MemberData wrapper property
