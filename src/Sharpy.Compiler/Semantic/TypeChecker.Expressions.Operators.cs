@@ -1788,8 +1788,15 @@ internal partial class TypeChecker
             coercion.TargetType,
             lodgeOn: coercion.TargetType,
             subjectType: sourceType,
-            siteNoun: "cast",
-            erasure: CollectionErasure.Disallowed);
+            site: TypeTestSite.Cast,
+            out var targetRefused);
+
+        // The classifier's arm-3 refusal (SPY0345) is TERMINAL: `o as? list` used to also run the
+        // annotation through ResolveTypeAnnotation below and draw a SECOND diagnostic (SPY0224 "expects
+        // 1 type arguments but got 0") on the same node. One refusal, one code (#1708) — return Unknown
+        // so no further resolution or coercion validation runs.
+        if (targetRefused)
+            return SemanticType.Unknown;
 
         // A nullable/optional/result SPELLING (`x as? str | None`, `x as? str !int`) is declined by
         // the classifier on purpose — the wrapper decides the value's shape, and the written name

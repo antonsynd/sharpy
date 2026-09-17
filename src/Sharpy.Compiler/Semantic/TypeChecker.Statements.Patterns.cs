@@ -644,36 +644,13 @@ internal partial class TypeChecker
         SemanticType scrutineeType,
         string patternNoun)
     {
-        SemanticType? testType = null;
-
-        if (annotation.TypeArguments.Length == 0)
-        {
-            // Array scrutinee interop: bare `case list()` against `array[T]` tests the array itself,
-            // so indexing the capture lowers to ArrayHelpers.GetItem.
-            if (annotation.Name == BuiltinNames.List
-                && !annotation.IsNameBacktickEscaped
-                && scrutineeType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
-            {
-                testType = arrayScrutinee;
-            }
-            else if (_symbolTable.Lookup(annotation.Name) is TypeSymbol { IsGeneric: true } fillSymbol
-                && BuiltinNames.IsErasableCollection(fillSymbol.Name)
-                && FillTypeArgumentsFromSubject(fillSymbol, scrutineeType) is { } filledCollection)
-            {
-                testType = filledCollection;
-            }
-
-            if (testType != null)
-            {
-                _semanticInfo.SetTypeTestLowering(
-                    lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, testType));
-            }
-        }
-
-        testType ??= ClassifyTypeTestAnnotation(
-            annotation, lodgeOn, scrutineeType, "match pattern",
-            CollectionErasure.Allowed,
-            openGenericRemedyOverride: BuildPatternOpenGenericRemedy(annotation));
+        // One shared decider (#1708): the array-interop and subject-fill arms it used to duplicate here
+        // now live in DecideBoundTypeTest, so `isinstance` gets the same array interop and a bare
+        // collection on an open subject is refused (SPY0345) rather than erased. A type-parameter
+        // scrutinee therefore returns null (refused) before the compatibility check below, so it never
+        // draws SPY0361 — it agrees with isinstance on SPY0345 (#1619).
+        var testType = ClassifyTypeTestAnnotation(
+            annotation, lodgeOn, scrutineeType, TypeTestSite.Pattern, out _);
 
         if (testType == null)
         {
@@ -780,19 +757,6 @@ internal partial class TypeChecker
         }
 
         ClassifyPatternClassTest(typePattern.Type, typePattern, scrutineeType, "type pattern");
-    }
-
-    /// <summary>
-    /// Builds the open-generic remedy text for match patterns. Patterns cannot name type
-    /// arguments (SPY0125), so the remedy steers to an isinstance guard or a non-generic base.
-    /// </summary>
-    private static string BuildPatternOpenGenericRemedy(TypeAnnotation annotation)
-    {
-        var name = annotation.Name;
-        return "Match on a value whose static type supplies them — guard the match with "
-            + $"`if isinstance(x, {name}[...]):`, or bind it first with "
-            + $"`v: {name}[...] = x as! {name}[...]` — or match against a "
-            + "non-generic base type. A pattern cannot name type arguments itself.";
     }
 
     /// <summary>

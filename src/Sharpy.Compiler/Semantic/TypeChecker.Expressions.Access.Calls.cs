@@ -879,13 +879,11 @@ internal partial class TypeChecker
             return;
         }
 
-        // Shares SPY0345's body with the annotation-shaped sites (#1235); only the site noun and the
-        // example spelling differ, and the example here is the whole call because that is what the
-        // reader has to retype.
+        // Shares SPY0345's body with the annotation-shaped sites (#1235); the site selects the noun and
+        // the closed-spelling steer. (Task 2.2 routes this whole method through DecideBoundTypeTest; for
+        // now it keeps its own erasure copy but uses the shared refusal.)
         ReportOpenGenericTypeOperand(
-            reportOn, writtenName, siteNoun: "call",
-            remedy: ClosedSpellingRemedy(
-                $"{BuiltinNames.Isinstance}(..., {writtenName}[{OpenGenericPlaceholders(typeSymbol)}])"),
+            reportOn, writtenName, TypeTestSite.Isinstance, typeSymbol.TypeParameters.Count,
             fallbackSpan: call.Span);
     }
 

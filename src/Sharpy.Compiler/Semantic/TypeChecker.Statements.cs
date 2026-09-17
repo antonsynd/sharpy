@@ -1838,7 +1838,7 @@ internal partial class TypeChecker
                 // catch expansion has a recorded type to read for every clause it emits.
                 var resolvedElement = ClassifyTypeTestAnnotation(
                     element, lodgeOn: element, subjectType: null,
-                    siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
+                    site: TypeTestSite.Except, out _);
                 if (resolvedElement == null)
                     return null;
 
@@ -1863,7 +1863,7 @@ internal partial class TypeChecker
 
         var resolved = ClassifyTypeTestAnnotation(
             annotation, lodgeOn: annotation, subjectType: null,
-            siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
+            site: TypeTestSite.Except, out _);
         if (resolved != null)
             RequireExceptionDerivation(annotation, resolved, exceptionSymbol);
         return resolved;

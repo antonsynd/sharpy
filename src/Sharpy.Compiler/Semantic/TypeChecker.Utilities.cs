@@ -365,24 +365,30 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Whether a type-test site can lower a bare <c>list</c>/<c>set</c>/<c>dict</c> to its non-generic
-    /// protocol interface (#912). Only sites that produce a <b>boolean</b> can: the erased interface is
-    /// what the runtime test must name, since a closed instantiation would match only itself.
+    /// The syntactic position a type-test operand was written in. One decider (<see
+    /// cref="DecideBoundTypeTest"/>) serves every position; the site only selects how a refusal names
+    /// the position and which closed spelling it steers to — <c>case list[int](xs)</c> for a class
+    /// pattern, <c>case list[int]([1, 2])</c> for a sequence pattern, <c>isinstance(x, list[object])</c>
+    /// for <c>isinstance</c>, the bare closed spelling for a cast or an <c>except</c> clause (#1708,
+    /// #1619). The erasure-to-protocol-interface answer (#912) is retired: every runtime type test names
+    /// a CLOSED CLR type or is refused.
     /// </summary>
-    private enum CollectionErasure
+    private enum TypeTestSite
     {
-        /// <summary>
-        /// The site binds a value of the tested type (<c>as?</c>/<c>as!</c>), so the erased interface
-        /// is not a usable answer — it is not the type the checker gave the expression. A bare
-        /// collection name is filled from the subject or refused like any other open generic.
-        /// </summary>
-        Disallowed,
+        /// <summary>A match class pattern head — <c>case list(xs):</c>, <c>case Box():</c>.</summary>
+        Pattern,
 
-        /// <summary>
-        /// The site yields a boolean (<c>is</c>), so a bare collection name erases exactly as
-        /// <c>isinstance</c>'s does — which is what keeps the two operators' answers the same.
-        /// </summary>
-        Allowed
+        /// <summary>A match sequence pattern — <c>case [a, *rest]:</c> — whose subject is open.</summary>
+        SequencePattern,
+
+        /// <summary>An <c>isinstance(x, T)</c> second argument.</summary>
+        Isinstance,
+
+        /// <summary>An <c>as?</c>/<c>as!</c> target type.</summary>
+        Cast,
+
+        /// <summary>An <c>except T:</c> clause's exception type.</summary>
+        Except
     }
 
     /// <summary>
@@ -408,17 +414,21 @@ internal partial class TypeChecker
     /// itself, or the owning annotation for one element of an <c>except</c> tuple.</param>
     /// <param name="subjectType">The static type of the value being tested, or null when the site has
     /// no subject (an <c>except</c> clause tests whatever was thrown).</param>
-    /// <param name="siteNoun">How the refusal message names this position.</param>
-    /// <param name="erasure">Whether a bare builtin collection may erase to its protocol interface.</param>
+    /// <param name="site">The syntactic position, selecting the refusal steer (Decision 2).</param>
+    /// <param name="refused">Set true only when arm 3 reported SPY0345. A caller that would otherwise
+    /// run the annotation through a second resolver (the cast site's <c>ResolveTypeAnnotation</c> →
+    /// SPY0224) reads this to make the refusal terminal — exactly one diagnostic per refused cell
+    /// (#1708).</param>
     /// <returns>The type the site tests against, or null when nothing was recorded.</returns>
     private SemanticType? ClassifyTypeTestAnnotation(
         TypeAnnotation annotation,
         Node lodgeOn,
         SemanticType? subjectType,
-        string siteNoun,
-        CollectionErasure erasure,
-        string? openGenericRemedyOverride = null)
+        TypeTestSite site,
+        out bool refused)
     {
+        refused = false;
+
         // Only a bare NAME can be an open generic, so it is the only shape needing the vector-filling
         // rule. A spelling carrying type arguments, or any nullable/optional/result modifier, names
         // what it names; resolve it and record the closed answer.
@@ -470,8 +480,7 @@ internal partial class TypeChecker
         if (operandSymbol is not TypeSymbol typeSymbol)
             return null;
 
-        var decided = DecideBoundTypeTest(annotation, lodgeOn, subjectType, siteNoun, typeSymbol,
-            erasure, openGenericRemedyOverride);
+        var decided = DecideBoundTypeTest(annotation, lodgeOn, subjectType, site, typeSymbol, out refused);
 
         // The spelling is a type POSITION and it named `typeSymbol`, so it is a reference to it
         // (#1737). Recorded ONCE, here, rather than at each arm below — a per-arm recording is how
@@ -485,39 +494,44 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The type a BOUND bare type-test name decides on: the erased protocol interface for a bare
-    /// builtin collection at a boolean site, the closed type for a non-generic name, the subject-
-    /// filled vector for a generic one, or null with SPY0345 when nothing closes it.
+    /// The type a BOUND bare type-test name decides on, in three arms (#1708/#1619, erasure retired):
+    /// (1) fill from the subject — a closed generic instantiation, or the <c>array[T]</c> the bare
+    /// <c>list</c> interop tests; (2) the closed type for a non-generic name; (3) null with SPY0345
+    /// (the site's steer) when the subject is <c>object</c>, a type parameter, or otherwise determines
+    /// nothing. <c>Unknown</c> subjects stay silent — an upstream error is already reported.
     /// </summary>
     private SemanticType? DecideBoundTypeTest(
         TypeAnnotation annotation,
         Node lodgeOn,
         SemanticType? subjectType,
-        string siteNoun,
+        TypeTestSite site,
         TypeSymbol typeSymbol,
-        CollectionErasure erasure,
-        string? openGenericRemedyOverride)
+        out bool refused)
     {
-        // list/set/dict written without type arguments: the test cannot know the element types, so a
-        // boolean site erases to the non-generic protocol interface, which every closed instantiation
-        // implements. BuildIsInstanceNarrowedType supplies the same default-argument type narrowing
-        // resolves the operand to, so the test and the narrowed type stay the same object.
-        if (erasure == CollectionErasure.Allowed
-            && typeSymbol.IsGeneric && BuiltinNames.IsErasableCollection(typeSymbol.Name))
+        refused = false;
+
+        // Arm 1a — array interop: bare `list` against an `array[T]` subject tests the array itself, so
+        // indexing the narrowed value lowers to ArrayHelpers.GetItem. Moved here from
+        // ClassifyPatternClassTest so `isinstance(arr, list)` gets it too (#1708). Only the bare
+        // spelling reaches here (a type-argument spelling is resolved before DecideBoundTypeTest).
+        if (typeSymbol.Name == BuiltinNames.List
+            && !annotation.IsNameBacktickEscaped
+            && subjectType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
         {
-            var erased = BuildIsInstanceNarrowedType(typeSymbol);
             _semanticInfo.SetTypeTestLowering(
-                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ErasedBuiltinCollection, erased));
-            return erased;
+                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, arrayScrutinee));
+            return arrayScrutinee;
         }
 
+        // Arm 2 — a non-generic name is already a single closed type.
         if (!typeSymbol.IsGeneric)
         {
-            var closed = BuildIsInstanceNarrowedType(typeSymbol);
+            var closed = BuildClosedTypeTestType(typeSymbol);
             _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, closed));
             return closed;
         }
 
+        // Arm 1b — fill the generic vector from the subject's own static type.
         if (FillTypeArgumentsFromSubject(typeSymbol, subjectType) is { } closedGeneric)
         {
             _semanticInfo.SetTypeTestLowering(
@@ -525,59 +539,118 @@ internal partial class TypeChecker
             return closedGeneric;
         }
 
-        ReportOpenGenericTypeOperand(
-            annotation, annotation.Name, siteNoun,
-            remedy: openGenericRemedyOverride
-                ?? ClosedSpellingRemedy($"{annotation.Name}[{OpenGenericPlaceholders(typeSymbol)}]"));
+        // A generic name the subject cannot close (`object`, a type parameter, a non-filling closed
+        // type). An Unknown subject is a recovery shape whose real error is already reported, so it is
+        // refused silently — never a second diagnostic for the same mistake.
+        if (subjectType is not UnknownType)
+        {
+            ReportOpenGenericTypeOperand(annotation, annotation.Name, site, typeSymbol.TypeParameters.Count);
+            refused = true;
+        }
+
         return null;
     }
 
     /// <summary>
-    /// The <c>...</c> placeholder vector for a generic type's arity, used when a refusal message
-    /// suggests a closed spelling.
-    /// </summary>
-    private static string OpenGenericPlaceholders(TypeSymbol typeSymbol)
-        => string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
-
-    /// <summary>
-    /// The remedy clause for sites where a closed spelling is actually writable — <c>isinstance</c>,
-    /// <c>is</c>, <c>as?</c>/<c>as!</c> and <c>except</c>. <b>Match patterns do not use this</b>: the
-    /// parser refuses type arguments in a pattern (SPY0125), so telling a user to write
-    /// <c>case Box[int]():</c> would name a spelling the compiler rejects.
+    /// The remedy clause for sites where the closed spelling is written as a bare type — a cast
+    /// (<c>x as? T</c>) or an <c>except</c> clause. Patterns and <c>isinstance</c> spell it inside their
+    /// own syntax (<c>case list[int](xs)</c>, <c>isinstance(x, list[object])</c>) and build their steer
+    /// in <see cref="TypeTestSteer"/> instead.
     /// </summary>
     private static string ClosedSpellingRemedy(string example)
         => $"Write the closed spelling — for example `{example}` — or test against a non-generic base type.";
 
+    /// <summary>How SPY0345 names the position (#1235).</summary>
+    private static string SiteNoun(TypeTestSite site) => site switch
+    {
+        TypeTestSite.Pattern => "match pattern",
+        TypeTestSite.SequencePattern => "sequence pattern",
+        TypeTestSite.Isinstance => "call",
+        TypeTestSite.Cast => "cast",
+        TypeTestSite.Except => "except clause",
+        _ => "type test"
+    };
+
     /// <summary>
-    /// Refuses an open generic type operand. One diagnosis sentence and one code (SPY0345) for all
-    /// five type-operand positions — <c>isinstance</c>, <c>is</c>, <c>as?</c>/<c>as!</c>, match class
-    /// patterns and <c>except</c> clauses — so a reader who has met the refusal once does not have to
-    /// learn it again (#1207, #1235).
-    /// <para>
-    /// The <b>remedy</b> is supplied per site rather than templated here, because what a user should
-    /// write genuinely differs: most sites can name the closed spelling, but a match pattern cannot
-    /// (SPY0125 refuses type arguments in patterns), so a shared "write <c>Box[int]</c>" sentence would
-    /// be false advice at that one site.
-    /// </para>
+    /// The actionable steer SPY0345 appends, in the spelling that actually works at <paramref
+    /// name="site"/> (Decision 2, #1708). A class pattern steers to <c>case list[int](xs)</c>, a
+    /// sequence pattern to <c>case list[int]([1, 2])</c>, <c>isinstance</c> to
+    /// <c>isinstance(x, list[object])</c> — with the note that the <c>object</c> fill is what
+    /// <c>json.loads</c> and other object-typed producers build — and a cast or <c>except</c> to the
+    /// bare closed spelling. Patterns can name type arguments since Phase 1 retired SPY0125, so no site
+    /// gives false advice any longer.
+    /// </summary>
+    private static string TypeTestSteer(TypeTestSite site, string name, int arity)
+    {
+        var erasable = BuiltinNames.IsErasableCollection(name);
+
+        // An illustrative closed spelling. Erasable collections steer to a concrete element type so the
+        // caveat about exact instantiation reads naturally; every other generic uses `...` placeholders.
+        string Spelling(bool useObject)
+            => erasable
+                ? $"{name}[{CollectionExampleArgs(name, useObject)}]"
+                : $"{name}[{string.Join(", ", Enumerable.Repeat("...", System.Math.Max(arity, 1)))}]";
+
+        return site switch
+        {
+            TypeTestSite.Pattern =>
+                $"Write the closed spelling — for example `case {Spelling(useObject: false)}(xs)` — "
+                + "or match against a non-generic base type.",
+            TypeTestSite.SequencePattern =>
+                $"Write the closed spelling — for example `case {Spelling(useObject: false)}([1, 2])` — "
+                + "which tests the element type and then matches the sequence.",
+            TypeTestSite.Isinstance when erasable =>
+                $"Write the closed spelling — for example `{BuiltinNames.Isinstance}(x, {Spelling(useObject: true)})`. "
+                + $"`{Spelling(useObject: true)}` matches what json.loads and other object-typed producers build; "
+                + $"a `{Spelling(useObject: false)}` matches only a value constructed as `{Spelling(useObject: false)}`.",
+            TypeTestSite.Isinstance =>
+                ClosedSpellingRemedy($"{BuiltinNames.Isinstance}(x, {Spelling(useObject: false)})"),
+            _ => ClosedSpellingRemedy(Spelling(useObject: false))
+        };
+    }
+
+    /// <summary>The example element-type vector for an erasable collection's steer spelling.</summary>
+    private static string CollectionExampleArgs(string name, bool useObject) => name switch
+    {
+        BuiltinNames.Dict => useObject ? "str, object" : "str, int",
+        _ => useObject ? "object" : "int"
+    };
+
+    /// <summary>
+    /// Refuses an open generic type operand. One diagnosis sentence and one code (SPY0345) for every
+    /// type-operand position — <c>isinstance</c>, <c>as?</c>/<c>as!</c>, match class and sequence
+    /// patterns, and <c>except</c> clauses — so a reader who has met the refusal once does not have to
+    /// learn it again (#1207, #1235). Only the site noun and the closed-spelling steer differ, both
+    /// selected from <paramref name="site"/> (Decision 2).
     /// </summary>
     /// <param name="at">The node the diagnostic is anchored to.</param>
     /// <param name="typeName">The generic type's name as written.</param>
-    /// <param name="siteNoun">How the message names this position ("type test", "except clause", ...).</param>
-    /// <param name="remedy">The site's actionable advice, as a complete sentence.</param>
+    /// <param name="site">The syntactic position, selecting the noun and steer.</param>
+    /// <param name="arity">The type's type-parameter count, for the placeholder spelling.</param>
     /// <param name="fallbackSpan">Used when <paramref name="at"/> carries no span of its own.</param>
     private void ReportOpenGenericTypeOperand(
-        Node at, string typeName, string siteNoun, string remedy, Text.TextSpan? fallbackSpan = null)
+        Node at, string typeName, TypeTestSite site, int arity, Text.TextSpan? fallbackSpan = null)
     {
         AddError(
             $"'{typeName}' is a generic type, so it does not name a single type to test against, "
-                + $"and nothing at this {siteNoun} determines its type arguments. "
-                + remedy
+                + $"and nothing at this {SiteNoun(site)} determines its type arguments. "
+                + TypeTestSteer(site, typeName, arity)
                 + " Unlike Python, Sharpy's generics are real "
                 + "runtime types, and a successful open test could not narrow to a type you can write.",
             at.LineStart, at.ColumnStart,
             code: DiagnosticCodes.Semantic.OpenGenericTypeTest,
             span: at.Span ?? fallbackSpan);
     }
+
+    /// <summary>
+    /// The closed type a non-generic type-test name decides on (arm 2 of <see
+    /// cref="DecideBoundTypeTest"/>). A non-generic name is already a single closed CLR type, so this
+    /// is a plain <see cref="UserDefinedType"/> — the default-<c>object</c> vector the retired erasure
+    /// arm needed is gone (#1708). Generic names never reach here: they fill from the subject or are
+    /// refused.
+    /// </summary>
+    private static SemanticType BuildClosedTypeTestType(TypeSymbol typeSymbol)
+        => new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
     /// <summary>
     /// Builds the narrowed type for an <c>isinstance(x, T)</c> check against a user/builtin
