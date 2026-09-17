@@ -120,7 +120,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (56, 13) - (56, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], 1));
 #line hidden

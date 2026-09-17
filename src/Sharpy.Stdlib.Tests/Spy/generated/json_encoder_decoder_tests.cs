@@ -183,7 +183,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (75, 13) - (75, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
 #line hidden
@@ -207,7 +207,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (value)
 #line hidden
                 {
-                    case global::Sharpy.IDict _:
+                    case Sharpy.Dict<string, object> _:
 #line (87, 13) - (87, 18) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                         ;
 #line hidden
@@ -235,7 +235,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict outer:
+                    case Sharpy.Dict<string, object> outer:
 #line (105, 13) - (105, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                         Xunit.Assert.True(@operator.Eq(outer["_hooked"], true));
 #line hidden
@@ -270,7 +270,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (118, 13) - (118, 54) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["injected"], "yes"));
 #line hidden
@@ -292,7 +292,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (127, 13) - (127, 52) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["_hooked"], true));
 #line hidden

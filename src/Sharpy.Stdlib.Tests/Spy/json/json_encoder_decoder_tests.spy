@@ -71,7 +71,7 @@ def test_decoder_decode_dict_works():
     decoder = json.JSONDecoder()
     result: object = decoder.decode("{\"a\": 1}")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["a"], 1)
         case _:
             assert False
@@ -83,7 +83,7 @@ def test_decoder_raw_decode_returns_value_and_end_index():
     decoder = json.JSONDecoder()
     value, end_idx = decoder.raw_decode("{\"a\": 1}")
     match value:
-        case dict():
+        case dict[str, object]():
             pass
         case _:
             assert False
@@ -101,7 +101,7 @@ def test_decoder_with_object_hook_applies_hook_to_all_dicts():
     decoder = json.JSONDecoder(object_hook=_tag_hook)
     result: object = decoder.decode('{"a": {"b": 1}}')
     match result:
-        case dict() as outer:
+        case dict[str, object](outer):
             assert operator.eq(outer["_hooked"], True)
         case _:
             assert False
@@ -114,7 +114,7 @@ def test_decoder_cls_parameter_on_loads_dispatches():
     decoder = json.JSONDecoder(object_hook=inject_hook)
     result: object = json.loads('{"a": 1}', cls=decoder)
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["injected"], "yes")
         case _:
             assert False
@@ -123,7 +123,7 @@ def test_decoder_cls_parameter_on_loads_dispatches():
 def test_loads_object_hook_parameter_applies_hook():
     result: object = json.loads('{"x": 1}', object_hook=_tag_hook)
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["_hooked"], True)
         case _:
             assert False

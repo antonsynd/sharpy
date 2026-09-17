@@ -53,7 +53,7 @@ def test_loads_false_boolean_returns_bool():
 def test_loads_array_returns_list():
     result = toml.loads("arr = [1, 2, 3]")
     match result["arr"]:
-        case list() as l:
+        case list[object](l):
             assert len(l) == 3
             assert eq_long(l[0], 1)
             assert eq_long(l[1], 2)
@@ -65,7 +65,7 @@ def test_loads_array_returns_list():
 def test_loads_table_returns_dict():
     result = toml.loads("[server]\nhost = \"localhost\"\nport = 8080")
     match result["server"]:
-        case dict() as server:
+        case dict[str, object](server):
             assert operator.eq(server["host"], "localhost")
             assert eq_long(server["port"], 8080)
         case _:
@@ -75,11 +75,11 @@ def test_loads_table_returns_dict():
 def test_loads_nested_tables_returns_nested_dicts():
     result = toml.loads("[a]\n[a.b]\n[a.b.c]\nval = 1")
     match result["a"]:
-        case dict() as a:
+        case dict[str, object](a):
             match a["b"]:
-                case dict() as b:
+                case dict[str, object](b):
                     match b["c"]:
-                        case dict() as c:
+                        case dict[str, object](c):
                             assert eq_long(c["val"], 1)
                         case _:
                             assert False
@@ -92,9 +92,9 @@ def test_loads_nested_tables_returns_nested_dicts():
 def test_loads_dotted_keys():
     result = toml.loads("a.b.c = 42")
     match result["a"]:
-        case dict() as a:
+        case dict[str, object](a):
             match a["b"]:
-                case dict() as b:
+                case dict[str, object](b):
                     assert eq_long(b["c"], 42)
                 case _:
                     assert False
@@ -105,7 +105,7 @@ def test_loads_dotted_keys():
 def test_loads_inline_table():
     result = toml.loads("point = {x = 1, y = 2}")
     match result["point"]:
-        case dict() as point:
+        case dict[str, object](point):
             assert eq_long(point["x"], 1)
             assert eq_long(point["y"], 2)
         case _:
@@ -115,15 +115,15 @@ def test_loads_inline_table():
 def test_loads_array_of_tables():
     result = toml.loads("[[products]]\nname = \"Hammer\"\n\n[[products]]\nname = \"Nail\"")
     match result["products"]:
-        case list() as products:
+        case list[object](products):
             assert len(products) == 2
             match products[0]:
-                case dict() as p0:
+                case dict[str, object](p0):
                     assert operator.eq(p0["name"], "Hammer")
                 case _:
                     assert False
             match products[1]:
-                case dict() as p1:
+                case dict[str, object](p1):
                     assert operator.eq(p1["name"], "Nail")
                 case _:
                     assert False
@@ -313,7 +313,7 @@ def test_roundtrip_nested_dict():
     d["server"] = inner
     result = toml.loads(toml.dumps(d))
     match result["server"]:
-        case dict() as server:
+        case dict[str, object](server):
             assert operator.eq(server["host"], "localhost")
             assert eq_long(server["port"], 8080)
         case _:

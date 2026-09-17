@@ -24,7 +24,7 @@ def test_round_trip_simple_mapping_preserves_data():
     text: str = yaml.safe_dump(data)
     parsed: object = yaml.safe_load(text)
     match parsed:
-        case dict() as result:
+        case dict[str, object](result):
             assert operator.eq(result["name"], "test")
             assert operator.eq(result["count"], 42)
         case _:
@@ -40,7 +40,7 @@ def test_round_trip_list_preserves_data():
     text: str = yaml.safe_dump(data)
     parsed: object = yaml.safe_load(text)
     match parsed:
-        case list() as result:
+        case list[object](result):
             assert operator.eq(result[0], 1)
             assert operator.eq(result[1], "two")
             assert operator.eq(result[2], True)
@@ -54,7 +54,7 @@ def test_round_trip_list_preserves_data():
 def test_safe_load_string_returns_string():
     result: object = yaml.safe_load("key: hello")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], "hello")
         case _:
             assert False
@@ -63,7 +63,7 @@ def test_safe_load_string_returns_string():
 def test_safe_load_quoted_string_returns_string():
     result: object = yaml.safe_load("key: \"hello world\"")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], "hello world")
         case _:
             assert False
@@ -72,7 +72,7 @@ def test_safe_load_quoted_string_returns_string():
 def test_safe_load_int_returns_int():
     result: object = yaml.safe_load("key: 42")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], int)
             assert operator.eq(d["key"], 42)
         case _:
@@ -82,7 +82,7 @@ def test_safe_load_int_returns_int():
 def test_safe_load_negative_int_returns_int():
     result: object = yaml.safe_load("key: -7")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], -7)
         case _:
             assert False
@@ -91,7 +91,7 @@ def test_safe_load_negative_int_returns_int():
 def test_safe_load_large_int_returns_long():
     result: object = yaml.safe_load("key: 9999999999")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], long)
             value: long = 9999999999
             assert operator.eq(d["key"], value)
@@ -107,7 +107,7 @@ def test_safe_load_float_returns_double_exactly():
     # enough to accept a single-precision detour (#1339). PyYAML: 3.14.
     result: object = yaml.safe_load("key: 3.14")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             # An index-access match subject, narrowed by the assert: same #1370 shape as
             # json_additional_tests' identifier subject, and the reason both are pinned here.
             assert isinstance(d["key"], float)
@@ -123,7 +123,7 @@ def test_safe_load_float_returns_double_exactly():
 def test_safe_load_whole_number_float_stays_float_typed():
     result: object = yaml.safe_load("key: 2.0")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], float)
             match d["key"]:
                 case float() as fv:
@@ -169,7 +169,7 @@ def _load_float(text: str) -> float:
 def test_safe_load_bool_true_returns_bool():
     result: object = yaml.safe_load("key: true")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], True)
         case _:
@@ -179,7 +179,7 @@ def test_safe_load_bool_true_returns_bool():
 def test_safe_load_bool_false_returns_bool():
     result: object = yaml.safe_load("key: false")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], False)
         case _:
             assert False
@@ -188,7 +188,7 @@ def test_safe_load_bool_false_returns_bool():
 def test_safe_load_null_returns_null():
     result: object = yaml.safe_load("key: null")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert d["key"] is None
         case _:
             assert False
@@ -197,7 +197,7 @@ def test_safe_load_null_returns_null():
 def test_safe_load_tilde_returns_null():
     result: object = yaml.safe_load("key: ~")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert d["key"] is None
         case _:
             assert False
@@ -226,7 +226,7 @@ def test_safe_load_tilde_returns_null():
 def test_safe_load_norway_no_caps_is_false():
     result: object = yaml.safe_load("key: NO")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], False)
         case _:
@@ -236,7 +236,7 @@ def test_safe_load_norway_no_caps_is_false():
 def test_safe_load_norway_no_lower_is_false():
     result: object = yaml.safe_load("key: no")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], False)
         case _:
@@ -246,7 +246,7 @@ def test_safe_load_norway_no_lower_is_false():
 def test_safe_load_norway_no_title_is_false():
     result: object = yaml.safe_load("key: No")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], False)
         case _:
@@ -256,7 +256,7 @@ def test_safe_load_norway_no_title_is_false():
 def test_safe_load_norway_yes_title_is_true():
     result: object = yaml.safe_load("key: Yes")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], True)
         case _:
@@ -266,7 +266,7 @@ def test_safe_load_norway_yes_title_is_true():
 def test_safe_load_norway_yes_lower_is_true():
     result: object = yaml.safe_load("key: yes")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], True)
         case _:
@@ -276,7 +276,7 @@ def test_safe_load_norway_yes_lower_is_true():
 def test_safe_load_norway_on_lower_is_true():
     result: object = yaml.safe_load("key: on")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], True)
         case _:
@@ -286,7 +286,7 @@ def test_safe_load_norway_on_lower_is_true():
 def test_safe_load_norway_on_title_is_true():
     result: object = yaml.safe_load("key: On")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], True)
         case _:
@@ -296,7 +296,7 @@ def test_safe_load_norway_on_title_is_true():
 def test_safe_load_norway_off_lower_is_false():
     result: object = yaml.safe_load("key: off")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], False)
         case _:
@@ -306,7 +306,7 @@ def test_safe_load_norway_off_lower_is_false():
 def test_safe_load_norway_off_caps_is_false():
     result: object = yaml.safe_load("key: OFF")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], bool)
             assert operator.eq(d["key"], False)
         case _:
@@ -319,7 +319,7 @@ def test_safe_load_norway_off_caps_is_false():
 def test_safe_load_norway_mixed_casing_stays_string():
     result: object = yaml.safe_load("key: yEs")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], str)
             assert operator.eq(d["key"], "yEs")
         case _:
@@ -329,7 +329,7 @@ def test_safe_load_norway_mixed_casing_stays_string():
 def test_safe_load_norway_y_stays_string():
     result: object = yaml.safe_load("key: Y")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], str)
             assert operator.eq(d["key"], "Y")
         case _:
@@ -339,7 +339,7 @@ def test_safe_load_norway_y_stays_string():
 def test_safe_load_norway_n_stays_string():
     result: object = yaml.safe_load("key: N")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert isinstance(d["key"], str)
             assert operator.eq(d["key"], "N")
         case _:
@@ -359,9 +359,9 @@ def test_safe_dump_quotes_the_bool_family_so_it_round_trips():
 def test_safe_load_map_in_map_returns_nested_dict():
     result: object = yaml.safe_load("outer:\n  inner: 42\n")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             match d["outer"]:
-                case dict() as inner:
+                case dict[str, object](inner):
                     assert operator.eq(inner["inner"], 42)
                 case _:
                     assert False
@@ -372,9 +372,9 @@ def test_safe_load_map_in_map_returns_nested_dict():
 def test_safe_load_list_in_map_returns_nested_list():
     result: object = yaml.safe_load("items:\n  - 1\n  - 2\n  - 3\n")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             match d["items"]:
-                case list() as items:
+                case list[object](items):
                     assert len(items) == 3
                     assert operator.eq(items[0], 1)
                     assert operator.eq(items[2], 3)
@@ -387,10 +387,10 @@ def test_safe_load_list_in_map_returns_nested_list():
 def test_safe_load_map_in_list_returns_list_of_dicts():
     result: object = yaml.safe_load("- id: 1\n  name: alpha\n- id: 2\n  name: beta\n")
     match result:
-        case list() as items:
+        case list[object](items):
             assert len(items) == 2
             match items[0]:
-                case dict() as first:
+                case dict[str, object](first):
                     assert operator.eq(first["id"], 1)
                     assert operator.eq(first["name"], "alpha")
                 case _:
@@ -412,7 +412,7 @@ def test_safe_load_whitespace_only_returns_null():
 def test_safe_load_empty_mapping_returns_empty_dict():
     result: object = yaml.safe_load("{}")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert len(d) == 0
         case _:
             assert False
@@ -421,7 +421,7 @@ def test_safe_load_empty_mapping_returns_empty_dict():
 def test_safe_load_empty_sequence_returns_empty_list():
     result: object = yaml.safe_load("[]")
     match result:
-        case list() as items:
+        case list[object](items):
             assert len(items) == 0
         case _:
             assert False
@@ -430,7 +430,7 @@ def test_safe_load_empty_sequence_returns_empty_list():
 def test_safe_load_unicode_string_preserves_characters():
     result: object = yaml.safe_load("key: café üñî")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], "café üñî")
         case _:
             assert False
@@ -439,7 +439,7 @@ def test_safe_load_unicode_string_preserves_characters():
 def test_safe_load_flow_mapping_returns_dict():
     result: object = yaml.safe_load("{a: 1, b: 2}")
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["a"], 1)
             assert operator.eq(d["b"], 2)
         case _:
@@ -528,13 +528,13 @@ def test_safe_load_all_two_documents_returns_both():
     assert len(docs) == 2
     first_elem: object = docs[0]
     match first_elem:
-        case dict() as first:
+        case dict[str, object](first):
             assert operator.eq(first["a"], 1)
         case _:
             assert False
     second_elem: object = docs[1]
     match second_elem:
-        case dict() as second:
+        case dict[str, object](second):
             assert operator.eq(second["b"], 2)
         case _:
             assert False
@@ -553,7 +553,7 @@ def test_safe_load_all_single_document_returns_one():
     assert len(docs) == 1
     elem: object = docs[0]
     match elem:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], "value")
         case _:
             assert False
@@ -564,14 +564,14 @@ def test_safe_load_all_empty_document_in_stream_yields_null():
     assert len(docs) == 3
     first_obj: object = docs[0]
     match first_obj:
-        case dict():
+        case dict[str, object]():
             pass
         case _:
             assert False
     assert docs[1] is None
     third_obj: object = docs[2]
     match third_obj:
-        case dict():
+        case dict[str, object]():
             pass
         case _:
             assert False
@@ -614,7 +614,7 @@ def test_safe_dump_file_safe_load_file_round_trip(tmp_path: str):
     with open(path, "r") as fp2:
         parsed: object = yaml.safe_load_file(fp2)
         match parsed:
-            case dict() as d:
+            case dict[str, object](d):
                 match d["name"]:
                     case str() as n:
                         name = n
@@ -637,9 +637,9 @@ def test_safe_load_anchor_and_alias_resolves_mapping_reference():
     text: str = "defaults: &defaults\n  timeout: 30\n  retries: 3\nproduction: *defaults\n"
     result: object = yaml.safe_load(text)
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             match d["production"]:
-                case dict() as production:
+                case dict[str, object](production):
                     assert operator.eq(production["timeout"], 30)
                     assert operator.eq(production["retries"], 3)
                 case _:
@@ -652,7 +652,7 @@ def test_safe_load_simple_alias_duplicates_value():
     text: str = "first: &val hello\nsecond: *val\n"
     result: object = yaml.safe_load(text)
     match result:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["first"], "hello")
             assert operator.eq(d["second"], "hello")
         case _:

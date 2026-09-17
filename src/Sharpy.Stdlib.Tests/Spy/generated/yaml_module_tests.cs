@@ -67,7 +67,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IDict result:
+                    case Sharpy.Dict<string, object> result:
 #line (28, 13) - (28, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (29, 13) - (29, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -106,7 +106,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IList result:
+                    case Sharpy.List<object> result:
 #line (44, 13) - (44, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[0], 1));
 #line (45, 13) - (45, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -134,7 +134,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (58, 13) - (58, 51) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], "hello"));
 #line hidden
@@ -156,7 +156,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (67, 13) - (67, 57) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], "hello world"));
 #line hidden
@@ -178,7 +178,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (76, 13) - (76, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<int>((object?)d["key"]);
 #line (77, 13) - (77, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -202,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (86, 13) - (86, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], -7));
 #line hidden
@@ -224,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (95, 13) - (95, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<long>((object?)d["key"]);
 #line (96, 13) - (96, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -250,7 +250,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (113, 13) - (113, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>((object?)d["key"]);
 #line (114, 13) - (118, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -287,7 +287,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (127, 13) - (127, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>((object?)d["key"]);
 #line (128, 13) - (132, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -381,7 +381,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (173, 13) - (173, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (174, 13) - (174, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -405,7 +405,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (183, 13) - (183, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], false));
 #line hidden
@@ -427,7 +427,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (192, 13) - (192, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Null(d["key"]);
 #line hidden
@@ -449,7 +449,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (201, 13) - (201, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Null(d["key"]);
 #line hidden
@@ -471,7 +471,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (230, 13) - (230, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (231, 13) - (231, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -495,7 +495,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (240, 13) - (240, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (241, 13) - (241, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -519,7 +519,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (250, 13) - (250, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (251, 13) - (251, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -543,7 +543,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (260, 13) - (260, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (261, 13) - (261, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -567,7 +567,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (270, 13) - (270, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (271, 13) - (271, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -591,7 +591,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (280, 13) - (280, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (281, 13) - (281, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -615,7 +615,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (290, 13) - (290, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (291, 13) - (291, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -639,7 +639,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (300, 13) - (300, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (301, 13) - (301, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -663,7 +663,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (310, 13) - (310, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>((object?)d["key"]);
 #line (311, 13) - (311, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -687,7 +687,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (323, 13) - (323, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (324, 13) - (324, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -711,7 +711,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (333, 13) - (333, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (334, 13) - (334, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -735,7 +735,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (343, 13) - (343, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>((object?)d["key"]);
 #line (344, 13) - (344, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -771,12 +771,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (363, 13) - (367, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["outer"])
 #line hidden
                         {
-                            case global::Sharpy.IDict inner:
+                            case Sharpy.Dict<string, object> inner:
 #line (365, 21) - (365, 60) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner["inner"], 42));
 #line hidden
@@ -806,12 +806,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (376, 13) - (382, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["items"])
 #line hidden
                         {
-                            case global::Sharpy.IList items:
+                            case Sharpy.List<object> items:
 #line (378, 21) - (378, 44) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(items));
 #line (379, 21) - (379, 53) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -845,14 +845,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IList items:
+                    case Sharpy.List<object> items:
 #line (391, 13) - (391, 36) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(items));
 #line (392, 13) - (397, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (items[0])
 #line hidden
                         {
-                            case global::Sharpy.IDict first:
+                            case Sharpy.Dict<string, object> first:
 #line (394, 21) - (394, 56) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(first["id"], 1));
 #line (395, 21) - (395, 64) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -900,7 +900,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (416, 13) - (416, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
 #line hidden
@@ -922,7 +922,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IList items:
+                    case Sharpy.List<object> items:
 #line (425, 13) - (425, 36) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(items));
 #line hidden
@@ -944,7 +944,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (434, 13) - (434, 54) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], "café üñî"));
 #line hidden
@@ -966,7 +966,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (443, 13) - (443, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
 #line (444, 13) - (444, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -1157,7 +1157,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (firstElem)
 #line hidden
                 {
-                    case global::Sharpy.IDict first:
+                    case Sharpy.Dict<string, object> first:
 #line (532, 13) - (532, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(first["a"], 1));
 #line hidden
@@ -1175,7 +1175,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (secondElem)
 #line hidden
                 {
-                    case global::Sharpy.IDict second:
+                    case Sharpy.Dict<string, object> second:
 #line (538, 13) - (538, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(second["b"], 2));
 #line hidden
@@ -1217,7 +1217,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (elem)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (557, 13) - (557, 51) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["key"], "value"));
 #line hidden
@@ -1243,7 +1243,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (firstObj)
 #line hidden
                 {
-                    case global::Sharpy.IDict _:
+                    case Sharpy.Dict<string, object> _:
 #line (568, 13) - (568, 18) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         ;
 #line hidden
@@ -1263,7 +1263,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (thirdObj)
 #line hidden
                 {
-                    case global::Sharpy.IDict _:
+                    case Sharpy.Dict<string, object> _:
 #line (575, 13) - (575, 18) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         ;
 #line hidden
@@ -1375,7 +1375,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     switch (parsed)
 #line hidden
                     {
-                        case global::Sharpy.IDict d:
+                        case Sharpy.Dict<string, object> d:
 #line (618, 17) - (622, 38) 28 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                             switch (d["name"])
 #line hidden
@@ -1435,12 +1435,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (641, 13) - (646, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["production"])
 #line hidden
                         {
-                            case global::Sharpy.IDict production:
+                            case Sharpy.Dict<string, object> production:
 #line (643, 21) - (643, 67) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(production["timeout"], 30));
 #line (644, 21) - (644, 66) 32 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -1474,7 +1474,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (656, 13) - (656, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["first"], "hello"));
 #line (657, 13) - (657, 54) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"

@@ -52,7 +52,7 @@ def test_loads_whitespace_only_throws_json_decode_error():
 def test_loads_with_leading_and_trailing_whitespace_parses_object():
     r: object = json.loads("  {\"key\": 1}  ")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["key"], 1)
         case _:
             assert False

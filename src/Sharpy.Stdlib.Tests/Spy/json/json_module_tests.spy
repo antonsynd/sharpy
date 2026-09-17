@@ -193,7 +193,7 @@ def test_loads_accepts_the_three_extended_tokens():
     # a new asymmetry, so both sides move together.
     parsed: object = json.loads("[Infinity, NaN, -Infinity]")
     match parsed:
-        case list() as xs:
+        case list[object](xs):
             assert len(xs) == 3
         case _:
             assert False
@@ -310,7 +310,7 @@ def test_loads_all_escapes_parses_correctly():
 def test_loads_empty_object_returns_empty_dict():
     r: object = json.loads("{}")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             assert len(d) == 0
         case _:
             assert False
@@ -319,7 +319,7 @@ def test_loads_empty_object_returns_empty_dict():
 def test_loads_simple_object_returns_dict():
     r: object = json.loads("{\"a\": 1, \"b\": \"two\"}")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["a"], 1)
             assert operator.eq(d["b"], "two")
         case _:
@@ -329,9 +329,9 @@ def test_loads_simple_object_returns_dict():
 def test_loads_nested_object_returns_nested_dict():
     r: object = json.loads("{\"outer\": {\"inner\": 42}}")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             match d["outer"]:
-                case dict() as inner:
+                case dict[str, object](inner):
                     assert operator.eq(inner["inner"], 42)
                 case _:
                     assert False
@@ -344,7 +344,7 @@ def test_loads_nested_object_returns_nested_dict():
 def test_loads_empty_array_returns_empty_list():
     r: object = json.loads("[]")
     match r:
-        case list() as l:
+        case list[object](l):
             assert len(l) == 0
         case _:
             assert False
@@ -353,7 +353,7 @@ def test_loads_empty_array_returns_empty_list():
 def test_loads_simple_array_returns_list():
     r: object = json.loads("[1, 2, 3]")
     match r:
-        case list() as l:
+        case list[object](l):
             assert len(l) == 3
             assert operator.eq(l[0], 1)
             assert operator.eq(l[1], 2)
@@ -365,7 +365,7 @@ def test_loads_simple_array_returns_list():
 def test_loads_mixed_array_returns_list():
     r: object = json.loads("[1, \"two\", true, null]")
     match r:
-        case list() as l:
+        case list[object](l):
             assert operator.eq(l[0], 1)
             assert operator.eq(l[1], "two")
             assert operator.eq(l[2], True)
@@ -377,9 +377,9 @@ def test_loads_mixed_array_returns_list():
 def test_loads_nested_array_returns_list():
     r: object = json.loads("[[1, 2], [3, 4]]")
     match r:
-        case list() as l:
+        case list[object](l):
             match l[0]:
-                case list() as inner1:
+                case list[object](inner1):
                     assert operator.eq(inner1[0], 1)
                     assert operator.eq(inner1[1], 2)
                 case _:
@@ -403,7 +403,7 @@ def test_loads_with_trailing_whitespace_parses():
 def test_loads_pretty_printed_json_parses():
     r: object = json.loads("{\n  \"a\": 1,\n  \"b\": [\n    2,\n    3\n  ]\n}")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["a"], 1)
         case _:
             assert False
@@ -476,7 +476,7 @@ def test_round_trip_dict_preserves_data():
     d["nothing"] = None
     parsed: object = json.loads(json.dumps(d))
     match parsed:
-        case dict() as result:
+        case dict[str, object](result):
             assert operator.eq(result["name"], "test")
             assert operator.eq(result["value"], 42)
             assert operator.eq(result["active"], True)
@@ -494,7 +494,7 @@ def test_round_trip_list_preserves_data():
     l.append(None)
     parsed: object = json.loads(json.dumps(l))
     match parsed:
-        case list() as result:
+        case list[object](result):
             assert operator.eq(result[0], 1)
             assert operator.eq(result[1], "two")
             assert operator.eq(result[2], 3.0)
@@ -519,12 +519,12 @@ def test_round_trip_nested_complex_preserves_data():
     root["count"] = 2
     parsed: object = json.loads(json.dumps(root))
     match parsed:
-        case dict() as result:
+        case dict[str, object](result):
             assert operator.eq(result["count"], 2)
             match result["items"]:
-                case list() as result_items:
+                case list[object](result_items):
                     match result_items[0]:
-                        case dict() as first:
+                        case dict[str, object](first):
                             assert operator.eq(first["id"], 1)
                             assert operator.eq(first["name"], "alpha")
                         case _:
@@ -556,7 +556,7 @@ def test_loads_deeply_nested_handles_recursion():
     i = 0
     while i < 20:
         match current:
-            case list() as l:
+            case list[object](l):
                 current = l[0]
             case _:
                 assert False
@@ -567,7 +567,7 @@ def test_loads_deeply_nested_handles_recursion():
 def test_loads_object_with_duplicate_keys_last_wins():
     r: object = json.loads("{\"a\": 1, \"a\": 2}")
     match r:
-        case dict() as d:
+        case dict[str, object](d):
             assert operator.eq(d["a"], 2)
         case _:
             assert False
@@ -576,14 +576,14 @@ def test_loads_object_with_duplicate_keys_last_wins():
 def test_loads_empty_object_and_array_in_array():
     r: object = json.loads("[{}, []]")
     match r:
-        case list() as l:
+        case list[object](l):
             match l[0]:
-                case dict():
+                case dict[str, object]():
                     pass
                 case _:
                     assert False
             match l[1]:
-                case list():
+                case list[object]():
                     pass
                 case _:
                     assert False
@@ -828,7 +828,7 @@ def test_load_reads_json_from_file(tmp_path: str):
     with open(path, "r") as fp2:
         result: object = json.load(fp2)
         match result:
-            case dict() as d:
+            case dict[str, object](d):
                 assert operator.eq(d["key"], "value")
             case _:
                 assert False
@@ -848,10 +848,10 @@ def test_dump_load_round_trip_through_file(tmp_path: str):
     with open(path, "r") as fp2:
         result: object = json.load(fp2)
         match result:
-            case dict() as d:
+            case dict[str, object](d):
                 assert operator.eq(d["name"], "test")
                 match d["values"]:
-                    case list() as vals:
+                    case list[object](vals):
                         assert len(vals) == 3
                     case _:
                         assert False

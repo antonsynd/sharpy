@@ -106,7 +106,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["arr"])
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (57, 13) - (57, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(l));
 #line (58, 13) - (58, 37) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -134,7 +134,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["server"])
 #line hidden
                 {
-                    case global::Sharpy.IDict server:
+                    case Sharpy.Dict<string, object> server:
 #line (69, 13) - (69, 61) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(server["host"], "localhost"));
 #line (70, 13) - (70, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -158,17 +158,17 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["a"])
 #line hidden
                 {
-                    case global::Sharpy.IDict a:
+                    case Sharpy.Dict<string, object> a:
 #line (79, 13) - (87, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (a["b"])
 #line hidden
                         {
-                            case global::Sharpy.IDict b:
+                            case Sharpy.Dict<string, object> b:
 #line (81, 21) - (85, 42) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                 switch (b["c"])
 #line hidden
                                 {
-                                    case global::Sharpy.IDict c:
+                                    case Sharpy.Dict<string, object> c:
 #line (83, 29) - (83, 57) 40 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                         Xunit.Assert.True(EqLong(c["val"], 1));
 #line hidden
@@ -206,12 +206,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["a"])
 #line hidden
                 {
-                    case global::Sharpy.IDict a:
+                    case Sharpy.Dict<string, object> a:
 #line (96, 13) - (100, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (a["b"])
 #line hidden
                         {
-                            case global::Sharpy.IDict b:
+                            case Sharpy.Dict<string, object> b:
 #line (98, 21) - (98, 48) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                 Xunit.Assert.True(EqLong(b["c"], 42));
 #line hidden
@@ -241,7 +241,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["point"])
 #line hidden
                 {
-                    case global::Sharpy.IDict point:
+                    case Sharpy.Dict<string, object> point:
 #line (109, 13) - (109, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.True(EqLong(point["x"], 1));
 #line (110, 13) - (110, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -265,14 +265,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["products"])
 #line hidden
                 {
-                    case global::Sharpy.IList products:
+                    case Sharpy.List<object> products:
 #line (119, 13) - (119, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(products));
 #line (120, 13) - (124, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (products[0])
 #line hidden
                         {
-                            case global::Sharpy.IDict p0:
+                            case Sharpy.Dict<string, object> p0:
 #line (122, 21) - (122, 62) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(p0["name"], "Hammer"));
 #line hidden
@@ -288,7 +288,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         switch (products[1])
 #line hidden
                         {
-                            case global::Sharpy.IDict p1:
+                            case Sharpy.Dict<string, object> p1:
 #line (127, 21) - (127, 60) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(p1["name"], "Nail"));
 #line hidden
@@ -708,7 +708,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (result["server"])
 #line hidden
                 {
-                    case global::Sharpy.IDict server:
+                    case Sharpy.Dict<string, object> server:
 #line (317, 13) - (317, 61) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(server["host"], "localhost"));
 #line (318, 13) - (318, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"

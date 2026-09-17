@@ -504,7 +504,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IList xs:
+                    case Sharpy.List<object> xs:
 #line (197, 13) - (197, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(xs));
 #line hidden
@@ -743,7 +743,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (314, 13) - (314, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
 #line hidden
@@ -765,7 +765,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (323, 13) - (323, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
 #line (324, 13) - (324, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -789,12 +789,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (333, 13) - (337, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (d["outer"])
 #line hidden
                         {
-                            case global::Sharpy.IDict inner:
+                            case Sharpy.Dict<string, object> inner:
 #line (335, 21) - (335, 60) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner["inner"], 42));
 #line hidden
@@ -824,7 +824,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (348, 13) - (348, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(l));
 #line hidden
@@ -846,7 +846,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (357, 13) - (357, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(l));
 #line (358, 13) - (358, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -874,7 +874,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (369, 13) - (369, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[0], 1));
 #line (370, 13) - (370, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -902,12 +902,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (381, 13) - (386, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (l[0])
 #line hidden
                         {
-                            case global::Sharpy.IList inner1:
+                            case Sharpy.List<object> inner1:
 #line (383, 21) - (383, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner1[0], 1));
 #line (384, 21) - (384, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -959,7 +959,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (407, 13) - (407, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
 #line hidden
@@ -1220,7 +1220,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IDict result:
+                    case Sharpy.Dict<string, object> result:
 #line (480, 13) - (480, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["name"], "test"));
 #line (481, 13) - (481, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -1263,7 +1263,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IList result:
+                    case Sharpy.List<object> result:
 #line (498, 13) - (498, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[0], 1));
 #line (499, 13) - (499, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -1329,19 +1329,19 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (parsed)
 #line hidden
                 {
-                    case global::Sharpy.IDict result:
+                    case Sharpy.Dict<string, object> result:
 #line (523, 13) - (523, 52) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["count"], 2));
 #line (524, 13) - (533, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (result["items"])
 #line hidden
                         {
-                            case global::Sharpy.IList resultItems:
+                            case Sharpy.List<object> resultItems:
 #line (526, 21) - (531, 42) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 switch (resultItems[0])
 #line hidden
                                 {
-                                    case global::Sharpy.IDict first:
+                                    case Sharpy.Dict<string, object> first:
 #line (528, 29) - (528, 64) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                         Xunit.Assert.True(@operator.Eq(first["id"], 1));
 #line (529, 29) - (529, 72) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -1413,7 +1413,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     switch (current)
 #line hidden
                     {
-                        case global::Sharpy.IList l:
+                        case Sharpy.List<object> l:
 #line (560, 17) - (560, 31) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             current = l[0];
 #line hidden
@@ -1444,7 +1444,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IDict d:
+                    case Sharpy.Dict<string, object> d:
 #line (571, 13) - (571, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 2));
 #line hidden
@@ -1466,12 +1466,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 switch (r)
 #line hidden
                 {
-                    case global::Sharpy.IList l:
+                    case Sharpy.List<object> l:
 #line (580, 13) - (584, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (l[0])
 #line hidden
                         {
-                            case global::Sharpy.IDict _:
+                            case Sharpy.Dict<string, object> _:
 #line (582, 21) - (582, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 ;
 #line hidden
@@ -1487,7 +1487,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         switch (l[1])
 #line hidden
                         {
-                            case global::Sharpy.IList _:
+                            case Sharpy.List<object> _:
 #line (587, 21) - (587, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 ;
 #line hidden
@@ -2140,7 +2140,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     switch (result)
 #line hidden
                     {
-                        case global::Sharpy.IDict d:
+                        case Sharpy.Dict<string, object> d:
 #line (832, 17) - (832, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(@operator.Eq(d["key"], "value"));
 #line hidden
@@ -2199,14 +2199,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                     switch (result)
 #line hidden
                     {
-                        case global::Sharpy.IDict d:
+                        case Sharpy.Dict<string, object> d:
 #line (852, 17) - (852, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(@operator.Eq(d["name"], "test"));
 #line (853, 17) - (857, 38) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             switch (d["values"])
 #line hidden
                             {
-                                case global::Sharpy.IList vals:
+                                case Sharpy.List<object> vals:
 #line (855, 25) - (855, 47) 36 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                     Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(vals));
 #line hidden
