@@ -1968,12 +1968,15 @@ internal partial class RoslynEmitter
                 else
                 {
                     // A user module (no CLR class / namespace) is emitted fully qualified as
-                    // global::[ProjectNamespace.]<ModulePath> instead of the `import lib` alias
+                    // global::[ProjectNamespace.]<emitted module path> instead of the `import` alias
                     // identifier, whose `using lib = <Ns>.Lib;` directive is deleted (#1683). The
-                    // module path comes from the resolved module's CanonicalModuleName, NOT the
-                    // written segments, so an aliased import (`import utils as u`) qualifies to Utils,
-                    // not the alias U.
-                    var userModuleNamespacePath = ConvertModuleNameToNamespace(resolvedModuleName);
+                    // emitted path comes from the resolved module's FILE PATH — the same derivation a
+                    // TYPE from that module uses — NOT from CanonicalModuleName (which drops the
+                    // directory for a subdir module: lib/math.spy -> "math" -> CS0234) and NOT from the
+                    // written segments (which carry the import alias: `import utils as u` -> "u").
+                    var userModuleNamespacePath = !string.IsNullOrEmpty(currentModule.FilePath)
+                        ? _typeMapper.ModuleNamespaceFromFilePath(currentModule.FilePath)
+                        : ConvertModuleNameToNamespace(resolvedModuleName);
                     var moduleSegs = new List<string>();
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                         moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));
@@ -2493,25 +2496,31 @@ internal partial class RoslynEmitter
     /// </summary>
     private NameSyntax BuildNestedTypeName(TypeSymbol nestedSym, TypeSyntax[]? typeArguments = null)
     {
-        var parts = new List<string>();
-        var current = nestedSym;
-        while (current != null)
-        {
-            parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
-            current = current.DeclaringType;
-        }
-        parts.Reverse();
+        // The fully-qualified chain (cross-file/module types qualified via DefiningModule/
+        // DefiningFilePath; same-file types keep their bare declaring chain), i.e. the SAME spelling a
+        // type annotation uses. Before this a cross-module union/nested-type host was walked BARE
+        // (Outer.Shape) and relied on the `using static <Ns>.<Module>` directive to resolve — deleting
+        // that directive (#1683) turned it into CS0246. GetFullyQualifiedTypeName gives
+        // global::Test.Lib.Outer.Shape (cross-module) while leaving a same-file/module-level union its
+        // short name.
+        var fqn = GetFullyQualifiedTypeName(nestedSym, nestedSym.Name);
+        bool global = fqn.StartsWith("global::", StringComparison.Ordinal);
+        if (global)
+            fqn = fqn["global::".Length..];
+        var parts = fqn.Split('.');
 
         // Only the innermost segment carries the type arguments — Outer.Inner<int>, never
         // Outer<int>.Inner: the nested type declares them, its enclosing types do not.
         SimpleNameSyntax Segment(int index) =>
-            index == parts.Count - 1 && typeArguments is { Length: > 0 }
+            index == parts.Length - 1 && typeArguments is { Length: > 0 }
                 ? GenericName(EscapedIdentifier(parts[index]))
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArguments)))
                 : EscapedIdentifierName(parts[index]);
 
-        NameSyntax result = Segment(0);
-        for (int i = 1; i < parts.Count; i++)
+        NameSyntax result = global
+            ? AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), Segment(0))
+            : Segment(0);
+        for (int i = 1; i < parts.Length; i++)
         {
             result = QualifiedName(result, (SimpleNameSyntax)Segment(i));
         }

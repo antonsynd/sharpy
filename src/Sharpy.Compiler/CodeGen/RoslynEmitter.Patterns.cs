@@ -314,7 +314,13 @@ internal partial class RoslynEmitter
                     {
                         var constName = GetCodeGenInfo(constSymbol)?.CSharpName
                             ?? NameMangler.ToConstantCase(constSymbol.Name);
-                        return ConstantPattern(IdentifierName(constName));
+                        // A module-level const used in a constant pattern is qualified through its
+                        // module class like every other module-member reference — no `using static`
+                        // binds the bare name anymore (#1683), so an imported const `PRIMARY` must be
+                        // `global::<ModuleClass>.PRIMARY` or the pattern is CS0103.
+                        var qualified = QualifyModuleMember(constSymbol, constName)
+                            ?? (ExpressionSyntax)IdentifierName(constName);
+                        return ConstantPattern(qualified);
                     }
 
                     // #1562: union-resolved binding emits a variant type test

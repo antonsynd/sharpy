@@ -497,8 +497,11 @@ def main() -> None:
             "the cached lib's str const must still emit as a C# const (#1791)");
         emitted.Should().Contain("const bool ON = true",
             "the cached lib's bool const must still emit as a C# const (#1791)");
-        emitted.Should().Contain("const Color PRIMARY = Color.RED",
-            "the cached lib's enum const must still emit as a C# const (#1782)");
+        emitted.Should().Contain(
+            "const global::ColdWarm.Lib.Color PRIMARY = global::ColdWarm.Lib.Color.RED",
+            "the cached lib's enum const must still emit as a C# const — the same-file enum type is "
+            + "global::-qualified under universal qualification, but it stays a `const`, not a "
+            + "static-readonly (#1782, #1683)");
     }
 
     /// <summary>

@@ -826,6 +826,15 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
+    /// The emitted namespace/wrapper-class path of a module identified by its FILE PATH — the same
+    /// derivation cross-file TYPE references use. Exposed so the module-access emitter can qualify a
+    /// module reference from its resolved <see cref="ModuleSymbol.FilePath"/> rather than from the
+    /// import alias (which drops to the alias name) or CanonicalModuleName (which drops the directory
+    /// for a subdir module) — #1683 subdir/alias regression.
+    /// </summary>
+    internal string ModuleNamespaceFromFilePath(string filePath) => GetModuleNameFromFilePath(filePath);
+
+    /// <summary>
     /// Derives a module namespace from a file path, computing the full package path
     /// relative to the project root.
     /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
