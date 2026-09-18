@@ -142,51 +142,23 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if an AST body contains any SuperExpression references.
-    /// If so, the body cannot be inlined into a static operator (base requires instance context).
+    /// Whether an operator-dunder body needs the private-instance-method split when inlined into
+    /// a static C# operator (#1740): true when a <c>super()</c> call inside it targets a
+    /// non-operator dunder or a regular method — <c>base.Method()</c> is legal only in instance
+    /// context, and this enclosing method may be emitted as a static C# operator. Read from the
+    /// materialized <see cref="CodeGenInfo.RequiresInstanceImpl"/> fact the checker recorded on
+    /// the method's own symbol (<c>RecordSuperDunderLoweringFact</c>) — replaces the deleted
+    /// <c>ContainsSuperExpression</c>/<c>ContainsSuperExpressionInStatement</c>/
+    /// <c>ContainsSuperExpressionInExpression</c> kind-enumerating AST walker (Rule 2). A
+    /// <c>super().__op__(x)</c> call to ANOTHER operator dunder inside the same body does not set
+    /// this fact — it lowers to a cast-based operator application instead
+    /// (<c>RoslynEmitter.Expressions.Access.cs</c>), which is valid inlined into a static operator
+    /// and needs no split.
     /// </summary>
-    private static bool ContainsSuperExpression(IReadOnlyList<Statement> body)
+    private bool RequiresInstanceImplSplit(FunctionDef funcDef)
     {
-        foreach (var stmt in body)
-        {
-            if (ContainsSuperExpressionInStatement(stmt))
-                return true;
-        }
-        return false;
-    }
-
-    private static bool ContainsSuperExpressionInStatement(Statement stmt)
-    {
-        return stmt switch
-        {
-            ExpressionStatement es => ContainsSuperExpressionInExpression(es.Expression),
-            ReturnStatement rs => rs.Value != null && ContainsSuperExpressionInExpression(rs.Value),
-            Assignment a => ContainsSuperExpressionInExpression(a.Value) || ContainsSuperExpressionInExpression(a.Target),
-            IfStatement ifs => ContainsSuperExpression(ifs.ThenBody)
-                || ifs.ElifClauses.Any(e => ContainsSuperExpression(e.Body))
-                || ContainsSuperExpression(ifs.ElseBody)
-                || ContainsSuperExpressionInExpression(ifs.Test),
-            VariableDeclaration vd => vd.InitialValue != null && ContainsSuperExpressionInExpression(vd.InitialValue),
-            _ => false
-        };
-    }
-
-    private static bool ContainsSuperExpressionInExpression(Expression expr)
-    {
-        return expr switch
-        {
-            SuperExpression => true,
-            FunctionCall fc => ContainsSuperExpressionInExpression(fc.Function)
-                || fc.Arguments.Any(ContainsSuperExpressionInExpression),
-            MemberAccess ma => ContainsSuperExpressionInExpression(ma.Object),
-            BinaryOp bo => ContainsSuperExpressionInExpression(bo.Left) || ContainsSuperExpressionInExpression(bo.Right),
-            UnaryOp uo => ContainsSuperExpressionInExpression(uo.Operand),
-            ConditionalExpression ce => ContainsSuperExpressionInExpression(ce.Test)
-                || ContainsSuperExpressionInExpression(ce.ThenValue)
-                || ContainsSuperExpressionInExpression(ce.ElseValue),
-            Parenthesized p => ContainsSuperExpressionInExpression(p.Expression),
-            _ => false
-        };
+        var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == funcDef.Name);
+        return methodSymbol != null && GetCodeGenInfo(methodSymbol)?.RequiresInstanceImpl == true;
     }
 
     /// <summary>
@@ -247,9 +219,10 @@ internal partial class RoslynEmitter
 
         BlockSyntax operatorBody;
 
-        if (ContainsSuperExpression(funcDef.Body))
+        if (RequiresInstanceImplSplit(funcDef))
         {
-            // Super() requires instance context — generate private impl method + delegation
+            // A super() call to a non-operator dunder/regular method needs instance context
+            // (#1740) — generate a private instance-method impl + delegation.
             var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)
                 .WithIdentifier(Identifier(implName))
@@ -310,7 +283,7 @@ internal partial class RoslynEmitter
 
         BlockSyntax operatorBody;
 
-        if (ContainsSuperExpression(funcDef.Body))
+        if (RequiresInstanceImplSplit(funcDef))
         {
             var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)
@@ -365,7 +338,7 @@ internal partial class RoslynEmitter
 
         BlockSyntax operatorBody;
 
-        if (ContainsSuperExpression(funcDef.Body))
+        if (RequiresInstanceImplSplit(funcDef))
         {
             var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)

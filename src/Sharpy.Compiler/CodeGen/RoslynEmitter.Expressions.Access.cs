@@ -649,14 +649,40 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(delegateArgs)));
             }
 
+            // super().__op__(args) — an operator dunder — lowers to a CAST-based operator
+            // application (#1740): ((Base)receiver) op args. C# operator resolution is static, so
+            // the cast alone selects Base's own operator with no virtual dispatch and no `base`
+            // keyword — `base` is never legal as a bare operand (CS0175), which is exactly what
+            // GenerateExpression(SuperExpression) below would hand to a Binary/Prefix operand.
+            // Valid in every host (instance or the static operator an inlined dunder body becomes),
+            // because GenerateSelfReceiver already resolves to the right identifier in either case.
+            //
+            // Gated on DunderMapping's own binary/unary coverage, not merely the presence of the
+            // recorded fact (#1905): the checker's SuperOperatorApplication tag also covers
+            // __eq__/__matmul__/__implicit__/__explicit__, which are NOT real C# operator overloads
+            // (they are ordinary — sometimes virtual — instance methods, or conversions with no
+            // args to apply). A cast does not bypass virtual dispatch for an ordinary method call,
+            // so applying it to __eq__'s `Equals` override would turn `base.Equals(x)` into
+            // `((Base)this).Equals(x)` — still virtual-dispatching back to the override that made
+            // the call, i.e. infinite recursion. Those dunders fall through to the unchanged
+            // SuperExpression -> base route below, which is already correct for them.
+            var superOperatorLowering = memberAccess.Object is SuperExpression
+                ? _context.SemanticInfo?.GetOperatorLowering(call)
+                : null;
+            var isSuperOperatorApplication = superOperatorLowering is { Kind: OperatorLoweringKind.SuperOperatorApplication }
+                && (DunderMapping.TryGetBinaryExpressionKind(memberAccess.Member) != null
+                    || DunderMapping.TryGetUnaryExpressionKind(memberAccess.Member) != null);
+
             // A static method reached through a CONSTRUCTED generic reference: Comparer[int].create(cmp)
             // → global::...Comparer<int>.Create(cmp). The receiver is spelled from the recorded denoted
             // type (a CLOSED generic), never GenerateExpression on the IndexAccess, which would emit an
             // element access on the open type (CS0305). This subsumes the former AST re-derivation arm —
             // one authority, the classifier's denoted type (#1817).
-            var obj = _context.SemanticInfo?.GetDenotedType(memberAccess.Object) is { } denotedCallReceiver
-                ? _typeMapper.MapSemanticType(denotedCallReceiver)
-                : GenerateExpression(memberAccess.Object);
+            var obj = isSuperOperatorApplication
+                ? Cast(_typeMapper.MapSemanticType(superOperatorLowering!.NarrowTo!), GenerateSelfReceiver())
+                : _context.SemanticInfo?.GetDenotedType(memberAccess.Object) is { } denotedCallReceiver
+                    ? _typeMapper.MapSemanticType(denotedCallReceiver)
+                    : GenerateExpression(memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
             // e.g., self.__lt__(other) → this < other, self.__neg__() → -this

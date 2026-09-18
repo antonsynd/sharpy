@@ -465,6 +465,19 @@ internal partial class RoslynEmitter : ICodeEmitter
     // Used for inlining dunder bodies into static operators (self → left/value).
     private string? _selfReplacementIdentifier;
 
+    /// <summary>
+    /// The C# expression `self` currently denotes: the inlined-operator-body identifier
+    /// (<c>left</c>/<c>right</c>/<c>value</c>) when <see cref="_selfReplacementIdentifier"/> is
+    /// set, else <c>this</c>. The same mapping the ordinary <c>self</c> identifier read uses
+    /// (<c>RoslynEmitter.Expressions.cs</c>); factored out so a construct that needs the current
+    /// receiver WITHOUT reading a Sharpy <c>self</c> token — e.g. the implicit receiver of
+    /// <c>super().__op__(args)</c> (#1740) — uses the identical rule rather than a second copy.
+    /// </summary>
+    private ExpressionSyntax GenerateSelfReceiver()
+        => _selfReplacementIdentifier != null
+            ? IdentifierName(_selfReplacementIdentifier)
+            : ThisExpression();
+
     // When set, identifier references to Source are rewritten to Target inside an accessor body.
     // Sharpy lets an accessor NAME its incoming value; C# does not — a setter and an event
     // accessor both receive an implicit `value`, and nothing declares the Sharpy spelling. So the

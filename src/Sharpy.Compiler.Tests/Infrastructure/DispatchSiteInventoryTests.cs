@@ -178,8 +178,10 @@ public class DispatchSiteInventoryTests
         // operands; the NarrowWidthArithmeticMatrixTests refused cells assert the steer text for
         // both shapes, and mutation B-M9 (steer returns null) reddens them.
         ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandSpellings"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInExpression"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInStatement"] = "refusal-net:FileBasedIntegrationTests",
+        // ContainsSuperExpressionInExpression/InStatement deleted (#1740): the kind-enumerating
+        // super() walker is gone, replaced by the materialized OperatorLowering/RequiresInstanceImpl
+        // facts RoslynEmitter.Expressions.Access.cs and RoslynEmitter.Operators.cs's
+        // RequiresInstanceImplSplit read. Drained on fix, not re-added.
         ["CodeGen/RoslynEmitter.Patterns.cs::RoslynEmitter.GenerateMatchPattern"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.IsRepeatableOperand"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.GenerateBodyStatements"] = "refusal-net:FileBasedIntegrationTests",

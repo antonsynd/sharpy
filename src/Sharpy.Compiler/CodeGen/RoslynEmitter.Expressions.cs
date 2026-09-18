@@ -219,9 +219,7 @@ internal partial class RoslynEmitter
             // Handle 'self' -> 'this' conversion for instance methods
             // When _selfReplacementIdentifier is set (inlined operator body), map to that instead
             Identifier name when string.Equals(name.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) =>
-                _selfReplacementIdentifier != null
-                    ? IdentifierName(_selfReplacementIdentifier)
-                    : ThisExpression(),
+                GenerateSelfReceiver(),
             Identifier name => GenerateIdentifierExpression(name),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
