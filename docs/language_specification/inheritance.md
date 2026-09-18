@@ -97,6 +97,7 @@ super().method                 # ERROR: must call the method
 |---------|---------|---------|
 | Inside `__init__` | `super().__init__(args)` | Call parent constructor |
 | Inside dunder methods | `super().__eq__(other)` | Call parent dunder implementation |
+| Inside operator dunders | `super().__add__(other)` | Apply the parent's operator implementation |
 | Inside `@override` methods | `super().method()` | Call parent method being overridden |
 
 **Constructor Chaining:**
@@ -161,6 +162,41 @@ class Child(Parent):
         # Cross-dunder synthesis (also allowed on self, see Dunder Invocation Rules)
         return self.__lt__(other) or self.__eq__(other)  # ✅ OK
 ```
+
+**Inside Operator Dunders:**
+
+An operator dunder (`__add__`, `__lt__`, `__neg__`, …) is a dunder like any other, so
+`super().__add__(other)` reaches the parent's implementation. It lowers to a **cast operator
+application** — the parent operator is applied to `self` viewed as the base type,
+`((Base)self) + other` — which is valid in every host context (a return, a comprehension, a
+lambda body, another operator's body), because it names no `base` keyword that C# would reject
+outside an instance method. See [Operator Overloading](operator_overloading.md) for how the
+operators themselves are declared.
+
+```python
+class Base:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def __add__(self, other: Base) -> int:
+        return self.v + other.v
+
+
+class Derived(Base):
+    def __add__(self, other: Base) -> int:
+        return super().__add__(other)   # ✅ applies Base.__add__ to self
+
+
+def main() -> None:
+    print(Derived(1) + Derived(2))   # 3
+```
+
+A `super()` call to an object-shaped dunder (`__eq__(self, other: object)`) or one whose parent
+form is a named method rather than a C# operator (`__matmul__`, `__implicit__`, `__explicit__`)
+instead applies the parent's method directly (`base.Equals(other)`), so virtual dispatch — not the
+cast — selects the parent body and there is no self-recursion.
 
 **No chained `super()` for Multi-Level Inheritance:**
 

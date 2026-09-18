@@ -249,3 +249,4 @@ locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
 - [Dunder Invocation Rules](dunder_invocation_rules.md) - When and how dunders can be called
 - [Dunder Methods](dunder_methods.md) - Complete dunder method reference
 - [Built-in Functions](builtin_functions.md) - Functions that dispatch to dunders
+- [Inheritance](inheritance.md#inside-operator-dunders) - Calling a parent operator via `super().__add__(other)`
