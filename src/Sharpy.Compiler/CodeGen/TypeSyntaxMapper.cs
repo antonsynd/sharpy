@@ -196,8 +196,12 @@ internal class TypeSyntaxMapper
                 .Select(tp => (TypeSyntax)RoslynEmitter.TypeParameterIdentifierName(tp.Name))
                 .ToArray();
             var baseName = GetMappedTypeNameFromSymbol(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
-            return GenericName(Identifier(baseName))
-                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+            // QualifiedGenericName, NOT GenericName(Identifier(baseName)): baseName is now a dotted,
+            // global::-rooted name for a same-file type (global::Ns.ModuleClass.Container, #1683), and
+            // wrapping the whole dotted string in a single GenericName identifier prints as
+            // Container<T> but binds as an unbound Container<> (CS0246, #1095-shape). QualifiedGenericName
+            // splits the prefix/dots and attaches the type arguments to the leaf.
+            return QualifiedGenericName(baseName, typeArgs);
         }
         return MapSemanticType(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
     }
