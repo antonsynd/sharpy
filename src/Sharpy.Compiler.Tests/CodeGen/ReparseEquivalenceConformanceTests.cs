@@ -566,12 +566,17 @@ public class ReparseEquivalenceConformanceTests
         result.Success.Should().BeTrue($"the project importing keyword-named module '{moduleName}' must compile");
         units.Should().NotBeEmpty();
 
-        // Guard that the scenario is genuinely exercised: the emitter must @-escape the module name at the
-        // using-alias and module-reference sites. If a future change ever stopped emitting the escaped form,
-        // this assertion — not just the binding check below — fails loudly rather than passing vacuously.
+        // Guard that the scenario is genuinely exercised. Under universal module qualification (#1683)
+        // the keyword-named module is no longer referenced verbatim through an @-escaped alias
+        // (`using @base = ...; @base.Member(...)`); those directives are deleted. It is referenced
+        // through its PascalCased C# module class — global::Sharpy.Test.Base / .Lock / .Params — which
+        // is never a C# keyword, so no @-escape is needed and the #1095 verbatim-keyword vector is
+        // eliminated at the source. This asserts that qualified reference is present (non-vacuous)
+        // rather than the retired escaped form.
+        var moduleClass = char.ToUpperInvariant(moduleName[0]) + moduleName.Substring(1);
         string.Join("\n", units.Select(u => u.Unit.ToFullString()))
-            .Should().Contain($"@{moduleName}",
-                $"the keyword-named module '{moduleName}' must be referenced through an @-escaped identifier");
+            .Should().Contain($"global::Sharpy.Test.{moduleClass}.GetValue()",
+                $"the keyword-named module '{moduleName}' must be referenced through its qualified module class");
 
         ExtraBindingErrors(units, IntegrationTestBase.GetSharedReferences()).Should().BeEmpty();
     }
