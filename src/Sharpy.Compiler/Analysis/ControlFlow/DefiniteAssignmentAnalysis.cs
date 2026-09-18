@@ -193,6 +193,20 @@ internal static class DefiniteAssignmentAnalysis
             var assignedAnywhere = new HashSet<string>();
             foreach (var assigned in assignedInBlock.Values)
                 assignedAnywhere.UnionWith(assigned);
+
+            // A nested def's WRITE-THROUGH assignment (`x = 1` with no local re-declaration of `x`
+            // assigns the ENCLOSING local — C# closure semantics, Axiom 1; see
+            // BlockScopeRedeclarationMatrixTests.OuterDeclaredReassignInside_WritesThrough) is
+            // invisible to assignedInBlock above for the same reason its reads were invisible to
+            // readsInBlock: a nested def never becomes a block statement of THIS function's CFG.
+            // Collected symmetrically with the read side, so a SIBLING nested def's read of that
+            // outer local is not wrongly judged "never assigned" (#1681 follow-up).
+            if (cfg.SourceFunction != null)
+            {
+                foreach (var stmt in cfg.SourceFunction.Body)
+                    CollectNestedDefWriteThroughs(stmt, assignedAnywhere);
+            }
+
             foreach (var (name, node) in deferredReads)
             {
                 if (!bareDecls.ContainsKey(name))
@@ -548,9 +562,14 @@ internal static class DefiniteAssignmentAnalysis
     }
 
     /// <summary>
-    /// Collects every identifier read inside a deferred body — a lambda's or a nested <c>def</c>'s
+    /// Collects every identifier READ inside a deferred body — a lambda's or a nested <c>def</c>'s
     /// (nested lambdas/defs included) — treated alike because both run when the closure is CALLED,
-    /// not where it is written (#1635, extended to nested defs by #1681).
+    /// not where it is written (#1635, extended to nested defs by #1681). Mirrors
+    /// <see cref="CollectReads"/>/<see cref="CollectTargetReads"/>'s split for an <c>Assignment</c>
+    /// found inside: a lambda body can never contain one (it is a single expression), but a nested
+    /// def's body can, and a bare-name assignment TARGET is a write, not a read — a
+    /// same-named-outer-local's write-through assignment (`x = 1`, no local re-declaration; see
+    /// <see cref="CollectNestedDefWriteThroughs"/>) must not also be miscounted as a read here.
     ///
     /// <para><paramref name="shadowed"/> is null for a lambda body (its only own bindings are
     /// parameters, which <see cref="LambdaExpression.GetChildNodes"/> already excludes from
@@ -584,8 +603,39 @@ internal static class DefiniteAssignmentAnalysis
             return;
         }
 
+        if (node is Assignment assign)
+        {
+            CollectDeferredReads(assign.Value, deferredReads, shadowed);
+            CollectDeferredTargetReads(assign.Target, deferredReads, shadowed);
+            return;
+        }
+
         foreach (var child in node.GetChildNodes())
             CollectDeferredReads(child, deferredReads, shadowed);
+    }
+
+    /// <summary>Deferred-read counterpart of <see cref="CollectTargetReads"/>: a bare identifier
+    /// assignment target is a write, not a read (a write-through one is collected separately by
+    /// <see cref="CollectNestedDefWriteThroughs"/>), but a compound target's sub-expressions
+    /// (<c>obj.attr = v</c>, <c>arr[i] = v</c>) still read <c>obj</c>/<c>arr</c>/<c>i</c>.</summary>
+    private static void CollectDeferredTargetReads(
+        Expression target, List<(string, Identifier)> deferredReads, HashSet<string>? shadowed)
+    {
+        switch (target)
+        {
+            case Identifier:
+                break;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    CollectDeferredTargetReads(element, deferredReads, shadowed);
+                break;
+            case StarExpression star:
+                CollectDeferredTargetReads(star.Operand, deferredReads, shadowed);
+                break;
+            default:
+                CollectDeferredReads(target, deferredReads, shadowed);
+                break;
+        }
     }
 
     /// <summary>
@@ -603,6 +653,73 @@ internal static class DefiniteAssignmentAnalysis
             names.Add(vd.Name);
         foreach (var child in node.GetChildNodes())
             CollectLocalDeclarationNames(child, names);
+    }
+
+    /// <summary>
+    /// Finds every nested <c>def</c> reachable from <paramref name="node"/> and adds each one's
+    /// WRITE-THROUGH assignment targets to <paramref name="assignedAnywhere"/> — the write-side
+    /// counterpart of <see cref="CollectNestedDefDeferredReads"/> (#1681 follow-up). Mirrors that
+    /// method's discovery shape: a nested def never becomes a block statement of the enclosing
+    /// function's CFG, so this also has to walk the raw AST rather than <c>block.Statements</c>.
+    /// Skips a <see cref="LambdaExpression"/> (its body is a single expression — it cannot contain
+    /// an assignment STATEMENT at all, write-through or otherwise).
+    /// </summary>
+    private static void CollectNestedDefWriteThroughs(Node node, HashSet<string> assignedAnywhere)
+    {
+        if (node is LambdaExpression)
+            return;
+
+        if (node is FunctionDef nestedDef)
+        {
+            CollectWriteThroughs(nestedDef, assignedAnywhere, new HashSet<string>());
+            return;
+        }
+
+        foreach (var child in node.GetChildNodes())
+            CollectNestedDefWriteThroughs(child, assignedAnywhere);
+    }
+
+    /// <summary>
+    /// Adds every <c>Assignment</c> target name reachable from <paramref name="node"/> to
+    /// <paramref name="assignedAnywhere"/>, EXCEPT one in <paramref name="shadowed"/> — a name the
+    /// innermost enclosing nested def (or lambda, though a lambda's body cannot itself assign)
+    /// declares as its own parameter or local, which binds a SEPARATE name scoped to that body
+    /// rather than writing through to the outer scope's same-named local (C# scoping, Axiom 1; the
+    /// owner's write-through ruling only reaches a NON-shadowed name). A further-nested def gets its
+    /// own names layered on top of <paramref name="shadowed"/>, exactly like
+    /// <see cref="CollectDeferredReads"/>'s shadow tracking, so shadowing composes at any depth.
+    /// </summary>
+    private static void CollectWriteThroughs(Node node, HashSet<string> assignedAnywhere, HashSet<string> shadowed)
+    {
+        if (node is FunctionDef nestedDef)
+        {
+            var innerShadowed = new HashSet<string>(shadowed);
+            foreach (var param in nestedDef.Parameters)
+                innerShadowed.Add(param.Name);
+            foreach (var bodyStmt in nestedDef.Body)
+                CollectLocalDeclarationNames(bodyStmt, innerShadowed);
+
+            foreach (var child in nestedDef.GetChildNodes())
+                CollectWriteThroughs(child, assignedAnywhere, innerShadowed);
+            return;
+        }
+
+        if (node is LambdaExpression)
+            return;
+
+        if (node is Assignment { Operator: AssignmentOperator.Assign } assignment)
+        {
+            var targets = new HashSet<string>();
+            CollectAssignedNames(assignment.Target, targets);
+            foreach (var name in targets)
+            {
+                if (!shadowed.Contains(name))
+                    assignedAnywhere.Add(name);
+            }
+        }
+
+        foreach (var child in node.GetChildNodes())
+            CollectWriteThroughs(child, assignedAnywhere, shadowed);
     }
 
     /// <summary>

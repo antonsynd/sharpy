@@ -1126,4 +1126,60 @@ def main() -> None:
         result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
         result.StandardOutput.Trim().Should().Be("99");
     }
+
+    // --- write-through dimension: an assignment inside ONE nested def, read by a SIBLING (#1681 follow-up) ---
+
+    [Fact]
+    public void NestedDefWriteThrough_SiblingNestedDefReads_Accepted()
+    {
+        // Regression p6-analysis caught via the whole-solution gate (BlockScopeRedeclarationMatrixTests.
+        // UseBeforeAssignInSibling_SPY0600(nested-def), red @ 4a1305ea9): inner1's `x = 1` has no local
+        // re-declaration of `x`, so it WRITES THROUGH to the outer bare local (C# closure semantics,
+        // Axiom 1 — the owner's write-through ruling; see BlockScopeRedeclarationMatrixTests.
+        // OuterDeclaredReassignInside_WritesThrough). CollectNestedDefDeferredReads made inner2's read
+        // visible to DA, but assignedAnywhere was built only from assignedInBlock (main's own CFG
+        // blocks) — a nested def's write-through assignment is exactly as CFG-invisible as its reads,
+        // for the same reason (ControlFlowGraphBuilder never walks a FunctionDef's body). Without
+        // CollectNestedDefWriteThroughs this refuses with SPY0600 instead of printing 1.
+        var source = @"
+def main() -> None:
+    x: int
+    def inner1() -> None:
+        x = 1
+    inner1()
+    def inner2() -> None:
+        print(x)
+    inner2()
+";
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600",
+            "inner1's write-through assignment satisfies the 'assigned anywhere' rule for inner2's read");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("1");
+    }
+
+    [Fact]
+    public void NestedDefWriteThrough_ShadowedBySiblingsOwnDeclaration_StaysRefused()
+    {
+        // Negative control pairing the accepted cell above (Rule 12: non-vacuous positive control):
+        // inner1 declares its OWN `x: int` before assigning it, so `x = 1` binds inner1's local, NOT
+        // the outer — CollectWriteThroughs's shadow set (seeded the same way as CollectDeferredReads's)
+        // must exclude it from assignedAnywhere. The outer x is still never assigned anywhere, so
+        // inner2's read of it must still be genuinely refused.
+        var source = @"
+def main() -> None:
+    x: int
+    def inner1() -> None:
+        x: int
+        x = 1
+    inner1()
+    def inner2() -> None:
+        print(x)
+    inner2()
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            "inner1's x is its OWN shadowed local — its assignment does not write through to the outer x");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"));
+    }
 }
