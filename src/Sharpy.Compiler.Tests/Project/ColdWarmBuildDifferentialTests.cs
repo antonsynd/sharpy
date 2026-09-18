@@ -754,7 +754,7 @@ def main() -> None:
     /// then the edit introduces <c>Box.Ids</c> and forces <c>main</c> to recompile against a CACHED
     /// <c>Box</c>.</para>
     /// </summary>
-    [Fact(Skip = "warm-only SPY0202 nested-alias cache-restore bug, see #1897 — unskip when fixed")]
+    [Fact]
     public void AfterAWarmRestore_ANestedTypeAliasStillResolves()
     {
         // --- Warm arm: a succeeding build writes the cache; the edit then makes main RESOLVE the
