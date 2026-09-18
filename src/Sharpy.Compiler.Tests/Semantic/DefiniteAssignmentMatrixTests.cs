@@ -86,6 +86,26 @@ def main() -> None:
     }
 
     [Fact]
+    public void LambdaExpression_ReadsOuterUnassigned_ProducesSPY0600()
+    {
+        // Positive control for LambdaExpression_SeparateScope_DoesNotFlagOuterUnassigned above: that
+        // cell's lambda body (`lambda: 42`) reads nothing, so it cannot tell a working
+        // deferred-read check apart from a missing one. This cell (da03, #1681) actually reads the
+        // outer x, so it is the cell the LambdaExpression arm's mutation must turn red.
+        var source = @"
+def main() -> None:
+    x: int
+    f = lambda: x
+    print(f())
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("the lambda reads outer x, which is never assigned");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            "a lambda's deferred read of a never-assigned outer local must flag SPY0600");
+    }
+
+    [Fact]
     public void ExceptHandler_AssignedInsideTry_ProducesSPY0600()
     {
         var source = @"

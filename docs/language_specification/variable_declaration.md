@@ -101,6 +101,11 @@ initializer (`= default!`) so the C# compiler agrees:
 - **`defer` bodies** run at scope exit, after every statement of the enclosing scope, so a
   deferred read of a local assigned *later* in that scope is definitely assigned (bodies run in
   LIFO order).
+- **Lambda and nested `def` bodies** run when the closure is *called*, not where it is written, so
+  they are judged by the same deferred-read rule: a read of a local assigned *later* in the
+  enclosing scope is definitely assigned, but a local assigned *nowhere* in the enclosing function
+  is refused (SPY0600) even though its flow position alone would not catch it — the closure could
+  be called after the enclosing function returns.
 
 ```spy
 def risky(flag: bool) -> int:
@@ -132,6 +137,22 @@ def deferred() -> None:
     defer:
         print(x)          # OK — runs at scope exit, after `x = 7`
     x = 7
+
+def closures() -> None:
+    x: int
+    def inner() -> None:
+        print(x)          # OK — inner() runs after `x = 3` below, not where it's defined
+    x = 3
+    inner()
+```
+
+<!-- spec-sweep: error SPY0600 -->
+```spy
+def never_assigned() -> None:
+    x: int
+    def inner() -> None:
+        print(x)          # ERROR SPY0600 — x is never assigned in never_assigned
+    inner()
 ```
 
 ```spy

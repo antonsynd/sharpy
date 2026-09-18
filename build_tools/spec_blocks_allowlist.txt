@@ -565,8 +565,8 @@ unittest.md::9f701ad433  # SPY0200 first
 unittest.md::b2994e6e1a  # SPY0200 first
 unittest.md::ca895c8300  # SPY0203 first
 variable_declaration.md::340c14d8cc  # SPY0227 first
+variable_declaration.md::82c11f8d13  # SPY0331 first
 variable_declaration.md::b5028fb495  # SPY0200 first
-variable_declaration.md::c1027bd317  # SPY0331 first
 variable_declaration.md::f42783e6d3  # SPY0200 first
 variable_scoping.md::07ec0fcb02  # SPY0606 first
 variable_scoping.md::1a84035489  # SPY0200 first

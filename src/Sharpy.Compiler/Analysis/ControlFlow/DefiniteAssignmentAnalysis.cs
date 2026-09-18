@@ -60,10 +60,12 @@ internal static class DefiniteAssignmentAnalysis
         var bareDecls = new Dictionary<string, VariableDeclaration>();
         var assignedInBlock = new Dictionary<BasicBlock, HashSet<string>>();
         var readsInBlock = new Dictionary<BasicBlock, List<(string Name, Identifier Node, int StatementIndex)>>();
-        // Reads inside lambda bodies are not flow-positioned: the lambda may run after a later
-        // assignment (`f = lambda: x; x = 7; f()` is legal Python). They are judged once, at the
-        // end, against "is this local assigned ANYWHERE in the function" (#1635).
-        var lambdaReads = new List<(string Name, Identifier Node)>();
+        // Reads inside a DEFERRED body — a lambda's or a nested `def`'s — are not flow-positioned:
+        // the closure may run after a later assignment (`f = lambda: x; x = 7; f()`, or the `def`
+        // equivalent, is legal Python). They are judged once, at the end, against "is this local
+        // assigned ANYWHERE in the function" (#1635, extended to nested defs by #1681 — lambda and
+        // nested-def reads are judged by ONE rule).
+        var deferredReads = new List<(string Name, Identifier Node)>();
         var edgeWalrus = new Dictionary<BasicBlock, (HashSet<string> WhenTrue, HashSet<string> WhenFalse)>();
         var declaredNames = new HashSet<string>();
 
@@ -83,7 +85,7 @@ internal static class DefiniteAssignmentAnalysis
             {
                 CollectWalrusBareDecls(entryExpr, bareDecls, declaredNames);
                 CollectWalrusTargets(entryExpr, blockAssigned);
-                CollectReadsFromExpr(entryExpr, blockReads, -1, lambdaReads);
+                CollectReadsFromExpr(entryExpr, blockReads, -1, deferredReads);
             }
 
             for (int i = 0; i < block.Statements.Count; i++)
@@ -104,14 +106,14 @@ internal static class DefiniteAssignmentAnalysis
 
                 CollectWalrusBareDecls(stmt, bareDecls, declaredNames);
                 CollectWalrusTargets(stmt, blockAssigned);
-                CollectReads(stmt, blockReads, i, lambdaReads);
+                CollectReads(stmt, blockReads, i, deferredReads);
             }
 
             foreach (var expr in block.Expressions)
             {
                 CollectWalrusBareDecls(expr, bareDecls, declaredNames);
                 CollectWalrusTargets(expr, blockAssigned);
-                CollectReadsFromExpr(expr, blockReads, block.Statements.Count, lambdaReads);
+                CollectReadsFromExpr(expr, blockReads, block.Statements.Count, deferredReads);
             }
 
             if (block.Terminator is ConditionalBranchTerminator cbt)
@@ -124,11 +126,22 @@ internal static class DefiniteAssignmentAnalysis
                 if (wTrue.Count > unconditional.Count || wFalse.Count > unconditional.Count)
                     edgeWalrus[block] = (wTrue, wFalse);
 
-                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, lambdaReads);
+                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, deferredReads);
             }
 
             assignedInBlock[block] = blockAssigned;
             readsInBlock[block] = blockReads;
+        }
+
+        // A nested `def` is skipped entirely by ControlFlowGraphBuilder (it forms its own graph and
+        // never becomes a block statement of THIS function's CFG — see BuildStatement's `FunctionDef`
+        // arm), so it is invisible to the per-block scan above. Its body is walked directly from the
+        // raw AST here instead, and its reads get the exact same deferred treatment as a lambda's
+        // (#1681 — lambda and nested-def reads are judged by ONE rule).
+        if (cfg.SourceFunction != null)
+        {
+            foreach (var stmt in cfg.SourceFunction.Body)
+                CollectNestedDefDeferredReads(stmt, deferredReads);
         }
 
         if (bareDecls.Count == 0)
@@ -175,12 +188,12 @@ internal static class DefiniteAssignmentAnalysis
         // assigned NOWHERE can never be bound then (python3: NameError → Sharpy UnboundLocalError):
         // a genuine violation. A local whose only assignment a suppression edge can skip is
         // runtime-checked — the same UnboundLocalError, but only when actually unset (#1839).
-        if (lambdaReads.Count > 0)
+        if (deferredReads.Count > 0)
         {
             var assignedAnywhere = new HashSet<string>();
             foreach (var assigned in assignedInBlock.Values)
                 assignedAnywhere.UnionWith(assigned);
-            foreach (var (name, node) in lambdaReads)
+            foreach (var (name, node) in deferredReads)
             {
                 if (!bareDecls.ContainsKey(name))
                     continue;
@@ -445,25 +458,25 @@ internal static class DefiniteAssignmentAnalysis
 
     private static void CollectReads(
         Statement stmt, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> lambdaReads)
+        List<(string, Identifier)> deferredReads)
     {
         if (stmt is Assignment assign)
         {
-            CollectReadsFromExpr(assign.Value, reads, stmtIdx, lambdaReads);
-            CollectTargetReads(assign.Target, reads, stmtIdx, lambdaReads);
+            CollectReadsFromExpr(assign.Value, reads, stmtIdx, deferredReads);
+            CollectTargetReads(assign.Target, reads, stmtIdx, deferredReads);
             return;
         }
 
         foreach (var child in stmt.GetChildNodes())
         {
             if (child is Expression expr)
-                CollectReadsFromExpr(expr, reads, stmtIdx, lambdaReads);
+                CollectReadsFromExpr(expr, reads, stmtIdx, deferredReads);
         }
     }
 
     private static void CollectTargetReads(
         Expression target, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> lambdaReads)
+        List<(string, Identifier)> deferredReads)
     {
         switch (target)
         {
@@ -471,20 +484,20 @@ internal static class DefiniteAssignmentAnalysis
                 break;
             case TupleLiteral tuple:
                 foreach (var element in tuple.Elements)
-                    CollectTargetReads(element, reads, stmtIdx, lambdaReads);
+                    CollectTargetReads(element, reads, stmtIdx, deferredReads);
                 break;
             case StarExpression star:
-                CollectTargetReads(star.Operand, reads, stmtIdx, lambdaReads);
+                CollectTargetReads(star.Operand, reads, stmtIdx, deferredReads);
                 break;
             default:
-                CollectReadsFromExpr(target, reads, stmtIdx, lambdaReads);
+                CollectReadsFromExpr(target, reads, stmtIdx, deferredReads);
                 break;
         }
     }
 
     private static void CollectReadsFromExpr(
         Expression expr, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> lambdaReads)
+        List<(string, Identifier)> deferredReads)
     {
         if (expr is Identifier id)
         {
@@ -494,27 +507,102 @@ internal static class DefiniteAssignmentAnalysis
 
         if (expr is LambdaExpression lambda)
         {
-            CollectLambdaReads(lambda, lambdaReads);
+            CollectDeferredReads(lambda, deferredReads);
             return;
         }
 
         foreach (var child in expr.GetChildNodes())
         {
             if (child is Expression childExpr)
-                CollectReadsFromExpr(childExpr, reads, stmtIdx, lambdaReads);
+                CollectReadsFromExpr(childExpr, reads, stmtIdx, deferredReads);
         }
     }
 
-    /// <summary>Collects every identifier read inside a lambda body (nested lambdas included).</summary>
-    private static void CollectLambdaReads(Node node, List<(string, Identifier)> lambdaReads)
+    /// <summary>
+    /// Finds every nested <c>def</c> reachable from <paramref name="node"/> and feeds each one's
+    /// body through <see cref="CollectDeferredReads"/> — the same treatment a lambda gets (#1681,
+    /// "lambda and nested-def reads are judged by ONE rule"). A nested <c>def</c> never becomes a
+    /// block statement of the enclosing function's CFG (<c>ControlFlowGraphBuilder</c> treats it as
+    /// control-flow-neutral: it forms its own graph, built separately when the walker visits it), so
+    /// this walk operates on the raw AST rather than <c>block.Statements</c> — it is the discovery
+    /// step the per-block scan in <see cref="Analyze"/> cannot perform. Does not descend into a
+    /// <see cref="LambdaExpression"/>'s body (the per-block scan already collected its reads, and a
+    /// lambda's body is a single expression that cannot itself contain a <c>def</c>), but a nested
+    /// <c>def</c> found INSIDE another nested <c>def</c>'s body is still found, because
+    /// <see cref="CollectDeferredReads"/> recurses through every child node without stopping at a
+    /// further <c>FunctionDef</c> boundary once it is already inside a deferred body.
+    /// </summary>
+    private static void CollectNestedDefDeferredReads(Node node, List<(string, Identifier)> deferredReads)
+    {
+        if (node is LambdaExpression)
+            return;
+
+        if (node is FunctionDef nestedDef)
+        {
+            CollectDeferredReads(nestedDef, deferredReads, new HashSet<string>());
+            return;
+        }
+
+        foreach (var child in node.GetChildNodes())
+            CollectNestedDefDeferredReads(child, deferredReads);
+    }
+
+    /// <summary>
+    /// Collects every identifier read inside a deferred body — a lambda's or a nested <c>def</c>'s
+    /// (nested lambdas/defs included) — treated alike because both run when the closure is CALLED,
+    /// not where it is written (#1635, extended to nested defs by #1681).
+    ///
+    /// <para><paramref name="shadowed"/> is null for a lambda body (its only own bindings are
+    /// parameters, which <see cref="LambdaExpression.GetChildNodes"/> already excludes from
+    /// traversal) and non-null once traversal has entered a nested <c>def</c>: that def's own
+    /// parameters and declarations bind a name scoped to ITS body, shadowing a same-named local of
+    /// the enclosing scope (C# scoping, Axiom 1) — a read of a shadowed name is the nested def's OWN
+    /// local, not a deferred read of the enclosing scope's, so it is excluded. A further-nested
+    /// <c>def</c> gets its own names layered on top, so shadowing composes correctly at any
+    /// depth.</para>
+    /// </summary>
+    private static void CollectDeferredReads(
+        Node node, List<(string, Identifier)> deferredReads, HashSet<string>? shadowed = null)
     {
         if (node is Identifier id)
         {
-            lambdaReads.Add((id.Name, id));
+            if (shadowed == null || !shadowed.Contains(id.Name))
+                deferredReads.Add((id.Name, id));
             return;
         }
+
+        if (node is FunctionDef nestedDef)
+        {
+            var innerShadowed = shadowed == null ? new HashSet<string>() : new HashSet<string>(shadowed);
+            foreach (var param in nestedDef.Parameters)
+                innerShadowed.Add(param.Name);
+            foreach (var bodyStmt in nestedDef.Body)
+                CollectLocalDeclarationNames(bodyStmt, innerShadowed);
+
+            foreach (var child in nestedDef.GetChildNodes())
+                CollectDeferredReads(child, deferredReads, innerShadowed);
+            return;
+        }
+
         foreach (var child in node.GetChildNodes())
-            CollectLambdaReads(child, lambdaReads);
+            CollectDeferredReads(child, deferredReads, shadowed);
+    }
+
+    /// <summary>
+    /// Adds every name a <c>VariableDeclaration</c> introduces directly within <paramref name="node"/>
+    /// to <paramref name="names"/>, without crossing into a further nested <c>def</c> or lambda (each
+    /// binds its own separate scope, so its declarations don't shadow the CURRENT level — they are
+    /// collected separately, at their own level, when <see cref="CollectDeferredReads"/> reaches
+    /// them).
+    /// </summary>
+    private static void CollectLocalDeclarationNames(Node node, HashSet<string> names)
+    {
+        if (node is LambdaExpression or FunctionDef)
+            return;
+        if (node is VariableDeclaration vd)
+            names.Add(vd.Name);
+        foreach (var child in node.GetChildNodes())
+            CollectLocalDeclarationNames(child, names);
     }
 
     /// <summary>

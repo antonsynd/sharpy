@@ -1,0 +1,13 @@
+# #1681: a nested `def` reads an outer bare local NEVER assigned anywhere in the enclosing
+# function — python3 raises NameError when the nested function runs. A lambda reading the same
+# outer local was already refused (#1635); a nested `def` slipped through because
+# ControlFlowGraphBuilder treats `def` as control-flow-neutral and never walks its body, so the
+# read was invisible to the DA walk. Without this rule the call printed 0 instead of refusing.
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        print(x)
+    inner()
+
+def main() -> None:
+    outer()
