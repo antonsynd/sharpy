@@ -599,4 +599,78 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             + "defining module — no using-directive to be shadowed (#1683, #1802)");
         run.GeneratedCSharp.Should().NotContain(UsingStatic, $"{id}: #1683 close criterion");
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // #1802 file == class merge + the remaining name-collision cells.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void FileNamedClassMerge_MemberReference_IsSingleSegmentQualified_NotDoubled()
+    {
+        // #1802 core: foo.spy declaring `class Foo` merges the class INTO the module class Foo, so a
+        // reference to its const / static field / static method must be `global::Foo.<member>` — a
+        // SINGLE Foo segment. The defect emitted `Foo.Foo.K` (CS0117) because the merge was not seen
+        // at the reference site. `Foo.Foo` must be absent.
+        const string source = """
+            class Foo:
+                const K: int = 10
+
+                @static
+                count: int = 0
+
+                def make() -> int:
+                    return 7
+
+            def main() -> None:
+                print(Foo.K)
+                print(Foo.count)
+                print(Foo.make())
+            """;
+        var result = CompileAndExecute(source, "foo.spy");
+        result.Success.Should().BeTrue(
+            "the file==class merge specimen must compile and run (no CS0117). Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("10\n0\n7\n");
+
+        var cs = result.GeneratedCSharp!;
+        cs.Should().Contain("global::Foo.K",
+            "the const of a file-named (merged) class is referenced through the single merged class "
+            + "segment (#1802)");
+        cs.Should().Contain("global::Foo.Make()",
+            "the static method of the merged class is single-segment-qualified (#1802)");
+        cs.Should().NotContain("Foo.Foo",
+            "the #1802 defect spelling — the reference site re-derived a module-class segment on top "
+            + "of the class that IS the module class (`Foo.Foo.K` → CS0117) — must be gone");
+        cs.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    public static IEnumerable<object[]> CollisionFunctionNameCells()
+    {
+        // A module function whose name equals a CLR namespace/type: it must be emitted
+        // global::<Module>.<Name>() so it binds the user function, not System / System.String.
+        yield return new object[] { "def_system", "system", "System", "global::Coll.System()" };
+        yield return new object[] { "def_string", "string", "String", "global::Coll.String()" };
+    }
+
+    [Theory]
+    [MemberData(nameof(CollisionFunctionNameCells))]
+    public void Collision_FunctionNameEqualsClrName_IsGlobalQualified(
+        string id, string spyName, string csName, string expectedSpelling)
+    {
+        Output.WriteLine($"[collision] {id} → {expectedSpelling}");
+        var source =
+            $"def {spyName}() -> str:\n    return \"ok\"\n\n\ndef main() -> None:\n    print({spyName}())\n";
+        var result = CompileAndExecute(source, "coll.spy");
+
+        result.Success.Should().BeTrue(
+            $"{id}: a function whose name collides with a CLR name must build and run. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("ok\n");
+
+        var cs = result.GeneratedCSharp!;
+        cs.Should().Contain(expectedSpelling,
+            $"{id}: the call is global::-qualified through the module class, so it binds the user "
+            + $"function `{csName}`, not the CLR namespace/type of the same name (#1683)");
+        cs.Should().NotContain(UsingStatic, $"{id}: #1683 close criterion");
+    }
 }
