@@ -789,5 +789,77 @@ class Derived(Base):
             "the super call inside __add__ is OPERATOR-lowered, not method-lowered");
     }
 
+    /// <summary>
+    /// The end-to-end guard the bug report named: every test above reads
+    /// <c>binding.RequiresInstanceImpl(symbol)</c> — the RAW per-binding mark — or classifies the
+    /// <c>CodeGenInfo</c> property; none of them round-trip the mark through a SECOND
+    /// <see cref="SemanticBinding"/> the way <c>ProjectCompiler.Phases.cs</c> does for every real
+    /// compile (single-file <c>sharpyc run</c> included, ProjectCompiler.Phases.cs:869): a per-file
+    /// binding is thrown away after <see cref="SemanticBinding.MergeFrom"/> copies its facts onto
+    /// the project-level binding that <see cref="SemanticBinding.MaterializeCodeGenInfo"/> later
+    /// freezes (ProjectCompiler.cs:309). <c>_requiresInstanceImpl</c> was missing from
+    /// <c>MergeFrom</c> — the mark was real on the per-file binding and silently lost at the merge,
+    /// so <c>CodeGenInfo.RequiresInstanceImpl</c> read false in every actual compile (s21: CS1511
+    /// "'base' not available in a static method", #1740). This test fails exactly the way that bug
+    /// did if <c>MergeFrom</c> ever drops the line again.
+    ///
+    /// <para><c>computeCodeGenInfo: true</c> (ProjectConfig.UsePrecomputedCodeGenInfo's default,
+    /// ProjectConfig.cs:215) is what makes CheckModule run its OWN internal CodeGenInfoComputer —
+    /// the same one <c>CodeGenInfoComputerTests</c> constructs by hand — onto the PER-FILE binding,
+    /// so <c>__lt__</c> has a <c>_codeGenInfo</c> entry on THAT binding before the merge, exactly as
+    /// a real compile does; MaterializeCodeGenInfo's own Debug.Assert requires it.</para>
+    /// </summary>
+    [Fact]
+    public void RequiresInstanceImpl_SurvivesThePerFileToProjectMerge_LikeARealCompile()
+    {
+        const string source = @"
+class Base:
+    def __str__(self) -> str:
+        return ""base""
+
+class Derived(Base):
+    def __lt__(self, other: Derived) -> bool:
+        return super().__str__() == ""base""
+";
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+
+        // The per-file binding: exactly ProjectCompiler.Phases.cs's `localBinding`.
+        var perFileBinding = new SemanticBinding();
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, perFileBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        perFileBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = perFileBinding
+        };
+        // computeCodeGenInfo: true — the cold-build default (ProjectConfig.UsePrecomputedCodeGenInfo)
+        // — so __lt__ gets a _codeGenInfo entry on THIS (per-file) binding, as a real compile does.
+        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: false);
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // The project-level binding: exactly ProjectCompiler's `_projectModel.SemanticBinding`.
+        var projectBinding = new SemanticBinding();
+        projectBinding.MergeFrom(perFileBinding);
+        projectBinding.MaterializeCodeGenInfo();
+
+        var derived = symbolTable.Lookup("Derived") as TypeSymbol;
+        derived.Should().NotBeNull();
+        var ltMethod = derived!.Methods.Single(m => m.Name == "__lt__");
+
+        projectBinding.GetCodeGenInfo(ltMethod)?.RequiresInstanceImpl.Should().BeTrue(
+            "the method-lowered super().__str__() mark must survive MergeFrom and be bridged onto " +
+            "CodeGenInfo by MaterializeCodeGenInfo, exactly as a real ProjectCompiler compile does");
+    }
+
     #endregion
 }

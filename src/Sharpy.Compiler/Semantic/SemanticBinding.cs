@@ -603,6 +603,14 @@ public class SemanticBinding
         foreach (var (symbol, _) in other._clrBaseOverrides)
             _clrBaseOverrides.TryAdd(symbol, true);
 
+        // Same consumption point, same obligation (#1740): RequiresInstanceImpl is bridged at
+        // MaterializeCodeGenInfo on the project-level binding, after this merge — every
+        // ProjectCompiler compile (including a single-file `sharpyc run`, ProjectCompiler.Phases.cs
+        // :869) builds a fresh per-file SemanticBinding, so a mark RecordSuperDunderLoweringFact
+        // made there is lost unless it crosses here, exactly like _clrBaseOverrides.
+        foreach (var (symbol, _) in other._requiresInstanceImpl)
+            _requiresInstanceImpl.TryAdd(symbol, true);
+
         // Same consumption point, same obligation (#1408): the forwarders are bridged at
         // MaterializeCodeGenInfo on the project-level binding, after this merge.
         foreach (var (symbol, forwarders) in other._forwardingConstructors)
