@@ -98,7 +98,7 @@ public class SymbolTable : IGlobalSymbolTable
 
     public void EnterScope(string name)
     {
-        if (IsFunctionLikeScope(name))
+        if (OwnsLedger(name))
         {
             _exitedVariables.Clear();
         }
@@ -108,7 +108,7 @@ public class SymbolTable : IGlobalSymbolTable
         _scopesById[scopeId] = newScope;
         _scopeStack.Push(newScope);
 
-        if (IsFunctionLikeScope(name))
+        if (OwnsLedger(name))
         {
             _functionLedgers[scopeId] = new LocalBindingLedger(scopeId, name, _currentFunctionScopeId);
             _functionOwnerStack.Push(scopeId);
@@ -197,10 +197,10 @@ public class SymbolTable : IGlobalSymbolTable
 
         _scopeStack.Pop();
 
-        // Leaving a function-like scope hands the ledger back to the enclosing owner. Without
+        // Leaving a ledger-owning scope hands the ledger back to the enclosing owner. Without
         // this, every binding after a lambda or nested def went into the NESTED ledger, which
         // no allocation ever walked, and the emitter spelled those locals from nothing (#1560 C1).
-        if (IsFunctionLikeScope(scope.Name))
+        if (OwnsLedger(scope.Name))
         {
             _functionOwnerStack.Pop();
             _currentFunctionScopeId = _functionOwnerStack.Count > 0 ? _functionOwnerStack.Peek() : -1;
@@ -280,6 +280,21 @@ public class SymbolTable : IGlobalSymbolTable
         /// (generic-type resolution, alias parameters, constraint resolution). It declares no
         /// variables and no C# body, so it is transparent to both rules.</summary>
         Transparent,
+
+        /// <summary>
+        /// A field, <c>@static</c> field or module-variable initializer's own expression-evaluation
+        /// boundary. Owns a <see cref="LocalBindingLedger"/> like <see cref="FunctionLike"/> — a
+        /// comprehension, generator, lambda or walrus inside the initializer needs somewhere to
+        /// claim its locals (#1685) — but unlike <see cref="FunctionLike"/> it is TRANSPARENT to the
+        /// R-Y bare-name-crossing rule: the initializer conceptually executes as part of its
+        /// declaring type/module body's own top-level evaluation (Python: <c>class C: a = 1; b = a +
+        /// 1</c> runs directly in the class namespace, not in a nested function), so a sibling
+        /// class-body or module-level name stays reachable by bare name from inside it. A REAL
+        /// function-like scope nested further in (a <c>lambda</c> written inside the initializer)
+        /// still crosses normally — this scope only excuses its own boundary, not scopes nested past
+        /// it. See <see cref="OwnsLedger"/>.
+        /// </summary>
+        InitializerHost,
     }
 
     /// <summary>
@@ -306,6 +321,27 @@ public class SymbolTable : IGlobalSymbolTable
     /// today, so the other three are R-Y-inert; classifying them by what they are keeps the answer
     /// right if a union or interface ever gains a <c>const</c>, rather than silently binding it.
     /// </para>
+    /// <para>
+    /// <b><c>initializer:</c> is its own kind, not function-like.</b> A class field, <c>@static</c>
+    /// field or module-variable initializer is checked directly in its declaring scope — a
+    /// <c>TypeBody</c> or <c>Module</c> scope, neither of which owns a
+    /// <see cref="LocalBindingLedger"/> — so a comprehension, generator, lambda or walrus inside
+    /// the initializer expression had no owning scope to claim its locals, and the emitter crashed
+    /// with SPY0909 (#1685). <see cref="TypeChecker"/> pushes an <c>initializer:{name}</c> scope
+    /// around the initializer expression only when <see cref="IsInsideLedgerOwningScope"/> is false
+    /// (an ordinary local variable's own initializer, even nested a few blocks into a function body,
+    /// already has an owning ledger from the enclosing function and needs no extra scope). Classifying
+    /// it <see cref="ScopeKind.FunctionLike"/> instead of <see cref="ScopeKind.InitializerHost"/>
+    /// was tried first and broke sibling class-body/module const bare-name resolution
+    /// (<c>class C: A: int = 1; B: int = A</c>) — <c>ResolveName</c> treated the initializer as a
+    /// crossed function boundary and reported <c>A</c> undefined, matching the "not visible by bare
+    /// name inside methods" diagnostic even though initializers are not methods; see
+    /// <see cref="ScopeKind.InitializerHost"/> for the correct split. The pushed scope's
+    /// <see cref="LocalBindingLedger"/> has no enclosing function
+    /// (<see cref="LocalBindingLedger.ParentOwnerScopeId"/> is -1), so its locals are named as
+    /// their own top-level "method" exactly like a module-level function's — the shape the
+    /// emitter's hoist sink (a per-instance IIFE or flushed prologue) expects.
+    /// </para>
     /// </remarks>
     internal static ScopeKind? ClassifyScope(string scopeName)
     {
@@ -319,6 +355,9 @@ public class SymbolTable : IGlobalSymbolTable
         {
             return ScopeKind.FunctionLike;
         }
+
+        if (scopeName.StartsWith("initializer:", StringComparison.Ordinal))
+            return ScopeKind.InitializerHost;
 
         if (scopeName.StartsWith("class:", StringComparison.Ordinal)
             || scopeName.StartsWith("struct:", StringComparison.Ordinal)
@@ -356,11 +395,26 @@ public class SymbolTable : IGlobalSymbolTable
     /// method, or the type-checker's signature pre-pass. Crossing such a boundary invalidates
     /// exited-variable tracking from the prior function, makes class-body names invisible by bare
     /// name (#1786, R-Y), and every such scope owns a <see cref="LocalBindingLedger"/>. This is
-    /// the ONE predicate that decides all three; a new scope-name family that emits its own C#
-    /// method body is added to <see cref="ClassifyScope"/>, nowhere else.
+    /// the ONE predicate that decides all three FOR A REAL FUNCTION BODY; a new scope-name family
+    /// that emits its own C# method body is added to <see cref="ClassifyScope"/>, nowhere else.
+    /// <see cref="ScopeKind.InitializerHost"/> deliberately does NOT answer true here — it owns a
+    /// ledger (see <see cref="OwnsLedger"/>) without being an R-Y crossing, since an initializer is
+    /// not a method.
     /// </summary>
     internal static bool IsFunctionLikeScope(string scopeName)
         => ClassifyScope(scopeName) == ScopeKind.FunctionLike;
+
+    /// <summary>
+    /// Returns true if the scope name owns a <see cref="LocalBindingLedger"/> — a
+    /// <see cref="ScopeKind.FunctionLike"/> scope (which is ALSO an R-Y crossing, see
+    /// <see cref="IsFunctionLikeScope"/>) or a <see cref="ScopeKind.InitializerHost"/> scope (which
+    /// is not). <see cref="EnterScope"/>, <see cref="ExitScope"/> and <see cref="Define"/> use this
+    /// — not <see cref="IsFunctionLikeScope"/> — to decide ledger creation/attribution, so an
+    /// initializer's comprehension/lambda/walrus locals get a home without the initializer itself
+    /// becoming opaque to its own declaring type/module body's bare names (#1685).
+    /// </summary>
+    internal static bool OwnsLedger(string scopeName)
+        => ClassifyScope(scopeName) is ScopeKind.FunctionLike or ScopeKind.InitializerHost;
 
     /// <summary>
     /// Returns true if the scope name represents a type declaration's body — the kind of scope
@@ -387,6 +441,22 @@ public class SymbolTable : IGlobalSymbolTable
             && (scopeName.EndsWith(":Set", StringComparison.Ordinal)
                 || scopeName.EndsWith(":Init", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// True when the current position already has an owning <see cref="LocalBindingLedger"/> —
+    /// not merely when <see cref="CurrentScope"/> itself is function-like, but when any ENCLOSING
+    /// scope is (a nested <c>if</c>/<c>for</c>/<c>while</c> block inside a function body still
+    /// counts, since <see cref="Define"/> attributes to <c>_currentFunctionScopeId</c> regardless
+    /// of how many transparent block scopes sit between it and <see cref="CurrentScope"/>).
+    /// <see cref="TypeChecker.CheckVariableDeclaration"/> reads this to decide whether a class
+    /// field, <c>@static</c> field or module-variable initializer needs its own
+    /// <c>initializer:</c> scope (#1685): such a declaration is checked directly in a
+    /// <see cref="ScopeKind.TypeBody"/> or <see cref="ScopeKind.Module"/> scope, neither of which
+    /// owns a ledger, so a comprehension/generator/lambda/walrus local in the initializer
+    /// expression had nowhere to be named. An ordinary local variable's own initializer already
+    /// has one — from the enclosing function — and needs no extra scope.
+    /// </summary>
+    internal bool IsInsideLedgerOwningScope => _currentFunctionScopeId >= 0;
 
     public void Define(Symbol symbol)
     {

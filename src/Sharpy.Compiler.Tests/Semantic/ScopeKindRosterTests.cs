@@ -32,11 +32,19 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </remarks>
 public class ScopeKindRosterTests
 {
-    /// <summary>Distinct scope-name families reachable from <c>EnterScope(</c>, measured @ fb728b9be.</summary>
-    private const int ScopeNameFamilyCensus = 35;
+    /// <summary>
+    /// Distinct scope-name families reachable from <c>EnterScope(</c>, measured @ fb728b9be (35);
+    /// re-measured @ 10c07bb60 (36) after <c>initializer:</c> was added for field/module-variable
+    /// initializer hosts (#1685).
+    /// </summary>
+    private const int ScopeNameFamilyCensus = 36;
 
-    /// <summary><c>EnterScope(</c> call sites in the semantic pipeline, measured @ fb728b9be.</summary>
-    private const int EnterScopeCallSiteCensus = 41;
+    /// <summary>
+    /// <c>EnterScope(</c> call sites in the semantic pipeline, measured @ fb728b9be (41);
+    /// re-measured @ 10c07bb60 (42) after <c>TypeChecker.Statements.cs</c>'s
+    /// <c>CheckVariableDeclaration</c> gained an <c>initializer:</c> push (#1685).
+    /// </summary>
+    private const int EnterScopeCallSiteCensus = 42;
 
     /// <summary>
     /// Families the pipeline never reaches through an <c>EnterScope(</c> literal because they are
@@ -140,6 +148,7 @@ public class ScopeKindRosterTests
     [InlineData("observer:p:BeforeSet", SymbolTable.ScopeKind.FunctionLike)]
     [InlineData("pre-pass:m", SymbolTable.ScopeKind.FunctionLike)]
     [InlineData("interface-method:I.m", SymbolTable.ScopeKind.FunctionLike)]
+    [InlineData("initializer:x", SymbolTable.ScopeKind.InitializerHost)]
     [InlineData("class:C", SymbolTable.ScopeKind.TypeBody)]
     [InlineData("struct:S", SymbolTable.ScopeKind.TypeBody)]
     [InlineData("union:U", SymbolTable.ScopeKind.TypeBody)]

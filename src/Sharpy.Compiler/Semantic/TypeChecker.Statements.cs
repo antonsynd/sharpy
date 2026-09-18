@@ -978,9 +978,26 @@ internal partial class TypeChecker
 
         if (varDecl.InitialValue != null)
         {
+            // A class field, @static field or module-variable initializer is checked directly in
+            // its declaring TypeBody/Module scope, which owns no LocalBindingLedger — a
+            // comprehension, generator, lambda or walrus inside the initializer had no scope to
+            // claim its locals, and the emitter crashed with SPY0909 (#1685). Push a scope only
+            // when we aren't already inside a ledger-owning one (an ordinary local's own
+            // initializer, however many blocks deep in a function body, already has an owning
+            // ledger from that function and needs no extra scope). The pushed scope classifies as
+            // ScopeKind.InitializerHost, NOT FunctionLike — it must stay transparent to R-Y so a
+            // sibling class-body/module const initializer can still reference another by bare name
+            // (see SymbolTable.ClassifyScope "initializer:" remarks).
+            bool pushedInitializerScope = !_symbolTable.IsInsideLedgerOwningScope;
+            if (pushedInitializerScope)
+                _symbolTable.EnterScope($"initializer:{varDecl.Name}");
+
             SemanticType initType;
             using (EnterStore(StorePosition.Declaration, declaredType, varDecl.InitialValue))
                 initType = CheckExpression(varDecl.InitialValue);
+
+            if (pushedInitializerScope)
+                _symbolTable.ExitScope();
 
             if (declaredType is UnknownType)
                 initType = CheckLambdaBindingInferable(varDecl.InitialValue, initType);
