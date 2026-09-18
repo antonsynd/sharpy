@@ -43,6 +43,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new PropertyValidator())           // Order: 410 (property declaration rules)
             .AddValidator(new FinalFieldValidator())        // Order: 411 (@final field assignment restrictions)
             .AddValidator(new EventValidator())             // Order: 412 (event declaration rules)
+            .AddValidator(new FrozenDataclassValidator())   // Order: 414 (frozen dataclass field reassignment — #1902)
             .AddValidator(new VarianceValidator())            // Order: 415 (type parameter variance rules)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
             .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)

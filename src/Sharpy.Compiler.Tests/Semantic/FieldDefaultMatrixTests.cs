@@ -39,19 +39,18 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// control (stays SPY0400); tuple/<c>Some(...)</c>/user-call controls (stay SPY0401, R-R — already
 /// the megatest's job, referenced not duplicated here).</para>
 ///
-/// <para><b>R-AV frozen × <c>__post_init__</c>-assignment gap (finding, reported to the lead).</b>
-/// R-AV names a SECOND cell this ruling adds: <c>@dataclass(frozen=True)</c> + a field ASSIGNMENT
-/// inside <c>__post_init__</c> must become a named refusal (Python: <c>FrozenInstanceError</c>), with
-/// the non-frozen twin (assigns, prints the value) as the positive control. Measured @ HEAD
-/// (b8bc7825a): the frozen cell still reproduces the ORIGINAL ICE (SPY0908/CS8852 —
-/// <c>NonFrozenPostInit_Assigns_PrintsTheAssignedValue</c> below is that non-frozen twin, executing
-/// and printing <c>8</c>, matching python3). No seam walks a frozen dataclass's
-/// <c>__post_init__</c> body for a <c>self.field = ...</c> store today, so this is orthogonal to
-/// #1684/#1685's landed lowering (it reproduces for a plain SCALAR field, not just a mutable
-/// default) — filed as <see href="https://github.com/antonsynd/sharpy/issues/1902">#1902</see>, and
-/// <see cref="FrozenPostInit_AssignsAField_ShouldBeANamedRefusal_NotAnICE" /> is left
-/// <c>[Fact(Skip)]</c> citing it rather than asserting the current SPY0908 (a refusal test that
-/// pinned SPY0908 would enshrine exactly the "SPY0908 as a net" meta-class this whole plan drains).</para>
+/// <para><b>R-AV frozen × <c>__post_init__</c>-assignment gap (landed).</b> R-AV names a SECOND cell
+/// this ruling adds: <c>@dataclass(frozen=True)</c> + a field ASSIGNMENT inside <c>__post_init__</c>
+/// must become a named refusal (Python: <c>FrozenInstanceError</c>), with the non-frozen twin
+/// (assigns, prints the value) as the positive control. Measured @ HEAD (b8bc7825a): the frozen cell
+/// reproduced the ORIGINAL ICE (SPY0908/CS8852 — <c>NonFrozenPostInit_Assigns_PrintsTheAssignedValue</c>
+/// below is that non-frozen twin, executing and printing <c>8</c>, matching python3). No seam walked a
+/// frozen dataclass's <c>__post_init__</c> body for a <c>self.field = ...</c> store — orthogonal to
+/// #1684/#1685's lowering (it reproduced for a plain SCALAR field, not just a mutable default) — filed
+/// as <see href="https://github.com/antonsynd/sharpy/issues/1902">#1902</see> and fixed by
+/// <c>FrozenDataclassValidator</c> (SPY0706): any <c>self.&lt;field&gt; = ...</c> assignment to a
+/// frozen-dataclass field outside the declaring class's own <c>__init__</c> is refused by name.
+/// <see cref="FrozenPostInit_AssignsAField_ShouldBeANamedRefusal_NotAnICE" /> asserts the refusal.</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class FieldDefaultMatrixTests : IntegrationTestBase
@@ -261,15 +260,11 @@ public class FieldDefaultMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// R-AV's second cell: <c>@dataclass(frozen=True)</c> + a field assignment inside
-    /// <c>__post_init__</c> must be a named refusal (python3: <c>FrozenInstanceError</c>). Not yet
-    /// implemented at HEAD — see the class remarks and #1902. Left Skip rather than asserting the
-    /// current SPY0908/CS8852 ICE, which would enshrine the exact "SPY0908 as a net" defect class
-    /// this plan drains everywhere else. Unskip when #1902 lands; the assertion below is the
-    /// acceptance shape it must satisfy.
+    /// <c>__post_init__</c> must be a named refusal (python3: <c>FrozenInstanceError</c>) —
+    /// <c>FrozenDataclassValidator</c> (SPY0706, #1902). Never the SPY0908/CS8852 ICE this cell
+    /// reproduced at HEAD before the fix (see the class remarks).
     /// </summary>
-    [Fact(Skip = "TODO(#1902): frozen dataclass __post_init__ field assignment still ICEs " +
-        "(SPY0908/CS8852) instead of a named refusal — R-AV's second Phase-3 cell was not landed. " +
-        "See https://github.com/antonsynd/sharpy/issues/1902")]
+    [Fact]
     public void FrozenPostInit_AssignsAField_ShouldBeANamedRefusal_NotAnICE()
     {
         var source = "@dataclass(frozen=True)\nclass Frozen:\n    n: int = 1\n\n"
@@ -282,6 +277,10 @@ public class FieldDefaultMatrixTests : IntegrationTestBase
         result.RawDiagnostics.Should().NotContain(
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
                 || d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError,
-            $"[frozen __post_init__ assign] must be OUR refusal, never SPY0908 (the ICE #1902 tracks)\n{source}");
+            $"[frozen __post_init__ assign] must be OUR refusal, never SPY0908 (the ICE #1902 tracked)\n{source}");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.ValidationOverflow.FrozenFieldReassignment,
+            $"[frozen __post_init__ assign] must report SPY0706. Got: "
+            + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
     }
 }

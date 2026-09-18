@@ -1048,5 +1048,18 @@ public static partial class DiagnosticExplanations
             "class Box:\n    def __init__[V](self, v: V) -> None:  # SPY0705\n        pass",
             "Move the type parameters to the type, where they are emitted:\n" +
             "class Box[V]:\n    def __init__(self, v: V) -> None:\n        pass");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.FrozenFieldReassignment,
+            "Cannot reassign a frozen dataclass field", "Validation",
+            "A `@dataclass(frozen=True)` field is emitted as a C# init-only property, which C# " +
+            "allows to be set only inside an object initializer or directly in the declaring " +
+            "class's own constructor body. A `self.<field> = ...` assignment anywhere else \u2014 most " +
+            "commonly `__post_init__`, which runs as a separate method the synthesized constructor " +
+            "calls rather than as a statement inside its own body \u2014 is refused by name (python3's " +
+            "analog is `FrozenInstanceError`) instead of reaching Roslyn as CS8852.",
+            "@dataclass(frozen=True)\nclass Point:\n    x: int\n\n    def __post_init__(self) -> None:\n        self.x = 0  # SPY0706",
+            "Remove `frozen=True` if the field must change after construction, or compute the " +
+            "value before construction and pass it to the constructor instead of assigning it in " +
+            "__post_init__.");
     }
 }

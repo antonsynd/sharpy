@@ -967,6 +967,11 @@ public static class DiagnosticCodes
         public const string YieldInSuppressingWith = "SPY0703"; // Active (#1745)
         public const string WalrusInProhibitedPosition = "SPY0704"; // Active (#1724)
         public const string MemberTypeParametersNotEmittable = "SPY0705"; // Active (#1836)
-        // SPY0706-SPY0799: Available for new validation diagnostics
+        // A `self.<field> = ...` assignment to a `@dataclass(frozen=True)` field outside the
+        // declaring class's own `__init__` (most commonly `__post_init__`) — Python's analog is
+        // FrozenInstanceError. Refused by name instead of reaching Roslyn's CS8852 on the emitted
+        // init-only property (#1902, R-AV).
+        public const string FrozenFieldReassignment = "SPY0706"; // Active (#1902)
+        // SPY0707-SPY0799: Available for new validation diagnostics
     }
 }

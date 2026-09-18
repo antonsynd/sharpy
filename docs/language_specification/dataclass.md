@@ -184,6 +184,25 @@ public Square(double side, double area = 0.0d)
 }
 ```
 
+**`frozen=True` refuses a `__post_init__` assignment.** A frozen field is emitted as a C#
+init-only property, which C# allows to be set only inside an object initializer or directly in the
+constructor's own body — `__post_init__` runs as a separate method the constructor calls, not as a
+statement inside it. Assigning `self.<field>` there (or in any other method) is refused with
+`SPY0706` instead of reaching Roslyn; python3's analog is `FrozenInstanceError`:
+
+<!-- spec-sweep: error SPY0706 -->
+```python
+@dataclass(frozen=True)
+class Square:
+    side: float
+    area: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.area = self.side * self.side  # error[SPY0706]: Cannot assign to field 'area'
+                                            # of frozen dataclass 'Square'; remove frozen=True
+                                            # or compute the value before construction
+```
+
 ## Inheritance
 
 Dataclass inheritance collects fields from parent classes (parent fields first):

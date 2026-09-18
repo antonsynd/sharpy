@@ -129,6 +129,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 410**: `PropertyValidator` — Property validation
 - **Order 411**: `FinalFieldValidator` — Final field validation
 - **Order 412**: `EventValidator` — Event validation
+- **Order 414**: `FrozenDataclassValidator` — frozen dataclass field reassignment outside `__init__` (SPY0706, #1902)
 - **Order 415**: `VarianceValidator` — Variance validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
