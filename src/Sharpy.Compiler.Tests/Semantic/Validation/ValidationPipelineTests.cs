@@ -155,7 +155,10 @@ public class ValidationPipelineTests
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var validators = pipeline.Validators.ToList();
 
-        Assert.Equal(36, validators.Count);
+        // 37: bumped from 36 when FrozenDataclassValidator (Order 414) joined the default
+        // pipeline (#1902) — the presence assertion for it, below, is what makes this a real
+        // totality check rather than a bare number that can drift silently again.
+        Assert.Equal(37, validators.Count);
         Assert.Contains(validators, v => v is AbstractMemberValidator);
         Assert.Contains(validators, v => v is DefiniteAssignmentValidator);
         Assert.Contains(validators, v => v is LoopTransferBindingValidator);
@@ -188,6 +191,7 @@ public class ValidationPipelineTests
         Assert.Contains(validators, v => v is InterfaceImplementationValidator);
         Assert.Contains(validators, v => v is ProtocolValidator);
         Assert.Contains(validators, v => v is OperatorValidator);
+        Assert.Contains(validators, v => v is FrozenDataclassValidator);
     }
 
     [Fact]
