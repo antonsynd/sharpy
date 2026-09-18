@@ -153,6 +153,16 @@ internal record CachedSymbol
     public List<CachedSymbol>? NestedTypes { get; init; }
 
     /// <summary>
+    /// For TypeSymbol: nested type aliases (<c>type Id = int</c> in a class/struct/interface body,
+    /// #1729/#1897). A nested alias is a MEMBER of its enclosing type, so — like NestedTypes, Methods
+    /// and Fields — it travels in the enclosing type's cache entry. Unlike a module-level alias (a
+    /// top-level export re-extracted fresh on import), a nested alias rides its enclosing TypeSymbol,
+    /// which IS restored from cache; without carrying it, a warm build's cache-restored type had an
+    /// empty alias list and <c>Outer.Id</c> reported SPY0202 where the cold build resolved it (#1897).
+    /// </summary>
+    public List<CachedNestedAlias>? NestedTypeAliases { get; init; }
+
+    /// <summary>
     /// For FunctionSymbol: parameters
     /// </summary>
     public List<CachedParameter>? Parameters { get; init; }
@@ -419,6 +429,39 @@ internal record CachedTypeParameter
     /// Null or empty when the parameter is unconstrained.
     /// </summary>
     public List<string>? Constraints { get; init; }
+}
+
+/// <summary>
+/// Serializable representation of a nested type alias (<c>type Id = int</c> or
+/// <c>type F = (int) -&gt; bool</c> declared in a type body, #1897). Carries the alias's TARGET —
+/// exactly one of <see cref="TypeAnnotation"/> (for <c>= T</c>) or the function-type triple
+/// (<see cref="FunctionParameterTypes"/>/<see cref="FunctionReturnType"/>, for <c>= (…) -&gt; R</c>)
+/// is set, mirroring <c>TypeAliasSymbol</c>. Without the target the restored alias would be found by
+/// name but fail to expand; both forms serialize through the same <c>SerializeTypeAnnotation</c> the
+/// rest of the cache uses.
+/// </summary>
+internal record CachedNestedAlias
+{
+    public required string Name { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
+    public string AccessLevel { get; init; } = "Public";
+    public int? DeclarationLine { get; init; }
+    public int? DeclarationColumn { get; init; }
+    public int? NameDeclarationLine { get; init; }
+    public int? NameDeclarationColumn { get; init; }
+    public int? NameDeclarationColumnEnd { get; init; }
+
+    /// <summary>Serialized target for <c>type Id = &lt;annotation&gt;</c>; null for a function-type alias.</summary>
+    public string? TypeAnnotation { get; init; }
+
+    /// <summary>Serialized parameter annotations for <c>type F = (…) -&gt; R</c>; null for an annotation alias.</summary>
+    public List<string>? FunctionParameterTypes { get; init; }
+
+    /// <summary>Serialized return annotation for a function-type alias; null for an annotation alias.</summary>
+    public string? FunctionReturnType { get; init; }
+
+    /// <summary>Type parameters for a generic alias (<c>type Pair[T] = tuple[T, T]</c>). Null when non-generic.</summary>
+    public List<CachedTypeParameter>? TypeParameters { get; init; }
 }
 
 /// <summary>

@@ -121,7 +121,12 @@ internal class IncrementalCompilationCache
     //      whose closure had lost its synthesized rows: no ISized in the emitted base list, a
     //      null CodeGenInfo.SynthesizedInterfaces where the cold build had one, and a closure
     //      gate that could not see the second instantiation a `__eq__` contributes.
-    internal const int CurrentSchemaVersion = 33;
+    // v34: CachedSymbol carries NestedTypeAliases WITH their targets (#1897). A nested `type Id = …`
+    //      is a member of its enclosing type but rode nowhere on the wire, so a warm build restored a
+    //      type with an empty alias list and `Outer.Id` reported SPY0202 where the cold build resolved
+    //      it. Module-level aliases are unaffected (they re-extract fresh on import); only the
+    //      cache-restored, TryDefine'd enclosing type shadowed re-extraction and needed the fact.
+    internal const int CurrentSchemaVersion = 34;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

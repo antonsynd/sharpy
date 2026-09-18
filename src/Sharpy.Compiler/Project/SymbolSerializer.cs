@@ -105,6 +105,15 @@ internal static class SymbolSerializer
                 SerializeTypeSymbol(nt, ComputeSymbolId(nt, nt.DefiningFilePath ?? filePath), nt.DefiningFilePath ?? filePath, binding)).ToList();
         }
 
+        // Serialize nested type aliases (#1897): a nested alias is a member of its enclosing type and
+        // must survive the warm cache with the rest of the type's structure, else a cache-restored
+        // type answers `Outer.Id` with SPY0202 on a warm build. Its target travels too.
+        List<CachedNestedAlias>? nestedTypeAliases = null;
+        if (ts.NestedTypeAliases.Count > 0)
+        {
+            nestedTypeAliases = ts.NestedTypeAliases.Select(SerializeNestedAlias).ToList();
+        }
+
         return new CachedSymbol
         {
             Id = id,
@@ -158,6 +167,7 @@ internal static class SymbolSerializer
             Methods = methods,
             Constructors = constructors,
             NestedTypes = nestedTypes,
+            NestedTypeAliases = nestedTypeAliases,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(ts)),
@@ -371,6 +381,36 @@ internal static class SymbolSerializer
         };
     }
 
+    /// <summary>
+    /// Serializes a nested type alias INCLUDING its target (#1897). Unlike
+    /// <see cref="SerializeTypeAliasSymbol"/> — which drops a module-level alias's target because the
+    /// import path re-extracts it fresh — a nested alias rides its cache-restored enclosing type and
+    /// is never re-extracted, so its target must travel. Exactly one of TypeAnnotation / FunctionType
+    /// is set on a <see cref="TypeAliasSymbol"/>; both encode through <see cref="SerializeTypeAnnotation"/>.
+    /// </summary>
+    private static CachedNestedAlias SerializeNestedAlias(TypeAliasSymbol tas)
+    {
+        return new CachedNestedAlias
+        {
+            Name = tas.Name,
+            IsNameBacktickEscaped = tas.IsNameBacktickEscaped,
+            AccessLevel = tas.AccessLevel.ToString(),
+            DeclarationLine = tas.DeclarationLine,
+            DeclarationColumn = tas.DeclarationColumn,
+            NameDeclarationLine = tas.NameDeclarationLine,
+            NameDeclarationColumn = tas.NameDeclarationColumn,
+            NameDeclarationColumnEnd = tas.NameDeclarationColumnEnd,
+            TypeAnnotation = tas.TypeAnnotation != null ? SerializeTypeAnnotation(tas.TypeAnnotation) : null,
+            FunctionParameterTypes = tas.FunctionType != null
+                ? tas.FunctionType.ParameterTypes.Select(SerializeTypeAnnotation).ToList()
+                : null,
+            FunctionReturnType = tas.FunctionType?.ReturnType != null
+                ? SerializeTypeAnnotation(tas.FunctionType.ReturnType)
+                : null,
+            TypeParameters = SerializeTypeParameters(tas.TypeParameters)
+        };
+    }
+
     private static CachedSymbol SerializeTypeParameterSymbol(TypeParameterSymbol tps, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
@@ -563,6 +603,12 @@ internal static class SymbolSerializer
             .Select(nt => DeserializeTypeSymbol(nt, symbolRegistry, typeResolver, binding))
             .ToList() ?? new List<TypeSymbol>();
 
+        // Deserialize nested type aliases (#1897) — reconstructs each alias WITH its target so the
+        // warm-restored type resolves `Outer.Id` exactly as the cold build does.
+        var nestedTypeAliases = cached.NestedTypeAliases?
+            .Select(DeserializeNestedAlias)
+            .ToList() ?? new List<TypeAliasSymbol>();
+
         var symbol = new TypeSymbol
         {
             Name = cached.Name,
@@ -585,6 +631,7 @@ internal static class SymbolSerializer
             Methods = methods,
             Constructors = constructors,
             NestedTypes = nestedTypes,
+            NestedTypeAliases = nestedTypeAliases,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
@@ -869,6 +916,43 @@ internal static class SymbolSerializer
             binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         symbol.Documentation = cached.Documentation;
         return symbol;
+    }
+
+    /// <summary>
+    /// Reconstructs a nested type alias from cache (#1897), rebuilding its target — the annotation
+    /// form or the function-type form — so the restored alias expands exactly as the cold-parsed one.
+    /// </summary>
+    private static TypeAliasSymbol DeserializeNestedAlias(CachedNestedAlias cached)
+    {
+        Parser.Ast.FunctionType? functionType = null;
+        if (cached.FunctionReturnType != null)
+        {
+            functionType = new Parser.Ast.FunctionType
+            {
+                ParameterTypes = (cached.FunctionParameterTypes ?? new List<string>())
+                    .Select(DeserializeTypeAnnotation)
+                    .ToImmutableArray(),
+                ReturnType = DeserializeTypeAnnotation(cached.FunctionReturnType)
+            };
+        }
+
+        return new TypeAliasSymbol
+        {
+            Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
+            Kind = SymbolKind.TypeAlias,
+            AccessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel),
+            TypeAnnotation = cached.TypeAnnotation != null ? DeserializeTypeAnnotation(cached.TypeAnnotation) : null,
+            FunctionType = functionType,
+            TypeParameters = cached.TypeParameters != null
+                ? DeserializeTypeParameters(cached.TypeParameters)
+                : Array.Empty<Parser.Ast.TypeParameterDef>(),
+            DeclarationLine = cached.DeclarationLine ?? 0,
+            DeclarationColumn = cached.DeclarationColumn ?? 0,
+            NameDeclarationLine = cached.NameDeclarationLine ?? 0,
+            NameDeclarationColumn = cached.NameDeclarationColumn ?? 0,
+            NameDeclarationColumnEnd = cached.NameDeclarationColumnEnd ?? 0
+        };
     }
 
     private static TypeParameterSymbol DeserializeTypeParameterSymbol(CachedSymbol cached, SemanticBinding? binding)
