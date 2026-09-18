@@ -165,20 +165,36 @@ internal partial class RoslynEmitter
         {
             var paramName = DataclassConstructorParameterName(field);
             var paramType = _typeMapper.MapSemanticType(GetVariableType(field));
+            bool requiresPerInstanceDefault = GetCodeGenInfo(field)?.RequiresPerInstanceDefault == true;
 
-            var param = Parameter(EscapedIdentifier(paramName))
-                .WithType(paramType);
-
-            // Add default value if present
-            if (field.HasDefaultValue)
+            ParameterSyntax param;
+            if (requiresPerInstanceDefault)
             {
-                var fieldDecl = classBody.OfType<VariableDeclaration>()
-                    .FirstOrDefault(v => v.Name == field.Name);
-                if (fieldDecl?.InitialValue != null)
+                // R-A / Design Decision 2 (#1684): a mutable-collection field default is a
+                // per-instance initializer, never a C# default-parameter value
+                // (GenerateParameterDefault would emit an invalid non-constant default, CS1736).
+                // Sentinel: T? name = null — unobservable from Sharpy because
+                // RequiresPerInstanceDefault is true only for a non-nullable field (a
+                // nullable/Optional field keeps the SPY0400 refusal).
+                param = Parameter(EscapedIdentifier(paramName))
+                    .WithType(NullableType(paramType))
+                    .WithDefault(EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression)));
+            }
+            else
+            {
+                param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
+
+                // Add default value if present
+                if (field.HasDefaultValue)
                 {
-                    param = param.WithDefault(GenerateParameterDefault(
-                        fieldDecl.InitialValue,
-                        GetVariableType(field) is Semantic.OptionalType));
+                    var fieldDecl = classBody.OfType<VariableDeclaration>()
+                        .FirstOrDefault(v => v.Name == field.Name);
+                    if (fieldDecl?.InitialValue != null)
+                    {
+                        param = param.WithDefault(GenerateParameterDefault(
+                            fieldDecl.InitialValue,
+                            GetVariableType(field) is Semantic.OptionalType));
+                    }
                 }
             }
 
@@ -193,15 +209,41 @@ internal partial class RoslynEmitter
             var propName = GetCodeGenInfo(field)?.CSharpName
                 ?? NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped);
             var paramName = DataclassConstructorParameterName(field);
+            bool requiresPerInstanceDefault = GetCodeGenInfo(field)?.RequiresPerInstanceDefault == true;
 
-            statements.Add(ExpressionStatement(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        ThisExpression(),
-                        IdentifierName(propName)),
-                    EscapedIdentifierName(paramName))));
+            if (requiresPerInstanceDefault)
+            {
+                // this.Field = name ?? <default expr>; generated under the hoist sink so a
+                // comprehension default's hoisted statements land (Design Decision 2 note ii, #1685).
+                var fieldDecl = classBody.OfType<VariableDeclaration>()
+                    .First(v => v.Name == field.Name);
+                statements.AddRange(FlushIntoStatement(() =>
+                {
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(propName)),
+                            BinaryExpression(
+                                SyntaxKind.CoalesceExpression,
+                                EscapedIdentifierName(paramName),
+                                defaultExpr)));
+                }));
+            }
+            else
+            {
+                statements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            ThisExpression(),
+                            IdentifierName(propName)),
+                        EscapedIdentifierName(paramName))));
+            }
         }
 
         // Call __post_init__ if present
