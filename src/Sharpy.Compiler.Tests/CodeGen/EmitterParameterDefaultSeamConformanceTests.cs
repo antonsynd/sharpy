@@ -27,20 +27,35 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// </para>
 ///
 /// <para>
-/// <b>The one non-user default.</b> A late-bound parameter (<c>def f(x =&gt; expr)</c>, PEP 671
-/// style) is emitted as a hidden nullable <c>x_lb</c> parameter whose default is the literal
-/// <c>null</c>; the user's expression is evaluated in the body, never printed as a default. That
-/// site carries no Sharpy <c>Expression</c>, so it cannot go through the helper, and it is admitted
-/// by EXACT shape — <c>EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression))</c> —
-/// not by file or method name. Any other spelling at that site is a violation too, so the
-/// exemption cannot widen into a second path.
+/// <b>The non-user defaults.</b> Two independent lowerings need a parameter default that is not
+/// backed by any Sharpy <c>Expression</c>, so neither can go through the helper — both are admitted
+/// by EXACT shape, <c>EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression))</c>,
+/// not by file or method name; any other spelling at either site is a violation too, so the
+/// exemption cannot widen into a second path:
+/// <list type="bullet">
+/// <item><description>A late-bound parameter (<c>def f(x =&gt; expr)</c>, PEP 671 style) is emitted
+/// as a hidden nullable <c>x_lb</c> parameter whose default is the literal <c>null</c>; the user's
+/// expression is evaluated in the body, never printed as a default (<c>RoslynEmitter.
+/// TypeDeclarations.cs</c>, 1 site).</description></item>
+/// <item><description>A dataclass/struct field whose default is the mutable-collection
+/// per-instance family (R-A, Design Decision 2, #1684) takes a sentinel <c>T? name = null</c>
+/// parameter; the actual default expression is never printed as a parameter default at all — it is
+/// evaluated in the constructor body's <c>name ?? &lt;default&gt;</c> (<c>RoslynEmitter.
+/// ClassMembers.Dataclass.cs</c> and <c>RoslynEmitter.ClassMembers.Constructors.cs</c>, 1 site
+/// each — 2 total).</description></item>
+/// </list>
+/// The two families happen to share one C# shape (a bare <c>null</c> default) but are unrelated
+/// lowerings for unrelated reasons; the shape-only admission does not need to (and does not) tell
+/// them apart to decide "not a violation" — that decision is legitimately shape-only. The count
+/// below is what tells them apart for the vacuity control.
 /// </para>
 ///
 /// <para>
 /// <b>Vacuity control.</b> The seam-site and sentinel-site counts are anchored to literals: a scan
 /// that matched nothing would fail on the anchors, not pass on an empty violation list. Adding a
 /// legitimate default-printing site is a deliberate change — route it through the helper and bump
-/// <see cref="SeamSiteCount"/> in the same commit.
+/// <see cref="SeamSiteCount"/> in the same commit. Adding a legitimate null-sentinel site is likewise
+/// deliberate — bump <see cref="NullSentinelCount"/> and document the new producer above.
 /// </para>
 /// </summary>
 public class EmitterParameterDefaultSeamConformanceTests
@@ -48,10 +63,12 @@ public class EmitterParameterDefaultSeamConformanceTests
     private const string SeamHelperName = "GenerateParameterDefault";
 
     /// <summary>
-    /// The late-bound sentinel, matched by normalized text. Whitespace-normalized so a reformat of
-    /// the multi-line site does not change the classification.
+    /// The non-user-expression null-default sentinel, matched by normalized text.
+    /// Whitespace-normalized so a reformat of the multi-line site does not change the
+    /// classification. Shared by two unrelated producers — see the class doc's "non-user defaults"
+    /// section — because the admission is deliberately by exact shape, not by file or method name.
     /// </summary>
-    private const string LateBoundNullSentinel =
+    private const string NullSentinelShape =
         "EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression))";
 
     /// <summary>
@@ -60,10 +77,16 @@ public class EmitterParameterDefaultSeamConformanceTests
     /// </summary>
     private const int SeamSiteCount = 5;
 
-    /// <summary>The late-bound `null` sentinel: `RoslynEmitter.TypeDeclarations.cs` only.</summary>
-    private const int LateBoundSentinelCount = 1;
+    /// <summary>
+    /// The null-default sentinel sites: the PEP 671 late-bound `x_lb` parameter
+    /// (`RoslynEmitter.TypeDeclarations.cs`, 1) plus the R-A per-instance mutable-collection field
+    /// default's sentinel parameter (#1684) — one in `RoslynEmitter.ClassMembers.Dataclass.cs`
+    /// (`GenerateDataclassConstructor`) and one in `RoslynEmitter.ClassMembers.Constructors.cs`
+    /// (`GenerateStructAutoConstructors`), 2 more. Total 3.
+    /// </summary>
+    private const int NullSentinelCount = 3;
 
-    private enum SiteKind { Seam, LateBoundNullSentinel, Violation }
+    private enum SiteKind { Seam, NullSentinel, Violation }
 
     private sealed record Site(string File, int Line, string ArgumentText, SiteKind Kind);
 
@@ -85,9 +108,13 @@ public class EmitterParameterDefaultSeamConformanceTests
             "legitimate site is a deliberate change — bump SeamSiteCount in the same commit. Found:\n" +
             string.Join("\n", sites.Where(s => s.Kind == SiteKind.Seam).Select(s => $"  {s.File}:{s.Line}")));
 
-        sites.Count(s => s.Kind == SiteKind.LateBoundNullSentinel).Should().Be(LateBoundSentinelCount,
-            "the late-bound `x_lb = null` parameter is the only default that is not a user expression; " +
-            "it is admitted by exact shape, and there is exactly one such site");
+        sites.Count(s => s.Kind == SiteKind.NullSentinel).Should().Be(NullSentinelCount,
+            "a bare `null` default that carries no Sharpy expression is admitted by exact shape from " +
+            "exactly two producers — the PEP 671 late-bound `x_lb` parameter and R-A's per-instance " +
+            "mutable-collection field-default sentinel (#1684); a new site of this shape is a " +
+            "deliberate change — bump NullSentinelCount and document the producer in the class doc. " +
+            "Found:\n" +
+            string.Join("\n", sites.Where(s => s.Kind == SiteKind.NullSentinel).Select(s => $"  {s.File}:{s.Line}")));
     }
 
     [Fact]
@@ -138,8 +165,8 @@ public class EmitterParameterDefaultSeamConformanceTests
             return SiteKind.Seam;
 
         if (argument is not null
-            && argument.NormalizeWhitespace().ToString() == LateBoundNullSentinel)
-            return SiteKind.LateBoundNullSentinel;
+            && argument.NormalizeWhitespace().ToString() == NullSentinelShape)
+            return SiteKind.NullSentinel;
 
         return SiteKind.Violation;
     }

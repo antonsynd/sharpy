@@ -139,6 +139,22 @@ public class SinkPushingTotalityTests
         ["GenerateLateBoundPreamble/BinaryExpression:CoalesceExpression"] = "late-bound default fold, no user sub-expression",
         ["GenerateTypeCoercion/ConditionalExpression"] = "coercion of one already-generated operand",
 
+        // --- R-A / Design Decision 2 (#1684) per-instance field-default sentinel: `this.Field =
+        // name ?? <default>`. The rhs's hoisted statements (a comprehension default) are flushed
+        // through FlushIntoStatement as an UNCONDITIONAL prologue ahead of the whole assignment
+        // (mirroring the __init__ self-assignment arm, Decision 2 note ii) rather than gated behind
+        // the coalesce's own short-circuit — so this is a deliberate exception to this guard's
+        // general contract, not a case where the method happens to already own a sink of the kind
+        // this scan recognizes. That is safe here specifically because AdmissionTable.
+        // PerInstanceFieldDefault only ever admits a side-effect-pure default (a literal,
+        // list()/dict()/set() call, or a comprehension over an admitted source): evaluating it and
+        // discarding the result when the caller passed an explicit argument changes no observable
+        // state. The dataclass property's own initializer already evaluates this same default
+        // unconditionally on every instantiation regardless (it is overwritten by this
+        // constructor), so this does not introduce eager evaluation that was not already there.
+        ["GenerateDataclassConstructor/BinaryExpression:CoalesceExpression"] = "R-A (#1684): coalesce rhs is a per-instance mutable-collection default, its hoisted prologue is flushed unconditionally by design (Decision 2 note ii) — see the block comment above",
+        ["GenerateStructAutoConstructors/BinaryExpression:CoalesceExpression"] = "R-A (#1684): same as GenerateDataclassConstructor — the struct ctor's sentinel-parameter coalesce",
+
         // --- Statement and member scaffolding. ---
         ["GenerateFor/IfStatement"] = "the for-else completion flag test, not a user expression",
         ["GenerateForEachCoreInner/ForEachStatement"] = "the loop the for statement IS; its body is generated statements",
