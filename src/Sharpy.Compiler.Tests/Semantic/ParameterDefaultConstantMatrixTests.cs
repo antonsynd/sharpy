@@ -579,7 +579,12 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         // in this grammar) — the mapping is a separate concern; what this matrix reads is whether the
         // declaration carries `const`.
         new("char", "string", "a"),
-        new("Color", "Color", "RED", "enum Color:\n    RED = 1\n    GREEN = 2\n\n"),
+        // Color is a same-file type, so its type annotation is emitted global::-qualified through the
+        // module class (#1683): `const global::Test.Color A = ...`, not the bare `Color`. Test is the
+        // module class from the fixture's test.spy. Primitives (int/double/string/bool) are never
+        // qualified. The CSharpType still feeds the const-vs-static-readonly regex, so the
+        // discrimination is unchanged — only the type spelling the regex expects moved.
+        new("Color", "global::Test.Color", "RED", "enum Color:\n    RED = 1\n    GREEN = 2\n\n"),
     };
 
     /// <summary>

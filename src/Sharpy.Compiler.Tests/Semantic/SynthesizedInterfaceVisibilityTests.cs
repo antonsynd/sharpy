@@ -175,7 +175,7 @@ def main():
 
 def main():
     print(P(1) == P(1))
-    print(P(1) == P(2))", "True\nFalse\n", "System.IEquatable<P>" },
+    print(P(1) == P(2))", "True\nFalse\n", "System.IEquatable<global::Test.P>" },
 
         new object[] { "Eq_Struct_IEquatable", @"struct Q:
     v: int
@@ -187,7 +187,7 @@ def main():
         return self.v
 
 def main():
-    print(Q(1) == Q(1))", "True\n", "System.IEquatable<Q>" },
+    print(Q(1) == Q(1))", "True\n", "System.IEquatable<global::Test.Q>" },
 
         new object[] { "Eq_GenericBox_IEquatableOfT", @"class Box[T]:
     v: T
@@ -259,7 +259,7 @@ class Foo(IEquatable[Foo]):
         return self.v
 
 def main():
-    print(Foo(1) == Foo(1))", "True\n", "IEquatable<Foo>" },
+    print(Foo(1) == Foo(1))", "True\n", "IEquatable<global::Test.Foo>" },
 
         new object[] { "Explicit_ImportedIEquatable_Plus_SameEq_Struct", @"from system import IEquatable
 
@@ -273,7 +273,7 @@ struct Bar(IEquatable[Bar]):
         return self.v
 
 def main():
-    print(Bar(2) == Bar(2))", "True\n", "IEquatable<Bar>" },
+    print(Bar(2) == Bar(2))", "True\n", "IEquatable<global::Test.Bar>" },
     };
 
     [Fact]

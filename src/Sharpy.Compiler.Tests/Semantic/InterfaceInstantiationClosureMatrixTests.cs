@@ -481,7 +481,10 @@ def main():
         var cold = Build(config);
         cold.Success.Should().BeTrue(Diagnostics(cold));
         var coldFoo = cold.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "foo.cs").Value;
-        System.Text.RegularExpressions.Regex.Matches(coldFoo, "IEquatable<Foo>").Count
+        // Foo is a same-file type in foo.cs, so the synthesized row's type argument is global::-
+        // qualified (IEquatable<global::<Ns>.Foo>) under universal qualification (#1683); the optional
+        // prefix keeps the exactly-once discrimination without pinning the emitted namespace.
+        System.Text.RegularExpressions.Regex.Matches(coldFoo, @"IEquatable<(?:global::[\w.]+\.)?Foo>").Count
             .Should().Be(1, "positive control: the cold base list carries the synthesized row exactly once");
 
         File.WriteAllText(Path.Combine(_tempDir, "main.spy"), MainFooEqV2);
