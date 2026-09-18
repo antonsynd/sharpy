@@ -425,12 +425,11 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     }
 
     [Fact]
-    public void CrossModule_NestedEnumMember_IsNamespaceQualifiedToItsDefiningModule()
+    public void CrossModule_NestedEnumMember_IsGlobalQualifiedToItsDefiningModule()
     {
-        // A cross-module nested-enum member rides the enclosing TYPE's cross-module qualification,
-        // which is namespace-qualified (Test.Lib.Box.Kind.A) — NOT global::-rooted the way a
-        // cross-module function/const value reference is (asserted above). Settled @ HEAD; it binds
-        // the imported enum, not a same-named local one, and it is not a `using static`.
+        // Post-#1899 (fix 5a8c35559): a cross-module nested-enum member rides the enclosing TYPE's
+        // cross-module qualification, which is now global::-rooted (global::Test.Lib.Box.Kind.A) —
+        // so a same-named local entity cannot shadow the namespace path (the #1899 collision).
         var main = """
             from lib import Box
 
@@ -444,8 +443,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             + string.Join("\n", run.Exec.CompilationErrors));
         run.Exec.StandardOutput.Should().Be("True\n");
 
-        run.GeneratedCSharp.Should().Contain("Test.Lib.Box.Kind.A",
-            "a cross-module nested-enum member is qualified to its defining module (#1683, #1802)");
+        run.GeneratedCSharp.Should().Contain("global::Test.Lib.Box.Kind.A",
+            "a cross-module nested-enum member is global::-qualified to its defining module "
+            + "(#1683, #1802, #1899)");
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
@@ -466,11 +466,11 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             + string.Join("\n", run.Exec.CompilationErrors));
         run.Exec.StandardOutput.Should().Be("4\n");
 
-        // A cross-module type annotation is namespace-qualified (Test.Lib.Box); the `new` form
-        // additionally carries global::. Both bind the imported type, not a same-named local one.
-        run.GeneratedCSharp.Should().Contain("Test.Lib.Box b = new global::Test.Lib.Box(4)",
-            "a cross-module type is qualified to its defining module in both annotation and "
-            + "construction (#1683, #1802)");
+        // Post-#1899 (fix 5a8c35559): a cross-module type is global::-rooted in BOTH annotation and
+        // construction, so no same-named local entity can shadow the qualification path.
+        run.GeneratedCSharp.Should().Contain("global::Test.Lib.Box b = new global::Test.Lib.Box(4)",
+            "a cross-module type is global::-qualified to its defining module in both annotation and "
+            + "construction (#1683, #1802, #1899)");
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
@@ -536,7 +536,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
-    [Fact(Skip = "cross-module type annotation/nested-enum-member not global::-rooted, see #1899 — unskip when fixed")]
+    [Fact]
     public void CrossModuleType_UnderRootNamespaceSegmentCollision_BindsThroughGlobalRoot()
     {
         // The TYPE analog of the #1683 poison-MEMBER repro (#1899): root namespace `Poison`, lib
