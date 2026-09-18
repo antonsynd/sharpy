@@ -87,6 +87,7 @@ public class AssignmentTargetDispatchTotalityTests
         ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "AddWithTargetBaseReads"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectAssignedNames"),
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectTargetReads"),
+        ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectDeferredTargetReads"),
         ("src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs", "TargetBindsName"),
         ("src/Sharpy.Lsp/Refactoring/ScopeAnalyzer.cs", "CollectAssignmentTargets"),
         ("src/Sharpy.Lsp/Handlers/BindingScopeWalker.cs", "MarkTargetBound"),
@@ -189,6 +190,29 @@ public class AssignmentTargetDispatchTotalityTests
         _output.WriteLine($"CollectTargetReads arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
         // MemberAccess/IndexAccess → default → CollectReadsFromExpr (their sub-expressions are reads).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
+        Assert.True(arms.SetEquals(expected),
+            $"Arms differ from expected.\n" +
+            $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
+            $"  Missing: {string.Join(", ", expected.Except(arms))}");
+    }
+
+    // --- DefiniteAssignmentAnalysis.CollectDeferredTargetReads ---
+    // Deferred-read counterpart of CollectTargetReads (same target-shape universe):
+    // Arms: {Identifier, TupleLiteral, StarExpression}; default calls CollectDeferredReads
+    // for IndexAccess/MemberAccess sub-expression reads. Identifier is a no-op (a bare
+    // write-through target is collected separately). Targets are canonical: no Parenthesized arm.
+
+    [Fact]
+    public void CollectDeferredTargetReads_Arms_AreKnown()
+    {
+        var arms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs",
+            "CollectDeferredTargetReads");
+        Assert.NotEmpty(arms);
+        _output.WriteLine($"CollectDeferredTargetReads arms: {string.Join(", ", arms.OrderBy(a => a))}");
+
+        // MemberAccess/IndexAccess → default → CollectDeferredReads (their sub-expressions are reads).
         var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +

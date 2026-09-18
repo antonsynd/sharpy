@@ -250,6 +250,7 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.CollectBindingKeysInto"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectAssignedNames"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
+        ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectDeferredTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         // ComputeWalrusWhenTrueFalse: one arm per construct that evaluates a sub-expression
         // conditionally (and/or/not, ternary, comparison chain, `??`, comprehension, lambda, walrus)
         // plus a default arm that unions every child. The default arm is the SAFE direction for an
