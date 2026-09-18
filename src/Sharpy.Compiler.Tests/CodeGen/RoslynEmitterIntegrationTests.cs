@@ -602,6 +602,8 @@ public class RoslynEmitterIntegrationTests
         Assert.Contains("public interface IShape", code);
         Assert.Contains("public enum Mode", code);
         Assert.Contains("public class Widget", code);
-        Assert.Contains("public static Widget MakeWidget()", code);
+        // #1683: the return type references the extracted same-file Widget, now global::-qualified
+        // (an extracted library-mode sibling lives directly under the namespace).
+        Assert.Contains("public static global::Widget MakeWidget()", code);
     }
 }
