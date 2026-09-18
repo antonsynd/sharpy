@@ -536,6 +536,61 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
+    [Fact(Skip = "cross-module type annotation/nested-enum-member not global::-rooted, see #1899 — unskip when fixed")]
+    public void CrossModuleType_UnderRootNamespaceSegmentCollision_BindsThroughGlobalRoot()
+    {
+        // The TYPE analog of the #1683 poison-MEMBER repro (#1899): root namespace `Poison`, lib
+        // defines `class Box` (+ nested enum Kind), and the referencing module declares a
+        // `Poison`-named class that SHADOWS the root-namespace segment. A cross-module type
+        // ANNOTATION (`b: Box`) and nested-enum MEMBER (`Box.Kind.A`) emit `Poison.Lib.Box[.Kind.A]`
+        // WITHOUT global:: — so the local `Poison` class shadows the namespace and the reference
+        // binds `Program.Poison.Lib` → CS0426/CS0117 (SPY0908). The CONSTRUCTION path is already
+        // global::-rooted and safe; only the annotation + nested-enum-member arms were missed.
+        //
+        // Asserts the CORRECT post-#1899 behavior (compiles, runs, both paths global::-rooted); it is
+        // Skip'd until the codegen fix (TypeSyntaxMapper annotation path + nested-enum-member access →
+        // global::, mirroring dded46723's union-host BuildNestedTypeName fix) lands. Unskip then.
+        var lib = """
+            class Box:
+                tag: int
+                def __init__(self, tag: int):
+                    self.tag = tag
+
+                enum Kind:
+                    A = 1
+                    B = 2
+            """;
+        var main = """
+            from lib import Box
+
+            class Poison:
+                x: int
+                def __init__(self, x: int):
+                    self.x = x
+
+            def main() -> None:
+                p: Poison = Poison(1)
+                b: Box = Box(4)
+                print(b.tag)
+                print(Box.Kind.A == Box.Kind.A)
+                print(p.x)
+            """;
+        var run = RunProject("Poison", ("lib.spy", lib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "a cross-module type reference must bind through the global:: root even when a same-named "
+            + "entity shadows the root-namespace segment in the referencing scope (#1899, #1683). "
+            + "Errors:\n" + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("4\nTrue\n1\n");
+
+        run.GeneratedCSharp.Should().Contain("global::Poison.Lib.Box b",
+            "the cross-module type ANNOTATION must be global::-rooted so the local Poison class "
+            + "cannot shadow the namespace segment (#1899)");
+        run.GeneratedCSharp.Should().Contain("global::Poison.Lib.Box.Kind.A",
+            "the cross-module nested-enum MEMBER must be global::-rooted too (#1899)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
     // ── Import-form cells: every USER-module import form inlines the reference as
     //    global::<RootNs>.<Module>.<Member> (no directive), including dotted-package and aliased
     //    forms — the import kinds the class-2 deletion relocated here (plan lines 437/444).
