@@ -594,4 +594,200 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Super-dunder lowering (#1740)
+
+    /// <summary>
+    /// Like <see cref="Analyze"/>, but also returns the <see cref="SymbolTable"/> and the
+    /// <see cref="SemanticBinding"/> the checker wrote symbol-keyed facts into (#1740's
+    /// RequiresInstanceImpl is a SemanticBinding mark bridged onto CodeGenInfo only at
+    /// MaterializeCodeGenInfo — reading it directly here needs no CodeGenInfoComputer pass).
+    /// </summary>
+    private static (Module module, SemanticInfo info, SymbolTable symbols, SemanticBinding binding,
+        IReadOnlyList<string> errors) AnalyzeWithBinding(string source)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        // A super() call needs the base-class LINK materialized onto TypeSymbol.BaseType, not just
+        // computed into SemanticBinding's staging — the plain Analyze() helper never exercises
+        // inheritance, so this is the one addition its class-free specimens never needed.
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var errors = typeChecker.Diagnostics.GetErrors().Select(e => $"{e.Code}: {e.Message}").ToList();
+        return (module, semanticInfo, symbolTable, semanticBinding, errors);
+    }
+
+    private static FunctionCall SingleSuperCall(Module module, string member)
+        => Find<FunctionCall>(module).Single(c =>
+            c.Function is MemberAccess { Object: SuperExpression, Member: var m } && m == member);
+
+    /// <summary>
+    /// An OPERATOR dunder called via <c>super()</c> — the shape <c>super().__add__(other)</c> —
+    /// records the CALL node with <see cref="OperatorLoweringKind.SuperOperatorApplication"/>,
+    /// narrowed to the resolved base type. P4.2's emitter reads this to lower the call to a
+    /// cast-based operator application (<c>((Base)receiver) op args</c>) rather than <c>base + other</c>
+    /// (never valid C# outside a member-access qualifier).
+    /// </summary>
+    [Fact]
+    public void SuperOperatorDunderCall_RecordsSuperOperatorApplication_NarrowedToBaseType()
+    {
+        var (module, info, _, _, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __add__(self, other: Base) -> Base:
+        return other
+
+class Derived(Base):
+    def __add__(self, other: Base) -> Base:
+        return super().__add__(other)
+");
+        errors.Should().BeEmpty();
+
+        var superCall = SingleSuperCall(module, "__add__");
+        var lowering = info.GetOperatorLowering(superCall);
+
+        lowering.Should().NotBeNull();
+        lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
+        lowering.NarrowTo.Should().BeOfType<UserDefinedType>()
+            .Which.Name.Should().Be("Base");
+    }
+
+    /// <summary>The unary operator family tags the same way: the classification reads
+    /// <see cref="OperatorRegistry.IsOperatorDunder"/>, not the arity.</summary>
+    [Fact]
+    public void SuperUnaryOperatorDunderCall_AlsoRecordsSuperOperatorApplication()
+    {
+        var (module, info, _, _, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __neg__(self) -> Base:
+        return self
+
+class Derived(Base):
+    def __neg__(self) -> Base:
+        return super().__neg__()
+");
+        errors.Should().BeEmpty();
+
+        var superCall = SingleSuperCall(module, "__neg__");
+        var lowering = info.GetOperatorLowering(superCall);
+        lowering.Should().NotBeNull();
+        lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
+    }
+
+    /// <summary>The comparison operator family tags the same way (s11-s14, Defect Class).</summary>
+    [Fact]
+    public void SuperComparisonOperatorDunderCall_AlsoRecordsSuperOperatorApplication()
+    {
+        var (module, info, _, _, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __lt__(self, other: Base) -> bool:
+        return False
+
+class Derived(Base):
+    def __lt__(self, other: Base) -> bool:
+        return super().__lt__(other)
+");
+        errors.Should().BeEmpty();
+
+        var superCall = SingleSuperCall(module, "__lt__");
+        var lowering = info.GetOperatorLowering(superCall);
+        lowering.Should().NotBeNull();
+        lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
+    }
+
+    /// <summary>
+    /// A super call to a NON-operator dunder (<c>__str__</c>) never records
+    /// <see cref="OperatorLowering"/> on its own call node — it needs <c>base.Method()</c>, not a
+    /// cast-based application, because a cast alone would still virtual-dispatch to the override.
+    /// </summary>
+    [Fact]
+    public void SuperNonOperatorDunderCall_RecordsNoOperatorLowering()
+    {
+        var (module, info, _, _, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __str__(self) -> str:
+        return ""base""
+
+class Derived(Base):
+    def __lt__(self, other: Derived) -> bool:
+        return super().__str__() == ""base""
+");
+        errors.Should().BeEmpty();
+
+        var superCall = SingleSuperCall(module, "__str__");
+        info.GetOperatorLowering(superCall).Should().BeNull();
+    }
+
+    /// <summary>
+    /// s21 (Defect Class, plan-d35e69): <c>super().__str__()</c> called INSIDE the OPERATOR dunder
+    /// <c>__lt__</c> marks <c>__lt__</c> — the ENCLOSING method — as
+    /// <see cref="SemanticBinding.RequiresInstanceImpl"/>, so P4.2's emitter keeps the instance
+    /// <c>_Impl</c> split for it: <c>base.__str__()</c> is legal only inside an instance method, and
+    /// <c>__lt__</c> is emitted as a static C# operator.
+    /// </summary>
+    [Fact]
+    public void SuperNonOperatorDunderCall_MarksEnclosingOperatorMethod_RequiresInstanceImpl()
+    {
+        var (_, _, symbols, binding, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __str__(self) -> str:
+        return ""base""
+
+class Derived(Base):
+    def __lt__(self, other: Derived) -> bool:
+        return super().__str__() == ""base""
+");
+        errors.Should().BeEmpty();
+
+        var derived = symbols.Lookup("Derived") as TypeSymbol;
+        derived.Should().NotBeNull();
+        var ltMethod = derived!.Methods.Single(m => m.Name == "__lt__");
+
+        binding.RequiresInstanceImpl(ltMethod).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// The positive control for the mark above: an operator dunder whose OWN super() call is an
+    /// operator application (not method-lowered) is never marked — the fact is specific to a
+    /// method-lowered call inside it, not to being an operator dunder or having any super() call.
+    /// </summary>
+    [Fact]
+    public void OperatorMethod_WithOnlyOperatorLoweredSuperCall_IsNotMarkedRequiresInstanceImpl()
+    {
+        var (_, _, symbols, binding, errors) = AnalyzeWithBinding(@"
+class Base:
+    def __add__(self, other: Base) -> Base:
+        return other
+
+class Derived(Base):
+    def __add__(self, other: Base) -> Base:
+        return super().__add__(other)
+");
+        errors.Should().BeEmpty();
+
+        var derived = symbols.Lookup("Derived") as TypeSymbol;
+        var addMethod = derived!.Methods.Single(m => m.Name == "__add__");
+
+        binding.RequiresInstanceImpl(addMethod).Should().BeFalse(
+            "the super call inside __add__ is OPERATOR-lowered, not method-lowered");
+    }
+
+    #endregion
 }

@@ -2807,6 +2807,20 @@ public enum OperatorLoweringKind
     DecimalModulo,
     /// <summary><c>%</c> over int/long/float32/float64 operands: <c>Builtins.FloorMod</c> (sign of the divisor) (#1658). User <c>__mod__</c> / CLR <c>op_Modulus</c> operands record nothing — native <c>%</c>.</summary>
     FlooredModulo,
+
+    /// <summary>
+    /// <c>super().__op__(args)</c> where <c>__op__</c> is an operator dunder
+    /// (<see cref="Registry.OperatorRegistry.IsOperatorDunder"/>) — #1740. Recorded on the
+    /// <c>FunctionCall</c> node with <see cref="OperatorLowering.NarrowTo"/> set to the resolved
+    /// base type. The emitter lowers this to a CAST-based operator application
+    /// (<c>((Base)receiver) op args</c>) rather than <c>base op args</c> (never valid C# outside a
+    /// member-access qualifier) — valid in every host, instance or static, because C# operator
+    /// overload resolution is static and the cast alone selects <c>Base</c>'s operator. A super call
+    /// to a NON-operator dunder or a regular method is never tagged with this kind; it needs
+    /// <c>base.Method()</c> to bypass virtual dispatch, which is legal only inside an instance
+    /// method — see <see cref="CodeGenInfo.RequiresInstanceImpl"/>.
+    /// </summary>
+    SuperOperatorApplication,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind, SemanticType? NarrowTo = null);

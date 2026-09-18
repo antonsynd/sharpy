@@ -120,6 +120,22 @@ public sealed record CodeGenInfo
     public bool OverridesClrBaseMember { get; init; }
 
     /// <summary>
+    /// True when this method's body contains a METHOD-lowered <c>super()</c> call (#1740) — a call
+    /// to a non-operator dunder or a regular method via <c>super()</c>, which needs <c>base.Method()</c>
+    /// to bypass virtual dispatch and reach the PARENT's own implementation (a cast-based call like
+    /// <c>((Base)this).Method()</c> would still virtual-dispatch to THIS class's override). <c>base</c>
+    /// is legal only inside an instance method, so when this method is itself an operator dunder
+    /// (emitted as a static C# <c>operator</c>) it needs the instance <c>_Impl</c> split so the
+    /// super call has an instance-method body to live in. An OPERATOR-dunder super call
+    /// (<c>super().__add__(x)</c>) never sets this: it is tagged
+    /// <see cref="OperatorLoweringKind.SuperOperatorApplication"/> on its own call node instead and
+    /// lowers to a cast-based operator application that works inline, in any host. Detected in
+    /// semantic analysis (<see cref="TypeChecker"/>) and frozen here at <c>MaterializeCodeGenInfo</c>;
+    /// code generation reads this instead of re-deriving it with a kind-enumerating AST walk.
+    /// </summary>
+    public bool RequiresInstanceImpl { get; init; }
+
+    /// <summary>
     /// True when the <c>override</c> modifier on this method targets an interface method rather
     /// than a base-class method, meaning C# requires the keyword be stripped (#1519).
     /// Computed in semantic analysis from the type hierarchy; code generation reads this fact

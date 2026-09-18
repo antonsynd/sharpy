@@ -234,6 +234,13 @@ internal partial class TypeChecker
         if (superInitResult != null)
             return superInitResult;
 
+        // super().__op__(args) lowering (#1740): an OPERATOR dunder tags the CALL node itself with
+        // the cast-based lowering the emitter reads; any other super() call (a non-operator dunder or
+        // a regular method) marks the ENCLOSING method as needing the instance _Impl split. Runs
+        // after ValidateSuperMemberAccess already checked calleeType (line ~118) — calleeType is
+        // Unknown only on that call's own error path, so this never tags a call the checker refused.
+        RecordSuperDunderLoweringFact(call, callee, calleeType);
+
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
@@ -5944,6 +5951,58 @@ internal partial class TypeChecker
 
         ReportOverloadError(baseType.Name, call, resolution, totalArgCount, argTypes);
         return SemanticType.Void;
+    }
+
+    /// <summary>
+    /// The semantic half of #1740: classifies a <c>super()</c> call by what
+    /// <see cref="OperatorRegistry"/> says about its target method name, and records the ONE fact
+    /// P4.2's emitter reads — never re-derived with a kind-enumerating AST walk over the call's
+    /// host statement/expression (Rule 2).
+    ///
+    /// <para>An OPERATOR dunder (<c>super().__add__(x)</c>, <c>super().__lt__(x)</c>,
+    /// <c>super().__neg__()</c>, …) tags the CALL node with
+    /// <see cref="OperatorLoweringKind.SuperOperatorApplication"/> and the resolved base type: the
+    /// emitter lowers this to a CAST-based operator application (<c>((Base)receiver) op args</c>),
+    /// valid in every host because C# operator overload resolution is static — the cast alone
+    /// selects <c>Base</c>'s operator, no <c>base</c> keyword (never legal there) required.</para>
+    ///
+    /// <para>Any OTHER super() call — a non-operator dunder (<c>super().__str__()</c>) or a regular
+    /// method — needs <c>base.Method()</c> to bypass virtual dispatch and reach the PARENT's own
+    /// implementation (a cast-based call would still virtual-dispatch to the override); that is
+    /// legal only inside an instance method, so this marks the ENCLOSING method
+    /// (<see cref="_currentMethodSymbol"/>) as <see cref="CodeGenInfo.RequiresInstanceImpl"/>. The
+    /// fact is meaningful only when that enclosing method is itself an operator dunder being emitted
+    /// as a static C# operator — recorded here regardless, since the enclosing method's own emission
+    /// shape is the emitter's concern (RoslynEmitter.Operators.cs:250/:313/:368), not this checker's.</para>
+    ///
+    /// <para><c>__init__</c> is excluded: <see cref="CheckSuperInitializerCall"/> and the
+    /// constructor's own <c>base(...)</c> lowering own that call shape entirely, and <c>__init__</c>
+    /// is never an operator dunder.</para>
+    /// </summary>
+    private void RecordSuperDunderLoweringFact(FunctionCall call, Expression callee, SemanticType calleeType)
+    {
+        if (callee is not MemberAccess { Object: SuperExpression, Member: var memberName }
+            || memberName == DunderNames.Init
+            || calleeType is UnknownType
+            || _currentClass == null)
+        {
+            return;
+        }
+
+        if (OperatorRegistry.IsOperatorDunder(memberName))
+        {
+            if (GetBaseType(_currentClass) is { } baseType)
+            {
+                _semanticInfo.SetOperatorLowering(call,
+                    new OperatorLowering(
+                        OperatorLoweringKind.SuperOperatorApplication,
+                        NarrowTo: new UserDefinedType { Name = baseType.Name, Symbol = baseType }));
+            }
+        }
+        else if (_currentMethodSymbol != null)
+        {
+            SemanticBinding.MarkRequiresInstanceImpl(_currentMethodSymbol);
+        }
     }
 
     /// <summary>

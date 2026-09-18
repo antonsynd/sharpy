@@ -235,6 +235,11 @@ internal partial class TypeChecker
 
     // Track current method context for super() validation
     private string? _currentMethodName = null;
+    // The FunctionSymbol CheckFunction is currently checking the body of — null outside any
+    // method/function. Needed alongside _currentMethodName (a bare string cannot be marked):
+    // a method-lowered super() call (#1740) records SemanticBinding.MarkRequiresInstanceImpl on
+    // THIS symbol, not on a name that could collide with an overload or a nested function sharing it.
+    private FunctionSymbol? _currentMethodSymbol = null;
     private bool _currentMethodIsOverride = false;
     private bool _currentMethodIsDunder = false;
     private bool _currentFunctionIsGenerator = false;

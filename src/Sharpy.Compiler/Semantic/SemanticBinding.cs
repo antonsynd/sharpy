@@ -57,6 +57,14 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, bool> _clrBaseOverrides =
         new(ReferenceEqualityComparer.Instance);
 
+    // Method symbols whose body contains a METHOD-lowered super() call (#1740) — a super call to a
+    // non-operator dunder or a regular method, which needs base.Method() and so needs the instance
+    // _Impl split when the method itself is an operator dunder. Written by TypeChecker during type
+    // checking; bridged onto CodeGenInfo.RequiresInstanceImpl at MaterializeCodeGenInfo. Symbol-keyed
+    // (Rule 2a) with reference equality, mirroring _clrBaseOverrides (#1122).
+    private readonly ConcurrentDictionary<Symbol, bool> _requiresInstanceImpl =
+        new(ReferenceEqualityComparer.Instance);
+
     // Constructor forwarders synthesized for a class with no __init__, with the base clause's written
     // type arguments already substituted into every parameter (#1408). Written by TypeChecker during
     // type checking; bridged onto CodeGenInfo.ForwardingConstructors at MaterializeCodeGenInfo.
@@ -216,6 +224,29 @@ public class SemanticBinding
     /// </summary>
     public bool OverridesClrBaseMember(Symbol symbol)
         => _clrBaseOverrides.ContainsKey(symbol);
+
+    /// <summary>
+    /// Marks a method symbol as containing a METHOD-lowered <c>super()</c> call (#1740): a call to a
+    /// non-operator dunder or a regular method via <c>super()</c>, which needs <c>base.Method()</c>
+    /// and so needs the instance <c>_Impl</c> split when the method itself is an operator dunder.
+    /// The fact is bridged onto <see cref="CodeGenInfo.RequiresInstanceImpl"/> at
+    /// <see cref="MaterializeCodeGenInfo"/> so code generation reads it instead of re-deriving it
+    /// with a kind-enumerating AST walk.
+    /// </summary>
+    public void MarkRequiresInstanceImpl(Symbol symbol)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _requiresInstanceImpl[symbol] = true;
+    }
+
+    /// <summary>
+    /// Whether a method symbol was marked as containing a method-lowered <c>super()</c> call.
+    /// </summary>
+    public bool RequiresInstanceImpl(Symbol symbol)
+        => _requiresInstanceImpl.ContainsKey(symbol);
 
     /// <summary>
     /// Records the constructor forwarders a derived class inherits, with the base clause's written
@@ -483,6 +514,11 @@ public class SemanticBinding
             "the fact would be silently dropped at materialization (#1122).");
 
         System.Diagnostics.Debug.Assert(
+            System.Linq.Enumerable.All(_requiresInstanceImpl.Keys, s => _codeGenInfo.ContainsKey(s)),
+            "A RequiresInstanceImpl mark exists for a method symbol with no CodeGenInfo entry; " +
+            "the fact would be silently dropped at materialization (#1740).");
+
+        System.Diagnostics.Debug.Assert(
             System.Linq.Enumerable.All(_forwardingConstructors.Keys, s => _codeGenInfo.ContainsKey(s)),
             "Constructor forwarders were recorded for a symbol with no CodeGenInfo entry; " +
             "the fact would be silently dropped at materialization and the emitter would fall back " +
@@ -513,6 +549,11 @@ public class SemanticBinding
             // from a frozen fact without re-deriving the base-member match.
             if (_clrBaseOverrides.ContainsKey(symbol) && !effective.OverridesClrBaseMember)
                 effective = effective with { OverridesClrBaseMember = true };
+
+            // Bridge the method-lowered-super-call fact (#1740) so code generation decides the
+            // instance _Impl split from a frozen fact instead of a kind-enumerating AST walk.
+            if (_requiresInstanceImpl.ContainsKey(symbol) && !effective.RequiresInstanceImpl)
+                effective = effective with { RequiresInstanceImpl = true };
 
             // Bridge the substituted constructor forwarders (#1408) for the same reason: the base's
             // written type arguments are a semantic fact, and the emitter must not re-derive them.

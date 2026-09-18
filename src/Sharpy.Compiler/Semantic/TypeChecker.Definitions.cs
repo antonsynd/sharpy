@@ -255,12 +255,14 @@ internal partial class TypeChecker
         _currentFunctionReturnType = returnType;
 
         var previousMethodName = _currentMethodName;
+        var previousMethodSymbol = _currentMethodSymbol;
         var previousMethodIsOverride = _currentMethodIsOverride;
         var previousMethodIsDunder = _currentMethodIsDunder;
         var previousControlFlowDepth = _controlFlowDepth;
         var previousSuperInitCalled = _superInitCalled;
 
         _currentMethodName = functionDef.Name;
+        _currentMethodSymbol = functionSymbol;
         _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Override)
             || (_currentClass != null && IsDunderMethod(functionDef.Name)
                 && ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name));
@@ -342,6 +344,7 @@ internal partial class TypeChecker
 
         // Restore previous method context
         _currentMethodName = previousMethodName;
+        _currentMethodSymbol = previousMethodSymbol;
         _currentMethodIsOverride = previousMethodIsOverride;
         _currentMethodIsDunder = previousMethodIsDunder;
         _currentFunctionIsGenerator = previousIsGenerator;
