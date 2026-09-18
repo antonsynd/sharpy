@@ -701,18 +701,58 @@ internal partial class TypeChecker
             TypeSymbol ts when ts.Name == Shared.BuiltinNames.Bytes
                 && !IsCurrentMemberAccessQualifier(id) =>
                 SynthesizePrimitiveFunctionType(ts),
+            // #1676: a non-primitive TypeSymbol read as a value now names its own carrier type — the
+            // same UserDefinedType/GenericType shape a module-qualified reference already gets
+            // (ModuleLoader's export-type switch, #1674) — instead of Unknown. Nothing downstream
+            // depends on this being Unknown: CheckValuePositionReference (the #1168/#1170 choke point
+            // in CheckExpression, run right after this for every position that is not the current
+            // call's own callee) re-derives the constructor-reference classification from the SYMBOL
+            // independently (ClassifyConstructorReference's spelling-lookup arm), never from this
+            // cached type. The one position CheckValuePositionReference does NOT reach — the callee
+            // of a direct construction (`Point(3)`, exempt via IsCurrentCallCallee) — needs a real,
+            // non-Unknown type of its own: construction there is decided by CheckConstructorCall from
+            // the SYMBOL, never from this cached type, so SelfConstructionOf's self-reference is exactly
+            // as inert for it as Unknown was, minus the standing DeliberatelyPermissive mark.
+            //
+            // EXCLUDED at the member-access qualifier position (`Outer.Inner[int]`'s `Outer`), joining
+            // the same `!IsCurrentMemberAccessQualifier` gate the bytes arm above uses, for a
+            // DIFFERENT reason found by measurement: GenericReferenceResolver's nested-generic-type arm
+            // (`Outer.Inner[int](6)`, #1211) is gated on `ownerType is UnknownType` to tell "the
+            // qualifier names a TYPE" apart from "the qualifier names an INSTANCE receiver with a
+            // generic method" — its own comment states the qualifier "produced the intentional Unknown
+            // that a non-primitive TypeSymbol reference gets". Losing that Unknown here made `Outer`
+            // read as an instance receiver, and `TypeQualifierProvesMemberAbsent`
+            // /`ClrReflectionProvesMemberAbsent` then reported the false "Type 'Outer' has no member
+            // 'Inner'" — caught by the constructor_reference_tripwire fixture during verification, not
+            // anticipated by plan-d35e69's Design Decision 8. The qualifier keeps its Unknown (and, for
+            // now, the one remaining DP mark below) until that resolver reads a SYMBOL-based signal
+            // instead of the cached type.
+            TypeSymbol ts when !IsCurrentMemberAccessQualifier(id) => SelfConstructionOf(ts),
             TypeSymbol => SemanticType.Unknown,
-            _ => SemanticType.Unknown
+            // A bare generic type parameter used as a value (`T()` inside a generic function/class)
+            // names its own type-parameter type — the same carrier a TYPE ANNOTATION spelling `T`
+            // already resolves to (TypeResolver), so a value read and a type read of the same name
+            // agree.
+            TypeParameterSymbol tps => new TypeParameterType { Name = tps.Name },
+            // `Symbol` is an unsealed abstract record (six concrete subtypes today), so the compiler
+            // cannot itself prove the arms above are exhaustive (CS8509) — reaching this arm means a
+            // SEVENTH subtype was added without a matching arm here, which is a compiler bug.
+            _ => throw new InvalidOperationException(
+                $"Identifier '{id.Name}' resolved to an unrecognized Symbol subtype "
+                + $"'{symbol.GetType().Name}' — add a named arm above (#1676).")
         };
 
-        // Mark intentional Unknown types: non-primitive TypeSymbol references and unhandled
-        // symbol kinds are not errors — they're expected gaps handled at higher levels (e.g., FunctionCall).
-        // Primitive TypeSymbols get a FunctionType above and should NOT be marked as error recovery.
+        // The one residual DP site (#1676): a non-primitive TypeSymbol read as a member-access
+        // QUALIFIER stays Unknown (see the TypeSymbol arms above) because
+        // GenericReferenceResolver's nested-generic-type arm reads that Unknown as its own "this
+        // qualifier names a type" signal. Every other non-primitive TypeSymbol/TypeParameterSymbol
+        // read now has a real carrier type from the switch above, so this can only fire for the
+        // qualifier case.
         if (identifierType is UnknownType && symbol is not null)
         {
             MarkExpressionAsErrorRecovery(id,
                 ErrorRecoveryReason.DeliberatelyPermissive(
-                    "a non-primitive type reference is typed at the call site, not here"));
+                    "a type-name member-access qualifier is resolved at the member-access site, not here"));
         }
 
         // #1766: a LiteralString-typed identifier read is literal-derived, so
@@ -745,14 +785,17 @@ internal partial class TypeChecker
             return new UserDefinedType { Name = bt.Name, Symbol = registryType };
         }
 
-        if (expanded is UserDefinedType { Symbol: TypeSymbol ts })
+        if (expanded is UserDefinedType { Symbol: TypeSymbol ts } udt)
         {
             if (PrimitiveConversionResolver.IsPrimitiveConversion(ts, _symbolTable.BuiltinRegistry))
                 return SynthesizePrimitiveFunctionType(ts);
-            return SemanticType.Unknown;
+            // #1676/#1527: transparent like every other position — an alias to a user type, read as
+            // a value, denotes that type itself, mirroring ResolveModuleExportedAlias's own user-type
+            // arm (which already returns `udt` rather than Unknown for the cross-module spelling).
+            return udt;
         }
 
-        return SemanticType.Unknown;
+        return expanded;
     }
 
     private SemanticType ResolveModuleExportedAlias(TypeAliasSymbol aliasSymbol)

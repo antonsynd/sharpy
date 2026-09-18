@@ -60,8 +60,15 @@ public enum ConstructorReferenceFamily
 /// needs none of it.</param>
 /// <param name="ParameterCount">How many parameters the emitted lambda takes — the pinned
 /// signature's arity. Read by <c>RoslynEmitter.GenerateConstructorReference</c>.</param>
+/// <param name="ParameterTypes">The pinned signature's parameter types, in order, when the pinning
+/// site has them in hand (#1676) — null for a site that only ever had the count (every writer
+/// before #1676, and the type-alias arm at <c>SemanticType.Unknown</c>/arity 0, which has no
+/// signature to name). Lets the emitter cast the constructor lambda to its full delegate type
+/// (<c>(global::System.Func&lt;int, Point&gt;)(x =&gt; new Point(x))</c>) instead of relying on the
+/// slot alone to infer it — the untyped-lambda form only a delegate-typed slot can bind.</param>
 public sealed record ConstructorReferenceLowering(
     ConstructorReferenceFamily Family,
     string Name,
     SemanticType ConstructedType,
-    int ParameterCount);
+    int ParameterCount,
+    IReadOnlyList<SemanticType>? ParameterTypes = null);

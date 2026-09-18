@@ -21,5 +21,23 @@
 # callee, CheckClrBindingArguments for a CLR one); an unresolved callee refuses by name (SPY0203)
 # instead of a standing DP mark.
 #
-# Expressions.cs: :590 type-ref value position (#1676)
+# The Expressions.cs :716 type-ref VALUE-USE site drained @ P5.3 (#1676): a non-primitive
+# TypeSymbol/TypeParameterSymbol read as a value now names its own carrier type
+# (SelfConstructionOf/TypeParameterType) instead of Unknown; CheckConstructorReference (unchanged)
+# re-derives the classification from the symbol independently either way, so every measured
+# refusal (SPY0342/SPY0346) is preserved.
+#
+# [CORRECTED during P5.3 verification, plan-d35e69 Design Decision 8 did not anticipate this]
+# One site remains: the MEMBER-ACCESS-QUALIFIER position (`Outer.Inner[int]`'s `Outer`) is
+# deliberately EXCLUDED from the #1676 fix and stays Unknown+DP-marked.
+# GenericReferenceResolver's nested-generic-type arm (#1211) is gated on `ownerType is
+# UnknownType` to tell "the qualifier names a TYPE" apart from "the qualifier names an INSTANCE
+# receiver with a generic method" — its own comment states the qualifier "produced the
+# intentional Unknown that a non-primitive TypeSymbol reference gets". Giving the qualifier a
+# real type made `Outer.Inner[int](6)` read `Outer` as an instance receiver and report the false
+# "Type 'Outer' has no member 'Inner'" — caught by the constructor_reference_tripwire fixture
+# during verification (a whole-solution-adjacent regression a narrow #1676 fixture sweep would
+# have missed). Redraining this site needs GenericReferenceResolver to read a SYMBOL-based
+# "is this qualifier a type" signal instead of the cached-Unknown one; tracked as future work.
+# Expressions.cs :754 (the qualifier arm) is the site.
 TypeChecker.Expressions.cs 1 #1676

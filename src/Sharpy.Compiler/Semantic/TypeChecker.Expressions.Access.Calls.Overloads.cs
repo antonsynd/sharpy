@@ -1264,12 +1264,14 @@ internal partial class TypeChecker
         // over-fire this whole rule is built to avoid.
         if (constructorReference.Family == ConstructorReferenceFamily.UserType
             && IsConstructorReferenceCallArgument(reference)
+            && IsDelegateShapedOrOpenSlot(_expectedType)
             && SingleUserTypeShapeOf(constructorReference) is { } argumentShape)
         {
             _semanticInfo.SetConstructorReferenceLowering(reference,
                 new ConstructorReferenceLowering(
                     ConstructorReferenceFamily.UserType, constructorReference.Name,
-                    argumentShape.ReturnType, argumentShape.ParameterTypes.Count));
+                    argumentShape.ReturnType, argumentShape.ParameterTypes.Count,
+                    argumentShape.ParameterTypes));
             return argumentShape;
         }
 
@@ -1375,6 +1377,32 @@ internal partial class TypeChecker
         OptionalType optional => CanHoldACallable(optional.UnderlyingType),
         UserDefinedType { Symbol.TypeKind: TypeKind.Delegate } => true,
         _ => IsSystemTypeParameter(parameterType)
+    };
+
+    /// <summary>
+    /// Whether the direct-call-argument arm above may bind a single-constructor shape into
+    /// <paramref name="parameterType"/> (#1676) — a callable-shaped slot (a <see cref="FunctionType"/>,
+    /// unresolved or not — <c>map</c>'s <c>(T) -&gt; R</c> is still open here, before Tier 1's
+    /// inference-closed check runs on the NEXT call once the type parameter is bound;
+    /// <see cref="GenericFunctionType"/>; a declared delegate), or a slot this checker does not
+    /// track at all (<c>null</c> — the long-standing permissive default this arm has always had, for
+    /// a parameter no caller pushed through <see cref="EnterStore"/>). Anything else KNOWN and
+    /// non-callable — <c>object</c> (<c>print(Point)</c>'s slot), a concrete non-delegate class — has
+    /// no signature to bind here: the reference falls through to the refusal below instead of
+    /// reaching codegen as an untyped lambda a non-delegate slot cannot convert (CS8917 → SPY0342 by
+    /// direction, #1676). Deliberately narrower than <see cref="CanHoldACallable"/>, which treats
+    /// <see cref="TypeParameterType"/> and a <c>System.Type</c> parameter as callable-holding too —
+    /// neither is a slot this arm's LAMBDA can bind into; <see cref="TypeParameterType"/> is refused
+    /// two arms down (<see cref="RefuseConstructorReferenceInNonCallableArgument"/> reads the same
+    /// slot with the wider predicate for its own, later, question) and <c>System.Type</c> already
+    /// returned at this method's own entry.
+    /// </summary>
+    private static bool IsDelegateShapedOrOpenSlot(SemanticType? parameterType) => parameterType switch
+    {
+        null => true,
+        FunctionType or GenericFunctionType => true,
+        UserDefinedType { Symbol.TypeKind: TypeKind.Delegate } => true,
+        _ => false
     };
 
     /// <summary>
