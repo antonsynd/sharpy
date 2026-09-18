@@ -143,7 +143,7 @@ class Shape(IDisplayable):
         var code = CompileToCSharp(source);
 
         // Should have the abstract class
-        code.Should().Contain("public abstract class Shape : IDisplayable");
+        code.Should().Contain("public abstract class Shape : global::IDisplayable");
         // Should have the explicit abstract method from the class
         code.Should().Contain("public abstract double Area();");
         // Should generate abstract stub for the missing interface method
@@ -165,7 +165,7 @@ class Shape(IDisplayable):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public abstract class Shape : IDisplayable");
+        code.Should().Contain("public abstract class Shape : global::IDisplayable");
         // display() should appear once as a concrete (virtual — implements an interface
         // method, #1519) method, not as an abstract stub
         code.Should().Contain("public virtual void Display()");
@@ -191,7 +191,7 @@ class Shape(IDrawable, ISerializable):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public abstract class Shape : IDrawable, ISerializable");
+        code.Should().Contain("public abstract class Shape : global::IDrawable, global::ISerializable");
         // Should generate stubs for both interface methods
         code.Should().Contain("public abstract void Draw();");
         code.Should().Contain("public abstract string Serialize();");
@@ -214,7 +214,7 @@ class Shape(IJsonSerializable):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public abstract class Shape : IJsonSerializable");
+        code.Should().Contain("public abstract class Shape : global::IJsonSerializable");
         // Should generate stub for the method from IJsonSerializable
         code.Should().Contain("public abstract string ToJson();");
         // Should generate stub for inherited method from ISerializable
@@ -234,7 +234,7 @@ class Entity(IMovable):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public abstract class Entity : IMovable");
+        code.Should().Contain("public abstract class Entity : global::IMovable");
         // Stub should have correct parameters
         code.Should().Contain("public abstract void Move(int x, int y);");
     }
@@ -255,7 +255,7 @@ class BaseWidget(IWidget):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public abstract class BaseWidget : IWidget");
+        code.Should().Contain("public abstract class BaseWidget : global::IWidget");
         // draw is implemented, so it is concrete — and virtual, because it implements an
         // interface method in a non-sealed class (the ImplementsInterfaceMethod fact frozen
         // onto CodeGenInfo, #1519). The former `public void Draw()` expectation pinned the
@@ -281,7 +281,7 @@ class Circle(IDisplayable):
 ";
         var code = CompileToCSharp(source);
 
-        code.Should().Contain("public class Circle : IDisplayable");
+        code.Should().Contain("public class Circle : global::IDisplayable");
         code.Should().NotContain("abstract");
     }
 

@@ -235,7 +235,10 @@ public class RoslynEmitterOperatorTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("public static Complex operator -(Complex value)", code);
+        // #1683: the operator's RETURN type comes from the `-> Complex` annotation and is now
+        // emitted global::-qualified (extracted same-file type); the unary operand parameter keeps
+        // its short name (emitted via the operand path, not the annotation path).
+        Assert.Contains("public static global::Complex operator -(Complex value)", code);
     }
 
     [Fact]

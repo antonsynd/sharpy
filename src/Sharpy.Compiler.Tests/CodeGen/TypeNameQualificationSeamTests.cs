@@ -55,8 +55,13 @@ def main() -> None:
     }
 
     [Fact]
-    public void CurrentFileType_IsInstance_KeepsShortName()
+    public void CurrentFileType_Construction_Qualifies_IsInstance_KeepsShortName()
     {
+        // #1683/#1802: a same-file type in CONSTRUCTION position is now emitted global::-qualified
+        // through its module class (universal qualification, ruled churn — plan line 427). The
+        // isinstance TYPE-TEST operand keeps its short name: it binds inside the module class where the
+        // short name resolves, and its emit path (the `is` pattern type) was not part of the
+        // qualification change.
         var result = CompileAndExecute(@"
 class Box:
     n: int
@@ -71,7 +76,7 @@ def main() -> None:
 
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.NotNull(result.GeneratedCSharp);
-        Assert.Contains("new Box()", result.GeneratedCSharp);
+        Assert.Contains("new global::Test.Box()", result.GeneratedCSharp);
         Assert.Contains("b is Box", result.GeneratedCSharp);
     }
 
