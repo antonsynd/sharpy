@@ -85,6 +85,8 @@ class Widget:
     label: str
     count: int = 0
 
+    type Tag = int
+
     def __init__(self, label: str) -> None:
         self.label = label
 
@@ -391,6 +393,17 @@ def main() -> None:
             CacheStatus.RoundTrips, "CachedSymbol.Constructors"),
         F<TypeSymbol>("NestedTypes", t => Join(t.NestedTypes.Select(n => n.Name).OrderBy(n => n, StringComparer.Ordinal)),
             CacheStatus.RoundTrips, "CachedSymbol.NestedTypes"),
+        // #1729 (R-I) — a nested `type X = ...` alias. ModuleLoader.ExtractNestedTypes extracts it for
+        // an imported type (so `Box.Ints` resolves through a from-import, the alias_cross_module cell),
+        // hence it mirrors across the boundary. But SymbolSerializer does not carry it: like
+        // TypeAliasSymbol.TypeAnnotation below, a nested alias's target is reconstructed from source on
+        // reparse rather than cached, so it is Dropped through the warm cache. The Widget specimen
+        // carries `type Tag = int`.
+        F<TypeSymbol>("NestedTypeAliases",
+            t => Join(t.NestedTypeAliases.Select(a => a.Name).OrderBy(n => n, StringComparer.Ordinal)),
+            CacheStatus.Dropped, "deliberate — a nested alias's target is reconstructed from source on "
+            + "reparse rather than cached (see TypeAliasSymbol.TypeAnnotation); ModuleLoader still "
+            + "extracts it so the import path mirrors it (#1729)"),
         // #1455 — the projection includes each property's escape flag: PropertySymbol is a standalone
         // record, so its IsNameBacktickEscaped must survive extraction (else a `Zed` property's
         // spelling is lost on the import path). The `Registry` specimen carries an escaped property.

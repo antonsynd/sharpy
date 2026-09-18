@@ -173,12 +173,6 @@ public class CodeGenInfoComputerTotalityTests
     {
         nameof(VariableDeclaration),
         nameof(FunctionDef),
-        // A nested type's own members reach no other pass (#1791): the module-body loop sees only
-        // top-level declarations, so without these arms a nested class's field consts carried no
-        // CodeGenInfo and the emitter printed `static readonly` whatever the fact said.
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
     };
 
     private static readonly HashSet<string> ProcessTypeMembers_Skipped = new()
@@ -199,7 +193,17 @@ public class CodeGenInfoComputerTotalityTests
         nameof(TryStatement),
         nameof(WithStatement),
         nameof(DeferStatement),
-        // A nested enum declares no fields of its own to name (ProcessEnumDef owns enum members).
+        // A nested type's own members still reach ProcessTypeMembers, but #1729 (R-I) routed them
+        // through the ONE nested-declaration classifier in the `default:` arm
+        // (stmt.TryGetNestedDeclaration -> ProcessNestedTypeMembers), not through an explicit case per
+        // kind. This scanner sees only explicit `case` arms, so ClassDef/StructDef/InterfaceDef/EnumDef
+        // are "skipped" from ITS view even though a nested class/struct/interface's field consts DO get
+        // CodeGenInfo (guarded behaviorally by ParameterDefaultConstantMatrix's Nested*Field cells,
+        // #1791). A nested enum's members are owned by ProcessEnumDef; nested union/delegate/alias
+        // carry no member body and fall through the classifier.
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(InterfaceDef),
         nameof(EnumDef),
         nameof(TypeAlias),
         nameof(PropertyDef),
@@ -247,6 +251,11 @@ public class CodeGenInfoComputerTotalityTests
         nameof(StructDef),
         nameof(EnumDef),
         nameof(InterfaceDef),
+        // #1729: a nested union/delegate is emitted as a member of its host, so its name must be
+        // enumerated here (a collision on its name is reported like any other member's) — each has
+        // its own explicit case arm.
+        nameof(UnionDef),
+        nameof(DelegateDef),
     };
 
     private static readonly HashSet<string> EnumerateMemberNames_Skipped = new()
@@ -273,8 +282,6 @@ public class CodeGenInfoComputerTotalityTests
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
-        nameof(DelegateDef),
     };
 
     [Fact]
