@@ -307,11 +307,13 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
             Outcome.RefusedMutableDefault,
             Note: "N/A: mutable default value (SPY0400)");
 
-        // @dataclass lowers the field default to a constructor parameter default. Until
-        // 4eee3b8ec (plan-757fbb remediation) the validator never saw dataclass fields and the
-        // list literal reached C# as CS1736 behind SPY0908; the dataclass host now consults the
-        // same constant-default table as `def`, and a list literal is a mutable default (SPY0400),
-        // so this context cannot hold a collection literal at all — refused, not N/A.
+        // @dataclass field defaults now ADMIT a mutable-collection default and initialize it PER
+        // INSTANCE (R-A, #1684, landed @ 11ea87e6d / b8bc7825a): the literal's contextual record is
+        // preserved through the per-instance constructor assignment, so the covariant
+        // list[list[Base]] <- [[Derived()]] holds and the appended Base() is accepted, printing 2.
+        // Before R-A this was SPY0400-refused (plan-C @ 4eee3b8ec) and earlier CS1736 behind
+        // SPY0908 @ c68a2683d. A `def`/`__init__` PARAMETER default stays SPY0400 (see the
+        // ctor-parameter-default cell above) — R-A admits field defaults only. Ruled churn for #1903.
         yield return new Cell("B/dataclass-default", Axis, Program(
             "@dataclass\n"
             + "class Holder:\n"
@@ -321,8 +323,8 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
             + "    h: Holder = Holder()\n"
             + "    h.v[0].append(Base())\n"
             + "    print(len(h.v[0]))\n"),
-            Outcome.RefusedMutableDefault,
-            Note: "dataclass field default: mutable default refused (SPY0400) since 4eee3b8ec; was CS1736 behind SPY0908 @ c68a2683d");
+            Outcome.Prints, ExpectedOutput: "2\n",
+            Note: "dataclass field mutable-collection default admitted per-instance (R-A, #1684); contextual list[list[Base]] <- [[Derived()]] holds. Was SPY0400 pre-R-A. See #1903.");
 
         // N/A — property observers are gated behind the experimental `property_observers`
         // feature; ungated use is SPY0331 before any typing happens.
