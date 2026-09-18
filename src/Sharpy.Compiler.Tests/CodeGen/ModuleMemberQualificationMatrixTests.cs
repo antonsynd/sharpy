@@ -347,4 +347,256 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "a wildcard-imported stdlib member inlines the fully-qualified reference (#1683, #1896)");
         wildcard.GeneratedCSharp!.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Cross-module / project cells (ProjectCompilationHelper) — a real .spyproj
+    // build. Root namespace `Test`, lib module class `Lib`.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private sealed record ProjectRun(
+        Sharpy.Compiler.Tests.Helpers.ExecutionResult Exec, string GeneratedCSharp);
+
+    /// <summary>
+    /// Builds and executes a two-or-more-file project through the real ProjectCompiler, returning
+    /// the execution result and the concatenated generated C# (read from the compilation result the
+    /// same run produced — no second compile).
+    /// </summary>
+    private ProjectRun RunProject(string rootNamespace, params (string name, string content)[] files)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace(rootNamespace).WithEntryPoint("main.spy");
+        foreach (var (name, content) in files)
+            helper.AddSourceFile(name, content);
+        helper.CreateProjectFile();
+
+        var exec = helper.CompileAndExecute();
+        var cs = helper.LastCompilationResult != null
+            ? string.Concat(helper.LastCompilationResult.GeneratedCSharpFiles.Values)
+            : string.Empty;
+        return new ProjectRun(exec, cs);
+    }
+
+    private const string CrossModuleLib = """
+        const CAP: int = 8
+
+        def compute() -> int:
+            return CAP
+
+        class Box:
+            tag: int
+            def __init__(self, tag: int):
+                self.tag = tag
+
+            enum Kind:
+                A = 1
+                B = 2
+        """;
+
+    public static IEnumerable<object[]> CrossModuleValueCells()
+    {
+        // cross-module function callee + const read → global::<RootNs>.<LibModule>.<member>.
+        yield return new object[] { "cross_module_function_callee", "global::Test.Lib.Compute()" };
+        yield return new object[] { "cross_module_const_read", "global::Test.Lib.CAP" };
+    }
+
+    [Theory]
+    [MemberData(nameof(CrossModuleValueCells))]
+    public void CrossModule_ValuePosition_IsGlobalQualified(string id, string expectedSpelling)
+    {
+        Output.WriteLine($"[cross-module value] {id} → {expectedSpelling}");
+        var main = """
+            from lib import compute, CAP
+
+            def main() -> None:
+                print(compute())
+                print(CAP)
+            """;
+        var run = RunProject("Test", ("lib.spy", CrossModuleLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the cross-module project must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("8\n8\n");
+
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: a cross-module member reference (defining module ≠ current) must be emitted "
+            + "global::-qualified so no using set can shadow it (#1683, #1802)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, $"{id}: #1683 close criterion");
+    }
+
+    [Fact]
+    public void CrossModule_NestedEnumMember_IsNamespaceQualifiedToItsDefiningModule()
+    {
+        // A cross-module nested-enum member rides the enclosing TYPE's cross-module qualification,
+        // which is namespace-qualified (Test.Lib.Box.Kind.A) — NOT global::-rooted the way a
+        // cross-module function/const value reference is (asserted above). Settled @ HEAD; it binds
+        // the imported enum, not a same-named local one, and it is not a `using static`.
+        var main = """
+            from lib import Box
+
+            def main() -> None:
+                print(Box.Kind.A == Box.Kind.A)
+            """;
+        var run = RunProject("Test", ("lib.spy", CrossModuleLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "the cross-module nested-enum cell must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("True\n");
+
+        run.GeneratedCSharp.Should().Contain("Test.Lib.Box.Kind.A",
+            "a cross-module nested-enum member is qualified to its defining module (#1683, #1802)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    [Fact]
+    public void CrossModule_TypeAnnotationAndConstruction_AreQualified()
+    {
+        var main = """
+            from lib import Box
+
+            def main() -> None:
+                b: Box = Box(4)
+                print(b.tag)
+            """;
+        var run = RunProject("Test", ("lib.spy", CrossModuleLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "the cross-module type cell must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("4\n");
+
+        // A cross-module type annotation is namespace-qualified (Test.Lib.Box); the `new` form
+        // additionally carries global::. Both bind the imported type, not a same-named local one.
+        run.GeneratedCSharp.Should().Contain("Test.Lib.Box b = new global::Test.Lib.Box(4)",
+            "a cross-module type is qualified to its defining module in both annotation and "
+            + "construction (#1683, #1802)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    // ── #1683 collision cells: a module-level member whose name equals the root namespace, or a CLR
+    //    namespace/type, must still bind its own declaration across the module boundary — the CS0118
+    //    (function/class == RootNamespace) and namespace-collision cases the deleted using-static
+    //    used to mask.
+
+    [Fact]
+    public void Collision_FunctionNameEqualsRootNamespace_BindsAcrossModules()
+    {
+        // The #1683 p1 repro: RootNamespace `Poison`, `def poison()` in lib, called bare through a
+        // from-import in main. Before universal qualification this was `using static Poison.Lib;` +
+        // `Poison()` → CS0118 (the namespace `Poison` and the method collided).
+        var lib = """
+            def poison() -> str:
+                return "poisoned"
+            """;
+        var main = """
+            from lib import poison
+
+            def main() -> None:
+                print(poison())
+            """;
+        var run = RunProject("Poison", ("lib.spy", lib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "func==RootNamespace must build and run (no CS0118). Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("poisoned\n");
+        run.GeneratedCSharp.Should().Contain("global::Poison.Lib.Poison()",
+            "the call is global::-qualified through the module class, so the root-namespace "
+            + "collision cannot bind the namespace instead of the method (#1683)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    [Fact]
+    public void Collision_ClassNameEqualsRootNamespace_BindsAcrossModules()
+    {
+        // Class name == RootNamespace, imported and constructed across the module boundary.
+        var lib = """
+            class Widget:
+                tag: int
+                def __init__(self, tag: int):
+                    self.tag = tag
+            """;
+        var main = """
+            from lib import Widget
+
+            def main() -> None:
+                w: Widget = Widget(5)
+                print(w.tag)
+            """;
+        var run = RunProject("Widget", ("lib.spy", lib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "class==RootNamespace must build and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("5\n");
+        run.GeneratedCSharp.Should().Contain("new global::Widget.Lib.Widget(5)",
+            "the cross-module construction is global::-qualified through the defining module, so the "
+            + "root-namespace/type name collision resolves to the class (#1683)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    // ── Import-form cells: every USER-module import form inlines the reference as
+    //    global::<RootNs>.<Module>.<Member> (no directive), including dotted-package and aliased
+    //    forms — the import kinds the class-2 deletion relocated here (plan lines 437/444).
+
+    public static IEnumerable<object[]> UserImportFormCells()
+    {
+        // (main body, expected qualified reference). The lib has `compute`/`other`; pkg/sub has
+        // `helper`. Each form must inline global::Test.<Module>.<Member> with NO directive.
+        yield return new object[]
+        {
+            "whole_module_import",
+            "import lib\n\ndef main() -> None:\n    print(lib.compute())\n",
+            "global::Test.Lib.Compute()", "8\n"
+        };
+        yield return new object[]
+        {
+            "whole_module_import_as_alias",
+            "import lib as l\n\ndef main() -> None:\n    print(l.other())\n",
+            "global::Test.Lib.Other()", "9\n"
+        };
+        yield return new object[]
+        {
+            "from_import_member_as_alias",
+            "from lib import compute as c\n\ndef main() -> None:\n    print(c())\n",
+            "global::Test.Lib.Compute()", "8\n"
+        };
+        yield return new object[]
+        {
+            "dotted_package_import",
+            "import pkg.sub\n\ndef main() -> None:\n    print(pkg.sub.helper())\n",
+            "global::Test.Pkg.Sub.Helper()", "42\n"
+        };
+        yield return new object[]
+        {
+            "dotted_from_import",
+            "from pkg.sub import helper\n\ndef main() -> None:\n    print(helper())\n",
+            "global::Test.Pkg.Sub.Helper()", "42\n"
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(UserImportFormCells))]
+    public void UserImportForm_InlinesGlobalQualifiedReference_NoDirective(
+        string id, string main, string expectedSpelling, string expectedStdout)
+    {
+        Output.WriteLine($"[import form] {id} → {expectedSpelling}");
+        var run = RunProject(
+            "Test",
+            ("lib.spy", "def compute() -> int:\n    return 8\n\n\ndef other() -> int:\n    return 9\n"),
+            ("pkg/__init__.spy", ""),
+            ("pkg/sub.spy", "def helper() -> int:\n    return 42\n"),
+            ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            $"{id}: the import-form project must compile and run. Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be(expectedStdout);
+
+        run.GeneratedCSharp.Should().Contain(expectedSpelling,
+            $"{id}: a user-module import (every form) inlines the reference global::-qualified to its "
+            + "defining module — no using-directive to be shadowed (#1683, #1802)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, $"{id}: #1683 close criterion");
+    }
 }
