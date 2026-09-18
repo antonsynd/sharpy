@@ -1,0 +1,1 @@
+Mutable default value is not allowed for field 'xs' in dataclass 'D' @9:5

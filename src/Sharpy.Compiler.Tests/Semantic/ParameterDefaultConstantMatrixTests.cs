@@ -23,8 +23,13 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
 /// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants, Folded, ResultOk, ResultErr,
 /// NestedTuple, ListLiteral, DictLiteral, Call, Constructor, Lambda} × Host: {Def, Lambda, Init, Method,
-/// Dataclass}. Totality: 28 × 5 = 140 cells (52 admitted, 84 refused — SPY0401, or SPY0400 for the
-/// mutable list/dict literals — and 4 N/A). There is no known-red bucket.</para>
+/// Dataclass}. Totality: 28 × 5 = 140 cells (54 admitted, 82 refused — SPY0401, or SPY0400 for the
+/// mutable list/dict literals at every non-Dataclass host — and 4 N/A). There is no known-red bucket.
+/// <c>Dataclass×ListLiteral</c>/<c>Dataclass×DictLiteral</c> moved Refused→Admitted under R-A
+/// (<see cref="PerCellAdmittedOutputOverrides" />, #1684): the mutable-collection family is no longer
+/// refused at the Dataclass host — it lowers to a per-instance constructor initializer instead. Their
+/// Def/Lambda/Init/Method twins stay SPY0400-refused (R-R: SPY0400 is reserved for a shared
+/// C#-default-parameter value, which a function/lambda/method parameter still would be).</para>
 ///
 /// <para><b>Contract (module consts).</b> A module <c>const</c> whose declared type C# admits for
 /// <c>const</c> — every <c>PrimitiveCatalog</c> primitive but <c>object</c>/<c>void</c> — and whose
@@ -50,8 +55,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
     private const int KindCount = 28;
     private const int HostCount = 5;
-    private const int AdmittedCellCount = 52;
-    private const int RefusedCellCount = 84;
+    // R-A (#1684): Dataclass×ListLiteral and Dataclass×DictLiteral moved Refused→Admitted —
+    // see PerCellAdmittedOutputOverrides.
+    private const int AdmittedCellCount = 54;
+    private const int RefusedCellCount = 82;
     private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
@@ -176,6 +183,31 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         k.AcceptedOutput != null ? Verdict.Admitted : Verdict.Refused;
 
     /// <summary>
+    /// Per-CELL verdict overrides — a kind whose verdict is not uniform across every host (R-A,
+    /// #1684): <c>ListLiteral</c>/<c>DictLiteral</c> stay SPY0400-refused at Def/Lambda/Init/Method
+    /// (R-R: the mutable-collection family is never a C# default-parameter value), but the
+    /// Dataclass host lowers them as a PER-INSTANCE constructor initializer instead
+    /// (<c>CodeGenInfo.RequiresPerInstanceDefault</c>), so <c>Dataclass×ListLiteral</c> and
+    /// <c>Dataclass×DictLiteral</c> compile, run and print the per-instance value — admitted here,
+    /// overriding <see cref="Kind.AcceptedOutput"/>'s host-invariant null. Mutation-sensitive: reverting
+    /// the <c>RequiresPerInstanceDefault</c> lowering (plan line 181c) makes both cells fail to RUN
+    /// (SPY0908/CS1736), which is what proves these two overrides are not vacuous — see
+    /// <c>FieldDefaultMatrixTests</c>'s own mutation record for the same fact, exercised directly.
+    /// </summary>
+    private static readonly Dictionary<string, string> PerCellAdmittedOutputOverrides =
+        new(StringComparer.Ordinal)
+        {
+            ["Dataclass×ListLiteral"] = "[1]\n",
+            ["Dataclass×DictLiteral"] = "{'a': 1}\n",
+        };
+
+    private static Verdict Classify(Host h, Kind k) =>
+        PerCellAdmittedOutputOverrides.ContainsKey(Key(h, k)) ? Verdict.Admitted : Classify(k);
+
+    private static string? AcceptedOutputFor(Host h, Kind k) =>
+        PerCellAdmittedOutputOverrides.TryGetValue(Key(h, k), out var overridden) ? overridden : k.AcceptedOutput;
+
+    /// <summary>
     /// Cells that are not this seam's to decide, each with the reason (no entry without one). A
     /// lambda-typed default inside a lambda's own parameter list —
     /// <c>lambda x: () -> int = lambda: 1: x</c> — does not parse (SPY0103 at the nested lambda's
@@ -194,7 +226,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     private static IEnumerable<object[]> CellsWhere(Verdict verdict)
         => from h in Hosts
            from k in Kinds
-           where Classify(k) == verdict && !NotApplicableCells.ContainsKey(Key(h, k))
+           where Classify(h, k) == verdict && !NotApplicableCells.ContainsKey(Key(h, k))
            select new object[] { h.Name, k.Name };
 
     public static IEnumerable<object[]> AdmittedCells => CellsWhere(Verdict.Admitted);
@@ -216,7 +248,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         result.Success.Should().BeTrue(
             $"[{host} × {kind}] must compile — the classifier admits this kind at this host. "
             + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
-        result.StandardOutput.Should().Be(k.AcceptedOutput,
+        result.StandardOutput.Should().Be(AcceptedOutputFor(h, k),
             $"[{host} × {kind}] prints the default value\n{source}");
         result.RawDiagnostics.Should().NotContain(
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,

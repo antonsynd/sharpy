@@ -1,0 +1,12 @@
+# Historical direction record (#1769, R-A): this fixture originally pinned plan C's SPY0400
+# refusal for a dataclass mutable-collection field default. R-A (#1684) supersedes that refusal
+# for this family — the default now lowers to a per-instance constructor initializer, so the
+# program COMPILES and RUNS. See errors/dataclass_default_mutable_list_nullable_refused_1684 for
+# the positive control that keeps the ORIGINAL SPY0400 refusal (a nullable-typed field, where the
+# per-instance sentinel would collide with a caller-supplied None).
+@dataclass
+class D:
+    xs: list[int] = [1]
+
+def main() -> None:
+    print(D().xs)

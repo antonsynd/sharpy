@@ -1,0 +1,12 @@
+# Positive control for R-A (#1684): the per-instance-default lowering admits a mutable-collection
+# default at a dataclass field, but NOT when the field's own type is nullable — the `arg ?? <default>`
+# sentinel the lowering needs would collide with a caller who legitimately passes None for this
+# field (`D(xs=None)` must yield None). This spelling — `list[int] | None` — must keep the ORIGINAL
+# SPY0400 refusal that dataclasses/dataclass_default_mutable_list_admitted_1769 used to pin before
+# R-A superseded it for the non-nullable family.
+@dataclass
+class D:
+    xs: list[int] | None = [1]
+
+def main() -> None:
+    print(D().xs)
