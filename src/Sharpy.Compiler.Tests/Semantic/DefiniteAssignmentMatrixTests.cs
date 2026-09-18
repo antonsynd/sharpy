@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Compiler.Shared;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -717,5 +718,412 @@ def main() -> None:
         result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600",
             "x assigned in all match arms (with wildcard default) is definite after");
         result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+    }
+
+    // ========================================================================================= //
+    // Read-site axis (#1681, P6.T): {lambda, nested def, lambda-in-nested-def,
+    // nested-def-in-nested-def, comprehension, generator expression, defer (feature-flagged)} x
+    // {never assigned, assigned later, assigned in one branch}. The lambda/nested-def rule (#1635,
+    // extended to nested defs by #1681, landed @ 3fa30defb) judges a DEFERRED read against "assigned
+    // ANYWHERE in the function" — the closure may be called after a later assignment, so flow
+    // position alone cannot refuse it, but a name never assigned anywhere still must be. A
+    // comprehension/generator-expression read is never routed through that rule at all —
+    // CollectReadsFromExpr only recognizes LambdaExpression as deferred, so a comprehension's
+    // element/iterable expressions fall through to the ordinary per-block/per-statement read scan
+    // and are judged by ORDINARY FLOW POSITION at their own textual location instead: "assigned
+    // later" fails exactly like "never" there, because the read point itself precedes the
+    // assignment (measured @ c7ade6be2, da05/da06). `defer` is flow-positioned too, but at the
+    // unconditional END of the enclosing scope's fall-through flow (variable_declaration.md:
+    // "defer bodies run at scope exit, after every statement of the enclosing scope") —
+    // ControlFlowGraphBuilder.BuildDefer just enqueues the statement, and InsertDeferChain splices
+    // it into the CFG once, after ALL of the function's other statements, so an assignment ANYWHERE
+    // on the sole path to that splice point is credited (like the deferred sites' "later" cell) but
+    // an assignment confined to one if-branch is not (like the flow-positioned sites' "one branch"
+    // cell) — a third, hybrid shape that needs its own cells below.
+    // ========================================================================================= //
+
+    public static IEnumerable<object[]> DeferredReadSite_NeverAssigned_Cases => new[]
+    {
+        new object[] { "Lambda", @"
+def main() -> None:
+    x: int
+    f = lambda: x
+    print(f())
+" },
+        new object[] { "NestedDef", @"
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        print(x)
+    inner()
+
+def main() -> None:
+    outer()
+" },
+        new object[] { "LambdaInNestedDef", @"
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        f = lambda: x
+        print(f())
+    inner()
+
+def main() -> None:
+    outer()
+" },
+        new object[] { "NestedDefInNestedDef", @"
+def outer() -> None:
+    x: int
+    def middle() -> None:
+        def inner() -> None:
+            print(x)
+        inner()
+    middle()
+
+def main() -> None:
+    outer()
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(DeferredReadSite_NeverAssigned_Cases))]
+    public void DeferredReadSite_NeverAssigned_ProducesSPY0600(string kind, string source)
+    {
+        // Falsifier for the FunctionDef arm (Rule 12): the "NestedDef" case here is exactly the
+        // shape that regresses to a silent `0` when DefiniteAssignmentAnalysis.
+        // CollectNestedDefDeferredReads's `if (node is FunctionDef nestedDef)` arm is neutralized —
+        // see the mutation record in this file's landing commit body.
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"{kind}: a deferred read of a local never assigned anywhere in the enclosing function must be refused");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            $"{kind}: expected SPY0600 for a never-assigned outer local");
+    }
+
+    public static IEnumerable<object[]> DeferredReadSite_AssignedLater_Cases => new[]
+    {
+        new object[] { "Lambda", @"
+def main() -> None:
+    x: int
+    f = lambda: x
+    x = 5
+    print(f())
+" },
+        new object[] { "NestedDef", @"
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        print(x)
+    x = 5
+    inner()
+
+def main() -> None:
+    outer()
+" },
+        new object[] { "LambdaInNestedDef", @"
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        f = lambda: x
+        print(f())
+    x = 5
+    inner()
+
+def main() -> None:
+    outer()
+" },
+        new object[] { "NestedDefInNestedDef", @"
+def outer() -> None:
+    x: int
+    def middle() -> None:
+        def inner() -> None:
+            print(x)
+        inner()
+    x = 5
+    middle()
+
+def main() -> None:
+    outer()
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(DeferredReadSite_AssignedLater_Cases))]
+    public void DeferredReadSite_AssignedLater_Succeeds(string kind, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600",
+            $"{kind}: the closure runs after the later assignment, so the read is definitely assigned");
+        result.Success.Should().BeTrue($"{kind}: {string.Join("; ", result.CompilationErrors)}");
+        result.StandardOutput.Trim().Should().Be("5");
+    }
+
+    // "assigned in one branch": #1635's rule credits a deferred read against "assigned ANYWHERE in
+    // the function", so a local assigned only inside an untaken if-branch still compiles — but at
+    // RUNTIME, on the branch that skipped the assignment, the bare declaration's definite
+    // initializer supplies the type's default (`0` for int), so the call silently prints the
+    // default instead of refusing. python3 raises UnboundLocalError here instead; this divergence
+    // is the deliberate, already-shipped shape of the "assigned anywhere" heuristic (#1635), not a
+    // new defect — these cells pin it for the nested-def and lambda-in-nested-def read sites too.
+    public static IEnumerable<object[]> DeferredReadSite_AssignedInOneBranch_Cases => new[]
+    {
+        new object[] { "Lambda", @"
+def helper(flag: bool) -> None:
+    x: int
+    f = lambda: x
+    if flag:
+        x = 5
+    print(f())
+
+def main() -> None:
+    helper(False)
+" },
+        new object[] { "NestedDef", @"
+def outer(flag: bool) -> None:
+    x: int
+    def inner() -> None:
+        print(x)
+    if flag:
+        x = 5
+    inner()
+
+def main() -> None:
+    outer(False)
+" },
+        new object[] { "LambdaInNestedDef", @"
+def outer(flag: bool) -> None:
+    x: int
+    def inner() -> None:
+        f = lambda: x
+        print(f())
+    if flag:
+        x = 5
+    inner()
+
+def main() -> None:
+    outer(False)
+" },
+        new object[] { "NestedDefInNestedDef", @"
+def outer(flag: bool) -> None:
+    x: int
+    def middle() -> None:
+        def inner() -> None:
+            print(x)
+        inner()
+    if flag:
+        x = 5
+    middle()
+
+def main() -> None:
+    outer(False)
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(DeferredReadSite_AssignedInOneBranch_Cases))]
+    public void DeferredReadSite_AssignedInOneBranch_AcceptedPrintsDefault(string kind, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600",
+            $"{kind}: assigned in even one branch satisfies the 'assigned anywhere' rule");
+        result.Success.Should().BeTrue($"{kind}: {string.Join("; ", result.CompilationErrors)}");
+        result.StandardOutput.Trim().Should().Be("0",
+            $"{kind}: the untaken branch leaves x at its bare declaration's definite-initializer default");
+    }
+
+    public static IEnumerable<object[]> FlowPositionedReadSite_NeverAssigned_Cases => new[]
+    {
+        new object[] { "Comprehension", @"
+def main() -> None:
+    x: int
+    y: list[int] = [x for i in range(3)]
+    print(y)
+" },
+        new object[] { "GeneratorExpression", @"
+def main() -> None:
+    x: int
+    y = list(x for i in range(3))
+    print(y)
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(FlowPositionedReadSite_NeverAssigned_Cases))]
+    public void FlowPositionedReadSite_NeverAssigned_ProducesSPY0600(string kind, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"{kind}: a never-assigned local read at its own flow position must be refused");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            $"{kind}: expected SPY0600");
+    }
+
+    // "assigned later" for a flow-positioned site means the assignment appears in source AFTER the
+    // read (unlike the deferred sites above, where "later" means after the closure's own creation
+    // but still before its eventual call) — the read still runs at its own textual position,
+    // strictly before the assignment, so it is refused exactly like "never" (measured @ c7ade6be2,
+    // da05/da06).
+    public static IEnumerable<object[]> FlowPositionedReadSite_AssignedAfterRead_Cases => new[]
+    {
+        new object[] { "Comprehension", @"
+def main() -> None:
+    x: int
+    y: list[int] = [x for i in range(3)]
+    x = 5
+    print(y)
+" },
+        new object[] { "GeneratorExpression", @"
+def main() -> None:
+    x: int
+    y = list(x for i in range(3))
+    x = 5
+    print(y)
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(FlowPositionedReadSite_AssignedAfterRead_Cases))]
+    public void FlowPositionedReadSite_AssignedAfterRead_ProducesSPY0600(string kind, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"{kind}: the read precedes the assignment in flow position");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            $"{kind}: expected SPY0600");
+    }
+
+    public static IEnumerable<object[]> FlowPositionedReadSite_AssignedInOneBranch_Cases => new[]
+    {
+        new object[] { "Comprehension", @"
+def main(flag: bool) -> None:
+    x: int
+    if flag:
+        x = 5
+    y: list[int] = [x for i in range(3)]
+    print(y)
+" },
+        new object[] { "GeneratorExpression", @"
+def main(flag: bool) -> None:
+    x: int
+    if flag:
+        x = 5
+    y = list(x for i in range(3))
+    print(y)
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(FlowPositionedReadSite_AssignedInOneBranch_Cases))]
+    public void FlowPositionedReadSite_AssignedInOneBranch_ProducesSPY0600(string kind, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"{kind}: the merge after the if does not carry a one-branch assignment");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            $"{kind}: expected SPY0600");
+    }
+
+    // --- defer (feature-flagged, #1023): flow-positioned at scope exit, a third hybrid shape ---
+
+    [Fact]
+    public void Defer_NeverAssigned_ProducesSPY0600()
+    {
+        var source = @"
+def main() -> None:
+    x: int
+    defer print(x)
+";
+        var result = CompileAndExecute(source, features: FeatureFlags.None.Enable("defer"));
+        result.Success.Should().BeFalse("a deferred body reading a never-assigned local must be refused");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"));
+    }
+
+    [Fact]
+    public void Defer_AssignedLaterInScope_Succeeds()
+    {
+        // Matches variable_declaration.md's own `deferred()` example: the defer body splices into
+        // the CFG AFTER `x = 5`, regardless of where `defer` appears textually.
+        var source = @"
+def main() -> None:
+    x: int
+    defer print(x)
+    x = 5
+";
+        var result = CompileAndExecute(source, features: FeatureFlags.None.Enable("defer"));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("5");
+    }
+
+    [Fact]
+    public void Defer_AssignedInOneBranch_ProducesSPY0600()
+    {
+        // Unlike the deferred sites' one-branch cell, defer is NOT judged by "assigned anywhere" —
+        // it is spliced in once, after the if's merge block, so a one-branch assignment does not
+        // reach it.
+        var source = @"
+def main(flag: bool) -> None:
+    x: int
+    defer print(x)
+    if flag:
+        x = 5
+    print(""done"")
+";
+        var result = CompileAndExecute(source, features: FeatureFlags.None.Enable("defer"));
+        result.Success.Should().BeFalse(
+            "the defer chain splices in AFTER the if-merge, which does not carry a one-branch assignment");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"));
+    }
+
+    // --- shadowing dimension: a deferred site's OWN binding sharing a name with an outer bare local ---
+
+    [Fact]
+    public void LambdaOwnParameter_ShadowsOuterUnassigned_WronglyRefused_Bug1910()
+    {
+        // BUG(#1910): DefiniteAssignmentAnalysis's deferred-read collection matches identifier reads
+        // against bareDecls BY NAME, not by resolved symbol/scope. The lambda's OWN parameter `y`
+        // shadows the outer never-assigned `y`, so the `y` read inside the lambda body is the
+        // parameter, not the outer local — python3 prints 9. CollectDeferredReads's `shadowed` set
+        // (added by #1681/3fa30defb) is seeded from a nested def's own parameters and local
+        // VariableDeclarations, but nothing seeds a LAMBDA's own parameters the same way, so this
+        // case is misattributed and wrongly refused. Asserting the CURRENT (wrong) behavior so this
+        // cell flips green — not vacuously — the day #1910 lands (drain on fix).
+        var source = @"
+def main() -> None:
+    y: int
+    f = lambda y: int: y
+    print(f(9))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            "BUG(#1910): the lambda's own parameter is misattributed to the outer bare local by name");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'y'"));
+    }
+
+    [Fact]
+    public void NestedDef_OwnLocalDeclarationShadowsOuterUnassigned_Accepted()
+    {
+        // Positive control locking the P6.1 shadow-guard regression fix (3fa30defb): `inner`
+        // declares its OWN `x: int = 99`, shadowing the outer never-assigned `x` for the rest of
+        // inner's body. CollectDeferredReads's `shadowed` set excludes it from the enclosing
+        // deferred read — before that guard existed, adding the FunctionDef arm newly, wrongly,
+        // refused this program (a real regression p6-analysis caught while fixing #1681). Contrast
+        // with the #1910 BUG cell above: that one shadows via a lambda PARAMETER (not covered by the
+        // shadow guard); this one shadows via a nested def's own DECLARATION (covered).
+        var source = @"
+def outer() -> None:
+    x: int
+    def inner() -> None:
+        x: int = 99
+        print(x)
+    inner()
+
+def main() -> None:
+    outer()
+";
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("99");
     }
 }
