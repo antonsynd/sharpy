@@ -208,7 +208,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
                 continue;
 
-            ValidateDefaultValue(DataclassFieldSlot(field, classDef.Name), AdmissionTable.ParameterDefault);
+            ValidateDefaultValue(DataclassFieldSlot(field, classDef.Name), AdmissionTable.PerInstanceFieldDefault);
         }
     }
 
@@ -230,7 +230,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
                 continue;
 
-            ValidateDefaultValue(StructFieldSlot(field, structDef.Name), AdmissionTable.ParameterDefault);
+            ValidateDefaultValue(StructFieldSlot(field, structDef.Name), AdmissionTable.PerInstanceFieldDefault);
         }
     }
 
@@ -368,19 +368,6 @@ internal class ConstantPositionValidator : ValidatingAstWalker
     private void ValidateDefaultValue(DefaultSlot slot, AdmissionTable table)
     {
         var defaultValue = slot.DefaultValue;
-
-        // Check for mutable defaults first (these are never allowed)
-        if (IsMutableDefault(defaultValue))
-        {
-            AddError(
-                $"Mutable default value is not allowed for {slot.Subject} in {slot.Host}. " +
-                $"Use None as default and initialize in {slot.BodySteer} instead.",
-                slot.LineStart,
-                slot.ColumnStart, code: DiagnosticCodes.Validation.MutableDefault,
-                span: slot.Span);
-            return;
-        }
-
         var semanticInfo = Context.SemanticInfo;
         var kind = ConstantDefaultClassifier.Classify(
             defaultValue,
@@ -389,8 +376,23 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 ConstEligibility.LowersToConstantExpression(node, semanticInfo),
             memberConstResolver: member => IsMemberConstAdmissible(member, semanticInfo));
 
+        // The mutable-collection family (a list/dict/set literal, a list()/dict()/set() call, or a
+        // list/dict/set comprehension) is never a compile-time constant, so it is never admitted by
+        // ParameterDefault/LambdaParameterDefault/DecoratorArgument/ConstInitializer — a function
+        // parameter, a decorator argument and a const initializer refuse it unconditionally (R-R).
+        // PerInstanceFieldDefault admits it (#1684, R-A): a dataclass/struct field of this shape is a
+        // per-instance initializer in the synthesized constructor, not a C# default-parameter value.
+        var isMutableCollectionFamily =
+            kind is EmittableConstantKind.Collection or EmittableConstantKind.Comprehension;
+
         if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
         {
+            if (isMutableCollectionFamily)
+            {
+                AddMutableDefaultError(slot);
+                return;
+            }
+
             var reason = DescribeRefusalReason(kind, defaultValue, semanticInfo, slot.Noun);
             var refusal = $"Default value for {slot.Subject} in {slot.Host} must be a compile-time constant expression";
             var steer = kind switch
@@ -409,6 +411,20 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 slot.LineStart,
                 slot.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault,
                 span: slot.Span);
+            return;
+        }
+
+        // Admitted by PerInstanceFieldDefault: a nullable-typed field keeps the refusal (#1684, R-A)
+        // — the `arg ?? <default>` sentinel this lowering needs would collide with a caller who
+        // legitimately passes None for that field.
+        if (isMutableCollectionFamily)
+        {
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
+            if (slotType is NullableType or OptionalType)
+            {
+                AddMutableDefaultError(slot);
+            }
+
             return;
         }
 
@@ -726,18 +742,21 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
     // ── Helpers ─────────────────────────────────────────────────────────
 
-    private static bool IsMutableDefault(Expression expr)
+    /// <summary>
+    /// The SPY0400 refusal every mutable-collection-family default gets: unconditionally, at a host
+    /// whose table never admits <see cref="EmittableConstantKind.Collection"/> /
+    /// <see cref="EmittableConstantKind.Comprehension"/> (a function/lambda parameter, R-R); and, at a
+    /// dataclass/struct field, only when the field's own type is nullable/Optional (#1684, R-A) —
+    /// the sentinel the per-instance lowering needs would collide with a caller-supplied None there.
+    /// </summary>
+    private void AddMutableDefaultError(DefaultSlot slot)
     {
-        return expr switch
-        {
-            ListLiteral => true,
-            DictLiteral => true,
-            SetLiteral => true,
-            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function)
-                is Identifier { Name: BuiltinNames.Set or BuiltinNames.List or BuiltinNames.Dict } => true,
-            Parenthesized paren => IsMutableDefault(paren.Expression),
-            _ => false
-        };
+        AddError(
+            $"Mutable default value is not allowed for {slot.Subject} in {slot.Host}. " +
+            $"Use None as default and initialize in {slot.BodySteer} instead.",
+            slot.LineStart,
+            slot.ColumnStart, code: DiagnosticCodes.Validation.MutableDefault,
+            span: slot.Span);
     }
 
     /// <summary><c>Ok(...)</c> / <c>Err(...)</c>.</summary>

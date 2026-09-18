@@ -284,8 +284,18 @@ internal class DefaultParameterValidator : ValidatingAstWalker
     {
         var defaultValue = slot.DefaultValue;
 
-        // Check for mutable defaults first (these are never allowed)
-        if (IsMutableDefault(defaultValue))
+        // A reference resolves iff it names a const with the same backtick-escape spelling — the
+        // rule TypeChecker.TryFoldConstantValue applies when it folds the const's own value.
+        var kind = ConstantDefaultClassifier.Classify(defaultValue, id =>
+            Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } constSymbol
+            && constSymbol.IsNameBacktickEscaped == id.IsNameBacktickEscaped);
+
+        // The mutable-collection family (#1684, R-A) — folded onto the classifier so this superseded
+        // validator has no shape-switching dispatch of its own (ConstantPositionValidator is the
+        // live twin; see its ValidateDefaultValue for the PerInstanceFieldDefault admission this
+        // dead class never reaches).
+        if (kind is EmittableConstantKind.Collection or EmittableConstantKind.Comprehension
+            && !ConstantDefaultClassifier.IsAdmitted(kind, table))
         {
             AddError(
                 $"Mutable default value is not allowed for {slot.Subject} in {slot.Host}. " +
@@ -295,12 +305,6 @@ internal class DefaultParameterValidator : ValidatingAstWalker
                 span: slot.Span);
             return;
         }
-
-        // A reference resolves iff it names a const with the same backtick-escape spelling — the
-        // rule TypeChecker.TryFoldConstantValue applies when it folds the const's own value.
-        var kind = ConstantDefaultClassifier.Classify(defaultValue, id =>
-            Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } constSymbol
-            && constSymbol.IsNameBacktickEscaped == id.IsNameBacktickEscaped);
 
         if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
         {
@@ -357,37 +361,6 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             }
         }
     }
-
-    /// <summary>
-    /// Checks if an expression is a mutable default value.
-    /// Mutable defaults include: [], {}, set()
-    /// </summary>
-    private static bool IsMutableDefault(Expression expr)
-    {
-        return expr switch
-        {
-            // Empty list literal [] or list with elements [1, 2, 3]
-            ListLiteral => true,
-
-            // Empty dict literal {} (not to be confused with empty set)
-            // DictLiteral is always mutable regardless of contents
-            DictLiteral => true,
-
-            // Set literal {1, 2, 3}
-            SetLiteral => true,
-
-            // Function call to set()/list()/dict() - collection constructors. Matched against the
-            // canonical (paren-stripped) callee so `(list)()` is as mutable as `list()` (#1170).
-            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function)
-                is Identifier { Name: BuiltinNames.Set or BuiltinNames.List or BuiltinNames.Dict } => true,
-
-            // Parenthesized expression - check inner expression
-            Parenthesized paren => IsMutableDefault(paren.Expression),
-
-            _ => false
-        };
-    }
-
 
     /// <summary>`Ok(…)` / `Err(…)`: the Optional steer (`= None()` … `??= Some(...)`) would be false for a Result slot.</summary>
     private static bool IsResultConstructor(Expression defaultValue) =>

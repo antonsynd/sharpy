@@ -35,6 +35,24 @@ internal enum AdmissionTable
     /// admits in a <c>const</c> initializer (#1791).
     /// </summary>
     ConstInitializer,
+
+    /// <summary>
+    /// A <c>@dataclass</c> or <c>struct</c> field default (#1684, R-A): every kind
+    /// <see cref="ParameterDefault"/> admits, PLUS the mutable-collection family — a list/dict/set
+    /// literal, a <c>list()</c>/<c>dict()</c>/<c>set()</c> call, or a list/dict/set comprehension
+    /// (<see cref="EmittableConstantKind.Collection"/> and
+    /// <see cref="EmittableConstantKind.Comprehension"/>). Unlike a function parameter, where the
+    /// default is a single value shared by every call, a field default of this shape is a
+    /// per-instance initializer materialized in the synthesized constructor
+    /// (<c>this.Field = arg ?? &lt;default expression&gt;</c>) — evaluating it fresh per instance is
+    /// exactly Python's own dataclass semantics, never a C# default-parameter value.
+    /// <see cref="ConstantPositionValidator"/> additionally refuses this family with
+    /// <c>SPY0400</c> when the field's own type is nullable/Optional: the sentinel this lowering
+    /// needs would collide with a caller who legitimately passes <c>None</c>. <c>SPY0400</c> stays
+    /// reserved for a mutable-collection default at a FUNCTION parameter, which this table never
+    /// admits any host to use.
+    /// </summary>
+    PerInstanceFieldDefault,
 }
 
 /// <summary>
@@ -148,6 +166,14 @@ internal static class ConstantDefaultClassifier
                     if (callee is Identifier fid && fid.Name is "Some" or "Ok" or "Err" && call.Arguments.Length == 1)
                         return EmittableConstantKind.CaseConstructor;
 
+                    // list()/dict()/set() build the SAME mutable-collection shape a literal does
+                    // (#1684, R-A) — the family AdmissionTable.PerInstanceFieldDefault admits for a
+                    // dataclass/struct field default, and every other table refuses with the same
+                    // MutableDefault steer a literal gets. An arbitrary call (any other callee) stays
+                    // Call, refused everywhere per R-R.
+                    if (callee is Identifier { Name: BuiltinNames.Set or BuiltinNames.List or BuiltinNames.Dict })
+                        return EmittableConstantKind.Collection;
+
                     return EmittableConstantKind.Call;
                 }
 
@@ -213,6 +239,22 @@ internal static class ConstantDefaultClassifier
                 EmittableConstantKind.ConstReference or
                 EmittableConstantKind.EnumMember or
                 EmittableConstantKind.ConditionalOfAdmitted,
+
+            // ParameterDefault's admitted kinds, PLUS the mutable-collection family (#1684, R-A) —
+            // see the enum member's doc comment for why a field default may evaluate this shape
+            // per instance where a function parameter default never may.
+            AdmissionTable.PerInstanceFieldDefault => kind is
+                EmittableConstantKind.Literal or
+                EmittableConstantKind.NegatedLiteral or
+                EmittableConstantKind.FoldedOfAdmitted or
+                EmittableConstantKind.ConstReference or
+                EmittableConstantKind.EnumMember or
+                EmittableConstantKind.NoneLiteral or
+                EmittableConstantKind.NoneCall or
+                EmittableConstantKind.TypeOf or
+                EmittableConstantKind.ConditionalOfAdmitted or
+                EmittableConstantKind.Collection or
+                EmittableConstantKind.Comprehension,
 
             _ => false,
         };

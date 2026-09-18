@@ -10,9 +10,20 @@ public static partial class DiagnosticExplanations
         // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
-            "A function parameter has a mutable default value (list, dict, or set literal). In Python, mutable defaults are shared across calls, leading to subtle bugs. Sharpy prevents this pattern.",
+            "A default value is a mutable collection (a list, dict, or set literal; a list()/dict()/set() call; " +
+            "or a list/dict/set comprehension) at a host that cannot evaluate it per instance. A FUNCTION or " +
+            "lambda parameter always reports this: in Python, a mutable default is one object shared across " +
+            "every call, and Sharpy refuses that shape outright rather than reproduce the bug. A `@dataclass` or " +
+            "`struct` FIELD default of the same shape is instead evaluated fresh per instance in the synthesized " +
+            "constructor — it reports this diagnostic only when the field's own type is nullable/Optional, " +
+            "where the sentinel that per-instance initialization needs would collide with a caller who " +
+            "legitimately passes None for the field.",
             "def append_to(item: int, lst: list[int] = []) -> list[int]:\n    lst.append(item)\n    return lst",
-            "Use None as the default and create the mutable object inside the function:\ndef append_to(item: int, lst: Optional[list[int]] = None) -> list[int]:\n    if lst is None:\n        lst = []\n    lst.append(item)\n    return lst");
+            "For a function/lambda parameter, use None as the default and create the mutable object inside the " +
+            "body:\ndef append_to(item: int, lst: Optional[list[int]] = None) -> list[int]:\n    if lst is None:\n" +
+            "        lst = []\n    lst.append(item)\n    return lst\n" +
+            "For a nullable-typed dataclass/struct field, initialize it in __post_init__ (dataclass) or an " +
+            "explicit __init__ (struct) instead of giving it a mutable-collection default.");
 
         Add(dict, DiagnosticCodes.Validation.NonConstDefault, "Non-constant default parameter value", "Validation",
             "A function parameter has a default value that is not a compile-time constant. Default values must be " +
@@ -20,7 +31,11 @@ public static partial class DiagnosticExplanations
             "The message names the reason: an operator whose lowering is a call ('//', '%', float '**', str '*', " +
             "ordinal str comparison), a const whose initializer is a call, a const of an Optional or nullable type, " +
             "or a plain field rather than a const. The const's declaration host does not matter — a module const, a " +
-            "local const, a class or struct field const and a nested-type field const all read the same fact.",
+            "local const, a class or struct field const and a nested-type field const all read the same fact. A " +
+            "tuple literal, a user call, Some(...)/Ok(...)/Err(...), or a lambda default also reports this at " +
+            "EVERY host, including a `@dataclass`/`struct` field — only the mutable-collection family (a list/" +
+            "dict/set literal, a list()/dict()/set() call, or a list/dict/set comprehension) is admitted at a " +
+            "dataclass/struct field and refused elsewhere as SPY0400 instead.",
             "x: int = 10\ndef foo(n: int = x):  # x is a variable, not a constant\n    pass",
             "Use a literal, an enum member, or a const whose own initializer is constant:\n" +
             "const LIMIT: int = 10\ndef foo(n: int = LIMIT):\n    pass");
