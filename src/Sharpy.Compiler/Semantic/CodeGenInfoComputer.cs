@@ -411,8 +411,38 @@ internal class CodeGenInfoComputer
                 IsModuleLevel = false,
                 IsConstant = fieldDecl.IsConst,
                 IsCompileTimeConstant = isCompileTime,
+                RequiresPerInstanceDefault = RequiresPerInstanceDefault(fieldDecl, fieldSymbol),
             });
         }
+    }
+
+    /// <summary>
+    /// The ONE classification authority for a dataclass/struct field default's shape (#1684, R-A):
+    /// <see cref="Validation.ConstantDefaultClassifier"/>, the same call
+    /// <c>ConstantPositionValidator.ValidateDataclassFieldDefaults</c>/<c>ValidateStructFieldDefaults</c>
+    /// check against <c>AdmissionTable.PerInstanceFieldDefault</c>. Mirrors that validator's full
+    /// verdict, not just the shape: a <c>const</c> or <c>@static</c> field is never a
+    /// constructor-parameter default (#1900), a field with no default has nothing to classify, and a
+    /// NULLABLE/OPTIONAL-typed field keeps the validator's SPY0400 refusal (the <c>arg ?? &lt;default&gt;</c>
+    /// sentinel would collide with a caller-supplied <c>None</c>) — so compilation never reaches code
+    /// generation for that combination and this reads false rather than a value CodeGen must never
+    /// act on. No resolvers are passed to <c>Classify</c>: the mutable-collection kinds
+    /// (<see cref="Validation.EmittableConstantKind.Collection"/>,
+    /// <see cref="Validation.EmittableConstantKind.Comprehension"/>) are decided purely by the AST
+    /// shape — a list/dict/set literal, a <c>list()</c>/<c>dict()</c>/<c>set()</c> call, or a
+    /// list/dict/set comprehension — never by the Identifier/MemberAccess/operator branches the
+    /// resolvers inform.
+    /// </summary>
+    private static bool RequiresPerInstanceDefault(VariableDeclaration fieldDecl, VariableSymbol fieldSymbol)
+    {
+        if (fieldDecl.InitialValue == null || fieldDecl.IsConst
+            || fieldDecl.Decorators.Any(d => d.Name == DecoratorNames.Static)
+            || fieldSymbol.Type is NullableType or OptionalType)
+            return false;
+
+        var kind = Validation.ConstantDefaultClassifier.Classify(fieldDecl.InitialValue);
+        return kind is Validation.EmittableConstantKind.Collection
+            or Validation.EmittableConstantKind.Comprehension;
     }
 
     /// <summary>

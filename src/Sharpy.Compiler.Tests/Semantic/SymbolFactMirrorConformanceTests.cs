@@ -1005,6 +1005,7 @@ def main() -> None:
         ["SynthesizedInterfaces"] = "derived — restored from InterfaceReference.SynthesizedVia on warm restore (#1746)",
         ["OperatorParameterShape"] = "same-file-only — read at RoslynEmitter.Operators.cs equality synthesis (#1719)",
         ["HasRuntimeAssignedFlag"] = "same-file-only — a runtime-checked LOCAL fact recomputed by LocalNameAllocator every build (never module-level, so never served from a warm cache); read at RoslynEmitter.Statements.Assignments.cs (declaration flag + MaybeWrapRuntimeAssignedStore) and RoslynEmitter.Expressions.cs (CheckedLocal read) (#1839)",
+        ["RequiresPerInstanceDefault"] = "same-file-only — a dataclass/struct field's mutable-collection-default fact (#1684, R-A), computed by CodeGenInfoComputer.ProcessField from ConstantDefaultClassifier for the file being emitted; read by the synthesized-constructor emitter (RoslynEmitter.ClassMembers.Dataclass.cs / RoslynEmitter.ClassMembers.Constructors.cs) once P3.5 lands the per-instance lowering — same invariant as IsCompileTimeConstant, since constructor generation is always same-file",
     };
 
     /// <summary>

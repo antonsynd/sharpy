@@ -77,6 +77,23 @@ public sealed record CodeGenInfo
     public bool IsStringEnum { get; init; }
 
     /// <summary>
+    /// True for a <c>@dataclass</c>/<c>struct</c> field whose default is the mutable-collection
+    /// family (#1684, R-A) — a list/dict/set literal, a <c>list()</c>/<c>dict()</c>/<c>set()</c>
+    /// call, or a list/dict/set comprehension. Set at <c>CodeGenInfoComputer.ProcessField</c> from
+    /// <c>Validation.ConstantDefaultClassifier.Classify</c> — the ONE classification authority
+    /// (also read by <c>ConstantPositionValidator</c>'s <c>AdmissionTable.PerInstanceFieldDefault</c>
+    /// admission) — so code generation never re-derives the shape from the AST (CLAUDE.md Rule 2).
+    /// When true, the synthesized dataclass/struct constructor must lower this field's default to a
+    /// per-instance initializer (a sentinel <c>T? name = null</c> parameter plus
+    /// <c>this.Field = name ?? &lt;default expression&gt;</c>) rather than a C# default-parameter
+    /// value, which Roslyn refuses for a non-constant expression (CS1736). False for a field with no
+    /// default, a <c>const</c> field, a <c>@static</c> field, or a default the validator refuses
+    /// outright (nullable-typed, tuple, call, etc.) — those keep the unchanged
+    /// <c>GenerateParameterDefault</c> path (or never reach code generation at all).
+    /// </summary>
+    public bool RequiresPerInstanceDefault { get; init; }
+
+    /// <summary>
     /// For imported symbols, indicates how the symbol was imported.
     /// </summary>
     public ImportKind ImportKind { get; init; } = ImportKind.None;

@@ -251,6 +251,119 @@ class MyClass:
         cgi!.CSharpName.Should().Be("MyField");
     }
 
+    // ── RequiresPerInstanceDefault (#1684, R-A) ──────────────────────────────────────────────
+    //
+    // The ONE symbol-keyed fact P3.5's constructor lowering reads to decide between the
+    // per-instance sentinel path and the unchanged GenerateParameterDefault path, without
+    // re-deriving ConstantDefaultClassifier's verdict (CLAUDE.md Rule 2a). True iff the field has a
+    // default AND ConstantPositionValidator's AdmissionTable.PerInstanceFieldDefault would admit it
+    // as the mutable-collection family (list/dict/set literal, list()/dict()/set() call, or a
+    // list/dict/set comprehension) for a NON-nullable field.
+
+    [Fact]
+    public void ComputeForModule_DataclassField_MutableListLiteralDefault_RequiresPerInstanceDefault()
+    {
+        var source = @"
+@dataclass
+class Bag:
+    xs: list[int] = [1]
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
+
+        computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
+
+        var typeSymbol = symbolTable.Lookup("Bag") as TypeSymbol;
+        typeSymbol.Should().NotBeNull();
+        var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "xs");
+        fieldSymbol.Should().NotBeNull();
+        var cgi = semanticBinding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.RequiresPerInstanceDefault.Should().BeTrue(
+            "a list literal default is the mutable-collection family admitted by "
+            + "AdmissionTable.PerInstanceFieldDefault");
+    }
+
+    [Fact]
+    public void ComputeForModule_DataclassField_ListComprehensionDefault_RequiresPerInstanceDefault()
+    {
+        var source = @"
+@dataclass
+class Bag:
+    xs: list[int] = [i for i in range(3)]
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
+
+        computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
+
+        var typeSymbol = symbolTable.Lookup("Bag") as TypeSymbol;
+        typeSymbol.Should().NotBeNull();
+        var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "xs");
+        fieldSymbol.Should().NotBeNull();
+        var cgi = semanticBinding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.RequiresPerInstanceDefault.Should().BeTrue(
+            "a list comprehension default is the mutable-collection family admitted by "
+            + "AdmissionTable.PerInstanceFieldDefault, same as a literal (d06/c10)");
+    }
+
+    [Fact]
+    public void ComputeForModule_DataclassField_PlainIntDefault_DoesNotRequirePerInstanceDefault()
+    {
+        var source = @"
+@dataclass
+class Bag:
+    n: int = 5
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
+
+        computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
+
+        var typeSymbol = symbolTable.Lookup("Bag") as TypeSymbol;
+        typeSymbol.Should().NotBeNull();
+        var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "n");
+        fieldSymbol.Should().NotBeNull();
+        var cgi = semanticBinding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.RequiresPerInstanceDefault.Should().BeFalse(
+            "a literal int default is a compile-time constant — GenerateParameterDefault's "
+            + "unchanged path, not the per-instance sentinel");
+    }
+
+    [Fact]
+    public void ComputeForModule_DataclassField_NullableMutableDefault_DoesNotRequirePerInstanceDefault()
+    {
+        // R-A's nullable-field exception: ConstantPositionValidator refuses this with SPY0400
+        // (the `arg ?? <default>` sentinel would collide with a caller-supplied None), so
+        // compilation never reaches code generation for it — the fact must read false rather
+        // than a value CodeGen must never act on.
+        var source = @"
+@dataclass
+class Bag:
+    xs: list[int] | None = [1]
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
+
+        computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
+
+        var typeSymbol = symbolTable.Lookup("Bag") as TypeSymbol;
+        typeSymbol.Should().NotBeNull();
+        var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "xs");
+        fieldSymbol.Should().NotBeNull();
+        var cgi = semanticBinding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.RequiresPerInstanceDefault.Should().BeFalse(
+            "a nullable-typed field keeps the SPY0400 refusal (R-A) instead of the per-instance "
+            + "sentinel lowering");
+    }
+
     [Fact]
     public void ComputeForModule_ClassMethod_SetsPascalCaseName()
     {
