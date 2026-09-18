@@ -128,6 +128,28 @@ struct Bad:
 
 The compiler auto-generates a constructor with optional parameters for fields that have defaults.
 
+**Mutable-collection defaults are per-instance.** A `list`, `dict`, or `set` literal, a
+`list()`/`dict()`/`set()` call, or a comprehension used as a field default is initialized **per
+instance** -- exactly as for a [dataclass field](dataclass.md#field-defaults) -- so each struct
+value gets its own fresh collection rather than sharing one:
+
+```python
+struct Basket:
+    x: int = 0
+    tags: list[int] = [1]
+
+def main() -> None:
+    p = Basket(3)
+    q = Basket(4)
+    p.tags.append(2)
+    print(p.tags)   # [1, 2]
+    print(q.tags)   # [1]  -- q is unaffected
+```
+
+The synthesized constructor takes a nullable sentinel parameter (`tags: Sharpy.List<int>? = null`)
+and assigns `this.Tags = tags ?? new Sharpy.List<int>() { 1 };`. A mutable-collection default on a
+nullable-typed field is refused with `SPY0400`, the same rule dataclasses follow.
+
 A `const` is class-level storage, not per-instance state, so it is **not an instance field**: it is
 neither a constructor parameter nor a constructor assignment, and it does not take part in the
 ordering rule above. A `const` may therefore be declared before a field with no default:

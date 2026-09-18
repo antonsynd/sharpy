@@ -112,5 +112,24 @@ class Counter:
         self.value = 0
 ```
 
+## Field Initializer Expressions
+
+A field's default value may be any expression, including one that introduces its own locals -- a
+comprehension, generator, lambda, or walrus. Such an initializer is evaluated in its own scope and,
+when it hoists a local, is wrapped so the local has somewhere to live; a plain constant initializer
+is emitted unchanged.
+
+```python
+class Grid:
+    cells: list[int] = [n * n for n in range(4)]
+
+def main() -> None:
+    print(Grid().cells)   # [0, 1, 4, 9]
+```
+
+A mutable-collection initializer on a **field** (as opposed to a `const` or `@static` member) is
+built per instance -- see [dataclass Field Defaults](dataclass.md#field-defaults) for the shared
+rule and its `SPY0400` nullable-field restriction.
+
 *Implementation*
 - *✅ Native - Direct mapping to C# class.*
