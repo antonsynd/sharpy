@@ -142,45 +142,52 @@ internal partial class RoslynEmitter
                 memberAccess.Object is Identifier id &&
                 string.Equals(id.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             {
-                // Look up the field name from the field mapping to ensure consistency
-                // For fields not in mapping (inherited fields), use PascalCase to match
-                // the convention used by GenerateField
-                string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
-                    ? mappedFieldName
-                    : NameCasing.ResolveField(memberAccess.Member, false);
-
-                // Generate: this.Field = value;
-                var thisAccess = MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    ThisExpression(),
-                    EscapedIdentifierName(fieldName));
-
-                // For the right-hand side, check if it's an identifier that matches a parameter
-                ExpressionSyntax assignValue;
-                if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                // A comprehension/generator/lambda/walrus on the right-hand side hoists under its
+                // own scope sink so it has somewhere to land — flushed as a prologue ahead of the
+                // assignment itself, not an IIFE, since this arm already produces a statement list
+                // (#1685). See FlushIntoStatement.
+                return FlushIntoStatement(() =>
                 {
-                    assignValue = EscapedIdentifierName(mappedName);
-                }
-                else
-                {
-                    var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
-                    // `self.field = None` for an Optional<T> field → Optional<T>.None.
-                    assignValue = (hasFieldType
-                            ? GenerateExpression(assign.Value)
-                            : null)
-                        ?? GenerateExpression(assign.Value);
+                    // Look up the field name from the field mapping to ensure consistency
+                    // For fields not in mapping (inherited fields), use PascalCase to match
+                    // the convention used by GenerateField
+                    string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
+                        ? mappedFieldName
+                        : NameCasing.ResolveField(memberAccess.Member, false);
 
-                    // Method group → Optional<delegate> field needs an explicit delegate cast
-                    assignValue = ApplyOptionalDelegateConversion(
-                        assign.Value, assignValue, GetExpressionSemanticType(assign.Target));
-                }
+                    // Generate: this.Field = value;
+                    var thisAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        EscapedIdentifierName(fieldName));
 
-                var selfAssign = ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        thisAccess,
-                        assignValue));
-                return new List<StatementSyntax> { AttachLineDirective(selfAssign, stmt) };
+                    // For the right-hand side, check if it's an identifier that matches a parameter
+                    ExpressionSyntax assignValue;
+                    if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                    {
+                        assignValue = EscapedIdentifierName(mappedName);
+                    }
+                    else
+                    {
+                        var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
+                        // `self.field = None` for an Optional<T> field → Optional<T>.None.
+                        assignValue = (hasFieldType
+                                ? GenerateExpression(assign.Value)
+                                : null)
+                            ?? GenerateExpression(assign.Value);
+
+                        // Method group → Optional<delegate> field needs an explicit delegate cast
+                        assignValue = ApplyOptionalDelegateConversion(
+                            assign.Value, assignValue, GetExpressionSemanticType(assign.Target));
+                    }
+
+                    var selfAssign = ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            thisAccess,
+                            assignValue));
+                    return AttachLineDirective(selfAssign, stmt);
+                });
             }
 
             // Other statements, generate normally
@@ -278,15 +285,23 @@ internal partial class RoslynEmitter
                     ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
                     : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
 
-                var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
-                parameterlessStatements.Add(ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            ThisExpression(),
-                            IdentifierName(propName)),
-                        defaultExpr)));
+                // A comprehension/generator/lambda/walrus in the default hoists under its own scope
+                // sink so it has somewhere to land — flushed as a prologue ahead of the assignment
+                // (#1685). See FlushIntoStatement. Each call to this parameterless constructor
+                // re-evaluates the default fresh, so this arm is already per-instance-correct with no
+                // sentinel needed (R-A) — only the hoist-sink safety is new here.
+                parameterlessStatements.AddRange(FlushIntoStatement(() =>
+                {
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(propName)),
+                            defaultExpr));
+                }));
             }
 
             constructors.Add(ConstructorDeclaration(EscapedIdentifier(className))

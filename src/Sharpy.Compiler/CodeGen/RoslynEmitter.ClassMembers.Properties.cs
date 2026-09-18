@@ -40,10 +40,12 @@ internal partial class RoslynEmitter
 
         var variable = VariableDeclarator(EscapedIdentifier(fieldName));
 
-        // Add initializer if present
+        // Add initializer if present. A comprehension/generator/lambda/walrus in the initializer
+        // hoists under its own scope sink so it has somewhere to land (#1685) — see
+        // GenerateInitializerExpression.
         if (varDecl.InitialValue != null)
         {
-            var initExpr = GenerateExpression(varDecl.InitialValue);
+            var initExpr = GenerateInitializerExpression(varDecl.InitialValue, fieldType);
             variable = variable.WithInitializer(EqualsValueClause(initExpr));
         }
 

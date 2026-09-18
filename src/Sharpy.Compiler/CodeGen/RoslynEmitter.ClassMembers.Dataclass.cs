@@ -55,10 +55,15 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithAccessorList(AccessorList(List(accessors)));
 
-        // Add default value initializer if present
+        // Add default value initializer if present. A comprehension/generator/lambda/walrus in the
+        // initializer hoists under its own scope sink so it has somewhere to land (#1685) — see
+        // GenerateInitializerExpression. (The synthesized dataclass constructor always assigns this
+        // field too — R-A's per-instance mutable-collection family through its own `??` prologue,
+        // everything else through GenerateParameterDefault — so this initializer's own value is
+        // never the one observed; it exists only so the property declaration compiles standalone.)
         if (varDecl.InitialValue != null)
         {
-            var initExpr = GenerateExpression(varDecl.InitialValue);
+            var initExpr = GenerateInitializerExpression(varDecl.InitialValue, propType);
             propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }

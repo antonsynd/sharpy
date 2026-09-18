@@ -211,6 +211,71 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
+    /// Runs <paramref name="generate"/> under a fresh scope sink and flushes whatever it hoisted as
+    /// flat statements ahead of its own result. This is the "prologue" shape shared by every point
+    /// that must emit a single Sharpy construct as a self-contained statement list: the per-statement
+    /// boundary in <see cref="GenerateBodyStatements"/> (which inlines the same push/generate/pop/
+    /// drain cycle for its own bookkeeping — the diagnostic-on-null-result check and the defer/
+    /// assert_raises special cases) and the constructor's <c>self.field = value</c> arm (#1685),
+    /// which could not hoist anything at all before this helper existed: a comprehension or walrus
+    /// on the right-hand side of a constructor self-assignment had no statement list to land in.
+    /// </summary>
+    private List<StatementSyntax> FlushIntoStatement(Func<StatementSyntax?> generate)
+    {
+        var sink = new HoistSink(HoistSinkKind.Scope);
+        _sinks.Push(sink);
+        StatementSyntax? result;
+        try
+        {
+            result = generate();
+        }
+        finally
+        {
+            _sinks.Pop();
+        }
+
+        if (result == null)
+            return new List<StatementSyntax>();
+
+        var output = new List<StatementSyntax>(sink.Drain());
+        output.Add(result);
+        return output;
+    }
+
+    /// <summary>
+    /// Generates a field, module-level or dataclass-property initializer's value expression under a
+    /// fresh scope sink so a comprehension, generator, lambda or walrus inside it hoists somewhere
+    /// real (#1685). An initializer position is not a statement list, so
+    /// <see cref="FlushIntoStatement"/> does not apply — anything hoisted has nowhere to land except
+    /// an IIFE wrapping the whole initializer:
+    /// <c>((System.Func&lt;T&gt;)(() =&gt; { &lt;hoisted&gt;; return &lt;expr&gt;; }))()</c>, the
+    /// same cast-based immediately-invoked-lambda shape <c>GenerateMultiExceptionTryExpression</c>
+    /// already uses for a multi-exception <c>try</c> expression (a plain natural-typed lambda would
+    /// rely on C# 10 target-typing the invocation, which generated code cannot assume). When nothing
+    /// hoists — the overwhelming majority of initializers: a literal, a constant, a plain call — the
+    /// sink is empty and the expression comes back completely unchanged, so every plain-initializer
+    /// snapshot stays byte-identical.
+    /// </summary>
+    private ExpressionSyntax GenerateInitializerExpression(Expression initialValue, TypeSyntax declaredType)
+    {
+        ExpressionSyntax expr = null!;
+        var hoisted = WithScopeSink(() => expr = GenerateExpression(initialValue));
+        if (hoisted.Count == 0)
+            return expr;
+
+        var lambdaBody = Block(hoisted.Append(ReturnStatement(expr)));
+        var lambda = ParenthesizedLambdaExpression().WithBlock(lambdaBody);
+
+        var funcType = QualifiedName(
+            IdentifierName("System"),
+            GenericName(Identifier("Func"))
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(declaredType))));
+
+        var castLambda = ParenthesizedExpression(CastExpression(funcType, ParenthesizedExpression(lambda)));
+        return InvocationExpression(castLambda).WithArgumentList(ArgumentList());
+    }
+
+    /// <summary>
     /// Generates a left-to-right operand list so that each operand's side effects happen in source
     /// order. A hoist producer in operand k (comprehension, spread, walrus value, <c>?</c>) flushes
     /// statements before the expression the operands sit in, which would move operand k's effects

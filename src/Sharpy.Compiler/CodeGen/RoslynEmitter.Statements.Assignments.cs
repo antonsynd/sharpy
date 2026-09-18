@@ -1351,7 +1351,9 @@ internal partial class RoslynEmitter
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
         {
-            var value = GenerateExpression(varDecl.InitialValue);
+            // A comprehension/generator/lambda/walrus in the initializer hoists under its own scope
+            // sink so it has somewhere to land (#1685) — see GenerateInitializerExpression.
+            var value = GenerateInitializerExpression(varDecl.InitialValue, typeSyntax);
             declarator = VariableDeclarator(EscapedIdentifier(varName))
                 .WithInitializer(EqualsValueClause(value));
         }

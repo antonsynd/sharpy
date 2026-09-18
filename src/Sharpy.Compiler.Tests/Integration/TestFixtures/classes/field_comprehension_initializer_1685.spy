@@ -1,0 +1,8 @@
+# A field initializer that hoists a comprehension's loop compiles as an immediately-invoked
+# lambda (#1685): the hoisted temp/loop statements have nowhere else to land in a field
+# initializer's expression position.
+class Squares:
+    values: list[int] = [x * x for x in range(4)]
+
+def main() -> None:
+    print(Squares().values)

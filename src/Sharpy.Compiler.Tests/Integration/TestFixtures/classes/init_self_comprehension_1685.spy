@@ -1,0 +1,10 @@
+# self.field = <comprehension> inside __init__ hoists as a real prologue ahead of the
+# assignment, rather than an IIFE (#1685): the constructor body is already a statement list.
+class Squares:
+    values: list[int]
+
+    def __init__(self):
+        self.values = [x * x for x in range(4)]
+
+def main() -> None:
+    print(Squares().values)
