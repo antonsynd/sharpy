@@ -122,7 +122,7 @@ def get_value() -> int:
 
         // Module variable reference inside function should use PascalCase
         result.Should().Contain("MyVar");
-        result.Should().Contain("return MyVar;");
+        result.Should().Contain("return global::Module.MyVar;");
     }
 
     [Fact]
@@ -137,7 +137,7 @@ def get_pi() -> float:
         var result = CompileToString(code);
 
         // Constant reference should preserve SCREAMING_SNAKE_CASE / single-word uppercase name
-        result.Should().Contain("return PI;");
+        result.Should().Contain("return global::Module.PI;");
     }
 
     [Fact]

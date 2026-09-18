@@ -234,7 +234,7 @@ def get_origin() -> Point:
         Assert.Contains("SharpyModuleType", csharp);
 
         // The module-level function stays on the module class.
-        Assert.Contains("public static Point GetOrigin()", csharp);
+        Assert.Contains("public static global::Point GetOrigin()", csharp);
     }
 
     // Note: Nested classes within user classes are not currently supported by the language.
@@ -264,8 +264,8 @@ def main():
         var csharp = CompileToCSharp(source);
 
         // Function should reference Point correctly (without qualifying with Exports)
-        Assert.Contains("public static Point CreatePoint()", csharp);
-        Assert.Contains("return new Point(0, 0)", csharp);
+        Assert.Contains("public static global::Module.Point CreatePoint()", csharp);
+        Assert.Contains("return new global::Module.Point(0, 0)", csharp);
     }
 
     [Fact]

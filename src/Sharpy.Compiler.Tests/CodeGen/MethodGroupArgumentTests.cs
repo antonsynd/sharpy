@@ -58,7 +58,7 @@ def main() -> None:
     print(apply(double_it, 5))
 ", isEntryPoint: true, requireNoErrors: true);
 
-        code.Should().MatchRegex(@"Apply\(\s*DoubleIt!\s*,");
+        code.Should().MatchRegex(@"Apply\(\s*global::Module\.DoubleIt!\s*,");
     }
 
     [Fact]

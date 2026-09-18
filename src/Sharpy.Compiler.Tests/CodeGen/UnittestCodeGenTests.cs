@@ -231,7 +231,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Box<int>>((object?)b)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Test.Box<int>>((object?)b)");
     }
 
     [Fact]

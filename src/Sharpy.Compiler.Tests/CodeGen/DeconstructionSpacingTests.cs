@@ -47,7 +47,7 @@ def main():
         var result = _api.Compile(source);
 
         result.Success.Should().BeTrue();
-        result.GeneratedCSharp.Should().Contain("var (a, b) = GetPair()");
+        result.GeneratedCSharp.Should().Contain("var (a, b) = global::Source.GetPair()");
         result.GeneratedCSharp.Should().NotContain("var(");
     }
 }
