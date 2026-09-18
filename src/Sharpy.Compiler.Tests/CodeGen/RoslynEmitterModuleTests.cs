@@ -67,6 +67,26 @@ public class RoslynEmitterModuleTests
     }
 
     [Fact]
+    public void SnakeCaseModuleName_ConvertsToPascalCaseModuleClass()
+    {
+        // #1683/R-AD: the snake_case -> PascalCase module-name conversion is STILL LIVE, but its
+        // former assertion vehicle — the `using my_custom_module_sub_module = MyCustomModule.SubModule;`
+        // import alias — was deleted with the directive (close criterion: zero using-static/alias). This
+        // re-points the conversion coverage to a still-emitted output: a snake_case source file yields a
+        // PascalCased module class (the same ToNamespacePart snake->Pascal transform the deleted alias
+        // exercised). The dotted/nested-segment conversion (a.b -> A.B) is covered by the qualified
+        // references in the multi-file snake_case-module fixtures (imports/simple_import_test's math_utils).
+        var emitter = CreateEmitter("my_custom_module.spy");
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
+
+        // Act
+        var code = emitter.GenerateCompilationUnit(module).ToFullString();
+
+        // Assert
+        Assert.Contains("class MyCustomModule", code);
+    }
+
+    [Fact]
     public void GenerateCompilationUnit_DefaultUsings_IncludesSystemAndSharpy()
     {
         // Arrange
