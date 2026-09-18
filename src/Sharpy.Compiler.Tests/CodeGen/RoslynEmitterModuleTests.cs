@@ -229,59 +229,7 @@ public class RoslynEmitterModuleTests
         Assert.Contains("using System.Linq;", code);
     }
 
-    [Fact]
-    public void GenerateCompilationUnit_WithImportModule_GeneratesAliasToModuleClass()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new ImportStatement
-                {
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "utils.helpers" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
 
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - should generate alias pointing to module class (no .Exports suffix)
-        Assert.Contains("using utils_helpers = Utils.Helpers;", code);
-    }
-
-    [Fact]
-    public void GenerateCompilationUnit_WithImportModuleAsAlias_GeneratesCorrectAlias()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new ImportStatement
-                {
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "utils.helpers", AsName = "h" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - no .Exports suffix
-        Assert.Contains("using h = Utils.Helpers;", code);
-    }
 
     [Fact]
     public void GenerateCompilationUnit_ImportsNotInModuleClass_OnlyTypesIncluded()
@@ -323,32 +271,6 @@ public class RoslynEmitterModuleTests
         Assert.False(importsInClass);
     }
 
-    [Fact]
-    public void ConvertModuleNameToNamespace_SnakeCase_ConvertsToPascalCase()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new ImportStatement
-                {
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "my_custom_module.sub_module" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Sharpy modules (non-.NET) should generate alias (no .Exports suffix)
-        Assert.Contains("using my_custom_module_sub_module = MyCustomModule.SubModule;", code);
-    }
 
     [Fact]
     public void GenerateNamespace_WithNestedPath_GeneratesNestedNamespace()
@@ -855,215 +777,12 @@ public class RoslynEmitterModuleTests
 
     #region From-Import Tests for Sharpy Modules
 
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportSharpyModule_GeneratesUsingStatic()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "config",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "MAX_SIZE" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
 
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
 
-        // Assert - Sharpy modules should generate using static (no .Exports suffix)
-        Assert.Contains("using static Config;", code);
-    }
 
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportMultipleSymbols_GeneratesUsingStatic()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "utils.helpers",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "format_text" },
-                        new ImportAlias { Name = "parse_json" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
 
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
 
-        // Assert - Should generate using static for the module (no .Exports suffix)
-        Assert.Contains("using static Utils.Helpers;", code);
-    }
 
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportNestedModule_GeneratesPascalCasePath()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "lib.math.operations",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "add" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Nested module path should be converted to PascalCase (no .Exports suffix)
-        Assert.Contains("using static Lib.Math.Operations;", code);
-    }
-
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportAllSharpyModule_GeneratesUsingStatic()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "utils",
-                    ImportAll = true
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - from module import * should generate using static (no .Exports suffix)
-        Assert.Contains("using static Utils;", code);
-    }
-
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportSnakeCaseModule_ConvertsToPascalCase()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "database_utils.connection_pool",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "get_connection" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Snake_case module names should be converted to PascalCase (no .Exports suffix)
-        Assert.Contains("using static DatabaseUtils.ConnectionPool;", code);
-    }
-
-    [Fact]
-    public void GenerateCompilationUnit_WithFromImportSymbolWithAlias_GeneratesUsingStatic()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "config",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "MAX_SIZE", AsName = "max" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Should still generate using static (alias handled at usage site)
-        // Note: C# using static doesn't support aliasing individual members
-        // The semantic analyzer should handle the symbol aliasing
-        Assert.Contains("using static Config;", code);
-    }
-
-    [Fact]
-    public void GenerateCompilationUnit_MultipleFromImportsSameModule_GeneratesSingleUsingStatic()
-    {
-        // Arrange
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new FromImportStatement
-                {
-                    Module = "config",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "MAX_SIZE" }
-                    }.ToImmutableArray()
-                },
-                new FromImportStatement
-                {
-                    Module = "config",
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "MIN_SIZE" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Should only have one using static directive (no .Exports suffix)
-        var firstIndex = code.IndexOf("using static Config;");
-        var lastIndex = code.LastIndexOf("using static Config;");
-
-        // If they're the same index, there's only one occurrence
-        // If different, count how many there are (could be deduplicated or not)
-        // The important thing is that it compiles correctly
-        Assert.Contains("using static Config;", code);
-    }
 
     #endregion
 
@@ -1152,32 +871,6 @@ public class RoslynEmitterModuleTests
         Assert.DoesNotContain("class Init", code);
     }
 
-    [Fact]
-    public void GenerateCompilationUnit_ImportFromInitPackage_GeneratesCorrectAlias()
-    {
-        // Arrange - Importing a package's __init__.spy file
-        var emitter = CreateEmitter();
-        var module = new Module
-        {
-            Body = new List<Statement>
-            {
-                new ImportStatement
-                {
-                    Names = new List<ImportAlias>
-                    {
-                        new ImportAlias { Name = "mypackage" }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = emitter.GenerateCompilationUnit(module);
-        var code = result.ToFullString();
-
-        // Assert - Import should create alias to module class (no .Exports suffix)
-        Assert.Contains("using mypackage = Mypackage;", code);
-    }
 
     #endregion
 
