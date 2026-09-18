@@ -61,6 +61,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
     public override void VisitStructDef(StructDef node)
     {
+        ValidateStructFieldDefaults(node);
         ValidateBracketAttributeArguments(node.Decorators);
         base.VisitStructDef(node);
     }
@@ -153,6 +154,30 @@ internal class ConstantPositionValidator : ValidatingAstWalker
             $"Use '{field.Name}: {TypeSpelling(field.Type)} = None()' and assign 'self.{field.Name} ??= Some(...)' in __post_init__ instead.");
 
     /// <summary>
+    /// A <c>struct</c> field default is the same constant-position slot a dataclass field is
+    /// (#1684): the synthesized struct constructor (<c>GenerateStructAutoConstructors</c>) hands the
+    /// field's initializer to the same <c>GenerateParameterDefault</c> a def/lambda/dataclass default
+    /// uses, so an unvalidated default reached Roslyn as a parameter default and ICEd CS1736 while
+    /// its dataclass twin was a clean SPY0400/SPY0401. Structs have no <c>__post_init__</c> hook, so
+    /// the steer names an explicit <c>__init__</c> instead — defining one suppresses
+    /// <see cref="ValidateStructFieldDefaults"/> entirely (the field becomes an ordinary
+    /// constructor-body assignment, where any expression is legal).
+    /// </summary>
+    private static DefaultSlot StructFieldSlot(VariableDeclaration field, string structName) => new(
+        field.Name,
+        field.Type,
+        field.InitialValue!,
+        field.LineStart,
+        field.ColumnStart,
+        field.Span,
+        Subject: $"field '{field.Name}'",
+        Host: $"struct '{structName}'",
+        Noun: "field",
+        BodySteer: "__init__",
+        CaseConstructorSteer:
+            $"Use '{field.Name}: {TypeSpelling(field.Type)} = None()' and assign 'self.{field.Name} ??= Some(...)' in __init__ instead.");
+
+    /// <summary>
     /// The annotation's SOURCE spelling (<c>int?</c>, <c>list[int]</c>, <c>str | None</c>) for a
     /// steer that quotes it.
     /// </summary>
@@ -163,7 +188,12 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
     /// <summary>
     /// A <c>@dataclass</c> field default IS a constructor-parameter default: DataclassSynthesis
-    /// orders the fields into the synthesized <c>__init__</c>'s parameter vector.
+    /// orders the fields into the synthesized <c>__init__</c>'s parameter vector. A <c>const</c>
+    /// declaration is excluded (#1900): it is not a constructor parameter, and is already validated
+    /// — more permissively, via <c>AdmissionTable.ConstInitializer</c> — by
+    /// <see cref="ConstEligibility"/>; double-validating it against this stricter table refused a
+    /// dataclass whose const had a non-foldable initializer (<c>const K: int = max(1, 4)</c>) even
+    /// though the const itself is a perfectly legal <c>static readonly</c> field.
     /// </summary>
     private void ValidateDataclassFieldDefaults(ClassDef classDef)
     {
@@ -174,11 +204,33 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
         foreach (var field in classDef.Body.OfType<VariableDeclaration>())
         {
-            if (field.InitialValue == null || field.Type == null
+            if (field.InitialValue == null || field.Type == null || field.IsConst
                 || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
                 continue;
 
             ValidateDefaultValue(DataclassFieldSlot(field, classDef.Name), AdmissionTable.ParameterDefault);
+        }
+    }
+
+    /// <summary>
+    /// The struct twin of <see cref="ValidateDataclassFieldDefaults"/> (#1684): a struct field
+    /// default becomes the synthesized auto-constructor's parameter default
+    /// (<c>GenerateStructAutoConstructors</c>), so it is validated the same way — unless the struct
+    /// declares its own <c>__init__</c>, which suppresses the synthesis (and this check) entirely.
+    /// A <c>const</c> declaration is excluded for the same reason as its dataclass twin (#1900).
+    /// </summary>
+    private void ValidateStructFieldDefaults(StructDef structDef)
+    {
+        if (structDef.Body.OfType<FunctionDef>().Any(f => f.Name == DunderNames.Init))
+            return;
+
+        foreach (var field in structDef.Body.OfType<VariableDeclaration>())
+        {
+            if (field.InitialValue == null || field.Type == null || field.IsConst
+                || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
+                continue;
+
+            ValidateDefaultValue(StructFieldSlot(field, structDef.Name), AdmissionTable.ParameterDefault);
         }
     }
 
