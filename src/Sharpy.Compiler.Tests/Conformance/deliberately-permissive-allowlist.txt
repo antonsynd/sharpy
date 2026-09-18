@@ -11,12 +11,10 @@
 #
 # Measured @ 4ee7e49d3 (#1640, #1645); re-cited per site @ #1640's resolver commit.
 #
-# Access.cs sites, in file order:
-#   :325 a module export of an unhandled symbol kind        -> #1674
-# The two #1678 CLR-origin tails (general and inherited) drained @ P4b Phase 3: a Sharpy-builtin
-# PascalCase spelling is SPY0203 (R-AP), an extension/static method group in value position is
-# SPY0336, the tuple element spellings are typed, and a UserDefinedType with a CLR type is typed or
-# refused through ClrMemberTypeFromReflection — the tails return plain Unknown, no longer marked.
-TypeChecker.Expressions.Access.cs 1 #1674
+# The Access.cs site (the module-export-of-an-unhandled-symbol-kind arm) drained @ P5.1 (#1674,
+# #1906): the export-type switch now names all six concrete Symbol subtypes, including
+# TypeParameterSymbol, so no export reaches a DP mark. The two #1678 CLR-origin tails (general and
+# inherited) drained earlier, @ P4b Phase 3.
+#
 # Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
 TypeChecker.Expressions.cs 2 #1675 #1676

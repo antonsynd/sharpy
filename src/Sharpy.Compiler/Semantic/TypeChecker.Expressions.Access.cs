@@ -377,17 +377,27 @@ internal partial class TypeChecker
                     TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
                     TypeAliasSymbol aliasSymbol => ResolveModuleExportedAlias(aliasSymbol),
-                    _ => SemanticType.Unknown
+                    // A module can never export a TypeParameterSymbol — a type parameter is scoped
+                    // to the function/class/method that introduces it (NameResolver.Declarations.cs)
+                    // and ModuleLoader's two ExportedSymbols writers (ExtractExportedSymbol,
+                    // CreateStubModuleInfo) never construct one. Named rather than folded into the
+                    // catch-all below (#1674, #1906) so this switch stays a total, self-documenting
+                    // enumeration of every concrete Symbol subtype — a new subtype added to
+                    // Symbol.cs without a matching arm here now throws loudly (below) at the first
+                    // module export of that kind, instead of silently falling into a DP mark no
+                    // export could ever reach.
+                    TypeParameterSymbol => SemanticType.Unknown,
+                    // `Symbol` is an unsealed abstract record, so the compiler cannot itself prove
+                    // the six arms above are exhaustive (CS8509) — this arm is reachable only by a
+                    // SEVENTH Symbol subtype the six named arms above do not name, which is a
+                    // compiler bug, not a well-formed program to recover from silently.
+                    _ => throw new InvalidOperationException(
+                        $"Module export '{memberName}' resolved to an unrecognized Symbol subtype " +
+                        $"'{exportedSymbol.GetType().Name}' — add a named arm above (#1674, #1906).")
                 };
-                if (exportedType is UnknownType)
-                {
-                    MarkExpressionAsErrorRecovery(memberAccess,
-                        ErrorRecoveryReason.DeliberatelyPermissive(
-                            "a module export of an unhandled symbol kind is resolved elsewhere"));
-                }
                 // A module-qualified reference to an exported type (or a type alias resolving
                 // to a UDT) denotes the type itself.
-                else if (exportedSymbol is TypeSymbol
+                if (exportedSymbol is TypeSymbol
                     || (exportedSymbol is TypeAliasSymbol && exportedType is UserDefinedType))
                     _semanticInfo.MarkTypeReference(memberAccess);
                 return exportedType;

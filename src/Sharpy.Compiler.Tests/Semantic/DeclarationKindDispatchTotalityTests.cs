@@ -102,8 +102,11 @@ public class DeclarationKindDispatchTotalityTests
     private static readonly HashSet<string> GeneratorAttributedKinds = Derived(NotGeneratorAttributed);
 
     // --- Module-level classification (IsModuleLevelStatement arms): every authority kind plus
-    //     the import statements, which are module-level but are not declarations the resolver handles ---
-    private static readonly HashSet<string> ModuleLevelKinds = Derived(
+    //     the import statements, which are module-level but are not declarations the resolver
+    //     handles. Exposed (not private) so ModuleExportTotalityTests (#1674, #1906, P5.1) can
+    //     compare it against ModuleLoader's export switches without re-deriving a second copy of
+    //     "every module-level declaration kind" that could drift from this one.
+    internal static readonly HashSet<string> ModuleLevelKinds = Derived(
         new Dictionary<string, string>(),
         nameof(ImportStatement),
         nameof(FromImportStatement));

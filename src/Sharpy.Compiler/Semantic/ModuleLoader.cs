@@ -338,6 +338,23 @@ internal class ModuleLoader
                 moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
                 break;
 
+            case UnionDef unionDef:
+                // Joins the same construction ExtractNestedTypes already uses for a union nested
+                // in a type body (#1729, R-I) — a module-level union was the one export kind that
+                // fell to `default:` below, so `import lib` + `lib.U` reported SPY0203 "no member"
+                // and `from lib import U` reported SPY0301, even though the checker's export-type
+                // switch already knows how to type a TypeSymbol (#1674, #1906).
+                var unionSymbol = ExtractFullUnionSymbol(unionDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
+                moduleInfo.ExportedSymbols.Add(unionDef.Name, unionSymbol);
+                break;
+
+            case DelegateDef delegateDef:
+                // Same join, same construction as the nested case (#1729, R-I); same defect as
+                // UnionDef above (#1674, #1906).
+                var delegateSymbol = ExtractFullDelegateSymbol(delegateDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
+                moduleInfo.ExportedSymbols.Add(delegateDef.Name, delegateSymbol);
+                break;
+
             case VariableDeclaration varDecl:
                 var varAccessLevel = GetAccessLevel(varDecl.Name);
                 var varType = ConvertTypeAnnotationToSemanticType(varDecl.Type);
@@ -1461,10 +1478,24 @@ internal class ModuleLoader
                     moduleInfo.ExportedSymbols.Add(
                         enumDef.Name, ExtractFullEnumSymbol(enumDef, canonicalModuleName));
                     break;
-                    // Module-level union/delegate/alias exports are P5.1's export-totality scope (plan
-                    // Decision 6): the full-export switch (ExtractExportedSymbol) and this circular-stub
-                    // twin become total together there, so the StubExports ⊆ FullExports invariant holds.
-                    // NESTED union/delegate/alias already travel both routes via ExtractFull*/ExtractNestedTypes.
+                case UnionDef unionDef:
+                    // Joins the full-export switch's UnionDef arm (#1674, #1906, P5.1): the stub is
+                    // used for type-annotation resolution during a circular import, and a module
+                    // exporting only a union needs the same TypeSymbol here that the non-circular
+                    // path builds, or a self-referencing import cycle through a union type reports
+                    // SPY0202 for a type the module plainly declares.
+                    moduleInfo.ExportedSymbols.Add(
+                        unionDef.Name, ExtractFullUnionSymbol(unionDef, canonicalModuleName));
+                    break;
+                case DelegateDef delegateDef:
+                    // Same join as UnionDef above (#1674, #1906, P5.1).
+                    moduleInfo.ExportedSymbols.Add(
+                        delegateDef.Name, ExtractFullDelegateSymbol(delegateDef, canonicalModuleName));
+                    break;
+                    // Module-level alias exports are NOT part of this stub (pre-existing: TypeAlias
+                    // was never a stub arm even before #1729/#1674) — a TypeAliasSymbol is not a
+                    // TypeSymbol, so it cannot be added to this ModuleInfo the same way, and no
+                    // circular-import cell in this plan's scope exercises it. Out of scope here.
             }
         }
 

@@ -12,6 +12,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (falls through to the default or is handled elsewhere). The two methods' arm sets
 /// are explicitly related — stub exports must be a subset of full exports so they
 /// cannot drift (#1694).
+/// <c>UnionDef</c>/<c>DelegateDef</c> moved from Skipped to Handled in both sets at
+/// P5.1 (#1674, #1906): a module-level union or delegate used to fall to `default:`
+/// in both switches, so `import lib` + `lib.U`/`lib.D` reported SPY0203 "no member"
+/// (see <see cref="ModuleExportTotalityTests"/> for the executing cells).
 /// </summary>
 public class ModuleLoaderTotalityTests
 {
@@ -44,6 +48,8 @@ public class ModuleLoaderTotalityTests
         nameof(StructDef),
         nameof(InterfaceDef),
         nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
         nameof(VariableDeclaration),
         nameof(TypeAlias),
     };
@@ -70,8 +76,6 @@ public class ModuleLoaderTotalityTests
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
-        nameof(DelegateDef),
         nameof(EventDef),
     };
 
@@ -127,6 +131,8 @@ public class ModuleLoaderTotalityTests
         nameof(StructDef),
         nameof(InterfaceDef),
         nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
     };
 
     private static readonly HashSet<string> CreateStubModuleInfo_Skipped = new()
@@ -154,8 +160,6 @@ public class ModuleLoaderTotalityTests
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
-        nameof(DelegateDef),
         nameof(EventDef),
     };
 
