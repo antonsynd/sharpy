@@ -27,6 +27,11 @@ internal partial class TypeChecker
             RefusePendingOverloadSelections();
         }
 
+        // #1675: every resolution route inside CheckFunctionCallCore has now had its chance to
+        // write a resolved out/ref parameter type back onto an inline `out x: auto` argument of
+        // THIS call; whatever is still Unknown never matched one and is refused by name.
+        RefuseUnresolvedAutoOutBindings(call);
+
         return result;
     }
 
@@ -3654,6 +3659,10 @@ internal partial class TypeChecker
                 if (paramType == null)
                     continue; // still open after substitution — inference decides, not this check
 
+                // #1675: an inline `out x: auto` argument takes THIS parameter's type — a no-op for
+                // every other argument shape (see WriteBackAutoOutBindingType).
+                WriteBackAutoOutBindingType(ArgumentNodeAt(call, i), paramType);
+
                 // A Sharpy-native collection parameter is a Sharpy slot, so a CLR sequence bound to it
                 // materializes (#1251). A CLR-mapped parameter is NOT — there the emitted formal is the
                 // CLR type and the value goes in unconverted (#1260); RecordSequenceMaterialization
@@ -3756,6 +3765,10 @@ internal partial class TypeChecker
                 var paramType = SubstitutedParameterType(param!.Type, typeBinding);
                 if (paramType != null)
                 {
+                    // #1675: an inline `out x: auto` argument PASSED BY KEYWORD takes this
+                    // parameter's type too — a no-op for every other argument shape.
+                    WriteBackAutoOutBindingType(kwarg.Value, paramType);
+
                     // A keyword argument is a store into the named parameter's slot, node and all:
                     // the route used to drop the node in the acceptance question and applied no
                     // side effects at all, so `f(x=0.5)` into a float32 formal emitted an

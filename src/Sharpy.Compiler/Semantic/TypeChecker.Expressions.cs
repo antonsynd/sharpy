@@ -300,14 +300,15 @@ internal partial class TypeChecker
             // Record type for the Argument (Identifier) sub-expression so codegen can find it
             _semanticInfo.SetExpressionType(modArg.Argument, bindingType);
 
-            // For 'auto', TypeResolver returns UnknownType — mark as error recovery
-            // so SPY0907 doesn't fire (C# var handles the inference at compile time)
-            if (bindingType is UnknownType)
-            {
-                MarkExpressionAsErrorRecovery(modArg.Argument,
-                    ErrorRecoveryReason.DeliberatelyPermissive(
-                        "'auto' defers the inference to C#'s var at compile time"));
-            }
+            // For 'auto', TypeResolver returns UnknownType here — the callee is not resolved yet
+            // (argument checking runs BEFORE overload resolution), so there is nothing to infer
+            // FROM at this point. No DeliberatelyPermissive mark is placed: WriteBackAutoOutBindingType
+            // (called once the callee resolves, from ValidateCallArguments/ValidateKeywordArguments
+            // for a Sharpy callee and CheckClrBindingArguments for a CLR one) overwrites bindingType
+            // with the resolved out/ref parameter's type, and RefuseUnresolvedAutoOutBindings — run
+            // once the whole enclosing call has been checked — reports a NAMED refusal (SPY0203) if
+            // nothing ever did (#1675). Either way this Unknown is accounted for by the time the
+            // module finishes checking, never by a standing DP permit.
 
             // Return the binding's type; CheckExpression caches it on the ModifiedArgument node
             return bindingType;
@@ -324,6 +325,90 @@ internal partial class TypeChecker
             }
         }
         return CheckExpression(modArg.Argument);
+    }
+
+    /// <summary>
+    /// #1675: once a call's callee has resolved to a concrete signature, writes that signature's
+    /// parameter type onto an inline <c>out x: auto</c> binding at <paramref name="argNode"/> —
+    /// replacing the <see cref="UnknownType"/> <see cref="CheckModifiedArgument"/> left as a
+    /// placeholder before the callee was known. A no-op for every other argument shape (a plain
+    /// argument, an explicit <c>out x: int</c>, or an auto binding already typed by rebinding an
+    /// existing variable — <see cref="CheckModifiedArgument"/> already gave those a real type), so
+    /// every call site of this method can pass EVERY positional/keyword argument node unconditionally
+    /// rather than pre-filtering for <see cref="ModifiedArgument"/>. Called from the two seams that
+    /// resolve a callee to a concrete parameter type: <see cref="ValidateCallArguments"/>/
+    /// <see cref="ValidateKeywordArguments"/> for a Sharpy-declared callee (mirrors the resolved
+    /// <see cref="ParameterSymbol.Type"/>) and <see cref="CheckClrBindingArguments"/> for a CLR one
+    /// (mirrors the bridged, by-ref-stripped CLR parameter type — "bridged... exactly as the
+    /// argument seam bridges it" per plan-d35e69 Design Decision 7).
+    /// </summary>
+    private void WriteBackAutoOutBindingType(Expression? argNode, SemanticType resolvedParamType)
+    {
+        if (argNode is not ModifiedArgument { InlineName: not null } modArg
+            || resolvedParamType is UnknownType)
+        {
+            return;
+        }
+
+        var symbol = _semanticInfo.GetInlineOutSymbol(modArg);
+        if (symbol == null || symbol.Type is not UnknownType)
+        {
+            return; // Not an auto binding, or already typed (explicit annotation or rebinding).
+        }
+
+        symbol.Type = resolvedParamType;
+        _semanticInfo.SetExpressionType(modArg, resolvedParamType);
+        _semanticInfo.SetExpressionType(modArg.Argument, resolvedParamType);
+    }
+
+    /// <summary>
+    /// #1675: an inline <c>out x: auto</c> argument whose bound symbol is STILL <see cref="UnknownType"/>
+    /// once the whole enclosing call has been checked means no route ever matched it against a
+    /// resolved out/ref parameter — the callee never resolved at all, or it resolved to something
+    /// with no out/ref parameter at that position. Either way the type genuinely cannot be inferred,
+    /// so it is refused BY NAME rather than left <c>Unknown</c> under a standing permissive mark
+    /// nothing downstream ever resolves. Called once per <see cref="FunctionCall"/> from
+    /// <see cref="CheckFunctionCall"/>, after every resolution route has had its chance to write the
+    /// real type back via <see cref="WriteBackAutoOutBindingType"/>.
+    /// </summary>
+    private void RefuseUnresolvedAutoOutBindings(FunctionCall call)
+    {
+        foreach (var modArg in PendingAutoOutModifiedArguments(call))
+        {
+            AddError(
+                $"Cannot infer the type of 'auto' for '{modArg.InlineName}': the callee has no resolved signature",
+                modArg.Argument.LineStart, modArg.Argument.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember, span: modArg.Span);
+            MarkExpressionAsErrorRecovery(modArg.Argument,
+                ErrorRecoveryReason.AlreadyReported("'auto' could not be inferred — reported just above (#1675)"));
+        }
+    }
+
+    /// <summary>
+    /// Every inline <c>out x: auto</c>/<c>ref x: auto</c> argument of <paramref name="call"/> —
+    /// positional or keyword — whose bound symbol never received a real type. Two argument shapes,
+    /// one predicate, so <see cref="RefuseUnresolvedAutoOutBindings"/> cannot miss the keyword form
+    /// a CLR call's named `out` parameter can be written with.
+    /// </summary>
+    private IEnumerable<ModifiedArgument> PendingAutoOutModifiedArguments(FunctionCall call)
+    {
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is ModifiedArgument { InlineName: not null } modArg
+                && _semanticInfo.GetInlineOutSymbol(modArg) is { Type: UnknownType })
+            {
+                yield return modArg;
+            }
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (kwarg.Value is ModifiedArgument { InlineName: not null } modArg
+                && _semanticInfo.GetInlineOutSymbol(modArg) is { Type: UnknownType })
+            {
+                yield return modArg;
+            }
+        }
     }
 
     private SemanticType CheckAwaitExpression(AwaitExpression awaitExpr)

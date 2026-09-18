@@ -16,5 +16,10 @@
 # TypeParameterSymbol, so no export reaches a DP mark. The two #1678 CLR-origin tails (general and
 # inherited) drained earlier, @ P4b Phase 3.
 #
-# Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
-TypeChecker.Expressions.cs 2 #1675 #1676
+# The Expressions.cs :299 auto site drained @ P5.2 (#1675): the out-auto binding takes the
+# resolved callee's parameter type (ValidateCallArguments/ValidateKeywordArguments for a Sharpy
+# callee, CheckClrBindingArguments for a CLR one); an unresolved callee refuses by name (SPY0203)
+# instead of a standing DP mark.
+#
+# Expressions.cs: :590 type-ref value position (#1676)
+TypeChecker.Expressions.cs 1 #1676

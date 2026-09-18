@@ -838,6 +838,17 @@ internal partial class TypeChecker
 
             var formal = argument.Formal;
 
+            // #1675: a `ref`/`out` CLR formal is unspellable to this seam (ClrFormalIsUndecidable,
+            // ClrFormalVerdict treats it as always-accepted) — nothing below ever types it. An
+            // inline `out x: auto` argument bound here takes the formal's underlying (by-ref-
+            // stripped) type instead, bridged the same way every other formal is; a no-op for
+            // every other argument shape.
+            if (formal.ClrType.IsByRef && formal.ClrType.GetElementType() is { } byRefElement)
+            {
+                WriteBackAutoOutBindingType(
+                    argument.Node, _bclGenericMethodBridge.MapClrParameterTypeToSemanticType(byRefElement));
+            }
+
             // Sharpy's declared-nullability rule, decided on the winner (#1705). `Path.combine(None,
             // "b")` reaches here having SELECTED Combine(string, string) — the refusal is not hidden
             // by the params sibling that used to win the set by default.
