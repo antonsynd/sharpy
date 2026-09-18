@@ -112,7 +112,7 @@ namespace Sharpy.Test
 {
     public static partial class Program
     {
-        public static string Combine(Sharpy.Test.DB.Record r, Sharpy.Test.API.UI.Widget w)
+        public static string Combine(global::Sharpy.Test.DB.Record r, global::Sharpy.Test.API.UI.Widget w)
         {
 #line (12, 5) - (12, 44) 12 "main.spy"
             return r.Describe() + " " + w.Render();
@@ -126,9 +126,9 @@ namespace Sharpy.Test
 #line (17, 5) - (17, 31) 12 "main.spy"
             var madeWidget = new global::Sharpy.Test.API.UI.Widget("ok");
 #line (20, 5) - (20, 44) 12 "main.spy"
-            Sharpy.Test.DB.Record annotatedRecord = madeRecord;
+            global::Sharpy.Test.DB.Record annotatedRecord = madeRecord;
 #line (21, 5) - (21, 44) 12 "main.spy"
-            Sharpy.Test.API.UI.Widget annotatedWidget = madeWidget;
+            global::Sharpy.Test.API.UI.Widget annotatedWidget = madeWidget;
 #line (23, 5) - (23, 39) 12 "main.spy"
             global::Sharpy.Builtins.Print(annotatedRecord.Describe());
 #line (24, 5) - (24, 37) 12 "main.spy"

@@ -807,12 +807,21 @@ internal class TypeSyntaxMapper
         var outermost = chainStart < 0 ? typeName : typeName[..chainStart];
         var nestedSuffix = chainStart < 0 ? string.Empty : typeName[chainStart..];
 
+        // A cross-module qualified name is emitted global::-rooted so no `using` set or a local type
+        // of the same spelling as a root-namespace segment can shadow it (#1683/#1802). This is the
+        // ONE qualification authority every reference position bottoms out at (annotation, generic
+        // argument, base list, cast/isinstance, nested-enum-member access), so global::-rooting here
+        // fixes them all uniformly; the construction site's NormalizeTypeName strips and re-adds the
+        // prefix idempotently, so its output is unchanged. Before this, only construction bolted on
+        // global:: (via NormalizeTypeName), leaving the annotation (`Poison.Lib.Box b`, CS0426) and
+        // the nested-enum-member access (`Poison.Lib.Box.Kind.A`, CS0117) bare when a local type
+        // shadowed the root-namespace segment `Poison` (#1899).
         if (string.Equals(lastSegment, outermost, StringComparison.Ordinal))
         {
             // Type IS the module class — module path is the type path
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}{nestedSuffix}";
+                return $"global::{_context.ProjectNamespace}.{moduleNamespace}{nestedSuffix}";
             }
             return moduleNamespace + nestedSuffix;
         }
@@ -820,7 +829,7 @@ internal class TypeSyntaxMapper
         // Type is nested inside the module class
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
-            return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
+            return $"global::{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
         }
         return $"{moduleNamespace}.{typeName}";
     }
