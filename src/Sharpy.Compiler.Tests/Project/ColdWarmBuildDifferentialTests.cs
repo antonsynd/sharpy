@@ -705,6 +705,112 @@ def main() -> None:
             "warm must emit what cold emitted — a dropped Self fact changes the C#");
     }
 
+    private const string NestedAliasLibSource = @"class Box:
+    type Ids = list[int]
+
+    tag: int
+
+    def __init__(self, tag: int) -> None:
+        self.tag = tag
+";
+
+    private const string NestedAliasMainInitialSource = @"from lib import Box
+
+
+def main() -> None:
+    b = Box(7)
+    print(b.tag)
+";
+
+    private const string NestedAliasMainConsumingSource = @"from lib import Box
+
+
+def main() -> None:
+    b = Box(7)
+    xs: Box.Ids = [1, 2, 3]
+    print(b.tag)
+    print(len(xs))
+";
+
+    /// <summary>
+    /// A NESTED type alias (<c>type Ids = list[int]</c> inside <c>class Box</c>) must survive the
+    /// warm-restore path: a dependent file that RESOLVES <c>Box.Ids</c> must compile identically
+    /// whether the alias-defining file was compiled fresh or restored from the cache (#1729,
+    /// plan-d35e69 Phase 1).
+    ///
+    /// <para><see cref="Sharpy.Compiler.Semantic.TypeSymbol"/>.<c>NestedTypeAliases</c> is classified
+    /// <c>CacheStatus.Dropped</c> — the serializer does not carry it; it is expected to be
+    /// reconstructed from lib's AST when a dependent module is re-extracted on a rebuild. That
+    /// warm-restore safety was ASSUMED but UNTESTED: the existing ColdWarm <c>lib</c> specimen has no
+    /// nested <c>type X = ...</c>, so this path was never exercised. If the cached <c>Box</c> comes
+    /// back without its nested alias and nothing re-extracts it, <c>main</c>'s warm rebuild resolves
+    /// <c>Box.Ids</c> to nothing → a warm-only SPY0202, while the cold arm stays green — which is the
+    /// exact divergence <see cref="Diagnostics"/> below is written to catch.</para>
+    ///
+    /// <para>The warm arm's SUCCESS is the discriminating observation, and the consuming edit is what
+    /// makes it one: the mismatch cannot be present on the FIRST build (a build that failed would
+    /// write no cache and this cell would measure the cold path twice — the empty-vs-{lib.spy} skip
+    /// controls catch exactly that). So <c>main</c> starts NOT using the alias, the cache is written,
+    /// then the edit introduces <c>Box.Ids</c> and forces <c>main</c> to recompile against a CACHED
+    /// <c>Box</c>.</para>
+    /// </summary>
+    [Fact(Skip = "warm-only SPY0202 nested-alias cache-restore bug, see #1897 — unskip when fixed")]
+    public void AfterAWarmRestore_ANestedTypeAliasStillResolves()
+    {
+        // --- Warm arm: a succeeding build writes the cache; the edit then makes main RESOLVE the
+        //     nested alias Box.Ids. lib.spy is untouched throughout, so Box comes back through the
+        //     serializer (whose NestedTypeAliases is Dropped), not fresh analysis.
+        var warmLib = Write("nalwarm", "lib.spy", NestedAliasLibSource);
+        var warmMain = Write("nalwarm", "main.spy", NestedAliasMainInitialSource);
+        var warmConfig = Config("nalwarm", warmLib, warmMain);
+
+        Build(warmConfig).Success.Should().BeTrue(
+            "the cache is only written by a build that succeeds — a failing first build leaves "
+            + "nothing to restore and this cell would measure the cold path twice");
+
+        File.WriteAllText(warmMain, NestedAliasMainConsumingSource);
+        var warm = Build(warmConfig);
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib.spy must be the file served from cache, or the nested alias never makes the round "
+            + "trip this test is about — main.spy recompiles and resolves Box.Ids against the "
+            + "DECODED Box symbol");
+
+        warm.Success.Should().BeTrue(
+            "Box.Ids must resolve through the cache-restored Box — a warm-only SPY0202 here means "
+            + "the Dropped NestedTypeAliases fact was neither serialized nor re-extracted from lib's "
+            + "AST on the dependent rebuild (#1729). Diagnostics:\n" + Diagnostics(warm));
+
+        // --- Cold arm: the SAME final sources, in a directory that has never been built.
+        var coldLib = Write("nalcold", "lib.spy", NestedAliasLibSource);
+        var coldMain = Write("nalcold", "main.spy", NestedAliasMainConsumingSource);
+        var cold = Build(Config("nalcold", coldLib, coldMain));
+
+        Skipped(cold).Should().BeEmpty("the cold arm must have no cache to skip from");
+        cold.Success.Should().BeTrue(
+            "the cold reading of the same source must compile. Diagnostics:\n" + Diagnostics(cold));
+
+        Diagnostics(warm).Should().Be(Diagnostics(cold),
+            "a nested alias must resolve identically whether the defining file was compiled or "
+            + "restored — warm ≡ cold (#1729, the #1553 contract)");
+
+        var warmGenerated = Generated(warm).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("nalwarm", "AREA"), StringComparer.Ordinal);
+        var coldGenerated = Generated(cold).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("nalcold", "AREA"), StringComparer.Ordinal);
+        warmGenerated.Should().BeEquivalentTo(coldGenerated,
+            "the C# main emits for Box.Ids must not depend on whether Box's symbol was compiled or "
+            + "restored (#1729)");
+
+        // Non-vacuity: the cold build must actually RESOLVE Box.Ids to its target list[int] — if it
+        // did not, main would be SPY0202 and the warm≡cold comparison would agree on a broken cold
+        // arm. The resolved alias emits the target type verbatim.
+        string.Concat(coldGenerated.Values).Should().Contain("Sharpy.List<int> xs",
+            "the cold build must resolve the nested alias Box.Ids to its target list[int] "
+            + "(emitted as Sharpy.List<int>) — otherwise the alias was never exercised and the "
+            + "cold/warm comparison discriminates nothing");
+    }
+
     /// <summary>
     /// The headline divergence, other direction: with -warnaserror from the start, the cold build
     /// fails — and a failing build writes NO cache (save-only-on-success), so the warm no-edit
