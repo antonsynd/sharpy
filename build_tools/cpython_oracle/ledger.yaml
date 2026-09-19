@@ -613,6 +613,14 @@ deviations:
   spec_ref: docs/language_specification/type_hierarchy.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: tuple-not-truth-testable
+  category: types
+  audience: python
+  severity: error
+  code: SPY0220
+  spec_ref: docs/language_specification/logical_operators.md
+  existing_diagnostic: SPY0220
+  planned_diagnostic: null
 - id: type-alias-call-transparency
   category: semantic
   audience: python
