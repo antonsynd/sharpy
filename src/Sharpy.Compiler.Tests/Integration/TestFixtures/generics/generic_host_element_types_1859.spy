@@ -3,6 +3,9 @@
 # argument `int` — never GenericType.TypeArguments[0] (the builtin-container convention that has no
 # opinion about a user declaration). Contrasted with the V-typed shape (b12/b13), where the DECLARED
 # type IS the host's own argument and substitution is the identity — both must resolve correctly.
+#
+# __iter__ and __reversed__ are declared on SEPARATE classes here too — see
+# generic_host_dunder_routes_1859.spy's header (#1914).
 class NonV[T]:
     def __init__(self) -> None:
         pass
@@ -12,6 +15,11 @@ class NonV[T]:
 
     def __getitem__(self, i: int) -> str:
         return "a"
+
+
+class NonVR[T]:
+    def __init__(self) -> None:
+        pass
 
     def __reversed__(self) -> str:
         yield "b"
@@ -33,7 +41,9 @@ def main() -> None:
     for x in n:
         print(x.upper())
     print(n[0].upper())
-    for x in reversed(n):
+
+    nr = NonVR[int]()
+    for x in reversed(nr):
         print(x.upper())
 
     v = VTyped[str]("z")

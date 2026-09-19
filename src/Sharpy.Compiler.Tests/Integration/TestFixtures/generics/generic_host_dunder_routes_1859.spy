@@ -3,6 +3,11 @@
 # FOUND at all (ResolveBuiltinTypeInfo only ever asks the BuiltinRegistry, SPY0230 "not callable" on
 # b01/b08); __iter__/__getitem__/__reversed__/__contains__ were found but answered the wrong type (the
 # receiver's OWN int argument, not the DECLARED str) when they had nothing to do with T.
+#
+# __iter__ and __reversed__ are declared on SEPARATE classes: a class implementing BOTH a generator
+# __iter__ (synthesizing IEnumerable[T]) and a generator __reversed__ (synthesizing
+# IReverseEnumerable[T]) makes Builtins.Reversed's two overloads ambiguous (CS0121, #1914, tracked and
+# deliberately not worked around here).
 class C[T]:
     v: T
 
@@ -26,6 +31,13 @@ class C[T]:
 
     def __getitem__(self, i: int) -> str:
         return "a"
+
+
+class CR[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
 
     def __reversed__(self) -> str:
         yield "b"
@@ -57,7 +69,9 @@ def main() -> None:
         print(x.upper())
     print("z" in c)
     print(c[0].upper())
-    for x in reversed(c):
+
+    cr = CR[int](1)
+    for x in reversed(cr):
         print(x.upper())
 
     d = Der[int](1)
