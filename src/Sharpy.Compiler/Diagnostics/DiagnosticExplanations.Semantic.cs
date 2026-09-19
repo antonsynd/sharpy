@@ -115,9 +115,9 @@ public static partial class DiagnosticExplanations
             "Ensure the cast is between compatible types or use a conversion function.");
 
         Add(dict, DiagnosticCodes.Semantic.NullabilityViolation, "Nullability violation", "Semantic",
-            "A potentially null value is being used in a context that requires a non-null value. Use Optional[T] for values that can be None, and handle the None case before using the value.",
-            "def get_name() -> Optional[str]:\n    return None()\n\nname: str = get_name()  # might be None",
-            "Handle the null case:\nresult = get_name()\nif result is not None:\n    name: str = result");
+            "The bare None literal was assigned to a non-nullable slot — a slot that admits None must be declared 'T | None' (loose nullable) or 'T?' (strict Optional). This is an ASSIGNMENT-only check; member access and calls on the strict family are refused with SPY0326 (OptionalRequiresNarrowing) instead, naming narrowing/unwrapping as the remedy.",
+            "x: str = None  # None into a non-nullable str",
+            "Declare the slot as nullable:\nx: str | None = None\nprint(x)");
 
         Add(dict, DiagnosticCodes.Semantic.NotCallable, "Type is not callable", "Semantic",
             "An expression was called like a function but its type does not support being called. Only functions, methods, and types with __call__ can be called.",
@@ -750,10 +750,13 @@ public static partial class DiagnosticExplanations
             "Optional requires narrowing",
             "Semantic",
             "A strict Optional value (T?) was used directly in a protocol operation such as len(), " +
-            "membership testing (in), indexing, or iteration. An Optional may be None, so it must be " +
-            "narrowed (if x is not None:) or unwrapped (x.unwrap()) before the underlying value's " +
-            "protocol is available. This is distinct from a genuinely missing protocol (SPY0320).",
-            "def main() -> None:\n    s: str? = \"hello\"\n    print(len(s))  # s may be None",
+            "membership testing (in), indexing, iteration, slicing, MEMBER ACCESS, or CALLING it " +
+            "directly (#1855: member access and calls report this same code, replacing their own " +
+            "prior vocabularies — SPY0229/SPY0230 — for the identical mistake). An Optional may be " +
+            "None, so it must be narrowed (if x is not None:) or unwrapped (x.unwrap()) before the " +
+            "underlying value's protocol, member, or call is available. This is distinct from a " +
+            "genuinely missing protocol/member (SPY0320/SPY0203).",
+            "def main() -> None:\n    s: str? = Some(\"hello\")\n    print(len(s))  # s may be None",
             "Narrow or unwrap the Optional first:\n    if s is not None:\n        print(len(s))");
 
         Add(dict, DiagnosticCodes.Semantic.TupleNonConstantIndex,

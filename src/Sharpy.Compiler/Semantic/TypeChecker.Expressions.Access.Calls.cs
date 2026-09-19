@@ -401,6 +401,23 @@ internal partial class TypeChecker
                 }
                 else
                 {
+                    // #1855: SPY0326 (OptionalRequiresNarrowing) — the strict Optional is refused
+                    // with the SAME vocabulary member access/len/in/iteration/indexing/slicing
+                    // already use, replacing this route's own SPY0230 ("not callable") that named a
+                    // different remedy set for the identical mistake.
+                    if (calleeType is OptionalType)
+                    {
+                        AddError(
+                            $"Optional type '{calleeType.GetDisplayName()}' does not support "
+                            + "calling directly. "
+                            + "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
+                            call.LineStart, call.ColumnStart,
+                            code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: call.Function.Span);
+                        MarkExpressionAsErrorRecovery(call,
+                            ErrorRecoveryReason.AlreadyReported("the strict-Optional call-route guard"));
+                        return SemanticType.Unknown;
+                    }
+
                     var callableResult = TryResolveCallableObject(calleeType, call, argTypes, kwargTypes, totalArgCount);
                     if (callableResult != null)
                         return callableResult;
@@ -631,6 +648,18 @@ internal partial class TypeChecker
         {
             MarkExpressionAsErrorRecovery(call,
                 ErrorRecoveryReason.Propagated("the callee's type"));
+        }
+        else if (calleeType is OptionalType)
+        {
+            // #1855: SPY0326, the twin of the identifier-callee arm above — one vocabulary for the
+            // strict Optional at every protocol route, not a second "not callable" wording here.
+            AddError(
+                $"Optional type '{calleeType.GetDisplayName()}' does not support calling directly. "
+                + "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: call.Function.Span);
+            MarkExpressionAsErrorRecovery(call,
+                ErrorRecoveryReason.AlreadyReported("the strict-Optional call-route guard"));
         }
         else
         {

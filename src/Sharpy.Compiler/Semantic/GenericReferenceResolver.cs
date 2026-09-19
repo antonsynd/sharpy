@@ -666,6 +666,15 @@ internal partial class TypeChecker
         if (calleeType is not UnknownType || callee is not MemberAccess memberAccess)
             return null;
 
+        // #1855: the callee itself was already refused (e.g. the strict-Optional member-access
+        // guard) and marked error-recovered — staging an extension-method rescue on top would
+        // report a SECOND diagnostic for the identical access (g07's SPY0229+SPY0203 double
+        // report). An Unknown callee reaches here for OTHER, legitimate reasons too (a CLR
+        // resolution gap the extension-method surface exists to rescue), so only a callee that
+        // was ITSELF marked — not merely Unknown — declines.
+        if (_semanticInfo.IsErrorRecoveryType(memberAccess))
+            return null;
+
         var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
         if (receiverType is null or UnknownType)
             return null;

@@ -261,14 +261,24 @@ internal partial class TypeChecker
         // the underlying type requires narrowing (if x is not None:), '?.', or unwrapping. Without
         // this guard the access silently type-checks and emits broken C# (Optional<T>.Member).
         // Narrowed receivers never reach here — CheckExpression already returns the narrowed T.
+        //
+        // #1855: SPY0326 (OptionalRequiresNarrowing) — the SAME vocabulary len/in/iteration/
+        // indexing/slicing already use for the strict family, replacing this route's own SPY0229
+        // ("has no member") that named a different remedy set for the identical mistake. The node
+        // is marked error-recovered so the staged-extension-call rescue below (TryBeginStagedExtensionCall,
+        // gated on an Unknown callee) does not ALSO report a second diagnostic for the same access —
+        // g07's double report (SPY0229 here, SPY0203 from the extension-method steer).
         if (objectType is OptionalType && !memberAccess.IsNullConditional
             && !IsOptionalApiMember(objectType, memberAccess.Member))
         {
             AddError(
-                $"Type '{objectType.GetDisplayName()}' has no member '{memberAccess.Member}'. " +
-                "Narrow the optional first (if x is not None:), use '?.', or unwrap it (x.unwrap()).",
+                $"Optional type '{objectType.GetDisplayName()}' does not support member access "
+                + $"('{memberAccess.Member}') directly. "
+                + "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
                 memberAccess.LineStart, memberAccess.ColumnStart,
-                code: DiagnosticCodes.Semantic.NullabilityViolation, span: memberAccess.Span);
+                code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: memberAccess.Span);
+            MarkExpressionAsErrorRecovery(memberAccess,
+                ErrorRecoveryReason.AlreadyReported("the strict-Optional member-access guard"));
             return SemanticType.Unknown;
         }
 
