@@ -238,6 +238,35 @@ def main():
     print(size(c))    # works — Bag implements ISized via __len__
 ```
 
+A synthesized protocol interface is **non-generic**, and a *constructed* generic host
+carries it too: a `Box[int]`'s `__len__` synthesizes `ISized` on the host, so the
+constructed type satisfies a plain `ISized` slot even though `Box` itself is generic
+(see [#1865](https://github.com/antonsynd/sharpy/issues/1865)).
+
+```python
+# A constructed generic host carries its synthesized interface into a non-generic slot.
+class Box[T]:
+    _items: list[T]
+
+    def __init__(self):
+        self._items = []
+
+    def add(self, item: T) -> None:
+        self._items.append(item)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+def total(s: ISized) -> int:
+    return len(s)
+
+def main():
+    b: Box[int] = Box[int]()
+    b.add(1)
+    b.add(2)
+    print(total(b))    # 2 — Box[int]'s synthesized ISized flows into the non-generic slot
+```
+
 ```python
 # ❌ ERROR: User-defined interface cannot declare dunders
 interface IMyProtocol:
