@@ -201,6 +201,32 @@ internal partial class TypeChecker
         // UnknownType args for wildcard matching.
         if (typeSymbol.IsGeneric)
         {
+            // #1868 (Design Decision 4): a non-iterable single argument to list/set/frozenset/dict
+            // is refused BY NAME, slot or no slot — checked BEFORE the _expectedType arm below,
+            // which otherwise silently supplies the SLOT's type arguments regardless of whether the
+            // argument is iterable at all (xs: list[int] = list(42) printed [] and take(list(42))
+            // printed 0; the bare `list(42)` with no slot separately ICEd, CS0305). Scoped to the
+            // single-argument path: multi-argument and zero-argument construction are unaffected.
+            if (call.Arguments.Length == 1 && call.KeywordArguments.Length == 0
+                && typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.FrozenSet or BuiltinNames.Dict)
+            {
+                var singleArgType = argTypes.Count > 0 ? argTypes[0] : null;
+                if (singleArgType != null && singleArgType != SemanticType.Unknown
+                    // A TupleType is ALWAYS iterable, even a heterogeneous one with no single common
+                    // element type — InferIterableElementType's null there means "ambiguous without
+                    // a slot" (arm 1 of the best-common-type rule, #1783: `xs: list[object] =
+                    // list((1, "a"))`), not "not iterable at all". Excluding TupleType here leaves
+                    // that resolution to the existing _expectedType/explicit-type-argument arms below.
+                    && singleArgType is not TupleType
+                    && _typeInference.InferIterableElementType(singleArgType) == null)
+                {
+                    AddError(
+                        NotIterableDiagnostic.Message(singleArgType, $"{typeSymbol.Name}() argument"),
+                        call.LineStart, call.ColumnStart, code: NotIterableDiagnostic.Code, span: call.Span);
+                    return SemanticType.Unknown;
+                }
+            }
+
             List<SemanticType>? typeArgs = null;
             if (_expectedType is GenericType expectedGeneric
                 && NamesSameDeclaration(expectedGeneric, typeSymbol)

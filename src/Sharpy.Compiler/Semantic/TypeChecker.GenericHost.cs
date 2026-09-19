@@ -59,6 +59,16 @@ internal partial class TypeChecker
                 if (ReferenceEquals(definition, symbolTable.BuiltinRegistry.GetType(gt.Name)))
                     return null;
 
+                // CLR-discovered (a module-imported List[T]/HashSet[T]/... with no Sharpy dunder
+                // declarations at all): the doc above already says this answers null, but the
+                // original check only ever excluded the BuiltinRegistry name, not a CLR-backed
+                // definition reached through module discovery — a real Sharpy source class has no
+                // ClrType until AFTER this compilation emits it, so this is a clean discriminator,
+                // not a heuristic. Without it, `list(clrList)` (clrList: List[int32], no __iter__ in
+                // ITS OWN reflected Methods/base chain) wrongly answered "not iterable" (#1868).
+                if (definition.ClrType != null)
+                    return null;
+
                 var typeArgs = gt.TypeArguments;
                 return new GenericHostView(definition, t => SubstituteThroughDefinition(t, definition, typeArgs));
             }

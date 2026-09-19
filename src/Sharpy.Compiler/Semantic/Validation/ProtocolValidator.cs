@@ -131,9 +131,8 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (!forStmt.IsAsync && !HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(
-                $"Type '{iterableType.GetDisplayName()}' is not iterable " +
-                "(missing '__iter__' method).",
-                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                NotIterableDiagnostic.Message(iterableType),
+                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: NotIterableDiagnostic.Code,
                 span: forStmt.Iterator.Span);
         }
     }
@@ -153,9 +152,8 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (!isAsync && !HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(
-                $"Type '{iterableType.GetDisplayName()}' is not iterable " +
-                "(missing '__iter__' method).",
-                iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                NotIterableDiagnostic.Message(iterableType),
+                iterator.LineStart, iterator.ColumnStart, code: NotIterableDiagnostic.Code,
                 span: iterator.Span);
         }
     }
