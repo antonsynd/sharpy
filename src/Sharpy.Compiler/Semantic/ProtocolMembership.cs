@@ -166,10 +166,15 @@ internal sealed class ProtocolMembership
                 ?? typeSymbol;
             if (symTableType != null)
             {
-                if (symTableType.ProtocolMethods.ContainsKey(dunderName))
-                    return true;
-
-                if (symTableType.Methods.Any(m => m.Name == dunderName))
+                // Walks symTableType's OWN ProtocolMethods/Methods and then its base chain (#1913):
+                // a CONSTRUCTED generic host derived from another generic (`class D[T](G[T])`) used
+                // to be asked only about its own declaration — an inherited __len__/__iter__/
+                // __getitem__/__contains__ from `G` was reported absent even though `D[int]`'s TYPE
+                // resolution (assignability, element typing) already correctly sees it. Reuses the
+                // SAME base-chain walk `HasDunderInChain` already gives the plain UserDefinedType arm
+                // below (#1808) — one mechanism for "does this receiver answer this dunder ANYWHERE
+                // up its chain", not a second, generic-only copy of it.
+                if (HasDunderInChain(symTableType, dunderName))
                     return true;
 
                 if (symTableType.ClrType != null && HasClrProtocol(symTableType.ClrType, dunderName))
