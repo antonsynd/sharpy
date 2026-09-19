@@ -1406,11 +1406,18 @@ internal class TypeInferenceService
         if (iterableType is GenericType && TypeChecker.TryGetGenericHostCore(iterableType, _symbolTable) is { } host)
         {
             var iterMethod = ProtocolMembership.FindDunderInChain(host.Definition, DunderNames.Iter);
-            if (iterMethod?.ReturnType is GenericType iterReturn
-                && iterReturn.Name == BuiltinNames.Iterator
-                && iterReturn.TypeArguments.Count > 0)
+            if (iterMethod != null
+                && (iterMethod.IsGenerator || IterableElementDecider.IsRecognizedProducerType(iterMethod.ReturnType)))
             {
-                return host.Substitute(iterReturn.TypeArguments[0]);
+                // The decider (#1832): a generator's return IS the element; a non-generator's names
+                // the PRODUCER and is unpeeled to it — not narrowed to Sharpy's own Iterator[T]
+                // spelling only (IEnumerator[T]/IEnumerable[T] are legal non-generator returns too).
+                // Gated on IsRecognizedProducerType so a __next__-based enumerator's self-referential
+                // __iter__ (-> Counter: return self) is left to the __getitem__/CLR arms below rather
+                // than wrongly answered as its own receiver type.
+                var unpeeled = IterableElementDecider.UnpeelProducerType(iterMethod.ReturnType, iterMethod.IsGenerator);
+                if (unpeeled != SemanticType.Unknown && unpeeled != SemanticType.Void)
+                    return host.Substitute(unpeeled);
             }
 
             var hostGetitemMethod = ProtocolMembership.FindDunderInChain(host.Definition, DunderNames.GetItem);
@@ -1481,11 +1488,17 @@ internal class TypeInferenceService
             if (symbol != null)
             {
                 var iterMethod = symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
-                if (iterMethod?.ReturnType is GenericType iterReturn
-                    && iterReturn.Name == BuiltinNames.Iterator
-                    && iterReturn.TypeArguments.Count > 0)
+                if (iterMethod != null
+                    && (iterMethod.IsGenerator || IterableElementDecider.IsRecognizedProducerType(iterMethod.ReturnType)))
                 {
-                    return iterReturn.TypeArguments[0];
+                    // The decider (#1832): unpeel a non-generator's PRODUCER return to its element;
+                    // a generator's return is the element already. Gated on IsRecognizedProducerType
+                    // so a __next__-based enumerator's self-referential __iter__ (-> Counter: return
+                    // self) falls through to __getitem__/the CLR fallback below, not answered as its
+                    // own receiver type (SynthesizedInterfaceVisibilityTests' IterAndNext case).
+                    var unpeeled = IterableElementDecider.UnpeelProducerType(iterMethod.ReturnType, iterMethod.IsGenerator);
+                    if (unpeeled != SemanticType.Unknown && unpeeled != SemanticType.Void)
+                        return unpeeled;
                 }
 
                 var getitemMethod = symbol.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
@@ -1575,12 +1588,16 @@ internal class TypeInferenceService
         {
             var reversedMethod = ProtocolMembership.FindDunderInChain(
                 udt.Symbol, DunderNames.Reversed);
-            if (reversedMethod?.ReturnType is { } returnType
-                && returnType != SemanticType.Unknown
-                && returnType != SemanticType.Void)
+            if (reversedMethod != null
+                && (reversedMethod.IsGenerator || IterableElementDecider.IsRecognizedProducerType(reversedMethod.ReturnType)))
             {
-                // __reversed__ returns the element type directly (it's a generator yielding T)
-                return returnType;
+                // The decider (#1832): a generator's return IS the element; a non-generator's names
+                // the PRODUCER (Iterator[T]/IEnumerator[T]/IEnumerable[T]) and is unpeeled to it —
+                // never left as the wrapper itself (c02: was Iterator[int32], not int).
+                var unpeeled = IterableElementDecider.UnpeelProducerType(
+                    reversedMethod.ReturnType, reversedMethod.IsGenerator);
+                if (unpeeled != SemanticType.Unknown && unpeeled != SemanticType.Void)
+                    return unpeeled;
             }
         }
 
@@ -1591,11 +1608,13 @@ internal class TypeInferenceService
         {
             var reversedMethod = ProtocolMembership.FindDunderInChain(
                 host.Definition, DunderNames.Reversed);
-            if (reversedMethod?.ReturnType is { } returnType
-                && returnType != SemanticType.Unknown
-                && returnType != SemanticType.Void)
+            if (reversedMethod != null
+                && (reversedMethod.IsGenerator || IterableElementDecider.IsRecognizedProducerType(reversedMethod.ReturnType)))
             {
-                return host.Substitute(returnType);
+                var unpeeled = IterableElementDecider.UnpeelProducerType(
+                    reversedMethod.ReturnType, reversedMethod.IsGenerator);
+                if (unpeeled != SemanticType.Unknown && unpeeled != SemanticType.Void)
+                    return host.Substitute(unpeeled);
             }
         }
 

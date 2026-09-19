@@ -149,10 +149,15 @@ internal static class SynthesisAnalyzer
                 dunderName, protocolFunc.LineStart, protocolFunc.ColumnStart));
         }
 
-        // __reversed__ → IReverseEnumerable<T>
+        // __reversed__ → IReverseEnumerable<T>. A generator's annotation IS the element; a
+        // non-generator's names the PRODUCER (Iterator[T]/IEnumerator[T]/IEnumerable[T]) and must be
+        // unpeeled (#1832) — before this, a non-generator __reversed__ synthesized
+        // IReverseEnumerable[Iterator[T]] (double-wrapped, c02).
         if (dunders.TryGetValue(DunderNames.Reversed, out var reversedFunc))
         {
-            var typeArg = reversedFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+            var isGenerator = StatementWalker.Any(reversedFunc.Body, stmt => stmt is YieldStatement);
+            var annotation = reversedFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+            var typeArg = IterableElementDecider.UnpeelProducerAnnotation(annotation, isGenerator);
             result.Add(("IReverseEnumerable", "Sharpy",
                 ImmutableArray.Create(typeArg), DunderNames.Reversed, reversedFunc.LineStart, reversedFunc.ColumnStart));
         }
@@ -171,14 +176,24 @@ internal static class SynthesisAnalyzer
             }
         }
 
-        // __iter__ without __next__, if generator → IEnumerable<T>
+        // __iter__ without __next__ → IEnumerable<T>, generator OR non-generator alike (#1832). A
+        // generator's annotation IS the element, so it always counts (matches __reversed__/__next__,
+        // which likewise synthesize from an unannotated/`object`-fallback body). A non-generator's
+        // annotation must actually NAME a producer (Iterator[T]/IEnumerator[T]/IEnumerable[T]) to
+        // count at all — a non-generator, non-yield `__iter__` returning something else (e.g. a bare
+        // `int`) is a plain method, not an iteration producer, and stays a no-row shape exactly as
+        // before. Before this fix, only the generator body synthesized anything — a non-generator
+        // `__iter__` naming a real producer (c03: `-> Iterator[int]: return iter(self.items)`) was
+        // never recognized as IEnumerable[T].
         if (!dunders.ContainsKey(DunderNames.Next)
             && dunders.TryGetValue(DunderNames.Iter, out var iterFunc))
         {
-            bool isGenerator = StatementWalker.Any(iterFunc.Body, stmt => stmt is YieldStatement);
-            if (isGenerator)
+            var isGenerator = StatementWalker.Any(iterFunc.Body, stmt => stmt is YieldStatement);
+            var annotation = iterFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+            var isRecognizedProducer = Array.IndexOf(IterableElementDecider.ProducerElementRoster, annotation.Name) >= 0;
+            if (isGenerator || isRecognizedProducer)
             {
-                var typeArg = iterFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
+                var typeArg = IterableElementDecider.UnpeelProducerAnnotation(annotation, isGenerator);
                 result.Add(("IEnumerable", "System.Collections.Generic",
                     ImmutableArray.Create(typeArg), DunderNames.Iter, iterFunc.LineStart, iterFunc.ColumnStart));
             }
