@@ -69,6 +69,23 @@ public partial class Parser
         var startColumn = Current.Column;
         var startToken = Current;
 
+        // '...' is never a type — refuse it by name at the one seam every type position recurses
+        // through (type arguments, tuple shorthand elements, alias RHS, parameters, returns, the
+        // `T !E` error type). `tuple[int, ...]` (runtime-arity tuple) is the common spelling but
+        // `Callable[..., T]`, `list[...]`, and a leading `...` all land here too (#1852, R-AM).
+        if (Current.Type == TokenType.Ellipsis)
+        {
+            throw ReportError(
+                "'...' is not a type argument: `tuple[int, ...]` (a homogeneous tuple of runtime " +
+                "arity) is not supported — use `list[int]` for an owned sequence or " +
+                "`IEnumerable[int]` for a read-only view (#1870)",
+                Current.Line,
+                Current.Column,
+                DiagnosticCodes.Parser.EllipsisInTypePosition,
+                span: CurrentSpan
+            );
+        }
+
         TypeAnnotation baseType;
 
         // Check for shorthand forms first

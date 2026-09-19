@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0148
-    /// Reserved: SPY0149-SPY0199
+    /// Active: SPY0100-SPY0149
+    /// Reserved: SPY0150-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -236,7 +236,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0149-SPY0199: Reserved for future parser diagnostics
+        #region Ellipsis in a type position (SPY0149)
+
+        public const string EllipsisInTypePosition = "SPY0149"; // Active (#1852, R-AM)
+
+        #endregion
+
+        // SPY0150-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

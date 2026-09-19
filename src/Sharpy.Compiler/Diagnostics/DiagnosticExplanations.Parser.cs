@@ -259,5 +259,10 @@ public static partial class DiagnosticExplanations
             "'property' is a keyword in Sharpy, not a decorator. The Python-style @property, @x.setter, @x.getter, and @x.deleter decorators are not supported. Use the 'property' keyword forms instead.",
             "@property\ndef p(self) -> int: ...",
             "Use the property keyword:\n  property get p(self) -> int:\n      return self._p\n  property set p(self, value: int) -> None:\n      self._p = value\n\nOr use an auto-property:\n  property p: int");
+
+        Add(dict, DiagnosticCodes.Parser.EllipsisInTypePosition, "'...' is not a type", "Parser",
+            "'...' (Ellipsis) was used in a type position. Python's typing module accepts '...' inside 'tuple[int, ...]' (a homogeneous tuple of runtime arity) and 'Callable[..., T]', but Sharpy's tuples are fixed-arity and it has no 'Callable' type, so '...' never denotes a type. Support for runtime-arity tuples is tracked separately.",
+            "t: tuple[int, ...] = (1, 2, 3)",
+            "Use a fixed-arity tuple, or an owned/read-only sequence type:\n  t: tuple[int, int, int] = (1, 2, 3)\n  t: list[int] = [1, 2, 3]\n  t: IEnumerable[int] = [1, 2, 3]");
     }
 }
