@@ -72,3 +72,5 @@ compile::exception_handling/raise_from_variable_0001
 compile::errors/parser_recovery_expression_error
 compile::lambdas/lambda_operand_not
 compile::generators/genexp_kwarg_refused_1774   # drain-exempt: parse-refused keyword genexp (#1774): compile stops at SPY0147, Analyze continues (SPY0200, SPY0451) — #1360 block
+compile::types/tuple_ellipsis_refused_1852   # drain-exempt: '...' in a type position (#1852): compile stops at SPY0149, Analyze recovers and continues (+SPY0200) — #1360 block
+compile::types/callable_ellipsis_refused_1852   # drain-exempt: Callable[..., int] (#1852): compile stops at SPY0149, Analyze recovers and continues (+SPY0200) — #1360 block
