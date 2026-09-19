@@ -136,12 +136,6 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         if (route.Id == "slice" && payload.Id == "userclass")
             return "__getitem__ over an int does not make a user class sliceable — no slice protocol";
 
-        // A tuple is not truth-testable at all: `if (1, 2):` is SPY0220 at this sha AND at
-        // 311252e33 (controlled), where python3 prints. The BARE cell is the defect, so the
-        // comparison against it would compare two refusals and prove nothing. Cited, not silent.
-        if (route.Id == "truthiness" && payload.Id == "tuple")
-            return "a tuple is not truth-testable yet — the bare control is itself refused (#1861)";
-
         return null;
     }
 
@@ -185,6 +179,38 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
     {
         var payload = Payloads.Single(p => p.Id == payloadId);
         var route = Routes.Single(r => r.Id == routeId);
+
+        // tuple×truthiness (#1861, R-AU) is the ONE cell in this matrix where the BARE receiver,
+        // not the wrapped ones, is what's refused: a fixed-arity tuple has no falsy case to test at
+        // all (its truthiness is a compile-time constant, not a runtime question). Both wrappers
+        // test their OWN truthiness (null-check / is-some), never the tuple's, so both still RUN —
+        // the divergence question this matrix asks (does the wrapper decide only WHETHER the
+        // receiver may be dereferenced, never HOW) is answered the same way here as everywhere
+        // else, just with bare on the refused side instead of the wrapped sides.
+        if (payloadId == "tuple" && routeId == "truthiness")
+        {
+            var tupleBareSource = Program(payload, Wrappers[0], route);
+            var tupleBare = CompileAndExecute(tupleBareSource);
+            tupleBare.Success.Should().BeFalse(
+                "a fixed-arity tuple has no falsy case to test\n" + tupleBareSource);
+            tupleBare.RawDiagnostics.Should().Contain(
+                d => d.Message.Contains("is not truth-testable", StringComparison.Ordinal),
+                "the refusal names the fact; got: "
+                + string.Join(" | ", tupleBare.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+
+            var tupleLooseSource = Program(payload, Wrappers[1], route);
+            var tupleLoose = CompileAndExecute(tupleLooseSource);
+            tupleLoose.Success.Should().BeTrue(
+                "tuple[...] | None tests its OWN null-check truthiness, never the tuple's: "
+                + string.Join("; ", tupleLoose.CompilationErrors) + "\n" + tupleLooseSource);
+
+            var tupleStrictSource = Program(payload, Wrappers[2], route);
+            var tupleStrict = CompileAndExecute(tupleStrictSource);
+            tupleStrict.Success.Should().BeTrue(
+                "tuple[...]? tests its OWN is-some truthiness, never the tuple's: "
+                + string.Join("; ", tupleStrict.CompilationErrors) + "\n" + tupleStrictSource);
+            return;
+        }
 
         var bareSource = Program(payload, Wrappers[0], route);
         var bare = CompileAndExecute(bareSource);
@@ -347,8 +373,10 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         (live + naCells.Length).Should().Be(48,
             $"6 payloads x 8 routes = 48 cells; live ({live}) + N/A ({naCells.Length})");
 
-        naCells.Should().HaveCount(3,
-            "three cells are excluded, each naming a language rule or an OPEN issue: dict slicing, "
-            + "user-class slicing, and tuple truthiness (#1861)");
+        naCells.Should().HaveCount(2,
+            "two cells are excluded, each naming a language rule: dict slicing and user-class "
+            + "slicing — tuple truthiness (#1861) is no longer N/A now that a fixed-arity tuple's "
+            + "refusal is the final, correct behavior rather than an open issue; its cell is LIVE, "
+            + "asserted by its own branch in LooseWrapperDispatchesLikeBareAndStrictIsRefusedByName");
     }
 }

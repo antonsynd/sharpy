@@ -1,0 +1,8 @@
+# A fixed-arity tuple has no falsy case to test: every value of tuple[int, int] has the same,
+# statically-known truthiness (#1861, R-AU) — refused rather than silently answered.
+# python3: bool((1, 2)) is True, and `if (1, 2):` would print "truthy" (deviation, see
+# logical_operators.md).
+def main() -> None:
+    t: tuple[int, int] = (1, 2)
+    if t:
+        print("truthy")

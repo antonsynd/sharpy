@@ -18,16 +18,19 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 | `long` | `x != 0L` | `0L` |
 | `str` | `x.Length > 0` | `""` |
 | `bytes` | `((ISized)x).Count > 0` | `b""` |
-| collections (`list`, `dict`, `set`, `tuple`) | `((ISized)x).Count > 0` | empty |
+| collections (`list`, `dict`, `set`) | `((ISized)x).Count > 0` | empty |
 | `None` | `false` (always) | `None` |
-| `Optional[T]` | `x.IsSome` | `None()` |
-| `T?` (nullable) | `x != null` | `None` |
+| `T?` (strict Optional) | `x.IsSome` | `None()` |
+| `T \| None` (loose nullable) | `x != null` | `None` |
 | UDT with `__bool__` | `x.IsTrue` | implementation-defined |
 | UDT with `__len__` | `((ISized)x).Count > 0` | empty |
 | conditional (`x if c else y`) | distributed: `c ? truth(x) : truth(y)` | per-branch |
+| fixed-arity `tuple[T1, ..., Tn]` | **refused** (SPY0220) | no falsy case — every value of a given tuple type has the same, statically-known truthiness |
 | objects, functions, delegates | **refused** (SPY0220) | no falsy case |
 
 **Deviation from Python:** Python makes objects without `__bool__`/`__len__` vacuously truthy. Sharpy refuses them — the check can never do anything useful.
+
+**Deviation from Python (tuple truthiness):** every non-empty Python tuple is truthy and `()` is falsy — `bool()`/`len()`-based, like any other sequence. A fixed-arity `tuple[T1, ..., Tn]` in Sharpy is refused instead: its arity is part of its TYPE, so every value of that type has the SAME truthiness (always truthy for a non-empty arity, always falsy for the zero-arity `tuple[]` the `()` literal spells) — testing it is never a runtime question, only a compile-time constant. Test `len(t)` or a specific element instead. A tuple reached through a loose `tuple[...] | None` or a strict `tuple[...]?` wrapper is unaffected — the wrapper's own truthiness (null-check / is-some) is tested, never the tuple's.
 
 A conditional expression in a truthiness position distributes the test per branch
 (`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the

@@ -1,0 +1,1 @@
+If condition must be boolean, got 'tuple[int32, int32]' — a 'tuple[int32, int32]' is always truthy; a fixed-arity tuple is not truth-testable

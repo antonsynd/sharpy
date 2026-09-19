@@ -1004,6 +1004,27 @@ deviations:
             ...
         # Or implement __bool__ and call bool(my_list).
 
+  - id: tuple-not-truth-testable
+    code: SPY0220
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "Every non-empty tuple is truthy and `()` is falsy — bool()/len()-based, like any other sequence: `bool((1, 2))` is `True`, `bool(())` is `False`."
+    sharpy_behavior: "A fixed-arity `tuple[T1, ..., Tn]` is refused in a truthiness position (R-AU, #1861) instead: its arity is part of its TYPE, so every value of a given tuple type has the SAME, statically-known truthiness — testing it is never a runtime question. Test `len(t)` or a specific element instead; a `tuple[...] | None` or `tuple[...]?` wrapper is unaffected (its own null-check / is-some truthiness is tested, never the tuple's)."
+    spec_ref: docs/language_specification/logical_operators.md
+    existing_diagnostic: SPY0220
+    planned_diagnostic: null
+    example:
+      python: |
+        t = (1, 2)
+        if t:
+            print("truthy")   # prints: truthy
+      sharpy: |
+        t: tuple[int, int] = (1, 2)
+        if t:  # ERROR SPY0220: fixed-arity tuple is not truth-testable
+            print("truthy")
+        # Rewrite as: if len(t) > 0:
+
   - id: comparison-chaining
     code: null
     category: operators
