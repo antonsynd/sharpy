@@ -18,6 +18,36 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     /// <summary>
+    /// Finds the enclosing class's materialized <c>CodeGenInfo.SynthesizedInterfaces</c> row whose
+    /// <see cref="SynthesizedInterfaceInfo.TriggeringDunder"/> matches — the element was already
+    /// decided once, by <c>IterableElementDecider</c> during synthesis (#1832), and the emitter
+    /// reads it back rather than re-deriving it from the dunder's own return-type annotation
+    /// (Rule 2, pattern (a): symbol-keyed on <c>Symbol.CodeGenInfo</c>, frozen at
+    /// <c>MaterializeCodeGenInfo</c>).
+    /// </summary>
+    private SynthesizedInterfaceInfo? FindSynthesizedInterface(string triggeringDunder)
+    {
+        return _currentTypeSymbol is { } typeSymbol
+            ? GetCodeGenInfo(typeSymbol)?.SynthesizedInterfaces?
+                .FirstOrDefault(i => i.TriggeringDunder == triggeringDunder)
+            : null;
+    }
+
+    /// <summary>
+    /// The element <see cref="TypeSyntax"/> for an iterator/enumerator dunder, read from the
+    /// matching <see cref="FindSynthesizedInterface"/> row's first type argument. Falls back to
+    /// <c>object</c> only when no row exists (an absent annotation resolves the same way today, so
+    /// this preserves that fallback shape without re-mapping the annotation).
+    /// </summary>
+    private TypeSyntax GetSynthesizedElementType(string triggeringDunder)
+    {
+        var row = FindSynthesizedInterface(triggeringDunder);
+        return row is { TypeArgs.Length: > 0 }
+            ? _typeMapper.MapSemanticType(row.TypeArgs[0])
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+    }
+
+    /// <summary>
     /// Generates iterator protocol members for a class defining __next__.
     /// Produces: private _current field, private NextImpl() method,
     /// public MoveNext(), Current property, Reset(), Dispose(),
@@ -27,10 +57,10 @@ internal partial class RoslynEmitter
     {
         var members = new List<MemberDeclarationSyntax>();
 
-        // Determine element type T from __next__ return type
-        TypeSyntax elementType = funcDef.ReturnType != null
-            ? _typeMapper.MapType(funcDef.ReturnType)
-            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        // Element type T from the materialized IEnumerator<T> row (__next__'s annotation IS the
+        // element, but the emitter reads it back off CodeGenInfo rather than re-mapping the
+        // annotation — #1832).
+        TypeSyntax elementType = GetSynthesizedElementType(DunderNames.Next);
 
         // 1. Private _current field of type T
         members.Add(FieldDeclaration(
@@ -133,8 +163,10 @@ internal partial class RoslynEmitter
     /// </summary>
     private MethodDeclarationSyntax GenerateReverseEnumeratorMethod(FunctionDef funcDef)
     {
-        // Element type T from __reversed__ return type annotation (defaults to object if absent)
-        TypeSyntax elementType = _typeMapper.MapType(funcDef.ReturnType);
+        // Element type T from the materialized IReverseEnumerable<T> row — unpeeled from a
+        // producer annotation (Iterator[T]/IEnumerator[T]/IEnumerable[T]) by IterableElementDecider
+        // during synthesis, not re-derived here from __reversed__'s own annotation (#1832).
+        TypeSyntax elementType = GetSynthesizedElementType(DunderNames.Reversed);
 
         var returnType = WrapInIEnumerator(elementType);
 
@@ -178,13 +210,32 @@ internal partial class RoslynEmitter
     /// plus the non-generic IEnumerable.GetEnumerator() bridge for generator __iter__.
     /// </summary>
     private List<MemberDeclarationSyntax> GenerateGeneratorIterMethod(FunctionDef funcDef)
+        => GenerateIterEnumeratorMethod(funcDef, isGenerator: true);
+
+    /// <summary>
+    /// Generates IEnumerator&lt;T&gt; GetEnumerator() with the user's non-generator body (e.g.
+    /// <c>return iter(self.items)</c>) plus the non-generic IEnumerable.GetEnumerator() bridge.
+    /// Without the bridge, a non-generator <c>__iter__</c> synthesizing <c>IEnumerable&lt;T&gt;</c>
+    /// (#1832) leaves CS0535 — the class implements the generic interface's member but not the
+    /// non-generic one it requires.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateNonGeneratorIterMethod(FunctionDef funcDef)
+        => GenerateIterEnumeratorMethod(funcDef, isGenerator: false);
+
+    /// <summary>
+    /// Shared core for <see cref="GenerateGeneratorIterMethod"/> and
+    /// <see cref="GenerateNonGeneratorIterMethod"/>: both emit <c>IEnumerator&lt;T&gt;
+    /// GetEnumerator()</c> from the user's <c>__iter__</c> body plus the non-generic bridge; only
+    /// the generator/async scope setup around the body differs.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateIterEnumeratorMethod(FunctionDef funcDef, bool isGenerator)
     {
         var members = new List<MemberDeclarationSyntax>();
 
-        // Element type from __iter__'s return type annotation (defaults to object if absent)
-        TypeSyntax elementType = funcDef.ReturnType != null
-            ? _typeMapper.MapType(funcDef.ReturnType)
-            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        // Element type from the materialized IEnumerable<T> row — unpeeled from a producer
+        // annotation (Iterator[T]/IEnumerator[T]/IEnumerable[T]) by IterableElementDecider during
+        // synthesis for both the generator and non-generator shapes (#1832).
+        TypeSyntax elementType = GetSynthesizedElementType(DunderNames.Iter);
 
         var returnType = WrapInIEnumerator(elementType);
 
@@ -200,11 +251,18 @@ internal partial class RoslynEmitter
             var baseName = ParameterCSharpName(param);
         }
 
-        // Set generator and async flags so yield statements and bare returns emit correctly
-        using var _gen = SetGeneratorScope(true);
-        using var _asyncIter = SetAsyncScope(funcDef.IsAsync);
-
-        var body = GenerateSuiteBlock(funcDef.Body);
+        BlockSyntax body;
+        if (isGenerator)
+        {
+            // Set generator and async flags so yield statements and bare returns emit correctly
+            using var _gen = SetGeneratorScope(true);
+            using var _asyncIter = SetAsyncScope(funcDef.IsAsync);
+            body = GenerateSuiteBlock(funcDef.Body);
+        }
+        else
+        {
+            body = GenerateSuiteBlock(funcDef.Body);
+        }
 
         var parameters = funcDef.Parameters
             .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))

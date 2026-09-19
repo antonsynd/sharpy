@@ -588,12 +588,10 @@ internal partial class RoslynEmitter
         {
             if (ctx.DundersPresent.Contains(DunderNames.Next))
             {
-                // Self-iterating class: __iter__ returns self → GetEnumerator() => this
-                var nextFunc = ctx.Body.OfType<FunctionDef>()
-                    .FirstOrDefault(f => f.Name == DunderNames.Next);
-                TypeSyntax elemType = nextFunc?.ReturnType != null
-                    ? _typeMapper.MapType(nextFunc.ReturnType)
-                    : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+                // Self-iterating class: __iter__ returns self → GetEnumerator() => this. The
+                // element is __next__'s materialized IEnumerator<T> row — the same read
+                // GenerateIteratorProtocolMembers uses for __next__ itself (#1832).
+                TypeSyntax elemType = GetSynthesizedElementType(DunderNames.Next);
                 return GenerateEnumerableBridgeMembers(elemType);
             }
             else if (_context.Ir.IsGenerator(funcDef))
@@ -601,9 +599,18 @@ internal partial class RoslynEmitter
                 // Generator __iter__: body contains yield → emit IEnumerator<T> GetEnumerator()
                 return GenerateGeneratorIterMethod(funcDef);
             }
+            else if (FindSynthesizedInterface(DunderNames.Iter) is { InterfaceName: "IEnumerable" })
+            {
+                // Non-generator producer __iter__ (e.g. `return iter(self.items)`): synthesis
+                // recognized the annotation as a producer and added the IEnumerable<T> row, so the
+                // class needs the real enumerator method plus the non-generic bridge, not a plain
+                // method returning whatever the annotation names (#1832; c03 is the guard —
+                // without the bridge, CS0535 leaks).
+                return GenerateNonGeneratorIterMethod(funcDef);
+            }
             else
             {
-                // Iterable-only: just generate GetEnumerator() with user body
+                // Not an iteration producer at all (e.g. a bare `int` return) — plain method.
                 return new[] { GenerateClassMethod(funcDef) };
             }
         });
