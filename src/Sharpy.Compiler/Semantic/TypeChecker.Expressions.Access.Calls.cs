@@ -32,6 +32,22 @@ internal partial class TypeChecker
         // THIS call; whatever is still Unknown never matched one and is refused by name.
         RefuseUnresolvedAutoOutBindings(call);
 
+        // #1741: a call to a PEP 675 str-preserving method on a literal-derived receiver, with
+        // literal-derived arguments, is itself literal-derived — the ONE fact the LiteralString store
+        // seam consumes (R-P: the call's own inferred TYPE stays str, unaffected by this). Gated on the
+        // callee having actually resolved to Sharpy.StringExtensions (RecordStaticExtensionDispatch,
+        // set during CheckExpression(call.Function) above) rather than a bare name match, so a
+        // same-named method on an unrelated type can never be mistaken for a str method here.
+        if (UnwrapParenthesized(call.Function) is MemberAccess memberAccessCallee
+            && _semanticInfo.GetStaticExtensionDispatchForIr(memberAccessCallee) is
+            { ExtensionTypeName: CSharpTypeNames.SharpyStringExtensions }
+            && LiteralDerivation.IsPreservingMethodCallDerived(
+                _semanticInfo, memberAccessCallee.Member, memberAccessCallee.Object,
+                call.Arguments, call.KeywordArguments))
+        {
+            _semanticInfo.SetLiteralDerived(call);
+        }
+
         return result;
     }
 

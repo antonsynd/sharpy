@@ -329,11 +329,11 @@ internal partial class TypeChecker
             }
         }
 
-        // #1731: propagate literal-derived string fact through str + str
-        if (binOp.Operator == BinaryOperator.Add
-            && resultType == SemanticType.Str
-            && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(binOp.Left))
-            && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(binOp.Right)))
+        // #1731/#1741: literal-derived string + string (concatenation) and string * int (repetition)
+        // — ONE rule (LiteralDerivation) over both PEP 675 forms.
+        if (resultType == SemanticType.Str
+            && LiteralDerivation.IsConcatOrRepeatDerived(
+                _semanticInfo, binOp.Operator, leftType, rightType, binOp.Left, binOp.Right))
         {
             _semanticInfo.SetLiteralDerived(binOp);
         }

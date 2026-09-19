@@ -670,6 +670,14 @@ internal partial class TypeChecker
         {
             CheckInterpolationPart(part);
         }
+
+        // #1741: every hole (recursively through its format spec) is literal-derived — a hole-free
+        // f-string is derived vacuously. Checked AFTER the loop above, so every hole's own
+        // literal-derived fact (recorded by CheckExpression during CheckInterpolationPart) is already
+        // in place for LiteralDerivation to read.
+        if (LiteralDerivation.IsFStringDerived(_semanticInfo, fstr.Parts))
+            _semanticInfo.SetLiteralDerived(fstr);
+
         return SemanticType.Str;
     }
 
