@@ -10,6 +10,16 @@
 
 With the exception of `tuple[...]`, Sharpy collection types use custom Pythonic wrappers around the corresponding .NET collection types.
 
+Python's `tuple[T, ...]` notation for a homogeneous, runtime-arity tuple is not a Sharpy type — it
+is refused as `SPY0149`; see [#1870](https://github.com/antonsynd/sharpy/issues/1870). Sharpy
+tuples are fixed-arity: use `list[T]` for an owned sequence or `IEnumerable[T]` for a read-only
+view.
+
+<!-- spec-sweep: error SPY0149 -->
+```sharpy
+t: tuple[int, ...] = (1, 2, 3)
+```
+
 ## Shorthand Syntax
 
 All collection types support [shorthand syntax](type_annotation_shorthand.md) for more concise type annotations:

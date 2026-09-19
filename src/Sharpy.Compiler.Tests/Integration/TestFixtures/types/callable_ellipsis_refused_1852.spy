@@ -1,0 +1,5 @@
+def apply(f: Callable[..., int]) -> int:
+    return f()
+
+def main():
+    print(apply(lambda: 42))

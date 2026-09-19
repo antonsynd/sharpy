@@ -27,6 +27,16 @@ This document maps Python `typing` constructs to their Sharpy equivalents.
 | `ClassVar` | Class-level field declarations | Direct class body fields |
 | `Literal` | String literal types | Direct usage without import |
 
+`Tuple[X, ...]` (a homogeneous, runtime-arity tuple) has no Sharpy equivalent: Sharpy tuples are
+fixed-arity, so `tuple[X, ...]` is refused as `SPY0149` — use `list[X]` for an owned sequence or
+`IEnumerable[X]` for a read-only view (tracked separately as
+[#1870](https://github.com/antonsynd/sharpy/issues/1870)).
+
+<!-- spec-sweep: error SPY0149 -->
+```sharpy
+xs: tuple[int, ...] = (1, 2, 3)
+```
+
 ## Dataclasses Module
 
 Sharpy has a native `@dataclass` decorator. No import is needed.
