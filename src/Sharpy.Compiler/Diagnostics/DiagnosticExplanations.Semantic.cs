@@ -63,9 +63,9 @@ public static partial class DiagnosticExplanations
         // ── Semantic errors: Type checking (SPY0220-SPY0259) ────────────
 
         Add(dict, DiagnosticCodes.Semantic.TypeMismatch, "Type mismatch", "Semantic",
-            "The actual type of an expression does not match the expected type. This can occur in assignments, function arguments, return statements, and other contexts where a specific type is required.",
+            "The actual type of an expression does not match the expected type. This can occur in assignments, function arguments, return statements, and other contexts where a specific type is required. This code also covers a truthiness-position refusal (if/elif/while/assert/not/and/or/ternary): a fixed-arity tuple has no falsy case to test — every value of a given tuple[...] type has the same, statically-known truthiness — so it is refused by name rather than silently answered.",
             "x: int = \"hello\"  # str assigned to int",
-            "Ensure the types match. Either change the value, add a type conversion, or change the type annotation.");
+            "Ensure the types match. Either change the value, add a type conversion, or change the type annotation. For a tuple in a truthiness position, test len(t) or a specific element instead.");
 
         Add(dict, DiagnosticCodes.Semantic.IncompatibleTypes, "Incompatible types", "Semantic",
             "Two types are incompatible in the given context. This is similar to a type mismatch but may involve more complex type relationships such as generic constraints or inheritance hierarchies.",
@@ -376,9 +376,9 @@ public static partial class DiagnosticExplanations
             "Add an explicit type annotation instead of using 'auto'.");
 
         Add(dict, DiagnosticCodes.Semantic.ConditionNotBoolean, "Condition is not boolean", "Semantic",
-            "An expression used as a condition in an if, while, or similar statement does not evaluate to a boolean type. Conditions must be explicitly boolean in Sharpy.",
+            "An expression used as a condition in an if, while, or similar statement does not evaluate to a boolean type. Conditions must be explicitly boolean in Sharpy. A comprehension filter or match guard reports this same code for a fixed-arity tuple: it has no falsy case to test, since every value of a given tuple[...] type has the same, statically-known truthiness.",
             "x: int = 42\nif x:  # int is not bool\n    print(\"truthy\")",
-            "Use an explicit comparison:\nif x != 0:\n    print(\"non-zero\")");
+            "Use an explicit comparison:\nif x != 0:\n    print(\"non-zero\")\nFor a tuple, test len(t) or a specific element instead.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidRaise, "Invalid raise statement", "Semantic",
             "A raise statement is used incorrectly. Bare 'raise' can only be used inside an except block, and 'raise X' requires X to be an exception type.",

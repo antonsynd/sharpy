@@ -778,11 +778,7 @@ internal partial class TypeChecker
 
         if (!leftTruthTestable)
         {
-            AddError(
-                $"Operand of 'and' must be truth-testable, got '{leftType.GetDisplayName()}'",
-                andOp.Left.LineStart, andOp.Left.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: andOp.Left.Span);
+            ReportNotTruthTestable(andOp.Left, leftType, "Operand of 'and' must be truth-testable");
         }
 
         var leftNarrowed = ExtractNarrowedTypes(andOp.Left, true);
@@ -800,11 +796,7 @@ internal partial class TypeChecker
 
         if (!rightTruthTestable)
         {
-            AddError(
-                $"Operand of 'and' must be truth-testable, got '{rightType.GetDisplayName()}'",
-                andOp.Right.LineStart, andOp.Right.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: andOp.Right.Span);
+            ReportNotTruthTestable(andOp.Right, rightType, "Operand of 'and' must be truth-testable");
         }
 
         return SemanticType.Bool;
@@ -822,11 +814,7 @@ internal partial class TypeChecker
 
         if (!leftTruthTestable)
         {
-            AddError(
-                $"Operand of 'or' must be truth-testable, got '{leftType.GetDisplayName()}'",
-                orOp.Left.LineStart, orOp.Left.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: orOp.Left.Span);
+            ReportNotTruthTestable(orOp.Left, leftType, "Operand of 'or' must be truth-testable");
         }
 
         // Expression-level narrowing (#1080): the right operand is evaluated only when the left is
@@ -847,11 +835,7 @@ internal partial class TypeChecker
 
         if (!rightTruthTestable)
         {
-            AddError(
-                $"Operand of 'or' must be truth-testable, got '{rightType.GetDisplayName()}'",
-                orOp.Right.LineStart, orOp.Right.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: orOp.Right.Span);
+            ReportNotTruthTestable(orOp.Right, rightType, "Operand of 'or' must be truth-testable");
         }
 
         return SemanticType.Bool;
@@ -1225,11 +1209,7 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             if (!notTruthTestable)
             {
-                AddError(
-                    $"Operand of 'not' must be truth-testable, got '{notOperandType.GetDisplayName()}'",
-                    unOp.Operand.LineStart, unOp.Operand.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: unOp.Operand.Span);
+                ReportNotTruthTestable(unOp.Operand, notOperandType, "Operand of 'not' must be truth-testable");
                 return SemanticType.Unknown;
             }
             return SemanticType.Bool;
@@ -1577,9 +1557,7 @@ internal partial class TypeChecker
         var (ternaryTruthTestable, testType) = CheckTruthinessTest(cond.Test);
         if (!ternaryTruthTestable)
         {
-            AddError($"Conditional expression condition must be boolean, got '{testType.GetDisplayName()}'",
-                cond.LineStart, cond.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: cond.Test.Span);
+            ReportNotTruthTestable(cond.Test, testType, "Conditional expression condition must be boolean");
         }
 
         // R-K: a conditional in a truthiness position distributes the test per branch —
@@ -1750,10 +1728,11 @@ internal partial class TypeChecker
         var (truthTestable, lowering) = ClassifyTruthiness(branchType);
         if (!truthTestable)
         {
-            AddError(
-                $"Conditional expression branch must be truth-testable, got '{branchType.GetDisplayName()}'",
-                branch.LineStart, branch.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypeMismatch, span: branch.Span);
+            // Site 11 of 14 (#1861): the ONE call that does not come through CheckTruthinessTest —
+            // ClassifyTruthiness is asked directly, per-branch, because R-K's distribution recurses
+            // independently of the shared classifier's lowering-recording side effects. The refusal
+            // itself still goes through the ONE helper, same as every other site.
+            ReportNotTruthTestable(branch, branchType, "Conditional expression branch must be truth-testable");
             return;
         }
 

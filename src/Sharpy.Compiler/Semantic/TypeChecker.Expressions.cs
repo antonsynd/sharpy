@@ -1053,14 +1053,11 @@ internal partial class TypeChecker
 
                 if (arm.Guard != null)
                 {
-                    var (guardTruthTestable, _) = CheckTruthinessTest(arm.Guard);
+                    var (guardTruthTestable, guardType) = CheckTruthinessTest(arm.Guard);
                     if (!guardTruthTestable)
                     {
-                        AddError(
-                            "Guard condition must be a boolean expression",
-                            arm.Guard.LineStart, arm.Guard.ColumnStart,
-                            code: DiagnosticCodes.Semantic.ConditionNotBoolean,
-                            span: arm.Guard.Span);
+                        ReportNotTruthTestable(arm.Guard, guardType, "Guard condition must be a boolean expression",
+                            code: DiagnosticCodes.Semantic.ConditionNotBoolean);
                     }
                 }
 

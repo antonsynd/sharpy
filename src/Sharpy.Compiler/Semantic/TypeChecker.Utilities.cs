@@ -247,6 +247,47 @@ internal partial class TypeChecker
     private bool IsTruthTestable(SemanticType type) => ClassifyTruthiness(type).isTruthTestable;
 
     /// <summary>
+    /// The ONE fact sentence appended to every truthiness refusal (#1861, R-AU, Design Decision 6):
+    /// WHY this type has no falsy case. A fixed-arity tuple's arity is part of its TYPE — every
+    /// value of <c>tuple[int, int]</c> has exactly two elements, so its truthiness is a COMPILE-TIME
+    /// CONSTANT (always truthy for a non-empty arity; the zero-arity <c>tuple[]</c> the <c>()</c>
+    /// literal spells is always falsy) rather than something worth testing at runtime — unlike
+    /// <c>list[T]</c>, whose length varies. Every other refused type (a plain object, a function, a
+    /// delegate) simply has no falsy case in either direction — R-AU's original, unspecialized rule.
+    /// No <see cref="TupleType"/> arm is added to <see cref="ClassifyTruthiness"/>: this is prose for
+    /// an ALREADY-refused type, not a new classification.
+    /// </summary>
+    private static string NotTruthTestableReason(SemanticType type)
+    {
+        if (type is TupleType tuple)
+        {
+            var claim = tuple.ElementTypes.Count > 0 ? "is always truthy" : "is always falsy (empty)";
+            return $" — a '{type.GetDisplayName()}' {claim}; a fixed-arity tuple is not "
+                + "truth-testable (test len(t) or a specific element)";
+        }
+
+        return " — has no falsy case";
+    }
+
+    /// <summary>
+    /// THE truthiness refusal (#1861, R-AU, Design Decision 6) — replaces 14 hand-written
+    /// <c>AddError</c>s, one per position, that each built <c>", got '{type}'"</c> separately.
+    /// <paramref name="positionNoun"/> is the CALLER's own existing message prefix, unchanged —
+    /// <c>truthiness_refused.error</c>'s substring pin ("If condition must be boolean") survives
+    /// because the prefix is never touched, only appended to. Two callers (the match-statement and
+    /// match-expression guards) named no type at all before this; they gain both the type name and
+    /// the fact sentence here for the first time. <paramref name="code"/> stays PER SITE exactly as
+    /// today (SPY0220 for every position except the three SPY0241 ones).
+    /// </summary>
+    private void ReportNotTruthTestable(
+        Expression test, SemanticType type, string positionNoun,
+        string code = DiagnosticCodes.Semantic.TypeMismatch)
+    {
+        AddError($"{positionNoun}, got '{type.GetDisplayName()}'{NotTruthTestableReason(type)}",
+            test.LineStart, test.ColumnStart, code: code, span: test.Span);
+    }
+
+    /// <summary>
     /// Checks a test expression in a truthiness position (if/elif/while/assert/not/and/or/
     /// ternary test/comprehension condition/match guard). Pushes
     /// <see cref="StorePosition.TruthinessTest"/> so a conditional expression under the test

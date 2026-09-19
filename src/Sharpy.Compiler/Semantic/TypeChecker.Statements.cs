@@ -1265,9 +1265,7 @@ internal partial class TypeChecker
         var (truthTestable, condType) = CheckTruthinessTest(ifStmt.Test);
         if (!truthTestable)
         {
-            AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
-                ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: ifStmt.Test.Span);
+            ReportNotTruthTestable(ifStmt.Test, condType, "If condition must be boolean");
         }
 
         // Check then branch. Narrowing inside the body is driven by the CFG facts each statement
@@ -1287,9 +1285,7 @@ internal partial class TypeChecker
             var (elifTruthTestable, elifCondType) = CheckTruthinessTest(elif.Test);
             if (!elifTruthTestable)
             {
-                AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
-                    elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: elif.Test.Span);
+                ReportNotTruthTestable(elif.Test, elifCondType, "Elif condition must be boolean");
             }
 
             _symbolTable.EnterScope("elif");
@@ -1323,9 +1319,7 @@ internal partial class TypeChecker
         var (whileTruthTestable, condType) = CheckTruthinessTest(whileStmt.Test);
         if (!whileTruthTestable)
         {
-            AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
-                whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: whileStmt.Test.Span);
+            ReportNotTruthTestable(whileStmt.Test, condType, "While condition must be boolean");
         }
 
         // Body narrowing is applied via CFG facts (#1042); read sites materialize the accessor (#1081).
@@ -2298,9 +2292,7 @@ internal partial class TypeChecker
             var (assertTruthTestable, testType) = CheckTruthinessTest(assertStmt.Test);
             if (!assertTruthTestable)
             {
-                AddError($"Assert condition must be boolean, got '{testType.GetDisplayName()}'",
-                    assertStmt.LineStart, assertStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: assertStmt.Test.Span);
+                ReportNotTruthTestable(assertStmt.Test, testType, "Assert condition must be boolean");
             }
         }
         else

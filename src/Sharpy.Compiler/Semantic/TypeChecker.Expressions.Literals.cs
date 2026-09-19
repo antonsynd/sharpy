@@ -652,9 +652,8 @@ internal partial class TypeChecker
         var (compTruthTestable, condType) = CheckTruthinessTest(ifClause.Condition);
         if (!compTruthTestable)
         {
-            AddError($"Comprehension filter must be truth-testable, got '{condType.GetDisplayName()}'",
-                ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
-                span: ifClause.Condition.Span);
+            ReportNotTruthTestable(ifClause.Condition, condType, "Comprehension filter must be truth-testable",
+                code: DiagnosticCodes.Semantic.ConditionNotBoolean);
         }
     }
 
