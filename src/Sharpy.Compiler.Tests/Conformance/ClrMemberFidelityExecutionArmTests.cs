@@ -41,8 +41,22 @@ public class ClrMemberFidelityExecutionArmTests : IntegrationTestBase
     [Trait("Category", "Conformance")]
     public void TheSpy0908Arm_CanFire()
     {
-        // `list(x)` on a non-iterable falls back to Unknown type arguments -> CS0305.
-        var result = CompileAndExecute("def main() -> None:\n    x: int = 42\n    items = list(x)\n    print(items)\n");
+        // A bare nested-type reference inside a generic host emits `Box.Inner` (dropping `<T>`) ->
+        // CS0305 (#1894). Re-based off `list(x)` on a non-iterable, which #1868 made a semantic-time
+        // SPY0320 refusal that no longer reaches Roslyn.
+        var result = CompileAndExecute(
+            "class Box[T]:\n"
+            + "    @public\n"
+            + "    class Inner:\n"
+            + "        tag: int\n"
+            + "        def __init__(self, tag: int):\n"
+            + "            self.tag = tag\n\n"
+            + "    @public\n"
+            + "    def describe(self, c: Inner) -> int:\n"
+            + "        return c.tag\n\n"
+            + "def main() -> None:\n"
+            + "    b: Box[int] = Box[int]()\n"
+            + "    print(\"built\")\n");
 
         Assert.False(result.Success);
 

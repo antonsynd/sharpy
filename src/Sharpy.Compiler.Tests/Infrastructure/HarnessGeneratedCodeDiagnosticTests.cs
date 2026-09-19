@@ -37,28 +37,39 @@ public class HarnessGeneratedCodeDiagnosticTests : IntegrationTestBase
     /// A program that survives semantic analysis and is refused by ROSLYN — the only shape that can
     /// reach the C#-compile stage, and so the only positive control this harness contract can have.
     ///
-    /// <para><b>#1868 is the reason this source is what it is.</b> <c>list(x)</c> types its result
-    /// from the ELEMENT type of its argument; when the argument is not iterable there is no element
-    /// type and the collection constructor falls back to <c>Unknown</c> type arguments rather than
-    /// refusing. <c>Unknown</c> is assignable to anything, so the program type-checks clean and the
-    /// emitted <c>List&lt;&gt;</c> reaches Roslyn with no type argument. Through <c>sharpyc run</c>:
-    /// <c>error[SPY0908]: internal error: generated C# failed to compile (CS0305: Using the generic
-    /// type 'List&lt;T&gt;' requires 1 type arguments)</c>.</para>
+    /// <para><b>#1894 is the reason this source is what it is.</b> A bare reference to a nested type
+    /// used inside its <em>generic</em> enclosing type emits the enclosing type's name without its
+    /// type arguments — <c>Box.Inner</c> instead of <c>Box&lt;T&gt;.Inner</c> — so the parameter
+    /// annotation on <c>describe</c> reaches Roslyn as <c>Box.Inner</c>. The program type-checks
+    /// clean (the reference resolves semantically), so it reaches the C#-compile stage. Through
+    /// <c>sharpyc run</c>: <c>error[SPY0908]: internal error: generated C# failed to compile
+    /// (CS0305: Using the generic type 'Box&lt;T&gt;' requires 1 type arguments)</c>.</para>
     ///
-    /// <para><b>This control has to be re-based whenever its ICE is fixed</b>, as it has been twice
-    /// already. It was <c>a: Animal = Dog() if c else "x"</c> (CS0029) until R-W arm 1 turned that
-    /// into a semantic SPY0220 (#1677/#1743); then <c>assert b"hello" as? long</c> (CS8121) until
-    /// #1713 made a statically-impossible coercion a semantic-time SPY0610 refusal — that program no
+    /// <para><b>This control has to be re-based whenever its ICE is fixed</b>, as it has been three
+    /// times already. It was <c>a: Animal = Dog() if c else "x"</c> (CS0029) until R-W arm 1 turned
+    /// that into a semantic SPY0220 (#1677/#1743); then <c>assert b"hello" as? long</c> (CS8121)
+    /// until #1713 made a statically-impossible coercion a semantic-time SPY0610 refusal; then
+    /// <c>list(x)</c> on a non-iterable (CS0305 via <c>Unknown</c>-typed <c>List&lt;&gt;</c>) until
+    /// #1868 made that a semantic-time SPY0320 refusal at the constructor ring — that program no
     /// longer reaches the C#-compile stage. The harness contract below is unchanged; only the input
-    /// that reaches it moved. When #1868 is fixed (<c>list(x)</c> on a non-iterable becomes a
-    /// semantic refusal), re-base onto whatever SPY0908 gap is still real then; any remaining one
-    /// will do.</para>
+    /// that reaches it moved. When #1894 is fixed (the nested-type reference carries the host's type
+    /// arguments), re-base onto whatever SPY0908 gap is still real then; any remaining one will do.</para>
     /// </summary>
     private const string RoslynFailingSource = """
+        class Box[T]:
+            @public
+            class Inner:
+                tag: int
+                def __init__(self, tag: int):
+                    self.tag = tag
+
+            @public
+            def describe(self, c: Inner) -> int:
+                return c.tag
+
         def main() -> None:
-            x: int = 42
-            items = list(x)
-            print(items)
+            b: Box[int] = Box[int]()
+            print("built")
         """;
 
     private const string CleanSource = """
