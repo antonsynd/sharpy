@@ -1399,10 +1399,13 @@ internal class TypeInferenceService
         // otherwise answers the receiver's OWN first type argument for a non-generator __iter__ whose
         // declared element is unrelated (b04: declared str, guessed int32 — the inert-fix trap this
         // ordering exists to avoid). Scoped to GenericType: a plain UserDefinedType host already
-        // resolves correctly further down and needs no substitution (identity).
+        // resolves correctly further down and needs no substitution (identity). The lookup walks the
+        // BASE CHAIN (ProtocolMembership.FindDunderInChain) so an INHERITED __iter__/__getitem__
+        // resolves like a declared one — the same chain-awareness InferReversedElementType and
+        // TryResolveCallableObject already have for __reversed__/__call__ (#1859, DerivedOfGeneric).
         if (iterableType is GenericType && TypeChecker.TryGetGenericHostCore(iterableType, _symbolTable) is { } host)
         {
-            var iterMethod = host.Definition.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
+            var iterMethod = ProtocolMembership.FindDunderInChain(host.Definition, DunderNames.Iter);
             if (iterMethod?.ReturnType is GenericType iterReturn
                 && iterReturn.Name == BuiltinNames.Iterator
                 && iterReturn.TypeArguments.Count > 0)
@@ -1410,11 +1413,19 @@ internal class TypeInferenceService
                 return host.Substitute(iterReturn.TypeArguments[0]);
             }
 
-            var hostGetitemMethod = host.Definition.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
+            var hostGetitemMethod = ProtocolMembership.FindDunderInChain(host.Definition, DunderNames.GetItem);
             if (hostGetitemMethod?.ReturnType is { } hostItemType && hostItemType != SemanticType.Unknown)
             {
                 return host.Substitute(hostItemType);
             }
+
+            // A user generic host with NEITHER __iter__ nor __getitem__ is not forward-iterable this
+            // way — the TypeArguments[0] convention below is for BUILTIN containers (list/dict/set)
+            // only and must never guess a USER declaration's element as its own first type argument.
+            // Without this, a host declaring ONLY __reversed__ (no __iter__/__getitem__) fell through
+            // to that guess here, and InferReversedElementType (which tries this method FIRST) never
+            // got a chance to answer from __reversed__ itself.
+            return null;
         }
 
         // Generic containers
@@ -1592,6 +1603,26 @@ internal class TypeInferenceService
     }
 
     /// <summary>
+    /// The list-valued twin of <see cref="ProtocolMembership.FindDunderInChain"/>: the FIRST
+    /// ancestor (nearest first) whose <c>OperatorMethods</c>/<c>ProtocolMethods</c> table registers
+    /// <paramref name="dunderName"/>, or null. Needed wherever the dunder is resolved by OVERLOAD
+    /// (the single-method chain walker only ever returns one candidate) — currently just
+    /// <c>__getitem__</c> in <see cref="InferIndexAccessType"/>'s host-view arm (#1859).
+    /// </summary>
+    private static List<FunctionSymbol>? FindOverloadsInChain(TypeSymbol? symbol, string dunderName)
+    {
+        for (var current = symbol; current != null; current = current.BaseType)
+        {
+            if (current.OperatorMethods.TryGetValue(dunderName, out var operatorOverloads))
+                return operatorOverloads;
+            if (current.ProtocolMethods.TryGetValue(dunderName, out var protocolOverloads))
+                return protocolOverloads;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Infers the result type of an index access operation.
     /// Returns null if the type is not indexable.
     /// </summary>
@@ -1607,14 +1638,24 @@ internal class TypeInferenceService
         // arguments — BEFORE the builtin-container TypeArguments[0] guess below, which otherwise
         // answers the receiver's own first type argument regardless of the declared return (b06:
         // declared str, guessed int32). Scoped to GenericType: a plain UserDefinedType host already
-        // resolves correctly further down (identity substitution, so no separate arm is needed).
-        if (container is GenericType && TypeChecker.TryGetGenericHostCore(container, _symbolTable) is { } host
-            && (host.Definition.OperatorMethods.TryGetValue(DunderNames.GetItem, out var hostGetItemMethods)
-                || host.Definition.ProtocolMethods.TryGetValue(DunderNames.GetItem, out hostGetItemMethods)))
+        // resolves correctly further down (identity substitution, so no separate arm is needed). The
+        // lookup walks the BASE CHAIN so an INHERITED __getitem__ resolves like a declared one —
+        // FindOverloadsInChain is the list-valued twin of ProtocolMembership.FindDunderInChain,
+        // needed here (not there) because __getitem__ alone is resolved by overload against the
+        // index argument's type.
+        if (container is GenericType && TypeChecker.TryGetGenericHostCore(container, _symbolTable) is { } host)
         {
-            var bestHostOverload = FindBestOverload(hostGetItemMethods, index, container);
-            if (bestHostOverload != null)
-                return host.Substitute(bestHostOverload.ReturnType);
+            if (FindOverloadsInChain(host.Definition, DunderNames.GetItem) is { } hostGetItemMethods)
+            {
+                var bestHostOverload = FindBestOverload(hostGetItemMethods, index, container);
+                if (bestHostOverload != null)
+                    return host.Substitute(bestHostOverload.ReturnType);
+            }
+
+            // A user generic host with no matching __getitem__ is not indexable this way — the
+            // TypeArguments[0]/dict-value convention below is for BUILTIN containers only and must
+            // never guess a USER declaration's element as its own first type argument.
+            return null;
         }
 
         // Generic containers

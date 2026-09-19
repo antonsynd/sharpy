@@ -1,0 +1,64 @@
+# Every dunder route on a constructed generic host resolves through the DECLARATION, substituted —
+# never through the receiver's own first type argument (#1859). Before the fix, __call__ was never
+# FOUND at all (ResolveBuiltinTypeInfo only ever asks the BuiltinRegistry, SPY0230 "not callable" on
+# b01/b08); __iter__/__getitem__/__reversed__/__contains__ were found but answered the wrong type (the
+# receiver's OWN int argument, not the DECLARED str) when they had nothing to do with T.
+class C[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+    def __call__(self, x: int) -> int:
+        return x + 1
+
+    def __len__(self) -> int:
+        return 3
+
+    def __bool__(self) -> bool:
+        return True
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(["a", "b"])
+
+    def __contains__(self, x: str) -> bool:
+        return x == "z"
+
+    def __getitem__(self, i: int) -> str:
+        return "a"
+
+    def __reversed__(self) -> str:
+        yield "b"
+        yield "a"
+
+
+# The inherited-dunder case (#1859's b08 cell): __call__ declared on the BASE, resolved on the
+# constructed DERIVED receiver via the base chain.
+class Base[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+    def __call__(self, x: int) -> int:
+        return x + 1
+
+
+class Der[T](Base[T]):
+    pass
+
+
+def main() -> None:
+    c = C[int](1)
+    print(c(1))
+    print(len(c))
+    print(bool(c))
+    for x in c:
+        print(x.upper())
+    print("z" in c)
+    print(c[0].upper())
+    for x in reversed(c):
+        print(x.upper())
+
+    d = Der[int](1)
+    print(d(1))

@@ -1,0 +1,40 @@
+# The non-V shape (#1859, b04/b05/b06): a constructed generic host's __iter__/__getitem__/__reversed__
+# element type is whatever the DECLARATION says — here `str`, unrelated to the host's own type
+# argument `int` — never GenericType.TypeArguments[0] (the builtin-container convention that has no
+# opinion about a user declaration). Contrasted with the V-typed shape (b12/b13), where the DECLARED
+# type IS the host's own argument and substitution is the identity — both must resolve correctly.
+class NonV[T]:
+    def __init__(self) -> None:
+        pass
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(["a", "b"])
+
+    def __getitem__(self, i: int) -> str:
+        return "a"
+
+    def __reversed__(self) -> str:
+        yield "b"
+        yield "a"
+
+
+class VTyped[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+    def __getitem__(self, i: int) -> T:
+        return self.v
+
+
+def main() -> None:
+    n = NonV[int]()
+    for x in n:
+        print(x.upper())
+    print(n[0].upper())
+    for x in reversed(n):
+        print(x.upper())
+
+    v = VTyped[str]("z")
+    print(v[0].upper())

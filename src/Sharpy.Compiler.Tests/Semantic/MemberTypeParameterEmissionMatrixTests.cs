@@ -39,7 +39,6 @@ public class MemberTypeParameterEmissionMatrixTests : IntegrationTestBase
     private const int InapplicableCellCount = 1;
 
     private const string Ice = DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError;
-    private const string NotCallable = DiagnosticCodes.Semantic.NotCallable;
     private const string NotEmittable = DiagnosticCodes.ValidationOverflow.MemberTypeParametersNotEmittable;
 
     public MemberTypeParameterEmissionMatrixTests(ITestOutputHelper output) : base(output) { }
@@ -89,17 +88,10 @@ public class MemberTypeParameterEmissionMatrixTests : IntegrationTestBase
     private static bool IsKnownRed(
         MemberKind kind, Source source, out string code, out string issue)
     {
-        // #1859: the callable check does not find `__call__` through a CONSTRUCTED generic
-        // receiver. `c(1)` on a `C[int]` is SPY0230 "not callable" while the non-generic twin runs.
-        // Nothing to do with a member's own type parameters — this cell declares none — but it is
-        // the class-level control for CallDunder, so it is rostered, not deleted.
-        if (kind == MemberKind.CallDunder && source == Source.ClassLevel)
-        {
-            code = NotCallable;
-            issue = "#1859";
-            return true;
-        }
-
+        // The roster is empty (#1859 drained it): TryResolveCallableObject now finds __call__
+        // through a CONSTRUCTED generic receiver via the host view (612fc39a3), so `c(1)` on a
+        // `C[int]` runs like the non-generic twin. No cell is exempted from the matrix's own
+        // success/refusal assertion below.
         code = string.Empty;
         issue = string.Empty;
         return false;
@@ -237,15 +229,13 @@ public class MemberTypeParameterEmissionMatrixTests : IntegrationTestBase
         IsApplicable(MemberKind.ModuleFunction, Source.ClassLevel).Should().BeFalse(
             "a module function has no enclosing type to declare a type parameter on");
 
-        // The known-red roster is exactly one cell, and it is NOT in the column under test: a
-        // roster entry in the method-level column would be an exemption for this matrix's subject.
+        // The known-red roster is empty (#1859 drained its one row, CallDunder/ClassLevel — see
+        // IsKnownRed). Every cell now answers through the matrix's own success/refusal assertion.
         var knownReds = Cells().Cast<object[]>()
             .Select(row => ((MemberKind)row[0], (Source)row[1]))
             .Where(c => IsKnownRed(c.Item1, c.Item2, out _, out _))
             .ToList();
-        knownReds.Should().BeEquivalentTo(new[] { (MemberKind.CallDunder, Source.ClassLevel) });
-        knownReds.Should().OnlyContain(c => c.Item2 == Source.ClassLevel,
-            "a known red in the MethodLevel column would exempt the behaviour under test");
+        knownReds.Should().BeEmpty();
 
         // The refusal column is exactly the C# constructs with no type-parameter-list.
         Enum.GetValues<MemberKind>().Where(k => !CarriesItsOwnTypeParameters(k))
