@@ -141,20 +141,29 @@ internal sealed class ProtocolMembership
             // For defaultdict, check dict protocols since it inherits from Dict
             var lookupName = string.Equals(generic.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
                 ? BuiltinNames.Dict : generic.Name;
+            // The registry's protocol table only ADDS (#1860, R-AN, Design Decision 5): a POSITIVE
+            // table answer is authoritative, but a NEGATIVE one must not deny what the CLR shape
+            // below proves — the table denies `__contains__` for IEnumerable/Iterator even though
+            // both carry it through LINQ's Enumerable.Contains (see the arm in HasClrProtocol).
+            // Falling through used to be unreachable: the early `return` on a negative answer never
+            // let a receiver typed IEnumerable[int]/Iterator[int] reach the CLR arms at all.
             var typeSymbol = _builtins.GetType(lookupName);
-            if (typeSymbol != null)
-                return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
+            if (typeSymbol != null && typeSymbol.ProtocolMethods.ContainsKey(dunderName))
+                return true;
 
             // Fallback: check the resolved generic definition, then the SymbolTable for
             // discovery-loaded generic types (e.g., Counter, DefaultDict). The GenericDefinition is
             // preferred because module-qualified types (collections.Counter) are not registered under
             // their bare name in the top-level SymbolTable, so the by-name lookups below miss them.
             // Try the original name first, then PascalCase, then case-insensitive match
-            // for Python-style names that don't split cleanly (e.g., "defaultdict" → "DefaultDict")
+            // for Python-style names that don't split cleanly (e.g., "defaultdict" → "DefaultDict"),
+            // and finally the builtin registry's own symbol (a negative table answer above) so the
+            // CLR-shape arms below still run against IT rather than stopping at `null`.
             var symTableType = generic.GenericDefinition
                 ?? _symbolTable.Lookup(generic.Name) as TypeSymbol
                 ?? _symbolTable.Lookup(NameMangler.ToPascalCase(generic.Name)) as TypeSymbol
-                ?? _symbolTable.LookupCaseInsensitive(generic.Name) as TypeSymbol;
+                ?? _symbolTable.LookupCaseInsensitive(generic.Name) as TypeSymbol
+                ?? typeSymbol;
             if (symTableType != null)
             {
                 if (symTableType.ProtocolMethods.ContainsKey(dunderName))
@@ -341,12 +350,11 @@ internal sealed class ProtocolMembership
         // and then refused `in` with "missing __contains__", while the emitted C# would have
         // compiled.
         //
-        // NOT REACHED TODAY for that receiver (#1860): the GenericType arm above answers from the
-        // builtin registry's protocol table with an early `return`, and the table denies
-        // `__contains__` for `IEnumerable`, so the question never gets here. Measured — `2 in xs`
-        // on an `IEnumerable[int]` receiver is SPY0320 with this arm present. The arm is kept
-        // because it is the correct rule for every OTHER path that reaches the CLR arms; #1860
-        // decides whether the registry may deny what the CLR shape proves.
+        // The registry's protocol table only ADDS (#1860, R-AN): the table denies `__contains__`
+        // for `IEnumerable`/`Iterator`, but a negative table answer never denies what THIS arm
+        // proves — the GenericType arm in `Has` falls through to here on a negative answer instead
+        // of returning it early, so `2 in xs` on an `IEnumerable[int]`/`Iterator[int]` receiver
+        // reaches this arm and RUNS (LINQ's `Enumerable.Contains`, matching the emitted call).
         if (dunderName == DunderNames.Contains)
         {
             bool IsGenericEnumerable(Type t)
