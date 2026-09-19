@@ -210,8 +210,8 @@ internal partial class TypeChecker
                 // exactly as the non-generic class is — the host axis of #1808. `bool(b)` already
                 // worked on one because it goes through the builtin's own overload set, while
                 // `if b:` came here and got "no": the same receiver, two answers.
-                _ => GenericHostSymbol(gt) is { } hostSymbol
-                    ? ClassifyDeclaredTruthiness(hostSymbol)
+                _ => TryGetGenericHost(gt) is { } host
+                    ? ClassifyDeclaredTruthiness(host.Definition)
                     : (false, default)
             };
         }
@@ -243,13 +243,6 @@ internal partial class TypeChecker
 
         return (false, default);
     }
-
-    /// <summary>
-    /// The declaring symbol behind a generic instantiation (<c>Box[int]</c> → <c>Box</c>), or
-    /// <c>null</c> when the instantiation names no user type.
-    /// </summary>
-    private TypeSymbol? GenericHostSymbol(GenericType generic)
-        => generic.GenericDefinition ?? _symbolTable?.Lookup(generic.Name) as TypeSymbol;
 
     private bool IsTruthTestable(SemanticType type) => ClassifyTruthiness(type).isTruthTestable;
 
