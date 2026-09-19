@@ -229,6 +229,87 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
             .Where(l => l.Length > 0 && l != "=== Running Program ===")
             .ToList();
 
+    // ──────── #1860: IEnumerable[int]/Iterator[int] receivers at the `in` route ────────
+
+    /// <summary>
+    /// The registry-vs-CLR-shape widening (#1860, R-AN): a receiver typed <c>IEnumerable[int]</c> or
+    /// <c>Iterator[int]</c> answers <c>in</c> — LINQ's <c>Enumerable.Contains</c> is exactly the
+    /// emitted call (<c>ProtocolMembershipTests</c> pins the registry-table delta this exercises at
+    /// the unit level; this is the end-to-end wrapper-family check the same style as the main matrix
+    /// above uses).
+    ///
+    /// <para>Not folded into the <c>Payloads</c> array above: these two payloads answer ONLY <c>in</c>
+    /// among the matrix's eight routes (no <c>__len__</c>/<c>__getitem__</c>/index of their own —
+    /// they are bare producer types, not user protocol classes), so crossing them with all eight
+    /// routes would be seven N/A rows per payload for a reason that has nothing to do with #1860. A
+    /// dedicated theory, in the SAME wrapper-comparison style (bare vs loose must agree, strict
+    /// refused by name) as <see cref="LooseWrapperDispatchesLikeBareAndStrictIsRefusedByName"/>.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("IEnumerable[int]", "[1, 2, 3]")]
+    [InlineData("Iterator[int]", "iter([1, 2, 3])")]
+    public void GenericIEnumerableReceiver_AnswersInRoute_LikeEveryOtherPayload(string type, string value)
+    {
+        string Program(string wrapperSuffix, string v)
+            => "def main() -> None:\n"
+                + $"    v: {type}{wrapperSuffix} = {v}\n"
+                + "    print(2 in v)\n";
+
+        var bareSource = Program("", value);
+        var bare = CompileAndExecute(bareSource);
+        bare.Success.Should().BeTrue(
+            $"the BARE control {type}×in must run before the wrapper cells mean anything: "
+            + string.Join("; ", bare.CompilationErrors) + "\n" + bareSource);
+
+        var looseSource = Program(" | None", value);
+        var loose = CompileAndExecute(looseSource);
+        loose.Success.Should().BeTrue(
+            $"loose `{type} | None` must dispatch like `{type}` at in: "
+            + string.Join("; ", loose.CompilationErrors) + "\n" + looseSource);
+        Normalize(loose.StandardOutput).Should().Equal(Normalize(bare.StandardOutput),
+            $"{type}×in must print what the bare receiver prints\n" + looseSource);
+
+        var strictSource = Program("?", $"Some({value})");
+        var strict = CompileAndExecute(strictSource);
+        strict.Success.Should().BeFalse(
+            $"strict `{type}?` must be refused at in, not dereferenced\n" + strictSource);
+        strict.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.OptionalRequiresNarrowing,
+            $"the strict family is refused BY NAME at in; got "
+            + string.Join(" | ", strict.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}"))
+            + "\n" + strictSource);
+    }
+
+    /// <summary>
+    /// d13: BEFORE #1860's fix, a wrong-typed needle against these two receivers reported the
+    /// mismatch TWICE — <c>ClassifyMembership</c> (TypeChecker, SPY0222, needle vs. element type) and
+    /// <c>ProtocolValidator.ValidateMembership</c> (SPY0320, "missing '__contains__'") both fired,
+    /// because <c>ResolveMembershipElementType</c> resolved an element fine (via the general iterable
+    /// arm, independent of <c>ProtocolMembership</c>) while the registry wrongly denied
+    /// <c>__contains__</c> presence. No SEPARATE code change was needed to collapse it: once
+    /// <c>Has</c> answers true for these receivers, the presence check has nothing left to report.
+    /// </summary>
+    [Theory]
+    [InlineData("IEnumerable[int]", "[1, 2, 3]")]
+    [InlineData("Iterator[int]", "iter([1, 2, 3])")]
+    public void WrongNeedleAgainstGenericIEnumerableReceiver_ReportsOnlyOneDiagnostic(string type, string value)
+    {
+        var source = "def main() -> None:\n"
+            + $"    v: {type} = {value}\n"
+            + "    print(\"x\" in v)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse($"a str needle against {type}'s int element must be refused\n{source}");
+        result.RawDiagnostics.Should().ContainSingle(
+            d => d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            $"exactly one SPY0222, naming the needle/element mismatch; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")) + "\n" + source);
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod,
+            $"the presence check (SPY0320) must not ALSO fire — {type} answers __contains__; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")) + "\n" + source);
+    }
+
     // ───────────────────────────── totality pin ─────────────────────────────
 
     /// <summary>

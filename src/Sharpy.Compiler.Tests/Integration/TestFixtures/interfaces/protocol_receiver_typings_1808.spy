@@ -4,8 +4,9 @@
 #     while len/bool/if/for/in/[] on the same receiver all worked;
 #   - a GENERIC HOST declaring __len__ was refused at `if b:` while `bool(b)` ran (the #1808
 #     divergence surviving on the host axis).
-# One typing is NOT in this fixture because it is still red, with its own issue:
-#   - a receiver TYPED as `IEnumerable[int]` still refuses `in` (#1860).
+# A fourth typing (fixed by #1860, R-AN — the registry's protocol table only ADDS, never denies
+# what the CLR shape proves): a receiver TYPED as `IEnumerable[int]` used to refuse `in` even though
+# LINQ's Enumerable.Contains is exactly the emitted call — see the cell at the end of main().
 # A GENERIC host in an `ISized` SLOT (`s: ISized = Box[int](6)`) used to be SPY0220 while the
 # non-generic host in the same slot ran and `len(Box[int](6))` ran directly — the assignability
 # half of the host axis, #1746's residue. Fixed by #1865 (target-side symmetry in `IsAssignable`,
@@ -72,3 +73,8 @@ def main() -> None:
     # interface slot it reaches via __len__ (previously SPY0220 — see the header note).
     g: ISized = Box[int](6)
     print(len(g))
+
+    # The #1860 cell: a receiver typed as the CLR-shaped interface `IEnumerable[int]` — the registry
+    # table denies `__contains__` for it, but the CLR shape (LINQ's Enumerable.Contains) proves it.
+    e: IEnumerable[int] = [1, 2, 3]
+    print(2 in e)

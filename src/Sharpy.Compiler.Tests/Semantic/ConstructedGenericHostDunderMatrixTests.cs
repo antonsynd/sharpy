@@ -36,19 +36,27 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// worked around here.</para>
 ///
 /// <para><b>N/A cells, by rule:</b> (1) <c>ConstructedInterface</c> × any dunder × any consumer —
-/// SPY0280, an interface cannot be instantiated. (2) <c>DerivedOfGeneric</c> (member on the BASE,
-/// inherited) × {<c>__len__</c>, <c>__iter__</c>, <c>__getitem__</c>, <c>__contains__</c>} × any
-/// consumer — <c>ProtocolMembership.Has</c>'s <c>GenericType</c> arm does not walk the base chain, so
-/// an INHERITED one of these four is reported absent (SPY0320) even though the TYPE resolution this
-/// matrix is about is already correct (filed #1913; <c>__call__</c>/<c>__bool__</c>/<c>__reversed__</c>
-/// each already have their own chain-aware route and are unaffected — b08 is the <c>__call__</c>
-/// witness). (3) <c>Comprehension</c> × {<c>__call__</c>, <c>__len__</c>, <c>__bool__</c>,
-/// <c>__contains__</c>} — none of the four is naturally exercised by iterating OVER the receiver (a
-/// comprehension calling into one of these tests the exact same route DirectRoute already does, with
-/// no new discriminating information). (4) <c>TypeProbe</c> × {<c>__bool__</c>, <c>__contains__</c>}
-/// — <c>__bool__</c>'s result assigned to its own declared type (<c>bool</c>) is not a mismatch to
-/// probe, and <c>__contains__</c> has no element to store (its own DirectRoute cell already is the
-/// discriminating assertion — a type mismatch on the NEEDLE, not a storable element).</para>
+/// SPY0280, an interface cannot be instantiated. (2) <c>Comprehension</c> × {<c>__call__</c>,
+/// <c>__len__</c>, <c>__bool__</c>, <c>__contains__</c>} — none of the four is naturally exercised by
+/// iterating OVER the receiver (a comprehension calling into one of these tests the exact same route
+/// DirectRoute already does, with no new discriminating information). (3) <c>TypeProbe</c> ×
+/// {<c>__bool__</c>, <c>__contains__</c>} — <c>__bool__</c>'s result assigned to its own declared type
+/// (<c>bool</c>) is not a mismatch to probe, and <c>__contains__</c> has no element to store (its own
+/// DirectRoute cell already is the discriminating assertion — a type mismatch on the NEEDLE, not a
+/// storable element).</para>
+///
+/// <para><b>DerivedOfGeneric's inherited dunders (formerly N/A, #1913 — now live cells).</b>
+/// <c>ProtocolMembership.Has</c>'s <c>GenericType</c> arm used to ask a constructed generic host's OWN
+/// <c>ProtocolMethods</c>/<c>Methods</c> only, never its base chain, so an INHERITED
+/// <c>__len__</c>/<c>__iter__</c>/<c>__getitem__</c>/<c>__contains__</c> (member on the BASE, derived
+/// class a bare <c>pass</c>) was reported absent (SPY0320) even though the TYPE resolution this
+/// matrix is about was already correct. Fixed by reusing <c>HasDunderInChain</c> — of the 12 cells
+/// (4 dunders × 3 consumers) that WOULD apply, 9 are now live (asserting the SAME outcome every other
+/// healthy host asserts for the identical dunder/consumer pair); the remaining 3
+/// (<c>__len__</c>/<c>__contains__</c> × Comprehension, <c>__contains__</c> × TypeProbe) stay N/A for
+/// the SAME reasons Rules 2/3 already give every OTHER host — unrelated to #1913.
+/// <c>__call__</c>/<c>__bool__</c>/<c>__reversed__</c> each already had their own chain-aware route
+/// and were unaffected (b08 is the <c>__call__</c> witness).</para>
 ///
 /// <para><b>list()/set() constructor consumer — explicitly NOT an axis value here.</b> The
 /// constructor-ring bridge for a user-declared iterable is Phase 3's synthesis fix (#1868, #1832): a
@@ -65,7 +73,7 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
     private const int DunderCount = 7;
     private const int HostCount = 7;
     private const int ConsumerCount = 3;
-    private const int NotApplicableCellCount = 66;
+    private const int NotApplicableCellCount = 57;
 
     private static readonly string[] Dunders =
     {
@@ -117,7 +125,7 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
             "ConstructedInterface" => null,
 
             // Member on the BASE; the derived class is a bare `pass` — reached only via the base
-            // chain. Rule 2 marks four of the seven dunders N/A here (#1913).
+            // chain (#1913, fixed: ProtocolMembership.Has now walks it for a constructed generic host).
             "DerivedOfGeneric" =>
                 ($"class HBase[T]:\n    def __init__(self) -> None:\n        pass\n\n{member}"
                  + "\n\nclass HDerived[T](HBase[T]):\n    pass\n",
@@ -196,14 +204,14 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
         var dict = new Dictionary<string, string>(StringComparer.Ordinal);
         var healthyHosts = HostNames.Where(h => h != "ConstructedInterface").ToArray();
 
-        // Rule 3: none of these four is naturally exercised BY a comprehension (a comprehension
+        // Rule 2: none of these four is naturally exercised BY a comprehension (a comprehension
         // calling into them tests the same route DirectRoute already does).
         foreach (var hostName in healthyHosts)
         foreach (var dunder in new[] { "__call__", "__len__", "__bool__", "__contains__" })
             dict[Key(hostName, dunder, "Comprehension")] =
                 "a comprehension calling into this dunder exercises the same route DirectRoute already does";
 
-        // Rule 4: no element to probe.
+        // Rule 3: no element to probe.
         foreach (var hostName in healthyHosts)
         {
             dict[Key(hostName, "__bool__", "TypeProbe")] =
@@ -212,15 +220,9 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
                 "no element to store — __contains__'s DirectRoute cell (the needle mismatch) is the discriminating assertion";
         }
 
-        // Rule 2 (most specific — overwrites Rule 3/4 for the 3 cells that overlap): DerivedOfGeneric's
-        // INHERITED __len__/__iter__/__getitem__/__contains__ are reported absent by
-        // ProtocolMembership.Has's non-chain-walking GenericType arm (#1913), independent of consumer.
-        foreach (var dunder in new[] { "__len__", "__iter__", "__getitem__", "__contains__" })
-        foreach (var consumer in Consumers)
-            dict[Key("DerivedOfGeneric", dunder, consumer)] =
-                "#1913: ProtocolMembership.Has's GenericType arm does not walk the base chain — an "
-                + "inherited dunder here is reported absent (SPY0320) even though the type resolution "
-                + "this matrix is about is already correct";
+        // DerivedOfGeneric's inherited __len__/__iter__/__getitem__/__contains__ are LIVE cells now
+        // (#1913 fixed) — no N/A row for them; Rules 2/3 above still apply to this host like any
+        // other healthy one.
 
         // Rule 1 (broadest — always wins): an interface cannot be instantiated.
         foreach (var dunder in Dunders)
