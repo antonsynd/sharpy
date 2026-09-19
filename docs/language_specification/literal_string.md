@@ -33,22 +33,82 @@ result2 = safe_query("A" + "B" + "C")
 
 ## Accepted Forms
 
-An argument is a `LiteralString` when it is a string literal, a `+` concatenation whose operands are
-themselves accepted forms, or either of those wrapped in redundant parentheses — parentheses never
-change meaning (the canonical-form contract, #1170):
+A string expression is **literal-derived** — admissible into a `LiteralString` slot — when one
+bottom-up rule holds over PEP 675's form set. This is the owner's #1741 ruling of 2026-09-03
+([comment 5528943408](https://github.com/antonsynd/sharpy/issues/1741#issuecomment-5528943408):
+"#1741 adds f-strings whose holes are literal-derived … `.format`/`.join`/… on literal-derived
+receivers"), which supersedes the earlier "deliberately not accepted … widening is a separate
+decision" wording. The expression's type stays `str`; literal-derivedness is a compile-time fact
+on the node, not a distinct type.
+
+| Form | Example | Status |
+|------|---------|--------|
+| String literal | `"SELECT 1"` | ✅ derived |
+| `+` concatenation of derived operands | `"SELECT * " + "FROM users"` | ✅ derived |
+| Redundant parentheses (canonical-form contract, #1170) | `("a") + ("b")` | ✅ derived |
+| Repetition, `derived * int` or `int * derived` | `"ab" * 3` | ✅ derived |
+| f-string, every hole derived (holeless is derived vacuously; `!r`/`!s`/`!a` and format specs do not matter) | `f"{q} !"` | ✅ derived |
+| PEP 675 str-returning method on a derived receiver, every `str`-typed argument derived | `q.upper()`, `q.replace("l", "r")`, `q.format("z")`, `", ".join(["a", "b"])` | ✅ derived |
+| `%` formatting | `"x=%s" % q` | N/A — `%` is not a Sharpy string operator (SPY0222) |
+| Implicit concatenation | `"a" "b"` | N/A — does not parse (SPY0103); see [String Literals › No Implicit Concatenation](string_literals.md) |
+| Any of the forms above over a `str`-typed input | `s.upper()` where `s: str` | ❌ refused (SPY0220) |
+| `.join` over a `list[str]` **variable** (not a literal display) | `", ".join(items)` | ❌ refused (SPY0220) |
+| Method returning `list`/`tuple` (`split`, `rsplit`, `splitlines`, `partition`, `rpartition`) | `q.split(",")` | N/A — result is `list[str]`/tuple, never a string |
+
+The PEP 675 str-returning method set (each preserves literal-derivedness): `capitalize`,
+`casefold`, `center`, `expandtabs`, `format`, `format_map`, `join`, `ljust`, `lower`, `lstrip`,
+`replace`, `rjust`, `rstrip`, `strip`, `swapcase`, `title`, `upper`, `zfill`.
 
 ```python
 def safe_query(query: LiteralString) -> str:
-    return f"executing: {query}"
+    return query
 
-def main():
-    print(safe_query(("SELECT * FROM users")))   # executing: SELECT * FROM users
-    print(safe_query(("SELECT * ") + ("FROM users")))
+def main() -> None:
+    q: LiteralString = "SELECT"
+    print(safe_query(("SELECT * FROM users")))       # literal, redundant parens
+    print(safe_query(("SELECT * ") + ("FROM users")))  # + concatenation
+    print(safe_query("ab" * 3))                      # ababab
+    print(safe_query(f"{q} 1"))                      # SELECT 1  (f-string, derived hole)
+    print(safe_query(f"literal"))                    # literal   (holeless f-string)
+    print(safe_query(q.upper()))                     # SELECT
+    print(safe_query(q.replace("E", "3")))           # S3L3CT  (replace hits every match)
+    print(safe_query(", ".join(["a", "b"])))         # a, b      (literal list display)
+    print(safe_query(f"{q.lower()}" + " 1"))         # select 1  (nested composition)
 ```
 
-PEP 675 also treats `"a" * 3`, an f-string with literal-only holes, and implicit concatenation
-`"a" "b"` as `LiteralString`; Sharpy deliberately does **not** accept those forms today (the first
-two are refused as `str`, the third does not parse). Widening is a separate decision.
+The N/A and refused forms carry their diagnostic codes. `%` is not a string operator:
+
+<!-- spec-sweep: error SPY0222 -->
+```python
+def safe_query(query: LiteralString) -> str:
+    return query
+
+def main() -> None:
+    q: LiteralString = "x"
+    print(safe_query("fmt=%s" % q))   # SPY0222 — `%` is not a Sharpy string operator
+```
+
+Implicit concatenation (adjacent string literals) is not Sharpy syntax and does not parse
+(see [String Literals › No Implicit Concatenation](string_literals.md)):
+
+<!-- spec-sweep: error SPY0103 -->
+```python
+def main() -> None:
+    x: LiteralString = "a" "b"   # SPY0103 — adjacent literals do not concatenate
+    print(x)
+```
+
+A `str`-typed input is refused even under an otherwise-accepted form — the fact is bottom-up:
+
+<!-- spec-sweep: error SPY0220 -->
+```python
+def safe_query(query: LiteralString) -> str:
+    return query
+
+def main() -> None:
+    s: str = "runtime"
+    print(safe_query(s.upper()))   # SPY0220 — s is str, so s.upper() is not derived
+```
 
 ## Store Positions
 
@@ -106,8 +166,13 @@ The expression's type stays `str`; `LiteralString` is the **slot's** declared ty
 A `str` variable is always refused — the literal-derived check is a compile-time
 fact, not a type.
 
-Refused forms: f-strings (`f"..."` — interpolation is runtime), `"a" * 3`, and any
-non-literal `str` expression. See #1741 for the full forms table.
+Every store position takes any **literal-derived** form (§Accepted Forms): f-strings with derived
+holes, `"a" * 3`, and PEP 675 str-method calls on derived receivers are all admissible here, per
+the #1741 ruling. What stays refused is a `str`-typed expression in any position — literal-derivedness
+is a bottom-up compile-time fact, so a `str` variable is refused (SPY0220) even inside an
+otherwise-accepted form (`s.upper()`, `", ".join(items)` for a `list[str]` variable `items`). The
+non-Sharpy forms `%` formatting (SPY0222) and implicit concatenation `"a" "b"` (does not parse) are
+listed as N/A in the §Accepted Forms table.
 
 ## Type Relationship
 
