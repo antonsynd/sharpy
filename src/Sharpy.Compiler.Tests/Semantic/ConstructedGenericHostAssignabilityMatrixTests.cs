@@ -233,29 +233,29 @@ public class ConstructedGenericHostAssignabilityMatrixTests : IntegrationTestBas
 
         // Rule 1: ConstructedInterface cannot be instantiated (SPY0280) — no instance to test.
         foreach (var interfaceKind in Interfaces)
-        foreach (var position in Positions)
-        {
-            dict[Key("ConstructedInterface", interfaceKind, position)] =
-                "SPY0280: an interface cannot be instantiated — no instance exists to test assignability from";
-        }
+            foreach (var position in Positions)
+            {
+                dict[Key("ConstructedInterface", interfaceKind, position)] =
+                    "SPY0280: an interface cannot be instantiated — no instance exists to test assignability from";
+            }
 
         // Rule 2: IEquatable[T] needs `from System import IEquatable` — out of scope here.
         foreach (var hostName in HostNames.Where(h => h != "ConstructedInterface"))
-        foreach (var position in Positions)
-        {
-            dict[Key(hostName, "IEquatable", position)] =
-                "IEquatable[T] needs `from System import IEquatable`; out of scope for this from-import-free matrix";
-        }
+            foreach (var position in Positions)
+            {
+                dict[Key(hostName, "IEquatable", position)] =
+                    "IEquatable[T] needs `from System import IEquatable`; out of scope for this from-import-free matrix";
+            }
 
         // Rule 3: isinstance refuses a bracketed generic interface argument (SPY0344/SPY0200),
         // independent of #1865.
         foreach (var hostName in HostNames.Where(h => h != "ConstructedInterface"))
-        foreach (var interfaceKind in new[] { "IReverseEnumerable", "IEnumerable" })
-        {
-            dict[Key(hostName, interfaceKind, "Isinstance")] =
-                "isinstance's second argument must name a non-generic type; SPY0344/SPY0200 refuse a "
-                + "bracketed generic interface argument, independent of #1865";
-        }
+            foreach (var interfaceKind in new[] { "IReverseEnumerable", "IEnumerable" })
+            {
+                dict[Key(hostName, interfaceKind, "Isinstance")] =
+                    "isinstance's second argument must name a non-generic type; SPY0344/SPY0200 refuse a "
+                    + "bracketed generic interface argument, independent of #1865";
+            }
 
         return dict;
     }

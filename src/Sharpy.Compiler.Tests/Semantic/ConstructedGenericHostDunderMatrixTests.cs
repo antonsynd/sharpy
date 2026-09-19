@@ -207,9 +207,9 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
         // Rule 2: none of these four is naturally exercised BY a comprehension (a comprehension
         // calling into them tests the same route DirectRoute already does).
         foreach (var hostName in healthyHosts)
-        foreach (var dunder in new[] { "__call__", "__len__", "__bool__", "__contains__" })
-            dict[Key(hostName, dunder, "Comprehension")] =
-                "a comprehension calling into this dunder exercises the same route DirectRoute already does";
+            foreach (var dunder in new[] { "__call__", "__len__", "__bool__", "__contains__" })
+                dict[Key(hostName, dunder, "Comprehension")] =
+                    "a comprehension calling into this dunder exercises the same route DirectRoute already does";
 
         // Rule 3: no element to probe.
         foreach (var hostName in healthyHosts)
@@ -226,9 +226,9 @@ public class ConstructedGenericHostDunderMatrixTests : IntegrationTestBase
 
         // Rule 1 (broadest — always wins): an interface cannot be instantiated.
         foreach (var dunder in Dunders)
-        foreach (var consumer in Consumers)
-            dict[Key("ConstructedInterface", dunder, consumer)] =
-                "SPY0280: an interface cannot be instantiated — no instance exists to route a dunder call through";
+            foreach (var consumer in Consumers)
+                dict[Key("ConstructedInterface", dunder, consumer)] =
+                    "SPY0280: an interface cannot be instantiated — no instance exists to route a dunder call through";
 
         return dict;
     }

@@ -49,29 +49,29 @@ internal partial class TypeChecker
         switch (type)
         {
             case GenericType gt:
-            {
-                var definition = gt.GenericDefinition ?? symbolTable.LookupType(gt.Name);
-                if (definition == null)
-                    return null;
+                {
+                    var definition = gt.GenericDefinition ?? symbolTable.LookupType(gt.Name);
+                    if (definition == null)
+                        return null;
 
-                // Builtin-owned: the caller's own TypeArguments[0]/registry arm has the opinion here,
-                // not a substituted walk of the definition's (registry-synthesized) methods.
-                if (ReferenceEquals(definition, symbolTable.BuiltinRegistry.GetType(gt.Name)))
-                    return null;
+                    // Builtin-owned: the caller's own TypeArguments[0]/registry arm has the opinion here,
+                    // not a substituted walk of the definition's (registry-synthesized) methods.
+                    if (ReferenceEquals(definition, symbolTable.BuiltinRegistry.GetType(gt.Name)))
+                        return null;
 
-                // CLR-discovered (a module-imported List[T]/HashSet[T]/... with no Sharpy dunder
-                // declarations at all): the doc above already says this answers null, but the
-                // original check only ever excluded the BuiltinRegistry name, not a CLR-backed
-                // definition reached through module discovery — a real Sharpy source class has no
-                // ClrType until AFTER this compilation emits it, so this is a clean discriminator,
-                // not a heuristic. Without it, `list(clrList)` (clrList: List[int32], no __iter__ in
-                // ITS OWN reflected Methods/base chain) wrongly answered "not iterable" (#1868).
-                if (definition.ClrType != null)
-                    return null;
+                    // CLR-discovered (a module-imported List[T]/HashSet[T]/... with no Sharpy dunder
+                    // declarations at all): the doc above already says this answers null, but the
+                    // original check only ever excluded the BuiltinRegistry name, not a CLR-backed
+                    // definition reached through module discovery — a real Sharpy source class has no
+                    // ClrType until AFTER this compilation emits it, so this is a clean discriminator,
+                    // not a heuristic. Without it, `list(clrList)` (clrList: List[int32], no __iter__ in
+                    // ITS OWN reflected Methods/base chain) wrongly answered "not iterable" (#1868).
+                    if (definition.ClrType != null)
+                        return null;
 
-                var typeArgs = gt.TypeArguments;
-                return new GenericHostView(definition, t => SubstituteThroughDefinition(t, definition, typeArgs));
-            }
+                    var typeArgs = gt.TypeArguments;
+                    return new GenericHostView(definition, t => SubstituteThroughDefinition(t, definition, typeArgs));
+                }
 
             case UserDefinedType { Symbol: { } symbol }:
                 return new GenericHostView(symbol, t => t);
