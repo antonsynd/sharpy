@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
@@ -329,6 +330,280 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
         result.Success.Should().BeTrue(
             "Template | None = None must compile. Errors:\n"
             + string.Join("\n", result.CompilationErrors));
+    }
+
+    #endregion
+
+    #region Form axis (#1741, P7.T) — LiteralDerivation's PEP 675 form set, measured against ddc5f5aac
+
+    /// <summary>
+    /// Form × input-kind × position cells (probe names l01-l20 from the plan-d35e69 ledger).
+    /// <see cref="ExpectsAcceptance"/> cells type as literal-derived and PRINT a python3-matching
+    /// value; refusing cells assert the MEASURED diagnostic code — a store position's code is not
+    /// uniformly SPY0220 (a `return` refusal is SPY0260; an argument refusal names the parameter),
+    /// so each cell records what was actually observed against the built compiler, not an assumed
+    /// code.
+    /// </summary>
+    public record FormCell(
+        string Name, string Source, bool ExpectsAcceptance,
+        string? ExpectedOutput, string? ExpectedCode, string? ExpectedErrorSubstring);
+
+    private static IReadOnlyList<FormCell> BuildFormCells()
+    {
+        var cells = new List<FormCell>();
+
+        void Accept(string name, string source, string expectedOutput) =>
+            cells.Add(new FormCell(name, source, true, expectedOutput, null, null));
+
+        void Refuse(string name, string source, string code, string errorSubstring) =>
+            cells.Add(new FormCell(name, source, false, null, code, errorSubstring));
+
+        // --- Accepting: PEP 675 forms over a derived receiver/operands ---
+
+        // l01: f-string, one hole, the hole is a LiteralString-typed name — position: declaration.
+        Accept("l01_fstring_derived_hole_declaration", @"
+def main() -> None:
+    q: LiteralString = ""SELECT""
+    z: LiteralString = f""{q} 1""
+    print(z)
+", "SELECT 1\n");
+
+        // l04: .format with a LiteralString-typed-name arg and a literal arg — position: argument
+        // (the call result is passed into a LiteralString-typed parameter).
+        Accept("l04_format_argument", @"
+def use(v: LiteralString) -> None:
+    print(v)
+
+def main() -> None:
+    lit: LiteralString = ""x""
+    use(""{} and {}"".format(lit, ""z""))
+", "x and z\n");
+
+        // l05: .join over a literal list DISPLAY (not a variable, see l12's refusal twin) —
+        // position: field (a class-level field initializer).
+        Accept("l05_join_literal_display_field", @"
+class Config:
+    label: LiteralString = "", "".join([""a"", ""b""])
+
+def main() -> None:
+    c: Config = Config()
+    print(c.label)
+", "a, b\n");
+
+        // l06: literal * int (repetition on a literal, not a name) — position: return.
+        Accept("l06_literal_repeat_return", @"
+def make() -> LiteralString:
+    return ""ab"" * 3
+
+def main() -> None:
+    print(make())
+", "ababab\n");
+
+        // l07: PEP 675 method call, receiver a LiteralString-typed name — position: declaration.
+        Accept("l07_upper_declaration", @"
+def main() -> None:
+    lit: LiteralString = ""select""
+    z: LiteralString = lit.upper()
+    print(z)
+", "SELECT\n");
+
+        // l08: PEP 675 method call with two literal arguments — position: declaration. python3:
+        // 'select'.replace('e', '3') replaces BOTH 'e's (no count given).
+        Accept("l08_replace_declaration", @"
+def main() -> None:
+    lit: LiteralString = ""select""
+    z: LiteralString = lit.replace(""e"", ""3"")
+    print(z)
+", "s3l3ct\n");
+
+        // l10: `+` concatenation, left operand a LiteralString-typed name read from MODULE scope
+        // (not a local, unlike IdentifierRead_IsLiteralDerived_ConcatIntoLiteralStringSlot above) —
+        // position: field. Locks that a class-body field initializer can read an outer LiteralString
+        // name and that CheckIdentifier's derived-fact (#1766) survives into that scope.
+        Accept("l10_concat_identifier_field", @"
+lit: LiteralString = ""he""
+
+class Config:
+    label: LiteralString = lit + ""llo""
+
+def main() -> None:
+    c: Config = Config()
+    print(c.label)
+", "hello\n");
+
+        // l11: f-string with NO holes — derived vacuously (empty product) — position: declaration.
+        Accept("l11_fstring_no_holes_declaration", @"
+def main() -> None:
+    z: LiteralString = f""literal""
+    print(z)
+", "literal\n");
+
+        // l13: PEP 675 method call, receiver a LOCAL LiteralString-typed name — position: return.
+        Accept("l13_strip_return", @"
+def clean() -> LiteralString:
+    lit: LiteralString = ""  hi  ""
+    return lit.strip()
+
+def main() -> None:
+    print(clean())
+", "hi\n");
+
+        // l17: nested composition — f-string whose hole is itself a derived method call, then
+        // concatenated with a literal — position: declaration.
+        Accept("l17_nested_fstring_then_concat_declaration", @"
+def main() -> None:
+    lit: LiteralString = ""ab""
+    z: LiteralString = f""{lit.upper()}"" + ""z""
+    print(z)
+", "ABz\n");
+
+        // l18: repetition, operand a LiteralString-typed NAME (not a literal, unlike l06) —
+        // position: argument.
+        Accept("l18_repeat_identifier_argument", @"
+def use(v: LiteralString) -> None:
+    print(v)
+
+def main() -> None:
+    lit: LiteralString = ""ab""
+    use(lit * 2)
+", "abab\n");
+
+        // l19: augmented assignment whose RHS is a derived f-string of the LHS itself —
+        // position: augmented.
+        Accept("l19_augmented_fstring", @"
+def main() -> None:
+    lit: LiteralString = ""ab""
+    lit += f""{lit}""
+    print(lit)
+", "abab\n");
+
+        // --- Must-refuse positive controls: a str-typed input stays SPY0220/SPY0260 even under an
+        // otherwise-accepted form — the fact is bottom-up, never inferred from the form alone. These
+        // anchor the guard: an implementation that accepted ANY str-typed input would turn every one
+        // of these green, which is exactly what mutation 3 (l12) demonstrates.
+
+        // l09: f-string hole is str-typed (not derived) — position: declaration.
+        Refuse("l09_fstring_str_hole_declaration_refused", @"
+def main() -> None:
+    s: str = ""x""
+    z: LiteralString = f""{s}""
+    print(z)
+", "SPY0220", "Cannot assign type 'str' to variable of type 'LiteralString'");
+
+        // l12: .join over a list[str] VARIABLE (not a literal display, contrast l05) — even though
+        // its elements happen to be literals, the variable's contents cannot be proven — position:
+        // declaration. THE guard cell for mutation 3.
+        Refuse("l12_join_list_variable_refused", @"
+def main() -> None:
+    items: list[str] = [""a"", ""b""]
+    z: LiteralString = "", "".join(items)
+    print(z)
+", "SPY0220", "Cannot assign type 'str' to variable of type 'LiteralString'");
+
+        // l14: PEP 675 method call, receiver derived but ONE ARGUMENT is str-typed (not derived) —
+        // position: argument. Note the argument-position message names the PARAMETER, not "assign".
+        Refuse("l14_replace_str_argument_refused", @"
+def use(v: LiteralString) -> None:
+    print(v)
+
+def main() -> None:
+    lit: LiteralString = ""ab""
+    s: str = ""z""
+    use(lit.replace(""a"", s))
+", "SPY0220", "Cannot pass argument of type 'str' to parameter of type 'LiteralString'");
+
+        // l15: PEP 675 method call, RECEIVER is str-typed (not derived) — position: return. The
+        // return-position code is SPY0260, NOT SPY0220 (measured — a store-position code is not
+        // uniform across positions).
+        Refuse("l15_upper_str_receiver_return_refused", @"
+def make() -> LiteralString:
+    s: str = ""select""
+    return s.upper()
+
+def main() -> None:
+    print(make())
+", "SPY0260", "Cannot return type 'str' from function expecting 'LiteralString'");
+
+        // l16: repetition, operand str-typed (not derived) — position: augmented.
+        Refuse("l16_repeat_str_operand_augmented_refused", @"
+def main() -> None:
+    lit: LiteralString = ""ab""
+    s: str = ""cd""
+    lit += s * 2
+    print(lit)
+", "SPY0220", "Result type 'str' of augmented assignment is not assignable to target type 'LiteralString'");
+
+        // --- Parse refusals: implicit concatenation never parses, in ANY position (spec-deliberate,
+        // string_literals.md "No Implicit Concatenation") ---
+
+        // l02: position — declaration.
+        Refuse("l02_implicit_concat_declaration_parse_refused", @"
+def main() -> None:
+    z: LiteralString = ""a"" ""b""
+    print(z)
+", "SPY0103", "Expected end of statement");
+
+        // l20: position — return (confirms the refusal is a PARSER fact, not context-dependent).
+        Refuse("l20_implicit_concat_return_parse_refused", @"
+def make() -> LiteralString:
+    return ""a"" ""b""
+
+def main() -> None:
+    print(make())
+", "SPY0103", "Expected end of statement");
+
+        // --- `%` is not a Sharpy string operator (never a LiteralString form) ---
+        Refuse("percent_operator_refused", @"
+def main() -> None:
+    lit: LiteralString = ""x""
+    z: LiteralString = ""fmt=%s"" % lit
+    print(z)
+", "SPY0222", "does not support operator '%'");
+
+        return cells;
+    }
+
+    public static IEnumerable<object[]> FormCells()
+    {
+        foreach (var cell in BuildFormCells())
+            yield return new object[] { cell.Name, cell };
+    }
+
+    [Theory]
+    [MemberData(nameof(FormCells))]
+    public void FormAxis_ProducesMeasuredOutcome(string name, FormCell cell)
+    {
+        var result = CompileAndExecuteWithGC(cell.Source);
+
+        if (cell.ExpectsAcceptance)
+        {
+            result.Success.Should().BeTrue(
+                $"'{name}' must be literal-derived and compile. Errors:\n"
+                + string.Join("\n", result.CompilationErrors));
+            result.StandardOutput.Should().Be(cell.ExpectedOutput,
+                $"'{name}' must print the python3-matching value");
+        }
+        else
+        {
+            result.Success.Should().BeFalse($"'{name}' must be refused (a str-typed input is not literal-derived)");
+            result.RawDiagnostics.Should().Contain(
+                d => d.Code == cell.ExpectedCode,
+                $"'{name}' expected {cell.ExpectedCode}, got: {string.Join("; ", result.RawDiagnostics.Select(d => d.Code))}");
+            string.Join("\n", result.CompilationErrors).Should().Contain(cell.ExpectedErrorSubstring!,
+                $"'{name}' error message must name the str/LiteralString mismatch");
+        }
+    }
+
+    /// <summary>The form axis is anchored to a literal so a dropped cell is not silent (same
+    /// discipline as <see cref="TwinCellCount"/>): 12 accepting + 5 must-refuse + 2 parse-refusal +
+    /// 1 `%`-refusal = 20.</summary>
+    private const int FormAxisCellCount = 20;
+
+    [Fact]
+    public void FormAxisHasTheDeclaredCellCount()
+    {
+        BuildFormCells().Should().HaveCount(FormAxisCellCount,
+            "every form cell added to BuildFormCells must raise this literal (§ totality anchored to literals)");
     }
 
     #endregion
