@@ -1,0 +1,15 @@
+# A generator's return annotation IS the element type (generators.md Sec Return Type Annotation,
+# #1850, Design Decision 9) — `-> Iterator[int]` names the PRODUCER, not the yielded element, for
+# `yield` and `yield from` alike. The refusal steers to the correct spelling rather than accepting
+# a second one (two spellings = the anti-pattern table).
+def g() -> Iterator[int]:
+    yield 1
+
+
+def h() -> Iterator[int]:
+    yield from [1, 2]
+
+
+def main() -> None:
+    print(list(g()))
+    print(list(h()))

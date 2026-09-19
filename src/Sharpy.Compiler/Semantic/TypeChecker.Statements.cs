@@ -1233,7 +1233,8 @@ internal partial class TypeChecker
                 if (!IsAssignable(elementType, _currentFunctionReturnType))
                 {
                     AddError(
-                        $"'yield from' element type '{elementType.GetDisplayName()}' is not assignable to declared return type '{_currentFunctionReturnType.GetDisplayName()}'",
+                        $"'yield from' element type '{elementType.GetDisplayName()}' is not assignable to declared return type '{_currentFunctionReturnType.GetDisplayName()}'"
+                            + GeneratorReturnSteer(elementType, _currentFunctionReturnType),
                         yieldStmt.LineStart, yieldStmt.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: yieldStmt.Span);

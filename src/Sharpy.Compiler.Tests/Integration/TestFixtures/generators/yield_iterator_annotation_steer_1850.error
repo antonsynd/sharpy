@@ -1,0 +1,2 @@
+Yielded type 'int32' is not assignable to declared return type 'Iterator[int32]' — a generator's return annotation is its element type: write '-> int32' @6:5
+'yield from' element type 'int32' is not assignable to declared return type 'Iterator[int32]' — a generator's return annotation is its element type: write '-> int32' @10:5

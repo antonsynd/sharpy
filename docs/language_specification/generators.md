@@ -73,6 +73,17 @@ def fibonacci(n: int) -> int:
 | `__iter__` method | `-> T` | `IEnumerator<T>` |
 | `__reversed__` method | `-> T` | `IEnumerator<T>` |
 
+The annotation is the **element**, never the producer that wraps it — writing
+`Iterator[T]`/`IEnumerable[T]`/`IEnumerator[T]` as a generator's own return type is a mistyped
+store, for `yield` and `yield from` alike, and is refused with a steer to the correct spelling:
+
+<!-- spec-sweep: error SPY0220 -->
+```python
+# SPY0220 — a generator's return annotation is its element type; write `-> int`
+def g() -> Iterator[int]:
+    yield 1
+```
+
 ## Early Termination
 
 A bare `return` (without a value) terminates the generator early:

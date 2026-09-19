@@ -612,7 +612,8 @@ internal partial class TypeChecker
                 => $"Cannot return type '{value}' from function expecting '{target}'",
 
             StorePosition.Yield
-                => $"Yielded type '{value}' is not assignable to declared return type '{target}'",
+                => $"Yielded type '{value}' is not assignable to declared return type '{target}'"
+                    + GeneratorReturnSteer(valueType, targetType),
 
             StorePosition.ParameterDefault
                 => $"Default value type '{value}' is not assignable to parameter type '{target}'",
@@ -661,6 +662,30 @@ internal partial class TypeChecker
 
             _ => $"Cannot assign type '{value}' to '{target}'",
         };
+    }
+
+    /// <summary>
+    /// The steer appended to a generator's yield/yield-from mismatch when the DECLARED return names
+    /// a PRODUCER wrapping its element (<c>Iterator[E]</c>/<c>IEnumerable[E]</c>/<c>IEnumerator[E]</c>)
+    /// instead of the element itself (Design Decision 9, #1850): <c>generators.md</c>'s own rule is
+    /// that the return annotation IS the element, for <c>yield</c> and <c>yield from</c> alike —
+    /// <c>-&gt; Iterator[int]: yield 5</c> is a mistyped store, not a genuinely different mismatch.
+    /// Empty when the declared type is not such a wrapper, or the yielded value would not even fit
+    /// the wrapped element (then it IS a genuinely different mismatch, and no spelling is steered
+    /// toward). Data-level <see cref="SemanticType.IsAssignableTo"/> is enough here — this is prose,
+    /// not a gate, so the checker's fuller binding-aware <c>IsAssignable</c> is not needed.
+    /// </summary>
+    private static string GeneratorReturnSteer(SemanticType yieldedOrElementType, SemanticType declaredReturnType)
+    {
+        if (declaredReturnType is GenericType { TypeArguments.Count: 1 } producer
+            && Array.IndexOf(IterableElementDecider.ProducerElementRoster, producer.Name) >= 0
+            && yieldedOrElementType.IsAssignableTo(producer.TypeArguments[0]))
+        {
+            return " — a generator's return annotation is its element type: write "
+                + $"'-> {producer.TypeArguments[0].GetDisplayName()}'";
+        }
+
+        return string.Empty;
     }
 
     /// <summary>
