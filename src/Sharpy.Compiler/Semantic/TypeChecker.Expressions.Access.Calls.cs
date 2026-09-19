@@ -6221,16 +6221,34 @@ internal partial class TypeChecker
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
         TypeSymbol? typeSymbol;
-        List<SemanticType>? typeArgs = null;
+        Func<SemanticType, SemanticType>? typeSubstitution = null;
         if (calleeType is UserDefinedType { Symbol: { } udt })
         {
             typeSymbol = udt;
         }
         else if (calleeType is GenericType)
         {
-            var (resolved, resolvedTypeArgs) = ResolveBuiltinTypeInfo(calleeType);
-            typeSymbol = resolved;
-            typeArgs = resolvedTypeArgs;
+            // The host view FIRST (#1859): a GenericType naming a USER declaration (`C[int]`) asks
+            // its own __call__, substituted through its own type arguments — ResolveBuiltinTypeInfo
+            // only ever asks the BuiltinRegistry, so a user generic's __call__ was never found
+            // (SPY0230, b01/b08). The registry arm survives as the fallback for a builtin
+            // __call__-bearing type (the host view answers null for those by construction).
+            if (TryGetGenericHost(calleeType) is { } host)
+            {
+                typeSymbol = host.Definition;
+                typeSubstitution = host.Substitute;
+            }
+            else
+            {
+                var (resolved, resolvedTypeArgs) = ResolveBuiltinTypeInfo(calleeType);
+                typeSymbol = resolved;
+                if (resolvedTypeArgs != null && resolved != null && resolved.TypeParameters.Count > 0)
+                {
+                    var capturedTypeSymbol = resolved;
+                    var capturedTypeArgs = resolvedTypeArgs;
+                    typeSubstitution = t => SubstituteTypeParameters(t, capturedTypeSymbol.TypeParameters, capturedTypeArgs);
+                }
+            }
         }
         else
         {
@@ -6239,14 +6257,6 @@ internal partial class TypeChecker
 
         if (typeSymbol == null)
             return null;
-
-        Func<SemanticType, SemanticType>? typeSubstitution = null;
-        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0)
-        {
-            var capturedTypeSymbol = typeSymbol;
-            var capturedTypeArgs = typeArgs;
-            typeSubstitution = t => SubstituteTypeParameters(t, capturedTypeSymbol.TypeParameters, capturedTypeArgs);
-        }
 
         FunctionSymbol? callMethod;
         var overloads = FindDunderOverloadsInHierarchy(typeSymbol, DunderNames.Call);

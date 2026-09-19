@@ -1487,33 +1487,17 @@ internal partial class TypeChecker
         if (containerType is TupleType tuple && tuple.ElementTypes.Count > 0)
             return _typeInference.InferIterableElementType(tuple);
 
-        // Generic containers: list[T] → T, set[T] → T, dict[K,V] → K (keys)
-        if (containerType is GenericType generic && generic.TypeArguments.Count > 0)
-            return generic.TypeArguments[0];
-
-        // BuiltinType with a CLR Contains(T) method: read the parameter type (#1778).
-        if (containerType is BuiltinType builtin && builtin.ClrType != null)
+        // A user host's own __contains__ (#1859) — checked BEFORE the iterate-based arm below so a
+        // receiver declaring BOTH answers by __contains__ first, matching Python's own `in` protocol
+        // precedence. TryGetGenericHost covers a constructed generic host (GenericType) and a plain
+        // class alike (UserDefinedType, at the identity substitution) — ONE arm, not two copies.
+        // Substituted through the view: b05b's `__contains__(x: str)` names `str`, not the receiver's
+        // own first type argument.
+        var host = TryGetGenericHost(containerType);
+        if (host is { } hostView)
         {
-            var containsMethod = builtin.ClrType
-                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "Contains" && m.GetParameters().Length == 1);
-            if (containsMethod != null)
-            {
-                var paramType = TypeResolver.ClrTypeToSemanticType(containsMethod.GetParameters()[0].ParameterType);
-                if (paramType != null)
-                    return paramType;
-            }
-        }
+            var typeSymbol = hostView.Definition;
 
-        // User-defined types: look for __contains__ parameter type
-        TypeSymbol? typeSymbol = containerType switch
-        {
-            UserDefinedType udt => udt.Symbol,
-            _ => null
-        };
-
-        if (typeSymbol != null)
-        {
             // Check ProtocolMethods first (where __contains__ is registered)
             if (typeSymbol.ProtocolMethods.TryGetValue(DunderNames.Contains, out var containsMethods))
             {
@@ -1524,7 +1508,7 @@ internal partial class TypeChecker
                     var itemParam = best.Parameters.FirstOrDefault(
                         p => p.Name != Shared.PythonNames.Self);
                     if (itemParam != null)
-                        return itemParam.Type;
+                        return hostView.Substitute(itemParam.Type);
                 }
             }
 
@@ -1543,7 +1527,29 @@ internal partial class TypeChecker
                 var itemParam = containsMethod.Parameters.FirstOrDefault(
                     p => p.Name != Shared.PythonNames.Self);
                 if (itemParam != null)
-                    return itemParam.Type;
+                    return hostView.Substitute(itemParam.Type);
+            }
+        }
+
+        // Generic containers and views (list[T], set[T], dict[K,V], .keys()/.values()/.items(), and
+        // — after #1859 — a user generic host's own __iter__/__getitem__ when it has no __contains__
+        // above): ONE authority for "what does iterating/indexing this yield", shared with `for`/
+        // comprehension/etc., so `.values()`'s needle is the VALUE type and never the receiver's own
+        // first type argument (d09/d09b).
+        if (containerType is GenericType && _typeInference.InferIterableElementType(containerType) is { } elementType)
+            return elementType;
+
+        // BuiltinType with a CLR Contains(T) method: read the parameter type (#1778).
+        if (containerType is BuiltinType builtin && builtin.ClrType != null)
+        {
+            var clrContainsMethod = builtin.ClrType
+                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "Contains" && m.GetParameters().Length == 1);
+            if (clrContainsMethod != null)
+            {
+                var paramType = TypeResolver.ClrTypeToSemanticType(clrContainsMethod.GetParameters()[0].ParameterType);
+                if (paramType != null)
+                    return paramType;
             }
         }
 

@@ -1394,6 +1394,29 @@ internal class TypeInferenceService
         if (iterableType is GenericType { Name: BuiltinNames.DictValuesView } valuesView && valuesView.TypeArguments.Count == 2)
             return valuesView.TypeArguments[1];
 
+        // A user generic host's own __iter__/__getitem__ (#1859), substituted through the receiver's
+        // own type arguments — BEFORE the builtin-container TypeArguments[0] guess below, which
+        // otherwise answers the receiver's OWN first type argument for a non-generator __iter__ whose
+        // declared element is unrelated (b04: declared str, guessed int32 — the inert-fix trap this
+        // ordering exists to avoid). Scoped to GenericType: a plain UserDefinedType host already
+        // resolves correctly further down and needs no substitution (identity).
+        if (iterableType is GenericType && TypeChecker.TryGetGenericHostCore(iterableType, _symbolTable) is { } host)
+        {
+            var iterMethod = host.Definition.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
+            if (iterMethod?.ReturnType is GenericType iterReturn
+                && iterReturn.Name == BuiltinNames.Iterator
+                && iterReturn.TypeArguments.Count > 0)
+            {
+                return host.Substitute(iterReturn.TypeArguments[0]);
+            }
+
+            var hostGetitemMethod = host.Definition.Methods.FirstOrDefault(m => m.Name == DunderNames.GetItem);
+            if (hostGetitemMethod?.ReturnType is { } hostItemType && hostItemType != SemanticType.Unknown)
+            {
+                return host.Substitute(hostItemType);
+            }
+        }
+
         // Generic containers
         if (iterableType is GenericType generic && generic.TypeArguments.Count > 0)
         {
@@ -1550,6 +1573,21 @@ internal class TypeInferenceService
             }
         }
 
+        // A user generic host's own __reversed__ (#1859), substituted through the receiver's own
+        // type arguments. A GenericType receiver never reaches the UserDefinedType arm above, and
+        // InferIterableElementType (tried first, above) knows nothing about __reversed__.
+        if (type is GenericType && TypeChecker.TryGetGenericHostCore(type, _symbolTable) is { } host)
+        {
+            var reversedMethod = ProtocolMembership.FindDunderInChain(
+                host.Definition, DunderNames.Reversed);
+            if (reversedMethod?.ReturnType is { } returnType
+                && returnType != SemanticType.Unknown
+                && returnType != SemanticType.Void)
+            {
+                return host.Substitute(returnType);
+            }
+        }
+
         return null;
     }
 
@@ -1564,6 +1602,20 @@ internal class TypeInferenceService
         // OptionalType (T?) is intentionally NOT unwrapped: it is strict and the ProtocolValidator
         // reports an actionable narrow/unwrap error instead.
         container = UnwrapNullable(container);
+
+        // A user generic host's own __getitem__ (#1859), substituted through the receiver's own type
+        // arguments — BEFORE the builtin-container TypeArguments[0] guess below, which otherwise
+        // answers the receiver's own first type argument regardless of the declared return (b06:
+        // declared str, guessed int32). Scoped to GenericType: a plain UserDefinedType host already
+        // resolves correctly further down (identity substitution, so no separate arm is needed).
+        if (container is GenericType && TypeChecker.TryGetGenericHostCore(container, _symbolTable) is { } host
+            && (host.Definition.OperatorMethods.TryGetValue(DunderNames.GetItem, out var hostGetItemMethods)
+                || host.Definition.ProtocolMethods.TryGetValue(DunderNames.GetItem, out hostGetItemMethods)))
+        {
+            var bestHostOverload = FindBestOverload(hostGetItemMethods, index, container);
+            if (bestHostOverload != null)
+                return host.Substitute(bestHostOverload.ReturnType);
+        }
 
         // Generic containers
         if (container is GenericType generic)
