@@ -36,7 +36,7 @@ Read the entire contents of the file.
 
 Close the file, deleting it if delete is True.
 
-### `tempfile.enter() -> NamedTemporaryFile`
+### `tempfile.enter() -> Sharpy.TempfileModule.NamedTemporaryFile`
 
 ### `tempfile.exit()`
 
@@ -64,6 +64,6 @@ Read the entire contents of the spooled file.
 
 Close the spooled file, deleting any on-disk file.
 
-### `tempfile.enter() -> SpooledTemporaryFile`
+### `tempfile.enter() -> Sharpy.TempfileModule.SpooledTemporaryFile`
 
 ### `tempfile.exit()`

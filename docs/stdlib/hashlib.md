@@ -27,46 +27,46 @@ Return the hex-encoded string of the hash digest.
 
 Return the raw hash digest as a list of integers (byte values 0-255).
 
-### `hashlib.copy() -> HashObject`
+### `hashlib.copy() -> Sharpy.HashlibModule.HashObject`
 
 Return a copy of the hash object with the same accumulated data.
 
-### `hashlib.md5(data: str = "") -> HashObject`
+### `hashlib.md5(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for MD5, optionally initialized with data.
 
-### `hashlib.sha1(data: str = "") -> HashObject`
+### `hashlib.sha1(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA-1, optionally initialized with data.
 
-### `hashlib.sha256(data: str = "") -> HashObject`
+### `hashlib.sha256(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA-256, optionally initialized with data.
 
-### `hashlib.sha384(data: str = "") -> HashObject`
+### `hashlib.sha384(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA-384, optionally initialized with data.
 
-### `hashlib.sha512(data: str = "") -> HashObject`
+### `hashlib.sha512(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA-512, optionally initialized with data.
 
-### `hashlib.sha224(data: str = "") -> HashObject`
+### `hashlib.sha224(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA-224, optionally initialized with data.
 
-### `hashlib.sha3256(data: str = "") -> HashObject`
+### `hashlib.sha3256(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA3-256, optionally initialized with data.
 
-### `hashlib.sha3512(data: str = "") -> HashObject`
+### `hashlib.sha3512(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for SHA3-512, optionally initialized with data.
 
-### `hashlib.blake2b(data: str = "") -> HashObject`
+### `hashlib.blake2b(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for BLAKE2b, optionally initialized with data.
 
-### `hashlib.blake2s(data: str = "") -> HashObject`
+### `hashlib.blake2s(data: str = "") -> Sharpy.HashlibModule.HashObject`
 
 Return a new hash object for BLAKE2s, optionally initialized with data.

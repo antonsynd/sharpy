@@ -70,7 +70,7 @@ Return a mapping object representing the string environment.
 
 Test whether a path exists.
 
-### `os.stat(path: str) -> StatResult`
+### `os.stat(path: str) -> Sharpy.OsModule.StatResult`
 
 Perform the equivalent of a stat() system call on the given path.
 

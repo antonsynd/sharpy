@@ -8,15 +8,15 @@ import re
 
 ## Functions
 
-### `re.search(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
+### `re.search(s: str, pos: int = 0, endpos: int | None = None) -> Sharpy.ReModule.MatchResult | None`
 
 Scan through string looking for the first match.
 
-### `re.match(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
+### `re.match(s: str, pos: int = 0, endpos: int | None = None) -> Sharpy.ReModule.MatchResult | None`
 
 Try to apply the pattern at the start of the string.
 
-### `re.fullmatch(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
+### `re.fullmatch(s: str, pos: int = 0, endpos: int | None = None) -> Sharpy.ReModule.MatchResult | None`
 
 Try to apply the pattern to the entire string.
 
@@ -24,7 +24,7 @@ Try to apply the pattern to the entire string.
 
 Return all non-overlapping matches as a list.
 
-### `re.finditer(s: str, pos: int = 0, endpos: int | None = None) -> list[MatchResult]`
+### `re.finditer(s: str, pos: int = 0, endpos: int | None = None) -> list[Sharpy.ReModule.MatchResult]`
 
 Return a list of MatchResult objects over all non-overlapping matches.
 
@@ -32,7 +32,7 @@ Return a list of MatchResult objects over all non-overlapping matches.
 
 Return the string obtained by replacing occurrences using a string.
 
-### `re.sub(repl: (MatchResult) -> str, s: str, count: int = 0) -> str`
+### `re.sub(repl: (Sharpy.ReModule.MatchResult) -> str, s: str, count: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a callable.
 
@@ -40,7 +40,7 @@ Return the string obtained by replacing occurrences using a callable.
 
 Like sub(), but returns (new_string, number_of_subs_made).
 
-### `re.subn(repl: (MatchResult) -> str, s: str, count: int = 0) -> tuple[str, int]`
+### `re.subn(repl: (Sharpy.ReModule.MatchResult) -> str, s: str, count: int = 0) -> tuple[str, int]`
 
 Like sub() with callable, but returns (new_string, number_of_subs_made).
 
@@ -80,19 +80,19 @@ Returns (start, end) for the matched group.
 
 Return the string obtained by doing backslash substitution on the template.
 
-### `re.compile(pattern: str, flags: int = 0) -> Pattern`
+### `re.compile(pattern: str, flags: int = 0) -> Sharpy.ReModule.Pattern`
 
 Compile a regular expression pattern into a Pattern object.
 
-### `re.search(pattern: str, s: str, flags: int = 0) -> MatchResult | None`
+### `re.search(pattern: str, s: str, flags: int = 0) -> Sharpy.ReModule.MatchResult | None`
 
 Scan through string looking for the first match.
 
-### `re.match(pattern: str, s: str, flags: int = 0) -> MatchResult | None`
+### `re.match(pattern: str, s: str, flags: int = 0) -> Sharpy.ReModule.MatchResult | None`
 
 Try to apply the pattern at the start of the string.
 
-### `re.fullmatch(pattern: str, s: str, flags: int = 0) -> MatchResult | None`
+### `re.fullmatch(pattern: str, s: str, flags: int = 0) -> Sharpy.ReModule.MatchResult | None`
 
 Try to apply the pattern to the entire string.
 
@@ -100,7 +100,7 @@ Try to apply the pattern to the entire string.
 
 Return all non-overlapping matches of pattern in string.
 
-### `re.finditer(pattern: str, s: str, flags: int = 0) -> list[MatchResult]`
+### `re.finditer(pattern: str, s: str, flags: int = 0) -> list[Sharpy.ReModule.MatchResult]`
 
 Return a list of match objects over all non-overlapping matches.
 
@@ -108,7 +108,7 @@ Return a list of match objects over all non-overlapping matches.
 
 Return the string obtained by replacing occurrences.
 
-### `re.sub(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> str`
+### `re.sub(pattern: str, repl: (Sharpy.ReModule.MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a callable.
 
@@ -116,7 +116,7 @@ Return the string obtained by replacing occurrences using a callable.
 
 Like sub(), but returns (new_string, number_of_subs_made).
 
-### `re.subn(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]`
+### `re.subn(pattern: str, repl: (Sharpy.ReModule.MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]`
 
 Like sub() with callable, but returns (new_string, number_of_subs_made).
 
