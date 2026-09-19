@@ -152,14 +152,26 @@ internal static class SynthesisAnalyzer
         // __reversed__ → IReverseEnumerable<T>. A generator's annotation IS the element; a
         // non-generator's names the PRODUCER (Iterator[T]/IEnumerator[T]/IEnumerable[T]) and must be
         // unpeeled (#1832) — before this, a non-generator __reversed__ synthesized
-        // IReverseEnumerable[Iterator[T]] (double-wrapped, c02).
+        // IReverseEnumerable[Iterator[T]] (double-wrapped, c02). A non-generator, non-yield
+        // __reversed__ returning something else (e.g. a bare `int`) is a plain method, not an
+        // iteration producer, and must stay a no-row shape — the SAME gate the __iter__ arm below
+        // already applies (isGenerator || isRecognizedProducer). Without it, `-> int: return
+        // self.items[0]` synthesized `IReverseEnumerable<int>` with `GetReverseEnumerator()`
+        // returning an `int` where an `IEnumerator<int>` was declared (CS0029 behind SPY0908) the
+        // moment ANY consumer (a slot, an explicit interface reference) named the interface, rather
+        // than the clean SPY0220 "not that interface" refusal the Iter side gets for the identical
+        // shape (sibling cell of #1832, found writing this matrix — not a separate mechanism).
         if (dunders.TryGetValue(DunderNames.Reversed, out var reversedFunc))
         {
             var isGenerator = StatementWalker.Any(reversedFunc.Body, stmt => stmt is YieldStatement);
             var annotation = reversedFunc.ReturnType ?? new TypeAnnotation { Name = "object" };
-            var typeArg = IterableElementDecider.UnpeelProducerAnnotation(annotation, isGenerator);
-            result.Add(("IReverseEnumerable", "Sharpy",
-                ImmutableArray.Create(typeArg), DunderNames.Reversed, reversedFunc.LineStart, reversedFunc.ColumnStart));
+            var isRecognizedProducer = Array.IndexOf(IterableElementDecider.ProducerElementRoster, annotation.Name) >= 0;
+            if (isGenerator || isRecognizedProducer)
+            {
+                var typeArg = IterableElementDecider.UnpeelProducerAnnotation(annotation, isGenerator);
+                result.Add(("IReverseEnumerable", "Sharpy",
+                    ImmutableArray.Create(typeArg), DunderNames.Reversed, reversedFunc.LineStart, reversedFunc.ColumnStart));
+            }
         }
 
         // __next__ → IEnumerator<T>; __next__ + __iter__ → IEnumerable<T>

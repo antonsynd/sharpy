@@ -98,6 +98,41 @@ public class IterableElementDeciderConformanceTests : IntegrationTestBase
         IterableElementDecider.UnpeelProducerType(resolvedType, isGenerator: false).Should().Be(resolvedType);
     }
 
+    /// <summary>
+    /// An UNANNOTATED generator's resolved <see cref="FunctionSymbol.ReturnType"/> is
+    /// <see cref="SemanticType.Void"/> (<c>TypeChecker.ResolveReturnType</c> defaults every
+    /// unannotated function to Void) — not the "object" <see cref="SynthesisAnalyzer"/> substitutes
+    /// for a null AST annotation, at the AST level, before type checking ever runs. Left as Void
+    /// (or Unknown, defensively — belt-and-suspenders for the marker TypeInferenceService itself
+    /// uses for "nothing resolved"), a route consumer (<c>list()</c>/<c>reversed()</c>) would refuse
+    /// a receiver whose interface synthesis already put
+    /// <c>IEnumerable[object]</c>/<c>IReverseEnumerable[object]</c> on it — the two entry points
+    /// disagreeing is exactly what this decider exists to prevent.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]  // Void: what ResolveReturnType actually produces for an unannotated function
+    [InlineData(false)] // Unknown: defensive — never observed in practice, but must not slip through
+    public void Generator_VoidOrUnknownResolvedType_UnpeelsToObject(bool useVoid)
+    {
+        var input = useVoid ? SemanticType.Void : SemanticType.Unknown;
+        IterableElementDecider.UnpeelProducerType(input, isGenerator: true)
+            .Should().Be(SemanticType.Object, "an unannotated generator's Void/Unknown must agree with synthesis's own object default");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NonGenerator_VoidOrUnknownResolvedType_IsReturnedUnchanged(bool useVoid)
+    {
+        // The non-generator arm has no "object" default of its own (synthesis's null-annotation
+        // fallback only ever feeds the ANNOTATION side) — an unannotated, non-generator producer
+        // return is a distinct, out-of-scope gap (not one #1832's decider answers for), so Void/Unknown
+        // must stay unchanged here rather than silently acquiring the generator arm's default too.
+        var input = useVoid ? SemanticType.Void : SemanticType.Unknown;
+        IterableElementDecider.UnpeelProducerType(input, isGenerator: false)
+            .Should().Be(input);
+    }
+
     /// <summary>The base list of the first class/struct declaration in the emitted C#.</summary>
     private static string FirstTypeBaseList(string csharp)
     {

@@ -54,6 +54,28 @@ public class FixtureExpectationSyntaxTests : FileBasedIntegrationTestsBase, IDis
     public void NegativeLine_Passes_WhenTheNamedDiagnosticIsAbsent()
         => AssertErrorFixture("SPY0220: cannot convert\n!SPY0483", Failed("SPY0220: cannot convert"));
 
+    /// <summary>
+    /// #1827's own positive control: nine <c>!SPY0908</c> sidecars in the corpus were green BY
+    /// CONSTRUCTION before #1868, because no fixture had ever actually compiled a program that
+    /// emitted SPY0908 — <c>Diagnostic.ToString()</c> never contains that string regardless of
+    /// what the program does, so the absence assertion could not distinguish "the ICE is gone"
+    /// from "the channel never carried the string" (<c>collections/collection_constructor_unknown</c>
+    /// was the fixture that finally exercised it, and #1868 fixed it). This synthetic result DOES
+    /// carry a genuine SPY0908 diagnostic, so <c>!SPY0908</c> must go red against it — the check
+    /// this class of sidecar has always needed and never had.
+    /// </summary>
+    [Fact]
+    public void NegativeLine_Fails_WhenSPY0908IsPresent()
+    {
+        var thrown = Assert.ThrowsAny<XunitException>(() =>
+            AssertErrorFixture(
+                "!SPY0908",
+                Failed("SPY0908: internal error: generated C# failed to compile "
+                    + "(CS0305: Using the generic type 'List<T>' requires 1 type arguments)")));
+
+        Assert.Contains("SPY0908", thrown.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void NegativeLine_Fails_WhenTheNamedDiagnosticIsPresent()
     {

@@ -64,7 +64,18 @@ internal static class IterableElementDecider
     public static SemanticType UnpeelProducerType(SemanticType type, bool isGenerator)
     {
         if (isGenerator)
-            return type;
+        {
+            // An UNANNOTATED generator's resolved ReturnType is Void (TypeChecker.ResolveReturnType
+            // defaults every unannotated function to Void — Unknown never survives that call), not
+            // "object". SynthesisAnalyzer's own default for the SAME unannotated case is applied at
+            // the AST level, before type checking (`?? new TypeAnnotation { Name = "object" }`), so
+            // it never sees Void at all. Left unhandled here, a route consumer (list()/reversed())
+            // would refuse a receiver whose interface synthesis already put
+            // IEnumerable[object]/IReverseEnumerable[object] on it — the two entry points agreeing is
+            // this decider's whole point, so Void (and Unknown, defensively) gets the same "object"
+            // default synthesis already committed to.
+            return type == SemanticType.Void || type == SemanticType.Unknown ? SemanticType.Object : type;
+        }
 
         if (type is GenericType { TypeArguments.Count: 1 } generic
             && Array.IndexOf(ProducerElementRoster, generic.Name) >= 0)

@@ -188,13 +188,18 @@ class D(B):
 def main():
     pass", "'IEquatable[D]' (synthesized via __eq__)", "'IEquatable[B]' (inherited from B, synthesized via __eq__)" },
 
+        // Non-generator __reversed__ must NAME a producer (Iterator[T]) to synthesize at all (#1832
+        // parity with __iter__'s own gate) — a bare `-> int: return 1` is a plain method, not an
+        // iteration producer, and synthesizes nothing, so this cell uses Iterator[T] on both arms to
+        // keep exercising "two DIFFERENT instantiations via inheritance" rather than "neither
+        // implements the interface at all".
         new object[] { "Synthesized_Reversed_BaseDerived", @"class B:
-    def __reversed__(self) -> int:
-        return 1
+    def __reversed__(self) -> Iterator[int]:
+        return iter([1])
 
 class D(B):
-    def __reversed__(self) -> str:
-        return ""a""
+    def __reversed__(self) -> Iterator[str]:
+        return iter([""a""])
 
 def main():
     pass", "'IReverseEnumerable[str]' (synthesized via __reversed__)", "'IReverseEnumerable[int32]' (inherited from B, synthesized via __reversed__)" },

@@ -1,0 +1,6 @@
+# c23 (#1868): a non-iterable single argument to a builtin collection constructor is refused BY
+# NAME even when a SLOT is present — before the fix, the _expectedType arm silently supplied the
+# slot's type arguments regardless of iterability, so this printed `[]` instead of refusing.
+def main() -> None:
+    xs: list[int] = list(42)
+    print(xs)

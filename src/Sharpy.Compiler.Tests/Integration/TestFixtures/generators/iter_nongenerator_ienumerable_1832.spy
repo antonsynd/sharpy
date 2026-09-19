@@ -1,0 +1,17 @@
+# c03/c43 (#1832): a non-generator __iter__ -> Iterator[int] synthesizes IEnumerable[int] — the
+# receiver is assignable to an IEnumerable[int] SLOT and list(x) reads the emitter's bridge.
+class Bag:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [1, 2]
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.items)
+
+
+def main() -> None:
+    e: IEnumerable[int] = Bag()
+    for x in e:
+        print(x)
+    print(list(Bag()))

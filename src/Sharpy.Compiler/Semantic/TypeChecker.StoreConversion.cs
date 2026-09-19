@@ -590,7 +590,7 @@ internal partial class TypeChecker
     /// arm is the one that reads it: a lambda body refused at an argument position names the callee
     /// and the argument, which is the whole of #1789.
     /// </param>
-    private static string FormatStoreError(
+    private string FormatStoreError(
         StorePosition position,
         SemanticType valueType,
         SemanticType targetType,
@@ -672,14 +672,16 @@ internal partial class TypeChecker
     /// <c>-&gt; Iterator[int]: yield 5</c> is a mistyped store, not a genuinely different mismatch.
     /// Empty when the declared type is not such a wrapper, or the yielded value would not even fit
     /// the wrapped element (then it IS a genuinely different mismatch, and no spelling is steered
-    /// toward). Data-level <see cref="SemanticType.IsAssignableTo"/> is enough here — this is prose,
-    /// not a gate, so the checker's fuller binding-aware <c>IsAssignable</c> is not needed.
+    /// toward). Routes through the checker's one assignability authority, <c>IsAssignable</c>
+    /// (Decision 4, #1701) — the same predicate the yield/yield-from callers just used to decide the
+    /// mismatch itself, rather than a second, narrower answer from data-level
+    /// <see cref="SemanticType.IsAssignableTo"/>.
     /// </summary>
-    private static string GeneratorReturnSteer(SemanticType yieldedOrElementType, SemanticType declaredReturnType)
+    private string GeneratorReturnSteer(SemanticType yieldedOrElementType, SemanticType declaredReturnType)
     {
         if (declaredReturnType is GenericType { TypeArguments.Count: 1 } producer
             && Array.IndexOf(IterableElementDecider.ProducerElementRoster, producer.Name) >= 0
-            && yieldedOrElementType.IsAssignableTo(producer.TypeArguments[0]))
+            && IsAssignable(yieldedOrElementType, producer.TypeArguments[0]))
         {
             return " — a generator's return annotation is its element type: write "
                 + $"'-> {producer.TypeArguments[0].GetDisplayName()}'";

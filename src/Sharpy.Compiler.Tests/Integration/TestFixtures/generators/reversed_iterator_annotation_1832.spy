@@ -1,0 +1,18 @@
+# c02/c02c (#1832): a non-generator __reversed__ -> Iterator[int] synthesizes
+# IReverseEnumerable[int] (element int, never the double-wrapped Iterator[int]), and the emitted
+# GetReverseEnumerator() reads that same materialized element — not a re-derivation of the
+# annotation (Rule 2).
+class R:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [4, 5]
+
+    def __reversed__(self) -> Iterator[int]:
+        return reversed(self.items)
+
+
+def main() -> None:
+    r = R()
+    for x in reversed(r):
+        print(x)

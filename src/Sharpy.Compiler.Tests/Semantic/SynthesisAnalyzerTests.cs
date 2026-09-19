@@ -50,8 +50,10 @@ public class SynthesisAnalyzerTests
     {
         yield return new object[] { "def __len__(self) -> int:\n    return 0", "ISized", "Sharpy", Array.Empty<string>(), DunderNames.Len };
         yield return new object[] { "def __bool__(self) -> bool:\n    return True", "IBoolConvertible", "Sharpy", Array.Empty<string>(), DunderNames.Bool };
-        yield return new object[] { "def __reversed__(self) -> str:\n    return \"\"", "IReverseEnumerable", "Sharpy", new[] { "str" }, DunderNames.Reversed };
-        yield return new object[] { "def __reversed__(self):\n    return \"\"", "IReverseEnumerable", "Sharpy", new[] { "object" }, DunderNames.Reversed };
+        // A non-generator __reversed__ must NAME a producer (Iterator[T]/IEnumerator[T]/IEnumerable[T])
+        // to synthesize at all — parity with __iter__'s own gate (#1832; a plain `-> str: return ""`
+        // moved to EmptyShapes below, where the mirror __iter__ case already lives).
+        yield return new object[] { "def __reversed__(self) -> Iterator[str]:\n    return iter([\"\"])", "IReverseEnumerable", "Sharpy", new[] { "str" }, DunderNames.Reversed };
         yield return new object[] { "def __next__(self) -> int:\n    return 0", "IEnumerator", "System.Collections.Generic", new[] { "int" }, DunderNames.Next };
         yield return new object[] { "def __next__(self):\n    return 0", "IEnumerator", "System.Collections.Generic", new[] { "object" }, DunderNames.Next };
         yield return new object[] { "def __eq__(self, other: Point) -> bool:\n    return True", "IEquatable", "System", new[] { "Point" }, DunderNames.Eq };
@@ -83,6 +85,10 @@ public class SynthesisAnalyzerTests
         yield return new object[] { "def __eq__(self) -> bool:\n    return True" };
         // __iter__ without __next__ and without a yield is a plain method, not a generator.
         yield return new object[] { "def __iter__(self) -> int:\n    return 0" };
+        // Mirror for __reversed__ (#1832 parity): a non-generator, non-yield __reversed__ returning
+        // something that does not NAME a producer is a plain method too — annotated or not.
+        yield return new object[] { "def __reversed__(self) -> str:\n    return \"\"" };
+        yield return new object[] { "def __reversed__(self):\n    return \"\"" };
     }
 
     [Theory]
@@ -114,8 +120,8 @@ public class SynthesisAnalyzerTests
             "    return \"\"",
             "def __iter__(self):",
             "    return self",
-            "def __reversed__(self) -> str:",
-            "    return \"\"",
+            "def __reversed__(self) -> Iterator[str]:",
+            "    return iter([\"\"])",
             "def __bool__(self) -> bool:",
             "    return True",
             "def __len__(self) -> int:",

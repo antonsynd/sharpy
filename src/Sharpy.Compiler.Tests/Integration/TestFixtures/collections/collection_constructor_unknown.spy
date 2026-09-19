@@ -1,4 +1,5 @@
-# Test: list() with non-iterable argument falls back to Unknown type args
+# list() with a non-iterable argument used to fall back to Unknown type arguments, which reached
+# Roslyn as CS0305 (SPY0908) — the ICE #1868 fixed. Now refused by name at the constructor ring.
 def main():
     x: int = 42
     items = list(x)
