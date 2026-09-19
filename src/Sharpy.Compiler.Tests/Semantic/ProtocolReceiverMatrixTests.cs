@@ -46,9 +46,12 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
     /// <param name="Needle">A value the payload contains, for the membership route.</param>
     /// <param name="Key">The index/subscript expression body.</param>
     /// <param name="Member">A member access or method call on the receiver.</param>
+    /// <param name="HasCall">Whether the payload declares <c>__call__</c> — only <c>userclass</c>
+    /// does; the other five are refused even BARE at the <c>call</c> route (not callable at all),
+    /// which is a language rule unrelated to the Optional wrapper and N/A's that cell (#1855).</param>
     private sealed record Payload(
         string Id, string Type, string Value, bool IsStruct,
-        string Needle, string Key, string Member);
+        string Needle, string Key, string Member, bool HasCall = false);
 
     private static readonly Payload[] Payloads =
     {
@@ -57,7 +60,7 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         new("dict", "dict[str, int]", "{\"a\": 1}", false, "\"a\"", "\"a\"", "v.get(\"a\")"),
         new("bytes", "bytes", "b\"ab\"", true, "97", "0", "v.decode()"),
         new("tuple", "tuple[int, int]", "(1, 2)", true, "1", "0", "v.item1"),
-        new("userclass", "Bag", "Bag()", false, "2", "0", "v.tag()"),
+        new("userclass", "Bag", "Bag()", false, "2", "0", "v.tag()", HasCall: true),
     };
 
     private sealed record Wrapper(string Id, string Suffix);
@@ -74,11 +77,11 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
     /// <param name="StrictRefusal">
     /// The code the STRICT <c>T?</c> wrapper is refused with at this route, or <c>null</c> when the
     /// strict wrapper is not refused at all. Per route rather than one code for the matrix, because
-    /// the routes genuinely differ and pretending otherwise would need an "either code" assertion
-    /// that stops discriminating: the protocol routes say SPY0326 and name narrowing and unwrapping,
-    /// the MEMBER route says SPY0229 with the same three remedies in its message
-    /// (a divergence reported as a finding, not fixed here), and TRUTHINESS is not a refusal at all —
-    /// <c>if o:</c> on an <c>Optional</c> tests is-some by design (<c>OptionalIsSome</c>).
+    /// TRUTHINESS is genuinely not a refusal at all — <c>if o:</c> on an <c>Optional</c> tests
+    /// is-some by design (<c>OptionalIsSome</c>) — while every OTHER route says SPY0326
+    /// (<c>OptionalRequiresNarrowing</c>), including <c>member</c> and <c>call</c> (#1855: both used
+    /// to say something else — SPY0229 "has no member", SPY0230 "not callable" — for the identical
+    /// strict-Optional mistake; one vocabulary now covers every route in this matrix).
     /// </param>
     private sealed record Route(string Id, Func<Payload, string> Body, string? StrictRefusal);
 
@@ -93,7 +96,8 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
         new("index", p => $"print(v[{p.Key}])", DiagnosticCodes.Semantic.OptionalRequiresNarrowing),
         new("slice", _ => "print(v[0:1])", DiagnosticCodes.Semantic.OptionalRequiresNarrowing),
         new("truthiness", _ => "if v:\n        print(\"t\")", null),
-        new("member", p => $"print({p.Member})", DiagnosticCodes.Semantic.NullabilityViolation),
+        new("member", p => $"print({p.Member})", DiagnosticCodes.Semantic.OptionalRequiresNarrowing),
+        new("call", _ => "print(v(1))", DiagnosticCodes.Semantic.OptionalRequiresNarrowing),
     };
 
     private const string BagDeclaration = @"class Bag:
@@ -113,6 +117,9 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
 
     def __getitem__(self, index: int) -> int:
         return self.items[index]
+
+    def __call__(self, x: int) -> int:
+        return x
 
     def tag(self) -> str:
         return ""bag""
@@ -135,6 +142,10 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
 
         if (route.Id == "slice" && payload.Id == "userclass")
             return "__getitem__ over an int does not make a user class sliceable — no slice protocol";
+
+        if (route.Id == "call" && !payload.HasCall)
+            return $"{payload.Id} has no __call__ — refused even BARE, unrelated to the Optional "
+                + "wrapper this matrix is about";
 
         return null;
     }
@@ -212,6 +223,43 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
             return;
         }
 
+        // call×userclass (#1918, sibling defect found adding this route for #1855): unlike EVERY
+        // other route in this matrix, the loose `T | None` wrapper does NOT dispatch `__call__` like
+        // bare `T` — TryResolveCallableObject only handles UserDefinedType/GenericType calleeType, so
+        // a NullableType-wrapped receiver falls through to "not callable" (SPY0230) instead of being
+        // unwrapped first. Out of #1855's own scope (that issue is the STRICT family's vocabulary,
+        // not making the LOOSE wrapper callable at all) — filed, not fixed here. Kept LIVE rather
+        // than silently N/A'd: this positively asserts the CURRENT (broken) behavior, so a fix lands
+        // as a RED here demanding the cell be corrected, not a silent pass that never prompts removal.
+        if (payloadId == "userclass" && routeId == "call")
+        {
+            var callBareSource = Program(payload, Wrappers[0], route);
+            var callBare = CompileAndExecute(callBareSource);
+            callBare.Success.Should().BeTrue(
+                "the BARE control must run before the wrapper cells mean anything: "
+                + string.Join("; ", callBare.CompilationErrors) + "\n" + callBareSource);
+
+            var callLooseSource = Program(payload, Wrappers[1], route);
+            var callLoose = CompileAndExecute(callLooseSource);
+            callLoose.Success.Should().BeFalse(
+                "#1918: loose Bag | None does NOT yet dispatch __call__ like bare Bag — remove this "
+                + "branch and restore the normal loose-must-run assertion once #1918 is fixed\n" + callLooseSource);
+            callLoose.RawDiagnostics.Should().Contain(
+                d => d.Code == DiagnosticCodes.Semantic.NotCallable,
+                "#1918's CURRENT symptom is SPY0230 \"not callable\"; got: "
+                + string.Join(" | ", callLoose.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+
+            var callStrictSource = Program(payload, Wrappers[2], route);
+            var callStrict = CompileAndExecute(callStrictSource);
+            callStrict.Success.Should().BeFalse(
+                $"strict `{payload.Type}?` must be refused at call, not dereferenced\n" + callStrictSource);
+            callStrict.RawDiagnostics.Should().ContainSingle(
+                d => d.Code == route.StrictRefusal,
+                "the strict family is refused BY NAME (#1855), exactly once, at call; got: "
+                + string.Join(" | ", callStrict.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+            return;
+        }
+
         var bareSource = Program(payload, Wrappers[0], route);
         var bare = CompileAndExecute(bareSource);
         bare.Success.Should().BeTrue(
@@ -242,9 +290,12 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
 
         strict.Success.Should().BeFalse(
             $"strict `{payload.Type}?` must be refused at {routeId}, not dereferenced\n" + strictSource);
-        strict.RawDiagnostics.Should().Contain(
+        // #1855: exactly ONE diagnostic per strict access, not just "contains the right code" — g07
+        // used to double-report (SPY0229 here + SPY0203 from the extension-method steer) for the
+        // IDENTICAL member access, and a mere Contain would not have caught that regression.
+        strict.RawDiagnostics.Should().ContainSingle(
             d => d.Code == route.StrictRefusal,
-            $"the strict family is refused BY NAME ({route.StrictRefusal}) at {routeId}; got "
+            $"the strict family is refused BY NAME ({route.StrictRefusal}), exactly once, at {routeId}; got "
             + string.Join(" | ", strict.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}"))
             + "\n" + strictSource);
     }
@@ -355,14 +406,17 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
             "the wrapper axis is exactly the three families");
 
         Routes.Select(r => r.Id).Should().BeEquivalentTo(
-            new[] { "len", "in", "iterate", "comprehension", "index", "slice", "truthiness", "member" },
+            new[] { "len", "in", "iterate", "comprehension", "index", "slice", "truthiness", "member", "call" },
             "the route axis is every protocol route a receiver reaches");
 
         Payloads.Should().Contain(p => p.IsStruct,
             "the struct column is the discriminating one — without it the matrix cannot see #1792");
 
-        Routes.Where(r => r.StrictRefusal != null).Should().HaveCount(7,
-            "seven of the eight routes refuse the strict wrapper; truthiness is the exception and "
+        // Corrected from the plan's own estimate (9): eight of the NINE routes refuse the strict
+        // wrapper (every route except truthiness); adding exactly ONE new route (call) to the prior
+        // seven non-null (len/in/iterate/comprehension/index/slice/member) makes eight, not nine.
+        Routes.Where(r => r.StrictRefusal != null).Should().HaveCount(8,
+            "eight of the nine routes refuse the strict wrapper; truthiness is the exception and "
             + "says so explicitly rather than by omission");
 
         var naCells = BuildNaCells();
@@ -370,13 +424,13 @@ public class ProtocolReceiverMatrixTests : IntegrationTestBase
             "every N/A cell states why (>= 20 chars)");
 
         var live = Cells.Count();
-        (live + naCells.Length).Should().Be(48,
-            $"6 payloads x 8 routes = 48 cells; live ({live}) + N/A ({naCells.Length})");
+        (live + naCells.Length).Should().Be(54,
+            $"6 payloads x 9 routes = 54 cells; live ({live}) + N/A ({naCells.Length})");
 
-        naCells.Should().HaveCount(2,
-            "two cells are excluded, each naming a language rule: dict slicing and user-class "
-            + "slicing — tuple truthiness (#1861) is no longer N/A now that a fixed-arity tuple's "
-            + "refusal is the final, correct behavior rather than an open issue; its cell is LIVE, "
-            + "asserted by its own branch in LooseWrapperDispatchesLikeBareAndStrictIsRefusedByName");
+        naCells.Should().HaveCount(7,
+            "dict slicing and user-class slicing (a language rule each), plus FIVE payloads with no "
+            + "__call__ at the new call route (str/list/dict/bytes/tuple — not callable at all, "
+            + "refused even BARE, unrelated to the Optional wrapper this matrix is about); only "
+            + "userclass is live at call");
     }
 }

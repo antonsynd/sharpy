@@ -1,6 +1,7 @@
-# T? (Optional) is STRICT: protocol operations raise SPY0326 and direct member
-# access raises SPY0229. The diagnostics suggest narrowing (if x is not None:),
-# unwrapping, or the ?. / Optional API. See #882.
+# T? (Optional) is STRICT: protocol operations AND direct member access both raise SPY0326 (#1855
+# unified member access into the SAME vocabulary the protocol routes already used — it used to be
+# SPY0229, a different wording for the identical mistake). The diagnostics suggest narrowing
+# (if x is not None:), unwrapping, or the ?. / Optional API. See #882, #1855.
 def main() -> None:
     s: str? = Some("hello")
     print(len(s))

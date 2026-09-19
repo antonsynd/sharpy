@@ -1,0 +1,23 @@
+# #1855: the strict Optional (T?) is refused with the SAME SPY0326 vocabulary at the CALL route,
+# not the old SPY0230 ("not callable") — a strict Optional wrapping a __call__-declaring class is
+# a narrowing question, not a "this value can never be called" question.
+class K:
+    def __call__(self, x: int) -> int:
+        return x + 1
+
+class J:
+    def __call__(self, x: int) -> int:
+        return x + 2
+
+class Holder:
+    j: J?
+
+    def __init__(self) -> None:
+        self.j = Some(J())
+
+def main() -> None:
+    k: K? = Some(K())
+    print(k(1))
+
+    h = Holder()
+    print(h.j(1))
