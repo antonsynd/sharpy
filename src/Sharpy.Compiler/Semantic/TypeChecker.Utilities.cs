@@ -1085,14 +1085,27 @@ internal partial class TypeChecker
         // symbol table, the SemanticBinding and the TypeResolver, none of which a SemanticType
         // record can reach; a second, weaker hierarchy walk over there would be the parallel-site
         // hazard (#1145), not a fix.
-        if (AsInstantiatedGeneric(source) is { } sourceGeneric && target is GenericType targetGeneric)
+        // Target-side symmetry (#1865): a GenericType target already gets a variance walk above;
+        // a non-generic interface or class target (ISized, IBoolConvertible, an explicit
+        // non-generic user interface) asks the identical question through the same zero-argument
+        // view AsInstantiatedGeneric already gives a non-generic SOURCE (#1244) — so
+        // `G[A]` reaches every interface its declaration reaches, generic or not, without a
+        // second, weaker walk living on the data-level UserDefinedType (the #1145 hazard).
+        if (AsInstantiatedGeneric(source) is { } sourceGeneric)
         {
-            var varianceResult = IsGenericAssignableWithVariance(sourceGeneric, targetGeneric);
-            if (varianceResult == true)
-                return true;
-            if (varianceResult == false)
-                return false;
-            // null → no opinion, continue to CLR fallback
+            var targetGeneric = target as GenericType
+                ?? (target is UserDefinedType { Symbol.TypeKind: TypeKind.Interface or TypeKind.Class }
+                    ? AsInstantiatedGeneric(target)
+                    : null);
+            if (targetGeneric != null)
+            {
+                var varianceResult = IsGenericAssignableWithVariance(sourceGeneric, targetGeneric);
+                if (varianceResult == true)
+                    return true;
+                if (varianceResult == false)
+                    return false;
+                // null → no opinion, continue to CLR fallback
+            }
         }
 
         // CLR fallback: when both types have CLR metadata (e.g., module-discovered types like

@@ -1,0 +1,64 @@
+# A constructed generic host `G[A]` is assignable to every interface its declaration
+# reaches — explicit or synthesized, generic OR non-generic — through substitution (#1865).
+# Before the fix, `IsAssignable`'s variance walk entered only when the TARGET was itself a
+# GenericType; a non-generic interface target never got the same zero-argument view that a
+# non-generic SOURCE already had (#1244), so every cell below drew SPY0220.
+#
+# a01 — the core cell: a synthesized non-generic interface (ISized, from __len__).
+class Box[T]:
+    _items: list[T]
+
+    def __init__(self, n: int) -> None:
+        self._items = []
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+# a17 — an EXPLICIT non-generic user interface reached through a generic host's base list.
+interface IShape:
+    def area(self) -> int:
+        ...
+
+class Holder[T](IShape):
+    side: T
+
+    def __init__(self, side: T) -> None:
+        self.side = side
+
+    def area(self) -> int:
+        return 4
+
+# a19 — overlap: an explicit `(ISized)` base-list entry alongside the __len__ that would
+# synthesize the same interface anyway (one base-list entry, mirrors #1746's non-generic cell).
+class Sized[T](ISized):
+    n: int
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+# Positive control: a NON-generic class into the same synthesized interface already worked
+# before this fix (#1746) — pinned here so the two cells cannot silently drift apart.
+class Bag:
+    n: int
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+def main() -> None:
+    s: ISized = Box[int](6)
+    print(len(s))
+
+    x: IShape = Holder[int](3)
+    print(x.area())
+
+    o: ISized = Sized[int](7)
+    print(len(o))
+
+    b: ISized = Bag(42)
+    print(len(b))
