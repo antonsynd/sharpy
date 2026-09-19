@@ -18,7 +18,7 @@ internal static class GenericHostAxis
     internal sealed record Host(string Name, string Declaration, string Receiver);
 
     /// <summary>Anchored to a literal so the totality assertion cannot be vacuous against the array.</summary>
-    public const int HostCount = 6;
+    public const int HostCount = 7;
 
     public static readonly Host[] Hosts =
     {
@@ -40,5 +40,14 @@ internal static class GenericHostAxis
         new("DerivedOfGeneric",
             "class HBase[T]:\n    const K: int = 3\n\n\nclass HDerived[T](HBase[T]):\n    pass\n",
             "HDerived[int]"),
+        // The SECOND derived shape (#1865 Phase 1 Task 2): DerivedOfGeneric's base declares the
+        // member and the derived class is a bare `pass`, so the member is reached only through the
+        // INHERITED path. GenericDerived is the complement — the DERIVED class declares the member
+        // itself (own declaration, not inherited) while still deriving from another generic at its
+        // own type parameter (`E[T](G[T])`), so a consumer keyed on "does the DERIVED symbol's own
+        // Interfaces/members list carry it" is exercised too, not only the base-chain walk.
+        new("GenericDerived",
+            "class HBase2[T]:\n    pass\n\n\nclass HDerived2[T](HBase2[T]):\n    const K: int = 3\n",
+            "HDerived2[int]"),
     };
 }

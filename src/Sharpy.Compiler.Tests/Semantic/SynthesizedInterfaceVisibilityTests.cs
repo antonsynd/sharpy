@@ -16,6 +16,21 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// range's first cut emitted). Rows: all seven dunder → interface mappings; hosts: class, struct,
 /// generic <c>Box[T]</c>. Consumers that call <c>len()</c> on an interface-typed receiver are
 /// deliberately absent — that is #1808 (SPY0320), excluded from this plan.
+///
+/// <para><b>Constructed-host column (#1865, P10 Phase 1 Task 2):</b> six of the seven dunder rows
+/// gain a <c>Box[int]</c> (constructed generic host) companion cell that stores the instance in an
+/// ANNOTATED VARIABLE of the interface type — the exact shape #1865 fixed (<c>IsAssignable</c>'s
+/// target-side variance walk), distinct from the existing cells above, which pass the instance as a
+/// function PARAMETER (or, for <c>Reversed_GenericBox_ElementIsT</c> and
+/// <c>Eq_GenericBox_IEquatableOfT</c>, exercise the SUBSTITUTED ELEMENT/OPERAND TYPE — #1859's
+/// concern, not #1865's). The seventh row (non-generator <c>__iter__</c> returning <c>self</c>,
+/// <c>IterAndNext_Class_EnumerableAndEnumerator</c>'s shape) has no constructed-host companion: a
+/// generic class method cannot type its own return as <c>Box[T]</c> to return <c>self</c>
+/// (<c>Cannot return type 'Box' from function expecting 'Box[T]'</c>), and a workaround that
+/// delegates to a separate non-generic enumerator class compiles but is not recognized as
+/// <c>IEnumerable[T]</c> at all — both are #1912, a pre-existing defect unrelated to #1865, filed
+/// rather than worked around here.
+/// </para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class SynthesizedInterfaceVisibilityTests : IntegrationTestBase
@@ -23,7 +38,7 @@ public class SynthesizedInterfaceVisibilityTests : IntegrationTestBase
     public SynthesizedInterfaceVisibilityTests(ITestOutputHelper output) : base(output) { }
 
     private const int RowCount = 7;
-    private const int VisibilityCellCount = 12;
+    private const int VisibilityCellCount = 18;
     private const int OverlapCellCount = 3;
 
     /// <summary>(name, source, expected stdout, emitted base-list entry the class must carry exactly once)</summary>
@@ -200,6 +215,88 @@ def main():
 def main():
     b = Box[int](1)
     print(b == 1)", "called\nTrue\n", "System.IEquatable<T>" },
+
+        // ── Constructed-host column (#1865): Box[int] stored in an ANNOTATED VARIABLE typed as the
+        // interface — the assignability shape #1865 fixed, not a parameter or an element-type route.
+        new object[] { "Len_ConstructedBox_AssignableToISized", @"class Box[T]:
+    def __init__(self) -> None:
+        pass
+    def __len__(self) -> int:
+        return 3
+
+def main():
+    s: ISized = Box[int]()
+    print(len(s))", "3\n", "Sharpy.ISized" },
+
+        new object[] { "Bool_ConstructedBox_AssignableToIBoolConvertible", @"class Box[T]:
+    def __init__(self) -> None:
+        pass
+    def __bool__(self) -> bool:
+        return True
+
+def main():
+    s: IBoolConvertible = Box[int]()
+    print(bool(s))", "True\n", "Sharpy.IBoolConvertible" },
+
+        new object[] { "Reversed_ConstructedBox_AssignableToIReverseEnumerable", @"class Box[T]:
+    def __init__(self) -> None:
+        pass
+    def __reversed__(self) -> int:
+        yield 5
+        yield 4
+
+def main():
+    s: IReverseEnumerable[int] = Box[int]()
+    for x in reversed(s):
+        print(x)", "5\n4\n", "Sharpy.IReverseEnumerable<int>" },
+
+        new object[] { "Next_ConstructedBox_AssignableToIEnumerator", @"from System.Collections.Generic import IEnumerator
+
+class Box[T]:
+    i: int
+    def __init__(self) -> None:
+        self.i = 0
+    def __next__(self) -> int:
+        self.i = self.i + 1
+        if self.i > 2:
+            raise StopIteration()
+        return self.i
+
+def take(e: IEnumerator[int]) -> str:
+    return ""enumerator""
+
+def main():
+    s: IEnumerator[int] = Box[int]()
+    print(take(s))", "enumerator\n", "System.Collections.Generic.IEnumerator<int>" },
+
+        // The non-generator `__iter__`-returns-`self` row (IterAndNext_Class_EnumerableAndEnumerator's
+        // shape) has no constructed-host companion here — see the class doc (#1912).
+        new object[] { "GeneratorIter_ConstructedBox_AssignableToIEnumerable", @"class Box[T]:
+    def __init__(self) -> None:
+        pass
+    def __iter__(self) -> int:
+        yield 2
+        yield 4
+
+def main():
+    s: IEnumerable[int] = Box[int]()
+    total: int = 0
+    for x in s:
+        total = total + x
+    print(total)", "6\n", "System.Collections.Generic.IEnumerable<int>" },
+
+        new object[] { "Eq_ConstructedBox_AssignableToIEquatable", @"from system import IEquatable
+
+class Box[T]:
+    v: T
+    def __init__(self, v: T) -> None:
+        self.v = v
+    def __eq__(self, other: T) -> bool:
+        return self.v == other
+
+def main():
+    s: IEquatable[int] = Box[int](1)
+    print(""assignable"")", "assignable\n", "System.IEquatable<T>" },
     };
 
     [Fact]

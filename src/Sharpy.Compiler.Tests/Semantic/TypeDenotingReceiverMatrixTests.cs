@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// BracketedGeneric, TypeAlias, AliasedImport}. Member kind (7): {StaticField, StaticProperty,
 /// StaticMethod, Const, NestedType, EnumMember, Constructor}. Position (6): {Value, BoolStore,
 /// Argument, Callee, Annotation, Isinstance}. The bracketed-generic spelling is expanded over
-/// <see cref="GenericHostAxis.Hosts"/> (6 host shapes) by <see cref="BracketedGenericHost_StaticConstReads"/>.</para>
+/// <see cref="GenericHostAxis.Hosts"/> (7 host shapes) by <see cref="BracketedGenericHost_StaticConstReads"/>.</para>
 ///
 /// <para><b>Cells.</b> The curated cell list below covers every axis value at least once — the
 /// discriminating combinations of the two issues. Each LIVE cell EXECUTES (asserts stdout) or names a
@@ -211,7 +211,9 @@ public class TypeDenotingReceiverMatrixTests : IntegrationTestBase
         MemberKinds.Length.Should().Be(MemberKindCount);
         Positions.Length.Should().Be(PositionCount);
         GenericHostAxis.Hosts.Length.Should().Be(GenericHostAxis.HostCount);
-        GenericHostAxis.HostCount.Should().Be(6);
+        // Bumped 6 -> 7 when #1865 (P10 Phase 1 Task 2) added the GenericDerived host shape to the
+        // shared roster; this test picks it up automatically through HostData/BracketedGenericHost_StaticConstReads.
+        GenericHostAxis.HostCount.Should().Be(7);
 
         Spellings.Should().OnlyHaveUniqueItems();
         MemberKinds.Should().OnlyHaveUniqueItems();

@@ -4,11 +4,12 @@
 #     while len/bool/if/for/in/[] on the same receiver all worked;
 #   - a GENERIC HOST declaring __len__ was refused at `if b:` while `bool(b)` ran (the #1808
 #     divergence surviving on the host axis).
-# Two typings are NOT in this fixture because they are still red, each with its issue:
-#   - a receiver TYPED as `IEnumerable[int]` still refuses `in` (#1860);
-#   - a GENERIC host in an `ISized` SLOT (`s: ISized = Box[int](6)`) is SPY0220, while the
-#     non-generic host in the same slot runs and `len(Box[int](6))` runs — the assignability half
-#     of the host axis, #1746's residue (#1865). The ROUTE half is covered below.
+# One typing is NOT in this fixture because it is still red, with its own issue:
+#   - a receiver TYPED as `IEnumerable[int]` still refuses `in` (#1860).
+# A GENERIC host in an `ISized` SLOT (`s: ISized = Box[int](6)`) used to be SPY0220 while the
+# non-generic host in the same slot ran and `len(Box[int](6))` ran directly — the assignability
+# half of the host axis, #1746's residue. Fixed by #1865 (target-side symmetry in `IsAssignable`,
+# 6a94d26b6): the cell below now runs like every other typing in this fixture.
 # Output verified against python3 for the reversed cell (`list(reversed([1, 2]))` -> `[2, 1]`);
 # truthiness follows Python's "empty is falsy" rule through __len__.
 class Bag:
@@ -66,3 +67,8 @@ def main() -> None:
     empty: Box[int] = Box[int](0)
     if not empty:
         print("falsy")
+
+    # The #1865 cell: a constructed generic host assigned into the SYNTHESIZED, NON-GENERIC
+    # interface slot it reaches via __len__ (previously SPY0220 — see the header note).
+    g: ISized = Box[int](6)
+    print(len(g))
