@@ -173,11 +173,14 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:FileBasedIntegrationTests",
-        // The cast-steer spelling for a refused numeric pair (#1699, 94e87ff99): a switch over the
+        // The operand pair of a reported node (#1699, 94e87ff99; moved out of OperandSpellings in
+        // 414009c45 so the #1819 augmented-store arm reads the same switch): a switch over the
         // reported node's shape (binary operation / augmented assignment) that names the two
-        // operands; the NarrowWidthArithmeticMatrixTests refused cells assert the steer text for
-        // both shapes, and mutation B-M9 (steer returns null) reddens them.
-        ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandSpellings"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
+        // operands. OperandSpellings (the cast steer) and OperandValueNode (the `or`/`and` steer)
+        // both read it; the NarrowWidthArithmeticMatrixTests refused cells assert the cast-steer
+        // text for both shapes (mutation B-M9, steer returns null, reddens them) and the
+        // LogicalResultSteerMatrixTests augmented cells assert the value-node route.
+        ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandNodes"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
         // ContainsSuperExpressionInExpression/InStatement deleted (#1740): the kind-enumerating
         // super() walker is gone, replaced by the materialized OperatorLowering/RequiresInstanceImpl
         // facts RoslynEmitter.Expressions.Access.cs and RoslynEmitter.Operators.cs's
