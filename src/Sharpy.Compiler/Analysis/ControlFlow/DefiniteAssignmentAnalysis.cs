@@ -723,162 +723,162 @@ internal static class DefiniteAssignmentAnalysis
         switch (node)
         {
             case FunctionDef functionDef:
-            {
-                var inner = new HashSet<string>(shadowed);
-                foreach (var param in functionDef.Parameters)
-                    inner.Add(param.Name);
-                foreach (var bodyStmt in functionDef.Body)
-                    CollectBodyFlatBindings(bodyStmt, inner);
-
-                foreach (var param in functionDef.Parameters)
                 {
-                    if (param.DefaultValue != null)
-                        yield return (param.DefaultValue, shadowed);
+                    var inner = new HashSet<string>(shadowed);
+                    foreach (var param in functionDef.Parameters)
+                        inner.Add(param.Name);
+                    foreach (var bodyStmt in functionDef.Body)
+                        CollectBodyFlatBindings(bodyStmt, inner);
+
+                    foreach (var param in functionDef.Parameters)
+                    {
+                        if (param.DefaultValue != null)
+                            yield return (param.DefaultValue, shadowed);
+                    }
+                    foreach (var bodyStmt in functionDef.Body)
+                        yield return (bodyStmt, inner);
+                    yield break;
                 }
-                foreach (var bodyStmt in functionDef.Body)
-                    yield return (bodyStmt, inner);
-                yield break;
-            }
 
             case LambdaExpression lambda:
-            {
-                var inner = new HashSet<string>(shadowed);
-                foreach (var param in lambda.Parameters)
-                    inner.Add(param.Name);
-
-                foreach (var param in lambda.Parameters)
                 {
-                    if (param.DefaultValue != null)
-                        yield return (param.DefaultValue, shadowed);
+                    var inner = new HashSet<string>(shadowed);
+                    foreach (var param in lambda.Parameters)
+                        inner.Add(param.Name);
+
+                    foreach (var param in lambda.Parameters)
+                    {
+                        if (param.DefaultValue != null)
+                            yield return (param.DefaultValue, shadowed);
+                    }
+                    yield return (lambda.Body, inner);
+                    yield break;
                 }
-                yield return (lambda.Body, inner);
-                yield break;
-            }
 
             case ForStatement forStatement:
-            {
-                var inner = new HashSet<string>(shadowed);
-                CollectAssignedNames(forStatement.Target, inner);
+                {
+                    var inner = new HashSet<string>(shadowed);
+                    CollectAssignedNames(forStatement.Target, inner);
 
-                yield return (forStatement.Iterator, shadowed);
-                yield return (forStatement.Target, inner);
-                foreach (var bodyStmt in forStatement.Body)
-                    yield return (bodyStmt, inner);
-                foreach (var elseStmt in forStatement.ElseBody)
-                    yield return (elseStmt, inner);
-                yield break;
-            }
+                    yield return (forStatement.Iterator, shadowed);
+                    yield return (forStatement.Target, inner);
+                    foreach (var bodyStmt in forStatement.Body)
+                        yield return (bodyStmt, inner);
+                    foreach (var elseStmt in forStatement.ElseBody)
+                        yield return (elseStmt, inner);
+                    yield break;
+                }
 
             case ForClause forClause:
-            {
-                var inner = new HashSet<string>(shadowed);
-                CollectAssignedNames(forClause.Target, inner);
+                {
+                    var inner = new HashSet<string>(shadowed);
+                    CollectAssignedNames(forClause.Target, inner);
 
-                yield return (forClause.Target, inner);
-                yield return (forClause.Iterator, shadowed);
-                yield break;
-            }
+                    yield return (forClause.Target, inner);
+                    yield return (forClause.Iterator, shadowed);
+                    yield break;
+                }
 
             case ListComprehension:
             case SetComprehension:
             case DictComprehension:
             case DictSpreadComprehension:
             case GeneratorExpression:
-            {
-                var inner = new HashSet<string>(shadowed);
-                ForClause? firstForClause = null;
-                foreach (var clause in ComprehensionClausesOf(node))
                 {
-                    if (clause is not ForClause forClause)
-                        continue;
-                    firstForClause ??= forClause;
-                    CollectAssignedNames(forClause.Target, inner);
-                }
+                    var inner = new HashSet<string>(shadowed);
+                    ForClause? firstForClause = null;
+                    foreach (var clause in ComprehensionClausesOf(node))
+                    {
+                        if (clause is not ForClause forClause)
+                            continue;
+                        firstForClause ??= forClause;
+                        CollectAssignedNames(forClause.Target, inner);
+                    }
 
-                foreach (var child in node.GetChildNodes())
-                {
-                    // The FIRST for-clause's iterable is evaluated in the ENCLOSING scope
-                    // (python3: `[k for k in k]` reads the outer `k`), so it is handed the outer
-                    // set and its own ForClause arm re-adds only its own target.
-                    yield return (child, ReferenceEquals(child, firstForClause) ? shadowed : inner);
+                    foreach (var child in node.GetChildNodes())
+                    {
+                        // The FIRST for-clause's iterable is evaluated in the ENCLOSING scope
+                        // (python3: `[k for k in k]` reads the outer `k`), so it is handed the outer
+                        // set and its own ForClause arm re-adds only its own target.
+                        yield return (child, ReferenceEquals(child, firstForClause) ? shadowed : inner);
+                    }
+                    yield break;
                 }
-                yield break;
-            }
 
             case WithStatement withStatement:
-            {
-                var running = shadowed;
-                foreach (var item in withStatement.Items)
                 {
-                    yield return (item.ContextExpression, running);
-                    if (item.Target == null)
-                        continue;
-                    var next = new HashSet<string>(running);
-                    CollectAssignedNames(item.Target, next);
-                    running = next;
-                    yield return (item.Target, running);
+                    var running = shadowed;
+                    foreach (var item in withStatement.Items)
+                    {
+                        yield return (item.ContextExpression, running);
+                        if (item.Target == null)
+                            continue;
+                        var next = new HashSet<string>(running);
+                        CollectAssignedNames(item.Target, next);
+                        running = next;
+                        yield return (item.Target, running);
+                    }
+                    foreach (var bodyStmt in withStatement.Body)
+                        yield return (bodyStmt, running);
+                    yield break;
                 }
-                foreach (var bodyStmt in withStatement.Body)
-                    yield return (bodyStmt, running);
-                yield break;
-            }
 
             case TryStatement tryStatement:
-            {
-                foreach (var bodyStmt in tryStatement.Body)
-                    yield return (bodyStmt, shadowed);
-                foreach (var handler in tryStatement.Handlers)
                 {
-                    var inner = shadowed;
-                    if (!string.IsNullOrEmpty(handler.Name))
-                        inner = new HashSet<string>(shadowed) { handler.Name! };
-                    if (handler.Filter != null)
-                        yield return (handler.Filter, inner);
-                    foreach (var handlerStmt in handler.Body)
-                        yield return (handlerStmt, inner);
+                    foreach (var bodyStmt in tryStatement.Body)
+                        yield return (bodyStmt, shadowed);
+                    foreach (var handler in tryStatement.Handlers)
+                    {
+                        var inner = shadowed;
+                        if (!string.IsNullOrEmpty(handler.Name))
+                            inner = new HashSet<string>(shadowed) { handler.Name! };
+                        if (handler.Filter != null)
+                            yield return (handler.Filter, inner);
+                        foreach (var handlerStmt in handler.Body)
+                            yield return (handlerStmt, inner);
+                    }
+                    foreach (var elseStmt in tryStatement.ElseBody)
+                        yield return (elseStmt, shadowed);
+                    foreach (var finallyStmt in tryStatement.FinallyBody)
+                        yield return (finallyStmt, shadowed);
+                    yield break;
                 }
-                foreach (var elseStmt in tryStatement.ElseBody)
-                    yield return (elseStmt, shadowed);
-                foreach (var finallyStmt in tryStatement.FinallyBody)
-                    yield return (finallyStmt, shadowed);
-                yield break;
-            }
 
             case MatchStatement matchStatement:
-            {
-                yield return (matchStatement.Scrutinee, shadowed);
-                foreach (var matchCase in matchStatement.Cases)
                 {
-                    var inner = WithPatternCaptures(shadowed, matchCase.Pattern);
-                    yield return (matchCase.Pattern, inner);
-                    if (matchCase.Guard != null)
-                        yield return (matchCase.Guard, inner);
-                    foreach (var bodyStmt in matchCase.Body)
-                        yield return (bodyStmt, inner);
+                    yield return (matchStatement.Scrutinee, shadowed);
+                    foreach (var matchCase in matchStatement.Cases)
+                    {
+                        var inner = WithPatternCaptures(shadowed, matchCase.Pattern);
+                        yield return (matchCase.Pattern, inner);
+                        if (matchCase.Guard != null)
+                            yield return (matchCase.Guard, inner);
+                        foreach (var bodyStmt in matchCase.Body)
+                            yield return (bodyStmt, inner);
+                    }
+                    yield break;
                 }
-                yield break;
-            }
 
             case MatchExpression matchExpression:
-            {
-                yield return (matchExpression.Scrutinee, shadowed);
-                foreach (var arm in matchExpression.Arms)
                 {
-                    var inner = WithPatternCaptures(shadowed, arm.Pattern);
-                    yield return (arm.Pattern, inner);
-                    if (arm.Guard != null)
-                        yield return (arm.Guard, inner);
-                    yield return (arm.Result, inner);
+                    yield return (matchExpression.Scrutinee, shadowed);
+                    foreach (var arm in matchExpression.Arms)
+                    {
+                        var inner = WithPatternCaptures(shadowed, arm.Pattern);
+                        yield return (arm.Pattern, inner);
+                        if (arm.Guard != null)
+                            yield return (arm.Guard, inner);
+                        yield return (arm.Result, inner);
+                    }
+                    yield break;
                 }
-                yield break;
-            }
 
             default:
-            {
-                foreach (var child in node.GetChildNodes())
-                    yield return (child, shadowed);
-                yield break;
-            }
+                {
+                    foreach (var child in node.GetChildNodes())
+                        yield return (child, shadowed);
+                    yield break;
+                }
         }
     }
 
