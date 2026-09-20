@@ -667,8 +667,9 @@ internal static class DefiniteAssignmentAnalysis
 
     /// <summary>The shadow set at function-body level: nothing is shadowed there, because a binding
     /// form in the function's own body rebinds the function's own local rather than introducing a
-    /// separate one. Never mutated — every arm below copies before adding.</summary>
-    private static readonly HashSet<string> NoShadow = new();
+    /// separate one. A fresh empty set per read (not a static field): every arm below copies
+    /// before adding, and StaticStateConformanceTests refuses a static mutable collection.</summary>
+    private static HashSet<string> NoShadow => new();
 
     /// <summary>
     /// The ONE roster of binding forms: enumerates <paramref name="node"/>'s children paired with
