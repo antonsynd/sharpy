@@ -1120,8 +1120,19 @@ internal partial class TypeChecker
                 }
                 // Every no-match with ≥1 bound candidate is explained by CheckClrBindingArguments
                 // or the same-argument rule; the candidate-list arm had one producer (RefusedByClr),
-                // deleted in #1843. Reachability tested: throw in place → whole solution green.
-                return null;
+                // deleted in #1843. Falling through here would type the call Unknown with NO
+                // diagnostic — the silent-accept shape — so the arm throws by name instead of
+                // returning null (the GenerateBreak pattern). Reachability evidence: a throw in this
+                // position was run against the whole solution green when #1843 deleted the
+                // candidate-list arm, and against the Semantic + CodeGen + Conformance + Overload
+                // filters when the throw became permanent here.
+                throw new InvalidOperationException(
+                    $"ReportClrCallDecision reached the unexplained NoMatch arm for '{memberDisplay}' "
+                    + $"({decision.BoundCount} bound candidate(s), {decision.Refusals.Count} refusal(s)) "
+                    + "— every no-match with a bound candidate is explained by CheckClrBindingArguments "
+                    + "or the same-argument rule, and the candidate-list arm's only producer "
+                    + "(RefusedByClr) was deleted in #1843; reaching here is a bug, not a call to accept "
+                    + "silently.");
 
             default:
                 if (suppressRefusals || !reportAmbiguity || ClrCallCannotAdjudicate(args))

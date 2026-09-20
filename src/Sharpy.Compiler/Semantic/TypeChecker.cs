@@ -214,7 +214,10 @@ internal partial class TypeChecker
     // Bridges reflected CLR parameter/return types to SemanticTypes when materializing a reflected BCL
     // generic method (#1136). Conservative by design: anything unmappable collapses to object, since the
     // emitted C# uses explicit type args + the verbatim CLR name and Roslyn performs the authoritative bind.
-    private readonly Discovery.ClrTypeBridge _bclGenericMethodBridge = new();
+    // Adopted from TypeResolver.ClrBridge in the constructor: the bridge's definition-symbol cache is an
+    // INSTANCE field, so the value route here and the annotation route there must share ONE instance for
+    // `Environment.SpecialFolder` to be the same TypeSymbol in both (#1864).
+    private readonly Discovery.ClrTypeBridge _bclGenericMethodBridge;
 
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
@@ -351,6 +354,7 @@ internal partial class TypeChecker
         _symbolTable = symbolTable;
         _semanticInfo = semanticInfo;
         _typeResolver = typeResolver;
+        _bclGenericMethodBridge = typeResolver.ClrBridge;
         _logger = logger ?? NullLogger.Instance;
         _validationPipeline = validationPipeline ?? ValidationPipelineFactory.CreateDefault(logger);
 

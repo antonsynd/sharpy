@@ -1222,7 +1222,7 @@ internal partial class TypeChecker
             _ => null
         };
 
-        return name is BuiltinNames.Str or BuiltinNames.Bytes or "bytearray" or BuiltinNames.Array
+        return name is BuiltinNames.Str or BuiltinNames.Bytes or BuiltinNames.Array
             && TryGetClrType(type) is { IsGenericTypeDefinition: false };
     }
 

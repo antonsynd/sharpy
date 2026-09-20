@@ -432,8 +432,8 @@ internal partial class RoslynEmitter
         if (part.Expression is NoneLiteral)
             value = Cast(PredefinedType(Token(SyntaxKind.ObjectKeyword)), value);
 
-        var lowering = _context.SemanticInfo?.GetInterpolationLowering(part.Expression!);
-        var kind = lowering?.Kind ?? InterpolationKind.Format;
+        var lowering = RequireInterpolationLowering(part.Expression!);
+        var kind = lowering.Kind;
 
         if (part.Spec == null)
         {
@@ -455,12 +455,50 @@ internal partial class RoslynEmitter
             _ => value,
         };
 
-        var specExpr = lowering is { SpecIsStatic: false }
-            ? BuildDynamicSpec(part.Spec.Value, map)
-            : MakeStringLiteral(lowering?.StaticSpec ?? "");
+        var specExpr = lowering.SpecIsStatic
+            ? MakeStringLiteral(RequireStaticSpec(lowering, part.Expression!))
+            : BuildDynamicSpec(part.Spec.Value, map);
 
         return PyFormatApplyCall(baseValue, specExpr);
     }
+
+    /// <summary>
+    /// The <see cref="InterpolationLowering"/> the TypeChecker recorded for a hole, or a throw by
+    /// name. <c>TypeChecker.CheckInterpolationPart</c> records one for EVERY hole of an f-string and
+    /// a t-string (including nested spec holes) and <see cref="SemanticInfo.MergeFrom"/> carries the
+    /// dictionary into the project-level info, so a missing fact is a bug in the recording seam or
+    /// the merge — never a licence for the emitter to pick a rendering (Critical Rule 2). The former
+    /// <c>?? InterpolationKind.Format</c> / <c>?? ""</c> defaults degraded a dropped fact to
+    /// <c>PyFormat.Apply(v, "")</c>, which prints something plausible for most values and so would
+    /// have let the #1814 cells pass with the fact missing.
+    /// </summary>
+    private InterpolationLowering RequireInterpolationLowering(Expression hole)
+    {
+        var lowering = _context.SemanticInfo?.GetInterpolationLowering(hole);
+        if (lowering == null)
+        {
+            throw new InvalidOperationException(
+                "No InterpolationLowering recorded for an interpolation hole at "
+                + $"line {hole.LineStart}, column {hole.ColumnStart} — "
+                + "TypeChecker.CheckInterpolationPart records one for every f-string/t-string hole "
+                + "(#1814, #1815) and SemanticInfo.MergeFrom carries it into the project info; the "
+                + "emitter must not guess the rendering.");
+        }
+
+        return lowering;
+    }
+
+    /// <summary>
+    /// The recorded static format spec of a spec'd hole, or a throw by name — a hole WITH a spec
+    /// whose lowering says the spec is static always carries its text (see
+    /// <see cref="RequireInterpolationLowering"/>).
+    /// </summary>
+    private static string RequireStaticSpec(InterpolationLowering lowering, Expression hole)
+        => lowering.StaticSpec
+           ?? throw new InvalidOperationException(
+               "An interpolation hole with a static spec carries no StaticSpec text at "
+               + $"line {hole.LineStart}, column {hole.ColumnStart} — TypeChecker.CheckInterpolationPart "
+               + "records the collected spec text whenever the part has a spec (#1814).");
 
     /// <summary>
     /// Builds a dynamic format spec — one containing nested replacement fields — as an interpolated
@@ -544,10 +582,10 @@ internal partial class RoslynEmitter
         if (part.Spec == null)
             return MakeStringLiteral(string.Empty);
 
-        var lowering = _context.SemanticInfo?.GetInterpolationLowering(part.Expression!);
-        return lowering is { SpecIsStatic: false }
-            ? BuildDynamicSpec(part.Spec.Value, map)
-            : MakeStringLiteral(lowering?.StaticSpec ?? string.Empty);
+        var lowering = RequireInterpolationLowering(part.Expression!);
+        return lowering.SpecIsStatic
+            ? MakeStringLiteral(RequireStaticSpec(lowering, part.Expression!))
+            : BuildDynamicSpec(part.Spec.Value, map);
     }
 
     // ============================================================

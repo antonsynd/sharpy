@@ -15,12 +15,20 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Late-bound defaults (=>) must not reference their own parameter (self-reference)
 /// - Late-bound defaults (=>) must not reference parameters declared after them (forward-reference)
 ///
-/// This is the pipeline-compatible version of DefaultParameterValidator.
+/// <para><b>Superseded.</b> <see cref="ConstantPositionValidator"/> (Order 250) absorbed every rule
+/// above and is the only constant-position validator the pipeline registers; this class is kept for
+/// reference and is not instantiated anywhere. Its Order is 251 so it cannot collide with the
+/// registered slot.</para>
 /// </summary>
 internal class DefaultParameterValidator : ValidatingAstWalker
 {
     public override string Name => "DefaultParameterValidator";
-    public override int Order => 250; // Before type checking (300)
+    // SUPERSEDED by ConstantPositionValidator (Order 250), which absorbed these rules; no pipeline
+    // registers this class (ValidationPipelineFactory names ConstantPositionValidator alone). Its
+    // Order must still be DISTINCT from every registered validator's: two validators at 250 made the
+    // execution sequence depend on registration order, because ValidationPipeline sorts with
+    // List.Sort, which is not stable.
+    public override int Order => 251; // After ConstantPositionValidator (250), before type checking (300)
 
     private ICompilerLogger _logger = NullLogger.Instance;
 

@@ -25,7 +25,10 @@ namespace Sharpy.Compiler.Semantic.Validation;
 internal class ConstantPositionValidator : ValidatingAstWalker
 {
     public override string Name => "ConstantPositionValidator";
-    public override int Order => 250; // Keeping the deleted DefaultParameterValidator's slot
+    // The one constant-position validator the default pipeline registers, in the slot the superseded
+    // DefaultParameterValidator used to occupy (that class still exists, unregistered, at 251 — two
+    // validators sharing an Order made ValidationPipeline's unstable List.Sort the tiebreaker).
+    public override int Order => 250; // Before type checking (300)
 
     private ICompilerLogger _logger = NullLogger.Instance;
 

@@ -1466,16 +1466,25 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_FString_GeneratesInterpolatedString()
     {
-        // Arrange
+        // Arrange. The hole's rendering is a materialized fact (Critical Rule 2 pattern (b)):
+        // TypeChecker.CheckInterpolationPart records an InterpolationLowering for EVERY hole, and the
+        // emitter reads it rather than deciding. This unit harness bypasses the checker, so it
+        // supplies the same fact the pipeline always supplies (#1814).
+        var hole = new Identifier { Name = "name" };
         var expr = new FStringLiteral
         {
             Parts = new List<FStringPart>
             {
                 new FStringPart { Text = "Hello " },
-                new FStringPart { Expression = new Identifier { Name = "name" } },
+                new FStringPart { Expression = hole },
                 new FStringPart { Text = "!" }
             }.ToImmutableArray()
         };
+
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetInterpolationLowering(
+            hole, new InterpolationLowering(InterpolationKind.Format, SpecIsStatic: true, StaticSpec: null));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -1486,6 +1495,34 @@ public class RoslynEmitterExpressionTests
         code.Should().Contain("Hello ");
         code.Should().Contain("name");
         code.Should().Contain("!");
+    }
+
+    /// <summary>
+    /// The positive control for the fact above: with NO recorded lowering the emitter throws by name
+    /// instead of guessing a rendering. The former <c>?? InterpolationKind.Format</c> / <c>?? ""</c>
+    /// defaults degraded a dropped fact to <c>PyFormat.Apply(v, "")</c>, which prints something
+    /// plausible for most values — so the #1814 cells would have passed with the fact missing
+    /// (Critical Rule 2: the emitter makes no lowering decisions).
+    /// </summary>
+    [Fact]
+    public void GenerateExpression_FStringHoleWithNoRecordedLowering_ThrowsByName()
+    {
+        var expr = new FStringLiteral
+        {
+            Parts = new List<FStringPart>
+            {
+                new FStringPart { Text = "Hello " },
+                new FStringPart { Expression = new Identifier { Name = "name" } }
+            }.ToImmutableArray()
+        };
+
+        _context.SemanticInfo = new SemanticInfo();
+
+        // MethodInfo.Invoke wraps whatever the emitter throws.
+        var thrown = Assert.Throws<TargetInvocationException>(() => InvokeGenerateExpression(expr));
+
+        thrown.InnerException.Should().BeOfType<InvalidOperationException>()
+            .Which.Message.Should().Contain("No InterpolationLowering recorded");
     }
 
     #endregion

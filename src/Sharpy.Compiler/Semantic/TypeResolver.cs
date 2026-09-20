@@ -53,6 +53,20 @@ internal class TypeResolver
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
+    /// The CLR bridge the ANNOTATION route resolves nested .NET types through
+    /// (<see cref="LookupNestedType"/>). <c>TypeChecker</c> adopts this instance as its own
+    /// <c>_bclGenericMethodBridge</c>, so the annotation and the VALUE route hand back the SAME
+    /// <see cref="TypeSymbol"/> for a nested CLR type (<c>Environment.SpecialFolder</c>) — the
+    /// bridge's <c>_interfaceSymbolCache</c> is an INSTANCE field, so a per-resolution
+    /// <c>new ClrTypeBridge()</c> defeated it and minted a fresh symbol at every annotation (#1864).
+    /// Reference-equality and symbol-keyed consumers then agreed only because
+    /// <c>TypeHierarchyService.SameTypeSymbol</c> has a <c>ClrType</c> arm; sharing the instance
+    /// makes the agreement structural. The bridge is <c>[ThreadSafe]</c> (concurrent caches), and
+    /// both owners are per-file, so the sharing adds no cross-file state.
+    /// </summary>
+    internal Discovery.ClrTypeBridge ClrBridge { get; } = new();
+
+    /// <summary>
     /// Sets the current class/struct/interface context for resolving Self types.
     /// </summary>
     public void SetCurrentTypeContext(TypeSymbol? type) => _currentTypeContext = type;
@@ -454,16 +468,17 @@ internal class TypeResolver
             var nested = outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
 
             // A CLR-backed outer type carries no discovered NestedTypes shadow, so a nested .NET type
-            // (`Environment.SpecialFolder`) is reached by reflection and mapped to its cached symbol —
-            // the same DeclaringType-bearing symbol the value route resolves through, so the annotation
-            // and the value agree by TypeKey (#1864). The type-annotation route is a type in every
-            // position exactly as the member seam is.
+            // (`Environment.SpecialFolder`) is reached by reflection and mapped through
+            // <see cref="ClrBridge"/> — the instance TypeChecker's value route uses, so the annotation
+            // gets back the very same DeclaringType-bearing symbol rather than a fresh one that merely
+            // compares equal (#1864). The type-annotation route is a type in every position exactly as
+            // the member seam is.
             if (nested == null && outerSymbol.ClrType is { } outerClr)
             {
                 var clrNested = outerClr.GetNestedType(
                     parts[i], System.Reflection.BindingFlags.Public);
                 if (clrNested != null)
-                    nested = new Discovery.ClrTypeBridge().GetOrCreateClrDefinitionSymbol(clrNested);
+                    nested = ClrBridge.GetOrCreateClrDefinitionSymbol(clrNested);
             }
 
             outerSymbol = nested;
