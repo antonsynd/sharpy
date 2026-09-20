@@ -461,4 +461,94 @@ public class StrFormatTests
     }
 
     #endregion
+
+    #region Nested replacement fields (#1943)
+
+    // Each expected value is byte-for-byte what CPython 3.12 prints for the identical program;
+    // the generating oracle is in the comment. Before #1943 the spec was split at the FIRST '}',
+    // so a nested field in the spec raised "Unknown format code '{' for object of type 'int'".
+
+    [Fact]
+    public void Format_NestedSpec_AutoNumbered()
+    {
+        // python3 -c "print(repr('{:{}}'.format(1234, '>8')))"  =>  '    1234'
+        "{:{}}".Format(1234, ">8").Should().Be("    1234");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_ManualNumbered()
+    {
+        // python3 -c "print(repr('{0:{1}}'.format(1234, '>8')))"  =>  '    1234'
+        "{0:{1}}".Format(1234, ">8").Should().Be("    1234");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_TwoFields()
+    {
+        // python3 -c "print(repr('{:{}{}}'.format(1234, '>', '8')))"  =>  '    1234'
+        "{:{}{}}".Format(1234, ">", "8").Should().Be("    1234");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_WithConversion()
+    {
+        // python3 -c "print(repr('{!r:{}}'.format('hi', '>8')))"  =>  "    'hi'"
+        "{!r:{}}".Format("hi", ">8").Should().Be("    'hi'");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_SharesTheAutoNumberStream()
+    {
+        // python3 -c "print(repr('{:{}}{}'.format(1, '>3', 9)))"  =>  '  19'
+        // The nested field claims index 1 (between the outer's 0 and the trailing field's 2).
+        "{:{}}{}".Format(1, ">3", 9).Should().Be("  19");
+    }
+
+    [Fact]
+    public void FormatMap_NestedSpec_ResolvesBothKeys()
+    {
+        // python3 -c "print(repr('{a:{b}}'.format_map({'a': 1234, 'b': '>8'})))"  =>  '    1234'
+        var mapping = new Dict<string, object>();
+        mapping["a"] = 1234;
+        mapping["b"] = ">8";
+        "{a:{b}}".FormatMap(mapping).Should().Be("    1234");
+    }
+
+    [Fact]
+    public void Format_EscapeAfterField_IsLiteralBrace()
+    {
+        // python3 -c "print(repr('{:5}}}'.format(5)))"  =>  '    5}'
+        "{:5}}}".Format(5).Should().Be("    5}");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_DepthTwo_RaisesMaxRecursion()
+    {
+        // python3 -c "'{:{:{}}}'.format(5, '>', 2)"  =>  ValueError: Max string recursion exceeded
+        var act = () => "{:{:{}}}".Format(5, ">", 2);
+        act.Should().Throw<ValueError>().WithMessage("Max string recursion exceeded");
+    }
+
+    [Fact]
+    public void Format_NestedSpec_BraceInSpec_RaisesInvalidSpecifier()
+    {
+        // python3 -c "'{:{}}'.format(1, '{}')"
+        //   =>  ValueError: Invalid format specifier '{}' for object of type 'int'
+        // The nested field resolves to the literal "{}", which is then an invalid spec.
+        var act = () => "{:{}}".Format(1, "{}");
+        act.Should().Throw<ValueError>()
+            .WithMessage("Invalid format specifier '{}' for object of type 'int'");
+    }
+
+    [Fact]
+    public void Format_MixedAutoManualAcrossNesting_ThrowsValueError()
+    {
+        // python3 -c "'{0:{}}'.format(1234, '>8')"
+        //   =>  ValueError: cannot switch from manual field specification to automatic field numbering
+        var act = () => "{0:{}}".Format(1234, ">8");
+        act.Should().Throw<ValueError>()
+            .WithMessage("cannot switch from manual field specification to automatic field numbering");
+    }
+
+    #endregion
 }

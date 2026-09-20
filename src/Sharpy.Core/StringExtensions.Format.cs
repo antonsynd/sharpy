@@ -32,10 +32,34 @@ namespace Sharpy
 
         private static string FormatInternal(string template, object[] args, bool useMapping, Dict<string, object> mapping)
         {
-            var sb = new StringBuilder(template.Length);
             int autoIndex = 0;
             bool usedAutoNumbering = false;
             bool usedManualNumbering = false;
+            // #1943: the template is recursion depth 2, a nested format spec depth 1, a field inside
+            // that spec depth 0 — matching CPython's str.format() recursion limit, which is why
+            // '{:{:{}}}'.format(...) raises "Max string recursion exceeded" but '{:{}}' does not.
+            return Vformat(template, args, useMapping, mapping,
+                ref autoIndex, ref usedAutoNumbering, ref usedManualNumbering, recursionDepth: 2);
+        }
+
+        /// <summary>
+        /// The ONE nesting-aware replacement-field splitter shared by <c>str.format</c> and
+        /// <c>str.format_map</c> (#1943). A field's format spec may itself contain replacement fields
+        /// (<c>"{:{}}".format(1234, "&gt;8")</c>); those are expanded by re-entering this same method
+        /// so the auto/manual numbering state and the positional/mapping resolver are shared across
+        /// the two levels. The f-string route splits its holes in the lexer; parity between the two
+        /// is pinned by <c>FormatEngineConsumerParityTests</c>, not by a shared splitter (Axiom 1: the
+        /// compile-time and runtime routes are different assemblies by design).
+        /// </summary>
+        private static string Vformat(string template, object[] args, bool useMapping, Dict<string, object> mapping,
+            ref int autoIndex, ref bool usedAutoNumbering, ref bool usedManualNumbering, int recursionDepth)
+        {
+            if (recursionDepth <= 0)
+            {
+                throw new ValueError("Max string recursion exceeded");
+            }
+
+            var sb = new StringBuilder(template.Length);
             int i = 0;
 
             while (i < template.Length)
@@ -51,134 +75,44 @@ namespace Sharpy
                         continue;
                     }
 
-                    int closeBrace = template.IndexOf('}', i + 1);
-                    if (closeBrace == -1)
-                    {
-                        throw new ValueError("Single '{' encountered in format string");
-                    }
+                    // Read the whole field, counting nested braces so the spec's own '{...}' fields
+                    // stay inside it rather than truncating at the first '}'.
+                    string field = ReadReplacementField(template, ref i);
 
-                    string field = template.Substring(i + 1, closeBrace - i - 1);
-                    i = closeBrace + 1;
-
-                    string fieldName;
-                    string? formatSpec;
-                    char conversion = '\0';
-
-                    // Split on ':' to separate field expression from format spec.
-                    int colonPos = field.IndexOf(':');
+                    // Split on ':' to separate the field expression from the (possibly nested) spec.
                     string fieldExpr;
+                    string? specText;
+                    int colonPos = field.IndexOf(':');
                     if (colonPos >= 0)
                     {
                         fieldExpr = field.Substring(0, colonPos);
-                        formatSpec = field.Substring(colonPos + 1);
+                        specText = field.Substring(colonPos + 1);
                     }
                     else
                     {
                         fieldExpr = field;
-                        formatSpec = null;
+                        specText = null;
                     }
 
                     // Parse conversion flag (!r, !s, !a) from the field expression.
-                    // Format: fieldName[!conversion]
+                    char conversion = '\0';
                     int bangPos = fieldExpr.IndexOf('!');
                     if (bangPos >= 0)
                     {
-                        fieldName = fieldExpr.Substring(0, bangPos);
                         string convStr = fieldExpr.Substring(bangPos + 1);
                         if (convStr.Length != 1 || (convStr[0] != 'r' && convStr[0] != 's' && convStr[0] != 'a'))
                         {
                             throw new ValueError("Unknown conversion specifier '" + convStr + "'");
                         }
                         conversion = convStr[0];
-                    }
-                    else
-                    {
-                        fieldName = fieldExpr;
+                        fieldExpr = fieldExpr.Substring(0, bangPos);
                     }
 
-                    // Split fieldName into base field and nested access path.
-                    // The first '.' or '[' starts the access path.
-                    string baseField;
-                    string? accessPath;
-                    int dotPos = fieldName.IndexOf('.');
-                    int bracketPos = fieldName.IndexOf('[');
-                    int accessStart = -1;
-                    if (dotPos >= 0 && (bracketPos < 0 || dotPos < bracketPos))
-                    {
-                        accessStart = dotPos;
-                    }
-                    else if (bracketPos >= 0)
-                    {
-                        accessStart = bracketPos;
-                    }
-
-                    if (accessStart >= 0)
-                    {
-                        baseField = fieldName.Substring(0, accessStart);
-                        accessPath = fieldName.Substring(accessStart);
-                    }
-                    else
-                    {
-                        baseField = fieldName;
-                        accessPath = null;
-                    }
-
-                    object value;
-
-                    if (useMapping)
-                    {
-                        // format_map mode: look up by name
-                        try
-                        {
-                            value = mapping[baseField];
-                        }
-                        catch (KeyError)
-                        {
-                            throw new KeyError(baseField);
-                        }
-                    }
-                    else
-                    {
-                        // format mode: positional
-                        int index;
-                        if (baseField.Length == 0)
-                        {
-                            if (usedManualNumbering)
-                            {
-                                throw new ValueError(
-                                    "cannot switch from manual field specification to automatic field numbering");
-                            }
-                            usedAutoNumbering = true;
-                            index = autoIndex++;
-                        }
-                        else if (int.TryParse(baseField, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed))
-                        {
-                            if (usedAutoNumbering)
-                            {
-                                throw new ValueError(
-                                    "cannot switch from automatic field numbering to manual field specification");
-                            }
-                            usedManualNumbering = true;
-                            index = parsed;
-                        }
-                        else
-                        {
-                            throw new ValueError("cannot use keyword arguments with format(), use format_map()");
-                        }
-
-                        if (args == null || index < 0 || index >= args.Length)
-                        {
-                            throw new IndexError(
-                                "Replacement index " + index + " out of range for positional args tuple");
-                        }
-                        value = args[index];
-                    }
-
-                    // Resolve nested field access (.attr, [key], [index]).
-                    if (accessPath != null)
-                    {
-                        value = ResolveFieldAccess(value, accessPath);
-                    }
+                    // Resolve the OUTER field value first so it claims its auto/manual index before
+                    // any nested field in the spec claims the next one (CPython's ordering:
+                    // '{:{}}{}'.format(1, '>3', 9) is '  19', outer=0, nested=1, trailing=2).
+                    object value = ResolveFieldValue(fieldExpr, args, useMapping, mapping,
+                        ref autoIndex, ref usedAutoNumbering, ref usedManualNumbering);
 
                     // Apply conversion flag.
                     if (conversion == 's')
@@ -196,11 +130,29 @@ namespace Sharpy
                         value = Builtins.Ascii(value);
                     }
 
+                    // Expand nested replacement fields in the spec through the SAME resolver, one
+                    // level deep — a spec containing '{' at depth 0 raises "Max string recursion
+                    // exceeded". A spec with no '{' is used verbatim.
+                    string spec;
+                    if (specText == null)
+                    {
+                        spec = "";
+                    }
+                    else if (specText.IndexOf('{') < 0)
+                    {
+                        spec = specText;
+                    }
+                    else
+                    {
+                        spec = Vformat(specText, args, useMapping, mapping,
+                            ref autoIndex, ref usedAutoNumbering, ref usedManualNumbering, recursionDepth - 1);
+                    }
+
                     // A spec-less "{}" is a spec of "" — the same engine, the same empty-spec rule.
                     // #1883: appending the object let StringBuilder call ToString(), which is a
                     // second (and wrong) rendering rule: "{}".format(100.0) printed "100" while
                     // f"{100.0}" printed "100.0", and "{}".format(None) printed nothing at all.
-                    sb.Append(PyFormat.Apply(value, formatSpec ?? ""));
+                    sb.Append(PyFormat.Apply(value, spec));
                 }
                 else if (c == '}')
                 {
@@ -220,6 +172,140 @@ namespace Sharpy
             }
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Read one replacement field starting at the opening <c>{</c> that <paramref name="i"/> points
+        /// at (the caller has already ruled out the <c>{{</c> escape), returning the field text
+        /// between the braces and advancing <paramref name="i"/> past the matching <c>}</c>. Braces are
+        /// counted so a nested field in the spec (<c>{:{}}</c>) is kept whole rather than truncated at
+        /// its first inner <c>}</c>.
+        /// </summary>
+        private static string ReadReplacementField(string template, ref int i)
+        {
+            int start = i + 1;
+            int depth = 1;
+            int j = start;
+            while (j < template.Length)
+            {
+                char ch = template[j];
+                if (ch == '{')
+                {
+                    depth++;
+                }
+                else if (ch == '}')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        break;
+                    }
+                }
+                j++;
+            }
+
+            if (depth != 0)
+            {
+                throw new ValueError("Single '{' encountered in format string");
+            }
+
+            string field = template.Substring(start, j - start);
+            i = j + 1;
+            return field;
+        }
+
+        /// <summary>
+        /// Resolve a field expression (<c>baseField</c> plus an optional <c>.attr</c>/<c>[key]</c>
+        /// access path) to its value, sharing the auto/manual numbering state so nested fields in a
+        /// spec draw from the same positional stream. Mapping mode looks the base field up by name.
+        /// </summary>
+        private static object ResolveFieldValue(string fieldExpr, object[] args, bool useMapping,
+            Dict<string, object> mapping, ref int autoIndex, ref bool usedAutoNumbering, ref bool usedManualNumbering)
+        {
+            // Split fieldExpr into base field and nested access path (first '.' or '[').
+            string baseField;
+            string? accessPath;
+            int dotPos = fieldExpr.IndexOf('.');
+            int bracketPos = fieldExpr.IndexOf('[');
+            int accessStart = -1;
+            if (dotPos >= 0 && (bracketPos < 0 || dotPos < bracketPos))
+            {
+                accessStart = dotPos;
+            }
+            else if (bracketPos >= 0)
+            {
+                accessStart = bracketPos;
+            }
+
+            if (accessStart >= 0)
+            {
+                baseField = fieldExpr.Substring(0, accessStart);
+                accessPath = fieldExpr.Substring(accessStart);
+            }
+            else
+            {
+                baseField = fieldExpr;
+                accessPath = null;
+            }
+
+            object value;
+
+            if (useMapping)
+            {
+                // format_map mode: look up by name
+                try
+                {
+                    value = mapping[baseField];
+                }
+                catch (KeyError)
+                {
+                    throw new KeyError(baseField);
+                }
+            }
+            else
+            {
+                // format mode: positional
+                int index;
+                if (baseField.Length == 0)
+                {
+                    if (usedManualNumbering)
+                    {
+                        throw new ValueError(
+                            "cannot switch from manual field specification to automatic field numbering");
+                    }
+                    usedAutoNumbering = true;
+                    index = autoIndex++;
+                }
+                else if (int.TryParse(baseField, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed))
+                {
+                    if (usedAutoNumbering)
+                    {
+                        throw new ValueError(
+                            "cannot switch from automatic field numbering to manual field specification");
+                    }
+                    usedManualNumbering = true;
+                    index = parsed;
+                }
+                else
+                {
+                    throw new ValueError("cannot use keyword arguments with format(), use format_map()");
+                }
+
+                if (args == null || index < 0 || index >= args.Length)
+                {
+                    throw new IndexError(
+                        "Replacement index " + index + " out of range for positional args tuple");
+                }
+                value = args[index];
+            }
+
+            // Resolve nested field access (.attr, [key], [index]).
+            if (accessPath != null)
+            {
+                value = ResolveFieldAccess(value, accessPath);
+            }
+
+            return value;
         }
 
 
