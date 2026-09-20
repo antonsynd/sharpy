@@ -141,6 +141,24 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the truth value of a tuple: False when empty, True otherwise.
+        /// </summary>
+        /// <remarks>
+        /// Tuples are emitted as <see cref="System.ValueTuple"/> instances, which
+        /// implement <see cref="System.Runtime.CompilerServices.ITuple"/> but
+        /// neither <see cref="System.Collections.ICollection"/> nor
+        /// <see cref="ISized"/>. Without this overload a tuple would bind
+        /// <see cref="Bool(object?)"/> and fall through to the truthy default.
+        /// This mirrors <c>Len(ITuple)</c> and answers from the tuple's arity.
+        /// </remarks>
+        /// <param name="tuple">The tuple value</param>
+        /// <returns>False if the tuple is empty, True otherwise</returns>
+        public static bool Bool(System.Runtime.CompilerServices.ITuple tuple)
+        {
+            return tuple.Length != 0;
+        }
+
+        /// <summary>
         /// Convert an arbitrary object to bool using Python's truth testing protocol.
         /// Checks __bool__ (IBoolConvertible), then __len__ (ISized), then collection emptiness.
         /// Non-null objects without these protocols are truthy.
@@ -228,6 +246,13 @@ namespace Sharpy
             if (obj is float @float)
             {
                 return Bool(@float);
+            }
+
+            // Tuples box as ValueTuple, which implements ITuple but not ISized or
+            // ICollection; answer from the arity so a boxed tuple is not truthy-by-default.
+            if (obj is System.Runtime.CompilerServices.ITuple tuple)
+            {
+                return Bool(tuple);
             }
 
             // __bool__ dispatch: types with IBoolConvertible (user-defined __bool__)

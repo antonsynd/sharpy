@@ -249,6 +249,24 @@ Convert a string to bool. Returns False if the string is None or empty, True oth
 
 **Returns:** False if None or empty, True otherwise
 
+### `bool(tuple: Runtime.CompilerServices.ITuple) -> bool`
+
+Return the truth value of a tuple: False when empty, True otherwise.
+
+**Parameters:**
+
+- `tuple` (Runtime.CompilerServices.ITuple) -- The tuple value
+
+**Returns:** False if the tuple is empty, True otherwise
+
+!!! note
+    Tuples are emitted as `System.ValueTuple` instances, which
+    implement `System.Runtime.CompilerServices.ITuple` but
+    neither `ICollection` nor
+    `ISized`. Without this overload a tuple would bind
+    `Bool(object?)` and fall through to the truthy default.
+    This mirrors `Len(ITuple)` and answers from the tuple's arity.
+
 ### `bool(obj: object | None) -> bool`
 
 Convert an arbitrary object to bool using Python's truth testing protocol.
