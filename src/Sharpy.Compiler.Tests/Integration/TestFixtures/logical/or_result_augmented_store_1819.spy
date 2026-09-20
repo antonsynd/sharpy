@@ -1,0 +1,7 @@
+# #1819: the AUGMENTED store refuses through the operator reporter, never the store seam, so it
+# needed its own route to the steer.
+def main() -> None:
+    name: str | None = None
+    greeting: str = "Hello, "
+    greeting += name or "Anonymous"
+    print(greeting)

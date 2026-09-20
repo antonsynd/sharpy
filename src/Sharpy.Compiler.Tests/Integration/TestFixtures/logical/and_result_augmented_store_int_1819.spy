@@ -1,0 +1,6 @@
+# #1819: the `and` twin of the augmented store, on an int slot.
+def main() -> None:
+    count: int | None = None
+    total: int = 1
+    total += count and 2
+    print(total)

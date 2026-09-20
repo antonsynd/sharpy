@@ -1,0 +1,8 @@
+# #1819: the POSITIONAL pipe-forward refusal formats its own message; the keyword twin already
+# steered and this one did not.
+def greet(s: str) -> None:
+    print(s)
+
+def main() -> None:
+    name: str | None = None
+    (name or "Anonymous") |> greet

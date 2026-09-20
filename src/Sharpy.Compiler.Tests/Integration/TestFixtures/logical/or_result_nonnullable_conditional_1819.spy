@@ -1,0 +1,6 @@
+# #1922: a NON-nullable left operand is steered to a conditional, not to '??'. The rewrite named
+# here must return the same operand python3 returns for `name or "Anonymous"` — the left one.
+def main() -> None:
+    name: str = "Ada"
+    fallback: str = name or "Anonymous"
+    print(fallback)

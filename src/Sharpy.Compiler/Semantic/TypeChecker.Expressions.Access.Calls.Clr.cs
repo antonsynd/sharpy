@@ -896,12 +896,12 @@ internal partial class TypeChecker
                 : $"Argument {(argument.Ordinal ?? 0) + 1}";
             var node = argument.Node;
             var mappedExpected = MapClrFormal(formal);
-            AddError(
+            ReportValueTypeMismatch(
                 $"{slot} of '{memberDisplay}' expects '{verdict.ExpectedDisplay}' "
-                + $"but got '{argument.Type.GetDisplayName()}'"
-                + (mappedExpected != null
-                    ? DescribeLogicalResultSteer(node, mappedExpected)
-                    : string.Empty),
+                + $"but got '{argument.Type.GetDisplayName()}'",
+                // A CLR formal the bridge cannot spell as a Sharpy type has no target the steer can
+                // measure against; SemanticType.Bool suppresses it exactly as a bool slot would.
+                node, mappedExpected ?? SemanticType.Bool,
                 node?.LineStart ?? args.Call?.LineStart ?? 0,
                 node?.ColumnStart ?? args.Call?.ColumnStart ?? 0,
                 code: DiagnosticCodes.Semantic.TypeMismatch,

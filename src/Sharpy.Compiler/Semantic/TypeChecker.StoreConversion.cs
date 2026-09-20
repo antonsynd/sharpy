@@ -455,11 +455,12 @@ internal partial class TypeChecker
                 // (Decision 3): `x: int = Ok(1)` is a mistake about the constructor, not about `x`.
                 // Same predicate as the steer, so the anchor and the advice never disagree.
                 var anchor = DescribeResultStoreSteer(valueType, targetType) != null ? value : null;
-                AddError(
+                ReportValueTypeMismatch(
                     FormatStoreError(position, valueType, targetType, slotName, _storeContext)
                         + DescribeStoreRefusalSteer(position, valueType, targetType)
-                        + DescribeLogicalResultSteer(value, targetType)
                         + (extraSteer ?? string.Empty),
+                    value,
+                    targetType,
                     anchor?.LineStart ?? reportLine,
                     anchor?.ColumnStart ?? reportColumn,
                     code: refusalCode,
@@ -558,6 +559,36 @@ internal partial class TypeChecker
             + DescribeClrCollectionConversionSteer(valueType, targetType);
     }
 
+    /// <summary>
+    /// The ONE reporter for a refusal that names a refused VALUE's type against a TARGET slot —
+    /// the family a <c>bool</c> produced by <c>and</c>/<c>or</c> lands in (#1819). The store seam's
+    /// default arm reaches most positions, but nine sites format their own message (the argument
+    /// routes, the pipe-forward routes, the operator routes, the union-case route); before this
+    /// they each decided for themselves whether to append the steer and five of them did not.
+    ///
+    /// <para>Routing them all here makes the steer a property of the FAMILY rather than of the
+    /// site: <see cref="DescribeLogicalResultSteer"/> has exactly one caller, so a new refusal
+    /// cannot be written without it. Guarded by
+    /// <c>LogicalResultSteerMatrixTests.EverySteerFamilySiteRoutesThroughTheOneReporter</c>.</para>
+    /// </summary>
+    /// <param name="message">The site's own base message, with any site-specific steers already appended.</param>
+    /// <param name="value">The refused value expression, or null when the site has no node for it.</param>
+    /// <param name="targetType">The slot the value was refused against.</param>
+    private void ReportValueTypeMismatch(
+        string message,
+        Expression? value,
+        SemanticType targetType,
+        int? line,
+        int? column,
+        string code,
+        Text.TextSpan? span,
+        IReadOnlyDictionary<string, string>? data = null)
+    {
+        AddError(
+            message + DescribeLogicalResultSteer(value, targetType),
+            line, column, code: code, span: span, data: data);
+    }
+
     private string DescribeLogicalResultSteer(Expression? value, SemanticType targetType)
     {
         if (value == null || targetType.Equals(SemanticType.Bool))
@@ -577,9 +608,13 @@ internal partial class TypeChecker
                 + " for Python's value-returning fallback use '??' (the left operand is nullable)";
         }
 
+        // Python's `a or b` yields `a` when `a` is truthy and `b` otherwise; `a and b` yields `b`
+        // when `a` is truthy and `a` otherwise. In Sharpy's conditional spelling `A if C else B`
+        // that is `<left> if <left> else <right>` for `or` and `<right> if <left> else <left>` for
+        // `and`. Both arms were swapped, so the advice returned the opposite operand (#1922).
         var rewrite = binOp.Operator == BinaryOperator.Or
-            ? "<right> if <left> else <left>"
-            : "<left> if <left> else <right>";
+            ? "<left> if <left> else <right>"
+            : "<right> if <left> else <left>";
         return $" — '{opName}' returns bool in Sharpy (logical_operators.md §Return Type);"
             + $" for Python's value-returning fallback use a conditional: '{rewrite}'";
     }

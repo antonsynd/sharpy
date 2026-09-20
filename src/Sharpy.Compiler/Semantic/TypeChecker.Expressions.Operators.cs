@@ -907,7 +907,9 @@ internal partial class TypeChecker
 
             if (!IsAssignable(leftType, ft.ParameterTypes[0]))
             {
-                AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function expecting '{ft.ParameterTypes[0].GetDisplayName()}'",
+                ReportValueTypeMismatch(
+                    $"Cannot pipe value of type '{leftType.GetDisplayName()}' to function expecting '{ft.ParameterTypes[0].GetDisplayName()}'",
+                    binOp.Left, ft.ParameterTypes[0],
                     binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: binOp.Span);
                 return SemanticType.Unknown;
@@ -938,7 +940,9 @@ internal partial class TypeChecker
                 var firstParam = funcSymbol.Parameters[0];
                 if (!IsAssignable(leftType, firstParam.Type))
                 {
-                    AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function '{id.Name}' expecting '{firstParam.Type.GetDisplayName()}'",
+                    ReportValueTypeMismatch(
+                        $"Cannot pipe value of type '{leftType.GetDisplayName()}' to function '{id.Name}' expecting '{firstParam.Type.GetDisplayName()}'",
+                        binOp.Left, firstParam.Type,
                         binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: binOp.Span);
                     return SemanticType.Unknown;
@@ -1076,7 +1080,9 @@ internal partial class TypeChecker
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
                         var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
-                        AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{param.Name}' of type '{param.Type.GetDisplayName()}'",
+                        ReportValueTypeMismatch(
+                            $"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{param.Name}' of type '{param.Type.GetDisplayName()}'",
+                            argNode, param.Type,
                             argNode.LineStart,
                             argNode.ColumnStart,
                             code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1106,8 +1112,9 @@ internal partial class TypeChecker
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
-                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'"
-                                + DescribeLogicalResultSteer(kwarg.Value, param.Type),
+                            ReportValueTypeMismatch(
+                                $"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                                kwarg.Value, param.Type,
                                 kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                                 span: kwarg.Span ?? kwarg.Value.Span);
                         }
@@ -1153,7 +1160,9 @@ internal partial class TypeChecker
                 {
                     var argDesc = i == 0 ? "piped value" : $"argument {i}";
                     var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
-                    AddError($"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{ft.ParameterTypes[i].GetDisplayName()}' is expected",
+                    ReportValueTypeMismatch(
+                        $"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{ft.ParameterTypes[i].GetDisplayName()}' is expected",
+                        argNode, ft.ParameterTypes[i],
                         argNode.LineStart,
                         argNode.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1349,8 +1358,9 @@ internal partial class TypeChecker
             // If type inference fails, report the error directly
             if (resultType == null)
             {
-                AddError(
+                ReportValueTypeMismatch(
                     $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'",
+                    chain.Operands[i + 1], leftType,
                     chain.Operands[i].LineStart,
                     chain.Operands[i].ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
@@ -1441,7 +1451,10 @@ internal partial class TypeChecker
         if (steer.Length > 0)
             message += steer;
 
-        AddError(message, needle.LineStart, needle.ColumnStart,
+        // The NEEDLE is the refused value and the container's element type is its slot, so
+        // `(n or "z") in xs` names the #1819 rule like every other refused-value position.
+        ReportValueTypeMismatch(message, needle, elementType,
+            needle.LineStart, needle.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
             span: diagnosticNode.Span);
     }
@@ -2638,15 +2651,24 @@ internal partial class TypeChecker
 
     private static (string Left, string Right) OperandSpellings(Node node)
     {
-        var (left, right) = node switch
+        var (left, right) = OperandNodes(node);
+        return (SpellOperand(left, "x"), SpellOperand(right, "y"));
+    }
+
+    /// <summary>
+    /// The refused VALUE of an operator refusal — a <c>BinaryOp</c>'s right operand or an
+    /// <c>Assignment</c>'s value, which is what the augmented form <c>s += n or "z"</c> refuses
+    /// (#1819). Null for a node shape with no operand pair.
+    /// </summary>
+    private static Expression? OperandValueNode(Node node) => OperandNodes(node).Right;
+
+    private static (Expression? Left, Expression? Right) OperandNodes(Node node)
+        => node switch
         {
-            BinaryOp binOp => ((Expression?)binOp.Left, (Expression?)binOp.Right),
+            BinaryOp binOp => (binOp.Left, binOp.Right),
             Assignment assignment => (assignment.Target, assignment.Value),
             _ => (null, null),
         };
-
-        return (SpellOperand(left, "x"), SpellOperand(right, "y"));
-    }
 
     private static string SpellOperand(Expression? operand, string fallback)
         => operand != null && AstHelper.UnwrapParenthesized(operand) is Identifier id
@@ -2663,7 +2685,12 @@ internal partial class TypeChecker
         messageSuffix ??= PromotionRefusalSteer(node, left, right);
         if (messageSuffix != null)
             message += messageSuffix;
-        AddError(message, node.LineStart, node.ColumnStart,
+
+        // The RIGHT operand is the refused value and the LEFT type is the slot it was measured
+        // against, so `s += n or "z"` and `"a" + (n or "z")` carry the #1819 steer by construction
+        // — the augmented form only ever reached this reporter, never the store seam.
+        ReportValueTypeMismatch(message, OperandValueNode(node), left,
+            node.LineStart, node.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
             span: node.Span, data: data);
     }

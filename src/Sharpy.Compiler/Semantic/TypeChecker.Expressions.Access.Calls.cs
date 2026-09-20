@@ -1381,10 +1381,11 @@ internal partial class TypeChecker
 
             // Quote what the user actually wrote: `select[...]` only when they wrote type arguments.
             var written = callee is IndexAccess ? $"{memberName}[...]" : memberName;
-            AddError(
+            ReportValueTypeMismatch(
                 $"Argument {i + 1} of '{written}' expects '{expectedTypes[i].GetDisplayName()}' "
-                + $"but got '{argTypes[i].GetDisplayName()}'"
-                + DescribeLogicalResultSteer(call.Arguments[i], expectedTypes[i]),
+                + $"but got '{argTypes[i].GetDisplayName()}'",
+                call.Arguments[i],
+                expectedTypes[i],
                 call.Arguments[i].LineStart,
                 call.Arguments[i].ColumnStart,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -2414,13 +2415,12 @@ internal partial class TypeChecker
         }
 
         var message = $"Cannot pass argument of type '{failedArgType.GetDisplayName()}' to parameter of type "
-                + DescribeAlternativeTypes(expectedTypes)
-                + DescribeLogicalResultSteer(argNode, expectedTypes[0]);
+                + DescribeAlternativeTypes(expectedTypes);
 
         if (keywordName != null)
         {
             var kwarg = call.KeywordArguments.FirstOrDefault(k => k.Name == keywordName);
-            AddError(message,
+            ReportValueTypeMismatch(message, argNode, expectedTypes[0],
                 kwarg?.LineStart ?? call.LineStart,
                 kwarg?.ColumnStart ?? call.ColumnStart,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -2428,7 +2428,7 @@ internal partial class TypeChecker
         }
         else
         {
-            AddError(message,
+            ReportValueTypeMismatch(message, argNode, expectedTypes[0],
                 argNode?.LineStart ?? call.LineStart,
                 argNode?.ColumnStart ?? call.ColumnStart,
                 code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -4521,7 +4521,9 @@ internal partial class TypeChecker
 
             if (!IsAssignable(argTypes[i], expectedFieldType))
             {
-                AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
+                ReportValueTypeMismatch(
+                    $"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
+                    call.Arguments[i], expectedFieldType,
                     call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
                     code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: call.Arguments[i].Span);

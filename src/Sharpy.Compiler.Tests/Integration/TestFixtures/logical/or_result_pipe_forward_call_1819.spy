@@ -1,0 +1,8 @@
+# #1819: the pipe-forward-WITH-CALL positional route (`x |> f(y)`) formats its own message too.
+def tag(s: str, n: int) -> str:
+    return s
+
+def main() -> None:
+    name: str | None = None
+    labelled: str = (name or "Anonymous") |> tag(1)
+    print(labelled)

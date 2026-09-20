@@ -1,0 +1,3 @@
+SPY0220: Cannot assign type 'bool' to variable of type 'str' @5:5
+'or' returns bool in Sharpy (logical_operators.md §Return Type); for Python's value-returning fallback use a conditional: '<left> if <left> else <right>'
+!'<right> if <left> else <left>'

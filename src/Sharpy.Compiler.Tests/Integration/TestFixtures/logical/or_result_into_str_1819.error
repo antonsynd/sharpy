@@ -1,1 +1,4 @@
-Cannot assign type 'bool' to variable of type 'str' @3:5
+# The base refusal, pinned to code and location.
+SPY0220: Cannot assign type 'bool' to variable of type 'str' @3:5
+# The #1819 steer itself — without this line the fixture passes with the steer reverted.
+'or' returns bool in Sharpy (logical_operators.md §Return Type); for Python's value-returning fallback use '??' (the left operand is nullable)

@@ -265,10 +265,10 @@ internal partial class TypeChecker
                 }
                 else if (boundExisting is not UnknownType && !IsAssignable(resolvedType, boundExisting))
                 {
-                    AddError(
+                    ReportValueTypeMismatch(
                         $"Cannot assign type '{resolvedType.GetDisplayName()}' to variable of type "
-                        + $"'{boundExisting.GetDisplayName()}'"
-                        + DescribeLogicalResultSteer(modArg.Argument, boundExisting),
+                        + $"'{boundExisting.GetDisplayName()}'",
+                        modArg.Argument, boundExisting,
                         modArg.Argument.LineStart, modArg.Argument.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch, span: modArg.Span);
                     return SemanticType.Unknown;

@@ -1,0 +1,2 @@
+SPY0222: Type 'int32' does not support operator '+=' with operand of type 'bool'
+'and' returns bool in Sharpy (logical_operators.md §Return Type); for Python's value-returning fallback use '??' (the left operand is nullable)
