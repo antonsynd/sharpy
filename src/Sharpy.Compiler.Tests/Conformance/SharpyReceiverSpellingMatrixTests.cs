@@ -255,14 +255,19 @@ public class SharpyReceiverSpellingMatrixTests
         // ReverseTargets = false). Reverse member is `get_hash_code` (→ GetHashCode, () -> int); backtick
         // member is `GetHashCode`; the escape-absent snake is each receiver's own surface name (the CLR
         // has `Count`/`Add`/…, not `count`/`add`, so the verbatim escape names no member: SPY0203).
+        // Each row carries its targeted-cell REASON: a single-overload surface/reverse member is
+        // target-SELECTABLE (Targets=true, targeted → Compiles); a multi-overload one cannot be
+        // (Targets=false, targeted → SPY0336, reason cited per cell). The backtick escape is never
+        // target-selectable (EscapedWrapperMemberType refuses before selection) — its reason is fixed.
         var methodGroup = new (string Recv, string Decl, string Surface, string SurfaceSig, bool SurfaceTargets,
-            string Reverse, string ReverseSig, bool ReverseTargets, string Backtick)[]
+            string SurfaceReason, string Reverse, string ReverseSig, bool ReverseTargets, string ReverseReason,
+            string Backtick)[]
         {
-            ("xs", "xs: list[int] = [1, 2, 3]", "count", "(int) -> int", true, "get_hash_code", "() -> int", true, "GetHashCode"),
-            ("d", "d: dict[str, int] = {\"a\": 1}", "get", "(str) -> int", false, "get_hash_code", "() -> int", true, "GetHashCode"),
-            ("st", "st: set[int] = {1, 2}", "add", "(int) -> None", true, "get_hash_code", "() -> int", true, "GetHashCode"),
-            ("s", "s: str = \"abc\"", "upper", "() -> str", true, "get_hash_code", "() -> int", false, "GetHashCode"),
-            ("b", "b: bytes = b\"abc\"", "hex", "() -> str", false, "get_hash_code", "() -> int", true, "GetHashCode"),
+            ("xs", "xs: list[int] = [1, 2, 3]", "count", "(int) -> int", true, "", "get_hash_code", "() -> int", true, "", "GetHashCode"),
+            ("d", "d: dict[str, int] = {\"a\": 1}", "get", "(str) -> int", false, "arity-dict.get-multioverload", "get_hash_code", "() -> int", true, "", "GetHashCode"),
+            ("st", "st: set[int] = {1, 2}", "add", "(int) -> None", true, "", "get_hash_code", "() -> int", true, "", "GetHashCode"),
+            ("s", "s: str = \"abc\"", "upper", "() -> str", true, "", "get_hash_code", "() -> int", false, "arity-str.get_hash_code-multioverload", "GetHashCode"),
+            ("b", "b: bytes = b\"abc\"", "hex", "() -> str", false, "arity-bytes.hex-3overload", "get_hash_code", "() -> int", true, "", "GetHashCode"),
         };
 
         foreach (var row in methodGroup)
@@ -270,7 +275,10 @@ public class SharpyReceiverSpellingMatrixTests
             // surface spelling — value refuses with the three-cure steer (contains `recv.member(`).
             yield return new Cell($"methodgroup.{row.Recv}.surface.value",
                 Body(row.Decl, $"print({row.Recv}.{row.Surface})"), Expect.RefusedMethodGroup, $"{row.Recv}.{row.Surface}(");
-            yield return new Cell($"methodgroup.{row.Recv}.surface.targeted",
+            // targeted: Compiles iff a single-overload target selects; else SPY0336 with the reason in the label.
+            yield return new Cell(
+                row.SurfaceTargets ? $"methodgroup.{row.Recv}.surface.targeted"
+                                   : $"methodgroup.{row.Recv}.surface.targeted.spy0336[{row.SurfaceReason}]",
                 Body(row.Decl, $"f: {row.SurfaceSig} = {row.Recv}.{row.Surface}"),
                 row.SurfaceTargets ? Expect.Compiles : Expect.RefusedMethodGroup);
             // A bare call statement (not `y = ...`): set.add returns None, so binding the result is
@@ -281,17 +289,19 @@ public class SharpyReceiverSpellingMatrixTests
             // reverse-mangled CLR spelling — same three positions.
             yield return new Cell($"methodgroup.{row.Recv}.reverse.value",
                 Body(row.Decl, $"print({row.Recv}.{row.Reverse})"), Expect.RefusedMethodGroup, $"{row.Recv}.{row.Reverse}(");
-            yield return new Cell($"methodgroup.{row.Recv}.reverse.targeted",
+            yield return new Cell(
+                row.ReverseTargets ? $"methodgroup.{row.Recv}.reverse.targeted"
+                                   : $"methodgroup.{row.Recv}.reverse.targeted.spy0336[{row.ReverseReason}]",
                 Body(row.Decl, $"f: {row.ReverseSig} = {row.Recv}.{row.Reverse}"),
                 row.ReverseTargets ? Expect.Compiles : Expect.RefusedMethodGroup);
             yield return new Cell($"methodgroup.{row.Recv}.reverse.callee",
                 Body(row.Decl, $"y = {row.Recv}.{row.Reverse}()"), Expect.Compiles);
 
             // backtick escape — value and targeted refuse (the escape is not target-selectable),
-            // callee still calls the CLR member verbatim.
+            // callee still calls the CLR member verbatim. The targeted cell cites its reason.
             yield return new Cell($"methodgroup.{row.Recv}.backtick.value",
                 Body(row.Decl, $"x = {row.Recv}.`{row.Backtick}`"), Expect.RefusedMethodGroup);
-            yield return new Cell($"methodgroup.{row.Recv}.backtick.targeted",
+            yield return new Cell($"methodgroup.{row.Recv}.backtick.targeted.spy0336[escape-refuses-before-selection]",
                 Body(row.Decl, $"f: () -> int = {row.Recv}.`{row.Backtick}`"), Expect.RefusedMethodGroup);
             yield return new Cell($"methodgroup.{row.Recv}.backtick.callee",
                 Body(row.Decl, $"y = {row.Recv}.`{row.Backtick}`()"), Expect.Compiles);

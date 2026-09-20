@@ -1623,24 +1623,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// SPY0336 for a method group on a Sharpy builtin receiver in value position (#1942, R-AP), with
-    /// the three-cure steer. Shared by the surface-spelling gate in
-    /// <see cref="CheckReferencedCallableOverloads"/> and the reverse-mangled seam in
-    /// <see cref="ClrMemberTypeFromReflection"/> so every spelling reads identically.
-    /// </summary>
-    private SemanticType RefuseSharpyReceiverMethodGroupInValuePosition(MemberAccess memberAccess)
-    {
-        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
-        var steer = SharpyReceiverSpelling.ValuePositionSteer(receiverExpr, memberAccess.Member);
-        AddError(
-            $"'{memberAccess.Member}' on a Sharpy builtin is a method group, not a value — {steer}",
-            memberAccess.LineStart, memberAccess.ColumnStart,
-            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
-            span: memberAccess.Span);
-        return SemanticType.Unknown;
-    }
-
-    /// <summary>
     /// The CLR type a receiver INHERITS its member surface from, instantiated at the arguments the
     /// base clause pinned — <c>class IntList(List[int])</c> reaches
     /// <c>System.Collections.Generic.List&lt;int&gt;</c>. Null when the receiver has no CLR ancestor

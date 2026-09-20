@@ -801,18 +801,19 @@ public class ClrMemberFidelityMatrixTests
         + $"def _use() -> None:\n    {body}\n";
 
     /// <summary>
-    /// Roster guard for Decision 1(a) (#1678, #1858): a CLR method group referenced in VALUE position
-    /// is refused (SPY0336) at ONE place — <c>RefuseClrMethodGroupInValuePosition</c>. That helper is
-    /// the sole emitter of <c>AmbiguousCallableReference</c> in
-    /// <c>TypeChecker.Expressions.Access.cs</c>, so a <c>grep -c</c> of the code over that file is
-    /// exactly 1. Over the whole <c>Semantic/</c> namespace there are exactly THREE emitters: this one
-    /// plus the two Sharpy-side overload-SET refusals in
-    /// <c>TypeChecker.Expressions.Access.Calls.Overloads.cs</c> (a different class that STAYS). The
-    /// count is anchored to those three literal files so a fourth SPY0336 emitter — or moving this one
-    /// out of the helper — turns this red.
+    /// Roster guard for Decision 1(a) (#1678, #1858) and the R-AP value-position gate (#1942): a CLR
+    /// method group referenced in VALUE position is refused (SPY0336) at ONE place —
+    /// <c>RefuseClrMethodGroupInValuePosition</c>, still the sole emitter of
+    /// <c>AmbiguousCallableReference</c> in <c>TypeChecker.Expressions.Access.cs</c> (grep -c == 1).
+    /// Over the whole <c>Semantic/</c> namespace there are exactly FOUR emitters: that one plus THREE
+    /// in <c>TypeChecker.Expressions.Access.Calls.Overloads.cs</c> — the two Sharpy-side overload-SET
+    /// refusals, and (3→4 since #1942) <c>RefuseSharpyReceiverMethodGroupInValuePosition</c>, the
+    /// shared R-AP emitter that lives with its gate (DD13) and is also called by the reverse-mangled
+    /// seam in Access.cs. The count is anchored to those literal files so a fifth SPY0336 emitter — or
+    /// moving one out of its helper — turns this red.
     /// </summary>
     [Fact]
-    public void ClrMethodGroupSpy0336_HasOneEmitterInAccess_AndThreeAcrossSemantic()
+    public void ClrMethodGroupSpy0336_HasOneEmitterInAccess_AndFourAcrossSemantic()
     {
         const string token = "code: DiagnosticCodes.Semantic.AmbiguousCallableReference";
         var semanticDir = System.IO.Path.Combine(
@@ -831,10 +832,11 @@ public class ClrMemberFidelityMatrixTests
             .Sum(path => System.IO.File.ReadAllText(path)
                 .Split('\n').Count(line => line.Contains(token)));
 
-        Assert.Equal(3, totalAcrossSemantic);
+        Assert.Equal(4, totalAcrossSemantic);
 
-        // The two sites that STAY are the Sharpy-side overload-set refusals (a different class).
-        Assert.Equal(2, CountEmittersIn("TypeChecker.Expressions.Access.Calls.Overloads.cs"));
+        // The three sites here: the two Sharpy-side overload-set refusals plus the R-AP
+        // Sharpy-receiver value-position refusal (#1942), which lives with its gate.
+        Assert.Equal(3, CountEmittersIn("TypeChecker.Expressions.Access.Calls.Overloads.cs"));
     }
 
     private static string FindRepoRoot()

@@ -2772,6 +2772,27 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// SPY0336 for a method group on a Sharpy builtin receiver in value position (#1942, R-AP), with
+    /// the three-cure steer. The R-AP value-position gate lives here (DD13,
+    /// <see cref="CheckReferencedCallableOverloads"/>); this shared emitter is also called by the
+    /// reverse-mangled seam <c>ReverseMangledClrMethodVerdict</c> in TypeChecker.Expressions.Access.cs
+    /// so every spelling reads identically. It is the SECOND SPY0336 site in this file beyond the two
+    /// overload-SET refusals, and distinct from the CLR-method-group emitter that stays the sole one
+    /// in TypeChecker.Expressions.Access.cs.
+    /// </summary>
+    private SemanticType RefuseSharpyReceiverMethodGroupInValuePosition(MemberAccess memberAccess)
+    {
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.ValuePositionSteer(receiverExpr, memberAccess.Member);
+        AddError(
+            $"'{memberAccess.Member}' on a Sharpy builtin is a method group, not a value — {steer}",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+            span: memberAccess.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
     /// Whether the candidates accept different numbers of arguments — the case where the choice of
     /// overload changes what calls through the binding are legal. Each candidate's range is
     /// [required, total] once optional parameters are accounted for.
