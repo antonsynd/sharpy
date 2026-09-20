@@ -55,6 +55,7 @@ Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created
 
 | Skill | Arguments | Purpose |
 |-------|-----------|---------|
+| `/batch-issues` | `[--charter <path>] [--since <sha>] [--issues 123,456]` | Read every open issue with comments, batch into class-level groups, surface decisions with options and door-type; after the owner rules, write the round charter (`remediation-round-<date>-batching.md`, template in the skill), post placements/rulings, file and close what the rulings create |
 | `/create-plan` | `<issue numbers or description>` | Create an implementation plan from GitHub issues or a description |
 | `/verify-plan` | `<path/to/plan.md>` | Verify a plan for accuracy and architectural soundness |
 | `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a verified plan with coordinated agents, lead-owned gates, and mutation-tested guards |
