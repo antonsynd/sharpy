@@ -153,45 +153,38 @@ public class ValidationPipelineTests
     public void DefaultPipeline_HasAllValidators()
     {
         var pipeline = ValidationPipelineFactory.CreateDefault();
-        var validators = pipeline.Validators.ToList();
+        var actual = pipeline.Validators.Select(v => v.GetType()).ToHashSet();
 
-        // 37: bumped from 36 when FrozenDataclassValidator (Order 414) joined the default
-        // pipeline (#1902) — the presence assertion for it, below, is what makes this a real
-        // totality check rather than a bare number that can drift silently again.
-        Assert.Equal(37, validators.Count);
-        Assert.Contains(validators, v => v is AbstractMemberValidator);
-        Assert.Contains(validators, v => v is DefiniteAssignmentValidator);
-        Assert.Contains(validators, v => v is LoopTransferBindingValidator);
-        Assert.Contains(validators, v => v is MustUseValidator);
-        Assert.Contains(validators, v => v is CircularImportUsageValidator);
-        Assert.Contains(validators, v => v is MatchArmOrderValidator);
-        Assert.Contains(validators, v => v is ModuleLevelValidator);
-        Assert.Contains(validators, v => v is NamingConventionValidator);
-        Assert.Contains(validators, v => v is TransitionWarningValidator);
-        Assert.Contains(validators, v => v is BuiltinNameShadowingValidator);
-        Assert.Contains(validators, v => v is LocalNameCollisionValidator);
-        Assert.Contains(validators, v => v is DecoratorValidator);
-        Assert.Contains(validators, v => v is SourceGeneratorValidator);
-        Assert.Contains(validators, v => v is StructRulesValidator);
-        Assert.Contains(validators, v => v is EnumRulesValidator);
-        Assert.Contains(validators, v => v is SignatureValidator);
-        Assert.Contains(validators, v => v is GeneratorValidator);
-        Assert.Contains(validators, v => v is EqualityContractValidator);
-        Assert.Contains(validators, v => v is ConstantPositionValidator);
-        Assert.Contains(validators, v => v is ControlFlowValidator);
-        Assert.Contains(validators, v => v is ExhaustivenessValidator);
-        Assert.Contains(validators, v => v is PropertyValidator);
-        Assert.Contains(validators, v => v is FinalFieldValidator);
-        Assert.Contains(validators, v => v is VarianceValidator);
-        Assert.Contains(validators, v => v is EventValidator);
-        Assert.Contains(validators, v => v is UnusedVariableValidator);
-        Assert.Contains(validators, v => v is UnusedImportValidator);
-        Assert.Contains(validators, v => v is AccessValidator);
-        Assert.Contains(validators, v => v is DunderInvocationValidator);
-        Assert.Contains(validators, v => v is InterfaceImplementationValidator);
-        Assert.Contains(validators, v => v is ProtocolValidator);
-        Assert.Contains(validators, v => v is OperatorValidator);
-        Assert.Contains(validators, v => v is FrozenDataclassValidator);
+        // The registered set is DERIVED from the assembly, not a hand-kept list: every concrete
+        // ISemanticValidator in Sharpy.Compiler must be registered, minus an explicit, reasoned
+        // exclusion set. The former literal count (37) passed vacuously — a new validator added
+        // AND asserted while an old one silently dropped kept the count; set-equality cannot (#1904).
+        var excluded = new HashSet<Type>
+        {
+            // Superseded by ConstantPositionValidator (Order 250, #1788); dead code, deletion tracked
+            // by #1949. When it is deleted this exclusion goes with it and the set-equality still holds.
+            typeof(DefaultParameterValidator),
+        };
+        // The exclusion list IS the exemption, so it is anchored to a literal count: growing it is a
+        // visible edit, never a silent one.
+        Assert.Single(excluded);
+
+        var expected = typeof(SemanticValidatorBase).Assembly.GetTypes()
+            .Where(t => typeof(ISemanticValidator).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false })
+            .Where(t => !excluded.Contains(t))
+            .ToHashSet();
+
+        Assert.Equal(expected, actual);
+
+        // Each excluded type must be a REAL, unregistered concrete validator — a stale typeof (one
+        // that was deleted, or that is actually registered) fails here rather than silently shrinking
+        // the derived set.
+        Assert.All(excluded, t =>
+        {
+            Assert.True(typeof(ISemanticValidator).IsAssignableFrom(t) && !t.IsAbstract,
+                $"{t.Name} in the exclusion set is not a concrete ISemanticValidator");
+            Assert.DoesNotContain(t, actual);
+        });
     }
 
     [Fact]
