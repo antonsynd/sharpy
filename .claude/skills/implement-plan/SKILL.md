@@ -108,6 +108,7 @@ CRITICAL RULES:
 - Language spec is authoritative — check docs/language_specification/ before implementing; spec examples you add are executed before commit
 - TODO/BUG/FIXME comments must reference GitHub issues (create the issue first)
 - Fix the class, not the cell: when you discover a sibling cell of the defect you are fixing, FILE the issue AND add it to the plan's Defect Class table — never spot-fix it silently
+- Language before compiler (layer ladder, CLAUDE.md › Core & Stdlib Conventions): if a task's Semantic/CodeGen change is expressible at a lower rung — `.spy` source, Core/Stdlib C# in the dunder table's spelling (operator overloads, `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `Contains(T)`, `IEnumerable<T>`) discovered by reflection, or a CLR-identity bridge rule — STOP and report before coding; never land a name-keyed (`BuiltinNames.X`) rule silently
 
 SHARED TREE (verbatim from docs/design/verification-contract.md §9):
 The working tree is shared with other agents. Never run `git checkout`, `git restore`,

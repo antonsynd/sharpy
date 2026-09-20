@@ -208,6 +208,14 @@ Section A — class cure (do this first)
    one partial file / one entry point while a mirrored sibling (the other operand position, the
    other callee kind, the LSP route, the qualified spelling) is untouched. A one-arm fix with no
    completeness scan is a FINDING even if every test is green.
+   1b. Compiler or language? For each hunk in src/Sharpy.Compiler that adds a comparison on a
+   builtin/type NAME (`BuiltinNames.X`, `Name == "…"`, a name alias) or a type-specific arm, name
+   the lower layer-ladder rung that could have carried the fact (CLAUDE.md › Core & Stdlib
+   Conventions: `.spy` source; Core/Stdlib C# in the dunder table's spelling — operator overloads,
+   `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `Contains(T)`, `IEnumerable<T>` — discovered by
+   reflection; a CLR-identity bridge rule). If one exists and the plan's decision did not justify
+   rung 4, FINDING. Count `grep -rn 'Name == BuiltinNames\.\|Name is BuiltinNames\.\|Name: BuiltinNames\.' src/Sharpy.Compiler/Semantic --include='*.cs' | wc -l`
+   at $BASE and $HEAD; a rise without a rung justification in the plan is a FINDING.
 
 2. Mutation-test EVERY new or modified test/guard/harness, in a worktree
    (`git worktree add ../sharpy.worktrees/wt-verify-mut $HEAD`):

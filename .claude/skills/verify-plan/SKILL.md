@@ -64,8 +64,9 @@ Flag as warning: any convention violation. Add a note explaining the correct con
 - **Validation pipeline placement**: proposed validator `Order` values don't collide; TypeChecker (type mismatches, in-progress inference) vs ValidationPipeline (self-contained AST analyses) split respected
 - **Symbol lifecycle**: progressive symbol population across passes respected
 - **CompilerServices integration**: new services follow the `CompilerServicesBuilder` adapter pattern
+- **Layer choice (ladder)**: every design decision names its rung (CLAUDE.md › Core & Stdlib Conventions). For each rung-4 rule (a `BuiltinNames.X` / type-name comparison or a name alias in `Semantic/`), check the lower rungs yourself: the dunder table (`dunder_methods.md`), the Core protocol interfaces, the `Dict.cs` operator overloads, and the reflection paths `ProtocolMembership.HasClrProtocol` / `TypeInferenceService.TryInferClrBinaryOp` (operators are unioned from BOTH operand types, so a cross-type operator is an overload, not a checker arm). Read the CALLER of any function named `*Fallback`/`*Default` before accepting it as the seam. A rung-4 rule where rung 2 can carry the fact is an error and the plan is NEEDS REVISION until the decision moves down or justifies staying
 
-Flag as error: violations that would break the pipeline. Flag as warning: suboptimal placement.
+Flag as error: violations that would break the pipeline, and a name-keyed rule with an available lower rung. Flag as warning: suboptimal placement.
 
 ### 4. Correctness
 
@@ -168,6 +169,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 - **Matrix:** [larger than repro lists / equals repro lists / missing] — <cells the verifier found the plan does not name>
 - **Cure:** [seam / sweep / harness / N patches] — <meta-class row>
 - **Harness:** [named + allowlist delta / "Phase N adds one" / missing]
+- **Layer:** [every decision rung-justified / rung-4 without justification: <decision, and the rung that could carry it>]
 
 ### Falsifiability
 - <guard name>: mutation [named: … / MISSING — expected: …]; exemption [not subject / IS subject]; positive control [yes / n/a / MISSING]; by-direction probe [specified / MISSING]

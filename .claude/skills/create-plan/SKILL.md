@@ -43,6 +43,7 @@ Parse `$ARGUMENTS`:
 Before writing the plan:
 - Read the relevant source files to understand current state
 - Check `docs/language_specification/` for any applicable specs (spec is authoritative — the plan changes the implementation to match, never the reverse)
+- **Survey the language before the compiler** (CLAUDE.md › Core & Stdlib Conventions › layer ladder): for every behaviour the plan adds or fixes, check whether a `.spy` source, the dunder table (`docs/language_specification/dunder_methods.md`), a Core protocol interface (`ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`), an operator overload (`src/Sharpy.Core/Dict.cs` is the model), a public `Contains(T)`/`IEnumerable<T>`, or an extension method already expresses it and is discovered by reflection (`ProtocolMembership.HasClrProtocol`, `TypeInferenceService.TryInferClrBinaryOp` — which unions operators from BOTH operand types). A checker or emitter rule keyed on a builtin name is rung 4 and needs a sentence naming what the CLR surface cannot express. Read the CALLER of any function named `*Fallback`/`*Default` before citing it as the seam
 - Check existing tests in `src/Sharpy.Compiler.Tests/` and `src/Sharpy.Core.Tests/`, and the standing class harnesses in `docs/design/gap-discovery-contracts.md` — which one *should* have caught this?
 - Verify Python behavior with `python3 -c "..."` where applicable
 - Check for related GitHub issues with `gh issue list --search "..."` — sibling cells of the same class are usually already filed
@@ -81,6 +82,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 ## Adversarial Review (pre-mortem)
 
 - **Alternative root cause:** <what else explains the symptom; the probe that discriminates>
+- **Alternative layer:** <the lower ladder rung that could carry the fact — `.spy` source, dunder-table C#, protocol interface, operator overload — and the reason it cannot, or the plan moves there>
 - **How the fix could be inert:** <fallback path one call later? decision duplicated in a sibling arm?>
 - **Before/after by direction:** <the probe that distinguishes "ICE → diagnostic" from "restricts working code">
 - **Blast radius:** <Stdlib.Tests / Cli.Tests / LSP parity / interop / metamorphic / differential / warm-cold>
@@ -91,7 +93,8 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 <Key architectural choices with rationale. Reference Sharpy axioms where relevant:
 - Axiom 1 (.NET compatibility) > Axiom 2 (Type safety) > Axiom 3 (Python syntax)
 - Reference docs/language_specification/ where applicable
-- Every fact codegen reads is materialized in semantic analysis (Symbol.CodeGenInfo or a node-keyed SemanticInfo dictionary added to MergeFrom)>
+- Every fact codegen reads is materialized in semantic analysis (Symbol.CodeGenInfo or a node-keyed SemanticInfo dictionary added to MergeFrom)
+- Every decision names its layer-ladder rung (1 `.spy` / 2 Core C# in dunder spelling / 3 CLR-identity bridge rule / 4 name-keyed semantic rule) and why the lower rungs cannot carry the fact>
 
 ## Implementation
 
@@ -136,6 +139,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Enough context and rationale for a junior/senior engineer (or a smaller model) to implement unambiguously
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
+- A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
 - The plan names which generated artifacts it touches and schedules their regeneration early (§7), and names its blast radius (CLAUDE.md › Testing › Commit gate)
 - GitHub issues referenced and mapped to closing tasks, each with its close criterion
