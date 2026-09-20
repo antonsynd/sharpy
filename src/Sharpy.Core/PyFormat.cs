@@ -20,8 +20,13 @@ namespace Sharpy
         {
             if (string.IsNullOrEmpty(spec))
             {
-                // Empty spec == str(value): today's behavior, None spelled "None".
-                return value == null ? "None" : (value.ToString() ?? "None");
+                // Empty spec == str(value) — literally, by calling the ONE str() authority
+                // (Builtins.Str) rather than object.ToString(). #1883: .NET's ToString() spells a
+                // whole double "100" where Python's str() spells it "100.0", so `format(100.0, "")`
+                // and `"{}".format(100.0)` disagreed with `f"{100.0}"`, whose plain hole already
+                // lowers to Builtins.Str. Builtins.Str also owns None, bool (True/False), exception
+                // messages, tuples and plain CLR sequences, so every kind agrees across consumers.
+                return value == null ? "None" : Builtins.Str(value);
             }
 
             if (value == null)
@@ -137,8 +142,33 @@ namespace Sharpy
                     "Invalid format specifier '" + spec + "' for object of type '" + PyTypeName(value) + "'");
             }
 
-            // Format the value
-            string formatted = FormatValue(value, type, precision, hasPrecision, altForm, sign, grouping, zCoerce);
+            // Grouping is legal only with a subset of the presentation types, and CPython checks that
+            // BEFORE it checks the type against the operand: format(1.5, ',b') is "Cannot specify ','
+            // with 'b'.", not "Unknown format code 'b' for object of type 'float'". An absent type
+            // stands for the operand's default one ('s' for str), which is why format('a', '_') is
+            // refused by name.
+            if (grouping != '\0')
+            {
+                char effectiveType = type != '\0' ? type : (value is string ? 's' : '\0');
+                if (!GroupingAllowedWith(grouping, effectiveType))
+                {
+                    throw new ValueError(
+                        "Cannot specify '" + grouping + "' with '" + effectiveType + "'.");
+                }
+            }
+
+            // Format the value — sign included, grouping and zero-fill NOT (both depend on the
+            // width, and CPython interleaves them: the separators go INSIDE the zero fill).
+            string formatted = FormatValue(value, type, precision, hasPrecision, altForm, sign, zCoerce);
+
+            // Grouping + zero-fill over the digit run only, never over the sign, the 0x/0o/0b prefix
+            // or the fraction/exponent tail.
+            if (IsNumericValue(value))
+            {
+                formatted = GroupAndZeroFill(
+                    formatted, type, altForm, grouping,
+                    minWidthTotal: (align == '=' && fill == '0') ? width : 0);
+            }
 
             // Apply width and alignment
             if (width > 0 && formatted.Length < width)
@@ -185,6 +215,47 @@ namespace Sharpy
             return c == '<' || c == '>' || c == '^' || c == '=';
         }
 
+        /// <summary>
+        /// CPython's grouping/presentation-type matrix (PEP 378 + PEP 515): both separators are
+        /// allowed with <c>d e E f F g G %</c> and the absent type; <c>_</c> is additionally allowed
+        /// with the radix types <c>b o x X</c> (where it groups every FOUR digits), and <c>,</c> is
+        /// not. Everything else — including <c>c</c>, <c>n</c>, <c>s</c> and any unknown code — is
+        /// refused.
+        /// </summary>
+        private static bool GroupingAllowedWith(char grouping, char type)
+        {
+            switch (type)
+            {
+                case '\0':
+                case 'd':
+                case 'e':
+                case 'E':
+                case 'f':
+                case 'F':
+                case 'g':
+                case 'G':
+                case '%':
+                    return true;
+                case 'b':
+                case 'o':
+                case 'x':
+                case 'X':
+                    return grouping == '_';
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Digits per group: four for <c>_</c> on a radix presentation type (<c>b o x X</c>), three
+        /// otherwise. CPython: "for the integer presentation types 'b', 'o', 'x', and 'X',
+        /// underscores are inserted every 4 digits".
+        /// </summary>
+        private static int GroupSizeFor(char type)
+        {
+            return type == 'b' || type == 'o' || type == 'x' || type == 'X' ? 4 : 3;
+        }
+
         private static bool IsNumericValue(object value)
         {
             return value is int || value is long || value is double || value is float
@@ -215,7 +286,7 @@ namespace Sharpy
         }
 
         private static string FormatValue(object value, char type, int precision, bool hasPrecision,
-            bool altForm, char sign, char grouping, bool zCoerce)
+            bool altForm, char sign, bool zCoerce)
         {
             bool isBool = value is bool;
             bool isFloat = value is double || value is float || value is decimal;
@@ -261,6 +332,60 @@ namespace Sharpy
 
             string result;
 
+            // A non-finite float is spelled inf/-inf/nan under EVERY float presentation type —
+            // uppercased for the uppercase codes, with '%' still appended, and with the precision
+            // ignored. .NET's ToString("F6")/("E6") says "Infinity"/"NaN" instead, which is a second
+            // spelling of the same value; Builtins.Str is the authority for the first one.
+            if (isFloat && IsNonFinite(value))
+            {
+                string nonFinite = Builtins.Str(value);
+                if (type == 'F' || type == 'E' || type == 'G')
+                {
+                    nonFinite = nonFinite.ToUpperInvariant();
+                }
+                result = type == '%' ? nonFinite + "%" : nonFinite;
+            }
+            else
+            {
+                result = FormatFinite(value, type, precision, hasPrecision, altForm, isFloat, isIntegral);
+            }
+
+            // PEP 682: coerce a formatted negative zero to positive zero.
+            if (zCoerce && IsNegativeZeroText(result))
+            {
+                result = result.Substring(1);
+            }
+
+            // Apply sign
+            if (sign != '\0' && (isIntegral || isFloat) && type != '%' && type != 'c')
+            {
+                if (result.Length > 0 && result[0] != '-')
+                {
+                    if (sign == '+')
+                    {
+                        result = "+" + result;
+                    }
+                    else if (sign == ' ')
+                    {
+                        result = " " + result;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// The presentation-type dispatch for a FINITE value — every arm CPython's
+        /// <c>__format__</c> reaches once the non-finite floats have been spelled by
+        /// <see cref="Builtins.Str(object)"/>. Sign, negative-zero coercion, grouping and padding are
+        /// the caller's job.
+        /// </summary>
+        private static string FormatFinite(object value, char type, int precision, bool hasPrecision,
+            bool altForm, bool isFloat, bool isIntegral)
+        {
+            string result;
+
             switch (type)
             {
                 case 'd':
@@ -293,27 +418,19 @@ namespace Sharpy
                     result = FormatGeneral(value, precision, hasPrecision, true);
                     break;
                 case 'x':
-                    result = ToLong(value).ToString("x", CultureInfo.InvariantCulture);
-                    if (altForm)
-                        result = "0x" + result;
+                    result = FormatRadix(value, 16, false, altForm ? "0x" : null);
                     break;
                 case 'X':
-                    result = ToLong(value).ToString("X", CultureInfo.InvariantCulture);
-                    if (altForm)
-                        result = "0X" + result;
+                    result = FormatRadix(value, 16, true, altForm ? "0X" : null);
                     break;
                 case 'o':
-                    result = Convert.ToString(ToLong(value), 8);
-                    if (altForm)
-                        result = "0o" + result;
+                    result = FormatRadix(value, 8, false, altForm ? "0o" : null);
                     break;
                 case 'b':
-                    result = Convert.ToString(ToLong(value), 2);
-                    if (altForm)
-                        result = "0b" + result;
+                    result = FormatRadix(value, 2, false, altForm ? "0b" : null);
                     break;
                 case 'c':
-                    result = char.ConvertFromUtf32((int)ToLong(value));
+                    result = FormatCodePoint(ToLong(value));
                     break;
                 case '%':
                     int pctPrec = hasPrecision ? precision : 6;
@@ -324,10 +441,12 @@ namespace Sharpy
                 case '\0':
                     if (type == '\0' && isFloat)
                     {
-                        // float with no type: full repr, or significant-digit precision when given.
+                        // float with no type: str(value), or significant-digit precision when given.
+                        // #1883: str(value) is Builtins.Str — the one float authority — not .NET's
+                        // ToString(), which drops the trailing ".0" and spells inf/nan its own way.
                         result = hasPrecision
                             ? FormatFloatSignificant(value, precision)
-                            : (value.ToString() ?? "");
+                            : Builtins.Str(value);
                     }
                     else if (type == '\0' && isIntegral)
                     {
@@ -347,35 +466,81 @@ namespace Sharpy
                         "Unknown format code '" + type + "' for object of type '" + PyTypeName(value) + "'");
             }
 
-            // PEP 682: coerce a formatted negative zero to positive zero.
-            if (zCoerce && IsNegativeZeroText(result))
-            {
-                result = result.Substring(1);
-            }
-
-            // Apply sign
-            if (sign != '\0' && (isIntegral || isFloat) && type != '%' && type != 'c')
-            {
-                if (result.Length > 0 && result[0] != '-')
-                {
-                    if (sign == '+')
-                    {
-                        result = "+" + result;
-                    }
-                    else if (sign == ' ')
-                    {
-                        result = " " + result;
-                    }
-                }
-            }
-
-            // Apply grouping
-            if (grouping != '\0')
-            {
-                result = ApplyGrouping(result, grouping);
-            }
-
             return result;
+        }
+
+        /// <summary>
+        /// CPython's <c>b</c>/<c>o</c>/<c>x</c>/<c>X</c>: a SIGN-MAGNITUDE rendering, because Python
+        /// integers are unbounded and have no two's complement. .NET's
+        /// <c>(-255L).ToString("x")</c> is <c>ffffffffffffff01</c>, which is a different number and
+        /// has no correct grouping; CPython's <c>format(-255, 'x')</c> is <c>-ff</c>.
+        /// </summary>
+        private static string FormatRadix(object value, int radix, bool upper, string? prefix)
+        {
+            long v = ToLong(value);
+            bool negative = v < 0;
+            // long.MinValue has no positive counterpart; render its magnitude unsigned.
+            ulong magnitude = negative
+                ? (v == long.MinValue ? (ulong)long.MaxValue + 1 : (ulong)(-v))
+                : (ulong)v;
+
+            string digits;
+            if (radix == 16)
+            {
+                digits = magnitude.ToString(upper ? "X" : "x", CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                var sb = new System.Text.StringBuilder();
+                if (magnitude == 0)
+                {
+                    sb.Append('0');
+                }
+                while (magnitude > 0)
+                {
+                    sb.Insert(0, (char)('0' + (int)(magnitude % (ulong)radix)));
+                    magnitude /= (ulong)radix;
+                }
+                digits = sb.ToString();
+            }
+
+            return (negative ? "-" : "") + (prefix ?? "") + digits;
+        }
+
+        /// <summary>
+        /// CPython's <c>c</c> presentation: the character at that code point. Out-of-range is
+        /// <c>OverflowError("%c arg not in range(0x110000)")</c> — never a raw .NET
+        /// <see cref="ArgumentOutOfRangeException"/>, which used to abort the process (#1883 sibling).
+        /// Lone surrogates are legal in a Python <c>str</c> (<c>chr(0xD800)</c> works), so they are
+        /// built directly rather than through <see cref="char.ConvertFromUtf32"/>, which refuses them.
+        /// </summary>
+        private static string FormatCodePoint(long codePoint)
+        {
+            if (codePoint < 0 || codePoint > 0x10FFFF)
+            {
+                throw new OverflowError("%c arg not in range(0x110000)");
+            }
+
+            if (codePoint >= 0xD800 && codePoint <= 0xDFFF)
+            {
+                return ((char)codePoint).ToString();
+            }
+
+            return char.ConvertFromUtf32((int)codePoint);
+        }
+
+        /// <summary>Whether a float value is an infinity or a NaN.</summary>
+        private static bool IsNonFinite(object value)
+        {
+            if (value is double d)
+            {
+                return double.IsNaN(d) || double.IsInfinity(d);
+            }
+            if (value is float f)
+            {
+                return float.IsNaN(f) || float.IsInfinity(f);
+            }
+            return false;
         }
 
         private static bool IsNegativeZeroText(string s)
@@ -542,36 +707,123 @@ namespace Sharpy
             return Convert.ToDouble(value, CultureInfo.InvariantCulture);
         }
 
-        private static string ApplyGrouping(string formatted, char separator)
+        /// <summary>
+        /// Insert grouping separators into — and, when the <c>0</c> flag is in force, zero-fill —
+        /// the DIGIT RUN of an already-formatted number, leaving the sign, the <c>0x</c>/<c>0o</c>/
+        /// <c>0b</c> prefix and the fraction/exponent/percent tail alone.
+        /// </summary>
+        /// <param name="formatted">The rendered number: sign, optional prefix, digits, tail.</param>
+        /// <param name="type">The presentation type, which fixes the group size and the digit run.</param>
+        /// <param name="altForm">Whether <c>#</c> put a two-character radix prefix on the front.</param>
+        /// <param name="grouping">The separator (<c>,</c> or <c>_</c>), or <c>\0</c> for none.</param>
+        /// <param name="minWidthTotal">
+        /// The spec's width when it asked for <c>0</c>-fill with <c>=</c> alignment, else 0. CPython
+        /// subtracts the sign, the prefix and the tail from it and pads the digits to what is left,
+        /// which is why the separators land INSIDE the zero fill
+        /// (<c>format(74565, '#012_x')</c> is <c>0x0_0001_2345</c>, not <c>00x1_2345</c>).
+        /// </param>
+        private static string GroupAndZeroFill(
+            string formatted, char type, bool altForm, char grouping, int minWidthTotal)
         {
-            // Find the integer part (before decimal point or end)
-            int signLen = 0;
-            if (formatted.Length > 0 && (formatted[0] == '-' || formatted[0] == '+' || formatted[0] == ' '))
+            int signLen = formatted.Length > 0
+                && (formatted[0] == '-' || formatted[0] == '+' || formatted[0] == ' ') ? 1 : 0;
+            int prefixLen = altForm && (type == 'x' || type == 'X' || type == 'o' || type == 'b') ? 2 : 0;
+
+            int digitsStart = signLen + prefixLen;
+            if (digitsStart > formatted.Length)
             {
-                signLen = 1;
+                return formatted;
             }
 
-            int dotPos = formatted.IndexOf('.');
-            string intPart = dotPos >= 0
-                ? formatted.Substring(signLen, dotPos - signLen)
-                : formatted.Substring(signLen);
-            string rest = dotPos >= 0 ? formatted.Substring(dotPos) : "";
-            string signPart = signLen > 0 ? formatted.Substring(0, signLen) : "";
-
-            // Insert separators every 3 digits from the right
-            var sb = new System.Text.StringBuilder();
-            int count = 0;
-            for (int idx = intPart.Length - 1; idx >= 0; idx--)
+            // Where the digit run ends. For the radix types every remaining character is a digit
+            // (a-f are digits in base 16); otherwise the run is the ASCII digits before the '.',
+            // the exponent or the '%'.
+            int digitsEnd;
+            if (type == 'x' || type == 'X' || type == 'o' || type == 'b')
             {
-                if (count > 0 && count % 3 == 0)
+                digitsEnd = formatted.Length;
+            }
+            else
+            {
+                digitsEnd = digitsStart;
+                while (digitsEnd < formatted.Length && formatted[digitsEnd] >= '0' && formatted[digitsEnd] <= '9')
                 {
-                    sb.Insert(0, separator);
+                    digitsEnd++;
                 }
-                sb.Insert(0, intPart[idx]);
-                count++;
             }
 
-            return signPart + sb.ToString() + rest;
+            // No leading digits at all means this is "inf"/"nan" (or a 'c' character): CPython
+            // zero-fills it to the width but inserts no separators.
+            char separator = grouping;
+            if (digitsEnd == digitsStart)
+            {
+                digitsEnd = formatted.Length;
+                separator = '\0';
+            }
+
+            string digits = formatted.Substring(digitsStart, digitsEnd - digitsStart);
+            string tail = formatted.Substring(digitsEnd);
+
+            if (separator == '\0' && minWidthTotal <= 0)
+            {
+                return formatted;
+            }
+
+            int minWidth = minWidthTotal <= 0 ? 0 : minWidthTotal - signLen - prefixLen - tail.Length;
+            string grouped = InsertThousandsGrouping(digits, minWidth, GroupSizeFor(type), separator);
+
+            return formatted.Substring(0, digitsStart) + grouped + tail;
+        }
+
+        /// <summary>
+        /// A port of CPython's <c>_PyUnicode_InsertThousandsGrouping</c> for a uniform group size.
+        /// Groups are emitted right to left; a group short of <paramref name="minWidth"/> is padded
+        /// with zeros, so the fill and the separators interleave
+        /// (<c>format(1234, '012_d')</c> is <c>0_000_001_234</c>, thirteen characters for a width of
+        /// twelve — CPython never lets a separator be the leading character).
+        /// </summary>
+        private static string InsertThousandsGrouping(
+            string digits, int minWidth, int groupSize, char separator)
+        {
+            if (separator == '\0')
+            {
+                return digits.Length >= minWidth
+                    ? digits
+                    : new string('0', minWidth - digits.Length) + digits;
+            }
+
+            var sb = new System.Text.StringBuilder();
+            int remaining = digits.Length;
+            int cursor = digits.Length;
+
+            while (true)
+            {
+                int len = Math.Min(groupSize, Math.Max(Math.Max(remaining, minWidth), 1));
+                int chars = Math.Max(0, Math.Min(remaining, len));
+                int zeros = Math.Max(0, len - remaining);
+
+                if (chars > 0)
+                {
+                    sb.Insert(0, digits.Substring(cursor - chars, chars));
+                    cursor -= chars;
+                    remaining -= chars;
+                }
+                if (zeros > 0)
+                {
+                    sb.Insert(0, new string('0', zeros));
+                }
+
+                minWidth -= len;
+                if (remaining <= 0 && minWidth <= 0)
+                {
+                    break;
+                }
+
+                sb.Insert(0, separator);
+                minWidth--;
+            }
+
+            return sb.ToString();
         }
     }
 }

@@ -98,8 +98,10 @@ internal static class FormatSpecGrammar
         }
 
         // grouping
+        char grouping = '\0';
         if (pos < spec.Length && (spec[pos] == ',' || spec[pos] == '_'))
         {
+            grouping = spec[pos];
             pos++;
         }
 
@@ -127,8 +129,43 @@ internal static class FormatSpecGrammar
             return "Invalid format specifier '" + spec + "' for object of type '" + TypeName(kind) + "'";
         }
 
+        // Grouping is legal only with a subset of the presentation types, and CPython checks that
+        // BEFORE it checks the type against the operand — f"{1.5:,b}" is "Cannot specify ',' with
+        // 'b'.", not "Unknown format code 'b' for object of type 'float'". An absent type stands for
+        // the operand's default one, which is why f"{s:_}" on a str is refused by name.
+        if (grouping != '\0')
+        {
+            char effectiveType = type != '\0' ? type : DefaultType(kind);
+            if (!GroupingAllowedWith(grouping, effectiveType))
+            {
+                return "Cannot specify '" + grouping + "' with '" + effectiveType + "'.";
+            }
+        }
+
         return ValidateTypeCode(kind, type, hasPrecision, zCoerce);
     }
+
+    /// <summary>
+    /// CPython's grouping/presentation-type matrix (PEP 378 + PEP 515), mirroring
+    /// <c>Sharpy.PyFormat.GroupingAllowedWith</c>: both separators go with <c>d e E f F g G %</c> and
+    /// the absent type; <c>_</c> additionally goes with the radix types <c>b o x X</c> (grouping
+    /// every four digits) and <c>,</c> does not. Everything else, including <c>c</c>, <c>n</c>,
+    /// <c>s</c> and unknown codes, is refused.
+    /// </summary>
+    private static bool GroupingAllowedWith(char grouping, char type) => type switch
+    {
+        '\0' or 'd' or 'e' or 'E' or 'f' or 'F' or 'g' or 'G' or '%' => true,
+        'b' or 'o' or 'x' or 'X' => grouping == '_',
+        _ => false
+    };
+
+    /// <summary>The presentation type an absent one stands for, per operand kind.</summary>
+    private static char DefaultType(FormatOperandKind kind) => kind switch
+    {
+        FormatOperandKind.Str => 's',
+        FormatOperandKind.Integral or FormatOperandKind.Bool => 'd',
+        _ => '\0'
+    };
 
     private static string? ValidateTypeCode(FormatOperandKind kind, char type, bool hasPrecision, bool zCoerce)
     {

@@ -183,7 +183,9 @@ namespace Sharpy
                     // Apply conversion flag.
                     if (conversion == 's')
                     {
-                        value = value != null ? (value.ToString() ?? "None") : "None";
+                        // !s is str(value) — the one str() authority, not object.ToString(). #1883:
+                        // ToString() spells a whole double "100" where str() spells it "100.0".
+                        value = Builtins.Str(value);
                     }
                     else if (conversion == 'r')
                     {
@@ -194,14 +196,11 @@ namespace Sharpy
                         value = Builtins.Ascii(value);
                     }
 
-                    if (formatSpec != null)
-                    {
-                        sb.Append(PyFormat.Apply(value, formatSpec));
-                    }
-                    else
-                    {
-                        sb.Append(value);
-                    }
+                    // A spec-less "{}" is a spec of "" — the same engine, the same empty-spec rule.
+                    // #1883: appending the object let StringBuilder call ToString(), which is a
+                    // second (and wrong) rendering rule: "{}".format(100.0) printed "100" while
+                    // f"{100.0}" printed "100.0", and "{}".format(None) printed nothing at all.
+                    sb.Append(PyFormat.Apply(value, formatSpec ?? ""));
                 }
                 else if (c == '}')
                 {

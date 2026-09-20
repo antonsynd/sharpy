@@ -104,6 +104,30 @@ public class FormatApplyTests
         PyFormat.Apply(value, spec).Should().Be(expected);
     }
 
+    /// <summary>
+    /// #1883: an empty spec is <c>str(value)</c>, and <c>str</c> means <c>Builtins.Str</c> — the one
+    /// authority an f-string's plain hole already uses — not <see cref="object.ToString"/>. The two
+    /// disagree for exactly the kinds Python spells specially: a whole float (<c>100.0</c> vs
+    /// <c>100</c>), an infinity, a NaN, and a bool. A float with a NON-empty spec but no type code
+    /// takes the same route, which is why <c>">10"</c> is here too.
+    /// </summary>
+    [Theory]
+    [InlineData(100.0, "", "100.0")]           // format(100.0, '')  — the #1883 close criterion
+    [InlineData(1.0, "", "1.0")]               // format(1.0, '')
+    [InlineData(-0.0, "", "-0.0")]             // format(-0.0, '')
+    [InlineData(1e20, "", "1e+20")]            // format(1e20, '')
+    [InlineData(double.PositiveInfinity, "", "inf")]   // format(float('inf'), '')
+    [InlineData(double.NegativeInfinity, "", "-inf")]  // format(float('-inf'), '')
+    [InlineData(double.NaN, "", "nan")]        // format(float('nan'), '')
+    [InlineData(100.0, ">10", "     100.0")]   // format(100.0, '>10')
+    [InlineData(100.0, "<8", "100.0   ")]      // format(100.0, '<8')
+    [InlineData(1e20, ">12", "       1e+20")]  // format(1e20, '>12')
+    [InlineData(-0.0, ">8", "    -0.0")]       // format(-0.0, '>8')
+    public void Apply_EmptySpec_IsStrOfValue(object value, string spec, string expected)
+    {
+        PyFormat.Apply(value, spec).Should().Be(expected);
+    }
+
     // ---- Refusal cells (each verified against python3 3.12) ----
 
     [Fact]
