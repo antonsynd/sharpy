@@ -330,6 +330,14 @@ namespace Sharpy
                 }
             }
 
+            // The sign is ONE rule (#1944): every numeric presentation type takes it, including '%'.
+            // The single exception is 'c' (character), where CPython refuses a sign BEFORE rendering
+            // the code point — format(65, '+c') is a ValueError, not a sign-less 'A'.
+            if (type == 'c' && sign != '\0' && isIntegral)
+            {
+                throw new ValueError("Sign not allowed with integer format specifier 'c'");
+            }
+
             string result;
 
             // A non-finite float is spelled inf/-inf/nan under EVERY float presentation type —
@@ -356,8 +364,9 @@ namespace Sharpy
                 result = result.Substring(1);
             }
 
-            // Apply sign
-            if (sign != '\0' && (isIntegral || isFloat) && type != '%' && type != 'c')
+            // Apply sign — to every numeric presentation type including '%'. 'c' was already refused
+            // above (a sign is never allowed with the character type).
+            if (sign != '\0' && (isIntegral || isFloat) && type != 'c')
             {
                 if (result.Length > 0 && result[0] != '-')
                 {

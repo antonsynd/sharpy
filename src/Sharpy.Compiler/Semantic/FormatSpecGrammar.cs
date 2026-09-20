@@ -66,8 +66,10 @@ internal static class FormatSpecGrammar
         }
 
         // sign
+        char sign = '\0';
         if (pos < spec.Length && (spec[pos] == '+' || spec[pos] == '-' || spec[pos] == ' '))
         {
+            sign = spec[pos];
             pos++;
         }
 
@@ -142,7 +144,7 @@ internal static class FormatSpecGrammar
             }
         }
 
-        return ValidateTypeCode(kind, type, hasPrecision, zCoerce);
+        return ValidateTypeCode(kind, type, hasPrecision, zCoerce, sign);
     }
 
     /// <summary>
@@ -167,7 +169,8 @@ internal static class FormatSpecGrammar
         _ => '\0'
     };
 
-    private static string? ValidateTypeCode(FormatOperandKind kind, char type, bool hasPrecision, bool zCoerce)
+    private static string? ValidateTypeCode(
+        FormatOperandKind kind, char type, bool hasPrecision, bool zCoerce, char sign)
     {
         switch (kind)
         {
@@ -199,6 +202,12 @@ internal static class FormatSpecGrammar
                 if (!IsKnownIntegralType(type))
                 {
                     return "Unknown format code '" + type + "' for object of type '" + TypeName(kind) + "'";
+                }
+                // #1944: a sign is refused with the 'c' (character) presentation type — the ONE
+                // sign rule's single exception, mirroring Sharpy.PyFormat.FormatValue at runtime.
+                if (type == 'c' && sign != '\0')
+                {
+                    return "Sign not allowed with integer format specifier 'c'";
                 }
                 bool integerPresentation = type == '\0' || type == 'b' || type == 'c' || type == 'd'
                     || type == 'n' || type == 'o' || type == 'x' || type == 'X';

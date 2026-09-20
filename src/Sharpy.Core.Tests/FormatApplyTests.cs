@@ -50,6 +50,12 @@ public class FormatApplyTests
     [InlineData(42, "e", "4.200000e+01")]      // format(42, 'e')
     [InlineData(42, "g", "42")]                // format(42, 'g')
     [InlineData(42, "%", "4200.000000%")]      // format(42, '%')
+    // --- #1944: the sign applies to EVERY numeric presentation type, including '%' ---
+    [InlineData(2, "+%", "+200.000000%")]      // format(2, '+%')
+    [InlineData(true, "+%", "+100.000000%")]   // format(True, '+%')
+    [InlineData(42, "+x", "+2a")]              // format(42, '+x') — sign with a radix type
+    [InlineData(42, "+o", "+52")]              // format(42, '+o')
+    [InlineData(42, "+b", "+101010")]          // format(42, '+b')
     // --- bool: empty spec => True/False; non-empty spec => int ---
     [InlineData(true, "", "True")]             // format(True, '')
     [InlineData(false, "", "False")]           // format(False, '')
@@ -84,6 +90,11 @@ public class FormatApplyTests
     // --- float: percent ---
     [InlineData(0.5, "%", "50.000000%")]       // format(0.5, '%')
     [InlineData(0.1234, ".1%", "12.3%")]       // format(0.1234, '.1%')
+    // --- #1944: sign x '%' on floats, precision, space and minus ---
+    [InlineData(1.5, "+%", "+150.000000%")]    // format(1.5, '+%')
+    [InlineData(1.5, " %", " 150.000000%")]    // format(1.5, ' %')
+    [InlineData(1.5, "-%", "150.000000%")]     // format(1.5, '-%')
+    [InlineData(1.5, "+.1%", "+150.0%")]       // format(1.5, '+.1%')
     // --- float: combined width/align/precision/grouping ---
     [InlineData(3.14159, ">8.2f", "    3.14")] // format(3.14159, '>8.2f')
     [InlineData(3.14159, "07.2f", "0003.14")]  // format(3.14159, '07.2f')
@@ -198,5 +209,34 @@ public class FormatApplyTests
         // python3 -c "format(3.14, '.2fx')"  =>  ValueError: Invalid format specifier '.2fx' for object of type 'float'
         var ex = Assert.Throws<ValueError>(() => PyFormat.Apply(3.14, ".2fx"));
         ex.Message.Should().Be("Invalid format specifier '.2fx' for object of type 'float'");
+    }
+
+    [Fact]
+    public void Apply_NonFinite_Percent_KeepsTheSign()
+    {
+        // python3 -c "print(repr(format(float('inf'), '+%')))"  =>  '+inf%'
+        PyFormat.Apply(double.PositiveInfinity, "+%").Should().Be("+inf%");
+    }
+
+    // ---- #1944: a sign with the 'c' presentation type is refused, statically and at runtime ----
+
+    [Theory]
+    [InlineData(65, "+c")]  // format(65, '+c')
+    [InlineData(65, " c")]  // format(65, ' c')
+    [InlineData(65, "-c")]  // format(65, '-c')
+    public void Apply_Sign_WithCharacterType_RaisesValueError(object value, string spec)
+    {
+        // python3 -c "format(65, '+c')"
+        //   =>  ValueError: Sign not allowed with integer format specifier 'c'
+        var ex = Assert.Throws<ValueError>(() => PyFormat.Apply(value, spec));
+        ex.Message.Should().Be("Sign not allowed with integer format specifier 'c'");
+    }
+
+    [Fact]
+    public void Apply_NoSign_WithCharacterType_StillRenders()
+    {
+        // The positive control: 'c' without a sign is unaffected.
+        // python3 -c "print(format(65, 'c'))"  =>  A
+        PyFormat.Apply(65, "c").Should().Be("A");
     }
 }
