@@ -211,6 +211,37 @@ def test_knownred_drained_count_comment_is_not_a_row(tmp_path):
     assert rows == []
 
 
+# ── Uncited .txt-row offence (#1939 / DD14) ─────────────────────────────────────
+
+
+def test_txt_row_without_cite_is_offence(tmp_path):
+    # DD14: an uncited .txt allowlist row is an offence (not silently skipped), so the widened glob
+    # is non-vacuous. Positive control: the same fixture with the row cited is green.
+    path = _write(tmp_path / "spec_blocks_allowlist.txt", "some.md::abc123  # SPY0200 first\n")
+    rows = mod.scan([path])
+    assert len(rows) == 1
+    assert rows[0].cites == []
+    assert rows[0].exempt is False
+
+    sys.argv = ["prog", "--paths", path]
+    with pytest.raises(SystemExit) as exc:
+        mod.main()
+    assert exc.value.code == 1
+
+
+def test_txt_row_with_cite_is_green(tmp_path):
+    # The same row, now citing an OPEN issue, passes — the offence discriminates on the cite.
+    path = _write(tmp_path / "spec_blocks_allowlist.txt", "some.md::abc123  # SPY0200 first #4242\n")
+    rows = mod.scan([path])
+    assert rows[0].cites == [4242]
+
+    with patch.object(mod, "query_states", _stub_states({4242: "OPEN"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 0
+
+
 def test_gh_unavailable_exits_2(tmp_path):
     path = _write(tmp_path / "test-allowlist.txt", "fixture::z # #7777\n")
 

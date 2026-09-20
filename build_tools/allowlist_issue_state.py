@@ -227,7 +227,10 @@ def main() -> None:
         if row.cites:
             all_cites.extend(row.cites)
             cited_rows.append(row)
-        elif row.file.endswith(".cs"):
+        elif row.file.endswith((".cs", ".txt")):
+            # #1939 (DD14): an uncited .txt allowlist row is an offence too, not silently skipped —
+            # without this the widened glob (Task 6) is vacuous over the spec allowlist. Every .txt row
+            # must cite an issue, exactly like a .cs Skip.
             uncited_rows.append(row)
 
     if not all_cites and not uncited_rows:
@@ -249,8 +252,9 @@ def main() -> None:
                 )
 
     for row in uncited_rows:
+        kind = "Skip" if row.file.endswith(".cs") else "allowlist row"
         offences.append(
-            f"{row.file}:{row.line}  Skip without issue cite: \"{row.text}\"  "
+            f"{row.file}:{row.line}  {kind} without issue cite: \"{row.text}\"  "
             f"→ missing #NNNN"
         )
 

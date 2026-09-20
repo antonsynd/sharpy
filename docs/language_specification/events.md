@@ -53,6 +53,7 @@ public event EventHandler<MouseEventArgs>? OnHover;
 
 For events requiring custom logic (validation, logging, weak references), use separate `event add` and `event remove` declarations — mirroring `property get` and `property set`:
 
+<!-- spec-sweep: prelude -->
 ```python
 class SecureButton:
     _handlers: list[EventHandler] = []
@@ -145,6 +146,7 @@ class Timer:
 
 For events with custom data:
 
+<!-- spec-sweep: prelude -->
 ```python
 from system import EventHandler, EventArgs
 
