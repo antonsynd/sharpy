@@ -63,6 +63,23 @@ internal static class ExhaustivenessHelper
         SemanticInfo semanticInfo,
         HashSet<string> covered)
     {
+        // Every class-pattern head — `case C():`, `case C(v):` AND `case C(f=v):` — contributes the
+        // case name it tests, through the ONE classifier. The property form went uncounted before
+        // this routed through PatternHead, so `case Node(value=v):` drew a spurious SPY0463 (#1890).
+        if (PatternHead.TryGet(pattern, out var head))
+        {
+            var headUnionCase = semanticInfo.GetPatternUnionCase(head.Lodge);
+            if (headUnionCase != null)
+            {
+                covered.Add(headUnionCase.Name);
+            }
+            else if (head.Type != null)
+            {
+                covered.Add(head.Type.Name);
+            }
+            return;
+        }
+
         switch (pattern)
         {
             case LiteralPattern literal:
@@ -102,27 +119,9 @@ internal static class ExhaustivenessHelper
                 }
                 break;
 
-            case PositionalPattern positionalPattern:
-                var posUnionCase = semanticInfo.GetPatternUnionCase(positionalPattern);
-                if (posUnionCase != null)
-                {
-                    covered.Add(posUnionCase.Name);
-                }
-                break;
-
-            case TypePattern typePattern:
-                var typeUnionCase = semanticInfo.GetPatternUnionCase(typePattern);
-                if (typeUnionCase != null)
-                {
-                    covered.Add(typeUnionCase.Name);
-                }
-                else
-                {
-                    covered.Add(typePattern.Type.Name);
-                }
-                break;
-
             case AsPattern asPattern:
+                // A head wrapped in `as` was already handled by PatternHead.TryGet above; this arm
+                // recurses for an `as` over a non-head inner (a member-access or or-pattern).
                 CollectCoveredCases(asPattern.Inner, semanticInfo, covered);
                 break;
 
@@ -136,11 +135,12 @@ internal static class ExhaustivenessHelper
     }
 
     /// <summary>
-    /// Returns true if a pattern unconditionally covers all values
-    /// (wildcard, unguarded binding with no constant/union-case, or an OrPattern
-    /// containing any irrefutable alternative).
+    /// Returns true if a pattern unconditionally covers all values of the scrutinee's static type
+    /// (wildcard, unguarded binding with no constant/union-case, a class-pattern head whose coverage
+    /// is <c>Total</c>, or an OrPattern containing any total alternative). Totality is a fact of the
+    /// scrutinee's static type recorded by the checker, not of the pattern's spelling (DD9).
     /// </summary>
-    public static bool IsIrrefutable(Pattern pattern, SemanticInfo? info)
+    public static bool IsTotal(Pattern pattern, SemanticInfo? info)
     {
         return pattern switch
         {
@@ -148,17 +148,24 @@ internal static class ExhaustivenessHelper
             BindingPattern bp =>
                 info?.GetPatternConstantSymbol(bp) == null
                 && info?.GetPatternUnionCase(bp) == null,
-            AsPattern asp => IsIrrefutable(asp.Inner, info),
-            TypePattern tp => info?.GetPatternTotality(tp) == true,
-            OrPattern or => or.Alternatives.Any(alt => IsIrrefutable(alt, info)),
+            AsPattern asp => IsTotal(asp.Inner, info),
+            OrPattern or => or.Alternatives.Any(alt => IsTotal(alt, info)),
             GuardPattern => false,
+            _ when PatternHead.TryGet(pattern, out var head)
+                => info?.GetPatternTotality(head.Lodge) == true,
             _ => false
         };
     }
 
     /// <summary>
-    /// Returns a human-readable description of an irrefutable pattern,
-    /// or null if the pattern is not irrefutable.
+    /// Back-compat alias for <see cref="IsTotal"/> — a pattern that is total over the scrutinee's
+    /// static type is irrefutable there (DD9). Retained for the CFG and reachability consumers.
+    /// </summary>
+    public static bool IsIrrefutable(Pattern pattern, SemanticInfo? info) => IsTotal(pattern, info);
+
+    /// <summary>
+    /// Returns a human-readable description of a total (irrefutable) pattern,
+    /// or null if the pattern is not total.
     /// </summary>
     public static string? DescribeIrrefutable(Pattern pattern, SemanticInfo? info)
     {
@@ -170,11 +177,11 @@ internal static class ExhaustivenessHelper
             AsPattern asp => DescribeIrrefutable(asp.Inner, info) is { } innerDesc
                 ? $"{innerDesc} as '{asp.Name.Name}'"
                 : null,
-            TypePattern tp when info?.GetPatternTotality(tp) == true
-                => $"total class pattern '{tp.Type.Name}()'",
             OrPattern or => or.Alternatives
                 .Select(alt => DescribeIrrefutable(alt, info))
                 .FirstOrDefault(d => d != null),
+            _ when PatternHead.TryGet(pattern, out var head) && info?.GetPatternTotality(head.Lodge) == true
+                => $"total class pattern '{head.Type?.Name}()'",
             _ => null
         };
     }
