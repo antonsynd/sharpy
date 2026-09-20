@@ -1,9 +1,12 @@
 using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -21,9 +24,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// shared project-level instance the emitter (and the generator sub-pipeline, validators, LSP)
 /// read from. A side-table field that is not copied in <c>MergeFrom</c> is silently dropped in that
 /// per-file → project merge — the failure mode that hid <c>_generatorBindings</c> from the source
-/// generator pipeline (#1042). This test scans <c>SemanticInfo.cs</c> for every dictionary/set
-/// field and fails if one is not referenced inside <c>MergeFrom</c>, making that omission
-/// impossible to miss. Mirrors the source-scan style of <c>EmitterBannedTokenScanTests</c>.
+/// generator pipeline (#1042). The guard is BEHAVIORAL (#1887): it reflects every side-table field,
+/// fabricates one entry per field on a source <c>SemanticInfo</c>, runs the real
+/// <c>MergeFrom</c>, and asserts the entry reached the target. The former source-text scan
+/// ("is the field name mentioned inside the MergeFrom body?") passed vacuously — a field mentioned
+/// in a comment, or copied into the WRONG dictionary, or with the copy statement present but the
+/// key silently dropped by a comparer mismatch, all read as "referenced". A round-trip cannot.
 /// </para>
 /// </summary>
 public class SemanticInfoMergeConformanceTests
@@ -31,36 +37,139 @@ public class SemanticInfoMergeConformanceTests
     /// <summary>
     /// Fields deliberately excluded from the "must be merged" check, each with a justification.
     /// Currently empty: every side-table (including the symbol-keyed <c>_symbolReferences</c>, which
-    /// <c>MergeFrom</c> merges with a bag-union) must survive the per-file → project merge.
+    /// <c>MergeFrom</c> merges with a bag-union) must survive the per-file → project merge. The
+    /// count is anchored to 0 so an entry added here is a visible edit.
     /// </summary>
     private static readonly HashSet<string> Allowlist = new(StringComparer.Ordinal)
     {
         // (intentionally empty — add a field here only with a written reason it must NOT merge)
     };
 
+    /// <summary>
+    /// The number of side-table fields on SemanticInfo at HEAD. Anchored so the reflective
+    /// enumeration below cannot silently go vacuous (a refactor that renamed the collections out of
+    /// the filter would drop the count, not pass a zero-field check).
+    /// </summary>
+    private const int MinimumSideTableFieldCount = 78;
+
+    /// <summary>
+    /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>
+    /// into another — asserted by round-trip over EVERY reflected side-table field, not by a source
+    /// scan. For each <c>ConcurrentDictionary&lt;TKey,TValue&gt;</c> field: fabricate a key (a
+    /// concrete AST/symbol instance via <see cref="RuntimeHelpers.GetUninitializedObject"/>, a
+    /// concrete subtype when the declared key type is an abstract record), add it to
+    /// <c>source</c>, merge into an empty <c>target</c>, and assert the key is present. The
+    /// symbol-keyed <c>_symbolReferences</c> (bag-union merge) is round-tripped too, asserting the
+    /// bag grew by the fabricated reference.
+    /// </summary>
     [Fact]
-    public void EverySemanticInfoSideTable_IsReferencedInMergeFrom()
+    public void MergeFrom_PreservesEveryEntry_Behaviorally()
     {
-        var source = File.ReadAllText(FindSemanticInfoSource());
+        Allowlist.Should().HaveCount(0, "the not-merged roster is empty — every side-table must merge");
 
-        var fields = CollectSideTableFields(source);
-        fields.Should().NotBeEmpty("SemanticInfo declares dictionary/set side-tables");
-
-        var mergeFromBody = ExtractMethodBody(source, "public void MergeFrom(SemanticInfo other)");
-        mergeFromBody.Should().NotBeNullOrEmpty("MergeFrom(SemanticInfo) should be present");
-
-        var missing = fields
-            .Where(f => !Allowlist.Contains(f))
-            .Where(f => !Regex.IsMatch(mergeFromBody!, $@"\b{Regex.Escape(f)}\b"))
+        var fields = typeof(SemanticInfo)
+            .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(IsSideTableField)
+            .Where(f => !Allowlist.Contains(f.Name))
             .ToList();
 
-        missing.Should().BeEmpty(
-            "every node-keyed SemanticInfo side-table must be copied in MergeFrom or it is silently " +
-            "dropped in the per-file → project merge that code generation, the generator pipeline, " +
-            "validators, and the LSP read from (Critical Rule 2 / #1042). Add the missing field to " +
-            "MergeFrom, or add it to the allowlist with a written reason it must not merge.\nMissing:\n" +
-            string.Join("\n", missing));
+        fields.Should().HaveCountGreaterThanOrEqualTo(MinimumSideTableFieldCount,
+            "the reflective enumeration must see every side-table (a shrunk count means the filter, "
+            + "not the merge, changed — the guard would otherwise pass vacuously)");
+
+        var dropped = new List<string>();
+        foreach (var field in fields)
+        {
+            var key = FabricateEntryAndRoundTrip(field);
+            if (!key)
+                dropped.Add(field.Name);
+        }
+
+        dropped.Should().BeEmpty(
+            "every node-keyed SemanticInfo side-table must be copied in MergeFrom or it is silently "
+            + "dropped in the per-file → project merge that code generation, the generator pipeline, "
+            + "validators, and the LSP read from (Critical Rule 2 / #1042). Fields whose fabricated "
+            + "entry did NOT survive the merge:\n" + string.Join("\n", dropped));
     }
+
+    /// <summary>
+    /// Populates one side-table field on a fresh source SemanticInfo, merges into a fresh empty
+    /// target, and reports whether the fabricated key reached the target's copy of the field.
+    /// </summary>
+    private static bool FabricateEntryAndRoundTrip(FieldInfo field)
+    {
+        var source = new SemanticInfo();
+        var target = new SemanticInfo();
+
+        var keyType = field.FieldType.GetGenericArguments()[0];
+        var valueType = field.FieldType.GetGenericArguments()[1];
+        var key = FabricateInstance(keyType);
+
+        // _symbolReferences (Symbol -> ConcurrentBag<SymbolReference>) is the one bag-union merge:
+        // fabricate a bag holding one reference and assert the target's bag received it.
+        if (field.Name == "_symbolReferences")
+        {
+            var reference = (SymbolReference)RuntimeHelpers.GetUninitializedObject(typeof(SymbolReference));
+            var bag = new ConcurrentBag<SymbolReference> { reference };
+            ((IDictionary)field.GetValue(source)!)[key] = bag;
+
+            target.MergeFrom(source);
+
+            var targetDict = (IDictionary)field.GetValue(target)!;
+            if (!targetDict.Contains(key))
+                return false;
+            return ((ConcurrentBag<SymbolReference>)targetDict[key]!).Count == 1;
+        }
+
+        var value = FabricateValue(valueType);
+        ((IDictionary)field.GetValue(source)!)[key] = value;
+
+        target.MergeFrom(source);
+
+        return ((IDictionary)field.GetValue(target)!).Contains(key);
+    }
+
+    /// <summary>A field is a side-table if it is a constructed generic that implements the
+    /// non-generic <see cref="IDictionary"/> (every SemanticInfo side-table is a
+    /// <c>ConcurrentDictionary</c>).</summary>
+    private static bool IsSideTableField(FieldInfo field)
+        => field.FieldType.IsGenericType
+           && typeof(IDictionary).IsAssignableFrom(field.FieldType);
+
+    /// <summary>
+    /// Fabricates a usable dictionary KEY of the declared type: a string probe, a value-type
+    /// default, or — for a reference type — an uninitialized instance of the type itself, or of its
+    /// first concrete subtype when the declared type is abstract (the four AST base records
+    /// <c>Expression</c>/<c>Node</c>/<c>Pattern</c>/<c>Statement</c> and <c>Symbol</c> are abstract,
+    /// and <see cref="RuntimeHelpers.GetUninitializedObject"/> throws on an abstract type).
+    /// </summary>
+    private static object FabricateInstance(Type type)
+    {
+        if (type == typeof(string))
+            return "probe";
+        if (type.IsValueType)
+            return Activator.CreateInstance(type)!;
+
+        var concrete = type.IsAbstract ? FirstConcreteSubtype(type) : type;
+        return RuntimeHelpers.GetUninitializedObject(concrete);
+    }
+
+    /// <summary>
+    /// A dictionary VALUE only needs to be assignable to the value type for <c>TryAdd</c> to store
+    /// it; the round-trip asserts on the key, not the value. A string maps to a probe, a value type
+    /// to its default (boxed), a reference type to null.
+    /// </summary>
+    private static object? FabricateValue(Type type)
+    {
+        if (type == typeof(string))
+            return "probe";
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
+    }
+
+    private static Type FirstConcreteSubtype(Type abstractType)
+        => abstractType.Assembly.GetTypes()
+            .First(t => !t.IsAbstract && !t.IsInterface && !t.ContainsGenericParameters
+                        && abstractType.IsAssignableFrom(t));
 
     /// <summary>
     /// Regression for #1042: a generator binding recorded on one SemanticInfo must survive
@@ -295,64 +404,4 @@ public class SemanticInfoMergeConformanceTests
         return null;
     }
 
-    /// <summary>
-    /// Collects the names of private dictionary/set side-table fields declared in SemanticInfo.
-    /// Matches <c>ConcurrentDictionary</c>/<c>Dictionary</c>/<c>HashSet</c> declarations (the field
-    /// identifier follows the closing generic bracket on the same line).
-    /// </summary>
-    private static List<string> CollectSideTableFields(string source)
-    {
-        var pattern = new Regex(
-            @"private\s+readonly\s+(?:ConcurrentDictionary|Dictionary|HashSet)<.+>\s+(_[A-Za-z0-9_]+)",
-            RegexOptions.Compiled);
-        return source
-            .Split('\n')
-            .Select(line => pattern.Match(line))
-            .Where(m => m.Success)
-            .Select(m => m.Groups[1].Value)
-            .Distinct()
-            .ToList();
-    }
-
-    /// <summary>Extracts a method body (text between its outermost braces) by brace matching.</summary>
-    private static string? ExtractMethodBody(string source, string signature)
-    {
-        var sigIndex = source.IndexOf(signature, StringComparison.Ordinal);
-        if (sigIndex < 0)
-            return null;
-
-        var open = source.IndexOf('{', sigIndex);
-        if (open < 0)
-            return null;
-
-        int depth = 0;
-        for (int i = open; i < source.Length; i++)
-        {
-            if (source[i] == '{')
-                depth++;
-            else if (source[i] == '}')
-            {
-                depth--;
-                if (depth == 0)
-                    return source.Substring(open + 1, i - open - 1);
-            }
-        }
-        return null;
-    }
-
-    private static string FindSemanticInfoSource()
-    {
-        var current = AppContext.BaseDirectory;
-        while (current != null)
-        {
-            var path = Path.Combine(current, "src", "Sharpy.Compiler", "Semantic", "SemanticInfo.cs");
-            if (File.Exists(path))
-                return path;
-            current = Directory.GetParent(current)?.FullName;
-        }
-
-        return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..",
-            "Sharpy.Compiler", "Semantic", "SemanticInfo.cs"));
-    }
 }
