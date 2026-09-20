@@ -28,18 +28,18 @@ Write a single row from a dictionary in field name order.
 
 Write multiple rows from dictionaries.
 
-### `csv.reader(lines: list[str]) -> Sharpy.CsvModule.CsvReader`
+### `csv.reader(lines: list[str]) -> CsvReader`
 
 Create a CSV reader from a list of lines.
 
-### `csv.writer(output: TextWriter) -> Sharpy.CsvModule.CsvWriter`
+### `csv.writer(output: TextWriter) -> CsvWriter`
 
 Create a CSV writer that writes to a TextWriter.
 
-### `csv.dict_reader(lines: list[str], fieldnames: Optional[list[str]] = default) -> Sharpy.CsvModule.CsvDictReader`
+### `csv.dict_reader(lines: list[str], fieldnames: Optional[list[str]] = default) -> CsvDictReader`
 
 Create a CSV DictReader from a list of lines.
 
-### `csv.dict_writer(output: TextWriter, fieldnames: list[str]) -> Sharpy.CsvModule.CsvDictWriter`
+### `csv.dict_writer(output: TextWriter, fieldnames: list[str]) -> CsvDictWriter`
 
 Create a CSV DictWriter that writes to a TextWriter.

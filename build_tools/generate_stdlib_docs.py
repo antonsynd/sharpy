@@ -178,6 +178,30 @@ _CS_NAMESPACE_PREFIXES = [
 ]
 
 
+# The module whose page is currently being parsed, set by discover_modules so map_type can render a
+# module-defined type as its Sharpy name (#1911). A type declared in a `[SharpyModule("os")]` module
+# is emitted `global::Sharpy.OsModule.StatResult`; on the os page that must read `StatResult`
+# (bare, its own module), and referenced from another page `os.StatResult` (module-qualified) —
+# never the leaked C# `Sharpy.OsModule.StatResult`.
+_CURRENT_MODULE: "str | None" = None
+
+
+def _qualify_module_type(cs_type: str, current_module: "str | None") -> "str | None":
+    """
+    Render a module-defined type spelled `Sharpy.<M>Module.<T>` as its Sharpy name: bare `<T>` when
+    `<M>` is the current page's module (case-insensitive), else `<m>.<T>`. Returns None when the type
+    is not a module-defined type (the caller keeps its own rendering).
+    """
+    match = re.match(r"^Sharpy\.(\w+)Module\.(\w+)$", cs_type)
+    if not match:
+        return None
+    module = match.group(1).lower()
+    type_name = match.group(2)
+    if current_module is not None and module == current_module.lower():
+        return type_name
+    return f"{module}.{type_name}"
+
+
 def _normalize_cs_type(cs_type: str) -> str:
     """Strip global:: prefix, expand namespace aliases, and strip common C# namespace prefixes."""
     cs_type = cs_type.strip()
@@ -230,8 +254,16 @@ def _fixup_prose(text: str) -> str:
     return text
 
 
-def map_type(cs_type: str) -> str:
-    """Map a C# type string to Sharpy type notation."""
+def map_type(cs_type: str, current_module: "str | None" = None) -> str:
+    """Map a C# type string to Sharpy type notation.
+
+    ``current_module`` names the module page being rendered, so a module-defined type reads as its
+    Sharpy name (#1911); it defaults to the module-context global that ``discover_modules`` sets, and
+    an explicit argument (used by the tests) overrides it.
+    """
+    if current_module is None:
+        current_module = _CURRENT_MODULE
+
     cs_type = cs_type.strip()
 
     if not cs_type:
@@ -242,7 +274,7 @@ def map_type(cs_type: str) -> str:
 
     # Nullable suffix
     if cs_type.endswith("?"):
-        inner = map_type(cs_type[:-1])
+        inner = map_type(cs_type[:-1], current_module)
         return f"{inner} | None"
 
     # Direct mapping
@@ -253,7 +285,7 @@ def map_type(cs_type: str) -> str:
     if cs_type.startswith("(") and cs_type.endswith(")"):
         inner = cs_type[1:-1]
         parts = _split_generic_args(inner)
-        mapped = ", ".join(map_type(p.strip()) for p in parts)
+        mapped = ", ".join(map_type(p.strip(), current_module) for p in parts)
         return f"tuple[{mapped}]"
 
     # Generic types: Name<T1, T2>
@@ -266,21 +298,21 @@ def map_type(cs_type: str) -> str:
         if outer == "Func":
             args = _split_generic_args(inner_raw)
             if args:
-                param_types = [map_type(a) for a in args[:-1]]
-                return_type = map_type(args[-1])
+                param_types = [map_type(a, current_module) for a in args[:-1]]
+                return_type = map_type(args[-1], current_module)
                 params_str = ", ".join(param_types)
                 return f"({params_str}) -> {return_type}"
 
         # Action<T1, T2, ...> -> (T1, T2, ...) -> None
         if outer == "Action":
             args = _split_generic_args(inner_raw)
-            param_types = [map_type(a) for a in args]
+            param_types = [map_type(a, current_module) for a in args]
             params_str = ", ".join(param_types)
             return f"({params_str}) -> None"
 
         # Split on top-level commas (respect nested generics and tuples)
         inners = _split_generic_args(inner_raw)
-        mapped_inners = ", ".join(map_type(i) for i in inners)
+        mapped_inners = ", ".join(map_type(i, current_module) for i in inners)
         mapped_outer = _GENERIC_TYPE_MAP.get(outer, outer)
         return f"{mapped_outer}[{mapped_inners}]"
 
@@ -296,11 +328,11 @@ def map_type(cs_type: str) -> str:
         inner = cs_type[7:].strip()
         if inner.endswith("[]"):
             inner = inner[:-2]
-        return f"*{map_type(inner)}"
+        return f"*{map_type(inner, current_module)}"
 
     # Array types
     if cs_type.endswith("[]"):
-        inner = map_type(cs_type[:-2])
+        inner = map_type(cs_type[:-2], current_module)
         return f"list[{inner}]"
 
     # Single-letter type params (T, K, V, etc.)
@@ -310,6 +342,11 @@ def map_type(cs_type: str) -> str:
     # Check generic type map for non-generic usage
     if cs_type in _GENERIC_TYPE_MAP:
         return _GENERIC_TYPE_MAP[cs_type]
+
+    # A module-defined type (Sharpy.<M>Module.<T>) reads as its Sharpy name (#1911).
+    qualified = _qualify_module_type(cs_type, current_module)
+    if qualified is not None:
+        return qualified
 
     return cs_type
 
@@ -1183,6 +1220,11 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
         if "." in mod_name or mod_name == "builtins":
             continue
 
+        # Set the module context so map_type renders this module's types as their bare Sharpy name
+        # (#1911); parse_cs_file calls map_type at parse time, so the context must be live here.
+        global _CURRENT_MODULE
+        _CURRENT_MODULE = mod_name
+
         # Parse all .cs files in the module directory
         # Read module summary explicitly from __Init__.cs to avoid picking up
         # summaries from the first class file alphabetically (e.g. ReMatch in re).
@@ -1268,6 +1310,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             )
         )
 
+    _CURRENT_MODULE = None
     return modules
 
 
