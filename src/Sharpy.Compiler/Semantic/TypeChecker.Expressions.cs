@@ -178,6 +178,19 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// True when <paramref name="expr"/> is the expression of the ExpressionStatement currently being
+    /// checked (#1942/#1617): a bare method-group statement (<c>"abc".upper</c>) is #1617's
+    /// elide-and-warn no-op, not the R-AP value-position refusal. Compared through parentheses,
+    /// like <see cref="IsCurrentCallCallee"/>.
+    /// </summary>
+    private bool IsCurrentStatementExpression(Expression expr)
+    {
+        if (_currentStatementExpression == null)
+            return false;
+        return ReferenceEquals(UnwrapParenthesized(_currentStatementExpression), UnwrapParenthesized(expr));
+    }
+
+    /// <summary>
     /// True when <paramref name="expr"/> is the qualifier of the MemberAccess currently being checked
     /// (see <c>_currentMemberAccessQualifier</c>). A generic type reference is legal there —
     /// <c>Box[int].of(42)</c> names the type a static member is reached through, rather than using it

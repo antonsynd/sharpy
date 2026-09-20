@@ -1276,28 +1276,39 @@ internal partial class TypeChecker
             SharpyReceiverSpelling.Spelling.Escaped =>
                 EscapedWrapperMemberType(memberAccess, wrapperClr, receiverType),
             SharpyReceiverSpelling.Spelling.ReverseMangledClr =>
-                ReverseMangledClrMethodVerdict(memberAccess, wrapperClr),
+                ReverseMangledClrMethodVerdict(memberAccess, wrapperClr, receiverType),
             _ => null,
         };
     }
 
     /// <summary>
-    /// #1942 (R-AP): the reverse-mangled snake spelling of a wrapper METHOD (<c>xs.get_hash_code</c>,
-    /// <c>d.get_hash_code</c>) is the same unspellable method group as the Sharpy surface name in
-    /// value position — refused SPY0336 with the three-cure steer, in ONE seam for all five wrapper
-    /// receivers (a mapped collection routes it to a silent permissive Unknown otherwise, a str/bytes
-    /// to a bare method reference). A reverse-mangled PROPERTY/FIELD (<c>s.length</c>) is a typed
-    /// value and falls through; a callee (<c>xs.get_hash_code()</c>) still calls; a function target
-    /// type selects the method.
+    /// #1942 (R-AP): the reverse-mangled snake spelling of a wrapper METHOD that has NO Sharpy surface
+    /// equivalent (<c>xs.get_hash_code</c> → GetHashCode, an inherited BCL method) is an unspellable
+    /// method group in value position — refused SPY0336 with the three-cure steer, in ONE seam for all
+    /// five wrapper receivers (a mapped collection routes it to a silent permissive Unknown otherwise,
+    /// str/bytes to a bare method reference). A reverse-mangled PROPERTY/FIELD (<c>s.length</c>) is a
+    /// typed value and falls through; a callee still calls; a function target type selects the method.
+    ///
+    /// <para>Crucially it does NOT fire for a name that is ALSO a Sharpy SURFACE method (<c>xs.pop</c>,
+    /// <c>st.add</c> reverse-mangle to <c>Pop</c>/<c>Add</c>, the C# impls of the surface API): those
+    /// resolve through the registry and are the surface path's business — the single-overload gate in
+    /// CheckReferencedCallableOverloads, or #1170's arity message for a divergent set like
+    /// <c>xs.pop</c>. Refusing them here would clobber #1170's more specific diagnostic (its regression).</para>
     /// </summary>
-    private SemanticType? ReverseMangledClrMethodVerdict(MemberAccess memberAccess, Type wrapperClr)
+    private SemanticType? ReverseMangledClrMethodVerdict(MemberAccess memberAccess, Type wrapperClr, SemanticType receiverType)
     {
         if (IsCurrentCallCallee(memberAccess)
+            || IsCurrentStatementExpression(memberAccess)  // #1617 elide-and-warn owns a bare statement
             || _expectedType is FunctionType
             || !SharpyReceiverSpelling.ReverseMangleNamesAMethod(memberAccess.Member, wrapperClr))
         {
             return null;
         }
+
+        // A name that is a Sharpy SURFACE method of the receiver (pop/add/…) is handled by the surface
+        // path (registry → the single-overload gate or #1170), NOT this reverse-mangled-leak seam.
+        if (ResolveInstanceMemberOwnerSymbol(receiverType)?.Methods.Any(m => m.Name == memberAccess.Member) == true)
+            return null;
 
         return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
     }

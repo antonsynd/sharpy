@@ -272,9 +272,13 @@ public class SharpyReceiverSpellingMatrixTests
 
         foreach (var row in methodGroup)
         {
-            // surface spelling — value refuses with the three-cure steer (contains `recv.member(`).
+            // surface spelling — value refuses SPY0336. A single-overload member is the R-AP gate's
+            // refusal with the three-cure steer (`recv.member(`); a multi-overload-DIVERGING member
+            // (dict.get, bytes.hex) falls through to #1170's more specific arity message instead — the
+            // R-AP gate defers so #1170's diagnostic wins. Both are SPY0336.
             yield return new Cell($"methodgroup.{row.Recv}.surface.value",
-                Body(row.Decl, $"print({row.Recv}.{row.Surface})"), Expect.RefusedMethodGroup, $"{row.Recv}.{row.Surface}(");
+                Body(row.Decl, $"print({row.Recv}.{row.Surface})"), Expect.RefusedMethodGroup,
+                row.SurfaceTargets ? $"{row.Recv}.{row.Surface}(" : "overloads taking different numbers");
             // targeted: Compiles iff a single-overload target selects; else SPY0336 with the reason in the label.
             yield return new Cell(
                 row.SurfaceTargets ? $"methodgroup.{row.Recv}.surface.targeted"

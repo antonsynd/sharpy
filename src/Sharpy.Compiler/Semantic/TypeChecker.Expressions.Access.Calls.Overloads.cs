@@ -2663,22 +2663,16 @@ internal partial class TypeChecker
         if (IsTypeTestTypeArgument(reference))
             return referencedType;
 
-        // #1942 (R-AP): a method group named on one of the five Sharpy builtin receivers in VALUE
-        // position is unspellable — the Sharpy-surface `xs.count` and the reverse-mangled
-        // `xs.get_type_code` both denote a registry/CLR method group that printed a System.Func
-        // (`f = xs.count; f(2)` printed `2` @ 25098551d) or reached Roslyn behind SPY0908. Refused
-        // in EVERY spelling unless a FunctionType target type selects it or it is a call's own
-        // callee. This runs BEFORE the single-overload `<= 1` return (a06/a09), which keeps
-        // user-class and CLR-identity receivers running because they are not Sharpy-spelling
-        // receivers. The backtick spelling never reaches here: EscapedWrapperMemberType already
-        // refused it (SPY0336) during member typing.
-        if (SharpyReceiverMethodGroupInValuePositionVerdict(reference) is { } sharpyVerdict)
-            return sharpyVerdict;
-
         if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
             || overloads.Count <= 1)
         {
-            return referencedType;
+            // #1942 (R-AP): a SINGLE-overload method group on one of the five Sharpy builtin receivers
+            // in VALUE position is unspellable (`f = xs.count` printed a System.Func @ 25098551d).
+            // Refused here — at the a06/a09 single-overload return — so user-class and CLR-identity
+            // receivers keep running, a multi-overload-DIVERGING reference (`xs.pop`) falls through to
+            // the #1170 arity message below (its more specific diagnostic wins, never clobbered), and a
+            // BARE STATEMENT (`"abc".upper`) is left to #1617's elide-and-warn (the verdict excludes it).
+            return SharpyReceiverMethodGroupInValuePositionVerdict(reference) ?? referencedType;
         }
 
         // Distinct signatures only: an overload set can carry duplicate entries for the same
@@ -2693,7 +2687,9 @@ internal partial class TypeChecker
         }
 
         if (candidates.Count <= 1 || !CandidateAritiesDiverge(candidates))
-            return referencedType;
+            // Same-arity (or single distinct) overload set: not a #1170 arity divergence, so a Sharpy
+            // builtin receiver's method group here is the R-AP refusal too (#1942).
+            return SharpyReceiverMethodGroupInValuePositionVerdict(reference) ?? referencedType;
 
         // Target-typed selection: an annotated target, a parameter the reference is passed to, or a
         // declared return type supplies the signature the user meant. `_expectedType` already carries
@@ -2759,6 +2755,10 @@ internal partial class TypeChecker
         if (reference is not MemberAccess memberAccess)
             return null;
         if (IsCurrentCallCallee(memberAccess))
+            return null;
+        // A bare method-group STATEMENT (`"abc".upper`) is #1617's elide-and-warn no-op, not a value
+        // position that produces a delegate — left to that feature (SPY warning), never refused.
+        if (IsCurrentStatementExpression(memberAccess))
             return null;
         // A function target type at the reference site selects the overload — `f: (int) -> int =
         // xs.count` is exactly how the reader pins the method group, so it is not refused.
