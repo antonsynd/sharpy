@@ -99,6 +99,25 @@ def main() -> None:
     print(s.to_upper())      # System.String.ToUpper reached by reverse-mangling -> ABC
 ```
 
+A method named on a Sharpy builtin receiver but **not called** — reached as a value rather than as a callee — is a method group nothing can spell, in every one of the three spellings (the Sharpy surface `xs.count`, the reverse-mangled `xs.get_hash_code`, and the backtick escape `xs.``GetHashCode```). It is refused (SPY0336) with a steer to call it, target-type it, or wrap it in a lambda — the same rule any .NET method group in value position gets:
+
+<!-- spec-sweep: error SPY0336 -->
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    f = xs.count       # error[SPY0336]: 'count' on a Sharpy builtin is a method group, not a value
+    print(f(2))
+```
+
+A **function target type** at the reference site selects the method, so the reference runs:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    counter: (int) -> int = xs.count    # the target type selects the overload
+    print(counter(2))                    # 1
+```
+
 The `tuple` receiver is exempt: its `.item1` / `.Item1` element spellings are typed from the tuple's element types.
 
 ## Nested .NET types

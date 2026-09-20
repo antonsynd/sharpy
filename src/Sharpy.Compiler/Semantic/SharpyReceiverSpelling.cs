@@ -105,6 +105,45 @@ internal static class SharpyReceiverSpelling
         return null;
     }
 
+    /// <summary>
+    /// The three-cure steer for a method group named on a Sharpy builtin receiver in VALUE position
+    /// (#1942, R-AP): the reference is a method group, not a value, so the reader either calls it,
+    /// gives the reference a function target type that selects the overload, or wraps it in a lambda.
+    /// One place so the surface (<c>xs.count</c>) and reverse-mangled (<c>xs.get_type_code</c>)
+    /// refusals read identically.
+    /// </summary>
+    internal static string ValuePositionSteer(string receiverExpr, string memberName)
+        => $"call it ({receiverExpr}.{memberName}(...)), give the reference a function target type "
+           + $"(f: (...) -> ... = {receiverExpr}.{memberName}), or wrap it in a lambda "
+           + $"(lambda ...: {receiverExpr}.{memberName}(...))";
+
+    /// <summary>
+    /// The steer for a backtick escape that names NO member of the wrapper's CLR surface (#1888):
+    /// the escape is FOR reaching CLR members verbatim, so a snake name it cannot spell is a plain
+    /// absent member — point the reader at the Sharpy name.
+    /// </summary>
+    internal static string EscapedAbsentSteer(string receiverExpr, string memberName)
+        => $"a backtick escape names a CLR member of the wrapper verbatim (e.g. Count); "
+           + $"'{memberName}' is not one — use {receiverExpr}.{memberName}";
+
+    /// <summary>
+    /// Whether <paramref name="memberName"/> is the reverse-mangled spelling of a wrapper METHOD (not
+    /// a property or field) — the case that is a method GROUP in value position (#1942). A
+    /// reverse-mangled property/field is a typed value and is NOT this predicate's business.
+    /// </summary>
+    internal static bool ReverseMangleNamesAMethod(string memberName, Type wrapperClrType)
+    {
+        foreach (var (clrName, context) in EnumerateInstanceMembers(wrapperClrType))
+        {
+            if (context == ReverseNameContext.Method
+                && NameMangler.ToSharpyName(clrName, context) == memberName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static IEnumerable<(string Name, ReverseNameContext Context)> EnumerateInstanceMembers(Type t)
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy;

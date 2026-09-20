@@ -1275,8 +1275,31 @@ internal partial class TypeChecker
                 RefuseSharpyReceiverClrSpelling(memberAccess, receiverType),
             SharpyReceiverSpelling.Spelling.Escaped =>
                 EscapedWrapperMemberType(memberAccess, wrapperClr, receiverType),
+            SharpyReceiverSpelling.Spelling.ReverseMangledClr =>
+                ReverseMangledClrMethodVerdict(memberAccess, wrapperClr),
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// #1942 (R-AP): the reverse-mangled snake spelling of a wrapper METHOD (<c>xs.get_hash_code</c>,
+    /// <c>d.get_hash_code</c>) is the same unspellable method group as the Sharpy surface name in
+    /// value position — refused SPY0336 with the three-cure steer, in ONE seam for all five wrapper
+    /// receivers (a mapped collection routes it to a silent permissive Unknown otherwise, a str/bytes
+    /// to a bare method reference). A reverse-mangled PROPERTY/FIELD (<c>s.length</c>) is a typed
+    /// value and falls through; a callee (<c>xs.get_hash_code()</c>) still calls; a function target
+    /// type selects the method.
+    /// </summary>
+    private SemanticType? ReverseMangledClrMethodVerdict(MemberAccess memberAccess, Type wrapperClr)
+    {
+        if (IsCurrentCallCallee(memberAccess)
+            || _expectedType is FunctionType
+            || !SharpyReceiverSpelling.ReverseMangleNamesAMethod(memberAccess.Member, wrapperClr))
+        {
+            return null;
+        }
+
+        return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
     }
 
     /// <summary>
@@ -1345,10 +1368,33 @@ internal partial class TypeChecker
                 // No instance member of the wrapper answers the escape. An EXTENSION method still
                 // binds in the emitted C# — `b.`Select`` — and is the same unspellable group, refused
                 // through the same predicate the residual seam uses (#1858).
-                return IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType)
-                    ? RefuseClrMethodGroupInValuePosition(memberAccess)
-                    : null;
+                if (IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType))
+                    return RefuseClrMethodGroupInValuePosition(memberAccess);
+
+                // No CLR member — instance OR extension — spells the escape (`xs.`count``: the CLR
+                // member is `Count`, and `count` is only the Sharpy surface name). The backtick escape
+                // is FOR reaching CLR members verbatim, so a snake name it cannot spell is a plain
+                // absent member: SPY0203 with the Sharpy-name steer, not the permissive channel, which
+                // let it reach Roslyn as CS1061 behind SPY0908 (#1888).
+                return RefuseEscapedAbsentWrapperMember(memberAccess, receiverType);
         }
+    }
+
+    /// <summary>
+    /// SPY0203 for a backtick escape that names no member of the wrapper's CLR surface (#1888), with
+    /// the steer to the Sharpy name.
+    /// </summary>
+    private SemanticType RefuseEscapedAbsentWrapperMember(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.EscapedAbsentSteer(receiverExpr, memberAccess.Member);
+        AddError(
+            $"Type '{receiverType.GetDisplayName()}' has no member '{memberAccess.Member}' — {steer}",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember,
+            span: memberAccess.Span,
+            data: SuggestionData($"{receiverExpr}.{memberAccess.Member}"));
+        return SemanticType.Unknown;
     }
 
     /// <summary>
@@ -1570,6 +1616,24 @@ internal partial class TypeChecker
     {
         AddError(
             $"'{memberAccess.Member}' is a CLR method group; call it, or wrap it in a lambda",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+            span: memberAccess.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// SPY0336 for a method group on a Sharpy builtin receiver in value position (#1942, R-AP), with
+    /// the three-cure steer. Shared by the surface-spelling gate in
+    /// <see cref="CheckReferencedCallableOverloads"/> and the reverse-mangled seam in
+    /// <see cref="ClrMemberTypeFromReflection"/> so every spelling reads identically.
+    /// </summary>
+    private SemanticType RefuseSharpyReceiverMethodGroupInValuePosition(MemberAccess memberAccess)
+    {
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.ValuePositionSteer(receiverExpr, memberAccess.Member);
+        AddError(
+            $"'{memberAccess.Member}' on a Sharpy builtin is a method group, not a value — {steer}",
             memberAccess.LineStart, memberAccess.ColumnStart,
             code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
             span: memberAccess.Span);

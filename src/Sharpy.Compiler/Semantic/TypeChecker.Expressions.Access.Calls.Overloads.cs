@@ -2663,6 +2663,18 @@ internal partial class TypeChecker
         if (IsTypeTestTypeArgument(reference))
             return referencedType;
 
+        // #1942 (R-AP): a method group named on one of the five Sharpy builtin receivers in VALUE
+        // position is unspellable — the Sharpy-surface `xs.count` and the reverse-mangled
+        // `xs.get_type_code` both denote a registry/CLR method group that printed a System.Func
+        // (`f = xs.count; f(2)` printed `2` @ 25098551d) or reached Roslyn behind SPY0908. Refused
+        // in EVERY spelling unless a FunctionType target type selects it or it is a call's own
+        // callee. This runs BEFORE the single-overload `<= 1` return (a06/a09), which keeps
+        // user-class and CLR-identity receivers running because they are not Sharpy-spelling
+        // receivers. The backtick spelling never reaches here: EscapedWrapperMemberType already
+        // refused it (SPY0336) during member typing.
+        if (SharpyReceiverMethodGroupInValuePositionVerdict(reference) is { } sharpyVerdict)
+            return sharpyVerdict;
+
         if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
             || overloads.Count <= 1)
         {
@@ -2733,6 +2745,30 @@ internal partial class TypeChecker
             code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
             span: reference.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// #1942 (R-AP): a method group on a Sharpy builtin receiver ({list, dict, set, str, bytes}) in
+    /// VALUE position, refused SPY0336 with the three-cure steer unless a FunctionType target type
+    /// selects it or the reference is a call's own callee. Returns null (fall through to normal
+    /// typing) when the reference is not such a method group — a user-class or CLR-identity receiver,
+    /// a target-typed reference, or a callee — so a06/a09 single-overload references keep running.
+    /// </summary>
+    private SemanticType? SharpyReceiverMethodGroupInValuePositionVerdict(Expression reference)
+    {
+        if (reference is not MemberAccess memberAccess)
+            return null;
+        if (IsCurrentCallCallee(memberAccess))
+            return null;
+        // A function target type at the reference site selects the overload — `f: (int) -> int =
+        // xs.count` is exactly how the reader pins the method group, so it is not refused.
+        if (_expectedType is FunctionType)
+            return null;
+        if (_semanticInfo.GetExpressionType(memberAccess.Object) is not { } receiverType
+            || !IsSharpyBuiltinSpellingReceiver(receiverType))
+            return null;
+
+        return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
     }
 
     /// <summary>
