@@ -146,6 +146,71 @@ def test_cs_skip_with_no_issue_exemption(tmp_path):
     assert len(rows) == 0  # exempt skips produce no row
 
 
+# ── C# comment-roster tests (#1939) ────────────────────────────────────────────
+
+
+def test_cs_comment_roster_citing_closed_issue(tmp_path):
+    cs = '''
+    // BUG(#1234): the emitter drops the second element — enable when it closes.
+    public void SomeTest() { }
+    '''
+    path = _write(tmp_path / "SomeTests.cs", cs)
+    rows = mod.scan([path])
+    assert len(rows) == 1
+    assert rows[0].cites == [1234]
+
+    with patch.object(mod, "query_states", _stub_states({1234: "CLOSED"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 1
+
+
+def test_cs_comment_roster_citing_open_issue(tmp_path):
+    cs = '''
+    // TODO(#5678): pending the parser change.
+    public void SomeTest() { }
+    '''
+    path = _write(tmp_path / "SomeTests.cs", cs)
+    rows = mod.scan([path])
+    assert len(rows) == 1
+    assert rows[0].cites == [5678]
+
+    with patch.object(mod, "query_states", _stub_states({5678: "OPEN"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 0
+
+
+def test_knownred_cell_construction_citing_closed_issue(tmp_path):
+    cs = '''
+    private static readonly KnownRedStoreCell Row =
+        new KnownRedStoreCell("#1234", "SPY0908", "the store mis-lowers");
+    '''
+    path = _write(tmp_path / "SomeTests.cs", cs)
+    rows = mod.scan([path])
+    assert len(rows) == 1
+    assert rows[0].cites == [1234]
+
+    with patch.object(mod, "query_states", _stub_states({1234: "CLOSED"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 1
+
+
+def test_knownred_drained_count_comment_is_not_a_row(tmp_path):
+    # A drained-count annotation cites the issue that CLOSED the row, not a live suppression, so it
+    # must NOT be scanned — otherwise draining a row would immediately re-flag its own close note.
+    cs = '''
+    private const int MistypedStoreKnownRedCount = 0; // #1234: DRAINED (Phase 2)
+    '''
+    path = _write(tmp_path / "SomeTests.cs", cs)
+    rows = mod.scan([path])
+    assert rows == []
+
+
 def test_gh_unavailable_exits_2(tmp_path):
     path = _write(tmp_path / "test-allowlist.txt", "fixture::z # #7777\n")
 
