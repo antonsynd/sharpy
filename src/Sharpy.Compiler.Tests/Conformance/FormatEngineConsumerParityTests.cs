@@ -153,6 +153,131 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             + string.Join("\n", failures.Select(f => "  " + f)));
     }
 
+    /// <summary>
+    /// One nested-spec program fragment for one consumer. <c>Expr</c> evaluates to a string that must
+    /// equal <c>[Expected]</c> byte-for-byte (the brackets make padding load-bearing). The label
+    /// encodes cell.consumer so a failure names both.
+    /// </summary>
+    private sealed record NestedRendering(string Label, string Decls, string Expr, string Expected);
+
+    /// <summary>
+    /// #1943: a replacement field's spec may itself contain replacement fields. The f-string route
+    /// already split them (in the lexer); <c>str.format</c>/<c>format_map</c> split at the first
+    /// <c>}</c> and raised <c>Unknown format code '{' for object of type 'int'</c>. This asserts the
+    /// three (four, with <c>format_map</c>) consumers now agree with python3, one program per cell.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_NestedSpecs_AgreeAcrossConsumers()
+    {
+        var rows = NestedRenderings().ToList();
+        Assert.Equal(rows.Count, rows.Select(r => r.Label).Distinct().Count());
+
+        var failures = new List<string>();
+        foreach (var row in rows)
+        {
+            var source = "def main() -> None:\n"
+                + string.Join("", row.Decls.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(d => "    " + d + "\n"))
+                + $"    print(\"[\" + {row.Expr} + \"]\")\n";
+            var result = CompileAndExecute(source, executionTimeoutMs: 15_000);
+            if (!result.Success)
+            {
+                failures.Add($"{row.Label}: failed to compile/run: {string.Join("; ", result.CompilationErrors)} / {result.StandardError.Trim()}");
+                continue;
+            }
+            var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n');
+            if (actual != "[" + row.Expected + "]")
+                failures.Add($"{row.Label}: expected '[{row.Expected}]', got '{actual}'");
+        }
+
+        Output.WriteLine($"Nested-spec renderings: {rows.Count}. Failures: {failures.Count}");
+        foreach (var f in failures)
+            Output.WriteLine("  " + f);
+
+        Assert.True(failures.Count == 0,
+            $"{failures.Count} of {rows.Count} nested-spec renderings disagree with python3:\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    private static IEnumerable<NestedRendering> NestedRenderings()
+    {
+        // nest.auto — the discriminating cell across all four consumers.
+        // python3 -c "print(repr('{:{}}'.format(1234, '>8')))"  =>  '    1234'
+        const string autoDecl = "v: int = 1234\nspec: str = \">8\"\nm: dict[str, object] = {\"a\": 1234, \"b\": \">8\"}";
+        yield return new("nest.auto.fstring", autoDecl, "f\"{v:{spec}}\"", "    1234");
+        yield return new("nest.auto.strformat", autoDecl, "\"{:{}}\".format(v, spec)", "    1234");
+        yield return new("nest.auto.builtin", autoDecl, "format(v, spec)", "    1234");
+        yield return new("nest.auto.format_map", autoDecl, "\"{a:{b}}\".format_map(m)", "    1234");
+
+        // nest.manual — manual field numbering across both levels (str.format route).
+        // python3 -c "print(repr('{0:{1}}'.format(1234, '>8')))"  =>  '    1234'
+        yield return new("nest.manual", "", "\"{0:{1}}\".format(1234, \">8\")", "    1234");
+
+        // nest.two_fields — two nested fields build one spec.
+        // python3 -c "print(repr('{:{}{}}'.format(1234, '>', '8')))"  =>  '    1234'
+        yield return new("nest.two_fields", "", "\"{:{}{}}\".format(1234, \">\", \"8\")", "    1234");
+
+        // nest.conv — a conversion on the outer field, a nested field for the spec.
+        // python3 -c "print(repr('{!r:{}}'.format('hi', '>8')))"  =>  "    'hi'"
+        yield return new("nest.conv", "", "\"{!r:{}}\".format(\"hi\", \">8\")", "    'hi'");
+
+        // nest.format_map — a second format_map cell with two string keys, one the spec.
+        // python3 -c "print(repr('{a:{b}}'.format_map({'a': 7, 'b': '>4'})))"  =>  '   7'
+        yield return new("nest.format_map", "mm: dict[str, object] = {\"a\": 7, \"b\": \">4\"}",
+            "\"{a:{b}}\".format_map(mm)", "   7");
+
+        // nest.spec_is_field_consumes_index — the nested field draws index 1 from the shared
+        // auto-number stream (outer 0, nested 1, trailing 2).
+        // python3 -c "print(repr('{:{}}{}'.format(1, '>3', 9)))"  =>  '  19'
+        yield return new("nest.spec_is_field_consumes_index", "", "\"{:{}}{}\".format(1, \">3\", 9)", "  19");
+
+        // escape.after_field — a closed field followed by an escaped '}}'; the control that the
+        // brace scanner stops at the field's own closing brace.
+        // python3 -c "print(repr('{:5}}}'.format(5)))"  =>  '    5}'
+        yield return new("escape.after_field", "", "\"{:5}}}\".format(5)", "    5}");
+    }
+
+    /// <summary>
+    /// #1943 nested-spec refusals that surface only through the runtime (<c>str.format</c>) route: a
+    /// nested field two levels deep, and a nested field that resolves to a literal brace. CPython
+    /// raises a <c>ValueError</c> with the exact wording asserted here; the f-string route allows one
+    /// more level (depth 2), so these are per-route and str.format-only.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_NestedSpecRefusals_MatchCPythonAtRuntime()
+    {
+        var cells = new (string Label, string Expr, string Message)[]
+        {
+            // python3 -c "'{:{:{}}}'.format(5, '>', 2)"  =>  ValueError: Max string recursion exceeded
+            ("refuse.nest.depth2_strformat", "\"{:{:{}}}\".format(5, \">\", 2)", "Max string recursion exceeded"),
+            // python3 -c "'{:{}}'.format(1, '{}')"
+            //   =>  ValueError: Invalid format specifier '{}' for object of type 'int'
+            ("refuse.nest.brace_spec", "\"{:{}}\".format(1, \"{}\")",
+                "Invalid format specifier '{}' for object of type 'int'"),
+        };
+
+        var failures = new List<string>();
+        foreach (var cell in cells)
+        {
+            var source = "def main() -> None:\n    print(" + cell.Expr + ")\n";
+            var result = CompileAndExecute(source, executionTimeoutMs: 15_000);
+            if (result.Success)
+            {
+                failures.Add($"{cell.Label}: expected a runtime ValueError but the program printed '{result.StandardOutput.TrimEnd()}'");
+                continue;
+            }
+            var haystack = result.StandardError + "\n" + string.Join("\n", result.CompilationErrors);
+            if (!haystack.Contains(cell.Message, StringComparison.Ordinal))
+                failures.Add($"{cell.Label}: expected '{cell.Message}', got stderr: {result.StandardError.Trim()}");
+        }
+
+        Assert.True(failures.Count == 0,
+            $"{failures.Count} of {cells.Length} nested-spec refusals disagree with python3:\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
     private static IEnumerable<RefusalCell> RefusalCells()
     {
         // python3 -c "format(1234567, ',b')"  =>  ValueError: Cannot specify ',' with 'b'.
