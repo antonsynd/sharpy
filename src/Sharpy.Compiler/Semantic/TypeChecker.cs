@@ -441,6 +441,39 @@ internal partial class TypeChecker
         => TypeHierarchyService.GetAllInterfaces(symbol, SemanticBinding);
 
     /// <summary>
+    /// Records a CONST's declared type on BOTH channels — the per-file
+    /// <see cref="SemanticBinding"/> and the symbol itself — because a const is the one export kind
+    /// carried by a <see cref="VariableSymbol"/>, and an importer reads the symbol.
+    ///
+    /// <para>#1674 export-kind totality. The six other module-level export kinds (function, class,
+    /// struct, interface, enum, union, delegate) are exported as symbols that carry their own
+    /// signature/structure, so an importing file sees a typed export. A const's type, by contrast,
+    /// is resolved from its annotation during the DECLARING file's type check and — before this —
+    /// was written only to that file's <see cref="SemanticBinding"/>. In the project pipeline
+    /// <c>ProjectCompiler.ResolveOwnExportedSymbol</c> points <c>ModuleSymbol.Exports</c> at THIS
+    /// compilation's own symbol (#1366/#1407/#1410), whose <see cref="Symbol"/> properties are
+    /// materialized only at the end of the whole compilation — long after every importing file has
+    /// been checked. The importer's <see cref="GetVariableType"/> therefore consulted its OWN
+    /// binding (no entry for another file's const), fell back to <c>symbol.Type</c>, and read
+    /// <c>Unknown</c>: <c>lib.K + "a"</c> built and printed <c>3a</c>, <c>b: bool = lib.K</c> was
+    /// CS0029 behind SPY0908 instead of SPY0220 naming int32, and <c>lib.K.nonexistent()</c> was
+    /// CS1061 instead of SPY0203.
+    ///
+    /// <para>The non-const module variable arm of <c>CheckVariableDeclaration</c> already writes
+    /// both channels (it constructs a symbol with <c>Type = declaredType</c> and calls
+    /// <c>SetVariableType</c> beside it); the const arms wrote only one. A declared type is not a
+    /// flow-sensitive fact that materialization exists to stage — it is the annotation, known here
+    /// — so writing it through is the symmetry, not an early materialization. Both writes carry the
+    /// same value, so <c>DualWriteAssertions.AssertVariableTypeConsistency</c> holds by
+    /// construction.</para>
+    /// </summary>
+    private void RecordDeclaredConstType(VariableSymbol symbol, SemanticType declaredType)
+    {
+        SemanticBinding.SetVariableType(symbol, declaredType);
+        symbol.Type = declaredType;
+    }
+
+    /// <summary>
     /// Gets the type for a VariableSymbol from SemanticBinding.
     /// Falls back to symbol.Type for symbols not tracked by this binding.
     /// </summary>
@@ -576,7 +609,7 @@ internal partial class TypeChecker
                 && _symbolTable.Lookup(constTypeDecl.Name) is VariableSymbol { IsConstant: true } constTypeSym)
             {
                 var declaredType = _typeResolver.ResolveTypeAnnotation(constTypeDecl.Type);
-                SemanticBinding.SetVariableType(constTypeSym, declaredType);
+                RecordDeclaredConstType(constTypeSym, declaredType);
             }
         }
 

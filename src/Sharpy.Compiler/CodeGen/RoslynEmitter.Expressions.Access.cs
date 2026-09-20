@@ -497,7 +497,14 @@ internal partial class RoslynEmitter
             // BuildNestedTypeName the nested-type construction arm below uses, so a nested union's
             // full chain (Outer.Shape) and a module-level union's bare name (Shape) both fall out.
             {
-                var unionTypeSym = ResolveUnionFromAccessObject(memberAccess.Object);
+                // #1674/#1907: the MATERIALIZED fact first. CheckUnionCaseConstruction records the
+                // union it resolved for this call whatever the callee's spelling, so the
+                // module-qualified `lib.U.A(...)` takes the same lowering as the bare `U.A(...)` it
+                // used to diverge from (a plain invocation, CS1955 behind SPY0908). The shape
+                // derivation below stays as the fallback for calls the checker did not record —
+                // error-recovered ones, and any route that reaches codegen without that arm.
+                var unionTypeSym = _context.SemanticInfo?.GetUnionCaseConstruction(call)?.UnionSymbol
+                    ?? ResolveUnionFromAccessObject(memberAccess.Object);
                 if (unionTypeSym is { TypeKind: Semantic.TypeKind.Union })
                 {
                     var caseCSharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);

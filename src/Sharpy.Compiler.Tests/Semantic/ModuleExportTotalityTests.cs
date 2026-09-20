@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Tests.Helpers;
@@ -188,6 +189,196 @@ public class ModuleExportTotalityTests
             "p7b: import lib + qualified union/delegate use must compile and run (#1674, #1906). " +
             "Errors:\n" + string.Join("\n", run.CompilationErrors));
         run.StandardOutput.Should().Be("3\n10\n");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Typed-export roster: every export KIND, probed by a use whose refusal must NAME the export's
+    // real type. An untyped export is not a compile error — it is silent wrong output (the reason
+    // this axis exists): `lib.K + "a"` on an untyped int const BUILT and printed `3a` where Python
+    // raises TypeError, `b: bool = lib.K` was CS0029 behind SPY0908 instead of SPY0220 naming
+    // int32, and `lib.K.nonexistent()` was CS1061 instead of SPY0203.
+    //
+    // The const was the one kind that lost its type on the export seam: its VariableSymbol is built
+    // by NameResolver with no Type, and the declared type was written only to the DECLARING file's
+    // SemanticBinding — materialized onto the symbol at the end of the whole compilation, long
+    // after every importing file was checked. In the project pipeline ModuleSymbol.Exports points
+    // at that very symbol (ProjectCompiler.ResolveOwnExportedSymbol, #1366/#1407/#1410), so the
+    // importer read Unknown. Reproduces ONLY under `project`: the single-file front door has no
+    // OwnSymbolResolver, so the ModuleLoader extraction — typed from the annotation — stands.
+    //
+    // The roster is anchored to the export switch's own arms (read from ModuleLoader.cs), so a new
+    // export kind added without a typed-export cell here fails loudly instead of joining the
+    // untyped set silently.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private const string EveryExportKindLib = """
+        const K: int = 3
+        v: int = 4
+
+        def f() -> int:
+            return 5
+
+        class C:
+            def __init__(self) -> None:
+                pass
+
+        struct S:
+            x: int
+
+        interface I:
+            def go(self) -> int:
+                ...
+
+        enum E:
+            A = 1
+            B = 2
+
+        union U:
+            case A
+            case B(x: int)
+
+        delegate D(x: int) -> int
+
+        type Alias = int
+        """;
+
+    /// <summary>
+    /// One row per export kind: the <c>ExtractExportedSymbol</c> arm it comes from, the probe body
+    /// (a use of the qualified export), and the type name the refusal must contain. Every row is a
+    /// measured outcome, not a predicted one.
+    /// </summary>
+    public static TheoryData<string, string, string> TypedExportProbes() => new()
+    {
+        // The defect: a const export. Both spellings of the read — qualified and bare — because
+        // both go through Exports.
+        { nameof(VariableDeclaration), "b: bool = lib.K", "int32" },
+        // Its non-const twin, the control that was already typed (a module VARIABLE is not
+        // resolved by NameResolver at all, so the typed ModuleLoader extraction stands).
+        { nameof(VariableDeclaration), "b: bool = lib.v", "int32" },
+        { nameof(FunctionDef), "b: bool = lib.f()", "int32" },
+        { nameof(ClassDef), "b: bool = lib.C()", "C" },
+        { nameof(StructDef), "b: bool = lib.S(1)", "S" },
+        { nameof(InterfaceDef), "x: lib.I = 3", "I" },
+        { nameof(EnumDef), "b: bool = lib.E.A", "E" },
+        // Also the #1907 qualified union-case construction: it must RESOLVE (to name U here) and,
+        // per ModuleMemberQualificationMatrixTests, emit as a construction.
+        { nameof(UnionDef), "b: bool = lib.U.A()", "U" },
+        { nameof(DelegateDef), "d: lib.D = lambda x: x * 2\n    b: bool = d", "D" },
+        { nameof(TypeAlias), "x: lib.Alias = \"s\"", "int32" },
+    };
+
+    [Theory]
+    [MemberData(nameof(TypedExportProbes))]
+    public void EveryExportKind_IsTypedAcrossTheModuleSeam(string arm, string probe, string expectedTypeName)
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Kinds" + Math.Abs(probe.GetHashCode())).WithEntryPoint("main.spy");
+        helper.AddSourceFile("lib.spy", EveryExportKindLib);
+        helper.AddSourceFile("main.spy", $"""
+            import lib
+
+            def main() -> None:
+                {probe}
+            """);
+        helper.CreateProjectFile();
+
+        var result = helper.Compile();
+        var errors = result.Diagnostics.GetErrors().ToList();
+
+        Assert.False(result.Success, $"The {arm} probe must be refused, not accepted.");
+        Assert.Contains(errors, d =>
+            d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains(expectedTypeName));
+        // The whole point: a NAMED semantic refusal, never the generated-C# ICE an untyped export
+        // produces when the mismatch reaches Roslyn instead.
+        Assert.DoesNotContain(errors,
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+    }
+
+    [Fact]
+    public void TypedExportRoster_CoversEveryExportSwitchArm()
+    {
+        var arms = SwitchArmScan.CaseTypeNames(ModuleLoaderFile, "ExtractExportedSymbol");
+        var covered = TypedExportProbes().Select(row => (string)row[0]!).ToHashSet(StringComparer.Ordinal);
+
+        _output.WriteLine($"Export arms: {string.Join(", ", arms.OrderBy(n => n, StringComparer.Ordinal))}");
+        _output.WriteLine($"Rows cover: {string.Join(", ", covered.OrderBy(n => n, StringComparer.Ordinal))}");
+
+        Assert.True(covered.SetEquals(arms),
+            "Every kind ExtractExportedSymbol exports needs a typed-export probe, or the next kind " +
+            "joins the untyped set the way `const` did (#1674).\n" +
+            $"  Arms with no probe: {string.Join(", ", arms.Except(covered))}\n" +
+            $"  Probes for no arm: {string.Join(", ", covered.Except(arms))}");
+    }
+
+    [Fact]
+    public void ConstExport_UsedInAWrongOperandSlot_IsRefused_NotSilentlyBuilt()
+    {
+        // The silent-wrong-output cell itself. python3: `3 + "a"` raises
+        // TypeError: unsupported operand type(s) for +: 'int' and 'str'. Before the fix this
+        // project BUILT and printed `3a`.
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("ConstOperand").WithEntryPoint("main.spy");
+        helper.AddSourceFile("lib.spy", "const K: int = 3\n");
+        helper.AddSourceFile("main.spy", """
+            import lib
+
+            def main() -> None:
+                print(lib.K + "a")
+            """);
+        helper.CreateProjectFile();
+
+        var result = helper.Compile();
+
+        Assert.False(result.Success, "An int const + a str must be refused, as it is in Python.");
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation);
+    }
+
+    [Fact]
+    public void ConstExport_MemberAccessOnIt_IsSpy0203_NotAnIce()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("ConstMember").WithEntryPoint("main.spy");
+        helper.AddSourceFile("lib.spy", "const K: int = 3\n");
+        helper.AddSourceFile("main.spy", """
+            import lib
+
+            def main() -> None:
+                lib.K.nonexistent()
+            """);
+        helper.CreateProjectFile();
+
+        var result = helper.Compile();
+        var errors = result.Diagnostics.GetErrors().ToList();
+
+        Assert.False(result.Success);
+        Assert.Contains(errors, d => d.Code == DiagnosticCodes.Semantic.UndefinedMember);
+        Assert.DoesNotContain(errors,
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+    }
+
+    [Fact]
+    public void ConstExport_ReadThroughFromImport_IsTypedToo()
+    {
+        // The bare route reaches the same symbol through ResolveImportSymbol rather than Exports,
+        // so it is a second observation of the same fact, not a restatement.
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("ConstBare").WithEntryPoint("main.spy");
+        helper.AddSourceFile("lib.spy", "const K: int = 3\n");
+        helper.AddSourceFile("main.spy", """
+            from lib import K
+
+            def main() -> None:
+                b: bool = K
+                print(b)
+            """);
+        helper.CreateProjectFile();
+
+        var result = helper.Compile();
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("int32"));
     }
 
     /// <summary>

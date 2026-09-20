@@ -3581,6 +3581,21 @@ internal partial class TypeChecker
                     }
 
                     var functionValueArgNode = ArgumentNodeAt(call, i);
+
+                    // #1675: the THIRD route that resolves a callee to concrete parameter types —
+                    // every callee the member seam types as a FunctionType rather than binding to a
+                    // FunctionSymbol or a ClrCallBinding: an instance method of a user class, of a
+                    // CONSTRUCTED generic class (`Box[int].fetch`, whose formal is substituted at
+                    // the head of this method), and of a Sharpy builtin collection
+                    // (`dict[str, int].try_get_value`). Without this mirror those callees resolved
+                    // fine and the binding stayed Unknown, so RefuseUnresolvedAutoOutBindings read
+                    // "no resolved signature" for a signature that WAS resolved (SPY0203 on source
+                    // that ran at 41dd19de7). The same unconditional no-op-for-every-other-shape
+                    // call the symbol route makes (ValidateCallArguments) and the CLR route makes
+                    // (CheckClrBindingArguments) — the write-back keys on the resolved signature for
+                    // every callee kind, not on which route resolved it.
+                    WriteBackAutoOutBindingType(functionValueArgNode, expected);
+
                     if (IsArgumentAssignable(argTypes[i], expected, functionValueArgNode))
                     {
                         ApplyArgumentConversion(
@@ -4377,6 +4392,15 @@ internal partial class TypeChecker
         var typeParams = unionBaseSymbol.TypeParameters;
         var caseName = $"{unionBaseSymbol.Name}.{caseUdt.Name}";
         var typeParamNames = string.Join(", ", typeParams.Select(tp => tp.Name));
+
+        // #1674/#1907: the construction fact, recorded the moment the checker has resolved WHICH case
+        // this call constructs and before any argument rule runs — so it is keyed on the resolution,
+        // never on the callee's spelling. The emitter reads it to spell `new <union>.<case>(...)`;
+        // without it, codegen re-derived the union from the callee's SHAPE and answered only for the
+        // shapes whose root is a type name (`U.A(...)`, `Outer.U.A(...)`). The module-qualified
+        // `lib.U.A(...)` — whose root is a ModuleSymbol — emitted a bare invocation and reached
+        // Roslyn as CS1955 behind SPY0908, while `from lib import U` + `U.A(...)` ran (Rule 2).
+        _semanticInfo.SetUnionCaseConstruction(call, unionBaseSymbol, caseUdt.Symbol!);
 
         // Box[str].Full("s"): type arguments on the qualifier are not a spelling the language has —
         // the qualified form takes its type arguments from the annotation or the arguments

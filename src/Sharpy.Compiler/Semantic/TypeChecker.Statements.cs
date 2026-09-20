@@ -1067,8 +1067,11 @@ internal partial class TypeChecker
             if (existingSymbol is VariableSymbol existingConst)
             {
                 // Already created by NameResolver — a module const, or a field const the type body
-                // put in scope. Update its type now that we've resolved it.
-                SemanticBinding.SetVariableType(existingConst, declaredType);
+                // put in scope. Update its type now that we've resolved it, on BOTH channels: this
+                // symbol is what an importing file reads through ModuleSymbol.Exports, and it reads
+                // the SYMBOL, not this file's binding (#1674 export-kind totality — see
+                // RecordDeclaredConstType).
+                RecordDeclaredConstType(existingConst, declaredType);
                 _semanticInfo.SetDeclarationSymbol(varDecl, existingConst);
                 TryFoldConstantValue(existingConst, declaredType, varDecl.InitialValue);
                 return;

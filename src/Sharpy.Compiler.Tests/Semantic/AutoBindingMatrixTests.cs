@@ -184,6 +184,158 @@ public class AutoBindingMatrixTests : IntegrationTestBase
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // FunctionType callee: every callee the member seam TYPES rather than binding to a
+    // FunctionSymbol or a ClrCallBinding — a user class's instance method, a CONSTRUCTED generic
+    // class's instance method, and a Sharpy builtin collection's method. The third route into
+    // WriteBackAutoOutBindingType (CheckLambdaCall), added because the two routes above it left
+    // this whole family refused: each of the three cells below RAN at 41dd19de7 and reported
+    // SPY0203 "the callee has no resolved signature" at 322fbd20e, for a signature that WAS
+    // resolved — the write-back keyed on which route resolved the callee instead of on the
+    // resolution. Measured both ways before the fix.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void UserInstanceMethodOutCallee_AutoOutBinding_Runs()
+    {
+        var result = CompileAndExecute("""
+            class Box:
+                def fetch(self, r: out int) -> bool:
+                    r = 7
+                    return True
+
+            def main() -> None:
+                b: Box = Box()
+                ok: bool = b.fetch(out v: auto)
+                print(ok)
+                print(v)
+            """);
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("True\n7\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void UserInstanceMethodOutCallee_AutoOutBinding_TypedUseInABoolSlot_IsSpy0220()
+    {
+        // The probe cell: silence here would mean v stayed Unknown. SPY0220 must NAME the formal's
+        // type (int32), and no SPY0908 — the mismatch is the checker's answer, not Roslyn's.
+        var result = CompileAndExecute("""
+            class Box:
+                def fetch(self, r: out int) -> bool:
+                    r = 7
+                    return True
+
+            def main() -> None:
+                b: Box = Box()
+                ok: bool = b.fetch(out v: auto)
+                b2: bool = v
+                print(b2)
+            """);
+
+        Assert.False(result.Success);
+        Assert.True(HasCode(result, DiagnosticCodes.Semantic.TypeMismatch),
+            $"Expected SPY0220, got: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Contains(result.RawDiagnostics,
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("int32"));
+        Assert.False(HasCode(result, DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError));
+    }
+
+    [Fact]
+    public void GenericInstanceMethodOutCallee_AutoOutBinding_Runs()
+    {
+        // The formal is the type parameter T; CheckLambdaCall substitutes the constructed
+        // receiver's type argument before the write-back reads it, so the binding takes str.
+        var result = CompileAndExecute("""
+            class Box[T]:
+                v: T
+                def __init__(self, v: T) -> None:
+                    self.v = v
+                def fetch(self, r: out T) -> bool:
+                    r = self.v
+                    return True
+
+            def main() -> None:
+                b: Box[str] = Box[str]("hi")
+                ok: bool = b.fetch(out v: auto)
+                print(ok)
+                print(v)
+            """);
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("True\nhi\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void GenericInstanceMethodOutCallee_AutoOutBinding_TypedUseInABoolSlot_NamesTheSubstitutedType()
+    {
+        var result = CompileAndExecute("""
+            class Box[T]:
+                v: T
+                def __init__(self, v: T) -> None:
+                    self.v = v
+                def fetch(self, r: out T) -> bool:
+                    r = self.v
+                    return True
+
+            def main() -> None:
+                b: Box[str] = Box[str]("hi")
+                ok: bool = b.fetch(out v: auto)
+                b2: bool = v
+                print(b2)
+            """);
+
+        Assert.False(result.Success);
+        Assert.True(HasCode(result, DiagnosticCodes.Semantic.TypeMismatch),
+            $"Expected SPY0220, got: {string.Join(", ", result.CompilationErrors)}");
+        // The SUBSTITUTED type argument, not the open T — a cell that named 'T' would mean the
+        // write-back mirrored the declaration's formal instead of the resolved one.
+        Assert.Contains(result.RawDiagnostics,
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("str"));
+    }
+
+    [Fact]
+    public void SharpyBuiltinReceiverOutCallee_AutoOutBinding_Runs()
+    {
+        // dict[str, int].try_get_value — a Sharpy.Dict<K,V> method reached through the member
+        // seam's FunctionType, the same callee kind as the two cells above.
+        var result = CompileAndExecute("""
+            def main() -> None:
+                d: dict[str, int] = {"a": 1}
+                ok: bool = d.try_get_value("a", out v: auto)
+                print(ok)
+                print(v)
+            """);
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("True\n1\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void SharpyBuiltinReceiverOutCallee_AutoOutBinding_TypedUseInABoolSlot_IsSpy0220()
+    {
+        // The binding takes the RESOLVED formal, which for this receiver reads `object`: a by-ref
+        // CLR formal is erased at Discovery/ClrTypeBridge.MapParameterType (#1921, filed while
+        // curing this), so the FunctionType this route resolves carries `object` where the CLR call
+        // seam's by-ref-stripping gives int32 (the ClrInstance cells above). The acceptance here is
+        // that the binding is TYPED at all — silence would mean Unknown — and the cell is pinned to
+        // `object` deliberately: when #1921 lands this assertion must be updated to int32, which is
+        // the reminder that the two spellings of the same call still disagree.
+        var result = CompileAndExecute("""
+            def main() -> None:
+                d: dict[str, int] = {"a": 1}
+                ok: bool = d.try_get_value("a", out v: auto)
+                b: bool = v
+                print(b)
+            """);
+
+        Assert.False(result.Success);
+        Assert.True(HasCode(result, DiagnosticCodes.Semantic.TypeMismatch),
+            $"Expected SPY0220, got: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Contains(result.RawDiagnostics,
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("object"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // Chained rebinding: `out v: auto` on an already-bound v takes the EXISTING binding's type,
     // not the callee's (#1301's rebinding rule) — a10, a positive control that this feature does
     // not disturb.

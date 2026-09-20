@@ -281,6 +281,18 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, PatternUnionCaseResolution> _patternUnionCases =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a FunctionCall to the union case it CONSTRUCTS — the construction twin of
+    // _patternUnionCases, recorded by CheckUnionCaseConstruction for every spelling that reaches it
+    // (#1674, #1907). The emitter used to re-derive the union symbol from the callee's SHAPE
+    // (ResolveUnionFromAccessObject: a bare name looked up in scope, or a nested-type chain), which
+    // answered for `U.A(...)` and `Outer.U.A(...)` but not for the MODULE-qualified `lib.U.A(...)` —
+    // whose access object's root is a ModuleSymbol, not a TypeSymbol. That spelling emitted a plain
+    // invocation and reached Roslyn as CS1955 behind SPY0908, while the bare `from lib import U`
+    // spelling of the SAME construction ran. One resolved fact, recorded where the checker already
+    // decided it, so every spelling takes one lowering (Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<FunctionCall, UnionCaseConstruction> _unionCaseConstructions =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map MemberAccessPatterns to their resolved type symbol + the index of the type
     // segment in the Parts array. Recorded by CheckMemberAccessPattern so
     // GenerateMemberAccessValue reads the materialized fact (#1524, Rule 2).
@@ -1158,6 +1170,28 @@ public class SemanticInfo : ISemanticQuery
         return _patternUnionCases.TryGetValue(pattern, out var resolution) ? resolution.ParentTypeArgs : null;
     }
 
+    /// <summary>
+    /// Records that <paramref name="call"/> CONSTRUCTS a union case — the union it belongs to and
+    /// the case itself, as the checker resolved them, whatever spelling the callee used
+    /// (<c>U.A(…)</c>, <c>Outer.U.A(…)</c>, <c>lib.U.A(…)</c>). The emitter spells
+    /// <c>new &lt;union&gt;.&lt;case&gt;(…)</c> from this fact instead of re-deriving the union from the
+    /// callee's shape, which is what made the module-qualified spelling emit a plain invocation and
+    /// reach Roslyn as CS1955 behind SPY0908 (#1674, #1907; Critical Rule 2 pattern (b)).
+    /// </summary>
+    public void SetUnionCaseConstruction(FunctionCall call, TypeSymbol unionSymbol, TypeSymbol caseSymbol)
+    {
+        _unionCaseConstructions[call] = new UnionCaseConstruction(unionSymbol, caseSymbol);
+    }
+
+    /// <summary>
+    /// The union case construction recorded for <paramref name="call"/>, or null when the call is
+    /// not one (<see cref="SetUnionCaseConstruction"/>).
+    /// </summary>
+    public UnionCaseConstruction? GetUnionCaseConstruction(FunctionCall call)
+    {
+        return _unionCaseConstructions.TryGetValue(call, out var resolution) ? resolution : null;
+    }
+
     public void SetPatternMemberAccessResolution(MemberAccessPattern pattern, TypeSymbol typeSymbol, int typeIndex)
     {
         _patternMemberAccessResolutions[pattern] = (typeSymbol, typeIndex);
@@ -2003,6 +2037,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._unionCaseConstructions)
+            _unionCaseConstructions.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._patternMemberAccessResolutions)
             _patternMemberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
 
@@ -2398,6 +2435,17 @@ public enum CharMaterializationKind
 public sealed record PatternUnionCaseResolution(
     TypeSymbol CaseSymbol,
     IReadOnlyList<SemanticType>? ParentTypeArgs);
+
+/// <summary>
+/// A call's resolved union case CONSTRUCTION: the union the case belongs to and the case itself.
+/// The construction twin of <see cref="PatternUnionCaseResolution"/> — recorded by the checker for
+/// every callee spelling it accepts as a case constructor, so the emitter spells
+/// <c>new &lt;union&gt;.&lt;case&gt;(…)</c> from ONE fact rather than re-deriving the union from the callee's
+/// shape and missing the module-qualified spelling (#1674, #1907).
+/// </summary>
+public sealed record UnionCaseConstruction(
+    TypeSymbol UnionSymbol,
+    TypeSymbol CaseSymbol);
 
 /// <summary>
 /// How codegen emits the type test for a classified <c>isinstance</c> type operand. The TypeChecker's

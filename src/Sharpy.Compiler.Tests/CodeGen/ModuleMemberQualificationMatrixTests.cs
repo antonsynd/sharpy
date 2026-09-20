@@ -728,4 +728,138 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             + $"function `{csName}`, not the CLR namespace/type of the same name (#1683)");
         cs.Should().NotContain(UsingStatic, $"{id}: #1683 close criterion");
     }
+
+    // ── #1907: the module-qualified UNION CASE CONSTRUCTOR takes the same lowering as the bare
+    //    spelling. `from lib import U` + `U.A()` emitted `new global::<Ns>.Lib.U.A()` and ran, while
+    //    `import lib` + `lib.U.A()` emitted a plain INVOCATION and reached Roslyn as CS1955
+    //    ("Non-invocable member 'Lib.U.A' cannot be used like a method") behind SPY0908 — the
+    //    emitter re-derived the union from the callee's SHAPE, and that derivation answers only for
+    //    shapes whose root is a type name. The checker resolved both spellings identically all
+    //    along (both reach CheckUnionCaseConstruction with the same case and union symbols), so the
+    //    cure is the recorded fact the emitter now reads (SemanticInfo.GetUnionCaseConstruction).
+
+    private const string QualifiedUnionLib = """
+        union U:
+            case A
+            case B(x: int)
+
+        class Outer:
+            union V:
+                case X
+                case Y(n: int)
+        """;
+
+    [Fact]
+    public void QualifiedUnionCase_NoPayload_ConstructsAndMatches()
+    {
+        var main = """
+            import lib
+
+            def main() -> None:
+                a: lib.U = lib.U.A()
+                match a:
+                    case A:
+                        print("A")
+                    case B(x):
+                        print(x)
+            """;
+        var run = RunProject("Test", ("lib.spy", QualifiedUnionLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "the module-qualified no-payload case constructor must compile and run (#1907). Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("A\n");
+
+        run.GeneratedCSharp.Should().Contain("new global::Test.Lib.U.A()",
+            "the qualified spelling lowers to a CONSTRUCTION, the same one the bare spelling takes "
+            + "— a plain invocation here is CS1955 behind SPY0908 (#1907)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    [Fact]
+    public void QualifiedUnionCase_WithPayload_ConstructsAndMatches()
+    {
+        var main = """
+            import lib
+
+            def main() -> None:
+                b: lib.U = lib.U.B(7)
+                match b:
+                    case A:
+                        print("A")
+                    case B(x):
+                        print(x)
+            """;
+        var run = RunProject("Test", ("lib.spy", QualifiedUnionLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "the module-qualified payload case constructor must compile and run (#1907). Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("7\n");
+
+        run.GeneratedCSharp.Should().Contain("new global::Test.Lib.U.B(7)");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    [Fact]
+    public void QualifiedUnionCase_NestedInAClass_ConstructsAndMatches()
+    {
+        // Three qualification segments (module → class → union). A COVERAGE cell, not a guard for
+        // the recorded fact: this spelling's access object (`lib.Outer.V`) is one the shape
+        // derivation CAN resolve (module → exported type → nested type), so it stays green when the
+        // emitter's fact read is reverted — recorded here so it is not mistaken for a falsifiable
+        // guard. The three cells that red under that mutation are the two `lib.U.<case>()` cells
+        // and the qualified-vs-bare comparison.
+        var main = """
+            import lib
+
+            def main() -> None:
+                n: lib.Outer.V = lib.Outer.V.X()
+                match n:
+                    case X:
+                        print("X")
+                    case Y(k):
+                        print(k)
+            """;
+        var run = RunProject("Test", ("lib.spy", QualifiedUnionLib), ("main.spy", main));
+
+        run.Exec.Success.Should().BeTrue(
+            "a module-qualified NESTED union's case constructor must compile and run (#1907). Errors:\n"
+            + string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Should().Be("X\n");
+
+        run.GeneratedCSharp.Should().Contain("new global::Test.Lib.Outer.V.X()");
+        run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
+    }
+
+    [Fact]
+    public void QualifiedAndBareUnionCase_EmitTheSameConstruction()
+    {
+        // The class statement itself: the two spellings of ONE construction differ only in how the
+        // union symbol was reached, so they must produce byte-identical lowerings. A cell that
+        // asserted only the qualified spelling would pass again if the bare one regressed to match
+        // it.
+        var qualified = RunProject("Test", ("lib.spy", QualifiedUnionLib), ("main.spy", """
+            import lib
+
+            def main() -> None:
+                a: lib.U = lib.U.A()
+                print(1)
+            """));
+        var bare = RunProject("Test", ("lib.spy", QualifiedUnionLib), ("main.spy", """
+            from lib import U
+
+            def main() -> None:
+                a: U = U.A()
+                print(1)
+            """));
+
+        qualified.Exec.Success.Should().BeTrue(string.Join("\n", qualified.Exec.CompilationErrors));
+        bare.Exec.Success.Should().BeTrue(string.Join("\n", bare.Exec.CompilationErrors));
+
+        const string construction = "new global::Test.Lib.U.A()";
+        qualified.GeneratedCSharp.Should().Contain(construction);
+        bare.GeneratedCSharp.Should().Contain(construction,
+            "the bare spelling is the control: both routes take ONE lowering (#1907)");
+    }
 }
