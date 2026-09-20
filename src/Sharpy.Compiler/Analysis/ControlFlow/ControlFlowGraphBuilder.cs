@@ -956,7 +956,17 @@ internal class ControlFlowGraphBuilder
         return keys;
     }
 
-    private static void CollectPatternBindingKeysInto(Pattern pattern, List<string> keys)
+    /// <summary>
+    /// The ONE roster of names a <c>case</c> pattern CAPTURES, at every sub-pattern depth
+    /// (<c>as</c>, or/and, tuple/list/star, positional/property). Guarded for totality by
+    /// <c>CfgPatternBindingTotalityTests</c> against the concrete <see cref="Pattern"/> subtype
+    /// census, so a new pattern kind cannot silently stop contributing captures.
+    /// <c>internal</c> rather than private because <see cref="DefiniteAssignmentAnalysis"/>'s
+    /// scope-shadowing walk needs the same roster: a capture binds a name scoped to its case, so it
+    /// SHADOWS a same-named outer local for reads inside that case. Reusing this collector is what
+    /// keeps the two from drifting (#1910).
+    /// </summary>
+    internal static void CollectPatternBindingKeysInto(Pattern pattern, List<string> keys)
     {
         switch (pattern)
         {

@@ -85,7 +85,7 @@ internal static class DefiniteAssignmentAnalysis
             {
                 CollectWalrusBareDecls(entryExpr, bareDecls, declaredNames);
                 CollectWalrusTargets(entryExpr, blockAssigned);
-                CollectReadsFromExpr(entryExpr, blockReads, -1, deferredReads);
+                CollectReadsFromExpr(entryExpr, blockReads, -1, deferredReads, NoShadow);
             }
 
             for (int i = 0; i < block.Statements.Count; i++)
@@ -106,14 +106,14 @@ internal static class DefiniteAssignmentAnalysis
 
                 CollectWalrusBareDecls(stmt, bareDecls, declaredNames);
                 CollectWalrusTargets(stmt, blockAssigned);
-                CollectReads(stmt, blockReads, i, deferredReads);
+                CollectReads(stmt, blockReads, i, deferredReads, NoShadow);
             }
 
             foreach (var expr in block.Expressions)
             {
                 CollectWalrusBareDecls(expr, bareDecls, declaredNames);
                 CollectWalrusTargets(expr, blockAssigned);
-                CollectReadsFromExpr(expr, blockReads, block.Statements.Count, deferredReads);
+                CollectReadsFromExpr(expr, blockReads, block.Statements.Count, deferredReads, NoShadow);
             }
 
             if (block.Terminator is ConditionalBranchTerminator cbt)
@@ -126,7 +126,7 @@ internal static class DefiniteAssignmentAnalysis
                 if (wTrue.Count > unconditional.Count || wFalse.Count > unconditional.Count)
                     edgeWalrus[block] = (wTrue, wFalse);
 
-                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, deferredReads);
+                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, deferredReads, NoShadow);
             }
 
             assignedInBlock[block] = blockAssigned;
@@ -472,25 +472,25 @@ internal static class DefiniteAssignmentAnalysis
 
     private static void CollectReads(
         Statement stmt, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> deferredReads)
+        List<(string, Identifier)> deferredReads, HashSet<string> shadowed)
     {
         if (stmt is Assignment assign)
         {
-            CollectReadsFromExpr(assign.Value, reads, stmtIdx, deferredReads);
-            CollectTargetReads(assign.Target, reads, stmtIdx, deferredReads);
+            CollectReadsFromExpr(assign.Value, reads, stmtIdx, deferredReads, shadowed);
+            CollectTargetReads(assign.Target, reads, stmtIdx, deferredReads, shadowed);
             return;
         }
 
-        foreach (var child in stmt.GetChildNodes())
+        foreach (var (child, childShadowed) in ScopedChildren(stmt, shadowed))
         {
             if (child is Expression expr)
-                CollectReadsFromExpr(expr, reads, stmtIdx, deferredReads);
+                CollectReadsFromExpr(expr, reads, stmtIdx, deferredReads, childShadowed);
         }
     }
 
     private static void CollectTargetReads(
         Expression target, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> deferredReads)
+        List<(string, Identifier)> deferredReads, HashSet<string> shadowed)
     {
         switch (target)
         {
@@ -498,37 +498,45 @@ internal static class DefiniteAssignmentAnalysis
                 break;
             case TupleLiteral tuple:
                 foreach (var element in tuple.Elements)
-                    CollectTargetReads(element, reads, stmtIdx, deferredReads);
+                    CollectTargetReads(element, reads, stmtIdx, deferredReads, shadowed);
                 break;
             case StarExpression star:
-                CollectTargetReads(star.Operand, reads, stmtIdx, deferredReads);
+                CollectTargetReads(star.Operand, reads, stmtIdx, deferredReads, shadowed);
                 break;
             default:
-                CollectReadsFromExpr(target, reads, stmtIdx, deferredReads);
+                CollectReadsFromExpr(target, reads, stmtIdx, deferredReads, shadowed);
                 break;
         }
     }
 
+    /// <summary>
+    /// Collects flow-positioned reads. <paramref name="shadowed"/> carries the names bound by the
+    /// SCOPE-INTRODUCING expressions traversal has entered (a comprehension's or generator
+    /// expression's clause targets, a lambda's parameters — see <see cref="ScopedChildren"/>): a
+    /// read of such a name is that scope's OWN binding, not the enclosing function's same-named
+    /// bare local, so it is not a use of the local and must not be judged against it (#1910).
+    /// </summary>
     private static void CollectReadsFromExpr(
         Expression expr, List<(string, Identifier, int)> reads, int stmtIdx,
-        List<(string, Identifier)> deferredReads)
+        List<(string, Identifier)> deferredReads, HashSet<string> shadowed)
     {
         if (expr is Identifier id)
         {
-            reads.Add((id.Name, id, stmtIdx));
+            if (!shadowed.Contains(id.Name))
+                reads.Add((id.Name, id, stmtIdx));
             return;
         }
 
         if (expr is LambdaExpression lambda)
         {
-            CollectDeferredReads(lambda, deferredReads);
+            CollectDeferredReads(lambda, deferredReads, shadowed);
             return;
         }
 
-        foreach (var child in expr.GetChildNodes())
+        foreach (var (child, childShadowed) in ScopedChildren(expr, shadowed))
         {
             if (child is Expression childExpr)
-                CollectReadsFromExpr(childExpr, reads, stmtIdx, deferredReads);
+                CollectReadsFromExpr(childExpr, reads, stmtIdx, deferredReads, childShadowed);
         }
     }
 
@@ -571,35 +579,25 @@ internal static class DefiniteAssignmentAnalysis
     /// same-named-outer-local's write-through assignment (`x = 1`, no local re-declaration; see
     /// <see cref="CollectNestedDefWriteThroughs"/>) must not also be miscounted as a read here.
     ///
-    /// <para><paramref name="shadowed"/> is null for a lambda body (its only own bindings are
-    /// parameters, which <see cref="LambdaExpression.GetChildNodes"/> already excludes from
-    /// traversal) and non-null once traversal has entered a nested <c>def</c>: that def's own
-    /// parameters and declarations bind a name scoped to ITS body, shadowing a same-named local of
-    /// the enclosing scope (C# scoping, Axiom 1) — a read of a shadowed name is the nested def's OWN
-    /// local, not a deferred read of the enclosing scope's, so it is excluded. A further-nested
-    /// <c>def</c> gets its own names layered on top, so shadowing composes correctly at any
-    /// depth.</para>
+    /// <para><paramref name="shadowed"/> carries every name the scopes traversal has entered BIND —
+    /// a nested def's parameters and body-flat declarations, a lambda's parameters, a for target, a
+    /// comprehension or generator clause target, a <c>with … as</c> / <c>except … as</c> name, a
+    /// walrus target, a <c>case</c> pattern capture. Each binds a name scoped to that construct,
+    /// shadowing a same-named local of the enclosing scope (C# scoping, Axiom 1), so a read of a
+    /// shadowed name is that construct's OWN binding, not a deferred read of the enclosing scope's,
+    /// and is excluded. <see cref="ScopedChildren"/> is the single roster of which construct binds
+    /// what and over which sub-tree; layering composes at any depth. Judging by NAME alone — the
+    /// pre-#1910 shape, which seeded only parameters and <c>VariableDeclaration</c>s — refused
+    /// programs whose deferred body reads its own for/comprehension/match/lambda/with/except/walrus
+    /// binding.</para>
     /// </summary>
     private static void CollectDeferredReads(
-        Node node, List<(string, Identifier)> deferredReads, HashSet<string>? shadowed = null)
+        Node node, List<(string, Identifier)> deferredReads, HashSet<string> shadowed)
     {
         if (node is Identifier id)
         {
-            if (shadowed == null || !shadowed.Contains(id.Name))
+            if (!shadowed.Contains(id.Name))
                 deferredReads.Add((id.Name, id));
-            return;
-        }
-
-        if (node is FunctionDef nestedDef)
-        {
-            var innerShadowed = shadowed == null ? new HashSet<string>() : new HashSet<string>(shadowed);
-            foreach (var param in nestedDef.Parameters)
-                innerShadowed.Add(param.Name);
-            foreach (var bodyStmt in nestedDef.Body)
-                CollectLocalDeclarationNames(bodyStmt, innerShadowed);
-
-            foreach (var child in nestedDef.GetChildNodes())
-                CollectDeferredReads(child, deferredReads, innerShadowed);
             return;
         }
 
@@ -610,8 +608,8 @@ internal static class DefiniteAssignmentAnalysis
             return;
         }
 
-        foreach (var child in node.GetChildNodes())
-            CollectDeferredReads(child, deferredReads, shadowed);
+        foreach (var (child, childShadowed) in ScopedChildren(node, shadowed))
+            CollectDeferredReads(child, deferredReads, childShadowed);
     }
 
     /// <summary>Deferred-read counterpart of <see cref="CollectTargetReads"/>: a bare identifier
@@ -619,7 +617,7 @@ internal static class DefiniteAssignmentAnalysis
     /// <see cref="CollectNestedDefWriteThroughs"/>), but a compound target's sub-expressions
     /// (<c>obj.attr = v</c>, <c>arr[i] = v</c>) still read <c>obj</c>/<c>arr</c>/<c>i</c>.</summary>
     private static void CollectDeferredTargetReads(
-        Expression target, List<(string, Identifier)> deferredReads, HashSet<string>? shadowed)
+        Expression target, List<(string, Identifier)> deferredReads, HashSet<string> shadowed)
     {
         switch (target)
         {
@@ -639,20 +637,284 @@ internal static class DefiniteAssignmentAnalysis
     }
 
     /// <summary>
-    /// Adds every name a <c>VariableDeclaration</c> introduces directly within <paramref name="node"/>
-    /// to <paramref name="names"/>, without crossing into a further nested <c>def</c> or lambda (each
-    /// binds its own separate scope, so its declarations don't shadow the CURRENT level — they are
-    /// collected separately, at their own level, when <see cref="CollectDeferredReads"/> reaches
-    /// them).
+    /// The two BODY-FLAT binding forms: a <c>VariableDeclaration</c> and a walrus target bind for
+    /// the whole enclosing function body, not just their own sub-tree, so they are collected up
+    /// front when <see cref="ScopedChildren"/> enters a <c>def</c> rather than as traversal passes
+    /// them (a sibling statement BELOW a walrus reads the bound name — <c>if (k := 5) &gt; 0:</c>
+    /// then <c>return k</c>). Does not cross into a further nested <c>def</c> or lambda (each binds
+    /// its own separate scope, collected at its own level when traversal reaches it) but DOES cross
+    /// a comprehension: python3 binds a walrus inside one in the ENCLOSING function scope.
+    /// Every other binding form is sub-tree scoped and lives in <see cref="ScopedChildren"/>.
     /// </summary>
-    private static void CollectLocalDeclarationNames(Node node, HashSet<string> names)
+    private static void CollectBodyFlatBindings(Node node, HashSet<string> names)
     {
-        if (node is LambdaExpression or FunctionDef)
-            return;
-        if (node is VariableDeclaration vd)
-            names.Add(vd.Name);
+        switch (node)
+        {
+            case FunctionDef:
+            case LambdaExpression:
+                return;
+            case VariableDeclaration vd:
+                names.Add(vd.Name);
+                break;
+            case WalrusExpression walrus:
+                names.Add(walrus.Target);
+                break;
+        }
+
         foreach (var child in node.GetChildNodes())
-            CollectLocalDeclarationNames(child, names);
+            CollectBodyFlatBindings(child, names);
+    }
+
+    /// <summary>The shadow set at function-body level: nothing is shadowed there, because a binding
+    /// form in the function's own body rebinds the function's own local rather than introducing a
+    /// separate one. Never mutated — every arm below copies before adding.</summary>
+    private static readonly HashSet<string> NoShadow = new();
+
+    /// <summary>
+    /// The ONE roster of binding forms: enumerates <paramref name="node"/>'s children paired with
+    /// the set of names shadowed for each — that is, the names bound by a scope-introducing
+    /// construct, over exactly the sub-tree where that binding is in force.
+    ///
+    /// <para>This is the answer to "judge by SCOPE, not by name" (#1910 / the #1681 follow-up). Every
+    /// reader of a deferred body — <see cref="CollectDeferredReads"/>, <see cref="CollectReadsFromExpr"/>
+    /// and <see cref="CollectWriteThroughs"/> — descends through here, so the read side and the
+    /// write-through side cannot drift apart. The arms, one per construct that binds:</para>
+    /// <list type="bullet">
+    /// <item><description><see cref="FunctionDef"/> — parameters plus the body-flat forms
+    /// (<see cref="CollectBodyFlatBindings"/>), over the body. A parameter DEFAULT is evaluated in
+    /// the ENCLOSING scope, so it keeps the outer set.</description></item>
+    /// <item><description><see cref="LambdaExpression"/> — parameters, over the body.
+    /// <see cref="LambdaExpression.GetChildNodes"/> excludes the parameters from traversal, which
+    /// is why nothing bound them before: that exclusion stops them being read, not being
+    /// BOUND.</description></item>
+    /// <item><description><see cref="ForStatement"/> — the target, over target/body/else. The
+    /// ITERATOR keeps the outer set (it is evaluated before the target binds), which is what leaves
+    /// `for i in k` a genuine read of an outer `k`.</description></item>
+    /// <item><description><see cref="ForClause"/> — a comprehension's or generator expression's own
+    /// target, same split. Reached with the comprehension's full target set for every clause but the
+    /// first, whose iterable python3 evaluates in the enclosing scope.</description></item>
+    /// <item><description>The five comprehension/generator kinds — every clause target, over the
+    /// element/key/value/spread and the <c>if</c> clauses.</description></item>
+    /// <item><description><see cref="WithStatement"/> — each item's <c>as</c> target, over the
+    /// following items and the body. Only a name-binding target binds
+    /// (<see cref="CollectAssignedNames"/>); `with cm() as p.x` is a read of `p`.</description></item>
+    /// <item><description><see cref="TryStatement"/> — a handler's <c>except … as</c> name, over
+    /// that handler's filter and body only; the try/else/finally bodies keep the outer
+    /// set.</description></item>
+    /// <item><description><see cref="MatchStatement"/> / <see cref="MatchExpression"/> — each case's
+    /// pattern captures at every sub-pattern depth (via the CFG builder's own roster,
+    /// <c>ControlFlowGraphBuilder.CollectPatternBindingKeysInto</c>), over that case's
+    /// pattern, guard and body. The scrutinee keeps the outer set.</description></item>
+    /// </list>
+    ///
+    /// <para>Scoping each form to its own sub-tree rather than to the whole enclosing body is what
+    /// keeps the write-through mirror sound: `x = 5` AFTER a `for x in …` inside a nested def is
+    /// outside the loop's sub-tree, so it still writes through to the enclosing local (measured: it
+    /// prints 5), while `x = 9` INSIDE the loop body assigns the loop variable and does not.</para>
+    ///
+    /// <para>The default arm — every construct that binds nothing — passes the set through
+    /// unchanged. Adding an AST node that BINDS a name means adding an arm here; totality of the arm
+    /// set is pinned by <c>ScopeBindingFormMatrixTests</c>.</para>
+    /// </summary>
+    private static IEnumerable<(Node Child, HashSet<string> Shadowed)> ScopedChildren(
+        Node node, HashSet<string> shadowed)
+    {
+        switch (node)
+        {
+            case FunctionDef functionDef:
+            {
+                var inner = new HashSet<string>(shadowed);
+                foreach (var param in functionDef.Parameters)
+                    inner.Add(param.Name);
+                foreach (var bodyStmt in functionDef.Body)
+                    CollectBodyFlatBindings(bodyStmt, inner);
+
+                foreach (var param in functionDef.Parameters)
+                {
+                    if (param.DefaultValue != null)
+                        yield return (param.DefaultValue, shadowed);
+                }
+                foreach (var bodyStmt in functionDef.Body)
+                    yield return (bodyStmt, inner);
+                yield break;
+            }
+
+            case LambdaExpression lambda:
+            {
+                var inner = new HashSet<string>(shadowed);
+                foreach (var param in lambda.Parameters)
+                    inner.Add(param.Name);
+
+                foreach (var param in lambda.Parameters)
+                {
+                    if (param.DefaultValue != null)
+                        yield return (param.DefaultValue, shadowed);
+                }
+                yield return (lambda.Body, inner);
+                yield break;
+            }
+
+            case ForStatement forStatement:
+            {
+                var inner = new HashSet<string>(shadowed);
+                CollectAssignedNames(forStatement.Target, inner);
+
+                yield return (forStatement.Iterator, shadowed);
+                yield return (forStatement.Target, inner);
+                foreach (var bodyStmt in forStatement.Body)
+                    yield return (bodyStmt, inner);
+                foreach (var elseStmt in forStatement.ElseBody)
+                    yield return (elseStmt, inner);
+                yield break;
+            }
+
+            case ForClause forClause:
+            {
+                var inner = new HashSet<string>(shadowed);
+                CollectAssignedNames(forClause.Target, inner);
+
+                yield return (forClause.Target, inner);
+                yield return (forClause.Iterator, shadowed);
+                yield break;
+            }
+
+            case ListComprehension:
+            case SetComprehension:
+            case DictComprehension:
+            case DictSpreadComprehension:
+            case GeneratorExpression:
+            {
+                var inner = new HashSet<string>(shadowed);
+                ForClause? firstForClause = null;
+                foreach (var clause in ComprehensionClausesOf(node))
+                {
+                    if (clause is not ForClause forClause)
+                        continue;
+                    firstForClause ??= forClause;
+                    CollectAssignedNames(forClause.Target, inner);
+                }
+
+                foreach (var child in node.GetChildNodes())
+                {
+                    // The FIRST for-clause's iterable is evaluated in the ENCLOSING scope
+                    // (python3: `[k for k in k]` reads the outer `k`), so it is handed the outer
+                    // set and its own ForClause arm re-adds only its own target.
+                    yield return (child, ReferenceEquals(child, firstForClause) ? shadowed : inner);
+                }
+                yield break;
+            }
+
+            case WithStatement withStatement:
+            {
+                var running = shadowed;
+                foreach (var item in withStatement.Items)
+                {
+                    yield return (item.ContextExpression, running);
+                    if (item.Target == null)
+                        continue;
+                    var next = new HashSet<string>(running);
+                    CollectAssignedNames(item.Target, next);
+                    running = next;
+                    yield return (item.Target, running);
+                }
+                foreach (var bodyStmt in withStatement.Body)
+                    yield return (bodyStmt, running);
+                yield break;
+            }
+
+            case TryStatement tryStatement:
+            {
+                foreach (var bodyStmt in tryStatement.Body)
+                    yield return (bodyStmt, shadowed);
+                foreach (var handler in tryStatement.Handlers)
+                {
+                    var inner = shadowed;
+                    if (!string.IsNullOrEmpty(handler.Name))
+                        inner = new HashSet<string>(shadowed) { handler.Name! };
+                    if (handler.Filter != null)
+                        yield return (handler.Filter, inner);
+                    foreach (var handlerStmt in handler.Body)
+                        yield return (handlerStmt, inner);
+                }
+                foreach (var elseStmt in tryStatement.ElseBody)
+                    yield return (elseStmt, shadowed);
+                foreach (var finallyStmt in tryStatement.FinallyBody)
+                    yield return (finallyStmt, shadowed);
+                yield break;
+            }
+
+            case MatchStatement matchStatement:
+            {
+                yield return (matchStatement.Scrutinee, shadowed);
+                foreach (var matchCase in matchStatement.Cases)
+                {
+                    var inner = WithPatternCaptures(shadowed, matchCase.Pattern);
+                    yield return (matchCase.Pattern, inner);
+                    if (matchCase.Guard != null)
+                        yield return (matchCase.Guard, inner);
+                    foreach (var bodyStmt in matchCase.Body)
+                        yield return (bodyStmt, inner);
+                }
+                yield break;
+            }
+
+            case MatchExpression matchExpression:
+            {
+                yield return (matchExpression.Scrutinee, shadowed);
+                foreach (var arm in matchExpression.Arms)
+                {
+                    var inner = WithPatternCaptures(shadowed, arm.Pattern);
+                    yield return (arm.Pattern, inner);
+                    if (arm.Guard != null)
+                        yield return (arm.Guard, inner);
+                    yield return (arm.Result, inner);
+                }
+                yield break;
+            }
+
+            default:
+            {
+                foreach (var child in node.GetChildNodes())
+                    yield return (child, shadowed);
+                yield break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="shadowed"/> plus every name <paramref name="pattern"/> captures, asking the
+    /// CFG builder's rostered pattern-capture collector rather than re-deriving the sub-pattern
+    /// roster here (one authority, guarded by <c>CfgPatternBindingTotalityTests</c>).
+    /// </summary>
+    private static HashSet<string> WithPatternCaptures(HashSet<string> shadowed, Pattern pattern)
+    {
+        var captures = new List<string>();
+        ControlFlowGraphBuilder.CollectPatternBindingKeysInto(pattern, captures);
+        if (captures.Count == 0)
+            return shadowed;
+
+        var inner = new HashSet<string>(shadowed);
+        foreach (var capture in captures)
+            inner.Add(capture);
+        return inner;
+    }
+
+    /// <summary>The clause list of any comprehension or generator expression; empty for anything
+    /// else. An <c>if</c>-chain rather than a switch: this is a property projection over the five
+    /// kinds the caller has already matched, not a dispatch decision of its own.</summary>
+    private static ImmutableArray<ComprehensionClause> ComprehensionClausesOf(Node node)
+    {
+        if (node is ListComprehension listComprehension)
+            return listComprehension.Clauses;
+        if (node is SetComprehension setComprehension)
+            return setComprehension.Clauses;
+        if (node is DictComprehension dictComprehension)
+            return dictComprehension.Clauses;
+        if (node is DictSpreadComprehension dictSpreadComprehension)
+            return dictSpreadComprehension.Clauses;
+        if (node is GeneratorExpression generatorExpression)
+            return generatorExpression.Clauses;
+        return ImmutableArray<ComprehensionClause>.Empty;
     }
 
     /// <summary>
@@ -681,29 +943,23 @@ internal static class DefiniteAssignmentAnalysis
 
     /// <summary>
     /// Adds every <c>Assignment</c> target name reachable from <paramref name="node"/> to
-    /// <paramref name="assignedAnywhere"/>, EXCEPT one in <paramref name="shadowed"/> — a name the
-    /// innermost enclosing nested def (or lambda, though a lambda's body cannot itself assign)
-    /// declares as its own parameter or local, which binds a SEPARATE name scoped to that body
-    /// rather than writing through to the outer scope's same-named local (C# scoping, Axiom 1; the
-    /// owner's write-through ruling only reaches a NON-shadowed name). A further-nested def gets its
-    /// own names layered on top of <paramref name="shadowed"/>, exactly like
-    /// <see cref="CollectDeferredReads"/>'s shadow tracking, so shadowing composes at any depth.
+    /// <paramref name="assignedAnywhere"/>, EXCEPT one in <paramref name="shadowed"/> — a name a
+    /// construct traversal has entered BINDS, which is a SEPARATE name scoped to that construct
+    /// rather than a write-through to the outer scope's same-named local (C# scoping, Axiom 1; the
+    /// owner's write-through ruling only reaches a NON-shadowed name). The shadow sets come from
+    /// <see cref="ScopedChildren"/> — the same roster <see cref="CollectDeferredReads"/> descends
+    /// through, so the read side and the write side cannot disagree about what a name means, and
+    /// shadowing composes at any depth.
+    ///
+    /// <para>Sub-tree scoping is load-bearing here, not just tidy: `x = 5` after a `for x in …`
+    /// inside a nested def is outside the loop's sub-tree and still writes through to the enclosing
+    /// local, while `x = 9` inside the loop body assigns the loop variable and must not be credited.
+    /// Seeding the shadow set flat over the whole def body would refuse the first, which is the very
+    /// class of false refusal this walk exists to avoid.</para>
     /// </summary>
     private static void CollectWriteThroughs(Node node, HashSet<string> assignedAnywhere, HashSet<string> shadowed)
     {
-        if (node is FunctionDef nestedDef)
-        {
-            var innerShadowed = new HashSet<string>(shadowed);
-            foreach (var param in nestedDef.Parameters)
-                innerShadowed.Add(param.Name);
-            foreach (var bodyStmt in nestedDef.Body)
-                CollectLocalDeclarationNames(bodyStmt, innerShadowed);
-
-            foreach (var child in nestedDef.GetChildNodes())
-                CollectWriteThroughs(child, assignedAnywhere, innerShadowed);
-            return;
-        }
-
+        // A lambda's body is a single expression: it cannot contain an assignment STATEMENT at all.
         if (node is LambdaExpression)
             return;
 
@@ -718,8 +974,8 @@ internal static class DefiniteAssignmentAnalysis
             }
         }
 
-        foreach (var child in node.GetChildNodes())
-            CollectWriteThroughs(child, assignedAnywhere, shadowed);
+        foreach (var (child, childShadowed) in ScopedChildren(node, shadowed))
+            CollectWriteThroughs(child, assignedAnywhere, childShadowed);
     }
 
     /// <summary>

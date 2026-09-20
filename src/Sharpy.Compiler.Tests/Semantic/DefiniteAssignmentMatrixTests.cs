@@ -1078,16 +1078,15 @@ def main(flag: bool) -> None:
     // --- shadowing dimension: a deferred site's OWN binding sharing a name with an outer bare local ---
 
     [Fact]
-    public void LambdaOwnParameter_ShadowsOuterUnassigned_WronglyRefused_Bug1910()
+    public void LambdaOwnParameter_ShadowsOuterUnassigned_Accepted()
     {
-        // BUG(#1910): DefiniteAssignmentAnalysis's deferred-read collection matches identifier reads
-        // against bareDecls BY NAME, not by resolved symbol/scope. The lambda's OWN parameter `y`
-        // shadows the outer never-assigned `y`, so the `y` read inside the lambda body is the
-        // parameter, not the outer local — python3 prints 9. CollectDeferredReads's `shadowed` set
-        // (added by #1681/3fa30defb) is seeded from a nested def's own parameters and local
-        // VariableDeclarations, but nothing seeds a LAMBDA's own parameters the same way, so this
-        // case is misattributed and wrongly refused. Asserting the CURRENT (wrong) behavior so this
-        // cell flips green — not vacuously — the day #1910 lands (drain on fix).
+        // #1910 (drained): the deferred-read collection now judges by SCOPE, not by name. The
+        // lambda's OWN parameter `y` shadows the outer never-assigned `y`, so the `y` read inside
+        // the lambda body is the parameter, not the outer local — python3 prints 9 (measured).
+        // Before the fix this was refused with SPY0600: the shadow set was seeded from a nested
+        // def's parameters and VariableDeclarations only, and nothing bound a LAMBDA's parameters
+        // (the old doc comment claimed LambdaExpression.GetChildNodes excluding them from traversal
+        // made a shadow set unnecessary — that excludes them from being READ, not from BINDING).
         var source = @"
 def main() -> None:
     y: int
@@ -1095,9 +1094,9 @@ def main() -> None:
     print(f(9))
 ";
         var result = CompileAndExecute(source);
-        result.Success.Should().BeFalse(
-            "BUG(#1910): the lambda's own parameter is misattributed to the outer bare local by name");
-        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'y'"));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("9");
     }
 
     [Fact]
@@ -1107,9 +1106,9 @@ def main() -> None:
         // declares its OWN `x: int = 99`, shadowing the outer never-assigned `x` for the rest of
         // inner's body. CollectDeferredReads's `shadowed` set excludes it from the enclosing
         // deferred read — before that guard existed, adding the FunctionDef arm newly, wrongly,
-        // refused this program (a real regression p6-analysis caught while fixing #1681). Contrast
-        // with the #1910 BUG cell above: that one shadows via a lambda PARAMETER (not covered by the
-        // shadow guard); this one shadows via a nested def's own DECLARATION (covered).
+        // refused this program (a real regression p6-analysis caught while fixing #1681). This was
+        // one of the two binding forms the original two-source seeding covered; every other form is
+        // exercised by the ScopeBindingForm_* cells below (#1910).
         var source = @"
 def outer() -> None:
     x: int
@@ -1181,5 +1180,408 @@ def main() -> None:
         result.Success.Should().BeFalse(
             "inner1's x is its OWN shadowed local — its assignment does not write through to the outer x");
         result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"));
+    }
+
+    // ========================================================================================= //
+    // BINDING-FORM axis (#1910). The shadowing dimension used to have exactly two cells — a nested
+    // def's PARAMETER and its own DECLARATION — because those were exactly the two forms the code
+    // seeded its shadow set from. Every OTHER form a deferred body introduces was missed, so a read
+    // of the body's OWN binding was matched BY NAME against an outer never-assigned bare local and
+    // refused with SPY0600 on a program python3 runs.
+    //
+    // The axis is (binding form) × (host that admits it), where a host is a scope whose reads are
+    // not flow-positioned at their own source location: a nested def, a lambda body, a top-level
+    // comprehension, a top-level generator expression. Each live cell must COMPILE AND PRINT the
+    // value python3 prints (verified with python3 before the fix; the `python` column of each cell
+    // is that measured value). Positive controls per host follow: the outer read of the
+    // never-assigned name is still SPY0600, so no cell passes by the analysis going silent.
+    // ========================================================================================= //
+
+    public static IEnumerable<object[]> ScopeBindingFormCases => new[]
+    {
+        // --- host: nested def ---
+        new object[] { "for-target-simple", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        total: int = 0
+        for k in [1, 2, 3]:
+            total = total + k
+        return total
+    print(inner())
+", "6" },
+        new object[] { "for-target-tuple", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        total: int = 0
+        for k, v in [(1, 10), (2, 20)]:
+            total = total + k + v
+        return total
+    print(inner())
+", "33" },
+        new object[] { "for-target-starred", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        total: int = 0
+        for k, *rest in [(1, 10, 100)]:
+            total = total + k + len(rest)
+        return total
+    print(inner())
+", "3" },
+        new object[] { "list-comp-target", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> list[int]:
+        return [k * 2 for k in [1, 2, 3]]
+    print(inner())
+", "[2, 4, 6]" },
+        new object[] { "dict-comp-target", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> dict[int, int]:
+        return {k: k * 2 for k in [1, 2]}
+    print(inner())
+", "{1: 2, 2: 4}" },
+        new object[] { "set-comp-target", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        s: set[int] = {k * 2 for k in [1, 2]}
+        return len(s)
+    print(inner())
+", "2" },
+        new object[] { "genexp-target", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        return sum(k for k in [1, 2, 3])
+    print(inner())
+", "6" },
+        new object[] { "match-capture", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        v: int = 7
+        match v:
+            case k:
+                return k
+    print(inner())
+", "7" },
+        new object[] { "class-pattern-capture", "nested-def", @"
+class Point:
+    x: int
+    y: int
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+def main() -> None:
+    k: int
+    def inner() -> int:
+        p: Point = Point(3, 4)
+        match p:
+            case Point(x=k):
+                return k
+            case _:
+                return 0
+    print(inner())
+", "3" },
+        new object[] { "lambda-parameter", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        f = lambda k: int: k + 1
+        return f(8)
+    print(inner())
+", "9" },
+        new object[] { "with-as-target", "nested-def", @"
+class Tracker:
+    label: str
+    def __init__(self, label: str):
+        self.label = label
+    def __enter__(self) -> Self:
+        return self
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    k: Tracker
+    def inner() -> str:
+        with Tracker(""a"") as k:
+            return k.label
+    print(inner())
+", "a" },
+        new object[] { "except-as-name", "nested-def", @"
+def main() -> None:
+    k: ValueError
+    def inner() -> str:
+        try:
+            raise ValueError(""boom"")
+        except ValueError as k:
+            return str(k)
+    print(inner())
+", "boom" },
+        new object[] { "walrus-target", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        if (k := 5) > 0:
+            return k
+        return 0
+    print(inner())
+", "5" },
+        // The two forms the pre-#1910 two-source seeding already covered, kept as controls: they
+        // must stay green, so a regression that empties the shadow set fails here too.
+        new object[] { "nested-def-parameter (control)", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner(k: int) -> int:
+        return k + 1
+    print(inner(8))
+", "9" },
+        new object[] { "own-declaration (control)", "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        k: int = 99
+        return k
+    print(inner())
+", "99" },
+
+        // --- host: lambda body (a single expression, so only the forms an expression can hold) ---
+        new object[] { "list-comp-target", "lambda-body", @"
+def main() -> None:
+    k: int
+    f = lambda: [k * 2 for k in [1, 2, 3]]
+    print(f())
+", "[2, 4, 6]" },
+        new object[] { "dict-comp-target", "lambda-body", @"
+def main() -> None:
+    k: int
+    f = lambda: {k: k * 2 for k in [1, 2]}
+    print(f())
+", "{1: 2, 2: 4}" },
+        new object[] { "set-comp-target", "lambda-body", @"
+def main() -> None:
+    k: int
+    f = lambda: len({k * 2 for k in [1, 2]})
+    print(f())
+", "2" },
+        new object[] { "genexp-target", "lambda-body", @"
+def main() -> None:
+    k: int
+    f = lambda: sum(k for k in [1, 2, 3])
+    print(f())
+", "6" },
+        new object[] { "lambda-parameter", "lambda-body", @"
+def main() -> None:
+    k: int
+    g = lambda k: int: k + 1
+    f = lambda: g(8)
+    print(f())
+", "9" },
+
+        // --- host: top-level comprehension / generator expression (flow-positioned reads) ---
+        new object[] { "list-comp-target", "top-level-comprehension", @"
+def main() -> None:
+    k: int
+    print([k * 2 for k in [1, 2, 3]])
+", "[2, 4, 6]" },
+        new object[] { "dict-comp-target", "top-level-comprehension", @"
+def main() -> None:
+    k: int
+    print({k: k * 2 for k in [1, 2]})
+", "{1: 2, 2: 4}" },
+        new object[] { "set-comp-target", "top-level-comprehension", @"
+def main() -> None:
+    k: int
+    s: set[int] = {k * 2 for k in [1, 2]}
+    print(len(s))
+", "2" },
+        new object[] { "genexp-target", "top-level-genexp", @"
+def main() -> None:
+    k: int
+    print(sum(k for k in [1, 2, 3]))
+", "6" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ScopeBindingFormCases))]
+    public void ScopeBindingForm_ShadowsOuterUnassigned_RunsAndPrintsPythonsValue(
+        string form, string host, string source, string expected)
+    {
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600",
+            $"{form} in {host}: the read is the host's OWN binding, not the outer bare local");
+        result.Success.Should().BeTrue(
+            $"{form} in {host}: {string.Join("; ", result.CompilationErrors)}");
+        result.StandardOutput.Trim().Should().Be(expected,
+            $"{form} in {host}: must print what python3 prints");
+    }
+
+    /// <summary>
+    /// The cell count is anchored to LITERALS written here, not to a count taken from the case
+    /// source itself: every form name and every host name below is spelled out, and the product of
+    /// the admitted pairs is asserted against the data. Dropping a cell from
+    /// <see cref="ScopeBindingFormCases"/> fails this, so the axis cannot quietly shrink back to
+    /// the two cells it had before #1910.
+    /// </summary>
+    [Fact]
+    public void ScopeBindingFormCases_CoverEveryFormHostPairTheHostAdmits()
+    {
+        var expectedPairs = new HashSet<string>
+        {
+            "for-target-simple|nested-def",
+            "for-target-tuple|nested-def",
+            "for-target-starred|nested-def",
+            "list-comp-target|nested-def",
+            "dict-comp-target|nested-def",
+            "set-comp-target|nested-def",
+            "genexp-target|nested-def",
+            "match-capture|nested-def",
+            "class-pattern-capture|nested-def",
+            "lambda-parameter|nested-def",
+            "with-as-target|nested-def",
+            "except-as-name|nested-def",
+            "walrus-target|nested-def",
+            "nested-def-parameter (control)|nested-def",
+            "own-declaration (control)|nested-def",
+            "list-comp-target|lambda-body",
+            "dict-comp-target|lambda-body",
+            "set-comp-target|lambda-body",
+            "genexp-target|lambda-body",
+            "lambda-parameter|lambda-body",
+            "list-comp-target|top-level-comprehension",
+            "dict-comp-target|top-level-comprehension",
+            "set-comp-target|top-level-comprehension",
+            "genexp-target|top-level-genexp",
+        };
+
+        var actualPairs = ScopeBindingFormCases
+            .Select(c => $"{(string)c[0]}|{(string)c[1]}")
+            .ToHashSet();
+
+        actualPairs.Should().BeEquivalentTo(expectedPairs);
+        expectedPairs.Count.Should().Be(24, "the axis is 24 live cells; shrinking it needs a reason");
+    }
+
+    public static IEnumerable<object[]> ScopeBindingFormPositiveControls => new[]
+    {
+        new object[] { "nested-def", @"
+def main() -> None:
+    k: int
+    def inner() -> int:
+        return k
+    print(inner())
+" },
+        new object[] { "lambda-body", @"
+def main() -> None:
+    k: int
+    f = lambda: k
+    print(f())
+" },
+        new object[] { "top-level-comprehension", @"
+def main() -> None:
+    k: int
+    print([k for i in range(3)])
+" },
+        // The comprehension's OUTERMOST iterable is evaluated in the enclosing scope (python3), so
+        // a clause target does NOT shadow it — this stays a genuine read of the outer local even
+        // though the same comprehension binds a name.
+        new object[] { "nested-def-comprehension-iterator", @"
+def main() -> None:
+    k: list[int]
+    def inner() -> list[int]:
+        return [1 for i in k]
+    print(inner())
+" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ScopeBindingFormPositiveControls))]
+    public void ScopeBindingForm_GenuineOuterRead_StaysRefused(string host, string source)
+    {
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"{host}: the read is of the outer never-assigned local, which python3 raises on");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'k'"),
+            $"{host}: expected SPY0600");
+    }
+
+    // --- write-through mirror: the shadow roster is shared, so these move together ---
+
+    [Fact]
+    public void NestedDefForTarget_IsNotAWriteThrough_SiblingReadStaysRefused()
+    {
+        // A nested def's `for k in …` declares the loop variable; it does not write through to the
+        // enclosing bare local (python3 agrees: NameError in inner2). Refused at 41dd19de7 and at
+        // HEAD; the enlarged shadow roster must keep it refused.
+        var source = @"
+def main() -> None:
+    k: int
+    def inner1() -> None:
+        for k in [1, 2, 3]:
+            pass
+    inner1()
+    def inner2() -> None:
+        print(k)
+    inner2()
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("a for target binds the loop variable, not the outer local");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'k'"));
+    }
+
+    [Fact]
+    public void AssignmentInsideNestedDefForBody_IsNotAWriteThrough_SiblingReadRefused()
+    {
+        // Inside the loop body `k` IS the loop variable, so `k = 9` assigns it and never reaches the
+        // enclosing local — python3 raises UnboundLocalError in inner2. Before the binding-form
+        // roster this compiled and printed 0 (the bare declaration's default), a silent wrong
+        // answer; the for target now shadows its own body, so it is refused instead.
+        var source = @"
+def main() -> None:
+    k: int
+    def inner1() -> None:
+        for k in [1, 2, 3]:
+            k = 9
+    inner1()
+    def inner2() -> None:
+        print(k)
+    inner2()
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            "`k = 9` inside the loop body assigns the loop variable, not the enclosing local");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'k'"));
+    }
+
+    [Fact]
+    public void AssignmentAfterNestedDefForLoop_StaysAWriteThrough_SiblingReadPrintsIt()
+    {
+        // The counterpart that makes the cell above non-vacuous, and the reason each binding form is
+        // scoped to its own SUB-TREE rather than flat over the def body: `k = 5` is OUTSIDE the
+        // loop, where the loop variable is out of scope (C# scoping, Axiom 1), so it still writes
+        // through to the enclosing local. Seeding the shadow set flat over the whole body would
+        // refuse this — the same class of false refusal #1910 is about. Runs and prints 5 at HEAD
+        // 322fbd20e (measured); python3 diverges here by design (the write-through ruling).
+        var source = @"
+def main() -> None:
+    k: int
+    def inner1() -> None:
+        for k in [1, 2, 3]:
+            pass
+        k = 5
+    inner1()
+    def inner2() -> None:
+        print(k)
+    inner2()
+";
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == "SPY0600");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("5");
     }
 }

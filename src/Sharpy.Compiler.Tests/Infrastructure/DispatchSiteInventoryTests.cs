@@ -251,6 +251,13 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectAssignedNames"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectDeferredTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
+        // ScopedChildren / CollectBodyFlatBindings: the ONE binding-form roster the deferred-read,
+        // flow-positioned-read and write-through walks all descend through (#1910). An arm per
+        // construct that BINDS a name; a construct that binds nothing takes the default and passes
+        // the shadow set through. A missing arm is exactly the defect these guard — it makes a
+        // deferred body's own binding look like a read of a same-named outer local.
+        ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.ScopedChildren"] = "guarded-by:ScopeBindingFormMatrixTests",
+        ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectBodyFlatBindings"] = "guarded-by:ScopeBindingFormMatrixTests",
         // ComputeWalrusWhenTrueFalse: one arm per construct that evaluates a sub-expression
         // conditionally (and/or/not, ternary, comparison chain, `??`, comprehension, lambda, walrus)
         // plus a default arm that unions every child. The default arm is the SAFE direction for an
