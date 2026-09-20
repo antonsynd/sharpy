@@ -298,6 +298,37 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             "Unknown format code 'b' for object of type 'float'");
         yield return new("refuse.float_comma_b", "y: float = 1.5", "y", ",b", "Cannot specify ',' with 'b'.");
         yield return new("refuse.float_under_n", "y: float = 1.5", "y", "_n", "Cannot specify '_' with 'n'.");
+        // #1944: a sign with the 'c' (character) presentation type is refused — statically (SPY0609
+        // on the f-string hole) and dynamically (Core, through the nested-field route).
+        yield return new("refuse.int_c_sign", "c65: int = 65", "c65", "+c",
+            "Sign not allowed with integer format specifier 'c'");
+    }
+
+    /// <summary>
+    /// #1944: the sign is ONE rule spanning every numeric presentation type. This anchor is a
+    /// LITERAL roster of presentation types, not one derived from the cells, so a presentation type
+    /// that grows a sign behavior without a parity row fails here. <c>%</c> is covered by the
+    /// <c>sign.pct_*</c> cells, <c>c</c> by the <c>refuse.int_c_sign</c> refusal.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_SignRule_CoversEveryPresentationType()
+    {
+        const string roster = "dnfFeEgGxXob%c";
+        var signTypes = Cells()
+            .Where(c => c.Label.StartsWith("sign.type_", StringComparison.Ordinal))
+            .Select(c => c.Spec.TrimStart('+').Single())
+            .ToHashSet();
+        bool pctCovered = Cells().Any(c => c.Label.StartsWith("sign.pct_", StringComparison.Ordinal));
+        bool cCovered = RefusalCells().Any(c => c.Label == "refuse.int_c_sign");
+
+        var missing = roster.Where(t =>
+            t == '%' ? !pctCovered
+            : t == 'c' ? !cCovered
+            : !signTypes.Contains(t)).ToList();
+
+        Assert.True(missing.Count == 0,
+            "presentation types in the sign roster with no parity cell: " + new string(missing.ToArray()));
     }
 
     private static IEnumerable<Cell> Cells()
@@ -364,5 +395,31 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         // ---- 'c' inside the range still renders ------------------------------------------------
         // python3 -c 'print(format(65,"c"))'  =>  A
         yield return new("codepoint.ok", "c65: int = 65", "c65", "c", "A");
+
+        // ---- #1944: the sign applies to every numeric presentation type, including '%' ---------
+        // python3 -c "print(format(1.5,'+%'), format(1.5,' %'), format(1.5,'-%'), format(1.5,'+.1%'))"
+        yield return new("sign.pct_plus", "s15: float = 1.5", "s15", "+%", "+150.000000%");
+        yield return new("sign.pct_space", "s15: float = 1.5", "s15", " %", " 150.000000%");
+        yield return new("sign.pct_minus", "s15: float = 1.5", "s15", "-%", "150.000000%");
+        yield return new("sign.pct_int_plus", "two: int = 2", "two", "+%", "+200.000000%");
+        yield return new("sign.pct_bool_plus", "tt: bool = True", "tt", "+%", "+100.000000%");
+        yield return new("sign.pct_prec_plus", "s15: float = 1.5", "s15", "+.1%", "+150.0%");
+        // python3 -c "print(repr(format(float('inf'),'+%')))"  =>  '+inf%'
+        yield return new("sign.pct_inf_plus", "pinf: float = float(\"inf\")", "pinf", "+%", "+inf%");
+        // Every other presentation type takes the sign — value 42 (int); the type roster is
+        // asserted complete by FormatEngine_SignRule_CoversEveryPresentationType.
+        // python3 -c "print([format(42,'+'+t) for t in 'dnfFeEgGxXob'])"
+        yield return new("sign.type_d", "i42: int = 42", "i42", "+d", "+42");
+        yield return new("sign.type_n", "i42: int = 42", "i42", "+n", "+42");
+        yield return new("sign.type_f", "i42: int = 42", "i42", "+f", "+42.000000");
+        yield return new("sign.type_F", "i42: int = 42", "i42", "+F", "+42.000000");
+        yield return new("sign.type_e", "i42: int = 42", "i42", "+e", "+4.200000e+01");
+        yield return new("sign.type_E", "i42: int = 42", "i42", "+E", "+4.200000E+01");
+        yield return new("sign.type_g", "i42: int = 42", "i42", "+g", "+42");
+        yield return new("sign.type_G", "i42: int = 42", "i42", "+G", "+42");
+        yield return new("sign.type_x", "i42: int = 42", "i42", "+x", "+2a");
+        yield return new("sign.type_X", "i42: int = 42", "i42", "+X", "+2A");
+        yield return new("sign.type_o", "i42: int = 42", "i42", "+o", "+52");
+        yield return new("sign.type_b", "i42: int = 42", "i42", "+b", "+101010");
     }
 }
