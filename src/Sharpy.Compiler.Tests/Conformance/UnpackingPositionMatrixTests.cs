@@ -19,6 +19,10 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <item><b>position</b> — assignment, for statement, comprehension for-clause, with-as</item>
 /// <item><b>depth</b> — 0 (flat), 1 (one nested tuple), 2 (nested-in-nested)</item>
 /// <item><b>star position</b> — none, first, middle, last, sole</item>
+/// <item><b>group arity</b> — 1 (sole element, <c>(a,)</c>) and ≥ 2. Arity is an axis because C#
+///   deconstruction is NOT total over it: a parenthesized designation, a tuple expression and a
+///   foreach variable statement each need ≥ 2 designations, so arity 1 must lower through the one
+///   unpacking rule in every position</item>
 /// <item><b>source kind</b> — tuple (fixed arity), list[T] (starred-only; non-starred stays SPY0239)</item>
 /// <item><b>group spelling</b> — paren+comma <c>(*a,)</c>, list display <c>[*a]</c>,
 ///   paren-no-comma <c>(*a)</c> (the one spelling Python refuses)</item>
@@ -431,6 +435,76 @@ def main() -> None:
             WithSource("tuple[int, tuple[int, int, int]]", "(1, (2, 3, 4))", "(a, (b, c))",
                 "        print(a, b, c)"),
             Expect.SPY0239, MessageSubstring: "in with statement");
+
+        // ══ Group arity 1 — the sole-element group, in every position ════════════════════════
+        // C# deconstruction has no spelling at arity 1 (`var (a) = t` is not a tuple pattern), so
+        // every one of these lowers through the ONE unpacking rule instead of the deconstruction
+        // fast path. Each expected value is python3's. The starred sole-element group
+        // (assign.sole-star.paren-comma / for.sole-star.paren-comma above) is the control: it
+        // already took the unpacking route at arity 1 and stayed green while these were ICEs.
+
+        yield return new Cell("assign.arity1.paren-comma.annotated-source",
+            "def main() -> None:\n    t: tuple[int] = (5,)\n    (a,) = t\n    print(a)",
+            Expect.Runs, "5");
+
+        yield return new Cell("assign.arity1.paren-comma.literal-source",
+            "def main() -> None:\n    (a,) = (7,)\n    print(a)",
+            Expect.Runs, "7");
+
+        yield return new Cell("assign.arity1.list-display",
+            "def main() -> None:\n    [a] = (6,)\n    print(a)",
+            Expect.Runs, "6");
+
+        yield return new Cell("assign.arity1.nested",
+            "def main() -> None:\n    (a, (b,)) = (1, (2,))\n    print(a, b)",
+            Expect.Runs, "1 2");
+
+        // Rebinding an existing name through a sole-element group (the all-exist arm of the
+        // assignment path, where deconstruction would have emitted the bare `(a) = t`).
+        yield return new Cell("assign.arity1.rebinds-existing",
+            "def main() -> None:\n    a: int = 0\n    (a,) = (9,)\n    print(a)",
+            Expect.Runs, "9");
+
+        // python raises ValueError "too many values to unpack (expected 1)"; the tuple type is
+        // static here, so Sharpy refuses it at compile time by name.
+        yield return new Cell("assign.arity1.mismatch",
+            "def main() -> None:\n    t: tuple[int, int] = (1, 2)\n    (a,) = t\n    print(a)",
+            Expect.SPY0239);
+
+        // A list[T] source has no static arity: non-starred stays SPY0239 at arity 1 exactly as at
+        // arity 2 (assign.list.non-starred). python accepts `(a,) = [5]`; Type Safety outranks
+        // Python Syntax here, and arity does not move the line.
+        yield return new Cell("assign.arity1.list-source",
+            "def main() -> None:\n    (a,) = [5]\n    print(a)",
+            Expect.SPY0239);
+
+        yield return new Cell("for.arity1.paren-comma",
+            "def main() -> None:\n    for (a,) in [(5,), (6,)]:\n        print(a)",
+            Expect.Runs, "5\n6");
+
+        yield return new Cell("for.arity1.list-display",
+            "def main() -> None:\n    for [a] in [(5,), (6,)]:\n        print(a)",
+            Expect.Runs, "5\n6");
+
+        yield return new Cell("for.arity1.nested",
+            "def main() -> None:\n    for (a, (b,)) in [(1, (2,))]:\n        print(a, b)",
+            Expect.Runs, "1 2");
+
+        yield return new Cell("comp.arity1.paren-comma",
+            "def main() -> None:\n    r = [a for (a,) in [(5,), (6,)]]\n    print(r)",
+            Expect.Runs, "[5, 6]");
+
+        yield return new Cell("comp.arity1.nested",
+            "def main() -> None:\n    r = [a + b for (a, (b,)) in [(1, (2,)), (3, (4,))]]\n    print(r)",
+            Expect.Runs, "[3, 7]");
+
+        yield return new Cell("with-as.arity1.paren-comma",
+            WithSource("tuple[int]", "(7,)", "(a,)", "        print(a)"),
+            Expect.Runs, "7");
+
+        yield return new Cell("with-as.arity1.list-display",
+            WithSource("tuple[int]", "(8,)", "[a]", "        print(a)"),
+            Expect.Runs, "8");
 
         // ══ Augmented assignment stays refused, in both display spellings ════════════════════
 

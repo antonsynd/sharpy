@@ -17,6 +17,20 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     /// <summary>
+    /// Whether an unpacking target may be lowered as an in-place C# deconstruction
+    /// (<c>var (a, b) = src</c>, <c>(a, b) = src</c>, <c>foreach (var (a, b) in xs)</c>) instead of
+    /// through <see cref="GenerateUnpackingStores"/>.
+    /// <para>Two conditions, both about what C# syntax admits — arity is the one this predicate
+    /// exists for: a parenthesized variable designation, a tuple expression and a foreach variable
+    /// statement each need at least TWO designations, so a sole-element group like <c>(a,) = t</c>
+    /// has no deconstruction spelling at all (<c>var (a) = t;</c> is not a tuple pattern and does
+    /// not parse). A target this predicate declines falls through to the one unpacking rule, which
+    /// reads <c>src.ItemN</c> / <c>src[i]</c> per element and so is total over arity (#1846).</para>
+    /// </summary>
+    private static bool CanDeconstructInPlace(ImmutableArray<Expression> elements) =>
+        elements.Length >= 2 && elements.All(e => e is Parser.Ast.Identifier);
+
+    /// <summary>
     /// Lowers a tuple/list-display unpacking target into a flat list of store statements, at every
     /// depth (#1846). It is a pure SyntaxFactory translator (Rule 2): the semantic layer already
     /// decided the shape, so this reads the source type it is handed and emits

@@ -742,8 +742,10 @@ internal partial class RoslynEmitter
 
         if (target is TupleLiteral tuple)
         {
-            // Check if all elements are identifiers
-            bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
+            // Only when C# has a deconstruction spelling for this target: all-identifier and
+            // arity >= 2. A sole-element group `for (a,) in xs` has none, and lowers below
+            // through the one unpacking rule over a temp loop variable.
+            bool allIdentifiers = CanDeconstructInPlace(tuple.Elements);
 
             if (allIdentifiers)
             {

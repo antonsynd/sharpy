@@ -1,0 +1,37 @@
+# A sole-element group binds its one element in every unpacking position (#1846). C# has no
+# deconstruction spelling at arity 1 -- `var (a) = t` is not a tuple pattern -- so each of these
+# lowers through the one unpacking rule, reading `.Item1` off a temp, exactly as the nested and
+# starred targets do. The trailing `(*a,)` is the sole-STARRED control that already took that route.
+class Pair:
+    def __enter__(self) -> tuple[int]:
+        return (7,)
+
+    def __exit__(self) -> None:
+        pass
+
+
+def main() -> None:
+    t: tuple[int] = (5,)
+    (a,) = t
+    print(a)
+
+    [b] = (6,)
+    print(b)
+
+    c: int = 0
+    (c,) = (9,)
+    print(c)
+
+    (d, (e,)) = (1, (2,))
+    print(d, e)
+
+    for (h,) in [(5,), (6,)]:
+        print(h)
+
+    print([i for (i,) in [(11,), (12,)]])
+
+    with Pair() as (j,):
+        print(j)
+
+    (*k,) = (1, 2, 3)
+    print(k)

@@ -436,8 +436,9 @@ internal partial class RoslynEmitter
             // Generate C# tuple deconstruction
             // C#: var (x, y) = (1, 2)
 
-            // Check if all elements are identifiers
-            bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
+            // Only when C# has a deconstruction spelling for this target: all-identifier and
+            // arity >= 2. A sole-element group `(a,) = t` has none, and lowers below.
+            bool allIdentifiers = CanDeconstructInPlace(tuple.Elements);
 
             if (allIdentifiers)
             {

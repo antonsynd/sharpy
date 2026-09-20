@@ -754,7 +754,7 @@ internal partial class RoslynEmitter
                     IdentifierName(sourceVar)));
                 break;
 
-            case TupleLiteral tuple when tuple.Elements.All(e => e is Identifier):
+            case TupleLiteral tuple when CanDeconstructInPlace(tuple.Elements):
                 // var (a, b, ...) = src;
                 var designations = new List<VariableDesignationSyntax>();
                 foreach (var elemId in tuple.Elements.Cast<Identifier>())
@@ -773,8 +773,9 @@ internal partial class RoslynEmitter
                 break;
 
             case TupleLiteral tuple:
-                // Any starred or nested target (e.g. for (x, y), name in items, or a, *rest in …)
-                // lowers through the one unpacking rule at every depth (#1846).
+                // Any starred, nested or sole-element target (e.g. for (x, y), name in items,
+                // a, *rest in …, or (a,) in …) lowers through the one unpacking rule at every
+                // depth (#1846).
                 GenerateUnpackingStores(tuple.Elements, sourceVar, GetExpressionSemanticType(target), statements);
                 break;
 
