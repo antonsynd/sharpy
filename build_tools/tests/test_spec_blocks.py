@@ -91,6 +91,74 @@ def test_extraction_error_marker(tmp_path):
     assert blocks[0].expected_error == "SPY0200"
 
 
+# ---------- Prelude (#1939) ----------
+
+def test_prelude_applies_to_later_unmarked_block(tmp_path):
+    md = tmp_path / "test.md"
+    md.write_text(
+        "<!-- spec-sweep: prelude -->\n```python\nclass Widget:\n    pass\n```\n\n"
+        "```python\nw: Widget = Widget()\n```\n"
+    )
+    blocks = extract_blocks(str(tmp_path))
+    assert len(blocks) == 2
+    # The prelude block compiles standalone — no prelude prepended to itself.
+    assert blocks[0].prelude is None
+    # The later unmarked block carries the prelude's declaration.
+    assert blocks[1].prelude == "class Widget:\n    pass"
+    # The dependent block's KEY is the sha1 of its OWN text — preludes do not churn keys.
+    assert blocks[1].key == block_key("test.md", "w: Widget = Widget()")
+
+
+def test_prelude_not_applied_to_fragment_or_error(tmp_path):
+    md = tmp_path / "test.md"
+    md.write_text(
+        "<!-- spec-sweep: prelude -->\n```python\nclass Widget:\n    pass\n```\n\n"
+        "<!-- spec-sweep: fragment -->\n```python\nw.frobnicate()\n```\n\n"
+        "<!-- spec-sweep: error SPY0200 -->\n```python\nx = bad\n```\n"
+    )
+    blocks = extract_blocks(str(tmp_path))
+    assert len(blocks) == 3
+    assert blocks[1].marker == "fragment" and blocks[1].prelude is None
+    assert blocks[2].marker == "error" and blocks[2].prelude is None
+
+
+def test_prelude_prepended_at_compile(tmp_path):
+    # A block that only compiles WITH the prelude's declaration present proves the prepend fires.
+    def stub(sharpyc, source):
+        return CompileResult(success="class Widget" in source)
+
+    dependent = Block(
+        relpath="a.md", line=1, text="w: Widget = Widget()",
+        key=block_key("a.md", "w: Widget = Widget()"),
+        prelude="class Widget:\n    pass",
+    )
+    with patch("spec_blocks.compile_one", stub):
+        br = _compile_block(("sharpyc", dependent))
+    assert br.classification == "compiled_as_is"
+
+    # Drop the prepend (mutation control): the same block now fails.
+    dependent_no_prelude = Block(
+        relpath="a.md", line=1, text="w: Widget = Widget()",
+        key=block_key("a.md", "w: Widget = Widget()"), prelude=None,
+    )
+    with patch("spec_blocks.compile_one", stub):
+        br2 = _compile_block(("sharpyc", dependent_no_prelude))
+    assert br2.classification == "failing"
+
+
+def test_prelude_block_itself_must_compile(tmp_path):
+    # A prelude with a deliberate error is a normal unmarked block: it fails standalone and, unlisted,
+    # reddens the sweep — a prelude cannot hide an error in the code it declares.
+    prelude_block = Block(
+        relpath="a.md", line=1, text="class Widget:\n    bad syntax",
+        key=block_key("a.md", "class Widget:\n    bad syntax"), prelude=None,
+    )
+    with patch("spec_blocks.compile_one", _stub_compiler_fail("SPY0200")):
+        results, reds = run_sweep("sharpyc", [prelude_block], {}, 1)
+    assert results[0].classification == "failing"
+    assert any(r.red for r in results)
+
+
 # ---------- Block classification ----------
 
 def test_block_compiles_as_is():
