@@ -1,0 +1,83 @@
+# #1818 (R-AO): a `None` key is a key. `Sharpy.Dict<K,V>` carries an internal null-key slot beside
+# its `Dictionary<K,V>`, and every read, write, view and bridge path consults it.
+#
+# At base (41dd19de7) this program did not produce different output — it did not produce output at
+# all past line 2: the literal store died with `ArgumentNullException` inside `Dictionary.Add`, and
+# the readers crash independently of the writers (`None in d` at `ContainsKey`, `d.get(None, 5)` at
+# `FindValue`), which is why the writer fix alone cannot make this fixture green. Every line prints
+# the None key's VALUE or its membership rather than just a count, so the expected output would
+# differ under any partial fix that silently dropped or re-ordered the slot.
+#
+# Every expected line is CPython 3.12's answer for the same program.
+def main():
+    # --- store and read (c1818a, c1818b) ---
+    d: dict[str | None, int] = {None: 1, "b": 2}
+    print(len(d), d[None], None in d)
+
+    # Enumeration follows the insertion ordinal: None was inserted first, so it comes first.
+    for k in d:
+        print(k)
+    print(d)
+
+    # --- readers that crash on their own at base (c1818e, c1818i) ---
+    print(d.get(None, 5), d.get("zz", 9))
+
+    # A re-store of an existing None key keeps its position, exactly as a non-null key would.
+    d[None] = 10
+    print(d[None])
+    for k in d:
+        print(k)
+
+    # --- setdefault: present None returns the stored value, absent key inserts ---
+    print(d.setdefault(None, 99), d.setdefault("c", 3))
+    print(d)
+
+    # --- copy / equality: the slot travels and participates in == ---
+    c: dict[str | None, int] = d.copy()
+    print(c == d, c[None])
+
+    # --- update: a None key in the argument overwrites the None key in the receiver ---
+    other: dict[str | None, int] = {None: 7, "z": 8}
+    d.update(other)
+    print(d)
+
+    # --- merge (`|`): the slot survives the operator ---
+    left: dict[str | None, int] = {None: 1}
+    right: dict[str | None, int] = {"b": 2}
+    m: dict[str | None, int] = left | right
+    print(m, m[None])
+
+    # --- the three views see the None key ---
+    v: dict[str | None, int] = {None: 1, "b": 2}
+    for val in v.values():
+        print(val)
+    for key, val in v.items():
+        print(key, val)
+
+    # --- a comprehension may produce a None key ---
+    ks: list[str | None] = [None, "ab"]
+    comp: dict[str | None, int] = {k: 1 for k in ks}
+    print(comp, comp[None])
+
+    # --- pop removes the slot; a re-store after removal lands at the END (new ordinal) ---
+    p: dict[str | None, int] = {None: 1, "b": 2}
+    print(p.pop(None), None in p, len(p))
+    p[None] = 5
+    print(p)
+
+    # Equality ignores order, so both spellings of the same mapping compare equal.
+    e: dict[str | None, int] = {None: 5, "b": 2}
+    f: dict[str | None, int] = {"b": 2, None: 5}
+    print(p == e, p == f)
+
+    # popitem pops the last-inserted entry — here the re-stored None key.
+    print(p.popitem())
+
+    # fromkeys carries a None key out of the iterable.
+    fks: list[str | None] = [None, "a"]
+    fk: dict[str | None, int] = dict.fromkeys(fks, 0)
+    print(fk)
+
+    # clear resets the slot along with the Dictionary.
+    p.clear()
+    print(len(p), None in p)

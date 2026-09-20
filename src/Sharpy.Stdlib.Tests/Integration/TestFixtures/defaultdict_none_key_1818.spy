@@ -1,0 +1,32 @@
+# #1818 (R-AO), the `defaultdict` arm. `Sharpy.DefaultDict` used to hold a raw `Dictionary<K,V>`,
+# so `d[None] += 1` died inside `DefaultDict.get_Item` with `ArgumentNullException` at base
+# (41dd19de7 — probe c1818j). Its storage is now a `Sharpy.Dict<K,V>`, which carries the null-key
+# slot, so the whole mapping inherits the fix rather than getting its own patch.
+#
+# This fixture lives under Sharpy.Stdlib.Tests, not Sharpy.Compiler.Tests: only the stdlib fixture
+# harness supplies the `Sharpy.Stdlib.dll` reference that `from collections import` needs
+# (FileBasedIntegrationTests.GetAdditionalReferenceAssemblyPaths).
+#
+# The augmented store is the discriminating line — it is a READ of the missing key followed by a
+# write, so it exercises the factory path and the slot in one statement.
+#
+# Every expected line is CPython 3.12's answer for the same program.
+from collections import defaultdict
+
+def main():
+    dd: defaultdict[str | None, int] = defaultdict(int)
+    dd[None] += 1
+    dd[None] += 1
+    dd["b"] += 5
+    print(dd[None], dd["b"])
+    print(None in dd, len(dd.keys()))
+
+    # The None key holds its insertion ordinal among the ordinary keys.
+    for k in dd.keys():
+        print(k)
+
+    # A missing non-null key still materializes the factory default.
+    print(dd["zz"], len(dd.keys()))
+
+    print(dd.get(None, -1))
+    print(dd.pop(None), None in dd)

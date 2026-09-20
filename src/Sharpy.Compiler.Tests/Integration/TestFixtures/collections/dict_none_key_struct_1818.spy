@@ -1,0 +1,27 @@
+# #1818 (R-AO), the struct-null arm. `dict[int | None, str]` closes K to `Nullable<int>` — a STRUCT
+# that nonetheless IS null when it has no value, so `Dictionary.Add` rejected it at base exactly as
+# it rejected a reference-type null (measured @ 41dd19de7). One slot serves both because the guard
+# is `key is null`, which is true for a valueless `Nullable<T>` and false for every other struct.
+#
+# This is the positive control for the reference-type fixture next door: if the slot were keyed on
+# `typeof(K).IsClass` rather than on the VALUE being null, this program would still crash while
+# dict_none_key_1818 stayed green.
+#
+# Every expected line is CPython 3.12's answer for the same program.
+def main():
+    n: dict[int | None, str] = {None: "z", 1: "a"}
+    print(len(n), n[None], None in n)
+    for k in n:
+        print(k)
+    print(n)
+
+    print(n.get(None, "miss"), n.get(7, "miss"))
+
+    n[None] = "y"
+    print(n[None])
+    print(n)
+
+    print(n.pop(None), None in n, len(n))
+    n[None] = "w"
+    print(n)
+    print(n.popitem())

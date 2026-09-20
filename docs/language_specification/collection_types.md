@@ -541,6 +541,43 @@ def main():
     print(o["k"] + o[2])       # 3
 ```
 
+**A `None` key is a key.** When the key type admits `None` — that is, `dict[K | None, V]` — the
+value `None` is an ordinary key on every path: store, read, `in`, `get`, `setdefault`, `pop`,
+`popitem`, `update`, `|`, `copy`, `==`, `repr`, the `keys()`/`values()`/`items()` views and
+iteration. It takes an insertion ordinal like any other key, so enumeration
+order matches Python's, and it prints as `None`. This holds whether `K` is a reference type (the
+key is a .NET null) or a value type (`dict[int | None, V]` closes the key to `int?`, which is
+null when it has no value). A key type that does **not** admit `None` refuses a `None` key at
+compile time, by the assignability rule above.
+([#1818](https://github.com/antonsynd/sharpy/issues/1818))
+
+```python
+def main():
+    d: dict[str | None, int] = {None: 1, "b": 2}
+    print(len(d), d[None], None in d)   # 2 1 True
+    print(d)                            # {None: 1, 'b': 2}
+
+    d[None] = 10                        # a re-store keeps the key's position
+    print(d.get(None, 5))               # 10
+    for k in d:
+        print(k)                        # None, then b
+
+    print(d.pop(None), None in d)       # 10 False
+```
+
+`dict[K?, V]` is a different type, not a synonym. Its key is a **strict Optional**, so a bare
+`None` is refused there (`SPY0220: Dict key must be 'str?', got 'None'`) and the empty key is
+spelled `None()` — a value of the `Optional` union rather than a null, which lives in the
+dictionary proper and never reaches the null-key path. Both spellings print `None`, and both
+behave as Python's.
+
+```python
+def main():
+    o: dict[str?, int] = {None(): 1, Some("b"): 2}
+    print(len(o), o[None()], None() in o)   # 2 1 True
+    print(o.pop(None()), None() in o)       # 1 False
+```
+
 **User protocols follow the same rule, per position.** A read `x[k]` validates `k` against the
 class's `__getitem__` overloads; a store `x[k] = v` validates `k` against its `__setitem__`
 overloads and then checks `v` against the selected overload's value parameter; an augmented

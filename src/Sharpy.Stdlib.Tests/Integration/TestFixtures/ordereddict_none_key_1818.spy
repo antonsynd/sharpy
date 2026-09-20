@@ -1,0 +1,32 @@
+# #1818 (R-AO), the `OrderedDict` arm. `OrderedDict` held a raw `Dictionary<K,V>` for its items AND
+# a second raw `Dictionary<K,int>` for its index, so a `None` key was rejected twice over at base
+# (41dd19de7). Both are now `Sharpy.Dict`, so the mapping inherits the null-key slot.
+#
+# `move_to_end(None)` is the discriminating line: it is a REORDER keyed by the null key, which
+# reads the index map, removes and re-appends. A fix that only taught the item store about the slot
+# would leave the index map without the entry and this line would throw or be a no-op, printing
+# `None, b` on the second enumeration instead of `b, None`.
+#
+# This fixture lives under Sharpy.Stdlib.Tests, not Sharpy.Compiler.Tests: only the stdlib fixture
+# harness supplies the `Sharpy.Stdlib.dll` reference that `from collections import` needs.
+#
+# Every expected line is CPython 3.12's answer for the same program.
+from collections import OrderedDict
+
+def main():
+    od: OrderedDict[str | None, int] = OrderedDict()
+    od[None] = 1
+    od["b"] = 2
+    print(od[None], None in od, len(list(od.keys())))
+
+    # Insertion order: None was inserted first.
+    for k in od.keys():
+        print(k)
+
+    # move_to_end on the null key rewrites the order through the index map.
+    od.move_to_end(None)
+    for k in od.keys():
+        print(k)
+
+    print(od.get(None, -1))
+    print(od.pop(None), None in od)

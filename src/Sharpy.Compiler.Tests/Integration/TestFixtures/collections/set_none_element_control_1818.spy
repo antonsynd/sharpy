@@ -1,0 +1,25 @@
+# #1818 control (c1818c). `set[str | None]` accepted a `None` element at base (41dd19de7) and still
+# does: `HashSet<T>` admits null, so the set family never had the defect the dict family had. This
+# is the positive control that bounds the #1818 change — the cure was a Dict-side slot, and this
+# fixture says it did not need to reach the set family and did not regress it.
+#
+# Membership is asserted for BOTH the null and the non-null element, and the null element is found
+# by enumeration rather than by index, so set iteration order does not enter the expected output.
+def main():
+    s: set[str | None] = {None, "b"}
+    print(len(s), None in s, "b" in s)
+
+    saw_none: bool = False
+    saw_b: bool = False
+    for x in s:
+        if x is None:
+            saw_none = True
+        else:
+            saw_b = True
+    print(saw_none, saw_b)
+
+    # add of an element already present is a no-op, for the null element too.
+    s.add(None)
+    print(len(s))
+    s.discard(None)
+    print(len(s), None in s, "b" in s)

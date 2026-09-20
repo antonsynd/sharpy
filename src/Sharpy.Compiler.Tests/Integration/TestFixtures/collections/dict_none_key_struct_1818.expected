@@ -1,0 +1,10 @@
+2 z True
+None
+1
+{None: 'z', 1: 'a'}
+z miss
+y
+{None: 'y', 1: 'a'}
+y False 1
+{1: 'a', None: 'w'}
+(None, 'w')

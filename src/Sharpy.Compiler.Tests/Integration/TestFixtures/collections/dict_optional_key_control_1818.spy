@@ -1,0 +1,19 @@
+# #1818 control (c1818h). A STRICT Optional key (`dict[str?, int]` keyed by `None()`) is not a null
+# key: `Optional<str>` is a struct whose `None()` variant is a value, so these entries live in the
+# ordinary `Dictionary` and never touch the null-key slot. This fixture passed at base (41dd19de7)
+# and must keep passing — it is the positive control that says the slot change did not disturb the
+# path that already worked, and it discriminates: had the slot been keyed on the ANNOTATION
+# (`K` mentions None) rather than on the runtime value, these entries would have been diverted into
+# the slot and collapsed onto one another.
+#
+# Note the difference in surface: `None()` constructs the Optional variant, where the sibling
+# fixture's bare `None` is a .NET null. Both print `None`.
+def main():
+    d: dict[str?, int] = {None(): 1, Some("b"): 2}
+    print(len(d), d[None()], None() in d)
+    for k in d:
+        print(k)
+    print(d.get(None(), 5), d.get(Some("zz"), 9))
+    d[None()] = 10
+    print(d[None()])
+    print(d.pop(None()), None() in d, len(d))

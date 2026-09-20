@@ -1,0 +1,24 @@
+2 1 True
+None
+b
+{None: 1, 'b': 2}
+1 9
+10
+None
+b
+10 3
+{None: 10, 'b': 2, 'c': 3}
+True 10
+{None: 7, 'b': 2, 'c': 3, 'z': 8}
+{None: 1, 'b': 2} 1
+1
+2
+None 1
+b 2
+{None: 1, 'ab': 1} 1
+1 False 1
+{'b': 2, None: 5}
+True True
+(None, 5)
+{None: 0, 'a': 0}
+0 False
