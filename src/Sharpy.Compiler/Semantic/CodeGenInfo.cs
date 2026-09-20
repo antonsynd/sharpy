@@ -84,9 +84,14 @@ public sealed record CodeGenInfo
     /// (also read by <c>ConstantPositionValidator</c>'s <c>AdmissionTable.PerInstanceFieldDefault</c>
     /// admission) — so code generation never re-derives the shape from the AST (CLAUDE.md Rule 2).
     /// When true, the synthesized dataclass/struct constructor must lower this field's default to a
-    /// per-instance initializer (a sentinel <c>T? name = null</c> parameter plus
-    /// <c>this.Field = name ?? &lt;default expression&gt;</c>) rather than a C# default-parameter
-    /// value, which Roslyn refuses for a non-constant expression (CS1736). False for a field with no
+    /// per-instance initializer — a sentinel <c>T? name = null</c> parameter plus
+    /// <c>if (name is null) { &lt;default expression&gt; } else { this.Field = name; }</c> — rather
+    /// than a C# default-parameter value, which Roslyn refuses for a non-constant expression
+    /// (CS1736). The default is evaluated ONLY on the absent-argument branch and the member's own
+    /// initializer is dropped, because a field/property initializer runs on every construction and
+    /// the family this fact admits is classified by AST SHAPE with no purity check — an impure
+    /// default (<c>[side(1)]</c>, a comprehension over a call) was otherwise evaluated and discarded
+    /// on the explicit-argument path (#1901). False for a field with no
     /// default, a <c>const</c> field, a <c>@static</c> field, or a default the validator refuses
     /// outright (nullable-typed, tuple, call, etc.) — those keep the unchanged
     /// <c>GenerateParameterDefault</c> path (or never reach code generation at all).

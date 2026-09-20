@@ -47,12 +47,25 @@ internal partial class RoslynEmitter
         bool isDataclass = typeSymbol is { IsDataclass: true };
         bool isFrozen = typeSymbol is { DataclassInfo.Frozen: true };
 
+        // Whether a SYNTHESIZED constructor will own this type's field defaults: the same predicate
+        // the constructor-generation switch below uses (a @dataclass, or a struct, with no explicit
+        // __init__ — an explicit __init__ suppresses both syntheses, and then the member's own
+        // initializer is the only thing that assigns the field). Read here because a member
+        // initializer runs on EVERY construction, so for R-A's per-instance family it duplicated the
+        // constructor's evaluation of the same default (#1901) — see
+        // GeneratePerInstanceDefaultAssignment.
+        bool hasExplicitInit = body.OfType<FunctionDef>().Any(f => f.Name == DunderNames.Init);
+        bool synthesizedConstructorOwnsDefaults = !hasExplicitInit
+            && (isDataclass || typeSymbol is { TypeKind: Semantic.TypeKind.Struct });
+
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
             var varDecl = (VariableDeclaration)stmt;
             var fieldSymbol = typeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
             var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
             var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
+            bool constructorOwnsDefault = synthesizedConstructorOwnsDefaults
+                && codeGenInfo?.RequiresPerInstanceDefault == true;
 
             // A dataclass's INSTANCE fields become auto-properties; its class-level storage
             // (a `const`, a `@static` field) is emitted as a FIELD, exactly as in a plain class.
@@ -63,13 +76,14 @@ internal partial class RoslynEmitter
             // predicate, reading `VariableSymbol.IsStatic` and `CodeGenInfo.IsConstant`.
             if (isDataclass && IsSynthesizedConstructorField(varDecl))
             {
-                var propDecl = GenerateDataclassProperty(varDecl, fieldName, isFrozen);
+                var propDecl = GenerateDataclassProperty(
+                    varDecl, fieldName, isFrozen, constructorOwnsDefault);
                 fieldMembers.Add(propDecl);
             }
             else
             {
                 // Regular field
-                var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName);
+                var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName, constructorOwnsDefault);
                 fieldMembers.Add(fieldDecl);
                 // Extract the field name from the generated declaration
                 var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();

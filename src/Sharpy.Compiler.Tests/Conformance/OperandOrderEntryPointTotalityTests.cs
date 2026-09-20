@@ -74,8 +74,11 @@ public class OperandOrderEntryPointTotalityTests
         ["GenerateAttributeArgumentExpression"] = "one compile-time constant attribute argument",
         ["GenerateConstructor"] = "field initializers, each its own statement in the constructor body",
         ["GenerateStructAutoConstructors"] = "one field default per statement",
-        ["GenerateDataclassConstructor"] = "one field default per statement — R-A (#1684), mirrors GenerateStructAutoConstructors",
+        // GenerateDataclassConstructor drained (#1901): its per-instance field default now routes
+        // through GeneratePerInstanceDefaultAssignment, leaving the method with a single generation
+        // entry point (GenerateParameterDefault), so it is no longer a multi-operand site at all.
         ["GenerateInitializerExpression"] = "one user operand — the field/module/property initializer's own value (#1685); flagged only because the call sits inside the WithScopeSink hoist-capture lambda, not because there is a second sibling operand",
+        ["GeneratePerInstanceDefaultAssignment"] = "one user operand — the per-instance field default's own value (#1684 R-A, #1901); the other expression in the method is the sentinel PARAMETER name, not a generated user expression. Flagged only because the call sits inside the WithScopeSink hoist-capture lambda, exactly as GenerateInitializerExpression is",
         ["GenerateAssertThrowsStatements"] = "one user operand (the match pattern)",
         ["GenerateNestedLinqChain"] = "one operand per comprehension clause; CaptureHoisted owns each clause's sink",
         ["GenerateDictSpreadComprehension"] = "one operand per clause; CaptureHoisted owns the iterator's sink",

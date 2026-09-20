@@ -16,11 +16,13 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (Semantic.Validation) admit the family at the dataclass/struct host; <c>CodeGenInfo.RequiresPerInstanceDefault</c>
 /// (a symbol-keyed, Rule-2(a) materialized fact, computed once in <c>CodeGenInfoComputer</c> by
 /// calling the SAME classifier) is what CodeGen reads. When true, the synthesized constructor emits
-/// a sentinel parameter (<c>T? name = null</c>) and a body assignment
-/// <c>this.Field = name ?? &lt;default expression&gt;</c>, generated under the same hoist sink
-/// #1685 gives every other initializer host, so a comprehension default's hoisted loop-building
-/// statements land as a prologue ahead of the assignment. A NULLABLE-typed field (<c>T | None</c>)
-/// keeps the SPY0400 refusal — the <c>arg ?? &lt;default&gt;</c> sentinel would collide with a caller
+/// a sentinel parameter (<c>T? name = null</c>) and a body statement
+/// <c>if (name is null) { &lt;hoisted&gt;; this.Field = &lt;default&gt;; } else { this.Field = name; }</c>,
+/// whose absent arm owns the hoist sink #1685 gives every other initializer host, so a comprehension
+/// default's loop-building statements land INSIDE the branch that evaluates them. The member's own
+/// initializer is dropped on that path — see the evaluation-count matrix below. A NULLABLE-typed
+/// field (<c>T | None</c>) keeps the SPY0400 refusal — the <c>null</c> sentinel this lowering tests
+/// would collide with a caller
 /// legitimately passing <c>None</c>. This matrix asserts every python3-matching VALUE (not merely
 /// "compiles") — <see cref="!:IntegrationTestBase.CompileAndExecute" /> executes the generated
 /// program for every cell.</para>
@@ -218,7 +220,7 @@ public class FieldDefaultMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// Positive control (R-A): a NULLABLE-typed field with a mutable-collection default keeps the
-    /// SPY0400 refusal — the sentinel <c>arg ?? &lt;default&gt;</c> this lowering needs would
+    /// SPY0400 refusal — the <c>null</c> sentinel this lowering needs would
     /// collide with a caller legitimately passing <c>None</c> for that field.
     /// </summary>
     [Fact]
@@ -282,5 +284,177 @@ public class FieldDefaultMatrixTests : IntegrationTestBase
             d => d.Code == DiagnosticCodes.ValidationOverflow.FrozenFieldReassignment,
             $"[frozen __post_init__ assign] must report SPY0706. Got: "
             + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
+    }
+
+    // ══ Axis 3: evaluation COUNT × host × default kind × construction path (#1901) ════════════
+
+    /// <summary>
+    /// The marker every counted default calls once per element it evaluates. Printing is what makes
+    /// the NUMBER of evaluations observable — the axes above assert VALUES only, which is why the
+    /// whole family could evaluate its default two or four times per construction and stay green.
+    /// </summary>
+    private const string MarkerFunction =
+        "def side(i: int) -> int:\n    print(\"side\")\n    return i\n\n\n";
+
+    private const string MarkerLine = "side\n";
+
+    /// <summary>
+    /// A default whose element expression calls <c>side</c>. <c>ConstantDefaultClassifier</c> admits
+    /// this family by AST SHAPE with no purity check, so an impure element is squarely inside R-A's
+    /// admitted set — it is not an exotic case the lowering may ignore.
+    /// </summary>
+    /// <param name="DefaultMarkerCount">
+    /// How many times <c>side</c> runs when the default is evaluated ONCE — the number python3
+    /// prints for the equivalent <c>field(default_factory=lambda: …)</c>.
+    /// </param>
+    private sealed record CountedDefault(
+        string Name,
+        string SharpyType,
+        string DefaultExpr,
+        string ExplicitArg,
+        string ExplicitRepr,
+        int DefaultMarkerCount,
+        string DefaultRepr,
+        int DefaultLength);
+
+    private static readonly CountedDefault[] CountedDefaults =
+    {
+        new("ListDisplayWithCalls", "list[int]", "[side(1), side(2)]", "[9]", "[9]", 2, "[1, 2]", 2),
+        new("ListComprehension", "list[int]", "[side(i) for i in range(2)]", "[9]", "[9]", 2, "[0, 1]", 2),
+        new("DictDisplayWithCalls", "dict[str, int]", "{\"a\": side(1)}", "{\"z\": 9}", "{'z': 9}", 1, "{'a': 1}", 1),
+        // A walrus hoists exactly like a comprehension, so its hoisted statements must also land
+        // inside the absent-argument branch rather than above the whole assignment.
+        new("WalrusInListDisplay", "list[int]", "[(w := side(1)), w + 1]", "[9]", "[9]", 1, "[1, 2]", 2),
+    };
+
+    private sealed record CountedHost(string Name, string Header, bool SupportsPostInit);
+
+    private static readonly CountedHost[] CountedHosts =
+    {
+        new("Dataclass", "@dataclass\nclass Bag:\n", true),
+        new("FrozenDataclass", "@dataclass(frozen=True)\nclass Bag:\n", true),
+        // A struct is not a dataclass: it has no __post_init__ hook, so that path has no cell here.
+        new("Struct", "struct Bag:\n", false),
+    };
+
+    private sealed record CountedPath(string Name, bool ArgumentSupplied, bool Keyword, bool PostInit);
+
+    private static readonly CountedPath[] CountedPaths =
+    {
+        new("PositionalExplicit", true, false, false),
+        new("KeywordExplicit", true, true, false),
+        new("Default", false, false, false),
+        new("DefaultWithPostInit", false, false, true),
+    };
+
+    private const int CountedDefaultCount = 4;
+    private const int CountedHostCount = 3;
+    private const int CountedPathCount = 4;
+
+    private static string ComposeCounted(CountedHost h, CountedDefault k, CountedPath p)
+    {
+        var classBody = $"    xs: {k.SharpyType} = {k.DefaultExpr}\n";
+        if (p.PostInit)
+            classBody += "\n    def __post_init__(self) -> None:\n        print(len(self.xs))\n";
+
+        var construction = p.ArgumentSupplied
+            ? (p.Keyword ? $"Bag(xs={k.ExplicitArg})" : $"Bag({k.ExplicitArg})")
+            : "Bag()";
+
+        return MarkerFunction + h.Header + classBody
+            + $"\n\ndef main() -> None:\n    b = {construction}\n    print(b.xs)\n";
+    }
+
+    /// <summary>
+    /// python3's answer for the equivalent <c>field(default_factory=lambda: …)</c>, verified by
+    /// running it (CLAUDE.md Rule 6): the factory runs exactly once, and only when the caller
+    /// supplies no argument.
+    /// </summary>
+    private static string ExpectedCounted(CountedDefault k, CountedPath p)
+    {
+        if (p.ArgumentSupplied)
+            return k.ExplicitRepr + "\n";
+
+        var markers = string.Concat(Enumerable.Repeat(MarkerLine, k.DefaultMarkerCount));
+        return p.PostInit
+            ? markers + k.DefaultLength + "\n" + k.DefaultRepr + "\n"
+            : markers + k.DefaultRepr + "\n";
+    }
+
+    public static IEnumerable<object[]> EvaluationCountCells =>
+        from h in CountedHosts
+        from k in CountedDefaults
+        from p in CountedPaths
+        where h.SupportsPostInit || !p.PostInit
+        select new object[] { h.Name, k.Name, p.Name };
+
+    /// <summary>
+    /// The class contract R-A commits to, stated as a count (#1901): the default expression is
+    /// evaluated EXACTLY ONCE, and only on a construction path where the argument is absent — zero
+    /// times when the caller supplies one, positionally or by keyword.
+    ///
+    /// <para>The explicit-argument cells are absence assertions ("no <c>side</c> line"), so they need
+    /// a positive control or they pass on any program that prints nothing: the <c>Default</c> and
+    /// <c>DefaultWithPostInit</c> cells of the SAME host × kind are that control — they assert the
+    /// marker DOES appear, exactly <c>DefaultMarkerCount</c> times, in the same composed program
+    /// shape. A lowering that never evaluated the default would redden them.</para>
+    ///
+    /// <para>Measured @ 322fbd20e, before the fix: <c>Dataclass × ListComprehension ×
+    /// PositionalExplicit</c> printed four marker lines instead of zero (an eager property
+    /// initializer, plus the comprehension's hoisted statements flushed FLAT above the
+    /// <c>??</c>), and <c>× Default</c> printed four instead of two.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EvaluationCountCells))]
+    public void EvaluationCountCell_EvaluatesTheDefaultOnceAndOnlyWhenTheArgumentIsAbsent(
+        string host, string kind, string path)
+    {
+        var h = CountedHosts.Single(x => x.Name == host);
+        var k = CountedDefaults.Single(x => x.Name == kind);
+        var p = CountedPaths.Single(x => x.Name == path);
+        var source = ComposeCounted(h, k, p);
+        var expected = ExpectedCounted(k, p);
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
+                || d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError,
+            $"[{host} × {kind} × {path}] must never produce SPY0908/SPY0909. Diagnostics: "
+            + $"{string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{host} × {kind} × {path}] must compile and run. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(expected,
+            $"[{host} × {kind} × {path}] the default must be evaluated "
+            + (p.ArgumentSupplied
+                ? "ZERO times — the caller supplied the argument, so no 'side' line may appear"
+                : $"EXACTLY once ({k.DefaultMarkerCount} 'side' line(s), never 2× or 4× that)")
+            + $" — python3's field(default_factory=…) answer\n{source}");
+    }
+
+    [Fact]
+    public void EvaluationCountMatrix_IsTotalOverItsAxes()
+    {
+        CountedDefaults.Length.Should().Be(CountedDefaultCount);
+        CountedHosts.Length.Should().Be(CountedHostCount);
+        CountedPaths.Length.Should().Be(CountedPathCount);
+        CountedDefaults.Select(k => k.Name).Should().OnlyHaveUniqueItems();
+        CountedHosts.Select(h => h.Name).Should().OnlyHaveUniqueItems();
+        CountedPaths.Select(p => p.Name).Should().OnlyHaveUniqueItems();
+
+        CountedPaths.Count(p => p.ArgumentSupplied).Should().Be(2,
+            "an explicit argument reaches the constructor positionally and by keyword, and both "
+            + "must skip the default");
+
+        // The literal cell count, not a product of the same arrays: 3 hosts × 4 default kinds ×
+        // 4 paths = 48, minus the 4 Struct × DefaultWithPostInit cells (a struct has no
+        // __post_init__ hook). Anchoring to 44 is what makes a silently shrunk axis a failure.
+        EvaluationCountCells.Count().Should().Be(44);
+
+        EvaluationCountCells
+            .Select(c => ((string)c[0], (string)c[2]))
+            .Should().NotContain(("Struct", "DefaultWithPostInit"),
+                "the only excluded combination");
     }
 }

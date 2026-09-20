@@ -256,6 +256,54 @@ internal partial class RoslynEmitter
         return GetCodeGenInfo(fieldSymbol)?.IsConstant != true;
     }
 
+    /// <summary>
+    /// The ONE per-instance field-default arm (#1684 R-A, #1901), shared by the synthesized
+    /// <c>@dataclass</c> constructor and the struct auto-constructor, positional and keyword paths
+    /// alike:
+    /// <code>
+    /// if (param is null) { &lt;hoisted&gt;; this.Prop = &lt;default&gt;; } else { this.Prop = param; }
+    /// </code>
+    /// </summary>
+    /// <remarks>
+    /// <para>R-A's semantics are python3's <c>field(default_factory=…)</c>: the default expression is
+    /// evaluated exactly ONCE and only on the construction path where the argument is absent — zero
+    /// times when the caller supplies one. The previous shape, <c>this.Prop = param ?? &lt;default&gt;</c>
+    /// with the default's hoisted statements flushed FLAT ahead of it, evaluated a comprehension or
+    /// walrus default on EVERY path, so <c>Bag([9])</c> ran the default's side effects and threw the
+    /// result away. Both hosts route here so there is one answer, and the <c>if</c>'s absent arm owns
+    /// a hoist sink (<see cref="WithScopeSink"/>), which is what makes the hoisted statements land
+    /// inside the branch that evaluates them instead of above the whole assignment.</para>
+    /// <para>The test is <c>is null</c>, not <c>== null</c>: a user type reachable in this position
+    /// may overload <c>operator ==</c>, and the pattern test cannot be intercepted.</para>
+    /// <para>The caller places this statement where the field assignment belongs — before
+    /// <c>PostInit()</c> for a dataclass (R-AV ordering).</para>
+    /// </remarks>
+    private StatementSyntax GeneratePerInstanceDefaultAssignment(
+        Expression defaultValue,
+        string propName,
+        string paramName)
+    {
+        ExpressionSyntax defaultExpr = null!;
+        var hoisted = WithScopeSink(() => defaultExpr = GenerateExpression(defaultValue));
+
+        ExpressionStatementSyntax AssignProperty(ExpressionSyntax value) =>
+            ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        IdentifierName(propName)),
+                    value));
+
+        return IfStatement(
+            IsPatternExpression(
+                EscapedIdentifierName(paramName),
+                ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
+            Block(hoisted.Append(AssignProperty(defaultExpr))),
+            ElseClause(Block(AssignProperty(EscapedIdentifierName(paramName)))));
+    }
+
     private List<ConstructorDeclarationSyntax> GenerateStructAutoConstructors(
         string className,
         IReadOnlyList<Statement> body)
@@ -365,23 +413,10 @@ internal partial class RoslynEmitter
 
             if (requiresPerInstanceDefault)
             {
-                // this.Field = name ?? <default expr>; generated under the hoist sink so a
-                // comprehension default's hoisted statements land (Design Decision 2 note ii, #1685).
-                statements.AddRange(FlushIntoStatement(() =>
-                {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ThisExpression(),
-                                IdentifierName(propName)),
-                            BinaryExpression(
-                                SyntaxKind.CoalesceExpression,
-                                EscapedIdentifierName(paramName),
-                                defaultExpr)));
-                }));
+                // The default evaluates only on the absent-argument path (#1684 R-A, #1901) —
+                // one shared arm with the dataclass host.
+                statements.Add(GeneratePerInstanceDefaultAssignment(
+                    fieldDecl.InitialValue!, propName, paramName));
             }
             else
             {

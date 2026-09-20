@@ -20,7 +20,7 @@ internal partial class RoslynEmitter
     /// Uses { get; set; } normally, or { get; init; } when frozen=True.
     /// </summary>
     private PropertyDeclarationSyntax GenerateDataclassProperty(
-        VariableDeclaration varDecl, string propertyName, bool frozen)
+        VariableDeclaration varDecl, string propertyName, bool frozen, bool constructorOwnsDefault)
     {
         TypeSyntax propType;
         if (varDecl.Type != null)
@@ -57,11 +57,16 @@ internal partial class RoslynEmitter
 
         // Add default value initializer if present. A comprehension/generator/lambda/walrus in the
         // initializer hoists under its own scope sink so it has somewhere to land (#1685) — see
-        // GenerateInitializerExpression. (The synthesized dataclass constructor always assigns this
-        // field too — R-A's per-instance mutable-collection family through its own `??` prologue,
-        // everything else through GenerateParameterDefault — so this initializer's own value is
-        // never the one observed; it exists only so the property declaration compiles standalone.)
-        if (varDecl.InitialValue != null)
+        // GenerateInitializerExpression.
+        //
+        // A property initializer runs on EVERY construction, including one that passed an explicit
+        // argument, so for R-A's per-instance family it was a second, unconditional evaluation of
+        // the default (#1901): `Bag([9])` printed the side effects of `[side(i) for i in range(2)]`
+        // and threw the list away, and `Bag()` printed them twice. `constructorOwnsDefault` is true
+        // exactly where the synthesized constructor definitely assigns this property on both of its
+        // paths (GeneratePerInstanceDefaultAssignment), so dropping the initializer leaves the
+        // property definitely assigned and evaluates the default exactly once, only when absent.
+        if (varDecl.InitialValue != null && !constructorOwnsDefault)
         {
             var initExpr = GenerateInitializerExpression(varDecl.InitialValue, propType);
             propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
@@ -213,25 +218,13 @@ internal partial class RoslynEmitter
 
             if (requiresPerInstanceDefault)
             {
-                // this.Field = name ?? <default expr>; generated under the hoist sink so a
-                // comprehension default's hoisted statements land (Design Decision 2 note ii, #1685).
+                // The default evaluates only on the absent-argument path (#1684 R-A, #1901) —
+                // one shared arm with the struct host. Emitted here, ahead of the PostInit() call
+                // below, so __post_init__ still sees the assigned field (R-AV ordering).
                 var fieldDecl = classBody.OfType<VariableDeclaration>()
                     .First(v => v.Name == field.Name);
-                statements.AddRange(FlushIntoStatement(() =>
-                {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ThisExpression(),
-                                IdentifierName(propName)),
-                            BinaryExpression(
-                                SyntaxKind.CoalesceExpression,
-                                EscapedIdentifierName(paramName),
-                                defaultExpr)));
-                }));
+                statements.Add(GeneratePerInstanceDefaultAssignment(
+                    fieldDecl.InitialValue!, propName, paramName));
             }
             else
             {

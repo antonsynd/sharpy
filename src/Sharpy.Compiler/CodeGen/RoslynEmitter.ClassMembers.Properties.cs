@@ -17,7 +17,16 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
-    private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl, string? mangledName = null)
+    /// <param name="constructorOwnsDefault">
+    /// True when a synthesized constructor definitely assigns this field on every path and owns the
+    /// evaluation of its default (a struct auto-constructor's per-instance field default, #1684 R-A
+    /// / #1901). A field initializer runs on EVERY construction, so leaving it in place evaluated
+    /// the default a second time — once eagerly and once in the constructor — which is observable
+    /// the moment the default is impure (`[side(1), side(2)]`). See
+    /// <see cref="GeneratePerInstanceDefaultAssignment"/>.
+    /// </param>
+    private FieldDeclarationSyntax GenerateField(
+        VariableDeclaration varDecl, string? mangledName = null, bool constructorOwnsDefault = false)
     {
         // Use PascalCase for public fields (C# property-like convention)
         var fieldName = mangledName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
@@ -43,7 +52,7 @@ internal partial class RoslynEmitter
         // Add initializer if present. A comprehension/generator/lambda/walrus in the initializer
         // hoists under its own scope sink so it has somewhere to land (#1685) — see
         // GenerateInitializerExpression.
-        if (varDecl.InitialValue != null)
+        if (varDecl.InitialValue != null && !constructorOwnsDefault)
         {
             var initExpr = GenerateInitializerExpression(varDecl.InitialValue, fieldType);
             variable = variable.WithInitializer(EqualsValueClause(initExpr));

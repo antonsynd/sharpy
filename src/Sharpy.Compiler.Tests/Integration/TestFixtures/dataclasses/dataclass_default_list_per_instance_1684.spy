@@ -1,7 +1,7 @@
 # A mutable-collection dataclass field default is a per-instance initializer (R-A, #1684):
-# the synthesized constructor lowers it to a sentinel parameter (`T? name = null`) and a
-# `this.Field = name ?? <default>` body assignment, never a C# default-parameter value, so
-# every instance that omits the argument gets its own fresh collection.
+# the synthesized constructor lowers it to a sentinel parameter (`T? name = null`) and an
+# `if (name is null) { ... } else { this.Field = name; }` body, never a C# default-parameter
+# value, so every instance that omits the argument gets its own fresh collection (#1901).
 @dataclass
 class Bag:
     xs: list[int] = [1]

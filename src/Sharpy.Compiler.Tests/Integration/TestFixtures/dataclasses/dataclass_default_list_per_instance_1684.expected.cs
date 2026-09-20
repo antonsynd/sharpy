@@ -10,17 +10,21 @@ public static partial class DataclassDefaultListPerInstance1684
 {
     public class Bag
     {
-        public Sharpy.List<int> Xs { get; set; } = new Sharpy.List<int>()
-        {
-            1
-        };
+        public Sharpy.List<int> Xs { get; set; }
 
         public Bag(Sharpy.List<int>? xs = null)
         {
-            this.Xs = xs ?? new Sharpy.List<int>()
+            if (xs is null)
             {
-                1
-            };
+                this.Xs = new Sharpy.List<int>()
+                {
+                    1
+                };
+            }
+            else
+            {
+                this.Xs = xs;
+            }
         }
 
         public override bool Equals(object? obj)
