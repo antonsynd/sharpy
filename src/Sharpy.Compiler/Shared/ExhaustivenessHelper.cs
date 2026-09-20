@@ -52,6 +52,17 @@ internal static class ExhaustivenessHelper
             return new HashSet<string> { WellKnownCaseNames.Ok, WellKnownCaseNames.Err };
         }
 
+        // `T | None` is a finite family (P13 DD10): the payload case(s) ∪ None. A union/enum/bool
+        // payload contributes its own finite cases; a concrete payload contributes the single
+        // NullablePayload sentinel, covered by any PayloadTotal/Total head over the nullable.
+        if (scrutineeType is NullableType nullable)
+        {
+            var payloadCases = GetFiniteTypeCases(nullable.UnderlyingType)
+                ?? new HashSet<string> { WellKnownCaseNames.NullablePayload };
+            payloadCases.Add(WellKnownCaseNames.None);
+            return payloadCases;
+        }
+
         return null;
     }
 
@@ -73,6 +84,12 @@ internal static class ExhaustivenessHelper
             {
                 covered.Add(headUnionCase.Name);
             }
+            else if (semanticInfo.GetPatternCoverage(head.Lodge) == PatternCoverage.PayloadTotal)
+            {
+                // A payload head over `T | None` with a concrete payload covers the family's payload
+                // case — the sentinel GetFiniteTypeCases uses for the same scrutinee (P13 DD10).
+                covered.Add(WellKnownCaseNames.NullablePayload);
+            }
             else if (head.Type != null)
             {
                 covered.Add(head.Type.Name);
@@ -92,6 +109,11 @@ internal static class ExhaustivenessHelper
                 if (litUnionCase != null)
                 {
                     covered.Add(litUnionCase.Name);
+                }
+                // `case None:` over a `T | None` covers the None case of the finite family (P13 D3).
+                if (semanticInfo.GetPatternCoverage(literal) == PatternCoverage.NoneArm)
+                {
+                    covered.Add(WellKnownCaseNames.None);
                 }
                 break;
 
@@ -152,7 +174,7 @@ internal static class ExhaustivenessHelper
             OrPattern or => or.Alternatives.Any(alt => IsTotal(alt, info)),
             GuardPattern => false,
             _ when PatternHead.TryGet(pattern, out var head)
-                => info?.GetPatternTotality(head.Lodge) == true,
+                => info?.GetPatternCoverage(head.Lodge) == PatternCoverage.Total,
             _ => false
         };
     }
@@ -180,7 +202,7 @@ internal static class ExhaustivenessHelper
             OrPattern or => or.Alternatives
                 .Select(alt => DescribeIrrefutable(alt, info))
                 .FirstOrDefault(d => d != null),
-            _ when PatternHead.TryGet(pattern, out var head) && info?.GetPatternTotality(head.Lodge) == true
+            _ when PatternHead.TryGet(pattern, out var head) && info?.GetPatternCoverage(head.Lodge) == PatternCoverage.Total
                 => $"total class pattern '{head.Type?.Name}()'",
             _ => null
         };

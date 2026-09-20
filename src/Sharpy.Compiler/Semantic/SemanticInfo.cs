@@ -312,7 +312,10 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, SemanticType> _patternTypes =
         new(ReferenceEqualityComparer.Instance);
 
-    private readonly ConcurrentDictionary<Pattern, bool> _patternTotality =
+    // How much of the scrutinee's static type each class-pattern head (or `case None:` arm) covers
+    // (P13 DD8). Null-aware: a payload head over `T | None` is PayloadTotal, not Total; `case None:`
+    // over `T | None` is NoneArm. Absence = partial. Same MergeFrom slot as the former bool totality.
+    private readonly ConcurrentDictionary<Pattern, PatternCoverage> _patternCoverage =
         new(ReferenceEqualityComparer.Instance);
 
     // Track expressions whose type was set to UnknownType due to a user error
@@ -1239,14 +1242,14 @@ public class SemanticInfo : ISemanticQuery
         return _patternTypes.TryGetValue(pattern, out var type) ? type : null;
     }
 
-    public void SetPatternTotality(Pattern pattern, bool isTotal)
+    public void SetPatternCoverage(Pattern pattern, PatternCoverage coverage)
     {
-        _patternTotality[pattern] = isTotal;
+        _patternCoverage[pattern] = coverage;
     }
 
-    public bool? GetPatternTotality(Pattern pattern)
+    public PatternCoverage? GetPatternCoverage(Pattern pattern)
     {
-        return _patternTotality.TryGetValue(pattern, out var isTotal) ? isTotal : null;
+        return _patternCoverage.TryGetValue(pattern, out var coverage) ? coverage : null;
     }
 
     /// <summary>
@@ -2049,8 +2052,8 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._patternTypes)
             _patternTypes.TryAdd(kvp.Key, kvp.Value);
 
-        foreach (var kvp in other._patternTotality)
-            _patternTotality.TryAdd(kvp.Key, kvp.Value);
+        foreach (var kvp in other._patternCoverage)
+            _patternCoverage.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._errorRecoveryNodes)
             _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);

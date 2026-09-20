@@ -224,6 +224,16 @@ internal partial class TypeChecker
                         break;
                     }
 
+                    // `case None:` over a `T | None` (NullableType) is the None case of the finite
+                    // family (P13 D3) — record NoneArm so exhaustiveness counts it and GetFiniteTypeCases
+                    // sees the whole family covered. A NullableType is NOT a tagged union, so there is no
+                    // synthetic union case to record as there is for OptionalType above.
+                    if (literal.Literal is NoneLiteral && scrutineeType is NullableType)
+                    {
+                        _semanticInfo.SetPatternCoverage(literal, PatternCoverage.NoneArm);
+                        break;
+                    }
+
                     var litType = CheckExpression(literal.Literal);
                     if (!IsAssignable(litType, scrutineeType) && !IsAssignable(scrutineeType, litType))
                     {
@@ -893,11 +903,22 @@ internal partial class TypeChecker
         }
 
         _semanticInfo.SetPatternType(lodgeOn, testType);
-        if (scrutineeType is not UnknownType
-            && testType is not UnknownType
-            && IsAssignable(scrutineeType, testType))
+        if (scrutineeType is not UnknownType && testType is not UnknownType)
         {
-            _semanticInfo.SetPatternTotality(lodgeOn, true);
+            // Null-aware coverage (P13 D2): a `T | None` scrutinee is NEVER total for a non-nullable
+            // test type — the None value escapes the type test — so a payload head is PayloadTotal,
+            // covering only the payload case of the finite family. NullableType.IsAssignableTo is
+            // null-blind (SemanticType.cs:736), which is why the un-split scrutinee wrongly recorded
+            // Total and drew a spurious SPY0700 on `case list():` + `case None:`.
+            if (scrutineeType is NullableType nullableScrutinee)
+            {
+                if (IsAssignable(nullableScrutinee.UnderlyingType, testType))
+                    _semanticInfo.SetPatternCoverage(lodgeOn, PatternCoverage.PayloadTotal);
+            }
+            else if (IsAssignable(scrutineeType, testType))
+            {
+                _semanticInfo.SetPatternCoverage(lodgeOn, PatternCoverage.Total);
+            }
         }
 
         return testType;

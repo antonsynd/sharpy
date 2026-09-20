@@ -45,7 +45,7 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
             // the scrutinee, routed through the ONE classifier (DD9). Wildcard/binding totals are NOT
             // heads, so they fall through and are always reported below.
             bool isTotalTypePattern = PatternHead.TryGet(pattern, out var totalHead)
-                && context.SemanticInfo?.GetPatternTotality(totalHead.Lodge) == true;
+                && context.SemanticInfo?.GetPatternCoverage(totalHead.Lodge) == PatternCoverage.Total;
             if (isTotalTypePattern)
             {
                 bool hasRefutableFollower = false;
