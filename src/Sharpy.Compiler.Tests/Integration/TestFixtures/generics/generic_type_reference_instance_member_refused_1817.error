@@ -1,0 +1,5 @@
+Cannot access instance field 'k' via type name 'G[int32]'. Mark it as @static or use an instance. @23:11
+Cannot access instance method 'm' via type name 'G[int32]' @24:11
+Cannot access instance field 'j' via type name 'Inner' @25:11
+Cannot access instance field 'z' via type name 'G[int32]' @26:11
+!SPY0908

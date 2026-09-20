@@ -631,10 +631,13 @@ public static partial class DiagnosticExplanations
             "Break the cycle by removing one of the inheritance relationships or restructuring the type hierarchy.");
 
         Add(dict, DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
-            "Instance field accessed via type name",
+            "Instance member accessed via type name",
             "Semantic",
-            "An instance field is being accessed through the type name (e.g., ClassName.field) rather than " +
-            "through an instance. Only static and const fields can be accessed via the type name.",
+            "An instance member — a field, a property or a method — is being accessed through the type name " +
+            "(e.g., ClassName.field) rather than through an instance. Only static and const members can be " +
+            "accessed via the type name. Every spelling of the type is refused alike: the bare name, a " +
+            "constructed generic reference (G[int].field), a nested type under one (G[int].Inner.field), and " +
+            "a type alias for one (type A = G[int] then A.field).",
             "class Config:\n    timeout: int = 30\n\ndef main():\n    t = Config.timeout  # error: timeout is an instance field",
             "Mark the field as @static if it should be shared across instances:\nclass Config:\n    @static\n    timeout: int = 30\n\n" +
             "Or use an instance:\ndef main():\n    c = Config()\n    t = c.timeout");

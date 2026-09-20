@@ -1,0 +1,26 @@
+# #1817 Decision 3: an INSTANCE member named through a type-denoting receiver is refused SPY0290 on
+# EVERY spelling of that receiver. The bare name was already refused; the constructed reference
+# `G[int].k`, a nested type under one (`G[int].Inner.j`) and a type alias for one (`A.z`) typed the
+# member and reached Roslyn as CS0120/CS1503 behind SPY0908 — a compiler-bug report for forgetting
+# `@static`. The const on the same host still reads (generic_type_reference_static_member_1817).
+# Each spelling names a DIFFERENT member so every expected line binds to one diagnostic.
+class G[T]:
+    const C: int = 7
+    k: int = 3
+    z: int = 1
+
+    def m(self) -> int:
+        return 4
+
+    class Inner:
+        j: int = 2
+
+
+type A = G[int]
+
+
+def main() -> None:
+    print(G[int].k)
+    print(G[int].m())
+    print(G[int].Inner.j)
+    print(A.z)

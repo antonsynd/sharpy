@@ -137,7 +137,12 @@ public class InteropConformanceTests
         Assert.True(missing.Count == 0,
             $"Sharpy generic types that collide with System/System.Collections.Generic but have no row in " +
             $"SharpyWrapperSpellings: {string.Join(", ", missing)}");
-        Assert.True(collidingNames.Count > 0, "Expected at least one colliding Sharpy generic type (List<T>)");
+        // Anti-vacuity anchored to a LITERAL collider, not to the scan that produced the list: if an
+        // assembly fails to load, a namespace is renamed, or the export enumeration degrades, the scan
+        // yields an EMPTY collidingNames and `missing` is trivially empty too — the test would pass
+        // while measuring nothing. `List`1` collides by construction (System.Collections.Generic.List<T>
+        // vs Sharpy.List<T>), so its absence means the instrument changed, not the code.
+        Assert.Contains("List`1", collidingNames);
     }
 
     [Fact]

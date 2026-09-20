@@ -1,3 +1,5 @@
+using System.Linq;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -64,5 +66,133 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="receiver"/> DENOTES a type rather than holding a value. The ONE
+    /// predicate: a bare name bound to a <see cref="TypeSymbol"/> (<c>H</c>, <c>G</c>, an imported or
+    /// module-qualified type), or any node
+    /// <see cref="SemanticInfo.MarkTypeReference"/> recorded — which
+    /// <see cref="ClassifyTypeDenotingReceiver"/> does for the constructed generic (<c>G[int]</c>) and
+    /// the type alias (<c>A</c> of <c>type A = G[int]</c>), and the nested-type arms do for
+    /// <c>Outer.Inner</c> and <c>Environment.SpecialFolder</c>. Both the CLR receiver-kind split
+    /// (<c>ClrReceiverKindOf</c>) and the instance-member refusal
+    /// (<see cref="TryRefuseInstanceMemberViaTypeName"/>) ask it here, so no spelling can be a type
+    /// name for one question and a value for the other (#1817, Decision 3).
+    /// </summary>
+    private bool ReceiverDenotesType(Expression receiver)
+        => (receiver is Identifier id && _semanticInfo.GetIdentifierSymbol(id) is TypeSymbol)
+           || _semanticInfo.IsTypeReference(receiver);
+
+    /// <summary>
+    /// The Sharpy-declared <see cref="TypeSymbol"/> a type-denoting receiver names, together with the
+    /// spelling to quote back in a diagnostic, or null when the receiver is not a type name or names a
+    /// CLR-backed type. Every spelling resolves through the SAME two questions — the receiver's
+    /// recorded type (a <see cref="UserDefinedType"/> for a plain or nested name, a
+    /// <see cref="GenericType"/> for a constructed reference or its alias) and, for a bare name, the
+    /// symbol the identifier is bound to.
+    /// </summary>
+    private (TypeSymbol Symbol, string Name)? DenotedTypeSymbolOf(Expression receiver, SemanticType receiverType)
+    {
+        // A NESTED type under another type-denoting receiver — `Outer.Inner`, `G[int].Inner`,
+        // `Outer.Mid.Inner` — answered structurally, by asking the same question of the segment to its
+        // left. The member-typing arms deliberately leave such a chain untyped when it is itself a
+        // qualifier (the emitter has no carrier for the closed owner of a nested type under a
+        // constructed generic, so typing it spells the OPEN `G.Inner`, CS0305 — #1941), and that
+        // omission must not decide whether `G[int].Inner.inst` is refused (#1817, Decision 3).
+        if (receiver is MemberAccess nestedAccess && !nestedAccess.IsNullConditional
+            && DenotedTypeSymbolOf(
+                   nestedAccess.Object, _semanticInfo.GetExpressionType(nestedAccess.Object) ?? SemanticType.Unknown)
+               is var (outerSymbol, _)
+            && outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == nestedAccess.Member) is { } nestedSymbol)
+            return (nestedSymbol, nestedSymbol.Name);
+
+        if (!ReceiverDenotesType(receiver))
+            return null;
+
+        var symbol = receiverType switch
+        {
+            UserDefinedType udt => udt.Symbol ?? _symbolTable.LookupType(udt.Name),
+            GenericType generic => GenericDefinitionOf(generic),
+            _ => null,
+        };
+
+        // A bare name is its own answer when the recorded type is not one of the two shapes above —
+        // `H.K` types the identifier as a FunctionType (the constructor reference), not a UDT (#432).
+        if (symbol == null && receiver is Identifier id
+            && _semanticInfo.GetIdentifierSymbol(id) is TypeSymbol identifierSymbol)
+            symbol = identifierSymbol;
+
+        if (symbol == null)
+            return null;
+
+        // The spelling the reader wrote: the bare name for an identifier, the constructed display name
+        // (`G[int]`) for every other type-denoting receiver.
+        var name = receiver is Identifier bare && _semanticInfo.GetIdentifierSymbol(bare) is TypeSymbol
+            ? bare.Name
+            : receiverType is UnknownType ? symbol.Name : receiverType.GetDisplayName();
+
+        return (symbol, name);
+    }
+
+    /// <summary>
+    /// The ONE refusal for an INSTANCE member named through a receiver that denotes a TYPE (SPY0290).
+    /// Reached from <c>CheckMemberAccessCore</c> before any member-typing arm, so every spelling of the
+    /// receiver gets the same verdict: the bare non-generic name (<c>H.inst</c>), the bare generic name
+    /// (<c>G.inst</c>), the constructed reference (<c>G[int].inst</c>), a nested type under one
+    /// (<c>G[int].Inner.inst</c>) and a type alias for one (<c>type A = G[int]</c> then <c>A.inst</c>).
+    /// Before this, only the two bare spellings were refused; the constructed, nested and alias
+    /// spellings type the instance member and reach Roslyn as CS0120/CS1503 behind SPY0908 — a
+    /// compiler-bug report for `@static`-forgetting (#1817, Decision 3 sibling cell).
+    ///
+    /// <para>The refusal covers all three instance member kinds (field, property, method) for the same
+    /// reason C# does: none of them binds without a receiver instance. A <c>const</c>, a
+    /// <c>@static</c> member, an enum case, a union case and a nested type are NOT instance members and
+    /// fall through untouched. CLR-backed type symbols are excluded — the static/instance mix-up on a
+    /// reflected surface is decided by <c>ClrMemberTypeResolver.ExistsOnOppositeHalf</c>, which
+    /// deliberately declines rather than refuses (#1940).</para>
+    /// </summary>
+    private bool TryRefuseInstanceMemberViaTypeName(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (memberAccess.Member.Length == 0)
+            return false;
+
+        if (DenotedTypeSymbolOf(memberAccess.Object, receiverType) is not var (typeSymbol, typeName))
+            return false;
+
+        // Enum cases and union cases are named through the type by construction; a CLR surface is the
+        // reflected resolver's business.
+        if (typeSymbol.ClrType != null
+            || typeSymbol.TypeKind is not (TypeKind.Class or TypeKind.Struct or TypeKind.Interface))
+            return false;
+
+        var member = memberAccess.Member;
+
+        // A name with ANY static declaration in the hierarchy binds statically — an instance overload
+        // sitting beside it is not what the reference names.
+        if (EnumerateTypeAndHierarchy(typeSymbol).Any(t =>
+                t.Fields.Any(f => f.Name == member && (f.IsStatic || f.IsConstant))
+                || t.Properties.Any(p => p.Name == member && p.IsStatic)
+                || t.Methods.Any(m => m.Name == member && m.IsStatic)
+                || t.NestedTypes.Any(n => n.Name == member)))
+            return false;
+
+        var kind = FindFieldInHierarchy(typeSymbol, member).Field != null ? "field"
+            : FindPropertyInHierarchy(typeSymbol, member).Property != null ? "property"
+            : FindMethodInHierarchy(typeSymbol, member).Method != null ? "method"
+            : null;
+
+        if (kind == null)
+            return false;
+
+        AddError(
+            $"Cannot access instance {kind} '{member}' via type name '{typeName}'. " +
+            "Mark it as @static or use an instance.",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
+            span: memberAccess.Span);
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.AlreadyReported("an instance member named through a type (SPY0290)"));
+        return true;
     }
 }

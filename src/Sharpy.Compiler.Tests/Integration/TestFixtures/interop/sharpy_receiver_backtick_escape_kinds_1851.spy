@@ -1,0 +1,16 @@
+# R-AP (#1851): the two backtick columns that KEEP working, so the method-group refusal cannot be
+# widened into the whole escape. A property escape reads its value on every wrapper receiver, and a
+# method escape in CALLEE position still calls the wrapper member.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    d: dict[str, int] = {"a": 1}
+    st: set[int] = {1, 2}
+    s: str = "abc"
+    b: bytes = b"abc"
+    print(xs.`Length`)
+    print(d.`Count`)
+    print(st.`Count`)
+    print(s.`Length`)
+    print(b.`Length`)
+    print(xs.`Count`(1))
+    print(s.`ToUpper`())

@@ -157,6 +157,14 @@ internal partial class TypeChecker
         if (TryRefuseQualifiedBuiltinCase(memberAccess, objectType))
             return SemanticType.Unknown;
 
+        // An INSTANCE member named through a receiver that DENOTES a type is refused here — on the one
+        // seam every spelling reaches, and before any member-typing arm could type it. The bare name
+        // (`H.inst`, `G.inst`) was already SPY0290; the constructed reference (`G[int].inst`), a nested
+        // type under one (`G[int].Inner.inst`) and an alias for one (`A.inst`) typed the member and
+        // reached Roslyn as CS0120/CS1503 behind SPY0908 (#1817, Decision 3 sibling cell).
+        if (TryRefuseInstanceMemberViaTypeName(memberAccess, objectType))
+            return SemanticType.Unknown;
+
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
         RecordResolvedClrMemberName(memberAccess, objectType);
@@ -205,6 +213,11 @@ internal partial class TypeChecker
             var qualifierSym = qualifierUdt.Symbol ?? _symbolTable.LookupType(qualifierUdt.Name);
             if (qualifierSym?.TypeKind is TypeKind.Class or TypeKind.Struct)
             {
+                // The qualifier guard stands: a nested access that is ITSELF the qualifier of a further
+                // segment is left untyped here, because the emitter has no carrier for the closed owner
+                // of a nested type under a constructed generic — typing it makes `G[int].Inner.V` spell
+                // the OPEN `G.Inner.V` (CS0305). The instance-member verdict for that chain does not
+                // depend on this arm: DenotedTypeSymbolOf walks the chain structurally (#1817, #1941).
                 var nestedType = qualifierSym.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
                 if (nestedType != null && !nestedType.IsGeneric
                     && !ReferenceEquals(memberAccess, _currentMemberAccessQualifier))
@@ -288,12 +301,14 @@ internal partial class TypeChecker
         // member and prints a System.Func or an internal view (silent wrong output). Runs BEFORE every
         // resolution arm because a Sharpy receiver takes several shapes (a GenericType list, a
         // BuiltinType str, a UserDefinedType bytes) and the UserDefinedType arm would otherwise type
-        // `b.Length` from reflection first. A Sharpy-surface snake name, the backtick escape, and the
-        // reverse-mangled spelling (`s.length`, `s.to_upper()`) are NOT ClrSpelling and fall through to
-        // their normal typing; the tuple receiver is excluded (#1783). Refused in every position,
-        // including a callee — `xs.Count()` is as wrong as `xs.Count`.
-        if (TryRefuseSharpyReceiverClrSpelling(memberAccess, memberLookupType))
-            return SemanticType.Unknown;
+        // `b.Length` from reflection first. A Sharpy-surface snake name and the reverse-mangled spelling
+        // (`s.length`, `s.to_upper()`) fall through to their normal typing; the tuple receiver is
+        // excluded (#1783). Refused in every position, including a callee — `xs.Count()` is as wrong as
+        // `xs.Count`. The backtick ESCAPE is answered here too, from the wrapper's reflected surface: a
+        // method in value position is SPY0336 (`xs.`Count`` printed a System.Func), a property or field
+        // is typed.
+        if (SharpyReceiverSpellingVerdict(memberAccess, memberLookupType) is { } spellingVerdict)
+            return spellingVerdict;
 
         // Handle module member access (e.g., config.MAX_SIZE, utils.helper())
         if (memberLookupType is ModuleType moduleType)
@@ -936,10 +951,7 @@ internal partial class TypeChecker
         // bind (4) — so the name can only be an extension/static method group. Refused by the ONE helper
         // the instance and static routes reach (SPY0336). Callee position is excluded so a02/a03 keep
         // staging and printing.
-        if (!IsCurrentCallCallee(memberAccess)
-            && Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member)
-            && TryGetClrType(memberLookupType) != null
-            && NoClrInstanceMemberCouldBind(memberLookupType, memberAccess.Member))
+        if (IsClrExtensionMethodGroupInValuePosition(memberAccess, memberLookupType))
         {
             return RefuseClrMethodGroupInValuePosition(memberAccess);
         }
@@ -1205,7 +1217,9 @@ internal partial class TypeChecker
     /// Whether <paramref name="type"/> is a Sharpy BUILTIN receiver whose spelling is governed by
     /// R-AP (#1851): the five container kinds <see cref="IsBuiltinContainerReceiver"/> answers, plus
     /// <c>array</c>, <c>str</c> and <c>bytes</c> — every one a wrapper over a .NET surface whose
-    /// PascalCase members must not leak. A CLR-identity collection (an imported <c>List[int]</c>) is
+    /// PascalCase members must not leak. (There is no <c>bytearray</c> arm: Sharpy has no such type,
+    /// so no value can carry that name — <c>bytearray()</c> is refused SPY0202, the positive control
+    /// in <c>PatternConformanceMatrixTests</c>.) A CLR-identity collection (an imported <c>List[int]</c>) is
     /// NOT one of these (its Name is the .NET name, not the Sharpy builtin), so it keeps the verbatim
     /// channel; <c>tuple</c> and <c>object</c> are excluded by construction (neither name is listed).
     /// </summary>
@@ -1234,21 +1248,43 @@ internal partial class TypeChecker
         => UnwrapParenthesized(receiver) is Identifier id ? id.Name : "x";
 
     /// <summary>
-    /// The ONE R-AP refusal (#1851): a verbatim PascalCase CLR spelling of a member on a Sharpy builtin
-    /// receiver's wrapper is refused SPY0203 with the Sharpy-spelling steer. Returns true (and emits)
-    /// when it fires, false when the receiver is not a Sharpy builtin or the spelling is not a verbatim
-    /// CLR one (a Sharpy snake name, a backtick escape, or a reverse-mangled spelling — all left to
-    /// their normal typing).
+    /// The ONE R-AP seam (#1851): the verdict for a member name written on a Sharpy builtin receiver,
+    /// keyed on which vocabulary <see cref="SharpyReceiverSpelling.Classify"/> puts the spelling in.
+    /// Returns the member's type when the spelling is typed here, <see cref="SemanticType.Unknown"/>
+    /// when it is refused (the diagnostic is emitted), and null when this seam does not own it — a
+    /// Sharpy snake name and a reverse-mangled CLR spelling keep their normal typing, as does any
+    /// receiver that is not a Sharpy builtin.
+    /// <list type="bullet">
+    /// <item><b>ClrSpelling</b> — <c>xs.Count</c>: SPY0203 with the Sharpy-spelling steer.</item>
+    /// <item><b>Escaped</b> — <c>xs.`Count`</c>: resolved against the wrapper's CLR surface, which is
+    /// exactly what the escape asks for. A METHOD in value position is SPY0336 (it printed a
+    /// <c>System.Func</c>); a property or field is TYPED (it reached Roslyn as CS0029 behind SPY0908
+    /// in a typed slot).</item>
+    /// </list>
     /// </summary>
-    private bool TryRefuseSharpyReceiverClrSpelling(MemberAccess memberAccess, SemanticType receiverType)
+    private SemanticType? SharpyReceiverSpellingVerdict(MemberAccess memberAccess, SemanticType receiverType)
     {
         if (!IsSharpyBuiltinSpellingReceiver(receiverType)
-            || TryGetClrType(receiverType) is not { } wrapperClr
-            || SharpyReceiverSpelling.Classify(
-                memberAccess.Member, memberAccess.IsMemberBacktickEscaped, wrapperClr)
-                != SharpyReceiverSpelling.Spelling.ClrSpelling)
-            return false;
+            || TryGetClrType(receiverType) is not { } wrapperClr)
+            return null;
 
+        return SharpyReceiverSpelling.Classify(
+            memberAccess.Member, memberAccess.IsMemberBacktickEscaped, wrapperClr) switch
+        {
+            SharpyReceiverSpelling.Spelling.ClrSpelling =>
+                RefuseSharpyReceiverClrSpelling(memberAccess, receiverType),
+            SharpyReceiverSpelling.Spelling.Escaped =>
+                EscapedWrapperMemberType(memberAccess, wrapperClr, receiverType),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// The verbatim PascalCase half of <see cref="SharpyReceiverSpellingVerdict"/>: SPY0203 with the
+    /// Sharpy-spelling steer.
+    /// </summary>
+    private SemanticType RefuseSharpyReceiverClrSpelling(MemberAccess memberAccess, SemanticType receiverType)
+    {
         var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
         var steer = SharpyReceiverSpelling.Steer(memberAccess.Member, receiverExpr);
         var message = $"Type '{receiverType.GetDisplayName()}' has no member '{memberAccess.Member}'";
@@ -1261,7 +1297,58 @@ internal partial class TypeChecker
             code: DiagnosticCodes.Semantic.UndefinedMember,
             span: memberAccess.Span,
             data: SuggestionData(steer));
-        return true;
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// The backtick half of <see cref="SharpyReceiverSpellingVerdict"/> (#1851): an escape reaches the
+    /// wrapper's CLR member VERBATIM, so it is answered from the wrapper's reflected surface — the same
+    /// resolver every other CLR-origin receiver asks, in the position the reference is written.
+    ///
+    /// <para>A METHOD in VALUE position is a method group nothing can spell: <c>print(xs.`Count`)</c>
+    /// emitted the group into an <c>object</c> slot and printed
+    /// <c>System.Func`2[System.Int32,System.Int32]</c> — silent wrong output — and
+    /// <c>b: bool = xs.`Count`</c> reached Roslyn as CS0428 behind SPY0908. Refused through the ONE
+    /// CLR-method-group refusal every other spelling reaches (SPY0336). CALLEE position is untouched,
+    /// so <c>xs.`Count`(1)</c> and <c>s.`ToUpper`()</c> still run, and a property or field escape
+    /// (<c>xs.`Length`</c>, <c>d.`Count`</c>) is TYPED rather than left to the permissive channel.</para>
+    ///
+    /// <para>The match must be VERBATIM: the escape names a CLR member, so <c>xs.`count`</c> — which no
+    /// CLR member spells — is not this seam's business and keeps its current answer rather than being
+    /// misnamed a method group.</para>
+    /// </summary>
+    private SemanticType? EscapedWrapperMemberType(
+        MemberAccess memberAccess, Type wrapperClr, SemanticType receiverType)
+    {
+        if (IsCurrentCallCallee(memberAccess))
+            return null;
+
+        var resolution = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge)
+            .Resolve(wrapperClr, memberAccess.Member, Discovery.ClrReceiverKind.Instance);
+
+        switch (resolution)
+        {
+            case Discovery.ClrMemberResolution.Method method when method.ClrName == memberAccess.Member:
+            case Discovery.ClrMemberResolution.MethodGroup group
+                when group.Candidates.Any(c => c.Name == memberAccess.Member):
+                return RefuseClrMethodGroupInValuePosition(memberAccess);
+
+            case Discovery.ClrMemberResolution.Property property when property.ClrName == memberAccess.Member:
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, property.ClrName);
+                return ProjectClrChar(memberAccess, property.Type);
+
+            case Discovery.ClrMemberResolution.Field field when field.ClrName == memberAccess.Member:
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, field.ClrName);
+                return ProjectClrChar(memberAccess, field.Type);
+
+            default:
+                // No instance member of the wrapper answers the escape. An EXTENSION method still
+                // binds in the emitted C# — `b.`Select`` — and is the same unspellable group, refused
+                // through the same predicate the residual seam uses (#1858).
+                return IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType)
+                    ? RefuseClrMethodGroupInValuePosition(memberAccess)
+                    : null;
+        }
     }
 
     /// <summary>
@@ -1525,13 +1612,9 @@ internal partial class TypeChecker
     /// asked the same question the emitted code will be.
     /// </summary>
     private Discovery.ClrReceiverKind ClrReceiverKindOf(MemberAccess memberAccess)
-    {
-        var receiver = memberAccess.Object;
-        var isTypeName = (receiver is Identifier id && _semanticInfo.GetIdentifierSymbol(id) is TypeSymbol)
-            || _semanticInfo.IsTypeReference(receiver);
-
-        return isTypeName ? Discovery.ClrReceiverKind.StaticType : Discovery.ClrReceiverKind.Instance;
-    }
+        => ReceiverDenotesType(memberAccess.Object)
+            ? Discovery.ClrReceiverKind.StaticType
+            : Discovery.ClrReceiverKind.Instance;
 
     /// <summary>
     /// The property or field a CALLEE-position member access resolved to, or null when it resolved
@@ -2304,6 +2387,22 @@ internal partial class TypeChecker
     /// same-named member of any kind — returns false and leaves the call on the permissive channel,
     /// which is the safe direction (D2).
     /// </summary>
+    /// <summary>
+    /// Whether <paramref name="memberAccess"/> can only be an extension/static METHOD GROUP referenced
+    /// in value position (#1858): an acceptance-surface name, on a CLR-formed receiver, where no
+    /// instance member could bind, outside callee position. The ONE predicate behind the SPY0336
+    /// refusal, asked from both the residual seam in <c>CheckMemberAccessCore</c> and the backtick
+    /// escape's own arm — the escape reaches the wrapper's CLR surface, and an extension method is
+    /// part of what C# binds there, but a <c>bytes</c> receiver returns from the
+    /// UserDefinedType-with-ClrType arm long before the residual seam, so <c>b.`Select`</c> left the
+    /// group untyped and Roslyn answered CS8917 behind SPY0908 (#1851, #1858).
+    /// </summary>
+    private bool IsClrExtensionMethodGroupInValuePosition(MemberAccess memberAccess, SemanticType receiverType)
+        => !IsCurrentCallCallee(memberAccess)
+           && Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member)
+           && TryGetClrType(receiverType) != null
+           && NoClrInstanceMemberCouldBind(receiverType, memberAccess.Member);
+
     private bool NoClrInstanceMemberCouldBind(SemanticType receiverType, string memberName)
     {
         var ownerSymbol = ResolveInstanceMemberOwnerSymbol(receiverType);
@@ -2414,17 +2513,9 @@ internal partial class TypeChecker
                 return fieldType;
             }
 
-            // Instance field via type name — error
-            if (field != null)
-            {
-                AddError(
-                    $"Cannot access instance field '{memberAccess.Member}' via type name '{typeName}'. " +
-                    "Mark it as @static or use an instance.",
-                    memberAccess.LineStart, memberAccess.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
-                    span: memberAccess.Span);
-                return SemanticType.Unknown;
-            }
+            // An instance field reached here is NOT refused a second time: TryRefuseInstanceMemberViaTypeName
+            // owns that refusal for every receiver spelling (SPY0290) and runs before this seam, so a
+            // field that reaches here is one that refusal deliberately let through (a CLR-backed symbol).
 
             // Check for static method access
             var method = typeSym.Methods.FirstOrDefault(m =>

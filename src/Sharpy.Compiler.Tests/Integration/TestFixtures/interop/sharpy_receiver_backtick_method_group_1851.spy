@@ -1,0 +1,7 @@
+# R-AP (#1851): the backtick escape binds the wrapper's CLR member verbatim — and a METHOD there is a
+# method group nothing can spell in value position. `xs.`Count`` printed
+# System.Func`2[System.Int32,System.Int32] (silent wrong output) before this rule; the CALL spelling
+# `xs.`Count`(1)` still runs, and the property escape `xs.`Length`` still reads.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.`Count`)
