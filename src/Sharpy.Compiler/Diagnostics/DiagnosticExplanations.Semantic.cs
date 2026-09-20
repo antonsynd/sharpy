@@ -1039,9 +1039,17 @@ public static partial class DiagnosticExplanations
             "match x:\n    case [1, 2, 3]:  # list patterns not yet supported\n        print(x)",
             "Use a supported pattern type such as literal patterns, binding patterns, wildcard patterns, tuple patterns, or member access patterns.");
         Add(dict, DiagnosticCodes.Semantic.BindingInOrPattern, "Binding pattern in or-pattern", "Semantic",
-            "A binding pattern was used inside an or-pattern (|). C# does not allow variable bindings in or-patterns because the variable would only be assigned in one branch.",
-            "match x:\n    case y | 2:  # binding 'y' not allowed in or-pattern\n        print(y)",
-            "Use literal patterns, wildcard patterns, or member access patterns inside or-patterns:\nmatch x:\n    case 1 | 2:\n        print(\"one or two\")");
+            "An alternative of an or-pattern (|) binds a name. C# cannot declare a variable inside an 'or' pattern, "
+            + "because the variable would be assigned on only one alternative, so no alternative kind may capture: "
+            + "a bare name (case y | 2), a class pattern (case Point(v) | Circle(v)), a reified head "
+            + "(case list[int](xs) | set[int](xs)), a sequence element (case [v] | [v, _]), a *rest capture, a tuple "
+            + "element, a union-case payload, and an 'as' nested inside an alternative all fall under the rule. "
+            + "It also applies when the alternatives bind DIFFERENT names: CPython refuses that shape outright "
+            + "(\"alternative patterns bind different names\").",
+            "match x:\n    case Point(v) | Circle(v):  # 'v' is bound by an alternative\n        print(v)",
+            "Split the alternatives into separate cases, each with its own capture:\nmatch x:\n    case Point(v):\n        print(v)\n    case Circle(v):\n        print(v)\n"
+            + "\nOr, when the whole subject is what you want, bind it with 'as' on EVERY alternative under the same name — "
+            + "that one shape lowers to a single binding outside the or:\nmatch x:\n    case (int() as v) | (str() as v):\n        print(v)");
 
         Add(dict, DiagnosticCodes.Semantic.RelationalPatternTypeMismatch, "Relational pattern type mismatch", "Semantic",
             "A relational pattern (>, <, >=, <=) was used with a non-numeric scrutinee type. Relational patterns require a numeric type.",

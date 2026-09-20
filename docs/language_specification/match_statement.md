@@ -220,9 +220,94 @@ C# `switch` already forwards `continue` to the enclosing loop.
 
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*
-- *Or-patterns use C# `or` pattern (`BinaryPattern`). A name bound on only some alternatives is rejected (SPY0359): `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern. When one name is bound inside EVERY alternative, its type is the join of the alternatives' captures through best-common-type with the scrutinee type as the slot — `case (float() as v) | (list() as v):` over an `object` scrutinee types `v` as `object`. (The bind-after form, `case float() | list() as v:`, captures the whole or-pattern and takes the scrutinee's type directly; it never reaches that join.)*
+- *Or-patterns use C# `or` pattern (`BinaryPattern`), which cannot declare a variable inside it (CS8780), so no alternative may bind a name — see [Captures in Or-Patterns](#captures-in-or-patterns) for the rule and its two cures (SPY0359). A name bound on only some alternatives is rejected the same way: `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern. When one name is bound inside EVERY alternative, its type is the join of the alternatives' captures through best-common-type with the scrutinee type as the slot — `case (float() as v) | (list() as v):` over an `object` scrutinee types `v` as `object`. (The bind-after form, `case float() | list() as v:`, captures the whole or-pattern and takes the scrutinee's type directly; it never reaches that join.)*
 - *Relational patterns use C# `RelationalPattern` and require numeric scrutinee types.*
 - *Positional patterns are mapped to property patterns using field declaration order (no `Deconstruct` required).*
+
+## Captures in Or-Patterns
+
+An **alternative** of an or-pattern may not bind a name. The rule is the same for every kind of
+alternative — a bare name, a class pattern, a reified head, a sequence element, a `*rest` capture,
+a tuple element, a union-case payload, and an `as` nested inside an alternative:
+
+<!-- spec-sweep: error SPY0359 -->
+```python
+class Point:
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Circle:
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def main() -> None:
+    o: object = Point(3)
+    match o:
+        case Point(v) | Circle(v):   # SPY0359: alternative binds 'v'
+            print(v)
+        case _:
+            print("other")
+```
+
+CPython accepts that program, because a Python capture has no static type. Sharpy's does: `v` would
+be a different type on each alternative, and the case body is checked once. The refusal names the
+rule and gives the two cures.
+
+**Split the alternatives into separate cases** — each capture is then local to its own arm, and the
+arms may have different types:
+
+```python
+class Point:
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Circle:
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def main() -> None:
+    o: object = Point(3)
+    match o:
+        case Point(v):
+            print(v)
+        case Circle(v):
+            print(v)
+        case _:
+            print("other")
+```
+
+```
+3
+```
+
+**Or capture the whole subject** with `as` on every alternative under the same name. That one shape
+binds once, outside the alternatives, so it lowers and runs — its type is the join of the
+alternatives through best-common-type (see the or-pattern note under [Supported
+Patterns](#supported-patterns)):
+
+```python
+def main() -> None:
+    o: object = 42
+    match o:
+        case (int() as v) | (str() as v):
+            print(v)
+        case _:
+            print("other")
+```
+
+```
+42
+```
+
+The alternatives must bind the **same** name: `case (int() as a) | (str() as b):` is SPY0359 too,
+for the same reason CPython refuses it (`alternative patterns bind different names`). A capture
+**outside** the or-pattern is unaffected — `case 1 | 2 as n:` binds the whole or-pattern, and an
+or-pattern nested inside a larger pattern leaves that pattern's own captures alone
+(`case (1 | 2, v):`).
 
 ## Constant Patterns
 

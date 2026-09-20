@@ -300,6 +300,10 @@ internal partial class TypeChecker
                     bool allHaveAs = orPattern.Alternatives.All(a =>
                         a is AsPattern || (a is GuardPattern gp2 && gp2.Inner is AsPattern));
 
+                    // #1920: no alternative may bind a name. Every capture route below funnels
+                    // through CheckAlternativeRefusingCaptures — see its docs for the rule.
+                    bool captureRefused = false;
+
                     if (allHaveAs)
                     {
                         // `(A() as v) | (B() as v)`: one name bound under every alternative. Its
@@ -308,19 +312,50 @@ internal partial class TypeChecker
                         // for `(float() as v) | (list() as v)` while the emitted `var v` is
                         // `object` gave CS1503 behind SPY0908 (#1663).
                         var altOperands = new List<(Expression? Node, SemanticType Type)>();
+                        var asAlts = new List<AsPattern>();
                         foreach (var alt in orPattern.Alternatives)
                         {
                             var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
                             var asAlt = (AsPattern)effectiveAlt;
-                            CheckPattern(asAlt.Inner, scrutineeType);
+                            asAlts.Add(asAlt);
+                            // The `as` name is bound OUTSIDE the C# `or` (`(A or B) and var v`), so
+                            // it lowers; a capture in the alternative's INNER pattern does not.
+                            CheckAlternativeRefusingCaptures(asAlt.Inner, scrutineeType, ref captureRefused);
                             altOperands.Add((null,
                                 _semanticInfo.GetPatternType(asAlt.Inner) ?? scrutineeType));
                         }
-                        var firstAs = (AsPattern)(orPattern.Alternatives[0] is GuardPattern gp3
-                            ? gp3.Inner : orPattern.Alternatives[0]);
+                        var firstAs = asAlts[0];
                         var joinedType = BestCommonType(altOperands, scrutineeType,
                             StorePosition.Declaration, orPattern, "or-pattern capture");
+
+                        // One name, bound under every alternative, is what the lowering emits.
+                        // Alternatives that bind DIFFERENT names have no single `var v` to emit:
+                        // only the first name was ever defined, so the body read the others as
+                        // SPY0200 "undefined identifier" with nothing naming the rule (#1920).
+                        // CPython refuses the same shape ("alternative patterns bind different
+                        // names"). Every name is still bound below so the body does not cascade.
+                        var divergent = asAlts.FirstOrDefault(
+                            a => !string.Equals(a.Name.Name, firstAs.Name.Name, StringComparison.Ordinal));
+                        if (divergent != null && !captureRefused)
+                        {
+                            captureRefused = true;
+                            AddError(
+                                "Binding patterns are not allowed inside or-patterns: alternatives bind "
+                                + $"different names ('{firstAs.Name.Name}' and '{divergent.Name.Name}'). "
+                                + "Every alternative must bind the same name, or split the alternatives "
+                                + "into separate cases",
+                                divergent.Name.LineStart, divergent.Name.ColumnStart,
+                                code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                span: divergent.Span);
+                        }
+
                         BindAsPatternCapture(firstAs, scrutineeType, capturedTypeOverride: joinedType);
+                        if (divergent != null)
+                        {
+                            foreach (var asAlt in asAlts)
+                                if (!string.Equals(asAlt.Name.Name, firstAs.Name.Name, StringComparison.Ordinal))
+                                    BindAsPatternCapture(asAlt, scrutineeType, capturedTypeOverride: joinedType);
+                        }
                         break;
                     }
 
@@ -338,10 +373,11 @@ internal partial class TypeChecker
                                     effectiveAlt.LineStart, effectiveAlt.ColumnStart,
                                     code: DiagnosticCodes.Semantic.BindingInOrPattern,
                                     span: effectiveAlt.Span);
+                                BindRefusedCapture(bindingInOr, scrutineeType);
                             }
                             else
                             {
-                                CheckPattern(alt, scrutineeType);
+                                CheckAlternativeRefusingCaptures(alt, scrutineeType, ref captureRefused);
                             }
                         }
                         else if (effectiveAlt is AsPattern asInOr)
@@ -351,6 +387,7 @@ internal partial class TypeChecker
                                 asInOr.LineStart, asInOr.ColumnStart,
                                 code: DiagnosticCodes.Semantic.BindingInOrPattern,
                                 span: asInOr.Span);
+                            BindAsPatternCapture(asInOr, scrutineeType);
                         }
                         else if (hasMemberAccess && effectiveAlt is not MemberAccessPattern && effectiveAlt is not LiteralPattern && effectiveAlt is not WildcardPattern)
                         {
@@ -362,7 +399,7 @@ internal partial class TypeChecker
                         }
                         else
                         {
-                            CheckPattern(alt, scrutineeType);
+                            CheckAlternativeRefusingCaptures(alt, scrutineeType, ref captureRefused);
                         }
                     }
                     break;
@@ -550,6 +587,93 @@ internal partial class TypeChecker
 
         CheckPattern(andPattern.Left, scrutineeType);
         CheckPattern(andPattern.Right, scrutineeType);
+    }
+
+    /// <summary>
+    /// The or-pattern capture seam (#1920). C# cannot declare a designation inside an <c>or</c>
+    /// pattern (CS8780), so a name bound by an ALTERNATIVE has no lowering — whatever the
+    /// alternative's kind. A reified head (<c>list[int](xs)</c>), a class pattern
+    /// (<c>Point(x)</c>), a property pattern (<c>Point(x=a)</c>), a sequence element
+    /// (<c>[x] | [x, _]</c>), a <c>*rest</c> capture, a tuple element, a union-case payload and a
+    /// nested <c>as</c> all produce the same CS8780 (plus CS0165 on the body's read), which
+    /// surfaced as SPY0908 before this seam existed. Only ONE capture shape lowers: <c>as</c> on
+    /// EVERY alternative under the same name, which the emitter hoists outside the C# <c>or</c> as
+    /// <c>(A or B) and var v</c> (#1663) — its caller handles that shape and passes only the
+    /// alternative's INNER pattern here.
+    /// <para>
+    /// Detection is by OBSERVATION, not by a structural walk: the pattern is checked normally and
+    /// anything it defines in the case scope is a capture. A bare name that resolved to a union
+    /// variant (<c>case Red | Yellow</c>, #1562) or to a constant (RFC 3535) defines nothing and is
+    /// therefore not a capture — no structural walker could tell those apart from a capture without
+    /// re-deriving each nested sub-pattern's own subject type.
+    /// </para>
+    /// <para>
+    /// The captured names stay bound so the case body reads them normally: the refusal is the one
+    /// diagnostic the program gets, with no "undefined identifier" cascade behind it.
+    /// <paramref name="alreadyRefused"/> keeps it to one report per or-pattern.
+    /// </para>
+    /// </summary>
+    private void CheckAlternativeRefusingCaptures(
+        Pattern alternative, SemanticType scrutineeType, ref bool alreadyRefused)
+    {
+        var scope = _symbolTable.CurrentScope;
+        var before = new HashSet<string>(
+            scope.GetAllSymbols().Select(s => s.Name), StringComparer.Ordinal);
+
+        CheckPattern(alternative, scrutineeType);
+
+        if (alreadyRefused)
+            return;
+
+        var captured = scope.GetAllSymbols()
+            .Where(s => !before.Contains(s.Name))
+            .OrderBy(s => s.DeclarationLine ?? alternative.LineStart)
+            .ThenBy(s => s.DeclarationColumn ?? alternative.ColumnStart)
+            .FirstOrDefault();
+        if (captured == null)
+            return;
+
+        alreadyRefused = true;
+        AddError(
+            $"Binding patterns are not allowed inside or-patterns: alternative binds '{captured.Name}'. "
+            + "C# cannot declare a variable inside an 'or' pattern, so split the alternatives into "
+            + "separate cases, or bind the whole subject with 'as' on every alternative: "
+            + "case (A() as v) | (B() as v):",
+            captured.DeclarationLine ?? alternative.LineStart,
+            captured.DeclarationColumn ?? alternative.ColumnStart,
+            code: DiagnosticCodes.Semantic.BindingInOrPattern,
+            span: alternative.Span);
+    }
+
+    /// <summary>
+    /// Binds a capture the or-pattern seam just REFUSED, so the refusal is the only diagnostic the
+    /// program gets. Without it the case body read an unbound name and SPY0359 arrived with a
+    /// SPY0200 "undefined identifier" behind it, pointing the reader at the body instead of the
+    /// pattern (#1920). Emission never happens — the refusal is an error — so the binding is
+    /// error-recovery state only.
+    /// </summary>
+    private void BindRefusedCapture(BindingPattern binding, SemanticType scrutineeType)
+    {
+        if (_symbolTable.CurrentScope.Lookup(binding.Name.Name, searchParent: false) != null)
+            return;
+
+        var recovery = new VariableSymbol
+        {
+            Name = binding.Name.Name,
+            Kind = SymbolKind.Variable,
+            Type = scrutineeType,
+            IsConstant = false,
+            DeclarationLine = binding.LineStart,
+            DeclarationColumn = binding.ColumnStart,
+            NameDeclarationLine = binding.Name.LineStart,
+            NameDeclarationColumn = binding.Name.ColumnStart,
+            AccessLevel = AccessLevel.Public
+        };
+
+        _symbolTable.Define(recovery);
+        SemanticBinding.SetVariableType(recovery, scrutineeType);
+        _semanticInfo.SetIdentifierSymbol(binding.Name, recovery);
+        _semanticInfo.SetTargetBinding(binding, new TargetBinding(TargetBindingKind.Declares));
     }
 
     private void CheckAsPattern(AsPattern asPattern, SemanticType scrutineeType)
