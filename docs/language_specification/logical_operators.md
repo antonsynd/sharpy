@@ -32,6 +32,30 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 
 **Deviation from Python (tuple truthiness):** every non-empty Python tuple is truthy and `()` is falsy — `bool()`/`len()`-based, like any other sequence. A fixed-arity `tuple[T1, ..., Tn]` in Sharpy is refused instead: its arity is part of its TYPE, so every value of that type has the SAME truthiness (always truthy for a non-empty arity, always falsy for the zero-arity `tuple[]` the `()` literal spells) — testing it is never a runtime question, only a compile-time constant. Test `len(t)` or a specific element instead. A tuple reached through a loose `tuple[...] | None` or a strict `tuple[...]?` wrapper is unaffected — the wrapper's own truthiness (null-check / is-some) is tested, never the tuple's.
 
+The refusal is **not uniform across every use of the word "truthiness"**: it covers the fourteen
+**truth-testing positions** — `if`, `while`, `assert`, `and`/`or`/`not`, ternary conditions,
+comprehension filters, match guards and the rest of the list above — where a tuple operand is a
+compile-time constant masquerading as a runtime test. An explicit `bool(t)` **call** is a
+conversion, not a truth-testing position, and is admitted, as in Python:
+
+```spy
+def main() -> None:
+    t = (1, "a")
+    print(bool(t))      # admitted — bool() is not a truth-testing position
+    print(len(t))       # 2 — the arity, the thing worth testing
+```
+
+Output:
+
+```
+True
+2
+```
+
+`bool(t)` answers from the arity, so it is `False` for the zero-arity `tuple[]` that `()` spells and
+`True` for every other arity, matching Python. The zero-arity case currently answers `True` — a
+known defect, [#1935](https://github.com/antonsynd/sharpy/issues/1935).
+
 A conditional expression in a truthiness position distributes the test per branch
 (`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the
 branches need not share a common type. Distribution **recurses**: a conditional nested inside a

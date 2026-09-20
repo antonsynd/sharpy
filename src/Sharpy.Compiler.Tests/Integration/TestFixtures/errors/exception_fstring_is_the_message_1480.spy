@@ -16,9 +16,12 @@
 #
 # Mutation tests (each performed 2026-08-14, red, reverted):
 #  * emitter stops applying the recorded fact -> this fixture red.
-#  * the InterpolationStrWrapping entry is deleted from SemanticInfo.MergeFrom -> this fixture red
+#  * the interpolation-lowering entry is deleted from SemanticInfo.MergeFrom -> this fixture red
 #    as well, not only the multi-file one: the per-file-to-project merge runs even for a one-file
-#    compilation.
+#    compilation. (That entry was the exception-only InterpolationStrWrapping map when this fixture
+#    was written; #1814/#1815 superseded it with the per-hole InterpolationLowering map, which
+#    carries the same fact for every hole and is merged at the same seam. The mutation and this
+#    fixture's behaviour are unchanged — only the name of the dictionary is.)
 #
 # Every line measured against python3 3.12.
 class MyErr(Exception):

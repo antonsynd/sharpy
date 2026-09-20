@@ -67,10 +67,12 @@ public class AnnotationReferenceMatrixTests
     };
 
     /// <summary>
-    /// Cells that are not live, each with the reason. Three kinds of reason appear:
-    /// a language fact (the spelling is not legal in that position), a rostered future batch, and
-    /// a MEASURED seam gap that is reported rather than encoded as an expectation -- those cells
-    /// become live when the gap closes, which is what makes the roster drain.
+    /// Cells that are not live, each with the reason. Two kinds of reason appear today:
+    /// a language fact (the spelling is not legal in that position, or the reference it records
+    /// travels a different seam than the one this matrix measures), and a MEASURED seam gap that is
+    /// reported rather than encoded as an expectation -- those cells become live when the gap closes,
+    /// which is what makes the roster drain. No entry is held open for a future batch; a cell that
+    /// needs work cites the OPEN issue that owns it.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> NotApplicable = BuildRoster();
 
@@ -80,18 +82,22 @@ public class AnnotationReferenceMatrixTests
 
         // Pattern head (`case C():` / union-case head): the classifier records the head as a
         // reference through the same SetTypeAnnotation seam #1737 uses (#1708/#1703). LIVE for the
-        // kinds that can head a class pattern; the four below cannot, and are rostered with a MEASURED
-        // reason (not "Batch 6"). enum and union do not record a reference to their OWN symbol from a
-        // pattern head — an enum is matched through a member (`case C.RED:`, a member-access pattern
-        // that references C via the recorded chain, not the annotation seam) and a union through its
-        // cases (the case head references the CASE symbol, not the union) — so they stay rostered too;
-        // their member-access chain reference is Phase 5 (#1799/#1735).
+        // kinds that can head a class pattern; the four spelling kinds below cannot (delegate, alias,
+        // generic_alias, type_parameter), and are rostered with a MEASURED reason. enum and union are
+        // rostered for a DIFFERENT, equally settled reason: they ARE matchable, but do not record a
+        // reference to their OWN symbol from a pattern head. An enum is matched through a MEMBER
+        // (`case C.RED:`) and a union through its CASES (`case Circle():`), so what gets recorded is a
+        // reference to the member or the case symbol, through the member-access CHAIN — #1735 and
+        // #1799 are both resolved, so the chain itself resolves and hover works on those heads. The
+        // annotation seam this matrix measures is simply not the seam those two spellings travel:
+        // a language fact about where the reference lives, not a gap that drains.
         roster[Key("enum", "pattern_head")] =
             "an enum is matched through a member (`case C.RED:`), a member-access pattern that "
-            + "references the enum via the recorded chain, not the annotation seam (#1735, Phase 5).";
+            + "references the enum via the recorded chain, not the annotation seam (#1735).";
         roster[Key("union", "pattern_head")] =
             "a union is matched through its cases (`case Circle():`); the case head references the "
-            + "CASE symbol, not the union symbol, and the union-symbol chain reference is Phase 5 (#1799).";
+            + "CASE symbol through the member-access chain, not the union symbol via the annotation "
+            + "seam (#1799).";
         roster[Key("delegate", "pattern_head")] =
             "a delegate type cannot head a class pattern (no instance to deconstruct or test).";
         roster[Key("alias", "pattern_head")] =

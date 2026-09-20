@@ -575,6 +575,26 @@ internal partial class RoslynEmitter
             moduleClassName, mergedClassName, extractedTypeNames, namespaceParts, ownTypeNames);
     }
 
+    /// <summary>
+    /// Derives the module class name from the source file path. <b><c>ComputeModuleShape</c> is the
+    /// authority for the NAME a consumer should read</b> (#1802): it calls this, records the answer
+    /// as <c>ModuleShape.ModuleClassName</c>, and <c>RoslynEmitter.CompilationUnit</c> publishes that
+    /// shape on <c>_moduleShape</c> / <c>_context.ModuleShape</c> before any member is generated.
+    ///
+    /// <para>Five call sites remain, and the close-out note claiming a single caller is wrong. Three
+    /// pass arguments and are inside this file's own module-class generation —
+    /// <c>ComputeModuleShape</c> itself, <c>GenerateModuleMembers</c> and
+    /// <c>GenerateModuleTestClass</c>, all of which need the <c>willGenerateMainMethod</c> /
+    /// <c>functionNames</c> inputs the recorded name does not carry. The other two are the
+    /// argument-less <c>_moduleShape?.ModuleClassName ?? GetModuleClassName()</c> fallbacks in
+    /// <c>RoslynEmitter.Expressions.cs</c> and <c>RoslynEmitter.TypeDeclarations.cs</c>: those exist
+    /// for the AST-only unit-test path, where an emitter is driven directly without
+    /// <c>ComputeModuleShape</c> ever running, and are unreachable in a real compilation because
+    /// <c>_moduleShape</c> is always set by then.</para>
+    ///
+    /// <para>Do not add a new consumer-side caller: read <c>ModuleShape.ModuleClassName</c>, so the
+    /// name a reference is spelled with is decided in one place.</para>
+    /// </summary>
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
         // Module class name is derived from the source file name

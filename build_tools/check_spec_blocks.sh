@@ -11,8 +11,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Compiler to drive the sweep with. Prefer the already-built apphost: `dotnet run` takes the
+# NuGet/MSBuild lock, so with --jobs > 1 the parallel invocations serialize on it (and collide with
+# any other dotnet running in the tree). The apphost is lock-free, so the sweep actually parallelizes.
+# Falls back to `dotnet run` when the binary has not been built yet, and an explicit SHARPYC always
+# wins.
 if [[ -z "${SHARPYC:-}" ]]; then
-    SHARPYC="dotnet run --project $REPO_ROOT/src/Sharpy.Cli --"
+    SHARPYC_APPHOST="$REPO_ROOT/src/Sharpy.Cli/bin/Debug/net10.0/sharpyc"
+    if [[ -x "$SHARPYC_APPHOST" ]]; then
+        SHARPYC="$SHARPYC_APPHOST"
+    else
+        SHARPYC="dotnet run --project $REPO_ROOT/src/Sharpy.Cli --"
+    fi
 fi
 export SHARPYC
 

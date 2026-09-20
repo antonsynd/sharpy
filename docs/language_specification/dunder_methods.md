@@ -231,11 +231,132 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__contains__(self, item: T) -> bool` | `bool Contains(T item)` method | Membership test (`in` operator) |
 | `__hash__(self) -> int` | `int GetHashCode()` override | Hash code. `@override` is optional (implicit override of `System.Object.GetHashCode`). |
 | `__getitem__(self, key: K) -> V` | `this[K key] { get; }` indexer | Index access |
-| `__iter__(self) -> T` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration (generator: annotate with element type T; compiler wraps to `IEnumerator<T>`) |
+| `__iter__(self) -> T` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration. Generator body: annotate with element type T. Non-generator body: annotate with the producer (`Iterator[T]`/`IEnumerator[T]`/`IEnumerable[T]`), unpeeled to T. See [Producer Annotations](#producer-annotations-for-__iter__-and-__reversed__) |
 | `__len__(self) -> int` | `int Count` property | Length/count |
 | `__next__(self) -> T` | `void IEnumerator<T>.MoveNext()` + `T Current` | Iterator protocol |
-| `__reversed__(self) -> T` | Custom method `IEnumerator<T> GetReverseEnumerator()` | Reverse iteration (generator: annotate with element type T; compiler wraps to `IEnumerator<T>`) |
+| `__reversed__(self) -> T` | Custom method `IEnumerator<T> GetReverseEnumerator()` | Reverse iteration. Generator body: annotate with element type T. Non-generator body: annotate with the producer (`Iterator[T]`/`IEnumerator[T]`/`IEnumerable[T]`), unpeeled to T. See [Producer Annotations](#producer-annotations-for-__iter__-and-__reversed__) |
 | `__setitem__(self, key: K, value: V) -> None` | `this[K key] { set; }` indexer | Index assignment |
+
+### Producer Annotations for `__iter__` and `__reversed__`
+
+`__iter__` and `__reversed__` are **producer dunders**: their return annotation decides the element
+type `T` of the interface the compiler synthesizes — `IEnumerable[T]` for `__iter__`,
+`IReverseEnumerable[T]` for `__reversed__`. What the annotation *means* depends on the body:
+
+| Body | The annotation names | Synthesized element |
+|------|----------------------|---------------------|
+| **generator** (contains `yield`) | the **element** | the annotation itself |
+| generator, unannotated | — | `object` |
+| **non-generator**, annotation is `Iterator[T]`, `IEnumerator[T]` or `IEnumerable[T]` | the **producer** | `T`, unpeeled from the annotation |
+| **non-generator**, any other annotation | nothing — a plain method | **no interface is synthesized** |
+
+A non-generator body returns a producer *object*, so its annotation names that producer and is
+unpeeled to its sole type argument. Exactly three producer spellings are recognized: Sharpy's own
+`Iterator[T]`, and the CLR names `IEnumerator[T]` and `IEnumerable[T]`. A name outside that set, or
+one of those names with zero or more than one type argument, is not a producer.
+
+**A non-producer annotation synthesizes nothing, and the class is simply not iterable.** The dunder
+stays an ordinary method; every consumer refuses **by name**, not with an internal error:
+
+| Consumer | Refusal |
+|----------|---------|
+| `list(c)` / `reversed(r)` | SPY0320 `Type 'C' is not iterable (missing '__iter__' method)`, SPY0203 `No overload of 'reversed' matches the argument types (R)` |
+| a declared `IEnumerable[T]` / `IReverseEnumerable[T]` slot | SPY0220 `Cannot assign type 'C' to variable of type 'IEnumerable[int32]'` |
+
+A **generator** annotated with a producer wrapper (`-> Iterator[int]` on a body that `yield`s) is
+refused at the declaration itself with SPY0220 — the two spellings are not interchangeable, and the
+message steers to the element spelling.
+
+```spy
+class Countdown:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [3, 2, 1]
+
+    def __iter__(self) -> int:          # generator: the annotation IS the element
+        for x in self.items:
+            yield x
+
+def main() -> None:
+    c = Countdown()
+    for x in c:
+        print(x)
+    print(list(c))
+```
+
+Output:
+
+```
+3
+2
+1
+[3, 2, 1]
+```
+
+```spy
+class Bag:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [3, 2, 1]
+
+    def __iter__(self) -> Iterator[int]:        # producer: unpeeled to int
+        return iter(self.items)
+
+    def __reversed__(self) -> Iterator[int]:    # producer: unpeeled to int
+        return reversed(self.items)
+
+def main() -> None:
+    b = Bag()
+    e: IEnumerable[int] = b
+    print(list(e))
+    print(list(reversed(b)))
+```
+
+Output:
+
+```
+[3, 2, 1]
+[1, 2, 3]
+```
+
+```spy
+class Shelf:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [3, 2, 1]
+
+    def __iter__(self) -> IEnumerable[int]:     # producer: unpeeled to int
+        return iter(self.items)
+
+def main() -> None:
+    s = Shelf()
+    for x in s:
+        print(x)
+    print(list(s))
+```
+
+Output:
+
+```
+3
+2
+1
+[3, 2, 1]
+```
+
+Whatever the producer spelling, the body must return a value that **is** an iterator: the
+synthesized member is `IEnumerator<T> GetEnumerator()`. Returning a `list` from a body annotated
+`Iterator[T]` or `IEnumerator[T]` is refused with SPY0260 (`Cannot return type 'list[int32]' from
+function expecting 'Iterator[int32]'`); the `IEnumerable[T]` spelling does not yet enforce this and
+reaches an internal error instead — [#1930](https://github.com/antonsynd/sharpy/issues/1930).
+
+**`__next__` overrides all of this.** When a class declares `__next__`, the element comes from
+`__next__`'s return annotation and `__iter__`'s own annotation is not consulted at all — which is
+why the self-returning `def __iter__(self) -> Self: return self` pairing works even though `Self` is
+not a producer name.
 
 ## Unsupported Dunders
 

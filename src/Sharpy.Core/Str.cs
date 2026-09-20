@@ -45,9 +45,12 @@ namespace Sharpy
             //
             // The .NET rendering stays available through the object itself for anyone who wants it.
             //
-            // SCOPE: this arm is reached by `str(e)`, `print(e)`, and f-strings (`f"{e}"` —
-            // InterpolationStrWrapping routes interpolated exception values through Builtins.Str
-            // since cc6ffdbf5). All three paths produce the message alone.
+            // SCOPE: this arm is reached by `str(e)`, `print(e)`, and f-strings (`f"{e}"` — the
+            // recorded interpolation lowering routes interpolated exception values through
+            // Builtins.Str since cc6ffdbf5; the exception-only InterpolationStrWrapping map that
+            // originally carried it was superseded by the per-hole InterpolationLowering map in
+            // #1814/#1815, which marks every plain hole Str). All three paths produce the message
+            // alone.
             if (x is Exception ex)
             {
                 return ex.Message;
