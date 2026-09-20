@@ -1,1 +1,5 @@
-@size.deleter is not a decorator in Sharpy @7:5
+SPY0148: @size.deleter is not a decorator in Sharpy @7:5
+there is no deleter form at all
+'del' is not supported (Axiom 1), so there is nothing to declare in its place
+!property deleter
+!(self, ...) -> ...:

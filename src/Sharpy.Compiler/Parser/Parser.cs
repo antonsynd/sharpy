@@ -968,10 +968,7 @@ public partial class Parser
 
             if (Current.Type == TokenType.Property)
                 throw ReportError(
-                    "@property is not a decorator in Sharpy — property is a keyword. "
-                    + "Declare 'property get p(self) -> T:' (function-style) "
-                    + "or 'property [get|set|init] p: T [= value]' (auto-property); "
-                    + "a setter is 'property set p(self, value: T) -> None:'",
+                    FormatPropertyDecoratorRefusal(PropertyDecoratorShape.Property, name: null),
                     decoratorStartLine, decoratorStartColumn,
                     DiagnosticCodes.Parser.PropertyDecoratorNotSupported, span: GetSpanFromTokens(decoratorStartToken, Current));
 
@@ -993,11 +990,13 @@ public partial class Parser
                 Advance();
             }
 
-            if (regularParts.Count == 2 && regularParts[1] is "setter" or "getter" or "deleter")
+            // A two-part decorator whose suffix is a Python accessor name (@x.setter and friends).
+            // The suffix NEVER reaches the message verbatim: it selects a shape, and the shape
+            // selects a spelling that parses (#1854).
+            if (regularParts.Count == 2
+                && ClassifyPropertyAccessorSuffix(regularParts[1]) is { } accessorShape)
                 throw ReportError(
-                    $"@{regularParts[0]}.{regularParts[1]} is not a decorator in Sharpy — property is a keyword. "
-                    + $"Declare 'property {(regularParts[1] == "deleter" ? "set" : regularParts[1])} {regularParts[0]}(self, ...) -> ...:' "
-                    + "(function-style) or 'property [get|set|init] p: T [= value]' (auto-property)",
+                    FormatPropertyDecoratorRefusal(accessorShape, regularParts[0]),
                     decoratorStartLine, decoratorStartColumn,
                     DiagnosticCodes.Parser.PropertyDecoratorNotSupported, span: GetSpanFromTokens(decoratorStartToken, Previous));
 
@@ -1121,6 +1120,116 @@ public partial class Parser
             VariableDeclaration varDecl => varDecl with { Decorators = decorators.ToImmutableArray() },
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
             _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
+        };
+    }
+
+    /// <summary>
+    /// The Python property-decorator shapes the parser refuses with SPY0148 (#1854). Every shape
+    /// routes through <see cref="FormatPropertyDecoratorRefusal"/>, so no shape can carry a steer
+    /// of its own — the previous code interpolated the decorator's suffix into the steer verbatim,
+    /// which spelled 'property setter x(self, ...)' and 'property getter x(self, ...)' (neither
+    /// parses: SPY0104) and mapped a deleter onto 'property set' (which parses, with semantics the
+    /// user did not ask for).
+    /// </summary>
+    private enum PropertyDecoratorShape
+    {
+        /// <summary>
+        /// <c>@property</c>. The decorated definition has not been parsed yet, so the steer names
+        /// <see cref="PropertyNamePlaceholder"/> rather than the property's own name.
+        /// </summary>
+        Property,
+
+        /// <summary><c>@x.getter</c>.</summary>
+        Getter,
+
+        /// <summary><c>@x.setter</c>.</summary>
+        Setter,
+
+        /// <summary>
+        /// <c>@x.deleter</c>. Sharpy has no deleter form at all — <c>del</c> is unsupported
+        /// (SPY0144, Axiom 1) — so this arm names no replacement accessor. The previous steer
+        /// mapped it onto <c>property set</c>, which is a different operation entirely.
+        /// </summary>
+        Deleter,
+    }
+
+    /// <summary>
+    /// The name the <c>@property</c> steer uses when the property's own name is not yet known.
+    /// </summary>
+    private const string PropertyNamePlaceholder = "p";
+
+    /// <summary>
+    /// Maps a two-part decorator's suffix to the property shape it imitates, or null when the
+    /// suffix is not a Python accessor name. The one place a suffix string is interpreted: a
+    /// suffix that is not rostered here falls through to ordinary decorator parsing and is
+    /// refused downstream as an unknown decorator (SPY0444).
+    /// </summary>
+    private static PropertyDecoratorShape? ClassifyPropertyAccessorSuffix(string suffix) => suffix switch
+    {
+        "getter" => PropertyDecoratorShape.Getter,
+        "setter" => PropertyDecoratorShape.Setter,
+        "deleter" => PropertyDecoratorShape.Deleter,
+        _ => null,
+    };
+
+    /// <summary>
+    /// Builds the SPY0148 refusal for a Python-style property decorator (#1854).
+    ///
+    /// <para><b>Contract.</b> Every spelling a steer names is a form the Sharpy grammar accepts —
+    /// <c>properties.md</c> §Property Forms gives exactly two: <c>property (get|set) name(self,
+    /// ...) -> T:</c> (function-style) and <c>property [get|set|init] name: T [= value]</c>
+    /// (auto). There is no <c>property getter</c>, no <c>property setter</c>, and no deleter form
+    /// of any kind.</para>
+    ///
+    /// <para>The parser does not know the host it is in (a module-level or <c>@static</c> accessor
+    /// takes no <c>self</c>, a class/struct/interface accessor does), so the steer names the
+    /// instance spelling and states the exception rather than guessing.</para>
+    ///
+    /// <para>For a two-part decorator the parser cannot know whether <paramref name="name"/> is a
+    /// property, a module or an unrelated object — <c>@deco.getter</c> is shaped exactly like
+    /// <c>@size.getter</c> — so the steer is phrased conditionally and asserts nothing about it.
+    /// </para>
+    /// </summary>
+    /// <param name="name">
+    /// The decorator's first part (<c>x</c> in <c>@x.setter</c>), or null for bare
+    /// <c>@property</c>.
+    /// </param>
+    private static string FormatPropertyDecoratorRefusal(PropertyDecoratorShape shape, string? name)
+    {
+        var target = name ?? PropertyNamePlaceholder;
+
+        // The spellings. Each one was executed through `sharpyc run` before it was written here:
+        // 'T' stands for the property's type, and the auto-property metasyntax is the spec's.
+        var getter = $"'property get {target}(self) -> T:'";
+        var setter = $"'property set {target}(self, value: T) -> None:'";
+        var autoProperty = $"'property [get|set|init] {target}: T [= value]' (auto-property)";
+        const string NoSelf = "a module-level or @static accessor takes no 'self'";
+
+        return shape switch
+        {
+            PropertyDecoratorShape.Property =>
+                "@property is not a decorator in Sharpy — property is a keyword. "
+                + $"Declare {getter} (function-style getter) or {setter} (function-style setter) "
+                + $"— {NoSelf} — or {autoProperty}",
+
+            PropertyDecoratorShape.Getter =>
+                $"@{name}.getter is not a decorator in Sharpy — property is a keyword, and there is "
+                + $"no '<name>.getter' decorator form. If '{name}' names a property, declare "
+                + $"{getter} (function-style) — {NoSelf} — or {autoProperty}",
+
+            PropertyDecoratorShape.Setter =>
+                $"@{name}.setter is not a decorator in Sharpy — property is a keyword, and there is "
+                + $"no '<name>.setter' decorator form. If '{name}' names a property, declare "
+                + $"{setter} (function-style) — {NoSelf} — or {autoProperty}",
+
+            PropertyDecoratorShape.Deleter =>
+                $"@{name}.deleter is not a decorator in Sharpy — property is a keyword, and there "
+                + "is no deleter form at all: 'del' is not supported (Axiom 1), so there is "
+                + $"nothing to declare in its place. If '{name}' names a property, declare "
+                + $"{getter} or {setter} (function-style) — {NoSelf} — or {autoProperty}",
+
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(shape), shape, "unhandled Python property-decorator shape"),
         };
     }
 

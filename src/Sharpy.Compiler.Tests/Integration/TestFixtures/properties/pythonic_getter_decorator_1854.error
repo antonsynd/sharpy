@@ -1,1 +1,6 @@
-@size.getter is not a decorator in Sharpy @7:5
+SPY0148: @size.getter is not a decorator in Sharpy @7:5
+there is no '<name>.getter' decorator form
+declare 'property get size(self) -> T:' (function-style)
+'property [get|set|init] size: T [= value]' (auto-property)
+!property getter
+!(self, ...) -> ...:
