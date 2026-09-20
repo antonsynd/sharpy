@@ -31,6 +31,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - **Static typing** - explicit nullability, non-nullable by default
 - **C# scoping rules** - no Python `global`/`nonlocal`
 - **.NET type system** - compatible with .NET generics and interfaces
+- **Reflection before names** (layer ladder, CLAUDE.md › Core & Stdlib Conventions) - protocol and operator facts about CLR-backed types come from `ProtocolMembership.HasClrProtocol` and `TypeInferenceService.TryInferClrBinaryOp` (which unions operators from BOTH operand types), keyed on CLR identity, never from a `BuiltinNames.X` alias. Before adding a name-keyed arm, check whether Core/Stdlib can express the fact in the dunder table's spelling and report that instead (the #1933 `defaultdict → dict` alias is the anti-pattern). Read the caller of any `*Fallback` before citing it as the seam
 
 ## Semantic Analysis Pipeline
 

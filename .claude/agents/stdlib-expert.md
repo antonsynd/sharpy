@@ -45,6 +45,7 @@ Some modules are written in Sharpy itself (`spy/<name>_module.spy`) and their C#
 - **No dual APIs** — never both throwing and Result variants of the same function.
 - **Public signatures use Sharpy collections** (`Sharpy.List<T>`, `Dict<K,V>`, `Set<T>`), never raw `System.Collections.Generic` or `SCG.` aliases. Internal code may use raw .NET.
 - Optional parameters: `T? = null` in C#, `T | None = None()` in `.spy`.
+- **Protocol surface = rung 2 of the layer ladder** (CLAUDE.md › Core & Stdlib Conventions): a stdlib type gets `len`/`in`/`for`/`reversed`/`==`/`bool` by implementing the dunder table's C# form (`ISized`, public `Contains(T)`, `IEnumerable<K>`, `IReverseEnumerable<T>`, `operator ==`/`!=` + `Equals` per `Dict.cs`, `IBoolConvertible`), discovered by the checker through reflection. Never rely on, or ask for, a compiler name alias (the #1933 `defaultdict → dict` alias is the anti-pattern); a spy-sourced module gets these for free from the compiler's dunder synthesis.
 
 ## Module Anatomy (reference: Zoneinfo)
 

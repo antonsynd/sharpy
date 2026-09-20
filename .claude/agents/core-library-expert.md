@@ -28,6 +28,7 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 2. **Match Python semantics** - Negative indices, slicing, same exceptions
 3. **Axiom 1 wins** - Prefer .NET when zero-cost abstraction impossible
 4. **Python exception names** - `IndexError`, `KeyError`, not `IndexOutOfRangeException`
+5. **You are rung 2 of the layer ladder** (CLAUDE.md › Core & Stdlib Conventions) - a Python behaviour on a Core type is delivered by writing the C# form from `docs/language_specification/dunder_methods.md`: `__eq__` = `operator ==`/`!=` + `Equals` (model `Dict.cs`), `__len__`/`__bool__`/`__reversed__` = `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `__contains__` = public `Contains(T)`, `__iter__` = `IEnumerable<T>`. The compiler discovers these by reflection, and operators from BOTH operand types, so a cross-type operator (`Dict == DefaultDict`) is an overload on either type. Never ask for a compiler special case for something this table can express; if a task asks for one, say so in your report
 
 ## Directory Structure
 

@@ -28,6 +28,7 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 - **SyntaxFactory only** - no string templating in CodeGen
 - **C# 9.0 for Sharpy.Core** - no file-scoped namespaces, global usings, record structs
 - **C# latest for Compiler/CLI** - `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0`
+- **Language before compiler** - the layer ladder (CLAUDE.md › Core & Stdlib Conventions): prefer `.spy` source, then Core/Stdlib C# in the dunder table's spelling discovered by reflection (operator overloads, `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `Contains(T)`, `IEnumerable<T>`), then a CLR-identity bridge rule; a name-keyed semantic rule is last and must say why. If a task asks for rung 4 with a lower rung available, stop and report
 
 ## Feature Implementation Order
 
