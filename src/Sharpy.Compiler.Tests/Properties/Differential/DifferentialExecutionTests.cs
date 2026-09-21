@@ -850,6 +850,24 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 except ValueError:
                     print("caught")
                 """),
+
+            // --- format engine (#1943, #1944, #1945): the three fixed classes as executed programs ---
+            ("format_nested_spec", """
+                print("{:{}}".format(1234, ">8"))
+                print("{0:{1}}".format(42, "05"))
+                print("{:{}}{}".format(1, ">3", 9))
+                """),
+            ("format_sign_pct", """
+                print(format(1.5, "+%"))
+                print(format(2, "+%"))
+                print(format(42, "+x"))
+                print(format(True, "+d"))
+                """),
+            ("format_str_zero_fill", """
+                print(format("ab", "05"))
+                print(format("ab", ">05"))
+                print("{:05}".format("cd"))
+                """),
         };
 
         var list = new List<Program>(items.Length);
