@@ -1011,12 +1011,21 @@ internal partial class TypeChecker
             }
         }
 
+        // Substitute type parameters through the SAME path positional patterns use (P13 D7): a
+        // generic union case's field is declared as `T`, so `case Node(value=7):` on `Tree[int]` must
+        // type the field sub-pattern against `int32`, not the unsubstituted `T` (which reported a
+        // spurious SPY0220 "'int32' incompatible with 'T'"). fieldTypes[i] corresponds to
+        // typeSymbol.Fields[i]; index by the field's position so the lookup is by name AND substituted.
+        var fieldTypes = typeSymbol != null
+            ? GetUnionCaseFieldTypes(typeSymbol, scrutineeType)
+            : null;
+
         foreach (var field in propertyPattern.Fields)
         {
             if (typeSymbol != null)
             {
-                var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
-                if (fieldSymbol == null)
+                var fieldIndex = typeSymbol.Fields.FindIndex(f => f.Name == field.Name);
+                if (fieldIndex < 0)
                 {
                     AddError(
                         $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
@@ -1026,7 +1035,7 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    CheckPattern(field.Pattern, fieldSymbol.Type);
+                    CheckPattern(field.Pattern, fieldTypes![fieldIndex]);
                 }
             }
             else
@@ -1383,6 +1392,15 @@ internal partial class TypeChecker
     private (TypeSymbol? UnionSymbol, List<SemanticType>? TypeArgs) GetUnionSymbolAndTypeArgs(
         SemanticType scrutineeType)
     {
+        // A `T | None` (NullableType) union scrutinee is matched through the payload union's cases —
+        // the None value is a separate arm (P13 D6). Strip the nullable once, exactly as the sequence
+        // helper ResolveSequenceSubject does; without this a union-case head on `Tree[int] | None`
+        // failed to resolve and reported SPY0202 "Unknown type 'Node'".
+        if (scrutineeType is NullableType nullable)
+        {
+            return GetUnionSymbolAndTypeArgs(nullable.UnderlyingType);
+        }
+
         if (scrutineeType is UserDefinedType udt
             && udt.Symbol?.TypeKind == TypeKind.Union)
         {
