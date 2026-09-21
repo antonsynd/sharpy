@@ -89,9 +89,12 @@ def scan_allowlist(path: str) -> list[Row]:
             cites=cites, exempt=exempt,
         ))
 
-        in_paragraph = False
-        paragraph_cites = []
-        paragraph_has_deviations = False
+        # A comment header describes the whole block of keys beneath it (see the file
+        # headers: one deviations.yaml/issue comment governs the run of `fixture::…`
+        # rows that follows). Paragraph state therefore persists across consecutive
+        # data rows and is cleared only by the blank line that ends the block — NOT
+        # after the first row. Resetting here stranded rows 2..N of every multi-row
+        # block, making them read as uncited under DD14 (#1939).
 
     return rows
 

@@ -82,6 +82,56 @@ def test_row_with_deviations_yaml_exempt(tmp_path):
         assert exc.value.code == 0
 
 
+def test_multi_row_block_all_inherit_paragraph_cite(tmp_path):
+    # A comment header governs the WHOLE run of rows beneath it, not just the first. Under the
+    # paragraph-reset bug, rows 2..N were stranded as uncited (cites == []) and — post-DD14 —
+    # flagged as offences. All three must inherit the header's cite.
+    content = "# Known block (#1234)\nfixture::a\nfixture::b\nfixture::c\n"
+    path = _write(tmp_path / "test-allowlist.txt", content)
+    rows = mod.scan([path])
+    assert [r.cites for r in rows] == [[1234], [1234], [1234]]
+
+    # With the cite inherited by every row, an OPEN issue is green (buggy scanner would have
+    # reported rows 2..N as uncited offences → exit 1).
+    with patch.object(mod, "query_states", _stub_states({1234: "OPEN"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 0
+
+
+def test_multi_row_block_all_flag_when_cite_closes(tmp_path):
+    # Positive control for the row above: the same block citing a CLOSED issue flags every row.
+    content = "# Known block (#1234)\nfixture::a\nfixture::b\nfixture::c\n"
+    path = _write(tmp_path / "test-allowlist.txt", content)
+    with patch.object(mod, "query_states", _stub_states({1234: "CLOSED"})):
+        sys.argv = ["prog", "--paths", path]
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 1
+
+
+def test_multi_row_deviations_block_all_exempt(tmp_path):
+    # A deviations.yaml header exempts every row beneath it, not just the first.
+    content = "# deviations.yaml: some-id. Permanent.\nfixture::a\nfixture::b\nfixture::c\n"
+    path = _write(tmp_path / "test-allowlist.txt", content)
+    rows = mod.scan([path])
+    assert [r.exempt for r in rows] == [True, True, True]
+
+
+def test_blank_line_ends_the_block(tmp_path):
+    # Paragraph state persists across rows but a blank line is the block boundary: a bare row after
+    # the blank is genuinely uncited, and a fresh header starts a fresh cite (no cross-block bleed).
+    content = "# Block one (#1111)\nfixture::a\nfixture::b\n\nfixture::orphan\n# Block two (#2222)\nfixture::c\n"
+    path = _write(tmp_path / "test-allowlist.txt", content)
+    rows = mod.scan([path])
+    by_line = {r.line: r.cites for r in rows}
+    assert by_line[2] == [1111]
+    assert by_line[3] == [1111]
+    assert by_line[5] == []      # orphan after blank line: uncited
+    assert by_line[7] == [2222]  # new block: its own cite, not 1111
+
+
 # ── C# Skip tests ─────────────────────────────────────────────────────────────
 
 
