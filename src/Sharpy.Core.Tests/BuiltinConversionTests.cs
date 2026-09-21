@@ -242,6 +242,25 @@ public class BuiltinConversion_Tests
         Bool((object?)System.ValueTuple.Create(1, 2)).Should().BeTrue();
     }
 
+    [Fact]
+    public void Bool_HasDedicatedITupleOverload()
+    {
+        // The compiler discovers Builtins.Bool(ITuple) by reflection and binds bool(()) to it
+        // (#1935). The value-level rows above cannot discriminate that overload from the boxed
+        // Bool(object?) arm, which also answers from the arity — both print False for an empty
+        // tuple. Type.GetMethod(name, types) is not a discriminator either: its default binder
+        // accepts the implicit ITuple -> object conversion and returns Bool(object?) once the
+        // typed overload is gone (measured with the overload renamed). Exact parameter-type
+        // identity is the fact the checker's overload index records.
+        typeof(Builtins).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(m => m.Name == nameof(Bool) && !m.IsGenericMethod)
+            .Select(m => m.GetParameters())
+            .Should().ContainSingle(
+                parameters => parameters.Length == 1
+                    && parameters[0].ParameterType == typeof(System.Runtime.CompilerServices.ITuple),
+                "bool(()) binds a dedicated Bool(ITuple) overload; without it the checker selects Bool(object?) (#1935)");
+    }
+
     // ── Float ──
 
     [Fact]
