@@ -278,6 +278,102 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             + string.Join("\n", failures.Select(f => "  " + f)));
     }
 
+    /// <summary>
+    /// A string-operand spec CPython refuses. The f-string route with a LITERAL spec is refused at
+    /// compile time (SPY0609); <c>format(v, spec)</c> and <c>"{:spec}".format(v)</c> with a literal
+    /// spec get no static diagnostic (the inertness trap — sibling issue filed) and are refused by
+    /// Core at runtime with the identical wording. <c>FStringOnly</c> marks the conversion cell,
+    /// whose kind (<c>Str</c> via <c>!r</c>) only exists on the f-string route.
+    /// </summary>
+    private sealed record StrRefusalCell(string Label, string Decl, string Value, string Spec, string Message, bool FStringOnly = false);
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_StringOperandRefusals_FireOnEveryRoute()
+    {
+        var cells = StringOperandRefusalCells().ToList();
+        Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct().Count());
+
+        var failures = new List<string>();
+        foreach (var cell in cells)
+        {
+            var declLine = cell.Decl.Length > 0 ? "    " + cell.Decl + "\n" : "";
+
+            // Static (f-string, literal spec) → SPY0609 with CPython's wording.
+            var staticSource = "def main() -> None:\n" + declLine
+                + $"    print(f\"{{{cell.Value}:{cell.Spec}}}\")\n";
+            var staticResult = CompileAndExecute(staticSource, executionTimeoutMs: 15_000);
+            if (staticResult.Success)
+            {
+                failures.Add($"{cell.Label}/static: expected SPY0609 but the program printed '{staticResult.StandardOutput.TrimEnd()}'");
+            }
+            else
+            {
+                var spy0609 = staticResult.RawDiagnostics
+                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification).ToList();
+                if (spy0609.Count == 0)
+                    failures.Add($"{cell.Label}/static: expected SPY0609, got: {string.Join("; ", staticResult.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}");
+                else if (!spy0609.Any(d => d.Message.Contains(cell.Message, StringComparison.Ordinal)))
+                    failures.Add($"{cell.Label}/static: expected '{cell.Message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
+            }
+
+            if (cell.FStringOnly)
+                continue;
+
+            // The two RUNTIME arms: a literal spec through format() and through str.format gets no
+            // static diagnostic, so Core must raise the identical ValueError at runtime.
+            foreach (var (arm, expr) in new[]
+            {
+                ("builtin", $"format({cell.Value}, \"{cell.Spec}\")"),
+                ("strformat", $"\"{{:{cell.Spec}}}\".format({cell.Value})"),
+            })
+            {
+                var rtSource = "def main() -> None:\n" + declLine
+                    + $"    print({expr})\n";
+                var rtResult = CompileAndExecute(rtSource, executionTimeoutMs: 15_000);
+                if (rtResult.Success)
+                {
+                    failures.Add($"{cell.Label}/{arm}: expected a runtime ValueError but printed '{rtResult.StandardOutput.TrimEnd()}'");
+                    continue;
+                }
+                var haystack = rtResult.StandardError + "\n" + string.Join("\n", rtResult.CompilationErrors);
+                if (!haystack.Contains(cell.Message, StringComparison.Ordinal))
+                    failures.Add($"{cell.Label}/{arm}: expected '{cell.Message}', got stderr: {rtResult.StandardError.Trim()}");
+            }
+        }
+
+        Output.WriteLine($"String-operand refusal cells: {cells.Count}. Failures: {failures.Count}");
+        foreach (var f in failures)
+            Output.WriteLine("  " + f);
+
+        Assert.True(failures.Count == 0,
+            $"{failures.Count} string-operand refusal routes disagree with python3:\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    private static IEnumerable<StrRefusalCell> StringOperandRefusalCells()
+    {
+        const string decl = "s: str = \"ab\"";
+        // python3 -c "for spec in ['=5','0=5','x=5','+5','-5',' 5','#5']: ..."
+        yield return new("refuse.str_eq", decl, "s", "=5", "'=' alignment not allowed in string format specifier");
+        yield return new("refuse.str_zero_eq", decl, "s", "0=5", "'=' alignment not allowed in string format specifier");
+        yield return new("refuse.str_fill_eq", decl, "s", "x=5", "'=' alignment not allowed in string format specifier");
+        yield return new("refuse.str_sign_plus", decl, "s", "+5", "Sign not allowed in string format specifier");
+        yield return new("refuse.str_sign_minus", decl, "s", "-5", "Sign not allowed in string format specifier");
+        yield return new("refuse.str_sign_space", decl, "s", " 5", "Space not allowed in string format specifier");
+        yield return new("refuse.str_alt", decl, "s", "#5", "Alternate form (#) not allowed in string format specifier");
+        // Ordering: '=+5' parses '=' as align and '+' as a real sign, so the SIGN refusal wins;
+        // '+=5' parses '+' as fill and '=' as align, so no sign is parsed and the '=' refusal wins.
+        // (python3: format('ab','=+5') -> Sign not allowed; format('ab','+=5') -> '=' alignment.)
+        yield return new("refuse.str_sign_before_eq", decl, "s", "=+5", "Sign not allowed in string format specifier");
+        yield return new("refuse.str_fill_then_eq", decl, "s", "+=5", "'=' alignment not allowed in string format specifier");
+        // The conversion cell: !r maps the operand kind to Str, so f"{5!r:=8}" is refused. This is
+        // the f-string static route only (there is no format()/str.format literal conversion route).
+        // python3 -c "'{!r:=8}'.format(5)"  =>  ValueError: '=' alignment not allowed in string format specifier
+        yield return new("refuse.str_conv_eq", "", "5!r", "=8",
+            "'=' alignment not allowed in string format specifier", FStringOnly: true);
+    }
+
     private static IEnumerable<RefusalCell> RefusalCells()
     {
         // python3 -c "format(1234567, ',b')"  =>  ValueError: Cannot specify ',' with 'b'.
@@ -421,5 +517,16 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("sign.type_X", "i42: int = 42", "i42", "+X", "+2A");
         yield return new("sign.type_o", "i42: int = 42", "i42", "+o", "+52");
         yield return new("sign.type_b", "i42: int = 42", "i42", "+b", "+101010");
+
+        // ---- #1945: the '0' flag zero-fills a STRING at its '<' default; explicit align overrides -
+        // python3 -c "print(repr(format('ab','05')), repr(format('ab','>05')), repr(format('ab','<05')))"
+        yield return new("zero.str_fill_default_left", "sab: str = \"ab\"", "sab", "05", "ab000");
+        yield return new("zero.str_explicit_right", "sab: str = \"ab\"", "sab", ">05", "000ab");
+        yield return new("zero.str_explicit_left", "sab: str = \"ab\"", "sab", "<05", "ab000");
+        yield return new("zero.str_prec", "sab: str = \"ab\"", "sab", "05.1", "a0000");
+        // python3 -c "print(repr(format('abcdef','.3')))"  =>  'abc'
+        yield return new("prec.str", "sabc: str = \"abcdef\"", "sabc", ".3", "abc");
+        // Numeric controls that must stay green: bool/int '0'-fill still =-synthesises.
+        yield return new("zero.bool", "tt: bool = True", "tt", "05", "00001");
     }
 }
