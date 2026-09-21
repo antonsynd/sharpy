@@ -2907,21 +2907,6 @@ This is the fallback overload for dynamically-typed scenarios.
 
 - `TypeError` -- Thrown when *obj* is null or has no len()
 
-### `format_align(value: str, width: int, fill: char, alignment: char) -> str`
-
-Aligns a string within a field of given width using the specified fill character
-and alignment mode. Used by f-string format spec codegen for custom fill characters
-and center-alignment.
-
-**Parameters:**
-
-- `value` (str) -- The string to align
-- `width` (int) -- The total field width
-- `fill` (char) -- The fill character for padding
-- `alignment` (char) -- Alignment mode: '<' left, '>' right, '^' center, '=' numeric sign-aware
-
-**Returns:** The aligned string, or *value* unchanged if already wider than *width*
-
 ### `assigned(flag: ref bool, value: T) -> T`
 
 Records that a runtime-checked local has been assigned and forwards the stored value, so
