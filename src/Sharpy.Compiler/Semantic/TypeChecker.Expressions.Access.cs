@@ -1310,7 +1310,57 @@ internal partial class TypeChecker
         if (ResolveInstanceMemberOwnerSymbol(receiverType)?.Methods.Any(m => m.Name == memberAccess.Member) == true)
             return null;
 
+        // A member that resolves to a CLR PROPERTY/FIELD on the receiver's CLR surface is a value read,
+        // not a method group — let it through (#1942, ClrCallRouteMatrix params_tail).
+        if (ResolvesToClrValueMember(memberAccess, receiverType))
+            return null;
+
         return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="memberAccess"/>'s member resolves to a CLR PROPERTY or FIELD on the
+    /// receiver's CLR surface — a VALUE read, not a method group (#1942). `e.inner_exceptions.count`
+    /// on a bridge-collapsed CLR collection (ReadOnlyCollection&lt;Exception&gt;) reads the `Count`
+    /// property (= 2); the R-AP value-position refusal must let such a member through. Uses the same
+    /// <see cref="Discovery.ClrMemberTypeResolver"/> as <see cref="EscapedWrapperMemberType"/>, which
+    /// already types a property/field and refuses only a method/method-group.
+    /// </summary>
+    private bool ResolvesToClrValueMember(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (ReflectedReceiverClrType(memberAccess, receiverType) is not { } clrType)
+            return false;
+
+        var resolution = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge)
+            .Resolve(clrType, memberAccess.Member, Discovery.ClrReceiverKind.Instance);
+        return resolution is Discovery.ClrMemberResolution.Property or Discovery.ClrMemberResolution.Field;
+    }
+
+    /// <summary>
+    /// The CLR type the EMITTER will read the member from — the receiver's ACTUAL reflected type, not
+    /// the bridge-collapsed Sharpy wrapper (#1942). For a native <c>list[int]</c> receiver this is
+    /// <c>Sharpy.List&lt;int&gt;</c> (whose <c>count</c> is the occurrences METHOD, so the R-AP refusal
+    /// stands). For a bridge-collapsed CLR collection — <c>e.inner_exceptions</c> is
+    /// <c>AggregateException.InnerExceptions</c> → <c>ReadOnlyCollection&lt;Exception&gt;</c>,
+    /// collapsed by the bridge to <c>list[Exception]</c> whose <c>TryGetClrType</c> is the Sharpy.List
+    /// wrapper — the emitter emits <c>e.InnerExceptions.Count</c> against the real reflected type, whose
+    /// <c>Count</c> IS a public property. Recovered from the receiver expression's resolved CLR member
+    /// (the property/field/getter it emits to); falls back to the wrapper for a non-CLR-member receiver.
+    /// </summary>
+    private Type? ReflectedReceiverClrType(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (memberAccess.Object is MemberAccess receiverMember
+            && _semanticInfo.GetResolvedClrMemberNameForIr(receiverMember) is { } ownerMemberName
+            && _semanticInfo.GetExpressionType(receiverMember.Object) is { } ownerType
+            && TryGetClrType(ownerType) is { } ownerClr)
+        {
+            if (ownerClr.GetProperty(ownerMemberName) is { } prop)
+                return prop.PropertyType;
+            if (ownerClr.GetField(ownerMemberName) is { } field)
+                return field.FieldType;
+        }
+
+        return TryGetClrType(receiverType);
     }
 
     /// <summary>

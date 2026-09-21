@@ -2768,6 +2768,12 @@ internal partial class TypeChecker
             || !IsSharpyBuiltinSpellingReceiver(receiverType))
             return null;
 
+        // A member that resolves to a CLR property/field on the receiver's CLR surface is a value read,
+        // not a method group (`e.inner_exceptions.count` → the Count property on a bridge-collapsed CLR
+        // collection = 2) — the R-AP refusal must let it through (#1942, ClrCallRouteMatrix params_tail).
+        if (ResolvesToClrValueMember(memberAccess, receiverType))
+            return null;
+
         return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
     }
 
