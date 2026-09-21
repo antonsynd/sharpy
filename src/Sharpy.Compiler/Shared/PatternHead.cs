@@ -53,6 +53,23 @@ internal readonly record struct PatternHead
     public Pattern Lodge { get; init; }
 
     /// <summary>
+    /// Strips every leading <see cref="AsPattern"/> from <paramref name="pattern"/> and returns the
+    /// pattern the capture wraps. An <c>as</c> capture never changes what its inner pattern matches
+    /// (<c>case 99 as n</c> matches exactly what <c>case 99</c> does), so every consumer that reads
+    /// a fact of the pattern — its recorded type, its coverage, its totality — reads it off the
+    /// inner pattern through this ONE unwrap, for EVERY inner kind (literal, or-pattern, binding,
+    /// member access, head). <see cref="TryGet"/> unwraps only over a head; a consumer that used it as
+    /// its sole unwrap lost the recorded type of <c>case 99 as n</c> and let a subsumed arm reach C#
+    /// as CS8120 behind SPY0908 (plan-6ca898 P13 verify, sibling of #1672).
+    /// </summary>
+    public static Pattern Unwrap(Pattern pattern)
+    {
+        while (pattern is AsPattern asPattern)
+            pattern = asPattern.Inner;
+        return pattern;
+    }
+
+    /// <summary>
     /// Classifies <paramref name="pattern"/> as a class-pattern head, unwrapping a leading
     /// <see cref="AsPattern"/> (its capture does not change the head). Returns false for every pattern
     /// that is not a head (wildcard, binding, literal, member-access, tuple, list, relational, …).

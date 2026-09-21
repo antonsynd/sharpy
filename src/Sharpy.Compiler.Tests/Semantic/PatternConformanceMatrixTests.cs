@@ -1068,4 +1068,155 @@ def main() -> None:
             d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
             $"SPY0220 'str' incompatible with 'int32'\n{source}");
     }
+
+    // ══ Subsumption under an `as` capture (plan-6ca898 P13 verify, sibling of #1672) ═══════════
+    // Contract: `case P as n` is exactly as reachable as `case P` — the capture does not change what
+    // the arm matches, so a later arm subsumed by an earlier total-within-its-type arm is SPY0700
+    // with or without the capture, for EVERY inner kind (literal, head in all three spellings,
+    // or-pattern), in both statement and expression position. The as-less twin is the same cell
+    // with the capture removed, so the two verdicts are asserted together. Before the fix the
+    // validator's recorded-type lookup unwrapped `as` only over a HEAD: `case 99 as n` after
+    // `case int():` reached C# as CS8120 behind SPY0908 (a regression from 34ec57355).
+
+    private const string BoxClass = @"
+class Box:
+    a: int
+    def __init__(self, a: int) -> None:
+        self.a = a
+";
+
+    // (position, earlier total arm, later inner pattern, a subject the LATER arm matches)
+    public static IEnumerable<object[]> AsSubsumptionCells()
+    {
+        foreach (var position in new[] { "statement", "expression" })
+        {
+            yield return new object[] { position, "int()", "99", "99" };
+            yield return new object[] { position, "int()", "int()", "1" };
+            yield return new object[] { position, "int()", "1 | 2", "1" };
+            yield return new object[] { position, "Box()", "Box(1)", "Box(1)" };
+            yield return new object[] { position, "Box()", "Box(a=1)", "Box(1)" };
+        }
+    }
+
+    // The reorder control needs a later arm that is STRICTLY more specific than the earlier one;
+    // `int()` after `int() as n` is subsumed in either order, so that cell has no reorder twin.
+    public static IEnumerable<object[]> AsSubsumptionReorderCells()
+        => AsSubsumptionCells().Where(c => (string)c[1] != (string)c[2]);
+
+    private static string SubsumptionSource(string position, string earlier, string later, string subject)
+    {
+        var arms = position == "statement"
+            ? $@"    match o:
+        case {earlier}:
+            print(""earlier"")
+        case {later}:
+            print(""later"")
+        case _:
+            print(""other"")"
+            : $@"    s: str = match o:
+        case {earlier}: ""earlier""
+        case {later}: ""later""
+        case _: ""other""
+    print(s)";
+        return $@"{BoxClass}
+def check(o: object) -> None:
+{arms}
+
+def main() -> None:
+    check({subject})
+";
+    }
+
+    [Theory]
+    [MemberData(nameof(AsSubsumptionCells))]
+    public void Subsumption_AsCaptureIsTransparent_SPY0700(
+        string position, string earlier, string later, string subject)
+    {
+        var withAs = CompileAndExecute(SubsumptionSource(position, earlier, $"{later} as n", subject));
+        var without = CompileAndExecute(SubsumptionSource(position, earlier, later, subject));
+
+        withAs.Success.Should().BeFalse(
+            $"[{position}] `case {earlier}:` covers every value `case {later} as n:` can match, so the "
+            + $"later arm is unreachable and must be refused statically. Output: {withAs.StandardOutput}");
+        withAs.RawDiagnostics.Should().Contain(d => d.Code == SPY0700,
+            $"[{position}] the refusal is SPY0700, never SPY0908/CS8120. Diagnostics: "
+            + $"{string.Join(" | ", withAs.CompilationErrors)}");
+
+        without.Success.Should().BeFalse(
+            $"[{position}] the as-less twin `case {later}:` is the same cell. Output: {without.StandardOutput}");
+        without.RawDiagnostics.Should().Contain(d => d.Code == SPY0700,
+            $"[{position}] as-less twin: SPY0700. Diagnostics: {string.Join(" | ", without.CompilationErrors)}");
+    }
+
+    [Theory]
+    [MemberData(nameof(AsSubsumptionReorderCells))]
+    public void Subsumption_AsCapture_ReorderedSpecificFirst_Runs(
+        string position, string earlier, string later, string subject)
+    {
+        // Positive control for the cells above: the same arms with the specific arm FIRST are all
+        // reachable; the program runs and the specific arm takes the subject.
+        var source = SubsumptionSource(position, $"{later} as n", earlier, subject);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{position}] specific-first is reachable and must not be refused. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("earlier", source);
+    }
+
+    [Theory]
+    [InlineData("statement")]
+    [InlineData("expression")]
+    public void Subsumption_AsOverBinding_IsTheCatchAll_Runs(string position)
+    {
+        // `case y as n` binds everything: it is not subsumed by `case int():` over object (it is the
+        // total arm), so the program runs. Anchored to a str subject so the binding arm is observed.
+        var arms = position == "statement"
+            ? @"    match o:
+        case int():
+            print(""int"")
+        case y as n:
+            print(n)"
+            : @"    s: str = match o:
+        case int(): ""int""
+        case y as n: str(n)
+    print(s)";
+        var source = $@"
+def check(o: object) -> None:
+{arms}
+
+def main() -> None:
+    check(""bound"")
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{position}] a binding under `as` is the catch-all, not a subsumed arm. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("bound", source);
+    }
+
+    [Theory]
+    [InlineData("Box(1) as n")]
+    [InlineData("Box(a=1) as n")]
+    [InlineData("Box() as n")]
+    public void AsCapture_EveryHeadSpelling_BindsTheHeadType(string pattern)
+    {
+        // The capture is narrowed through the ONE classifier: `n` is a Box under every head spelling,
+        // so `n.a` resolves. Only the Type spelling used to narrow; the other two left `n: object`
+        // (SPY0203 on `n.a`).
+        var source = $@"{BoxClass}
+def check(o: object) -> None:
+    match o:
+        case {pattern}:
+            print(n.a)
+        case _:
+            print(""other"")
+
+def main() -> None:
+    check(Box(1))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"`case {pattern}:` binds n: Box. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("1", source);
+    }
 }

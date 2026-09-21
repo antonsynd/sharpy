@@ -717,13 +717,16 @@ internal partial class TypeChecker
     {
         var capturedType = capturedTypeOverride ?? scrutineeType;
 
-        if (capturedTypeOverride == null && asPattern.Inner is TypePattern typeInner
-            && _semanticInfo.GetPatternType(typeInner) is { } patternType)
+        if (capturedTypeOverride == null && PatternHead.TryGet(asPattern.Inner, out var innerHead)
+            && _semanticInfo.GetPatternType(innerHead.Lodge) is { } patternType)
         {
             // The inner pattern has already been classified by the CheckPattern call above —
             // ClassifyPatternClassTest records a type on every class pattern it accepts — so this
             // READS that fact instead of classifying a second time. Classifying twice reported the
-            // same refusal twice and lodged the lowering twice (#1670).
+            // same refusal twice and lodged the lowering twice (#1670). Every head spelling narrows
+            // the capture through the ONE classifier (DD8): `case Box(1) as n` and `case Box(a=1) as n`
+            // bind `n: Box` exactly as `case Box() as n` does — only the Type spelling used to, so
+            // the other two left `n` at the scrutinee's `object` (plan-6ca898 P13 verify).
             capturedType = patternType;
         }
 

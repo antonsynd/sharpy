@@ -100,14 +100,17 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
             {
                 if (arms[j].Guard != null)
                     continue;
-                var laterType = GetPatternRecordedType(arms[j].Pattern, context.SemanticInfo);
-                if (TypeSubsumes(earlierType, laterType))
+                var laterType = SubsumedLaterType(earlierType, arms[j].Pattern, context.SemanticInfo);
+                if (laterType != null)
                 {
+                    var laterDescription = PatternHead.Unwrap(arms[j].Pattern) is OrPattern
+                        ? "every alternative of this or-pattern"
+                        : $"this '{laterType.GetDisplayName()}' pattern";
                     AddError(
                         context,
                         $"This arm is unreachable: an earlier arm matches every "
-                        + $"'{earlierType.GetDisplayName()}', which covers this "
-                        + $"'{laterType!.GetDisplayName()}' pattern. Move this arm before it, or "
+                        + $"'{earlierType.GetDisplayName()}', which covers "
+                        + $"{laterDescription}. Move this arm before it, or "
                         + "guard the earlier arm",
                         arms[j].Pattern.LineStart, arms[j].Pattern.ColumnStart,
                         code: DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
@@ -115,6 +118,35 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// The recorded type of the later arm when <paramref name="earlierType"/> subsumes it, else
+    /// null. An <c>as</c> capture is transparent (<see cref="PatternHead.Unwrap"/> — the capture does
+    /// not change what the arm matches, so <c>case 99 as n</c> is exactly as reachable as
+    /// <c>case 99</c>); an or-pattern is subsumed only when EVERY alternative is (C# reports CS8120
+    /// on the whole case, never on one redundant alternative), and reports its first alternative's
+    /// type.
+    /// </summary>
+    private static SemanticType? SubsumedLaterType(
+        SemanticType earlierType, Pattern later, SemanticInfo? info)
+    {
+        later = PatternHead.Unwrap(later);
+        if (later is OrPattern orPattern)
+        {
+            SemanticType? first = null;
+            foreach (var alternative in orPattern.Alternatives)
+            {
+                var alternativeType = SubsumedLaterType(earlierType, alternative, info);
+                if (alternativeType == null)
+                    return null;
+                first ??= alternativeType;
+            }
+            return first;
+        }
+
+        var laterType = GetPatternRecordedType(later, info);
+        return TypeSubsumes(earlierType, laterType) ? laterType : null;
     }
 
     /// <summary>
@@ -135,8 +167,14 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
             && head.SubPatterns.All(sp => ExhaustivenessHelper.IsTotal(sp, info));
     }
 
+    /// <summary>
+    /// The type the checker recorded for the pattern's type test — the head's tested type or a
+    /// literal's type — read off the pattern under any <c>as</c> capture
+    /// (<see cref="PatternHead.Unwrap"/>). Null for a pattern that does not test a type.
+    /// </summary>
     private static SemanticType? GetPatternRecordedType(Pattern pattern, SemanticInfo? info)
     {
+        pattern = PatternHead.Unwrap(pattern);
         if (PatternHead.TryGet(pattern, out var head))
             return info?.GetPatternType(head.Lodge);
         return pattern switch
