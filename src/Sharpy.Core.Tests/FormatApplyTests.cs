@@ -110,6 +110,12 @@ public class FormatApplyTests
     [InlineData("hello", ".3", "hel")]         // format('hello', '.3')
     [InlineData("hi", ">5", "   hi")]          // format('hi', '>5')
     [InlineData("hi", "*^6", "**hi**")]        // format('hi', '*^6')
+    // --- #1945: the '0' flag on a string is fill='0' at the string default align '<' ---
+    [InlineData("ab", "05", "ab000")]          // format('ab', '05')  — NOT '000ab'
+    [InlineData("ab", ">05", "000ab")]         // format('ab', '>05')
+    [InlineData("ab", "<05", "ab000")]         // format('ab', '<05')
+    [InlineData("ab", "05.1", "a0000")]        // format('ab', '05.1')
+    [InlineData("abcdef", ".3", "abc")]        // format('abcdef', '.3')
     public void Apply_MatchesCPython(object value, string spec, string expected)
     {
         PyFormat.Apply(value, spec).Should().Be(expected);
@@ -238,5 +244,27 @@ public class FormatApplyTests
         // The positive control: 'c' without a sign is unaffected.
         // python3 -c "print(format(65, 'c'))"  =>  A
         PyFormat.Apply(65, "c").Should().Be("A");
+    }
+
+    // ---- #1945: string operands refuse sign / z / '#' / '=' in CPython's order and wording ----
+
+    [Theory]
+    [InlineData("=5", "'=' alignment not allowed in string format specifier")]        // format('ab','=5')
+    [InlineData("0=5", "'=' alignment not allowed in string format specifier")]       // format('ab','0=5')
+    [InlineData("x=5", "'=' alignment not allowed in string format specifier")]       // format('ab','x=5')
+    [InlineData("^=5", "'=' alignment not allowed in string format specifier")]       // format('ab','^=5')
+    [InlineData("+5", "Sign not allowed in string format specifier")]                 // format('ab','+5')
+    [InlineData("-5", "Sign not allowed in string format specifier")]                 // format('ab','-5')
+    [InlineData(" 5", "Space not allowed in string format specifier")]                // format('ab',' 5')
+    [InlineData("#5", "Alternate form (#) not allowed in string format specifier")]   // format('ab','#5')
+    [InlineData("z5", "Negative zero coercion (z) not allowed in string format specifier")] // format('ab','z5')
+    // Ordering: with '+' as a real sign and '=' as align, the sign refusal wins ('=+5'); with '+'
+    // as a fill and '=' as align, no sign is parsed so the '=' refusal wins ('+=5').
+    [InlineData("=+5", "Sign not allowed in string format specifier")]                // format('ab','=+5')
+    [InlineData("+=5", "'=' alignment not allowed in string format specifier")]       // format('ab','+=5')
+    public void Apply_StringOperand_RefusesWithCPythonWording(string spec, string message)
+    {
+        var ex = Assert.Throws<ValueError>(() => PyFormat.Apply("ab", spec));
+        ex.Message.Should().Be(message);
     }
 }

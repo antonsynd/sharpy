@@ -53,10 +53,12 @@ namespace Sharpy
             char type = '\0';
 
             // Parse fill and align
+            bool fillSpecified = false;
             if (spec.Length >= 2 && IsAlign(spec[1]))
             {
                 fill = spec[0];
                 align = spec[1];
+                fillSpecified = true;
                 pos = 2;
             }
             else if (spec.Length >= 1 && IsAlign(spec[0]))
@@ -86,13 +88,19 @@ namespace Sharpy
                 pos++;
             }
 
-            // Parse 0 (zero padding)
+            // Parse 0 (zero padding). CPython's backward-compat rule (#1945): the '0' flag sets
+            // fill='0' unless a fill was given explicitly, and synthesises '=' alignment only when
+            // the operand's default alignment is '>' (numbers). A string keeps its '<' default, so
+            // format('ab', '05') is 'ab000' (fill '0', left-aligned), NOT '000ab' (=-synthesis).
             if (pos < spec.Length && spec[pos] == '0')
             {
-                if (align == '\0')
+                if (!fillSpecified)
+                {
+                    fill = '0';
+                }
+                if (align == '\0' && !(value is string))
                 {
                     align = '=';
-                    fill = '0';
                 }
                 pos++;
             }
@@ -157,6 +165,23 @@ namespace Sharpy
                 }
             }
 
+            // String operands (#1945): CPython refuses a numeric type code first, then a sign, z,
+            // '#' and '=' alignment in that exact order. This is the runtime twin of
+            // FormatSpecGrammar.StringOperandRefusal (the f-string static path); they carry the same
+            // wording and order by design (the M4/M5 same-logic-twice-with-cross-references pattern).
+            if (value is string)
+            {
+                if (type != '\0' && type != 's')
+                {
+                    throw new ValueError("Unknown format code '" + type + "' for object of type 'str'");
+                }
+                string? strRefusal = StringOperandRefusal(sign, zCoerce, altForm, align);
+                if (strRefusal != null)
+                {
+                    throw new ValueError(strRefusal);
+                }
+            }
+
             // Format the value — sign included, grouping and zero-fill NOT (both depend on the
             // width, and CPython interleaves them: the separators go INSIDE the zero fill).
             string formatted = FormatValue(value, type, precision, hasPrecision, altForm, sign, zCoerce);
@@ -213,6 +238,36 @@ namespace Sharpy
         private static bool IsAlign(char c)
         {
             return c == '<' || c == '>' || c == '^' || c == '=';
+        }
+
+        /// <summary>
+        /// The ONE ordered string-operand option rule (#1945). CPython's string formatter, once the
+        /// type code has been accepted, refuses a sign, a negative-zero coercion (<c>z</c>), the
+        /// alternate form (<c>#</c>) and <c>=</c> alignment — in that order — with these exact
+        /// messages. Returns the <see cref="ValueError"/> text, or <c>null</c> when the spec is legal
+        /// for a string. Mirrored statically by <c>FormatSpecGrammar.StringOperandRefusal</c>.
+        /// </summary>
+        private static string? StringOperandRefusal(char sign, bool zCoerce, bool altForm, char align)
+        {
+            if (sign != '\0')
+            {
+                return sign == ' '
+                    ? "Space not allowed in string format specifier"
+                    : "Sign not allowed in string format specifier";
+            }
+            if (zCoerce)
+            {
+                return "Negative zero coercion (z) not allowed in string format specifier";
+            }
+            if (altForm)
+            {
+                return "Alternate form (#) not allowed in string format specifier";
+            }
+            if (align == '=')
+            {
+                return "'=' alignment not allowed in string format specifier";
+            }
+            return null;
         }
 
         /// <summary>

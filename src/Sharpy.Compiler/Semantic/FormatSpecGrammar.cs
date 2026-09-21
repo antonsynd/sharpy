@@ -56,12 +56,15 @@ internal static class FormatSpecGrammar
         int pos = 0;
 
         // fill + align, or a lone align.
+        char align = '\0';
         if (spec.Length >= 2 && IsAlign(spec[1]))
         {
+            align = spec[1];
             pos = 2;
         }
         else if (IsAlign(spec[0]))
         {
+            align = spec[0];
             pos = 1;
         }
 
@@ -82,8 +85,10 @@ internal static class FormatSpecGrammar
         }
 
         // # (alternate form)
+        bool altForm = false;
         if (pos < spec.Length && spec[pos] == '#')
         {
+            altForm = true;
             pos++;
         }
 
@@ -144,7 +149,7 @@ internal static class FormatSpecGrammar
             }
         }
 
-        return ValidateTypeCode(kind, type, hasPrecision, zCoerce, sign);
+        return ValidateTypeCode(kind, type, hasPrecision, zCoerce, sign, altForm, align);
     }
 
     /// <summary>
@@ -170,16 +175,17 @@ internal static class FormatSpecGrammar
     };
 
     private static string? ValidateTypeCode(
-        FormatOperandKind kind, char type, bool hasPrecision, bool zCoerce, char sign)
+        FormatOperandKind kind, char type, bool hasPrecision, bool zCoerce, char sign, bool altForm, char align)
     {
         switch (kind)
         {
             case FormatOperandKind.Str:
+                // CPython refuses a numeric type code first, THEN a sign/z/'#'/'=' — in that order.
                 if (type != '\0' && type != 's')
                 {
                     return "Unknown format code '" + type + "' for object of type 'str'";
                 }
-                return null;
+                return StringOperandRefusal(sign, zCoerce, altForm, align);
 
             case FormatOperandKind.Float:
                 if (type == 'b' || type == 'c' || type == 'd' || type == 'o'
@@ -234,6 +240,37 @@ internal static class FormatSpecGrammar
         type == '\0' || type == 'b' || type == 'c' || type == 'd' || type == 'e' || type == 'E'
         || type == 'f' || type == 'F' || type == 'g' || type == 'G' || type == 'n' || type == 'o'
         || type == 'x' || type == 'X' || type == '%';
+
+    /// <summary>
+    /// The ONE ordered string-operand option rule (#1945), the static twin of
+    /// <c>Sharpy.PyFormat.StringOperandRefusal</c>: once a string's type code is accepted, CPython
+    /// refuses a sign, a negative-zero coercion (<c>z</c>), the alternate form (<c>#</c>) and
+    /// <c>=</c> alignment — in that order — with these exact messages. The two implementations carry
+    /// the same wording and order by design (the M4/M5 same-logic-twice-with-cross-references
+    /// pattern); a spec this returns non-null for is one Core would raise the same ValueError for.
+    /// </summary>
+    private static string? StringOperandRefusal(char sign, bool zCoerce, bool altForm, char align)
+    {
+        if (sign != '\0')
+        {
+            return sign == ' '
+                ? "Space not allowed in string format specifier"
+                : "Sign not allowed in string format specifier";
+        }
+        if (zCoerce)
+        {
+            return "Negative zero coercion (z) not allowed in string format specifier";
+        }
+        if (altForm)
+        {
+            return "Alternate form (#) not allowed in string format specifier";
+        }
+        if (align == '=')
+        {
+            return "'=' alignment not allowed in string format specifier";
+        }
+        return null;
+    }
 
     private static bool IsAlign(char c) => c == '<' || c == '>' || c == '^' || c == '=';
 
