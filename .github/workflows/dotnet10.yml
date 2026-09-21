@@ -86,7 +86,7 @@ jobs:
       # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
       # The CPython execution oracle likewise earned its own step when #1202 took it from a
       # 60-program sample to the full ~565-cell pool.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution"
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test LSP
@@ -118,6 +118,14 @@ jobs:
       # Needs the python step above; the test soft-skips (green) without a suitable python3, so
       # a missing report means the oracle did not run, not that it agreed.
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"
+    - name: Format-spec differential sweep (#1943, #1944, #1945)
+      # Generated PEP-3101 spec x operand-kind cells (fixed-seed System.Random, 240 cells) compared
+      # byte-for-byte against batched `python3`, ratcheting the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/format-spec-differential-allowlist.txt), where every
+      # entry cites an issue and stale entries fail. The '#'-on-float gap (#1958) is excluded at
+      # generation; the sweep soft-skips (green) without a suitable python3. Split from the main
+      # Compiler step above (which excludes it by name) so a sweep runs exactly once.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness

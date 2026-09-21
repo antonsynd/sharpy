@@ -138,9 +138,11 @@ internal sealed class ProtocolMembership
                     or DunderNames.GetItem or DunderNames.SetItem or DunderNames.Contains;
             }
 
-            // For defaultdict, check dict protocols since it inherits from Dict
-            var lookupName = string.Equals(generic.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
-                ? BuiltinNames.Dict : generic.Name;
+            // Every stdlib mapping — defaultdict included — is discovered by reflection over its
+            // CLR shape (the ISized / IEnumerable<K> / operator== / Contains(K) surface added in
+            // #1933), never by a name alias. defaultdict does NOT inherit from Dict; it composes a
+            // _dict field, so the old defaultdict->dict name rewrite was both false and redundant.
+            var lookupName = generic.Name;
             // The registry's protocol table only ADDS (#1860, R-AN, Design Decision 5): a POSITIVE
             // table answer is authoritative, but a NEGATIVE one must not deny what the CLR shape
             // below proves — the table denies `__contains__` for IEnumerable/Iterator even though

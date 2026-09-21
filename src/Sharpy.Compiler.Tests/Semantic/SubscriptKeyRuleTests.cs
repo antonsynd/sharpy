@@ -230,7 +230,9 @@ def main() -> None:
         ok.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch
             || d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod,
             DescribeDiagnostics(ok));
-        // TODO(#1655): ok.StandardOutput should be "v\n2" once the emitter stores unpacking elements.
+        // #1655 (CLOSED COMPLETED): the emitter now stores every unpacking element, so the
+        // __setitem__ store runs (prints "v") and y binds 2.
+        ok.StandardOutput.Should().Be("v\n2\n", DescribeDiagnostics(ok));
 
         var wrong = CompileAndExecute(UserSetItemOnly + @"
 def main() -> None:

@@ -22,6 +22,12 @@ FENCE_PATTERN = re.compile(r'^```(python|spy|sharpy)\s*$')
 FENCE_CLOSE = re.compile(r'^```\s*$')
 MARKER_FRAGMENT = re.compile(r'<!--\s*spec-sweep:\s*fragment\s*-->')
 MARKER_ERROR = re.compile(r'<!--\s*spec-sweep:\s*error\s+(SPY\d{4})\s*-->')
+# #1939: a prelude block declares module-level names (types, functions) for every LATER unmarked
+# block in the same file. The prelude's text is prepended to those blocks at compile time, but each
+# block's allowlist KEY stays the sha1 of its OWN text, so adding a prelude does not churn keys. The
+# prelude block itself is compiled standalone (with any earlier preludes) — it must compile, which is
+# the positive control that a prelude cannot hide an error in the code it declares.
+MARKER_PRELUDE = re.compile(r'<!--\s*spec-sweep:\s*prelude\s*-->')
 SPY_CODE_PATTERN = re.compile(r'SPY\d{4}')
 
 
@@ -33,6 +39,7 @@ class Block:
     key: str
     marker: Optional[str] = None  # None, "fragment", or "error SPYnnnn"
     expected_error: Optional[str] = None
+    prelude: Optional[str] = None  # module-level declarations prepended at compile time (#1939)
 
 
 @dataclass
@@ -64,6 +71,9 @@ def extract_blocks(spec_dir: str) -> List[Block]:
     for md_file in sorted(spec_path.rglob("*.md")):
         relpath = str(md_file.relative_to(spec_path))
         lines = md_file.read_text(encoding="utf-8").splitlines()
+        # Preludes accumulate down the file — a later unmarked block gets every prelude declared
+        # above it, joined in order. Reset per file so a prelude never leaks across pages.
+        prelude_parts: List[str] = []
         i = 0
         while i < len(lines):
             m = FENCE_PATTERN.match(lines[i])
@@ -82,11 +92,17 @@ def extract_blocks(spec_dir: str) -> List[Block]:
                 expected_error = None
                 mf = MARKER_FRAGMENT.search(prev_line)
                 me = MARKER_ERROR.search(prev_line)
+                is_prelude = bool(MARKER_PRELUDE.search(prev_line))
                 if mf:
                     marker = "fragment"
                 elif me:
                     marker = "error"
                     expected_error = me.group(1)
+
+                # An unmarked block (including a prelude block itself) is compiled with every prelude
+                # declared above it prepended. A fragment/error block is not — its marker owns its
+                # verdict and a prelude must not alter it.
+                prelude = "\n\n".join(prelude_parts) if (prelude_parts and marker is None) else None
 
                 blocks.append(Block(
                     relpath=relpath,
@@ -95,7 +111,12 @@ def extract_blocks(spec_dir: str) -> List[Block]:
                     key=key,
                     marker=marker,
                     expected_error=expected_error,
+                    prelude=prelude,
                 ))
+
+                # Register this prelude's declarations for the blocks that follow it.
+                if is_prelude:
+                    prelude_parts.append(text)
             i += 1
     return blocks
 
@@ -168,12 +189,18 @@ def save_allowlist(path: str, entries: Dict[str, str]) -> None:
             f.write(f"{key}  # {entries[key]}\n")
 
 
+def _with_prelude(prelude: Optional[str], body: str) -> str:
+    """Prepend the prelude's module-level declarations to a block body (#1939). Only the body is
+    ever wrapped in main() — the prelude stays at module level."""
+    return f"{prelude}\n\n{body}" if prelude else body
+
+
 def _compile_block(args: Tuple[str, Block]) -> BlockResult:
     sharpyc, block = args
     if block.marker == "fragment":
         return BlockResult(block=block, classification="fragment")
 
-    result = compile_one(sharpyc, block.text)
+    result = compile_one(sharpyc, _with_prelude(block.prelude, block.text))
 
     if result.success:
         return BlockResult(block=block, classification="compiled_as_is", compile_result=result)
@@ -190,7 +217,7 @@ def _compile_block(args: Tuple[str, Block]) -> BlockResult:
             all_spy0340 = False
 
         if all_spy0340:
-            wrapped_result = compile_one(sharpyc, wrap_in_main(block.text))
+            wrapped_result = compile_one(sharpyc, _with_prelude(block.prelude, wrap_in_main(block.text)))
             if wrapped_result.success:
                 return BlockResult(
                     block=block, classification="compiled_wrapped",

@@ -21,6 +21,12 @@ ISSUE_RE = re.compile(r"#(\d+)")
 SKIP_RE = re.compile(
     r'\[\s*(?:Fact|Theory)\s*\(\s*(?:[^)]*,\s*)?Skip\s*=\s*"([^"]*)"'
 )
+# #1939: comment rosters in test sources cite issues too — a BUG/TODO/FIXME comment and a KnownRed
+# CELL CONSTRUCTION. Both are cited rows: a CLOSED cite is a stale roster entry, exactly like a Skip.
+# The KnownRed regex matches a `new …KnownRed…Cell("#N", …)` construction, NOT a drained-count comment
+# (`// #1784: DRAINED`) — those cite the issue that closed the row, not a live suppression.
+COMMENT_ROSTER_RE = re.compile(r"(?:BUG|TODO|FIXME)\(#(\d+)\)")
+KNOWNRED_CELL_RE = re.compile(r'new\s+\w*KnownRed\w*\s*\(\s*"#?(\d+)"')
 DEVIATIONS_YAML = "deviations.yaml"
 DRAIN_EXEMPT = "drain-exempt:"
 NO_ISSUE_EXEMPT = "no-issue:"
@@ -83,9 +89,12 @@ def scan_allowlist(path: str) -> list[Row]:
             cites=cites, exempt=exempt,
         ))
 
-        in_paragraph = False
-        paragraph_cites = []
-        paragraph_has_deviations = False
+        # A comment header describes the whole block of keys beneath it (see the file
+        # headers: one deviations.yaml/issue comment governs the run of `fixture::…`
+        # rows that follows). Paragraph state therefore persists across consecutive
+        # data rows and is cleared only by the blank line that ends the block — NOT
+        # after the first row. Resetting here stranded rows 2..N of every multi-row
+        # block, making them read as uncited under DD14 (#1939).
 
     return rows
 
@@ -115,6 +124,23 @@ def scan_cs_file(path: str) -> list[Row]:
     return rows
 
 
+def scan_cs_comments(path: str) -> list[Row]:
+    """Scan a C# test source for comment-roster issue cites (#1939): BUG/TODO/FIXME(#N) comments and
+    KnownRed cell constructions. Each is a CITED row, so a CLOSED cite is an offence."""
+    rows: list[Row] = []
+    with open(path) as f:
+        lines = f.readlines()
+
+    for i, raw in enumerate(lines, 1):
+        for regex in (COMMENT_ROSTER_RE, KNOWNRED_CELL_RE):
+            for m in regex.finditer(raw):
+                rows.append(Row(
+                    file=path, line=i, text=raw.strip(),
+                    cites=[int(m.group(1))], exempt=False,
+                ))
+    return rows
+
+
 def scan(paths: list[str]) -> list[Row]:
     rows: list[Row] = []
     for path in paths:
@@ -122,6 +148,7 @@ def scan(paths: list[str]) -> list[Row]:
             rows.extend(scan_allowlist(path))
         elif path.endswith(".cs"):
             rows.extend(scan_cs_file(path))
+            rows.extend(scan_cs_comments(path))
     return rows
 
 
@@ -158,6 +185,10 @@ def _default_paths() -> list[str]:
         os.path.join(repo, "src", "**", "Conformance", "*-allowlist.txt"),
         recursive=True,
     )
+    # #1939 (R-BD): the spec-block allowlist lives under build_tools, not src/**/Conformance. Bring it
+    # under the gate. Widening reddens nothing today — uncited .txt rows are skipped until Task 8 makes
+    # them an offence (DD14) — but a CLOSED cite in it would now be caught.
+    txt_paths += glob.glob(os.path.join(repo, "build_tools", "*allowlist*.txt"))
 
     cs_globs = glob.glob(
         os.path.join(repo, "src", "*.Tests", "**", "*.cs"),
@@ -199,7 +230,10 @@ def main() -> None:
         if row.cites:
             all_cites.extend(row.cites)
             cited_rows.append(row)
-        elif row.file.endswith(".cs"):
+        elif row.file.endswith((".cs", ".txt")):
+            # #1939 (DD14): an uncited .txt allowlist row is an offence too, not silently skipped —
+            # without this the widened glob (Task 6) is vacuous over the spec allowlist. Every .txt row
+            # must cite an issue, exactly like a .cs Skip.
             uncited_rows.append(row)
 
     if not all_cites and not uncited_rows:
@@ -221,8 +255,9 @@ def main() -> None:
                 )
 
     for row in uncited_rows:
+        kind = "Skip" if row.file.endswith(".cs") else "allowlist row"
         offences.append(
-            f"{row.file}:{row.line}  Skip without issue cite: \"{row.text}\"  "
+            f"{row.file}:{row.line}  {kind} without issue cite: \"{row.text}\"  "
             f"→ missing #NNNN"
         )
 

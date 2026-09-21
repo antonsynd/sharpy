@@ -255,6 +255,16 @@ class TestMapType:
     def test_unknown_alias_passthrough(self):
         assert map_type("UnknownAlias.Something<int>") == "UnknownAlias.Something[int]"
 
+    # #1911: a module-defined type reads as its Sharpy name — bare on its own page,
+    # module-qualified elsewhere — never the leaked C# `Sharpy.<M>Module.<T>`.
+    def test_module_type_on_own_page_is_bare(self):
+        assert map_type("Sharpy.OsModule.StatResult", current_module="os") == "StatResult"
+
+    def test_module_type_on_other_page_is_qualified(self):
+        # Cross-module positive control: no such reference exists in the docs today, so this cell
+        # is the one that proves the else-branch fires (os.StatResult on the csv page).
+        assert map_type("Sharpy.OsModule.StatResult", current_module="csv") == "os.StatResult"
+
 
 # ---------------------------------------------------------------------------
 # _split_generic_args

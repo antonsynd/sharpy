@@ -363,7 +363,7 @@ public class ClrCallRouteMatrixTests : IntegrationTestBase
             def main() -> None:
                 e: AggregateException = AggregateException(
                     InvalidOperationException("a"), InvalidOperationException("b"))
-                print(e.inner_exceptions.count)
+                print(len(e.inner_exceptions))
             """, "out:2");
         yield return ("constructor.positional.wrong_arity", """
             from System.Numerics import Vector2

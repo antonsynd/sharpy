@@ -1275,8 +1275,42 @@ internal partial class TypeChecker
                 RefuseSharpyReceiverClrSpelling(memberAccess, receiverType),
             SharpyReceiverSpelling.Spelling.Escaped =>
                 EscapedWrapperMemberType(memberAccess, wrapperClr, receiverType),
+            SharpyReceiverSpelling.Spelling.ReverseMangledClr =>
+                ReverseMangledClrMethodVerdict(memberAccess, wrapperClr, receiverType),
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// #1942 (R-AP): the reverse-mangled snake spelling of a wrapper METHOD that has NO Sharpy surface
+    /// equivalent (<c>xs.get_hash_code</c> → GetHashCode, an inherited BCL method) is an unspellable
+    /// method group in value position — refused SPY0336 with the three-cure steer, in ONE seam for all
+    /// five wrapper receivers (a mapped collection routes it to a silent permissive Unknown otherwise,
+    /// str/bytes to a bare method reference). A reverse-mangled PROPERTY/FIELD (<c>s.length</c>) is a
+    /// typed value and falls through; a callee still calls; a function target type selects the method.
+    ///
+    /// <para>Crucially it does NOT fire for a name that is ALSO a Sharpy SURFACE method (<c>xs.pop</c>,
+    /// <c>st.add</c> reverse-mangle to <c>Pop</c>/<c>Add</c>, the C# impls of the surface API): those
+    /// resolve through the registry and are the surface path's business — the single-overload gate in
+    /// CheckReferencedCallableOverloads, or #1170's arity message for a divergent set like
+    /// <c>xs.pop</c>. Refusing them here would clobber #1170's more specific diagnostic (its regression).</para>
+    /// </summary>
+    private SemanticType? ReverseMangledClrMethodVerdict(MemberAccess memberAccess, Type wrapperClr, SemanticType receiverType)
+    {
+        if (IsCurrentCallCallee(memberAccess)
+            || IsCurrentStatementExpression(memberAccess)  // #1617 elide-and-warn owns a bare statement
+            || _expectedType is FunctionType
+            || !SharpyReceiverSpelling.ReverseMangleNamesAMethod(memberAccess.Member, wrapperClr))
+        {
+            return null;
+        }
+
+        // A name that is a Sharpy SURFACE method of the receiver (pop/add/…) is handled by the surface
+        // path (registry → the single-overload gate or #1170), NOT this reverse-mangled-leak seam.
+        if (ResolveInstanceMemberOwnerSymbol(receiverType)?.Methods.Any(m => m.Name == memberAccess.Member) == true)
+            return null;
+
+        return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
     }
 
     /// <summary>
@@ -1345,10 +1379,33 @@ internal partial class TypeChecker
                 // No instance member of the wrapper answers the escape. An EXTENSION method still
                 // binds in the emitted C# — `b.`Select`` — and is the same unspellable group, refused
                 // through the same predicate the residual seam uses (#1858).
-                return IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType)
-                    ? RefuseClrMethodGroupInValuePosition(memberAccess)
-                    : null;
+                if (IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType))
+                    return RefuseClrMethodGroupInValuePosition(memberAccess);
+
+                // No CLR member — instance OR extension — spells the escape (`xs.`count``: the CLR
+                // member is `Count`, and `count` is only the Sharpy surface name). The backtick escape
+                // is FOR reaching CLR members verbatim, so a snake name it cannot spell is a plain
+                // absent member: SPY0203 with the Sharpy-name steer, not the permissive channel, which
+                // let it reach Roslyn as CS1061 behind SPY0908 (#1888).
+                return RefuseEscapedAbsentWrapperMember(memberAccess, receiverType);
         }
+    }
+
+    /// <summary>
+    /// SPY0203 for a backtick escape that names no member of the wrapper's CLR surface (#1888), with
+    /// the steer to the Sharpy name.
+    /// </summary>
+    private SemanticType RefuseEscapedAbsentWrapperMember(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.EscapedAbsentSteer(receiverExpr, memberAccess.Member);
+        AddError(
+            $"Type '{receiverType.GetDisplayName()}' has no member '{memberAccess.Member}' — {steer}",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember,
+            span: memberAccess.Span,
+            data: SuggestionData($"{receiverExpr}.{memberAccess.Member}"));
+        return SemanticType.Unknown;
     }
 
     /// <summary>

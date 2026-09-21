@@ -93,6 +93,14 @@ deviations:
   spec_ref: docs/language_specification/type_narrowing.md
   existing_diagnostic: SPY0337
   planned_diagnostic: null
+- id: chainmap-reversed-admitted
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/stdlib/collections.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: comparison-chaining
   category: operators
   audience: csharp

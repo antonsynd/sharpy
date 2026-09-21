@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using System;
 
@@ -136,8 +137,14 @@ namespace Sharpy
     /// c.most_common(2)    # [("a", 3), ("b", 1)]
     /// </code>
     /// </example>
+    /// <remarks>
+    /// Implements <see cref="ISized"/> (<c>__len__</c> → <c>len(c)</c>, the number of distinct
+    /// elements) and <see cref="IEnumerable{T}"/> over the KEYS in first-seen order (<c>__iter__</c>
+    /// → <c>for k in c</c>, <c>list(c)</c>). Keys are the only generic <c>IEnumerable</c> the type
+    /// exposes so <c>list(c)</c> binds <c>Builtins.List&lt;T&gt;(IEnumerable&lt;T&gt;)</c> (#1933).
+    /// </remarks>
     [SharpyModuleType("collections", "Counter")]
-    public class Counter<T> where T : notnull
+    public class Counter<T> : ISized, IEnumerable<T>, IEquatable<Counter<T>> where T : notnull
     {
         private readonly System.Collections.Generic.Dictionary<T, int> _counts;
 
@@ -154,6 +161,21 @@ namespace Sharpy
             foreach (var item in iterable)
             {
                 _counts[item] = _counts.TryGetValue(item, out int count) ? count + 1 : 1;
+            }
+        }
+
+        /// <summary>
+        /// Create a counter from a string, counting its code units — Python's <c>Counter("abca")</c>
+        /// (only meaningful for <c>Counter[str]</c>). Iterates via <see cref="StringHelpers.Iterate"/>
+        /// so each element is a one-code-unit string, matching Sharpy's string iteration.
+        /// </summary>
+        public Counter(string s)
+        {
+            _counts = new System.Collections.Generic.Dictionary<T, int>();
+            foreach (var codeUnit in StringHelpers.Iterate(s))
+            {
+                var key = (T)(object)codeUnit;
+                _counts[key] = _counts.TryGetValue(key, out int count) ? count + 1 : 1;
             }
         }
 
@@ -288,7 +310,27 @@ namespace Sharpy
         // OrderedDict.Keys() were methods, so one spelling meant different things by receiver.
         // Kept out of <remarks> deliberately — docs/stdlib is generated from XML doc comments, and
         // this paragraph is implementation history, not something a stdlib reader needs.
-        public IEnumerable<T> Keys() => _counts.Keys;
+        public List<T> Keys() => new List<T>(_counts.Keys);
+
+        /// <summary>
+        /// The counts of the counter, in first-seen key order. Python: <c>c.values()</c>.
+        /// </summary>
+        public List<int> Values() => new List<int>(_counts.Values);
+
+        /// <summary>
+        /// The (element, count) pairs, in first-seen key order. Python: <c>c.items()</c>.
+        /// </summary>
+        public List<(T, int)> Items() => new List<(T, int)>(_counts.Select(kv => (kv.Key, kv.Value)));
+
+        /// <summary>
+        /// The number of distinct elements. Python's <c>len(c)</c>; ISized's <c>__len__</c>.
+        /// </summary>
+        public int Count => _counts.Count;
+
+        /// <summary>Iterate the distinct elements in first-seen order (Python's <c>__iter__</c>).</summary>
+        public IEnumerator<T> GetEnumerator() => _counts.Keys.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         /// <summary>Check if the counter contains a key.</summary>
         public bool ContainsKey(T key) => _counts.ContainsKey(key);
@@ -375,6 +417,74 @@ namespace Sharpy
             }
             return result;
         }
+
+        /// <summary>The (element, count) pairs, for equality comparison by sibling mappings.</summary>
+        internal IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> PairsForEquality()
+            => _counts.Select(kv => new System.Collections.Generic.KeyValuePair<T, int>(kv.Key, kv.Value));
+
+        // ── Equality (Python __eq__): a Counter compares by contents like a dict of counts.
+        //    Declared as operator ==/!= so the checker discovers them through the CLR op_Equality
+        //    path Dict<K,V> uses (Dict.cs:286) — no compiler arm (#1933). A Counter is a K→int
+        //    mapping, so its cross-stdlib pairs pin the other mapping's value type to int.
+
+        /// <summary>Content equality with another Counter.</summary>
+        public bool Equals(Counter<T>? other)
+            => other is not null && MappingEquality.PairwiseEquals(Count, PairsForEquality(), other.Count, other.PairsForEquality());
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is Counter<T> other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => Count;
+
+        /// <summary>Counter == Counter — pairwise on counts.</summary>
+        public static bool operator ==(Counter<T>? left, Counter<T>? right)
+            => left is null ? right is null : left.Equals(right);
+
+        /// <summary>Counter != Counter.</summary>
+        public static bool operator !=(Counter<T>? left, Counter<T>? right) => !(left == right);
+
+        /// <summary>Counter == dict — pairwise, matching CPython.</summary>
+        public static bool operator ==(Counter<T>? left, Dict<T, int>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right);
+
+        /// <summary>Counter != dict.</summary>
+        public static bool operator !=(Counter<T>? left, Dict<T, int>? right) => !(left == right);
+
+        /// <summary>dict == Counter — pairwise, delegating to the symmetric overload.</summary>
+        public static bool operator ==(Dict<T, int>? left, Counter<T>? right) => right == left;
+
+        /// <summary>dict != Counter.</summary>
+        public static bool operator !=(Dict<T, int>? left, Counter<T>? right) => !(left == right);
+
+        /// <summary>Counter == defaultdict — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(Counter<T>? left, DefaultDict<T, int>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right.PairsForEquality());
+
+        /// <summary>Counter != defaultdict.</summary>
+        public static bool operator !=(Counter<T>? left, DefaultDict<T, int>? right) => !(left == right);
+
+        /// <summary>Counter == OrderedDict — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(Counter<T>? left, OrderedDict<T, int>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right.ItemsList);
+
+        /// <summary>Counter != OrderedDict.</summary>
+        public static bool operator !=(Counter<T>? left, OrderedDict<T, int>? right) => !(left == right);
+
+        /// <summary>Counter == ChainMap — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(Counter<T>? left, ChainMap<T, int>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right.PairsForEquality());
+
+        /// <summary>Counter != ChainMap.</summary>
+        public static bool operator !=(Counter<T>? left, ChainMap<T, int>? right) => !(left == right);
     }
 
     /// <summary>
@@ -389,8 +499,15 @@ namespace Sharpy
     /// dd["key"]              # [1]
     /// </code>
     /// </example>
+    /// <remarks>
+    /// Implements <see cref="ISized"/> (<c>__len__</c> → <c>len(dd)</c>) and
+    /// <see cref="IEnumerable{T}"/> over the KEYS in insertion order (<c>__iter__</c> →
+    /// <c>for k in dd</c>, <c>list(dd)</c>), delegating both to the composed <see cref="Dict{K, V}"/>.
+    /// Keys are the only generic <c>IEnumerable</c> the type exposes so <c>list(dd)</c> binds
+    /// <c>Builtins.List&lt;TKey&gt;(IEnumerable&lt;TKey&gt;)</c> (#1933).
+    /// </remarks>
     [SharpyModuleType("collections", "DefaultDict")]
-    public class DefaultDict<TKey, TValue> where TKey : notnull
+    public class DefaultDict<TKey, TValue> : ISized, IEnumerable<TKey>, IEquatable<DefaultDict<TKey, TValue>> where TKey : notnull
     {
         private readonly Dict<TKey, TValue> _dict;
         private readonly Func<TValue> _defaultFactory;
@@ -562,6 +679,68 @@ namespace Sharpy
 
         /// <summary>The number of items in the defaultdict.</summary>
         public int Count => _dict.Count;
+
+        /// <summary>Iterate the keys in insertion order (Python's <c>__iter__</c>).</summary>
+        public IEnumerator<TKey> GetEnumerator() => _dict.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>The (key, value) pairs, for equality comparison by sibling mappings.</summary>
+        internal IEnumerable<KeyValuePair<TKey, TValue>> PairsForEquality() => _dict;
+
+        // ── Equality (Python __eq__): a defaultdict compares by contents like a plain dict — the
+        //    default factory is not part of equality. Declared as operator ==/!= so the checker
+        //    discovers them through the CLR op_Equality path Dict<K,V> uses (Dict.cs:286) — no arm (#1933).
+
+        /// <summary>Content equality with another defaultdict.</summary>
+        public bool Equals(DefaultDict<TKey, TValue>? other)
+            => other is not null && MappingEquality.PairwiseEquals(Count, PairsForEquality(), other.Count, other.PairsForEquality());
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is DefaultDict<TKey, TValue> other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => Count;
+
+        /// <summary>defaultdict == defaultdict — pairwise on contents.</summary>
+        public static bool operator ==(DefaultDict<TKey, TValue>? left, DefaultDict<TKey, TValue>? right)
+            => left is null ? right is null : left.Equals(right);
+
+        /// <summary>defaultdict != defaultdict.</summary>
+        public static bool operator !=(DefaultDict<TKey, TValue>? left, DefaultDict<TKey, TValue>? right) => !(left == right);
+
+        /// <summary>defaultdict == dict — pairwise, matching CPython.</summary>
+        public static bool operator ==(DefaultDict<TKey, TValue>? left, Dict<TKey, TValue>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right);
+
+        /// <summary>defaultdict != dict.</summary>
+        public static bool operator !=(DefaultDict<TKey, TValue>? left, Dict<TKey, TValue>? right) => !(left == right);
+
+        /// <summary>dict == defaultdict — pairwise, delegating to the symmetric overload.</summary>
+        public static bool operator ==(Dict<TKey, TValue>? left, DefaultDict<TKey, TValue>? right) => right == left;
+
+        /// <summary>dict != defaultdict.</summary>
+        public static bool operator !=(Dict<TKey, TValue>? left, DefaultDict<TKey, TValue>? right) => !(left == right);
+
+        /// <summary>defaultdict == OrderedDict — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(DefaultDict<TKey, TValue>? left, OrderedDict<TKey, TValue>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right.ItemsList);
+
+        /// <summary>defaultdict != OrderedDict.</summary>
+        public static bool operator !=(DefaultDict<TKey, TValue>? left, OrderedDict<TKey, TValue>? right) => !(left == right);
+
+        /// <summary>defaultdict == ChainMap — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(DefaultDict<TKey, TValue>? left, ChainMap<TKey, TValue>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right.PairsForEquality());
+
+        /// <summary>defaultdict != ChainMap.</summary>
+        public static bool operator !=(DefaultDict<TKey, TValue>? left, ChainMap<TKey, TValue>? right) => !(left == right);
     }
 
     /// <summary>

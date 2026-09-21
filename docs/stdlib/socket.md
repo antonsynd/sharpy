@@ -15,7 +15,7 @@ import socket
 
 ## Functions
 
-### `socket.from_socket_exception(ex: Net.Sockets.SocketException) -> Sharpy.SocketModule.Error`
+### `socket.from_socket_exception(ex: Net.Sockets.SocketException) -> Error`
 
 Create a socket error from a .NET SocketException.
 
@@ -83,7 +83,7 @@ Close the socket.
 
 Return the socket handle (file descriptor) as an integer.
 
-### `socket.enter() -> Sharpy.SocketModule.Socket`
+### `socket.enter() -> Socket`
 
 ### `socket.exit()`
 
@@ -95,7 +95,7 @@ Return the default timeout in seconds for new sockets, or None.
 
 Set the default timeout for new sockets. None means blocking mode.
 
-### `socket.create_connection(address: tuple[string host, int port], timeout: float | None = None) -> Sharpy.SocketModule.Socket`
+### `socket.create_connection(address: tuple[string host, int port], timeout: float | None = None) -> Socket`
 
 Connect to a TCP (host, port) address and return the connected socket.
 

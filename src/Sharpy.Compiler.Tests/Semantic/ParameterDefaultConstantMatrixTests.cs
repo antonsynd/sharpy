@@ -593,6 +593,19 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
             cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
             InsideFunction: false),
+
+        // #1900: a const in a @dataclass body is class-level storage, not a per-instance field, so
+        // ConstantPositionValidator.ValidateDataclassFieldDefaults must SKIP it (MemberClassification.
+        // IsInstanceField answers false). Before this host no @dataclass sat in the roster (the only
+        // dataclass+const fixture, dataclasses/dataclass_const_1794.spy, folds a `3`), so deleting the
+        // const skip reddened nothing — the guard for the dataclass arm was vacuous. This host makes
+        // the `max(1, 4)`/`9 // 2` cells refuse when the arm ignores IsConst.
+        new("DataclassField",
+            decl => "@dataclass\nclass D:\n    " + decl + "\n\n",
+            "D.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
     };
 
     /// <summary>
@@ -708,13 +721,13 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         where i.Expr(t) != null
         select new object[] { h.Name, t.Name, i.Name };
 
-    // Anchored to literals: 4 hosts × 6 types × 5 initializers = 120, of which the initializer
+    // Anchored to literals: 10 hosts × 6 types × 5 initializers = 300, of which the initializer
     // forms that have no spelling at a type (FoldedNative for char/Color; FoldedCallLowered and
     // Call for str/bool/char/Color) are N/A by construction.
-    private const int ConstHostCount = 9;
+    private const int ConstHostCount = 10;
     private const int HostTypeCount = 6;
     private const int InitializerCount = 5;
-    private const int HostCellsNotApplicable = 9 * (2 + 4 + 4); // hosts × (FoldedNative + 2×call arms)
+    private const int HostCellsNotApplicable = 10 * (2 + 4 + 4); // hosts × (FoldedNative + 2×call arms)
 
     [Fact]
     public void ConstHostMatrix_IsTotalOverItsAxes()

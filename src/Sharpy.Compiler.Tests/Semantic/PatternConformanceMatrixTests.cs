@@ -138,17 +138,17 @@ def main() -> None:
     xs: {info.Closed} = {info.Literal}
     check(xs)
 ",
-            // A wildcard-only tail (no explicit `case None:`) is deliberate: a zero-arg `case list():`
-            // on a `T | None` scrutinee is falsely flagged total when a `case None:` follows it
-            // (#1891); the trailing wildcard is exempt, so the fill-from-payload verdict is testable
-            // without tripping that unrelated bug. The passed value is non-None, so it takes the head.
+            // An explicit `case None:` tail (#1891 fixed, P13 D2/D3): the payload head is PayloadTotal
+            // over `T | None`, `case None:` is the None arm, and the pair is exhaustive — no spurious
+            // SPY0700/SPY0463. The passed value is non-None, so it takes the head arm ("hit"). The
+            // none-first order and the int() value-payload twin are the dedicated tests below.
             "tnone" => $@"
 def check(xs: {info.Closed} | None) -> None:
     match xs:
         case {head}:
             print(""hit"")
-        case _:
-            print(""miss"")
+        case None:
+            print(""none"")
 
 def main() -> None:
     xs: {info.Closed} = {info.Literal}
@@ -333,6 +333,68 @@ def main() -> None:
         rostered.Should().Be(Builtins.Length,
             "the only N/A cell is (explicit × type parameter) — pattern SPY0361 vs isinstance run (#1889)");
         (executing + rostered).Should().Be(product);
+    }
+
+    // ── Group T|None ordering: a payload head + `case None:` is exhaustive in BOTH orders ──────
+    // P13 D2/D3 (#1891): a payload head over `T | None` is PayloadTotal (not Total, so no spurious
+    // SPY0700 subsumption), `case None:` is the None arm, and the two together are the finite family
+    // (no SPY0463/SPY0416). Both orders compile clean and route None to the None arm. Anchored to
+    // literals: the passed value is None, so the None arm's "none" is the observable proof it is
+    // reachable — head-first would have subsumed it before the fix.
+
+    public static IEnumerable<object[]> TNoneOrderingCells()
+    {
+        foreach (var b in Builtins)
+            foreach (var order in new[] { "headfirst", "nonefirst" })
+                yield return new object[] { b, order };
+    }
+
+    private static string TNonePayloadAndNoneSource(string closed, string head, string order)
+    {
+        var headArm = $@"        case {head}:
+            print(""hit"")";
+        var noneArm = @"        case None:
+            print(""none"")";
+        var body = order == "headfirst" ? $"{headArm}\n{noneArm}" : $"{noneArm}\n{headArm}";
+        return $@"
+def check(xs: {closed} | None) -> None:
+    match xs:
+{body}
+
+def main() -> None:
+    check(None)
+";
+    }
+
+    [Theory]
+    [MemberData(nameof(TNoneOrderingCells))]
+    public void TNone_PayloadHeadAndNoneArm_BothOrders_Run(string builtin, string order)
+    {
+        var info = Info(builtin);
+        var source = TNonePayloadAndNoneSource(info.Closed, $"{builtin}()", order);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[tnone {builtin}/{order}] a payload head + case None over T | None is exhaustive and "
+            + $"non-subsuming (#1891). Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("none",
+            $"[tnone {builtin}/{order}] None routes to the None arm in both orders\n{source}");
+    }
+
+    [Theory]
+    [InlineData("headfirst")]
+    [InlineData("nonefirst")]
+    public void TNone_ValueTypePayload_IntAndNone_BothOrders_Run(string order)
+    {
+        // The int() value-payload twin of the list() row: a value-typed payload is PayloadTotal the
+        // same way (D3's "value-type payloads" are covered once the coverage is null-aware, not the
+        // pre-fix assignability test that failed for them).
+        var source = TNonePayloadAndNoneSource("int", "int()", order);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[tnone int/{order}] int() + case None over int | None is exhaustive (#1891, D3). "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("none",
+            $"[tnone int/{order}] None routes to the None arm\n{source}");
     }
 
     // ── Group 3: cross-collection (R-P5-1) ───────────────────────────────────────────────────
@@ -852,5 +914,158 @@ def main() -> None:
         var result = CompileAndExecute(source);
         result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.TrimEnd().Should().Be("HELLO");
+    }
+
+    // ── D4 (#1890): property-form subsumption — `case Box(a=x):` covers every Box ─────────────────
+    // Every sub-pattern (the property field value `x`, a binding) is total, so the head covers its
+    // type and a later `case Box(a=1):` is unreachable — SPY0700, not the CS8120 ICE behind SPY0908
+    // it reached before the property form joined CoversItsRecordedType.
+
+    [Fact]
+    public void PropertyFormSubsumption_BoxAxCoversBoxA1_SPY0700()
+    {
+        const string source = @"
+class Box:
+    a: int
+
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+def classify(o: object) -> str:
+    match o:
+        case Box(a=x):
+            return ""any""
+        case Box(a=1):
+            return ""one""
+        case _:
+            return ""other""
+
+def main() -> None:
+    print(classify(Box(1)))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"`case Box(a=x):` matches every Box, so `case Box(a=1):` is unreachable. Output: {result.StandardOutput}\n{source}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0700,
+            $"property-form subsumption is SPY0700, not CS8120 behind SPY0908\n{source}");
+    }
+
+    [Fact]
+    public void PropertyFormSubsumption_LiteralField_IsReachable()
+    {
+        // Positive control for the subsumption above: `case Box(a=1):` first does NOT cover every Box
+        // (it refutes on the value), so a later `case Box(a=x):` stays reachable and runs.
+        const string source = @"
+class Box:
+    a: int
+
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+def classify(o: object) -> str:
+    match o:
+        case Box(a=1):
+            return ""one""
+        case Box(a=x):
+            return ""any""
+        case _:
+            return ""other""
+
+def main() -> None:
+    print(classify(Box(2)))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"a literal property field refutes on the value, so the later Box(a=x) is reachable. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("any");
+    }
+
+    // ── D6 (#1953): union-case head on a `T | None` union scrutinee ───────────────────────────────
+    // GetUnionSymbolAndTypeArgs strips the nullable once, so every head spelling resolves and the
+    // match (payload cases + case None) is exhaustive — no SPY0202.
+
+    [Theory]
+    [InlineData("Node(v)")]
+    [InlineData("Node(value=v)")]
+    [InlineData("Tree.Node(v)")]
+    public void NullableUnionScrutinee_HeadResolves_Runs(string headForm)
+    {
+        var source = $@"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int] | None) -> str:
+    return match t:
+        case {headForm}: ""node""
+        case Leaf(): ""leaf""
+        case None: ""none""
+
+def main() -> None:
+    n: Tree[int] = Tree.Node(7)
+    print(f(n))
+    print(f(None))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{headForm}] a union head on Tree[int] | None resolves (D6, was SPY0202). Diagnostics: "
+            + $"{string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("node\nnone");
+    }
+
+    // ── D7 (#1954): keyword sub-pattern typed through the type-argument substitution ──────────────
+
+    [Fact]
+    public void KeywordLiteralOnGenericUnion_Substituted_Runs()
+    {
+        const string source = @"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int]) -> str:
+    return match t:
+        case Node(value=7): ""seven""
+        case Node(value=v): f""node {v}""
+        case Leaf(): ""leaf""
+
+def main() -> None:
+    a: Tree[int] = Tree.Node(7)
+    b: Tree[int] = Tree.Node(3)
+    print(f(a))
+    print(f(b))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"`case Node(value=7):` types the field as int32 via substitution (D7, was 'int32' vs 'T'). "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("seven\nnode 3");
+    }
+
+    [Fact]
+    public void KeywordLiteralOnGenericUnion_WrongLiteralType_SPY0220()
+    {
+        // Positive control: substitution really happened — a str literal on the int32 field is caught.
+        const string source = @"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int]) -> str:
+    return match t:
+        case Node(value=""x""): ""x""
+        case _: ""other""
+
+def main() -> None:
+    a: Tree[int] = Tree.Node(7)
+    print(f(a))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"a str literal on the substituted int32 field must be SPY0220. Output: {result.StandardOutput}\n{source}");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
+            $"SPY0220 'str' incompatible with 'int32'\n{source}");
     }
 }

@@ -114,6 +114,12 @@ internal partial class TypeChecker
     // Semantic/ScopedValue.cs, #1218); stored as a node reference so nested calls restore correctly.
     private Expression? _currentCallCallee;
 
+    // The expression of the ExpressionStatement currently being checked (#1942/#1617): a bare
+    // method-group STATEMENT (`"abc".upper`) is #1617's elide-and-warn no-op, NOT the R-AP
+    // value-position refusal — the R-AP gate excludes this node. Scoped via ScopedValue.Push, same as
+    // _currentCallCallee, so nested statements restore correctly.
+    private Expression? _currentStatementExpression;
+
     // What the CLR member-type resolver answered for each member access it was asked about, keyed by
     // node identity. Two consumers read it: the call seam, which turns a CALLEE-position property or
     // field into the call's type plus the zero-arg collapse (`s.count()`), and the permissive
@@ -998,7 +1004,11 @@ internal partial class TypeChecker
 
             case ExpressionStatement exprStmt:
                 {
-                    var exprType = CheckExpression(exprStmt.Expression);
+                    // Mark the statement's expression so the R-AP value-position gate (#1942) leaves a
+                    // bare method-group statement to #1617's elide-and-warn instead of refusing it.
+                    SemanticType exprType;
+                    using (ScopedValue.Push(ref _currentStatementExpression, exprStmt.Expression))
+                        exprType = CheckExpression(exprStmt.Expression);
                     var unwrapped = Shared.AstHelper.UnwrapParenthesized(exprStmt.Expression);
 
                     // Classify every expression statement so the emitter never pattern-matches

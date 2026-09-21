@@ -249,6 +249,24 @@ Convert a string to bool. Returns False if the string is None or empty, True oth
 
 **Returns:** False if None or empty, True otherwise
 
+### `bool(tuple: Runtime.CompilerServices.ITuple) -> bool`
+
+Return the truth value of a tuple: False when empty, True otherwise.
+
+**Parameters:**
+
+- `tuple` (Runtime.CompilerServices.ITuple) -- The tuple value
+
+**Returns:** False if the tuple is empty, True otherwise
+
+!!! note
+    Tuples are emitted as `System.ValueTuple` instances, which
+    implement `System.Runtime.CompilerServices.ITuple` but
+    neither `ICollection` nor
+    `ISized`. Without this overload a tuple would bind
+    `Bool(object?)` and fall through to the truthy default.
+    This mirrors `Len(ITuple)` and answers from the tuple's arity.
+
 ### `bool(obj: object | None) -> bool`
 
 Convert an arbitrary object to bool using Python's truth testing protocol.
@@ -2888,21 +2906,6 @@ This is the fallback overload for dynamically-typed scenarios.
 **Raises:**
 
 - `TypeError` -- Thrown when *obj* is null or has no len()
-
-### `format_align(value: str, width: int, fill: char, alignment: char) -> str`
-
-Aligns a string within a field of given width using the specified fill character
-and alignment mode. Used by f-string format spec codegen for custom fill characters
-and center-alignment.
-
-**Parameters:**
-
-- `value` (str) -- The string to align
-- `width` (int) -- The total field width
-- `fill` (char) -- The fill character for padding
-- `alignment` (char) -- Alignment mode: '<' left, '>' right, '^' center, '=' numeric sign-aware
-
-**Returns:** The aligned string, or *value* unchanged if already wider than *width*
 
 ### `assigned(flag: ref bool, value: T) -> T`
 

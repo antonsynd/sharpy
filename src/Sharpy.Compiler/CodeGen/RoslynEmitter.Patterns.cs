@@ -71,16 +71,12 @@ internal partial class RoslynEmitter
                 bodyStatements));
         }
 
-        // If the match is semantically exhaustive (covers all cases of a finite type)
-        // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
-        // definite return analysis. This is unreachable at runtime.
-        bool hasDefault = matchStmt.Cases.Any(c =>
-            c.Guard == null && ExhaustivenessHelper.IsIrrefutable(c.Pattern, _context.SemanticInfo));
-        bool needsUnreachableDefault = !hasDefault && scrutineeType != null && _context.SemanticInfo != null
-            && ExhaustivenessHelper.IsExhaustiveMatch(
-                scrutineeType,
-                matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
-                _context.SemanticInfo);
+        // If the match is semantically exhaustive (covers all cases of a finite type) but has no
+        // wildcard/default case, a default throw is needed to satisfy C#'s definite-return analysis
+        // (unreachable at runtime). The checker materialized this decision (P13 D5, Rule 2 — the
+        // emitter no longer calls ExhaustivenessHelper); read the recorded fact.
+        bool needsUnreachableDefault =
+            _context.SemanticInfo?.GetMatchNeedsUnreachableDefault(matchStmt) == true;
 
         // A match hosting a loop transfer (a break in an arm targeting an enclosing loop, #1816) must
         // lower to the is-chain: a C# switch would capture the break itself. The fact is recorded by
@@ -1052,6 +1048,13 @@ internal partial class RoslynEmitter
 
         foreach (var arm in matchExpr.Arms)
         {
+            // P13 D5: a trailing catch-all the checker proved unreachable under the emitted lowering
+            // (synthetic Result/Optional deconstruct-to-bool, or a NullableType payload+null) is
+            // omitted — emitting it draws CS8510 from C#'s switch-expression exhaustiveness. Reading a
+            // recorded fact, no re-derivation (Rule 2).
+            if (_context.SemanticInfo?.GetMatchArmLowering(arm.Pattern) is { OmitUnreachableDiscard: true })
+                continue;
+
             var memberGuards = new List<ExpressionSyntax>();
             int matchVarCounter = 0;
             var pattern = GenerateMatchPattern(arm.Pattern, memberGuards, ref matchVarCounter, scrutineeType);

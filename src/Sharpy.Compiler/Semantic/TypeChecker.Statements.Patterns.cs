@@ -108,6 +108,23 @@ internal partial class TypeChecker
                 _symbolTable.ExitScope();
             }
         }
+
+        // P13 D5: materialize the unreachable-default fact for the emitter (Rule 2 — the emitter no
+        // longer calls ExhaustivenessHelper). A match with no wildcard/total arm but covering every
+        // finite case needs a synthesized `default: throw` so C#'s definite-return analysis passes.
+        if (scrutineeType is not UnknownType)
+        {
+            bool hasDefault = matchStmt.Cases.Any(
+                c => c.Guard == null && ExhaustivenessHelper.IsTotal(c.Pattern, _semanticInfo));
+            if (!hasDefault
+                && ExhaustivenessHelper.IsExhaustiveMatch(
+                    scrutineeType,
+                    matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
+                    _semanticInfo))
+            {
+                _semanticInfo.SetMatchNeedsUnreachableDefault(matchStmt);
+            }
+        }
     }
 
     private void CheckPattern(Pattern pattern, SemanticType scrutineeType)
@@ -221,6 +238,16 @@ internal partial class TypeChecker
                         var noneCase = synth.UnionCases.First(c => c.Name == "None");
                         _semanticInfo.SetPatternUnionCase(
                             literal, noneCase, GetUnionSymbolAndTypeArgs(scrutineeType).TypeArgs);
+                        break;
+                    }
+
+                    // `case None:` over a `T | None` (NullableType) is the None case of the finite
+                    // family (P13 D3) — record NoneArm so exhaustiveness counts it and GetFiniteTypeCases
+                    // sees the whole family covered. A NullableType is NOT a tagged union, so there is no
+                    // synthetic union case to record as there is for OptionalType above.
+                    if (literal.Literal is NoneLiteral && scrutineeType is NullableType)
+                    {
+                        _semanticInfo.SetPatternCoverage(literal, PatternCoverage.NoneArm);
                         break;
                     }
 
@@ -893,11 +920,22 @@ internal partial class TypeChecker
         }
 
         _semanticInfo.SetPatternType(lodgeOn, testType);
-        if (scrutineeType is not UnknownType
-            && testType is not UnknownType
-            && IsAssignable(scrutineeType, testType))
+        if (scrutineeType is not UnknownType && testType is not UnknownType)
         {
-            _semanticInfo.SetPatternTotality(lodgeOn, true);
+            // Null-aware coverage (P13 D2): a `T | None` scrutinee is NEVER total for a non-nullable
+            // test type — the None value escapes the type test — so a payload head is PayloadTotal,
+            // covering only the payload case of the finite family. NullableType.IsAssignableTo is
+            // null-blind (SemanticType.cs:736), which is why the un-split scrutinee wrongly recorded
+            // Total and drew a spurious SPY0700 on `case list():` + `case None:`.
+            if (scrutineeType is NullableType nullableScrutinee)
+            {
+                if (IsAssignable(nullableScrutinee.UnderlyingType, testType))
+                    _semanticInfo.SetPatternCoverage(lodgeOn, PatternCoverage.PayloadTotal);
+            }
+            else if (IsAssignable(scrutineeType, testType))
+            {
+                _semanticInfo.SetPatternCoverage(lodgeOn, PatternCoverage.Total);
+            }
         }
 
         return testType;
@@ -990,12 +1028,21 @@ internal partial class TypeChecker
             }
         }
 
+        // Substitute type parameters through the SAME path positional patterns use (P13 D7): a
+        // generic union case's field is declared as `T`, so `case Node(value=7):` on `Tree[int]` must
+        // type the field sub-pattern against `int32`, not the unsubstituted `T` (which reported a
+        // spurious SPY0220 "'int32' incompatible with 'T'"). fieldTypes[i] corresponds to
+        // typeSymbol.Fields[i]; index by the field's position so the lookup is by name AND substituted.
+        var fieldTypes = typeSymbol != null
+            ? GetUnionCaseFieldTypes(typeSymbol, scrutineeType)
+            : null;
+
         foreach (var field in propertyPattern.Fields)
         {
             if (typeSymbol != null)
             {
-                var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
-                if (fieldSymbol == null)
+                var fieldIndex = typeSymbol.Fields.FindIndex(f => f.Name == field.Name);
+                if (fieldIndex < 0)
                 {
                     AddError(
                         $"Type '{typeSymbol.Name}' has no field '{field.Name}'",
@@ -1005,7 +1052,7 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    CheckPattern(field.Pattern, fieldSymbol.Type);
+                    CheckPattern(field.Pattern, fieldTypes![fieldIndex]);
                 }
             }
             else
@@ -1362,6 +1409,15 @@ internal partial class TypeChecker
     private (TypeSymbol? UnionSymbol, List<SemanticType>? TypeArgs) GetUnionSymbolAndTypeArgs(
         SemanticType scrutineeType)
     {
+        // A `T | None` (NullableType) union scrutinee is matched through the payload union's cases —
+        // the None value is a separate arm (P13 D6). Strip the nullable once, exactly as the sequence
+        // helper ResolveSequenceSubject does; without this a union-case head on `Tree[int] | None`
+        // failed to resolve and reported SPY0202 "Unknown type 'Node'".
+        if (scrutineeType is NullableType nullable)
+        {
+            return GetUnionSymbolAndTypeArgs(nullable.UnderlyingType);
+        }
+
         if (scrutineeType is UserDefinedType udt
             && udt.Symbol?.TypeKind == TypeKind.Union)
         {

@@ -79,7 +79,10 @@ public class DispatchSiteInventoryTests
 
         // ExhaustivenessHelper — pattern exhaustiveness/irrefutability
         ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.CollectCoveredCases"] = "guarded-by:ExhaustivenessHelperTotalityTests",
-        ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.IsIrrefutable"] = "guarded-by:ExhaustivenessHelperTotalityTests",
+        // IsIrrefutable is now an alias for IsTotal (no switch); the switch it held lives in IsTotal.
+        ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.IsTotal"] = "guarded-by:ExhaustivenessHelperTotalityTests",
+        // PatternHead.TryGet — the ONE switch on the three class-pattern head kinds (P13 DD8).
+        ["Shared/PatternHead.cs::PatternHead.TryGet"] = "guarded-by:ExhaustivenessHelperTotalityTests",
 
         // ModuleLoader — symbol extraction
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractExportedSymbol"] = "guarded-by:ModuleLoaderTotalityTests",
@@ -131,9 +134,10 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/FrozenDataclassValidator.cs::FrozenDataclassValidator.ValidateClassBody"] = "walker-default-contract",
         ["Semantic/Validation/FrozenDataclassValidator.cs::FrozenDataclassValidator.ValidateModuleStatement"] = "walker-default-contract",
         ["Semantic/Validation/GeneratorValidator.cs::GeneratorValidator.Validate"] = "walker-default-contract",
-        ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.CoversItsRecordedType"] = "walker-default-contract",
+        // CoversItsRecordedType and IsTypeTotalPattern no longer switch on the pattern node — they
+        // route through the ONE classifier PatternHead.TryGet (P13 DD8/DD9); GetPatternRecordedType
+        // keeps a LiteralPattern arm for the later (non-head) arm it compares against.
         ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.GetPatternRecordedType"] = "walker-default-contract",
-        ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.IsTypeTotalPattern"] = "walker-default-contract",
         ["Semantic/Validation/ModuleLevelValidator.cs::ModuleLevelValidator.Validate"] = "walker-default-contract",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.GetChildStatements"] = "walker-default-contract",
         ["Semantic/Validation/SignatureValidator.cs::SignatureValidator.ValidateTopLevelStatement"] = "walker-default-contract",

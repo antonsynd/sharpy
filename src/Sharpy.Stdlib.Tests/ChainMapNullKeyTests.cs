@@ -20,12 +20,9 @@ namespace Sharpy.Stdlib.Tests;
 /// Each cell carries CPython 3.12's answer for the same program, verified with python3 before
 /// these were written.
 ///
-/// One deviation is deliberate and called out on <see cref="NullKey_Keys_YieldsNullOnce"/>:
-/// Sharpy's ChainMap enumerates its maps in FORWARD order while CPython merges them reversed, so
-/// the relative order of keys drawn from DIFFERENT maps differs. That is independent of null keys
-/// (measured: a ChainMap with no None anywhere shows the same difference), so these cells assert
-/// the null key's presence, its deduplication and its first-map-wins precedence, not the
-/// cross-map order.
+/// Since #1933, ChainMap merges its maps in CPython's REVERSED order (last map walked first, dedup
+/// keeping the first occurrence in that walk), so <see cref="NullKey_Keys_YieldsNullOnce"/> now
+/// asserts CPython's exact key order rather than a documented deviation.
 /// </summary>
 public class ChainMapNullKeyTests
 {
@@ -118,18 +115,13 @@ public class ChainMapNullKeyTests
     [Fact]
     public void NullKey_Keys_YieldsNullOnce()
     {
-        // CPython: list(cm.keys()) -> [None, 'y', 'x'] — three unique keys, the null key appearing
-        // exactly ONCE even though both maps carry it (the HashSet<K> dedup takes a null element).
-        //
-        // Sharpy yields [None, 'x', 'y']: the cross-map order differs for the reason given on the
-        // class. The null key is drawn from the first map in both, so it leads in both.
+        // CPython: list(ChainMap({None:1,'x':2}, {None:99,'y':3}).keys()) -> [None, 'y', 'x'] —
+        // three unique keys, the null key appearing exactly ONCE even though both maps carry it
+        // (the HashSet<K> dedup takes a null element). Since #1933 Sharpy merges in CPython's
+        // reversed order, so it yields the SAME sequence.
         var keys = TwoMaps().Keys().ToList();
 
-        Assert.Equal(3, keys.Count);
-        Assert.Equal(1, keys.Count(k => k is null));
-        Assert.Contains("x", keys);
-        Assert.Contains("y", keys);
-        Assert.Null(keys[0]);
+        Assert.Equal(new string?[] { null, "y", "x" }, keys);
     }
 
     [Fact]
@@ -140,14 +132,15 @@ public class ChainMapNullKeyTests
     }
 
     [Fact]
-    public void NullKey_Enumeration_PairsNullWithFirstMapValue()
+    public void NullKey_Items_PairsNullWithFirstMapValue()
     {
-        // CPython: dict(cm)[None] -> 1. GetEnumerator() re-reads each key through the indexer, so
-        // this fails if the enumerator yields the null key but the re-read misses the slot.
-        var pairs = TwoMaps().ToList();
+        // CPython: dict(cm.items())[None] -> 1. items() re-reads each key through the indexer, so
+        // this fails if the view yields the null key but the re-read misses the slot. (Iterating the
+        // ChainMap itself now yields KEYS, per #1933; pairs are reached through items().)
+        var pairs = TwoMaps().Items().ToList();
 
         Assert.Equal(3, pairs.Count);
-        Assert.Equal(1, pairs.Single(p => p.Key is null).Value);
+        Assert.Equal(1, pairs.Single(p => p.Item1 is null).Item2);
     }
 
     [Fact]

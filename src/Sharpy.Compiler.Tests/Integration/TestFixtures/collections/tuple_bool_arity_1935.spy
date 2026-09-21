@@ -1,0 +1,13 @@
+# bool(t) answers from the tuple's arity: False only for the zero-arity tuple, True otherwise.
+# python3 3.12.13:
+#   [bool(t) for t in [(), (1,), (1, 2), (1,2,3,4,5,6,7), (1,2,3,4,5,6,7,8), (1,2,3,4,5,6,7,8,9)]]
+#   == [False, True, True, True, True, True]  (#1935 — was True for the empty tuple)
+def main() -> None:
+    print(
+        bool(()),
+        bool((1,)),
+        bool((1, 2)),
+        bool((1, 2, 3, 4, 5, 6, 7)),
+        bool((1, 2, 3, 4, 5, 6, 7, 8)),
+        bool((1, 2, 3, 4, 5, 6, 7, 8, 9)),
+    )

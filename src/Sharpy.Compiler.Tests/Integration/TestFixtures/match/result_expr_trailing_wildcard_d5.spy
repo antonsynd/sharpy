@@ -1,0 +1,11 @@
+# D5 (#1957): a synthetic Result match EXPRESSION with a redundant trailing wildcard runs — the
+# deconstruct-to-bool lowering proves the discard unreachable, so it is omitted (no CS8510).
+def describe(r: int !ValueError) -> str:
+    return match r:
+        case Ok(v): f"ok {v}"
+        case Err(e): f"err {e}"
+        case _: "other"
+
+def main() -> None:
+    print(describe(Ok(5)))
+    print(describe(Err(ValueError("bad"))))

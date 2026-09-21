@@ -2666,7 +2666,13 @@ internal partial class TypeChecker
         if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
             || overloads.Count <= 1)
         {
-            return referencedType;
+            // #1942 (R-AP): a SINGLE-overload method group on one of the five Sharpy builtin receivers
+            // in VALUE position is unspellable (`f = xs.count` printed a System.Func @ 25098551d).
+            // Refused here — at the a06/a09 single-overload return — so user-class and CLR-identity
+            // receivers keep running, a multi-overload-DIVERGING reference (`xs.pop`) falls through to
+            // the #1170 arity message below (its more specific diagnostic wins, never clobbered), and a
+            // BARE STATEMENT (`"abc".upper`) is left to #1617's elide-and-warn (the verdict excludes it).
+            return SharpyReceiverMethodGroupInValuePositionVerdict(reference) ?? referencedType;
         }
 
         // Distinct signatures only: an overload set can carry duplicate entries for the same
@@ -2681,7 +2687,9 @@ internal partial class TypeChecker
         }
 
         if (candidates.Count <= 1 || !CandidateAritiesDiverge(candidates))
-            return referencedType;
+            // Same-arity (or single distinct) overload set: not a #1170 arity divergence, so a Sharpy
+            // builtin receiver's method group here is the R-AP refusal too (#1942).
+            return SharpyReceiverMethodGroupInValuePositionVerdict(reference) ?? referencedType;
 
         // Target-typed selection: an annotated target, a parameter the reference is passed to, or a
         // declared return type supplies the signature the user meant. `_expectedType` already carries
@@ -2732,6 +2740,55 @@ internal partial class TypeChecker
             reference.LineStart, reference.ColumnStart,
             code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
             span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// #1942 (R-AP): a method group on a Sharpy builtin receiver ({list, dict, set, str, bytes}) in
+    /// VALUE position, refused SPY0336 with the three-cure steer unless a FunctionType target type
+    /// selects it or the reference is a call's own callee. Returns null (fall through to normal
+    /// typing) when the reference is not such a method group — a user-class or CLR-identity receiver,
+    /// a target-typed reference, or a callee — so a06/a09 single-overload references keep running.
+    /// </summary>
+    private SemanticType? SharpyReceiverMethodGroupInValuePositionVerdict(Expression reference)
+    {
+        if (reference is not MemberAccess memberAccess)
+            return null;
+        if (IsCurrentCallCallee(memberAccess))
+            return null;
+        // A bare method-group STATEMENT (`"abc".upper`) is #1617's elide-and-warn no-op, not a value
+        // position that produces a delegate — left to that feature (SPY warning), never refused.
+        if (IsCurrentStatementExpression(memberAccess))
+            return null;
+        // A function target type at the reference site selects the overload — `f: (int) -> int =
+        // xs.count` is exactly how the reader pins the method group, so it is not refused.
+        if (_expectedType is FunctionType)
+            return null;
+        if (_semanticInfo.GetExpressionType(memberAccess.Object) is not { } receiverType
+            || !IsSharpyBuiltinSpellingReceiver(receiverType))
+            return null;
+
+        return RefuseSharpyReceiverMethodGroupInValuePosition(memberAccess);
+    }
+
+    /// <summary>
+    /// SPY0336 for a method group on a Sharpy builtin receiver in value position (#1942, R-AP), with
+    /// the three-cure steer. The R-AP value-position gate lives here (DD13,
+    /// <see cref="CheckReferencedCallableOverloads"/>); this shared emitter is also called by the
+    /// reverse-mangled seam <c>ReverseMangledClrMethodVerdict</c> in TypeChecker.Expressions.Access.cs
+    /// so every spelling reads identically. It is the SECOND SPY0336 site in this file beyond the two
+    /// overload-SET refusals, and distinct from the CLR-method-group emitter that stays the sole one
+    /// in TypeChecker.Expressions.Access.cs.
+    /// </summary>
+    private SemanticType RefuseSharpyReceiverMethodGroupInValuePosition(MemberAccess memberAccess)
+    {
+        var receiverExpr = DescribeSharpyReceiver(memberAccess.Object);
+        var steer = SharpyReceiverSpelling.ValuePositionSteer(receiverExpr, memberAccess.Member);
+        AddError(
+            $"'{memberAccess.Member}' on a Sharpy builtin is a method group, not a value — {steer}",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+            span: memberAccess.Span);
         return SemanticType.Unknown;
     }
 

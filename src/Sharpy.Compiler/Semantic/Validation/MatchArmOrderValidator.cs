@@ -41,7 +41,11 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
             if (!ExhaustivenessHelper.IsIrrefutable(pattern, context.SemanticInfo))
                 continue;
 
-            bool isTotalTypePattern = IsTypeTotalPattern(pattern, context.SemanticInfo);
+            // A class-pattern head — `case C():`, `case C(v):` or `case C(f=v):` — that is total over
+            // the scrutinee, routed through the ONE classifier (DD9). Wildcard/binding totals are NOT
+            // heads, so they fall through and are always reported below.
+            bool isTotalTypePattern = PatternHead.TryGet(pattern, out var totalHead)
+                && context.SemanticInfo?.GetPatternCoverage(totalHead.Lodge) == PatternCoverage.Total;
             if (isTotalTypePattern)
             {
                 bool hasRefutableFollower = false;
@@ -113,48 +117,30 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
         }
     }
 
-    private static bool IsTypeTotalPattern(Pattern pattern, SemanticInfo? info)
-    {
-        return pattern switch
-        {
-            TypePattern tp => info?.GetPatternTotality(tp) == true,
-            AsPattern { Inner: TypePattern tp } => info?.GetPatternTotality(tp) == true,
-            PositionalPattern pp => info?.GetPatternTotality(pp) == true,
-            AsPattern { Inner: PositionalPattern pp } => info?.GetPatternTotality(pp) == true,
-            _ => false
-        };
-    }
-
     /// <summary>
     /// Whether the pattern matches EVERY value of the type recorded for it — i.e. its only ground
     /// for refusing a value is the type test itself.
     /// <para>
     /// This is the subsumption rule's left-hand side. <c>case int():</c> and <c>case int(n):</c>
-    /// qualify (the sub-pattern binds, it does not filter), <c>case Box(a, b):</c> qualifies, and
-    /// <c>case 99:</c>, <c>case int(99):</c> and <c>case Box(1, b):</c> do NOT — each refutes on a
-    /// value as well as on a type, so a later arm of the same type is still reachable.
+    /// qualify (the sub-pattern binds, it does not filter), <c>case Box(a, b):</c> and
+    /// <c>case Box(a=x):</c> qualify, and <c>case 99:</c>, <c>case int(99):</c>, <c>case Box(1, b):</c>
+    /// and <c>case Box(a=1):</c> do NOT — each refutes on a value as well as on a type, so a later arm
+    /// of the same type is still reachable. Every head spelling is one rule: a head covers its type
+    /// when every sub-pattern (positional element OR property field value — D4) is total.
     /// </para>
     /// </summary>
     private static bool CoversItsRecordedType(Pattern pattern, SemanticInfo? info)
     {
-        return pattern switch
-        {
-            TypePattern => true,
-            AsPattern asp => CoversItsRecordedType(asp.Inner, info),
-            PositionalPattern pp =>
-                pp.Elements.All(e => ExhaustivenessHelper.IsIrrefutable(e, info)),
-            PropertyPattern prop => prop.Fields.Length == 0,
-            _ => false
-        };
+        return PatternHead.TryGet(pattern, out var head)
+            && head.SubPatterns.All(sp => ExhaustivenessHelper.IsTotal(sp, info));
     }
 
     private static SemanticType? GetPatternRecordedType(Pattern pattern, SemanticInfo? info)
     {
+        if (PatternHead.TryGet(pattern, out var head))
+            return info?.GetPatternType(head.Lodge);
         return pattern switch
         {
-            TypePattern tp => info?.GetPatternType(tp),
-            AsPattern asp => info?.GetPatternType(asp),
-            PositionalPattern pp => info?.GetPatternType(pp),
             LiteralPattern lp => info?.GetPatternType(lp),
             _ => null
         };

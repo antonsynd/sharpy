@@ -1773,3 +1773,24 @@ deviations:
       sharpy: |
         xs: list[int] = [1, 2]
         print("a" in xs)     # ERROR SPY0222: Type 'str' does not support operator 'in' with operand of type 'list[int32]'
+
+
+  - id: chainmap-reversed-admitted
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`reversed(cm)` raises `TypeError: 'ChainMap' object is not reversible` — a ChainMap defines no `__reversed__`."
+    sharpy_behavior: "A ChainMap is `IEnumerable<K>` (its keys), and the checker's `InferReversedElementType` accepts any iterable through `Builtins.Reversed<T>(IEnumerable<T>)` before consulting `IReverseEnumerable`, so `reversed(cm)` is admitted and yields the ChainMap's keys in reverse of its merge order rather than raising (#1933, Design Decision 5)."
+    spec_ref: docs/stdlib/collections.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from collections import ChainMap
+        list(reversed(ChainMap({"a": 1, "b": 2, "c": 3})))  # TypeError: 'ChainMap' object is not reversible
+      sharpy: |
+        import collections
+        cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]({"a": 1, "b": 2, "c": 3})
+        for k in reversed(cm):
+            print(k)                 # c, b, a — admitted, not a TypeError

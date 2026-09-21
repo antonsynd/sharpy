@@ -117,6 +117,69 @@ def main() -> None:
 [     1]
 ```
 
+### The Sign Applies to Every Numeric Presentation Type
+
+A sign (`+`, `-`, or space) is applied to **every** numeric presentation type, including `%` and the
+radix types — the sign is one rule, not a per-type special case:
+
+```python
+def main() -> None:
+    print(f"[{1.5:+%}]")
+    print(f"[{2:+%}]")
+    print(f"[{42:+x}]")
+    print(f"[{42:+o}]")
+```
+
+```
+[+150.000000%]
+[+200.000000%]
+[+2a]
+[+52]
+```
+
+The one exception is `c` (character): a sign with `c` is refused — statically as **SPY0609** on a
+literal spec, and at runtime with the same wording through a dynamic spec:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    print(f"[{65:+c}]")   # SPY0609: Sign not allowed with integer format specifier 'c'
+```
+
+### String Operands
+
+A string operand takes only fill/align, width and precision. The `0` flag zero-fills a string but
+leaves it at the string default alignment `<`, so it fills on the **right** (Python's rule since 3.10 —
+this is *not* `=`-style synthesis, which would fill on the left):
+
+```python
+def main() -> None:
+    s: str = "ab"
+    print(f"[{s:05}]")
+    print(f"[{s:>05}]")
+    print(f"[{s:<05}]")
+```
+
+```
+[ab000]
+[000ab]
+[ab000]
+```
+
+A sign, the alternate form `#`, and `=` alignment are all refused on a string, in CPython's order
+(sign → `z` → `#` → `=`) and with CPython's wording — statically as **SPY0609** on a literal spec:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    s: str = "ab"
+    print(f"[{s:=5}]")   # SPY0609: '=' alignment not allowed in string format specifier
+```
+
+The same refusals fire at runtime (as a `ValueError`) for a dynamic spec, and — because a literal
+spec passed through `format(v, spec)` or `"{:spec}".format(v)` is not seen by the static validator —
+those two routes are refused only at runtime.
+
 ## Nested Replacement Fields
 
 A format spec is itself a mini f-string: a `{...}` inside the spec is a nested replacement field —
@@ -138,6 +201,11 @@ def main() -> None:
 [       Sam]
 [3.142]
 ```
+
+The same runtime engine splits `str.format`/`format_map` replacement fields, so `"{:{}}".format(1234, ">8")`
+also resolves its nested spec field. The recursion limit is **per route**, matching CPython: a
+`str.format` spec may nest one level (a field inside a field's spec raises
+`ValueError: Max string recursion exceeded`), while an f-string spec may nest one level deeper.
 
 ## Evaluation Order
 

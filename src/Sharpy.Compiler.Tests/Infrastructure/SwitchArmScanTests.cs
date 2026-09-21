@@ -27,9 +27,12 @@ public class SwitchArmScanTests
     [Fact]
     public void CaseTypeNames_WorksOnSwitchExpressions()
     {
+        // IsIrrefutable is now a one-line alias for IsTotal (#1890/#1891 pattern-head
+        // refactor); the switch expression it held — including the WildcardPattern arm —
+        // moved to IsTotal, so scan that method for the switch-expression coverage.
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Shared/ExhaustivenessHelper.cs",
-            "IsIrrefutable");
+            "IsTotal");
 
         Assert.NotEmpty(arms);
         Assert.Contains("WildcardPattern", arms);

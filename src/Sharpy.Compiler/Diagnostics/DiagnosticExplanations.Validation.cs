@@ -994,10 +994,19 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
             "Irrefutable pattern is not the last case", "Validation",
-            "An unguarded name capture or wildcard pattern matches all values, making any " +
-            "following arms unreachable. Move it to the last position or add a guard condition.",
+            "An earlier unguarded arm already matches every value the later arm could. Three shapes " +
+            "trigger this: (1) an irrefutable pattern — a wildcard or a name capture — matches all " +
+            "values; (2) a class-pattern head that is TOTAL for the scrutinee's static type — " +
+            "`case int():` over an `int` — matches everything of that type (totality is a fact of the " +
+            "static type, not the spelling: `case int():`, `case int(n):` and `case int() as n:` are " +
+            "the same); (3) SUBSUMPTION — a head that matches every value of its OWN type, including " +
+            "the positional `case Box(a, b):` and keyword `case Box(a=x):` forms whose every " +
+            "sub-pattern is total, shadows a later arm whose type is contained in it (a later " +
+            "`case Box(a=1):`), even when the earlier arm is not total for the scrutinee. A literal " +
+            "sub-pattern refutes on a value, so `case Box(a=1):` first leaves a later `case Box(a=x):` " +
+            "reachable. Move the shadowing arm later, or add a guard.",
             "match x:\n    case y:        # SPY0700 — captures everything\n        print(y)\n    case 42:\n        print(\"specific\")",
-            "Move the irrefutable arm last, or add a guard: `case y if y != 42:`.");
+            "Move the irrefutable/total/subsuming arm last, or add a guard: `case y if y != 42:`.");
 
         Add(dict, DiagnosticCodes.ValidationOverflow.DuplicateDunderSignature,
             "Duplicate CLR-mapped dunder signature", "Validation",

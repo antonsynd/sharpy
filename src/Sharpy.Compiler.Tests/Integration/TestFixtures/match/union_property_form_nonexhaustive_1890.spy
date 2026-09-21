@@ -1,0 +1,13 @@
+# Positive control for union_property_form_exhaustive_1890: omitting the Leaf case (no wildcard)
+# is genuinely non-exhaustive — SPY0463 must fire, so the empty-.warning twin is not vacuous.
+union Tree:
+    case Leaf()
+    case Node(value: int)
+
+def describe(t: Tree) -> None:
+    match t:
+        case Node(value=v):
+            print("node", v)
+
+def main() -> None:
+    describe(Tree.Node(7))

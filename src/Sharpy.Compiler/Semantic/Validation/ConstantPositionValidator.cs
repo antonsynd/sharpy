@@ -207,8 +207,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
         foreach (var field in classDef.Body.OfType<VariableDeclaration>())
         {
-            if (field.InitialValue == null || field.Type == null || field.IsConst
-                || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            if (field.InitialValue == null || field.Type == null || !MemberClassification.IsInstanceField(field))
                 continue;
 
             ValidateDefaultValue(DataclassFieldSlot(field, classDef.Name), AdmissionTable.PerInstanceFieldDefault);
@@ -229,8 +228,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
         foreach (var field in structDef.Body.OfType<VariableDeclaration>())
         {
-            if (field.InitialValue == null || field.Type == null || field.IsConst
-                || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
+            if (field.InitialValue == null || field.Type == null || !MemberClassification.IsInstanceField(field))
                 continue;
 
             ValidateDefaultValue(StructFieldSlot(field, structDef.Name), AdmissionTable.PerInstanceFieldDefault);
