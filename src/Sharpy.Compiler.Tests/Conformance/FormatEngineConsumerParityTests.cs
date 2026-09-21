@@ -281,7 +281,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     /// <summary>
     /// A string-operand spec CPython refuses. The f-string route with a LITERAL spec is refused at
     /// compile time (SPY0609); <c>format(v, spec)</c> and <c>"{:spec}".format(v)</c> with a literal
-    /// spec get no static diagnostic (the inertness trap — sibling issue filed) and are refused by
+    /// spec get no static diagnostic (the inertness trap — sibling #1956) and are refused by
     /// Core at runtime with the identical wording. <c>FStringOnly</c> marks the conversion cell,
     /// whose kind (<c>Str</c> via <c>!r</c>) only exists on the f-string route.
     /// </summary>
