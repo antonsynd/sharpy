@@ -1,0 +1,16 @@
+# #1890: the property-form union-case head `case Node(value=v):` IS counted by exhaustiveness.
+# Both cases covered, no wildcard — must run with NO SPY0463 warning.
+union Tree:
+    case Leaf()
+    case Node(value: int)
+
+def describe(t: Tree) -> None:
+    match t:
+        case Node(value=v):
+            print("node", v)
+        case Leaf():
+            print("leaf")
+
+def main() -> None:
+    describe(Tree.Node(7))
+    describe(Tree.Leaf())

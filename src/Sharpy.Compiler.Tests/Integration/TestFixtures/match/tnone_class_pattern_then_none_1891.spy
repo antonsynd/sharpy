@@ -1,0 +1,12 @@
+# #1891: `case list():` over `list[int] | None` is PayloadTotal (not total), `case None:` is the
+# None arm, and the pair is exhaustive — no spurious SPY0700/SPY0463.
+def describe(x: list[int] | None) -> None:
+    match x:
+        case list(ys):
+            print("list", len(ys))
+        case None:
+            print("none")
+
+def main() -> None:
+    describe([1, 2, 3])
+    describe(None)

@@ -915,4 +915,157 @@ def main() -> None:
         result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.TrimEnd().Should().Be("HELLO");
     }
+
+    // ── D4 (#1890): property-form subsumption — `case Box(a=x):` covers every Box ─────────────────
+    // Every sub-pattern (the property field value `x`, a binding) is total, so the head covers its
+    // type and a later `case Box(a=1):` is unreachable — SPY0700, not the CS8120 ICE behind SPY0908
+    // it reached before the property form joined CoversItsRecordedType.
+
+    [Fact]
+    public void PropertyFormSubsumption_BoxAxCoversBoxA1_SPY0700()
+    {
+        const string source = @"
+class Box:
+    a: int
+
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+def classify(o: object) -> str:
+    match o:
+        case Box(a=x):
+            return ""any""
+        case Box(a=1):
+            return ""one""
+        case _:
+            return ""other""
+
+def main() -> None:
+    print(classify(Box(1)))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"`case Box(a=x):` matches every Box, so `case Box(a=1):` is unreachable. Output: {result.StandardOutput}\n{source}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == SPY0700,
+            $"property-form subsumption is SPY0700, not CS8120 behind SPY0908\n{source}");
+    }
+
+    [Fact]
+    public void PropertyFormSubsumption_LiteralField_IsReachable()
+    {
+        // Positive control for the subsumption above: `case Box(a=1):` first does NOT cover every Box
+        // (it refutes on the value), so a later `case Box(a=x):` stays reachable and runs.
+        const string source = @"
+class Box:
+    a: int
+
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+def classify(o: object) -> str:
+    match o:
+        case Box(a=1):
+            return ""one""
+        case Box(a=x):
+            return ""any""
+        case _:
+            return ""other""
+
+def main() -> None:
+    print(classify(Box(2)))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"a literal property field refutes on the value, so the later Box(a=x) is reachable. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("any");
+    }
+
+    // ── D6 (#1953): union-case head on a `T | None` union scrutinee ───────────────────────────────
+    // GetUnionSymbolAndTypeArgs strips the nullable once, so every head spelling resolves and the
+    // match (payload cases + case None) is exhaustive — no SPY0202.
+
+    [Theory]
+    [InlineData("Node(v)")]
+    [InlineData("Node(value=v)")]
+    [InlineData("Tree.Node(v)")]
+    public void NullableUnionScrutinee_HeadResolves_Runs(string headForm)
+    {
+        var source = $@"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int] | None) -> str:
+    return match t:
+        case {headForm}: ""node""
+        case Leaf(): ""leaf""
+        case None: ""none""
+
+def main() -> None:
+    n: Tree[int] = Tree.Node(7)
+    print(f(n))
+    print(f(None))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{headForm}] a union head on Tree[int] | None resolves (D6, was SPY0202). Diagnostics: "
+            + $"{string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("node\nnone");
+    }
+
+    // ── D7 (#1954): keyword sub-pattern typed through the type-argument substitution ──────────────
+
+    [Fact]
+    public void KeywordLiteralOnGenericUnion_Substituted_Runs()
+    {
+        const string source = @"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int]) -> str:
+    return match t:
+        case Node(value=7): ""seven""
+        case Node(value=v): f""node {v}""
+        case Leaf(): ""leaf""
+
+def main() -> None:
+    a: Tree[int] = Tree.Node(7)
+    b: Tree[int] = Tree.Node(3)
+    print(f(a))
+    print(f(b))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"`case Node(value=7):` types the field as int32 via substitution (D7, was 'int32' vs 'T'). "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be("seven\nnode 3");
+    }
+
+    [Fact]
+    public void KeywordLiteralOnGenericUnion_WrongLiteralType_SPY0220()
+    {
+        // Positive control: substitution really happened — a str literal on the int32 field is caught.
+        const string source = @"
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def f(t: Tree[int]) -> str:
+    return match t:
+        case Node(value=""x""): ""x""
+        case _: ""other""
+
+def main() -> None:
+    a: Tree[int] = Tree.Node(7)
+    print(f(a))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            $"a str literal on the substituted int32 field must be SPY0220. Output: {result.StandardOutput}\n{source}");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
+            $"SPY0220 'str' incompatible with 'int32'\n{source}");
+    }
 }
