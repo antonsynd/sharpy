@@ -200,21 +200,49 @@ internal partial class TypeChecker
 
         if (type is GenericType gt)
         {
-            return gt.Name switch
-            {
-                BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
-                    or BuiltinNames.Tuple or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict
-                    or BuiltinNames.DefaultDict => (true, TruthinessLowering.CollectionNotEmpty),
-                BuiltinNames.Bytes => (true, TruthinessLowering.BytesNotEmpty),
-                // A GENERIC HOST (`class Box[T]` declaring __len__/__bool__) is truth-testable
-                // exactly as the non-generic class is — the host axis of #1808. `bool(b)` already
-                // worked on one because it goes through the builtin's own overload set, while
-                // `if b:` came here and got "no": the same receiver, two answers.
-                _ => TryGetGenericHost(gt) is { } host
-                    ? ClassifyDeclaredTruthiness(host.Definition)
-                    : (false, default)
-            };
+            if (gt.Name == BuiltinNames.Bytes)
+                return (true, TruthinessLowering.BytesNotEmpty);
+
+            // A GENERIC HOST (`class Box[T]` declaring __len__/__bool__) is truth-testable
+            // exactly as the non-generic class is — the host axis of #1808. `bool(b)` already
+            // worked on one because it goes through the builtin's own overload set, while
+            // `if b:` came here and got "no": the same receiver, two answers.
+            if (TryGetGenericHost(gt) is { } host)
+                return ClassifyDeclaredTruthiness(host.Definition);
+
+            // Every other constructed generic — a Core wrapper (list[T], dict[K, V], set[T],
+            // frozenset[T], frozendict[K, V], the dict views) or a CLR-discovered stdlib type
+            // (collections.OrderedDict[K, V], ChainMap, Counter, defaultdict) — answers from its
+            // CLR IDENTITY: IBoolConvertible / ISized are the two shapes the lowering can cast
+            // to, and reflection is what says which a receiver carries. There is deliberately no
+            // name list here: the one that listed `defaultdict` alongside the Core wrappers is
+            // the "name-keyed alias diverging from reflection" meta-class (#1933) — the sibling
+            // mappings carrying the same ISized surface were refused because their NAMES were
+            // not on it. A GenericType built without a definition (an inferred literal shape)
+            // resolves its identity through the registry's symbol for the same name — an
+            // identity lookup, not a protocol assertion.
+            var clrType = _typeInference.GetClrType(gt)
+                ?? _symbolTable?.BuiltinRegistry.GetType(gt.Name)?.ClrType;
+            return clrType != null ? ClassifyClrTruthiness(clrType) : (false, default);
         }
+
+        return (false, default);
+    }
+
+    /// <summary>
+    /// The truthiness verdict a CLR identity carries — the ONE reflection arm behind both the
+    /// declared-type and the constructed-generic classifiers, so a Sharpy class that implements
+    /// <c>ISized</c> and a stdlib <c>OrderedDict[K, V]</c> cannot get different answers to the same
+    /// question. <c>IBoolConvertible</c> wins over <c>ISized</c> exactly as <c>__bool__</c> wins over
+    /// <c>__len__</c> in Python. Open generic definitions answer too: both protocol interfaces are
+    /// non-generic, so they appear on the definition's interface list as-is.
+    /// </summary>
+    private static (bool isTruthTestable, TruthinessLowering lowering) ClassifyClrTruthiness(System.Type clrType)
+    {
+        if (HasClrProtocolInterface(clrType, SharpyProtocolInterfaces.BoolConvertible))
+            return (true, TruthinessLowering.BoolConvertible);
+        if (HasClrProtocolInterface(clrType, SharpyProtocolInterfaces.Sized))
+            return (true, TruthinessLowering.SizedNotEmpty);
 
         return (false, default);
     }
@@ -234,12 +262,7 @@ internal partial class TypeChecker
             return (true, TruthinessLowering.SizedNotEmpty);
 
         if (symbol.ClrType != null)
-        {
-            if (HasClrProtocolInterface(symbol.ClrType, SharpyProtocolInterfaces.BoolConvertible))
-                return (true, TruthinessLowering.BoolConvertible);
-            if (HasClrProtocolInterface(symbol.ClrType, SharpyProtocolInterfaces.Sized))
-                return (true, TruthinessLowering.SizedNotEmpty);
-        }
+            return ClassifyClrTruthiness(symbol.ClrType);
 
         return (false, default);
     }

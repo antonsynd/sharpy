@@ -15,7 +15,17 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// comment sits on the cell). The mappings are {dict (control), defaultdict, OrderedDict, ChainMap,
 /// Counter}; the protocols are {len, in, for-k-in, list(x), keys/values/items length+order,
 /// reversed(x), == same type, == dict (both operand orders), bool empty/non-empty, construct from
-/// str}. Six cross-stdlib equality pairs (Design Decision 5) are asserted separately.
+/// str, truth position (<c>if m:</c> and the ternary)}. Six cross-stdlib equality pairs (Design
+/// Decision 5) are asserted separately.
+///
+/// <para>
+/// <c>bool</c> and <c>truth</c> are two protocols on purpose: <c>bool(x)</c> is a conversion that
+/// goes through the builtin's own overload set, while <c>if x:</c> / <c>1 if x else 0</c> are
+/// truth-testing positions the checker classifies itself (<c>ClassifyTruthiness</c>). The
+/// two used to give different answers for the same receiver — <c>bool(od)</c> ran while
+/// <c>if od:</c> was SPY0220 — because the truth classifier kept a name list that spelled
+/// <c>defaultdict</c> but not its siblings (the #1933 meta-class, plan-6ca898 verify).
+/// </para>
 ///
 /// <para>
 /// Every mapping (except dict) is constructed to the SAME contents — {"a":1,"b":2,"c":3} in key
@@ -44,7 +54,7 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
 
     private static readonly string[] Protocols =
     {
-        "len", "in", "for", "list", "views", "reversed", "eq_same", "eq_dict", "bool", "from_str",
+        "len", "in", "for", "list", "views", "reversed", "eq_same", "eq_dict", "bool", "from_str", "truth",
     };
 
     /// <summary>One executing cell: a full Sharpy program and its python3-verified stdout.</summary>
@@ -170,6 +180,16 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
             cells.Add(new Cell(mapping, "bool",
                 c + Empty(mapping) + "    print(bool(e), bool(m))",
                 "False True"));
+
+            // truth position: `if x:` statement AND the ternary, on the empty and the non-empty
+            // instance — python3 3.12.13: e-empty / m-full / empty full. Discovered from the CLR
+            // type's ISized surface, never from a name (#1933 sibling).
+            cells.Add(new Cell(mapping, "truth",
+                c + Empty(mapping) +
+                "    if e:\n        print(\"e-full\")\n    else:\n        print(\"e-empty\")\n" +
+                "    if m:\n        print(\"m-full\")\n    else:\n        print(\"m-empty\")\n" +
+                "    print(\"full\" if e else \"empty\", \"full\" if m else \"empty\")",
+                "e-empty\nm-full\nempty full"));
         }
 
         // construct from str — Counter only; python3: Counter("abca") -> a:2,b:1,c:1.
@@ -302,10 +322,10 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
         Assert.True(missing.Count == 0,
             "Matrix is not total — no cell and no N/A roster entry for: " + string.Join(", ", missing));
 
-        // Exactly 5 mappings × 10 protocols = 50 (mapping, protocol) positions.
-        Assert.Equal(50, Mappings.Length * Protocols.Length);
-        // 46 executing cells (50 positions − 4 N/A from_str rows).
-        Assert.Equal(46, executing.Count);
+        // Exactly 5 mappings × 11 protocols = 55 (mapping, protocol) positions.
+        Assert.Equal(55, Mappings.Length * Protocols.Length);
+        // 51 executing cells (55 positions − 4 N/A from_str rows).
+        Assert.Equal(51, executing.Count);
         Assert.Equal(4, na.Count);
     }
 }

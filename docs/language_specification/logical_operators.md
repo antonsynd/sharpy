@@ -18,7 +18,7 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 | `long` | `x != 0L` | `0L` |
 | `str` | `x.Length > 0` | `""` |
 | `bytes` | `((ISized)x).Count > 0` | `b""` |
-| collections (`list`, `dict`, `set`) | `((ISized)x).Count > 0` | empty |
+| collections (`list`, `dict`, `set`, and any type whose CLR shape carries `ISized` — the `collections` mappings `defaultdict`, `OrderedDict`, `ChainMap`, `Counter`, the dict views) | `((ISized)x).Count > 0` | empty |
 | `None` | `false` (always) | `None` |
 | `T?` (strict Optional) | `x.IsSome` | `None()` |
 | `T \| None` (loose nullable) | `x != null` | `None` |

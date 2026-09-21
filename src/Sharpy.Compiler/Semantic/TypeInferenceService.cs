@@ -1932,7 +1932,14 @@ internal class TypeInferenceService
         return type;
     }
 
-    private Type? GetClrType(SemanticType type)
+    /// <summary>
+    /// The CLR identity a semantic type resolves to — a primitive's mapped type, a declared or
+    /// discovered class's <see cref="TypeSymbol.ClrType"/>, or a constructed generic closed over its
+    /// arguments' identities (the open definition when an argument has none). Internal so the
+    /// checker's truth-position classifier asks the SAME resolver operator discovery uses, rather
+    /// than keeping a second, name-keyed answer for which generics are sized (#1933).
+    /// </summary>
+    internal Type? GetClrType(SemanticType type)
     {
         return type switch
         {

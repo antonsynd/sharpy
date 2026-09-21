@@ -37,6 +37,11 @@ class HasLen:
 
 class PlainObject:
     pass
+
+class Box[T]:
+    _v: T
+    def __init__(self, v: T) -> None:
+        self._v = v
 ";
 
     // Types that ARE truth-testable (have a falsy case)
@@ -57,11 +62,17 @@ class PlainObject:
         yield return new object[] { "UDT __len__", "x: HasLen = HasLen()" };
     }
 
-    // Types that are NOT truth-testable (no falsy case)
+    // Types that are NOT truth-testable (no falsy case). The two GENERIC subjects are the positive
+    // controls for the constructed-generic arm of ClassifyTruthiness, which answers from the CLR
+    // identity (ISized / IBoolConvertible) rather than a name list (#1933 sibling): a user generic
+    // host with no dunder, and a CLR-backed generic (Sharpy.Iterator<T>) that carries neither
+    // interface, must both still be refused — otherwise "discovered" would mean "always yes".
     public static IEnumerable<object[]> NonTruthTestableTypes()
     {
         yield return new object[] { "function", "def f() -> int:\n        return 1\n    x = f" };
         yield return new object[] { "plain object", "x: PlainObject = PlainObject()" };
+        yield return new object[] { "generic plain object", "x: Box[int] = Box[int](1)" };
+        yield return new object[] { "CLR generic, not sized", "x: Iterator[int] = iter([1, 2])" };
     }
 
     // --- if position ---
@@ -429,6 +440,13 @@ def main() -> None:
         new("tuple-empty", "", "    x = ()\n", true, false),
         new("plain-class", "class Plain:\n    pass\n\n", "    x: Plain = Plain()\n", false, false),
         new("function-ref", "def f() -> int:\n    return 1\n\n", "    x = f\n", false, false),
+        // Positive controls for the constructed-generic arm (#1933 sibling): the arm discovers
+        // ISized/IBoolConvertible from the CLR identity, so a generic that carries neither — a user
+        // generic host with no dunder, a CLR-backed Iterator<T> — must still name the fact.
+        new("generic-plain-class",
+            "class Box[T]:\n    _v: T\n    def __init__(self, v: T) -> None:\n        self._v = v\n\n",
+            "    x: Box[int] = Box[int](1)\n", false, false),
+        new("clr-generic-not-sized", "", "    x: Iterator[int] = iter([1, 2])\n", false, false),
     };
 
     private static string ExpectedFact(Subject subject)
@@ -469,11 +487,15 @@ def main() -> None:
             },
             "the 14 truthiness-refusal SITES (12 human-readable positions, and/or each split into two)");
         Subjects.Select(s => s.Id).Should().BeEquivalentTo(
-            new[] { "tuple-fixed", "tuple-named", "tuple-empty", "plain-class", "function-ref" },
+            new[]
+            {
+                "tuple-fixed", "tuple-named", "tuple-empty", "plain-class", "function-ref",
+                "generic-plain-class", "clr-generic-not-sized",
+            },
             "the subject axis");
 
-        (Positions.Length * Subjects.Length).Should().Be(70, "14 sites x 5 subjects");
-        RefusalCells.Count().Should().Be(70, "every cell is live — no N/A in this matrix");
+        (Positions.Length * Subjects.Length).Should().Be(98, "14 sites x 7 subjects");
+        RefusalCells.Count().Should().Be(98, "every cell is live — no N/A in this matrix");
     }
 
     // ──────── controls: the wrapper families and non-tuple collections still run ────────
@@ -482,6 +504,10 @@ def main() -> None:
     [InlineData("tuple-or-none", "", "x: tuple[int, int] | None = (1, 2)")]
     [InlineData("tuple-strict", "", "x: tuple[int, int]? = Some((1, 2))")]
     [InlineData("list", "", "x: list[int] = [1, 2]")]
+    // The constructed-generic arm answers from the CLR identity (#1933 sibling): every Core
+    // wrapper carrying ISized runs, including the ones the old name list never spelled (a dict view).
+    [InlineData("frozenset", "", "x: frozenset[int] = frozenset([1, 2])")]
+    [InlineData("dict-keys-view", "", "d: dict[str, int] = {\"a\": 1}\n    x = d.keys()")]
     [InlineData("len-class", "class Sized:\n    def __len__(self) -> int:\n        return 1\n\n", "x: Sized = Sized()")]
     public void RefusalControls_StillRun(string id, string preamble, string setup)
     {
