@@ -108,6 +108,23 @@ internal partial class TypeChecker
                 _symbolTable.ExitScope();
             }
         }
+
+        // P13 D5: materialize the unreachable-default fact for the emitter (Rule 2 — the emitter no
+        // longer calls ExhaustivenessHelper). A match with no wildcard/total arm but covering every
+        // finite case needs a synthesized `default: throw` so C#'s definite-return analysis passes.
+        if (scrutineeType is not UnknownType)
+        {
+            bool hasDefault = matchStmt.Cases.Any(
+                c => c.Guard == null && ExhaustivenessHelper.IsTotal(c.Pattern, _semanticInfo));
+            if (!hasDefault
+                && ExhaustivenessHelper.IsExhaustiveMatch(
+                    scrutineeType,
+                    matchStmt.Cases.Select(c => (c.Pattern, c.Guard)),
+                    _semanticInfo))
+            {
+                _semanticInfo.SetMatchNeedsUnreachableDefault(matchStmt);
+            }
+        }
     }
 
     private void CheckPattern(Pattern pattern, SemanticType scrutineeType)

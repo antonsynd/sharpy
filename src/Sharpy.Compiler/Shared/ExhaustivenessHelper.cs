@@ -233,4 +233,24 @@ internal static class ExhaustivenessHelper
 
         return allCases.All(coveredCases.Contains);
     }
+
+    /// <summary>
+    /// Returns true when the unguarded arms are exhaustive UNDER THE EMITTED C# LOWERING, so C#'s own
+    /// switch-expression exhaustiveness proves a trailing catch-all unreachable (CS8510) — the ONE
+    /// function that decides D5 (P13 DD11). Only the lowerings C# can prove qualify: synthetic
+    /// <see cref="ResultType"/>/<see cref="OptionalType"/> deconstruct to a leading bool discriminant,
+    /// and a <see cref="NullableType"/> to payload + null. A user union lowers to closed case TYPES
+    /// and an enum to a non-exhaustive integral — C# proves neither, so a trailing discard there is
+    /// reachable by C#'s analysis and must be kept (the measured <c>Res</c> control).
+    /// </summary>
+    public static bool IsCSharpProvablyExhaustive(
+        SemanticType scrutineeType,
+        IEnumerable<(Pattern Pattern, Expression? Guard)> arms,
+        SemanticInfo semanticInfo)
+    {
+        if (scrutineeType is not (ResultType or OptionalType or NullableType))
+            return false;
+
+        return IsExhaustiveMatch(scrutineeType, arms, semanticInfo);
+    }
 }

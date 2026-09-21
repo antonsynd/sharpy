@@ -156,6 +156,20 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MatchStatement, bool> _matchHostsLoopTransfer =
         new(ReferenceEqualityComparer.Instance);
 
+    // P13 D5: whether a match STATEMENT needs a synthesized unreachable `default: throw` for C#'s
+    // definite-return analysis — it is semantically exhaustive (finite cases covered) but has no
+    // wildcard/total arm. Computed once in the checker (was derived at emit time via
+    // ExhaustivenessHelper, which Rule 2 forbids); the emitter reads this fact.
+    private readonly ConcurrentDictionary<MatchStatement, bool> _matchNeedsUnreachableDefault =
+        new(ReferenceEqualityComparer.Instance);
+
+    // P13 D5: per match-EXPRESSION arm lowering fact, keyed on the arm's Pattern (a Node with a
+    // position — MatchArm/MatchCase are records with value equality and no position, so two
+    // structurally identical arms would collide as one key). OmitUnreachableDiscard marks a trailing
+    // catch-all the emitted switch-expression lowering proves unreachable (CS8510).
+    private readonly ConcurrentDictionary<Pattern, MatchArmLowering> _matchArmLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map generic function calls to their inferred type arguments
     // Used by codegen to emit explicit type arguments in generated C#
     private readonly ConcurrentDictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
@@ -991,6 +1005,35 @@ public class SemanticInfo : ISemanticQuery
     public bool GetMatchHostsLoopTransfer(MatchStatement match)
     {
         return _matchHostsLoopTransfer.TryGetValue(match, out var hosts) && hosts;
+    }
+
+    /// <summary>
+    /// Records that a match statement needs a synthesized unreachable <c>default: throw</c> for C#'s
+    /// definite-return analysis (P13 D5) — it is exhaustive over a finite type but has no wildcard.
+    /// </summary>
+    public void SetMatchNeedsUnreachableDefault(MatchStatement match)
+    {
+        _matchNeedsUnreachableDefault[match] = true;
+    }
+
+    /// <summary>True iff the emitter must add the unreachable default to this match statement.</summary>
+    public bool GetMatchNeedsUnreachableDefault(MatchStatement match)
+    {
+        return _matchNeedsUnreachableDefault.TryGetValue(match, out var needs) && needs;
+    }
+
+    /// <summary>
+    /// Records a per match-arm lowering fact keyed on the arm's <see cref="Pattern"/> (P13 D5).
+    /// </summary>
+    public void SetMatchArmLowering(Pattern armPattern, MatchArmLowering lowering)
+    {
+        _matchArmLowerings[armPattern] = lowering;
+    }
+
+    /// <summary>The lowering fact recorded for a match arm's pattern, or null if none.</summary>
+    public MatchArmLowering? GetMatchArmLowering(Pattern armPattern)
+    {
+        return _matchArmLowerings.TryGetValue(armPattern, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -2007,6 +2050,12 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._matchHostsLoopTransfer)
             _matchHostsLoopTransfer.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._matchNeedsUnreachableDefault)
+            _matchNeedsUnreachableDefault.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._matchArmLowerings)
+            _matchArmLowerings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._inferredTypeArguments)
             _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);
 
@@ -2906,6 +2955,15 @@ public enum MatchScrutineeLoweringKind
 }
 
 public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
+
+/// <summary>
+/// A per-match-arm lowering fact (P13 D5). <see cref="OmitUnreachableDiscard"/> marks a trailing
+/// wildcard/binding arm of a match EXPRESSION whose preceding unguarded arms are exhaustive under the
+/// EMITTED lowering (deconstruct-to-bool for synthetic Result/Optional, payload+null for a
+/// NullableType), so C#'s switch-expression exhaustiveness proves the discard unreachable (CS8510
+/// behind SPY0908). The emitter reads the fact and skips the arm (Rule 2); it never re-derives it.
+/// </summary>
+public sealed record MatchArmLowering(bool OmitUnreachableDiscard);
 
 // FunctoolsPartialSpec (#1520) lives in FunctoolsPartialSpec.cs, sibling to
 // SelfInterfaceBridgeSpec — the same fully-resolved-spec pattern, node-keyed.

@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -1099,6 +1100,28 @@ internal partial class TypeChecker
 
                 _controlFlowDepth--;
                 _symbolTable.ExitScope();
+            }
+        }
+
+        // P13 D5: if the LAST arm is an unguarded trailing catch-all (wildcard / bare binding) and the
+        // preceding unguarded arms are exhaustive UNDER THE EMITTED LOWERING (synthetic Result/Optional
+        // deconstruct-to-bool, or a NullableType payload+null), then C#'s switch-expression
+        // exhaustiveness proves that arm unreachable — CS8510 behind SPY0908. Record the omit fact so
+        // the emitter drops it (Rule 2). A user union lowers to closed case types C# cannot prove, so
+        // this fires only for the provable lowerings and the user-union discard is kept.
+        if (scrutineeType is not UnknownType && matchExpr.Arms.Length >= 2)
+        {
+            var last = matchExpr.Arms[^1];
+            bool trailingCatchAll = last.Guard == null
+                && last.Pattern is (WildcardPattern or BindingPattern)
+                && ExhaustivenessHelper.IsTotal(last.Pattern, _semanticInfo);
+            if (trailingCatchAll
+                && ExhaustivenessHelper.IsCSharpProvablyExhaustive(
+                    scrutineeType,
+                    matchExpr.Arms.Take(matchExpr.Arms.Length - 1).Select(a => (a.Pattern, a.Guard)),
+                    _semanticInfo))
+            {
+                _semanticInfo.SetMatchArmLowering(last.Pattern, new MatchArmLowering(OmitUnreachableDiscard: true));
             }
         }
 
