@@ -94,9 +94,19 @@ def main() -> None:
     xs: list[int] = [1, 2, 3]
     n: int = xs.`Length`     # the escape binds the wrapper's .NET Length
     print(n)                 # 3
+    print(xs.`IndexOf`(2))   # the escape CALLS the wrapper's .NET IndexOf -> 1
 
     s: str = "abc"
     print(s.to_upper())      # System.String.ToUpper reached by reverse-mangling -> ABC
+```
+
+The escape names a .NET member **verbatim**. An escape that names no member of the wrapper's .NET surface — instance or extension — is an absent member (SPY0203), steered to the Sharpy spelling, in every position: as a value and as a callee alike. `count` is the Sharpy name; the .NET member is `Count`, so the escape spells nothing:
+
+<!-- spec-sweep: error SPY0203 -->
+```python
+def main() -> None:
+    xs: list[int] = [1, 2, 2]
+    print(xs.`count`(2))     # error[SPY0203]: no member 'count' — use xs.count
 ```
 
 A method named on a Sharpy builtin receiver but **not called** — reached as a value rather than as a callee — is a method group nothing can spell, in every one of the three spellings (the Sharpy surface `xs.count`, the reverse-mangled `xs.get_hash_code`, and the backtick escape `xs.``GetHashCode```). It is refused (SPY0336) with a steer to call it, target-type it, or wrap it in a lambda — the same rule any .NET method group in value position gets:

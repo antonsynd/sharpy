@@ -1343,30 +1343,69 @@ internal partial class TypeChecker
     /// emitted the group into an <c>object</c> slot and printed
     /// <c>System.Func`2[System.Int32,System.Int32]</c> — silent wrong output — and
     /// <c>b: bool = xs.`Count`</c> reached Roslyn as CS0428 behind SPY0908. Refused through the ONE
-    /// CLR-method-group refusal every other spelling reaches (SPY0336). CALLEE position is untouched,
-    /// so <c>xs.`Count`(1)</c> and <c>s.`ToUpper`()</c> still run, and a property or field escape
-    /// (<c>xs.`Length`</c>, <c>d.`Count`</c>) is TYPED rather than left to the permissive channel.</para>
+    /// CLR-method-group refusal every other spelling reaches (SPY0336). In CALLEE position a member
+    /// the wrapper HAS is the call route's business — <c>xs.`Count`(1)</c> and <c>s.`ToUpper`()</c>
+    /// still run — and a property or field escape (<c>xs.`Length`</c>, <c>d.`Count`</c>) is TYPED
+    /// rather than left to the permissive channel.</para>
     ///
     /// <para>The match must be VERBATIM: the escape names a CLR member, so <c>xs.`count`</c> — which no
-    /// CLR member spells — is not this seam's business and keeps its current answer rather than being
-    /// misnamed a method group.</para>
+    /// CLR member spells — is not misnamed a method group. It is ABSENT, and the absent answer is
+    /// produced HERE for every position (#1888): SPY0203 in value position AND in callee position.
+    /// Declining for a callee let <c>xs.`count`(2)</c> reach Roslyn as CS1061 behind SPY0908 while
+    /// <c>n = xs.`count`</c> was SPY0203 — two verdicts for one name. The one absence question is
+    /// "does any CLR member, instance or extension, spell the escape verbatim?": a reachable
+    /// extension (<c>xs.`Select`(...)</c>, Sharpy.Core's <c>s.`Upper`()</c>) binds in the emitted C#,
+    /// so it calls in callee position and is the unspellable method group (SPY0336) in value position.</para>
     /// </summary>
     private SemanticType? EscapedWrapperMemberType(
         MemberAccess memberAccess, Type wrapperClr, SemanticType receiverType)
     {
-        if (IsCurrentCallCallee(memberAccess))
+        var inCalleePosition = IsCurrentCallCallee(memberAccess);
+
+        // EXISTENCE first, asked verbatim of the wrapper's whole public instance surface — own,
+        // inherited, and interface members (Sharpy List<T>'s IndexOf is an explicit IList<T>
+        // implementation the interface-cast lowering reaches). Asked separately from TYPING below:
+        // ClrMemberTypeResolver answers Inconclusive for a member it cannot describe faithfully, and
+        // reading that as absence refused `xs.`IndexOf`` — a member the wrapper HAS.
+        var kind = Discovery.ClrTypeHelper.FindPublicInstanceMemberVerbatim(wrapperClr, memberAccess.Member);
+
+        if (kind == Discovery.ClrInstanceMemberKind.None)
+        {
+            // No instance member of the wrapper spells the escape verbatim. An EXTENSION method
+            // reachable from the emitted compilation still binds in the emitted C# — `b.`Select``,
+            // `s.`Upper`` (Sharpy.Core's StringExtensions) — so a callee calls it (the call route's
+            // business) and a value reference is the same unspellable group (#1858). Asked of the
+            // verbatim name AND the receiver: the name-only #1141 clause carries reverse-mangled
+            // names too, so `Enumerable.Count` would keep `xs.`count`` alive, and
+            // `Upper(this string)` must not keep a list escape alive.
+            if (Discovery.ClrExtensionMethodResolver.AnyReachableExtensionAcceptsReceiverVerbatim(
+                    EnumerateExtensionMethodAssemblies(wrapperClr), wrapperClr, memberAccess.Member))
+                return inCalleePosition ? null : RefuseClrMethodGroupInValuePosition(memberAccess);
+
+            // No CLR member — instance OR extension — spells the escape (`xs.`count``: the CLR
+            // member is `Count`, and `count` is only the Sharpy surface name). The backtick escape
+            // is FOR reaching CLR members verbatim, so a snake name it cannot spell is a plain
+            // absent member in EVERY position: SPY0203 with the Sharpy-name steer, not the
+            // permissive channel, which let it reach Roslyn as CS1061 behind SPY0908 (#1888).
+            return RefuseEscapedAbsentWrapperMember(memberAccess, receiverType);
+        }
+
+        // A member the wrapper HAS. In callee position it is the call route's business.
+        if (inCalleePosition)
             return null;
 
+        // A METHOD in value position is the unspellable group whatever its overloads look like — the
+        // typing resolver's Inconclusive for a `params` tail or a char parameter changes nothing.
+        if (kind == Discovery.ClrInstanceMemberKind.Method)
+            return RefuseClrMethodGroupInValuePosition(memberAccess);
+
+        // A property or field is TYPED when the resolver can describe it faithfully; otherwise (and
+        // for an event or nested type) the permissive channel keeps its current answer.
         var resolution = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge)
             .Resolve(wrapperClr, memberAccess.Member, Discovery.ClrReceiverKind.Instance);
 
         switch (resolution)
         {
-            case Discovery.ClrMemberResolution.Method method when method.ClrName == memberAccess.Member:
-            case Discovery.ClrMemberResolution.MethodGroup group
-                when group.Candidates.Any(c => c.Name == memberAccess.Member):
-                return RefuseClrMethodGroupInValuePosition(memberAccess);
-
             case Discovery.ClrMemberResolution.Property property when property.ClrName == memberAccess.Member:
                 _semanticInfo.SetResolvedClrMemberName(memberAccess, property.ClrName);
                 return ProjectClrChar(memberAccess, property.Type);
@@ -1376,18 +1415,7 @@ internal partial class TypeChecker
                 return ProjectClrChar(memberAccess, field.Type);
 
             default:
-                // No instance member of the wrapper answers the escape. An EXTENSION method still
-                // binds in the emitted C# — `b.`Select`` — and is the same unspellable group, refused
-                // through the same predicate the residual seam uses (#1858).
-                if (IsClrExtensionMethodGroupInValuePosition(memberAccess, receiverType))
-                    return RefuseClrMethodGroupInValuePosition(memberAccess);
-
-                // No CLR member — instance OR extension — spells the escape (`xs.`count``: the CLR
-                // member is `Count`, and `count` is only the Sharpy surface name). The backtick escape
-                // is FOR reaching CLR members verbatim, so a snake name it cannot spell is a plain
-                // absent member: SPY0203 with the Sharpy-name steer, not the permissive channel, which
-                // let it reach Roslyn as CS1061 behind SPY0908 (#1888).
-                return RefuseEscapedAbsentWrapperMember(memberAccess, receiverType);
+                return null;
         }
     }
 

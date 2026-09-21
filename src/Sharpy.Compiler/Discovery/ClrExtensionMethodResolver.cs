@@ -161,6 +161,39 @@ internal static class ClrExtensionMethodResolver
     }
 
     /// <summary>
+    /// Whether an extension method named <paramref name="clrName"/> VERBATIM, declared in any of
+    /// <paramref name="assemblies"/>, accepts <paramref name="receiverType"/> as its <c>this</c>
+    /// argument — the question a backtick escape asks (#1888), across the whole reachable surface
+    /// rather than the generic acceptance roster alone: <c>s.`Upper`</c> is alive through Sharpy.Core's
+    /// <c>StringExtensions.Upper(this string)</c>, <c>xs.`Select`</c> through LINQ, and <c>xs.`count`</c>
+    /// through nothing (the only <c>Count</c> is spelled <c>Count</c>). A closed <c>this</c> type must be
+    /// ASSIGNABLE from the receiver — <see cref="TryBindThisParameter"/>'s non-generic arm accepts any
+    /// receiver by design, which is right for the roster's conservatism and wrong here, where
+    /// <c>Upper(this string)</c> must not keep a <c>List&lt;int&gt;</c> escape alive.
+    /// </summary>
+    internal static bool AnyReachableExtensionAcceptsReceiverVerbatim(
+        IEnumerable<Assembly> assemblies, Type receiverType, string clrName)
+    {
+        foreach (var assembly in assemblies)
+        {
+            if (!ClrTypeHelper.GetExtensionMethodsByVerbatimName(assembly).TryGetValue(clrName, out var candidates))
+                continue;
+
+            foreach (var candidate in candidates)
+            {
+                var thisParameter = candidate.GetParameters()[0].ParameterType;
+                var accepts = thisParameter.ContainsGenericParameters
+                    ? TryBindThisParameter(thisParameter, receiverType, new Dictionary<Type, Type>())
+                    : thisParameter.IsAssignableFrom(receiverType);
+                if (accepts)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// The distinct type names every overload of <paramref name="memberName"/> extends — the
     /// <c>this</c> parameters, stripped of arity (<c>ThenBy</c> → <c>IOrderedEnumerable</c>). Names what
     /// a receiver would have to BE, so a refusal can say more than that the member is missing.

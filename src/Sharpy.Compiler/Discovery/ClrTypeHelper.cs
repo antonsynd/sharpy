@@ -136,6 +136,55 @@ internal static class ClrTypeHelper
         });
     }
 
+    /// <summary>
+    /// What a VERBATIM name denotes on the public instance surface of <paramref name="clrType"/> —
+    /// the class's own and inherited members plus every interface it implements (an explicit
+    /// implementation such as Sharpy <c>List&lt;T&gt;</c>'s <c>IList&lt;T&gt;.IndexOf</c> is reached
+    /// through the interface-cast lowering, so it IS on the surface). No mangling: this is the
+    /// existence half of the backtick-escape verdict (#1888), asked separately from the TYPING half
+    /// (<see cref="ClrMemberTypeResolver"/>), whose Inconclusive answer for a member it cannot describe
+    /// faithfully must never be read as absence. Methods win over properties over fields, mirroring
+    /// the resolver's order. <see cref="ClrInstanceMemberKind.Other"/> covers events, nested types,
+    /// and a reflection failure — present, or possibly present, but not one of the three kinds.
+    /// </summary>
+    internal static ClrInstanceMemberKind FindPublicInstanceMemberVerbatim(Type clrType, string clrName)
+    {
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+        try
+        {
+            var kind = KindOf(clrType.GetMember(clrName, flags));
+            if (kind != ClrInstanceMemberKind.None)
+                return kind;
+
+            foreach (var iface in clrType.GetInterfaces())
+            {
+                kind = KindOf(iface.GetMember(clrName, flags));
+                if (kind != ClrInstanceMemberKind.None)
+                    return kind;
+            }
+
+            return ClrInstanceMemberKind.None;
+        }
+        catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
+                                      or FileNotFoundException or NotSupportedException)
+        {
+            return ClrInstanceMemberKind.Other;
+        }
+
+        static ClrInstanceMemberKind KindOf(MemberInfo[] members)
+        {
+            if (members.Length == 0)
+                return ClrInstanceMemberKind.None;
+            if (members.Any(m => m is MethodInfo { IsSpecialName: false }))
+                return ClrInstanceMemberKind.Method;
+            if (members.Any(m => m is PropertyInfo))
+                return ClrInstanceMemberKind.Property;
+            if (members.Any(m => m is FieldInfo))
+                return ClrInstanceMemberKind.Field;
+            return ClrInstanceMemberKind.Other;
+        }
+    }
+
     private static void CollectMemberNames(Type type, HashSet<string> names)
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance
@@ -164,37 +213,69 @@ internal static class ClrTypeHelper
         return _extensionMethodNameCache.GetOrAdd(assembly, static asm =>
         {
             var names = new HashSet<string>(StringComparer.Ordinal);
-            Type[] types;
-            try
+            foreach (var method in EnumerateExtensionMethods(asm))
             {
-                types = asm.GetExportedTypes();
-            }
-            catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
-                                          or FileNotFoundException or NotSupportedException)
-            {
-                return names.ToFrozenSet(StringComparer.Ordinal);
-            }
-
-            foreach (var type in types)
-            {
-                // Extension methods live only in non-generic static classes, which the compiler marks
-                // with [Extension] at the class level — a cheap filter before enumerating methods.
-                if (!type.IsSealed || !type.IsAbstract || type.IsGenericTypeDefinition)
-                    continue;
-                if (!type.IsDefined(typeof(ExtensionAttribute), inherit: false))
-                    continue;
-
-                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                {
-                    if (!method.IsDefined(typeof(ExtensionAttribute), inherit: false))
-                        continue;
-                    names.Add(method.Name);
-                    names.Add(NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method));
-                }
+                names.Add(method.Name);
+                names.Add(NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method));
             }
 
             return names.ToFrozenSet(StringComparer.Ordinal);
         });
+    }
+
+    // Caches assembly -> its extension methods keyed by VERBATIM CLR name (no mangling).
+    private static readonly ConcurrentDictionary<Assembly, FrozenDictionary<string, MethodInfo[]>>
+        _extensionMethodsByVerbatimNameCache = new();
+
+    /// <summary>
+    /// The extension methods declared in <paramref name="assembly"/>, keyed by their VERBATIM CLR name
+    /// — the other half of <see cref="GetExtensionMethodNames"/>, for the caller that must ask the
+    /// receiver-compatibility question the name set deliberately does not: a backtick escape names a
+    /// CLR member verbatim (#1888), so <c>xs.`count`</c> is not kept alive by <c>Enumerable.Count</c>
+    /// (whose reverse-mangled name the set also carries), and <c>s.`Upper`</c> is alive only because
+    /// <c>StringExtensions.Upper(this string)</c> accepts a <c>string</c>. Assemblies that cannot be
+    /// inspected contribute nothing.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, MethodInfo[]> GetExtensionMethodsByVerbatimName(Assembly assembly)
+    {
+        return _extensionMethodsByVerbatimNameCache.GetOrAdd(assembly, static asm =>
+            EnumerateExtensionMethods(asm)
+                .GroupBy(m => m.Name, StringComparer.Ordinal)
+                .ToFrozenDictionary(g => g.Key, g => g.ToArray(), StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Every public extension method <paramref name="assembly"/> declares. Extension methods live only
+    /// in non-generic static classes, which the compiler marks with <c>[Extension]</c> at the class
+    /// level — a cheap filter before enumerating methods. An assembly that cannot be inspected yields
+    /// nothing.
+    /// </summary>
+    private static IEnumerable<MethodInfo> EnumerateExtensionMethods(Assembly assembly)
+    {
+        Type[] types;
+        try
+        {
+            types = assembly.GetExportedTypes();
+        }
+        catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
+                                      or FileNotFoundException or NotSupportedException)
+        {
+            yield break;
+        }
+
+        foreach (var type in types)
+        {
+            if (!type.IsSealed || !type.IsAbstract || type.IsGenericTypeDefinition)
+                continue;
+            if (!type.IsDefined(typeof(ExtensionAttribute), inherit: false))
+                continue;
+
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (method.IsDefined(typeof(ExtensionAttribute), inherit: false))
+                    yield return method;
+            }
+        }
     }
 
     /// <summary>
@@ -597,4 +678,26 @@ internal static class ClrTypeHelper
         }
         return null;
     }
+}
+
+/// <summary>
+/// What a verbatim name denotes on a CLR type's public instance surface
+/// (<see cref="ClrTypeHelper.FindPublicInstanceMemberVerbatim"/>).
+/// </summary>
+internal enum ClrInstanceMemberKind
+{
+    /// <summary>No public instance member — own, inherited, or interface — spells the name.</summary>
+    None,
+
+    /// <summary>A method (one overload or a group).</summary>
+    Method,
+
+    /// <summary>A property.</summary>
+    Property,
+
+    /// <summary>A field.</summary>
+    Field,
+
+    /// <summary>Present but another kind (event, nested type), or reflection could not answer.</summary>
+    Other,
 }

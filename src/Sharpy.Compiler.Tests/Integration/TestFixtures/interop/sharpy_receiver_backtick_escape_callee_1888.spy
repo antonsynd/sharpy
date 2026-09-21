@@ -1,0 +1,16 @@
+# R-AP (#1888): a backtick escape in CALLEE position reaches a CLR member the wrapper HAS, verbatim,
+# on every Sharpy wrapper receiver — the positive control for the escape-absent callee cells
+# (`xs.`count`(2)` is SPY0203, see SharpyReceiverSpellingMatrixTests). A reachable EXTENSION method
+# (Sharpy.Core's StringExtensions.Upper) is not absent either: it calls.
+def main() -> None:
+    xs: list[int] = [1, 2, 2]
+    d: dict[str, int] = {"a": 1}
+    st: set[int] = {1}
+    s: str = "abc"
+    b: bytes = b"ab"
+    print(xs.`IndexOf`(2))
+    print(d.`ContainsKey`("a"))
+    print(st.`Contains`(1))
+    print(s.`IndexOf`("b"))
+    print(b.`Decode`())
+    print(s.`Upper`())

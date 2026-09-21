@@ -89,9 +89,15 @@ public class SharpyReceiverSpellingMatrixTests
             Assert.Contains(cells, c => c.Expect == expectation);
 
         // #1942 / #1888 value-position family, anchored to LITERALS: 5 receivers × 3 spellings ×
-        // 3 positions method-group cells, 5 escape-absent cells, and the one #1888 backtick.Count cell.
+        // 3 positions method-group cells, and the one #1888 backtick.Count cell. The escape family is
+        // 5 receivers × {absent value, absent callee, present callee} + the 2 reachable-extension
+        // cells (value, callee) + the 1 interface-method value cell = 18 (was 5: the absent-value
+        // cells alone, before the callee position was found leaking to CS1061 behind SPY0908 —
+        // plan-6ca898 verify).
         Assert.Equal(5 * 3 * 3, cells.Count(c => c.Label.StartsWith("methodgroup.", StringComparison.Ordinal)));
-        Assert.Equal(5, cells.Count(c => c.Label.StartsWith("escape.", StringComparison.Ordinal)));
+        Assert.Equal(5 * 3 + 2 + 1, cells.Count(c => c.Label.StartsWith("escape.", StringComparison.Ordinal)));
+        Assert.Equal(5, cells.Count(c => c.Label.EndsWith(".absent.callee", StringComparison.Ordinal)));
+        Assert.Equal(5, cells.Count(c => c.Label.EndsWith(".present.callee", StringComparison.Ordinal)));
         Assert.Contains(cells, c => c.Label == "mg1888.list.Count" && c.Expect == Expect.RefusedMethodGroup);
 
         var failures = new List<string>();
@@ -310,10 +316,41 @@ public class SharpyReceiverSpellingMatrixTests
             yield return new Cell($"methodgroup.{row.Recv}.backtick.callee",
                 Body(row.Decl, $"y = {row.Recv}.`{row.Backtick}`()"), Expect.Compiles);
 
-            // escape naming NO CLR member (the Sharpy snake name, verbatim) — SPY0203 with the steer.
+            // escape naming NO CLR member (the Sharpy snake name, verbatim) — SPY0203 with the steer,
+            // in VALUE position and in CALLEE position alike (#1888): the absent answer is produced
+            // once, by EscapedWrapperMemberType, for every position. The callee cell reached Roslyn as
+            // CS1061 behind SPY0908 (`xs.`count`(2)`) while the value cell was already SPY0203.
             yield return new Cell($"escape.{row.Recv}.absent",
                 Body(row.Decl, $"x = {row.Recv}.`{row.Surface}`"), Expect.Refused, $"use {row.Recv}.{row.Surface}");
+            yield return new Cell($"escape.{row.Recv}.absent.callee",
+                Body(row.Decl, $"{row.Recv}.`{row.Surface}`({SurfaceCallArgs(row.Recv)})"),
+                Expect.Refused, $"use {row.Recv}.{row.Surface}");
+
+            // POSITIVE CONTROL for the callee cell above: an escape naming a CLR member the wrapper
+            // HAS, in callee position, calls it (list.IndexOf, dict.ContainsKey, …). Proof the callee
+            // routing refuses ABSENCE, not the escape's callee position as such. The printed values are
+            // pinned by the executing fixture sharpy_receiver_backtick_escape_callee_1888.
+            yield return new Cell($"escape.{row.Recv}.present.callee",
+                Body(row.Decl, $"print({PresentCalleeEscape(row.Recv)})"), Expect.Compiles);
         }
+
+        // The ONE absence question is "does any CLR member, instance OR extension, spell the escape
+        // verbatim?" — a reachable extension method (Sharpy.Core's StringExtensions.Upper, not on the
+        // generic acceptance roster) is NOT absent: it calls in callee position and is the unspellable
+        // method group (SPY0336) in value position. Before the callee routing the value cell was
+        // SPY0203 steering to `s.Upper`, a spelling that is itself refused (R-AP PascalCase).
+        yield return new Cell("escape.s.extension.value",
+            Body("s: str = \"abc\"", "f = s.`Upper`"), Expect.RefusedMethodGroup);
+        yield return new Cell("escape.s.extension.callee",
+            Body("s: str = \"abc\"", "print(s.`Upper`())"), Expect.Compiles);
+
+        // EXISTENCE is asked verbatim of the wrapper's whole public instance surface, INCLUDING interface
+        // members: Sharpy List<T>'s IndexOf is an explicit IList<T> implementation reached through the
+        // interface-cast lowering (the present.callee control above calls it). In value position it is
+        // the method group (SPY0336) — before the existence/typing split it was SPY0203 "not a CLR
+        // member — use xs.IndexOf" because the typing resolver's Inconclusive was read as absence.
+        yield return new Cell("escape.xs.interface-method.value",
+            Body("xs: list[int] = [1, 2, 3]", "x = xs.`IndexOf`"), Expect.RefusedMethodGroup);
 
         // #1888: the backtick escape of the CLR method `Count` on a list is the method-group refusal
         // (plan-78c581 DD1(b)'s example, re-measured SPY0336 at HEAD — not "prints a delegate"). Named
@@ -341,5 +378,17 @@ public class SharpyReceiverSpellingMatrixTests
         "d" => "\"a\"",
         "st" => "3",
         _ => "",
+    };
+
+    /// <summary>A CLR member each wrapper HAS, escaped and called — the positive control for the
+    /// escape-absent callee cells: list.IndexOf(1), dict.ContainsKey("a"), set.Contains(1),
+    /// str.IndexOf("a"), bytes.Decode().</summary>
+    private static string PresentCalleeEscape(string recv) => recv switch
+    {
+        "xs" => "xs.`IndexOf`(1)",
+        "d" => "d.`ContainsKey`(\"a\")",
+        "st" => "st.`Contains`(1)",
+        "s" => "s.`IndexOf`(\"a\")",
+        _ => "b.`Decode`()",
     };
 }
