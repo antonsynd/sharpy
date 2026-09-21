@@ -43,6 +43,7 @@ def main() -> None:
     t = (1, "a")
     print(bool(t))      # admitted — bool() is not a truth-testing position
     print(len(t))       # 2 — the arity, the thing worth testing
+    print(bool(()))     # False — the zero-arity tuple is falsy, like any empty sequence
 ```
 
 Output:
@@ -50,11 +51,11 @@ Output:
 ```
 True
 2
+False
 ```
 
 `bool(t)` answers from the arity, so it is `False` for the zero-arity `tuple[]` that `()` spells and
-`True` for every other arity, matching Python. The zero-arity case currently answers `True` — a
-known defect, [#1935](https://github.com/antonsynd/sharpy/issues/1935).
+`True` for every other arity, matching Python.
 
 A conditional expression in a truthiness position distributes the test per branch
 (`TruthinessLowering.Distributed`). Each branch is tested for truthiness independently, so the

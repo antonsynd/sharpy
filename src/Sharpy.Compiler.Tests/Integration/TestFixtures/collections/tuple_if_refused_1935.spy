@@ -1,0 +1,9 @@
+# Control for #1935: adding Bool(ITuple) so that `bool(t)` answers from the arity must NOT make a
+# tuple truth-testable in a truth position. `if t:` stays refused (SPY0220, R-AU / #1861): a
+# fixed-arity tuple has one statically-known truthiness and no falsy case to test.
+# python3 3.12.13: `if (1, 2):` prints "truthy" — Sharpy refuses instead (deviation, see
+# logical_operators.md); `bool((1, 2))` is admitted and answers True.
+def main() -> None:
+    t: tuple[int, int] = (1, 2)
+    if t:
+        print("truthy")

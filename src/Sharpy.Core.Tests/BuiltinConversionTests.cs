@@ -214,6 +214,34 @@ public class BuiltinConversion_Tests
         Bool(falsy).Should().BeFalse();
     }
 
+    [Fact]
+    public void Bool_EmptyTuple_ReturnsFalse()
+    {
+        // Python: bool(()) == False
+        Bool(System.ValueTuple.Create()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Bool_NonEmptyTuple_ReturnsTrue()
+    {
+        // Python: bool((1,)) == True
+        Bool(System.ValueTuple.Create(1)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Bool_BoxedEmptyTuple_ReturnsFalse()
+    {
+        // Python: bool(()) == False — the object? boxed path routes through the ITuple arm.
+        Bool((object?)System.ValueTuple.Create()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Bool_BoxedNonEmptyTuple_ReturnsTrue()
+    {
+        // Python: bool((1, 2)) == True
+        Bool((object?)System.ValueTuple.Create(1, 2)).Should().BeTrue();
+    }
+
     // ── Float ──
 
     [Fact]
