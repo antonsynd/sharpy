@@ -485,6 +485,78 @@ def narrowed(x: str?) -> str:
 *Implementation: ✅ Implemented — the refusal is `SPY0498`, emitted during semantic analysis. All
 examples above were executed against HEAD before being documented.*
 
+### Matching `T | None`
+
+Unlike `Optional[T]` (`T?`, a tagged union matched through `Some`/`None`), a `T | None` value is a
+**nullable**: the payload `T` and the `None` value. It is a **finite family** — a pattern covering
+the whole payload plus a `case None:` arm is exhaustive, in **either order**, with no wildcard:
+
+<!-- spec-sweep: fragment -->
+```python
+def describe(x: list[int] | None) -> str:
+    match x:
+        case list(ys):
+            return f"list of {len(ys)}"
+        case None:
+            return "none"
+```
+
+The payload pattern is *total for the payload* however it is spelled — `case list():`,
+`case list(ys):` and `case list() as ys:` are equivalent, exactly as for a non-nullable scrutinee —
+and none of them shadows the `case None:` arm (a payload pattern never matches `None`, so it is
+`PayloadTotal`, not total for the whole `T | None`). The `None` arm may come first:
+
+<!-- spec-sweep: fragment -->
+```python
+def describe2(x: int | None) -> str:
+    match x:
+        case None:
+            return "none"
+        case int():
+            return "int"
+```
+
+When the payload is itself a **union**, the union-case heads resolve through the nullable and the
+family is the union's cases plus `None` — in every head spelling (positional, keyword, qualified):
+
+<!-- spec-sweep: fragment -->
+```python
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def walk(t: Tree[int] | None) -> str:
+    match t:
+        case Node(value=v):
+            return f"node {v}"
+        case Leaf():
+            return "leaf"
+        case None:
+            return "none"
+```
+
+### Keyword sub-patterns on a generic union
+
+A keyword (property) sub-pattern on a generic union case is typed through the **same type-argument
+substitution** a positional sub-pattern uses: on a `Tree[int]` scrutinee the `value` field is `int`,
+so `case Node(value=7):` matches, and a wrongly-typed literal is refused (SPY0220):
+
+<!-- spec-sweep: fragment -->
+```python
+union Tree[T]:
+    case Leaf()
+    case Node(value: T)
+
+def classify(t: Tree[int]) -> str:
+    match t:
+        case Node(value=7):
+            return "seven"
+        case Node(value=v):
+            return f"node {v}"
+        case Leaf():
+            return "leaf"
+```
+
 ### Class patterns on generic builtins (`list`, `dict`, `set`)
 
 A class pattern is **static**: it tests the scrutinee's declared type against a *closed* runtime
@@ -708,11 +780,14 @@ def kind2(x: int) -> str:
 
 **Subsumption.** Totality for the scrutinee is not the only way an arm shadows a later one. An
 unguarded arm that matches **every value of its own type** — `case int():`, `case int(n):`,
-`case int() as n:` — makes any later arm whose type is contained in it unreachable, even when that
-arm is not total for the scrutinee. Over an `object` scrutinee `case int():` is not total, yet it
-still matches every `int`, so a later `case 99:` can never run (SPY0700). The rule requires the
-earlier arm to refute on its **type alone**: a literal refutes on a value as well, so `case 99:`
-first leaves `case int():` behind it reachable.
+`case int() as n:`, a positional `case Box(a, b):` or a keyword `case Box(a=x):` whose every
+sub-pattern is itself total — makes any later arm whose type is contained in it unreachable, even
+when that arm is not total for the scrutinee. Over an `object` scrutinee `case int():` is not total,
+yet it still matches every `int`, so a later `case 99:` can never run (SPY0700). The rule requires
+the earlier arm to refute on its **type alone**: a literal refutes on a value as well, so `case 99:`
+first leaves `case int():` behind it reachable — and the property form is one rule with the
+positional one, so `case Box(a=1):` (a literal field) leaves a later `case Box(a=x):` reachable
+while `case Box(a=x):` (a binding field) subsumes a later `case Box(a=1):`.
 
 ```python
 # SPY0700 — `case 99:` is unreachable behind an arm that matches every int
@@ -742,6 +817,28 @@ def kind3(x: object, deep: bool) -> str:
             return "int"
         case 99:
             return "ninety-nine"
+        case _:
+            return "other"
+```
+
+The property form obeys the same rule — `case Box(a=x):` binds `a`, so it matches every `Box` and
+subsumes a later `case Box(a=1):` (SPY0700). Before the pattern-head classifier counted the property
+form this reached the C# compiler as a CS8120 ICE behind SPY0908:
+
+<!-- spec-sweep: error SPY0700 -->
+```python
+class Box:
+    a: int
+
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+def classify(o: object) -> str:
+    match o:
+        case Box(a=x):
+            return f"any {x}"
+        case Box(a=1):     # error: an earlier arm matches every 'Box'
+            return "one"
         case _:
             return "other"
 ```
