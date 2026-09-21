@@ -548,7 +548,7 @@ internal partial class TypeChecker
         // nullable list still tests as a CLR sequence; the null case falls to a later match arm.
         // An OptionalType is intentionally NOT unwrapped here — it is a tagged union matched through
         // Some (below), not a nullable reference (this is why a08 fills but a09 refuses).
-        var sequenceType = scrutineeType is NullableType nullable ? nullable.UnderlyingType : scrutineeType;
+        var sequenceType = PatternPayloadOf(scrutineeType);
         if (sequenceType is GenericType { Name: BuiltinNames.List or BuiltinNames.Array } g
             && g.TypeArguments.Count > 0)
         {
@@ -1280,7 +1280,7 @@ internal partial class TypeChecker
             var enumField = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
             if (enumField != null)
             {
-                if (scrutineeType is UserDefinedType udt && udt.Symbol == typeSymbol)
+                if (PatternPayloadOf(scrutineeType) is UserDefinedType udt && udt.Symbol == typeSymbol)
                 {
                     return;
                 }
@@ -1406,6 +1406,17 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The declared type a pattern arm resolves its head, member or sequence against: the payload of
+    /// a <c>T | None</c> (<see cref="NullableType"/>) scrutinee, else the scrutinee itself. The ONE
+    /// strip (P13 D6): a nullable scrutinee is matched through its payload's cases, members and
+    /// element type, and the None value is a separate arm. A sequence subject, a union-case head and
+    /// an enum member all read it here — the enum-member arm used to test the un-stripped scrutinee
+    /// and refused <c>case E.A:</c> over <c>E | None</c> as SPY0220 (plan-6ca898 verify).
+    /// </summary>
+    private static SemanticType PatternPayloadOf(SemanticType scrutineeType)
+        => scrutineeType is NullableType nullable ? nullable.UnderlyingType : scrutineeType;
+
+    /// <summary>
     /// Extracts the union TypeSymbol and type arguments from a scrutinee type.
     /// Handles both UserDefinedType (non-generic unions) and GenericType (generic unions).
     /// </summary>
@@ -1416,10 +1427,7 @@ internal partial class TypeChecker
         // the None value is a separate arm (P13 D6). Strip the nullable once, exactly as the sequence
         // helper ResolveSequenceSubject does; without this a union-case head on `Tree[int] | None`
         // failed to resolve and reported SPY0202 "Unknown type 'Node'".
-        if (scrutineeType is NullableType nullable)
-        {
-            return GetUnionSymbolAndTypeArgs(nullable.UnderlyingType);
-        }
+        scrutineeType = PatternPayloadOf(scrutineeType);
 
         if (scrutineeType is UserDefinedType udt
             && udt.Symbol?.TypeKind == TypeKind.Union)

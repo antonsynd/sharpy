@@ -1219,4 +1219,208 @@ def main() -> None:
             $"`case {pattern}:` binds n: Box. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
         result.StandardOutput.TrimEnd().Should().Be("1", source);
     }
+
+    // ══ T | None with a FINITE payload (plan-6ca898 P13 verify, D3 sibling) ═══════════════════
+    // Contract (DD10): `T | None` is the finite family payload-cases ∪ {None}, and a payload-total
+    // head covers EVERY payload case — so `case E(): case None:` and `case bool(): case None:` are
+    // exhaustive exactly like the member spelling (`case E.A: case E.B: case None:`), in both orders,
+    // both positions, with or without a trailing `case _:` (which the D5 fact drops only where C#
+    // proves it unreachable). Before the fix the head mapped to the bare payload sentinel while the
+    // family expanded the finite payload, so the head-only spelling warned "Missing cases: A, B",
+    // the expression form refused SPY0416, and the escape-hatch `case _:` was CS8510 behind SPY0908;
+    // the member spelling over `E | None` was refused SPY0220 (the D6 strip missed the enum arm).
+    // float and a struct payload are the non-finite controls: the axis is FINITE PAYLOAD, not
+    // nullability. Anchored to literals: each program matches a payload value AND None, so both
+    // arms are observed.
+
+    private const string FinitePayloadPrelude = @"
+enum E:
+    A = 1
+    B = 2
+
+struct S:
+    v: int
+    def __init__(self, v: int) -> None:
+        self.v = v
+";
+
+    private sealed record PayloadInfo(string Type, string Value, string HeadOutput, string[] Members, string MemberOutput);
+
+    private static PayloadInfo Payload(string payload) => payload switch
+    {
+        "enum" => new("E", "E.B", "hit", new[] { "E.A", "E.B" }, "E.B"),
+        "bool" => new("bool", "False", "hit", new[] { "True", "False" }, "False"),
+        "float" => new("float", "1.5", "hit", Array.Empty<string>(), ""),
+        "struct" => new("S", "S(1)", "hit", Array.Empty<string>(), ""),
+        _ => throw new ArgumentOutOfRangeException(nameof(payload), payload, null),
+    };
+
+    public static IEnumerable<object[]> FinitePayloadCells()
+    {
+        foreach (var payload in new[] { "enum", "bool", "float", "struct" })
+            foreach (var head in Payload(payload).Members.Length == 0 ? new[] { "type" } : new[] { "type", "members" })
+                foreach (var order in new[] { "headfirst", "nonefirst" })
+                    foreach (var position in new[] { "statement", "expression" })
+                        foreach (var trailing in new[] { "none", "wildcard" })
+                            yield return new object[] { payload, head, order, position, trailing };
+    }
+
+    private static string FinitePayloadSource(
+        string payload, string head, string order, string position, string trailing, string[]? memberSubset = null)
+    {
+        var info = Payload(payload);
+        var members = memberSubset ?? info.Members;
+        // (pattern, output) per payload arm
+        var payloadArms = head == "type"
+            ? new[] { ($"{info.Type}()", info.HeadOutput) }
+            : members.Select(m => (m, m)).ToArray();
+        var arms = new List<(string Pattern, string Output)>();
+        if (order == "headfirst")
+        {
+            arms.AddRange(payloadArms);
+            arms.Add(("None", "none"));
+        }
+        else
+        {
+            arms.Add(("None", "none"));
+            arms.AddRange(payloadArms);
+        }
+        if (trailing == "wildcard")
+            arms.Add(("_", "other"));
+
+        string body = position == "statement"
+            ? "    match x:\n" + string.Join("\n", arms.Select(a => $"        case {a.Pattern}:\n            print(\"{a.Output}\")"))
+            : "    s: str = match x:\n" + string.Join("\n", arms.Select(a => $"        case {a.Pattern}: \"{a.Output}\"")) + "\n    print(s)";
+
+        return $@"{FinitePayloadPrelude}
+def check(x: {info.Type} | None) -> None:
+{body}
+
+def main() -> None:
+    check({info.Value})
+    check(None)
+";
+    }
+
+    [Theory]
+    [MemberData(nameof(FinitePayloadCells))]
+    public void TNone_FinitePayload_HeadOrMembersPlusNone_Exhaustive_Runs(
+        string payload, string head, string order, string position, string trailing)
+    {
+        var info = Payload(payload);
+        var source = FinitePayloadSource(payload, head, order, position, trailing);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{payload}/{head}/{order}/{position}/{trailing}] the payload arm(s) + case None cover the "
+            + $"finite family `{info.Type} | None`; no SPY0463/SPY0416/SPY0220/SPY0908. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Validation.NonExhaustiveMatch,
+            $"[{payload}/{head}/{order}/{position}/{trailing}] no SPY0463 on an exhaustive match\n{source}");
+        var expectedPayload = head == "type" ? info.HeadOutput : info.MemberOutput;
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be($"{expectedPayload}\nnone",
+            $"[{payload}/{head}/{order}/{position}/{trailing}] the payload routes to its arm and None to the None arm\n{source}");
+    }
+
+    public static IEnumerable<object[]> FinitePayloadMissingMemberCells()
+    {
+        foreach (var position in new[] { "statement", "expression" })
+        {
+            yield return new object[] { "enum", position, "E.A", "B" };
+            yield return new object[] { "bool", position, "True", "False" };
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(FinitePayloadMissingMemberCells))]
+    public void TNone_FinitePayload_OmittedMember_IsReported(
+        string payload, string position, string keptMember, string missingName)
+    {
+        // Positive control for the absence assertions above: drop one member and the family is NOT
+        // covered — SPY0463 (statement) / SPY0416 (expression) naming the omitted member.
+        var source = FinitePayloadSource(payload, "members", "headfirst", position, "none",
+            memberSubset: new[] { keptMember });
+        var result = CompileAndExecute(source);
+        var expectedCode = position == "statement"
+            ? DiagnosticCodes.Validation.NonExhaustiveMatch
+            : DiagnosticCodes.Validation.NonExhaustiveMatchExpression;
+        var diagnostic = result.RawDiagnostics.FirstOrDefault(d => d.Code == expectedCode);
+        diagnostic.Should().NotBeNull(
+            $"[{payload}/{position}] `case {keptMember}: case None:` omits {missingName}. "
+            + $"Diagnostics: {string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}\n{source}");
+        diagnostic!.Message.Should().Contain($"Missing cases: {missingName}", source);
+        if (position == "expression")
+            result.Success.Should().BeFalse($"SPY0416 is an error\n{source}");
+    }
+
+    [Theory]
+    [InlineData("enum", "statement")]
+    [InlineData("bool", "statement")]
+    [InlineData("enum", "expression")]
+    public void TNone_FinitePayload_HeadWithoutNone_ReportsNone(string payload, string position)
+    {
+        // The other half of the control: the head alone covers the payload cases but not None.
+        var info = Payload(payload);
+        var source = FinitePayloadSource(payload, "type", "headfirst", position, "none")
+            .Replace("        case None:\n            print(\"none\")\n", "", StringComparison.Ordinal)
+            .Replace("        case None: \"none\"\n", "", StringComparison.Ordinal);
+        source.Should().NotContain("case None", "the None arm was removed from the source");
+        var result = CompileAndExecute(source);
+        var expectedCode = position == "statement"
+            ? DiagnosticCodes.Validation.NonExhaustiveMatch
+            : DiagnosticCodes.Validation.NonExhaustiveMatchExpression;
+        var diagnostic = result.RawDiagnostics.FirstOrDefault(d => d.Code == expectedCode);
+        diagnostic.Should().NotBeNull(
+            $"[{payload}/{position}] `case {info.Type}():` alone leaves None uncovered. "
+            + $"Diagnostics: {string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}\n{source}");
+        diagnostic!.Message.Should().Contain("Missing cases: None", source);
+    }
+
+    [Fact]
+    public void TNone_GuardedOnly_MissingCasesNamesThePayloadType()
+    {
+        // The concrete-payload case of `list[int] | None` is reported by its TYPE, never as the
+        // internal sentinel "<payload>" the prober saw.
+        const string source = @"
+def check(xs: list[int] | None) -> None:
+    match xs:
+        case list() if len(xs) > 0:
+            print(""nonempty"")
+
+def main() -> None:
+    check([1])
+";
+        var result = CompileAndExecute(source);
+        var diagnostic = result.RawDiagnostics.FirstOrDefault(
+            d => d.Code == DiagnosticCodes.Validation.NonExhaustiveMatch);
+        diagnostic.Should().NotBeNull(
+            $"a guarded-only match over list[int] | None is not exhaustive. Diagnostics: "
+            + $"{string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}\n{source}");
+        diagnostic!.Message.Should().Contain("Missing cases: list[int32], None", source);
+        diagnostic.Message.Should().NotContain("<payload>", source);
+    }
+
+    [Theory]
+    [InlineData("statement")]
+    [InlineData("expression")]
+    public void Bool_TrueFalseThenWildcard_Runs(string position)
+    {
+        // D5 sibling: `bool` is a closed type C# proves exhaustive from `true`/`false`, so a trailing
+        // `case _:` is CS8510 in a switch EXPRESSION unless the D5 fact drops it. The statement twin
+        // lowers to `default:` and was never at risk (control).
+        var body = position == "statement"
+            ? "    match b:\n        case True:\n            print(\"t\")\n        case False:\n            print(\"f\")\n        case _:\n            print(\"other\")"
+            : "    s: str = match b:\n        case True: \"t\"\n        case False: \"f\"\n        case _: \"other\"\n    print(s)";
+        var source = $@"
+def check(b: bool) -> None:
+{body}
+
+def main() -> None:
+    check(False)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"[{position}] True + False + _ over bool runs. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.TrimEnd().Should().Be("f", source);
+    }
 }

@@ -86,8 +86,13 @@ internal static class ExhaustivenessHelper
             }
             else if (semanticInfo.GetPatternCoverage(head.Lodge) == PatternCoverage.PayloadTotal)
             {
-                // A payload head over `T | None` with a concrete payload covers the family's payload
-                // case — the sentinel GetFiniteTypeCases uses for the same scrutinee (P13 DD10).
+                // A payload head over `T | None` covers EVERY payload case of the family — recorded
+                // as the ONE sentinel, which <see cref="MissingCases"/> reads as "every case but
+                // None": the concrete-payload case GetFiniteTypeCases names with the same sentinel,
+                // and every member of a finite payload ({A, B} of `E | None`, {True, False} of
+                // `bool | None`). Mapping the head to the bare sentinel while the family expanded the
+                // finite payload left `case E(): case None:` warning "Missing cases: A, B" and its
+                // trailing `case _:` at CS8510 (P13 DD10; plan-6ca898 verify, D3 sibling).
                 covered.Add(WellKnownCaseNames.NullablePayload);
             }
             else if (head.Type != null)
@@ -221,6 +226,42 @@ internal static class ExhaustivenessHelper
         if (allCases == null)
             return false;
 
+        return MissingCases(allCases, CollectUnguardedCoveredCases(arms, semanticInfo)).Count == 0;
+    }
+
+    /// <summary>
+    /// The case names of <paramref name="allCases"/> that <paramref name="covered"/> does not cover —
+    /// the ONE reading of the covered set. A case is covered when it is named, or when it is a
+    /// payload case (anything but <see cref="WellKnownCaseNames.None"/>) and the set holds the
+    /// <see cref="WellKnownCaseNames.NullablePayload"/> sentinel a payload-total head over
+    /// <c>T | None</c> records: that head covers every payload case, finite or not (P13 DD10).
+    /// Returned in <paramref name="allCases"/>' order; render each name through
+    /// <see cref="DescribeCase"/> before showing it.
+    /// </summary>
+    public static List<string> MissingCases(IEnumerable<string> allCases, HashSet<string> covered)
+    {
+        bool payloadCovered = covered.Contains(WellKnownCaseNames.NullablePayload);
+        return allCases
+            .Where(c => !covered.Contains(c) && !(payloadCovered && c != WellKnownCaseNames.None))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The user-facing name of a case of <paramref name="scrutineeType"/>'s finite family: the
+    /// concrete-payload sentinel of a <c>T | None</c> family is the payload TYPE
+    /// (<c>list[int32]</c>), every other case is its own name. A diagnostic that printed the
+    /// sentinel showed the literal placeholder <c>&lt;payload&gt;</c>.
+    /// </summary>
+    public static string DescribeCase(SemanticType scrutineeType, string caseName)
+    {
+        if (caseName == WellKnownCaseNames.NullablePayload && scrutineeType is NullableType nullable)
+            return nullable.UnderlyingType.GetDisplayName();
+        return caseName;
+    }
+
+    private static HashSet<string> CollectUnguardedCoveredCases(
+        IEnumerable<(Pattern Pattern, Expression? Guard)> arms, SemanticInfo semanticInfo)
+    {
         var coveredCases = new HashSet<string>();
         foreach (var (pattern, guard) in arms)
         {
@@ -230,25 +271,39 @@ internal static class ExhaustivenessHelper
 
             CollectCoveredCases(pattern, semanticInfo, coveredCases);
         }
-
-        return allCases.All(coveredCases.Contains);
+        return coveredCases;
     }
 
     /// <summary>
     /// Returns true when the unguarded arms are exhaustive UNDER THE EMITTED C# LOWERING, so C#'s own
     /// switch-expression exhaustiveness proves a trailing catch-all unreachable (CS8510) — the ONE
-    /// function that decides D5 (P13 DD11). Only the lowerings C# can prove qualify: synthetic
+    /// function that decides D5 (P13 DD11). Only the lowerings C# can prove qualify: <c>bool</c>
+    /// (a closed type C# enumerates as <c>true</c>/<c>false</c>), synthetic
     /// <see cref="ResultType"/>/<see cref="OptionalType"/> deconstruct to a leading bool discriminant,
-    /// and a <see cref="NullableType"/> to payload + null. A user union lowers to closed case TYPES
-    /// and an enum to a non-exhaustive integral — C# proves neither, so a trailing discard there is
-    /// reachable by C#'s analysis and must be kept (the measured <c>Res</c> control).
+    /// and a <see cref="NullableType"/> to payload + null, where C# sees the payload covered by a
+    /// type test (a payload-total head — the <see cref="WellKnownCaseNames.NullablePayload"/>
+    /// sentinel) or by a payload family it proves on its own (<c>bool | None</c> as
+    /// <c>true</c>/<c>false</c>/<c>null</c>). A user union lowers to closed case TYPES and an enum
+    /// to a non-exhaustive integral — C# proves neither, bare or as the payload of <c>E | None</c>
+    /// under member literals, so a trailing discard there is reachable by C#'s analysis and must be
+    /// kept (the measured <c>Res</c> control).
     /// </summary>
     public static bool IsCSharpProvablyExhaustive(
         SemanticType scrutineeType,
         IEnumerable<(Pattern Pattern, Expression? Guard)> arms,
         SemanticInfo semanticInfo)
     {
-        if (scrutineeType is not (ResultType or OptionalType or NullableType))
+        if (scrutineeType is NullableType nullable)
+        {
+            var covered = CollectUnguardedCoveredCases(arms, semanticInfo);
+            if (!covered.Contains(WellKnownCaseNames.None))
+                return false;
+            return covered.Contains(WellKnownCaseNames.NullablePayload)
+                || IsCSharpProvablyExhaustive(nullable.UnderlyingType, arms, semanticInfo);
+        }
+
+        bool isBool = scrutineeType is BuiltinType bt && bt == BuiltinType.Bool;
+        if (!isBool && scrutineeType is not (ResultType or OptionalType))
             return false;
 
         return IsExhaustiveMatch(scrutineeType, arms, semanticInfo);

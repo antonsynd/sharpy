@@ -139,8 +139,11 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
         if (hasWildcard)
             return new List<string>(); // Wildcard covers everything
 
-        var missing = allCases.Where(c => !coveredCases.Contains(c)).ToList();
-        return missing;
+        // The ONE reading of the covered set (a payload-total head covers every payload case),
+        // rendered for the user (the concrete-payload sentinel shows as the payload type).
+        return ExhaustivenessHelper.MissingCases(allCases, coveredCases)
+            .Select(c => ExhaustivenessHelper.DescribeCase(scrutineeType, c))
+            .ToList();
     }
 
     /// <summary>
