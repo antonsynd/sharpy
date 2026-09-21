@@ -868,6 +868,16 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 print(format("ab", ">05"))
                 print("{:05}".format("cd"))
                 """),
+            // '=' alignment with the '#' radix prefix: CPython pads BETWEEN the prefix and the digits
+            // ('0x      ff'); Sharpy pads before the prefix (#1959). The FormatSpecDifferential sweep's
+            // seeded sample never draws this cell, so it is pinned here and allowlisted citing #1959 —
+            // the row drains (fails as stale) when the engine renders it like CPython.
+            ("format_alt_radix_eq_align_1959", """
+                print(format(255, "=#10x"))
+                print(format(-255, "=#10x"))
+                print(format(5, "=#8b"))
+                print(format(8, "=#6o"))
+                """),
         };
 
         var list = new List<Program>(items.Length);

@@ -212,6 +212,9 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     /// </summary>
     private static bool HitsKnownGap(Cell cell)
     {
+        // TODO(#1958): delete this exclusion when the '#' alternate form renders on float-family
+        // presentations — the issue-state gate (build_tools/allowlist_issue_state.py, #1939) reads this
+        // roster comment, so a CLOSED #1958 fails the gate until the exclusion is gone (drain-on-fix).
         if (!cell.Spec.Contains('#', StringComparison.Ordinal))
             return false;
         // The last spec char is the presentation type when it is a letter/'%'; a radix type keeps '#'.
