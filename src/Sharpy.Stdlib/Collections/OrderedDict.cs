@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -8,8 +9,14 @@ namespace Sharpy
     /// A dictionary that remembers the order in which items were inserted.
     /// Like Python's collections.OrderedDict.
     /// </summary>
+    /// <remarks>
+    /// Implements <see cref="ISized"/> (<c>__len__</c> → <c>len(od)</c>) and
+    /// <see cref="IEnumerable{T}"/> over the KEYS in insertion order (<c>__iter__</c> → <c>for k in od</c>,
+    /// <c>list(od)</c>). This is the ONLY generic <c>IEnumerable</c> the type exposes so that
+    /// <c>list(od)</c> binds <c>Builtins.List&lt;K&gt;(IEnumerable&lt;K&gt;)</c> unambiguously (#1933).
+    /// </remarks>
     [SharpyModuleType("collections", "OrderedDict")]
-    public class OrderedDict<K, V> where K : notnull
+    public class OrderedDict<K, V> : ISized, IEnumerable<K>, IEquatable<OrderedDict<K, V>> where K : notnull
     {
         private readonly System.Collections.Generic.List<KeyValuePair<K, V>> _items;
         private readonly System.Collections.Generic.Dictionary<K, int> _index;
@@ -232,28 +239,42 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return the keys in insertion order.
+        /// Return the keys in insertion order as a sized list (a copy, matching Python's view length
+        /// and order; <c>len</c>/<c>list</c>/iteration all work).
         /// </summary>
-        public IEnumerable<K> Keys()
+        public List<K> Keys()
         {
-            return _items.Select(kvp => kvp.Key);
+            return new List<K>(_items.Select(kvp => kvp.Key));
         }
 
         /// <summary>
-        /// Return the values in insertion order.
+        /// Return the values in insertion order as a sized list.
         /// </summary>
-        public IEnumerable<V> Values()
+        public List<V> Values()
         {
-            return _items.Select(kvp => kvp.Value);
+            return new List<V>(_items.Select(kvp => kvp.Value));
         }
 
         /// <summary>
-        /// Return the (key, value) pairs in insertion order.
+        /// Return the (key, value) pairs in insertion order as a sized list.
         /// </summary>
-        public IEnumerable<(K, V)> Items()
+        public List<(K, V)> Items()
         {
-            return _items.Select(kvp => (kvp.Key, kvp.Value));
+            return new List<(K, V)>(_items.Select(kvp => (kvp.Key, kvp.Value)));
         }
+
+        /// <summary>
+        /// Iterate the keys in insertion order (Python's <c>__iter__</c>).
+        /// </summary>
+        public IEnumerator<K> GetEnumerator()
+        {
+            foreach (var kvp in _items)
+            {
+                yield return kvp.Key;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         /// <summary>
         /// Return a shallow copy.
@@ -284,6 +305,54 @@ namespace Sharpy
             }
             return @default;
         }
+
+        /// <summary>The ordered (key, value) pairs, for equality comparison by sibling mappings.</summary>
+        internal IReadOnlyList<KeyValuePair<K, V>> ItemsList => _items;
+
+        // ── Equality (Python __eq__). OrderedDict == OrderedDict is ORDER-SENSITIVE; every other
+        //    pairing compares by contents. Declared as operator ==/!= so the checker discovers them
+        //    through the same CLR op_Equality path Dict<K,V> uses (Dict.cs:286) — no compiler arm (#1933).
+
+        /// <summary>Order-sensitive equality with another OrderedDict (Python semantics).</summary>
+        public bool Equals(OrderedDict<K, V>? other)
+            => other is not null && MappingEquality.OrderedEquals<K, V>(_items, other._items);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is OrderedDict<K, V> other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => Count;
+
+        /// <summary>OrderedDict == OrderedDict — order-sensitive.</summary>
+        public static bool operator ==(OrderedDict<K, V>? left, OrderedDict<K, V>? right)
+            => left is null ? right is null : left.Equals(right);
+
+        /// <summary>OrderedDict != OrderedDict.</summary>
+        public static bool operator !=(OrderedDict<K, V>? left, OrderedDict<K, V>? right) => !(left == right);
+
+        /// <summary>OrderedDict == dict — pairwise (order-insensitive), matching CPython.</summary>
+        public static bool operator ==(OrderedDict<K, V>? left, Dict<K, V>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left._items, right.Count, right);
+
+        /// <summary>OrderedDict != dict.</summary>
+        public static bool operator !=(OrderedDict<K, V>? left, Dict<K, V>? right) => !(left == right);
+
+        /// <summary>dict == OrderedDict — pairwise, delegating to the symmetric overload.</summary>
+        public static bool operator ==(Dict<K, V>? left, OrderedDict<K, V>? right) => right == left;
+
+        /// <summary>dict != OrderedDict.</summary>
+        public static bool operator !=(Dict<K, V>? left, OrderedDict<K, V>? right) => !(left == right);
+
+        /// <summary>OrderedDict == ChainMap — pairwise cross-stdlib pair (#1933).</summary>
+        public static bool operator ==(OrderedDict<K, V>? left, ChainMap<K, V>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left._items, right.Count, right.PairsForEquality());
+
+        /// <summary>OrderedDict != ChainMap.</summary>
+        public static bool operator !=(OrderedDict<K, V>? left, ChainMap<K, V>? right) => !(left == right);
 
         private void RemoveAtIndex(int idx)
         {

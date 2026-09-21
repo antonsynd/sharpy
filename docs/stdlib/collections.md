@@ -26,9 +26,14 @@ If no map is provided, an empty dict is used.
 
 Get a value, searching through all maps.
 
-### `keys() -> Iterable[K]`
+### `keys() -> list[K]`
 
-Return all unique keys across all maps.
+Return all unique keys across all maps as a sized list, in CPython's merge order.
+
+### `values() -> list[V]`
+
+Return the values for the unique keys as a sized list, in CPython's merge key order.
+Each value is the first-map-wins lookup for its key.
 
 ### `pop(key: K) -> V`
 
@@ -84,6 +89,12 @@ Extend the left side of the deque by appending elements from the iterable.
 A deque (double-ended queue) is a generalization of stacks and queues
 that supports adding and removing elements from either end.
 
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `count` | `int` | The number of distinct elements. Python's \`len(c)\`; ISized's \`__len__\`. |
+
 ### `elements() -> Iterable[T]`
 
 Elements are returned in arbitrary order. Each element is repeated count times.
@@ -114,9 +125,13 @@ Return the sum of all counts.
 
 Remove all elements from the counter.
 
-### `keys() -> Iterable[T]`
+### `keys()) -> list[T]`
 
 The keys of the counter. Python: `c.keys()`. Returns a copy, not a live view.
+
+### `values()) -> list[int]`
+
+The counts of the counter, in first-seen key order. Python: `c.values()`.
 
 ### `contains(key): T = > ContainsKey(key) -> bool`
 
@@ -229,13 +244,14 @@ If last is True, move to the end; if False, move to the beginning.
 
 Remove all items from the dictionary.
 
-### `keys() -> Iterable[K]`
+### `keys() -> list[K]`
 
-Return the keys in insertion order.
+Return the keys in insertion order as a sized list (a copy, matching Python's view length
+and order; `len`/`list`/iteration all work).
 
-### `values() -> Iterable[V]`
+### `values() -> list[V]`
 
-Return the values in insertion order.
+Return the values in insertion order as a sized list.
 
 ### `copy() -> OrderedDict[K, V]`
 

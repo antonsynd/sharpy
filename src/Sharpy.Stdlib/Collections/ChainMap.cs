@@ -9,8 +9,18 @@ namespace Sharpy
     /// A ChainMap groups multiple dictionaries together to create a single, updateable view.
     /// Like Python's collections.ChainMap.
     /// </summary>
+    /// <remarks>
+    /// Implements <see cref="ISized"/> (<c>__len__</c> → <c>len(cm)</c>, the number of unique keys)
+    /// and <see cref="IEnumerable{T}"/> over the KEYS (<c>__iter__</c> → <c>for k in cm</c>,
+    /// <c>list(cm)</c>). Keys are the only generic <c>IEnumerable</c> the type exposes so
+    /// <c>list(cm)</c> binds <c>Builtins.List&lt;K&gt;(IEnumerable&lt;K&gt;)</c>; pairs are reached
+    /// through <see cref="Items"/> only (#1933). Keys/values/items iterate the maps in CPython's
+    /// REVERSED order — the last map is walked first and dedup keeps the first occurrence in that
+    /// reversed walk (for maps <c>{n,x},{n,y}</c> CPython yields keys <c>n, y, x</c>) — while VALUE
+    /// lookup stays first-map-wins via the indexer.
+    /// </remarks>
     [SharpyModuleType("collections", "ChainMap")]
-    public class ChainMap<K, V> : IReadOnlyCollection<KeyValuePair<K, V>> where K : notnull
+    public class ChainMap<K, V> : ISized, IEnumerable<K>, IEquatable<ChainMap<K, V>> where K : notnull
     {
         private readonly System.Collections.Generic.List<Dict<K, V>> _maps;
 
@@ -127,14 +137,15 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return all unique keys across all maps.
+        /// Return all unique keys across all maps, in CPython's merge order (maps walked in REVERSED
+        /// order, dedup keeping the first occurrence in that walk).
         /// </summary>
-        public IEnumerable<K> Keys()
+        private IEnumerable<K> EnumerateKeys()
         {
             var seen = new System.Collections.Generic.HashSet<K>();
-            foreach (var map in _maps)
+            for (int i = _maps.Count - 1; i >= 0; i--)
             {
-                foreach (var key in map)
+                foreach (var key in _maps[i])
                 {
                     if (seen.Add(key))
                     {
@@ -142,6 +153,32 @@ namespace Sharpy
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Return all unique keys across all maps as a sized list, in CPython's merge order.
+        /// </summary>
+        public List<K> Keys()
+        {
+            return new List<K>(EnumerateKeys());
+        }
+
+        /// <summary>
+        /// Return the values for the unique keys as a sized list, in CPython's merge key order.
+        /// Each value is the first-map-wins lookup for its key.
+        /// </summary>
+        public List<V> Values()
+        {
+            return new List<V>(EnumerateKeys().Select(key => this[key]));
+        }
+
+        /// <summary>
+        /// Return the (key, value) pairs as a sized list, in CPython's merge key order.
+        /// Each value is the first-map-wins lookup for its key.
+        /// </summary>
+        public List<(K, V)> Items()
+        {
+            return new List<(K, V)>(EnumerateKeys().Select(key => (key, this[key])));
         }
 
         /// <summary>
@@ -180,16 +217,51 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Iterates unique keys with their first-found values (first map wins), matching Python's ChainMap iteration.
+        /// Iterate the unique keys in CPython's merge order (Python's <c>__iter__</c>). Pairs are
+        /// reached through <see cref="Items"/>.
         /// </summary>
-        public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
-        {
-            foreach (var key in Keys())
-            {
-                yield return new KeyValuePair<K, V>(key, this[key]);
-            }
-        }
+        public IEnumerator<K> GetEnumerator() => EnumerateKeys().GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>The (key, value) pairs (first-map-wins values), for equality comparison.</summary>
+        internal IEnumerable<KeyValuePair<K, V>> PairsForEquality()
+            => EnumerateKeys().Select(k => new KeyValuePair<K, V>(k, this[k]));
+
+        // ── Equality (Python __eq__): compare by contents (a ChainMap equals a mapping with the
+        //    same flattened key/value pairs). Declared as operator ==/!= so the checker discovers
+        //    them through the same CLR op_Equality path Dict<K,V> uses (Dict.cs:286) — no arm (#1933).
+
+        /// <summary>Content equality with another ChainMap (flattened key/value pairs).</summary>
+        public bool Equals(ChainMap<K, V>? other)
+            => other is not null && MappingEquality.PairwiseEquals(Count, PairsForEquality(), other.Count, other.PairsForEquality());
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => obj is ChainMap<K, V> other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => Count;
+
+        /// <summary>ChainMap == ChainMap — pairwise on flattened contents.</summary>
+        public static bool operator ==(ChainMap<K, V>? left, ChainMap<K, V>? right)
+            => left is null ? right is null : left.Equals(right);
+
+        /// <summary>ChainMap != ChainMap.</summary>
+        public static bool operator !=(ChainMap<K, V>? left, ChainMap<K, V>? right) => !(left == right);
+
+        /// <summary>ChainMap == dict — pairwise, matching CPython.</summary>
+        public static bool operator ==(ChainMap<K, V>? left, Dict<K, V>? right)
+            => left is null
+                ? right is null
+                : right is not null && MappingEquality.PairwiseEquals(left.Count, left.PairsForEquality(), right.Count, right);
+
+        /// <summary>ChainMap != dict.</summary>
+        public static bool operator !=(ChainMap<K, V>? left, Dict<K, V>? right) => !(left == right);
+
+        /// <summary>dict == ChainMap — pairwise, delegating to the symmetric overload.</summary>
+        public static bool operator ==(Dict<K, V>? left, ChainMap<K, V>? right) => right == left;
+
+        /// <summary>dict != ChainMap.</summary>
+        public static bool operator !=(Dict<K, V>? left, ChainMap<K, V>? right) => !(left == right);
     }
 }
