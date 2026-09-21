@@ -321,7 +321,9 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 string outText = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
                 if (!proc.WaitForExit(10_000))
                 {
-                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    try
+                    { proc.Kill(entireProcessTree: true); }
+                    catch { }
                     return false;
                 }
                 var match = Regex.Match(outText, @"Python (\d+)\.(\d+)");
@@ -351,7 +353,9 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             }
             finally
             {
-                try { File.Delete(batchPath); } catch { }
+                try
+                { File.Delete(batchPath); }
+                catch { }
             }
         }
 
@@ -383,7 +387,9 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
             if (!proc.WaitForExit(300_000))
             {
-                try { proc.Kill(entireProcessTree: true); } catch { }
+                try
+                { proc.Kill(entireProcessTree: true); }
+                catch { }
                 throw new InvalidOperationException("run_programs.py timed out.");
             }
             proc.WaitForExit();
