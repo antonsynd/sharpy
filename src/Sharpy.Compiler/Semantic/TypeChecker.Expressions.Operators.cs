@@ -1021,8 +1021,10 @@ internal partial class TypeChecker
 
             if (symbol is FunctionSymbol funcSymbol)
             {
-                // Record the resolved call target for codegen (and check deprecation) — #1438
-                RecordResolvedCallTarget(call, funcSymbol);
+                // Record the resolved call target for codegen (and run the symbol-carried checks)
+                // — #1438. The piped value is the call's implicit first positional argument, so
+                // the argument-binding checks bind it exactly as this route does (#1956).
+                RecordResolvedCallTarget(call, funcSymbol, implicitFirstArgument: binOp.Left);
 
                 // Validate argument count considering variadic and keyword-only params
                 var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);

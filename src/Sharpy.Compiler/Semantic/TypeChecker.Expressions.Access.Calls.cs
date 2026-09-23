@@ -3871,11 +3871,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The ONE kwarg spelling that names <paramref name="param"/> in Sharpy source (#1591): the
-    /// declared name for a Sharpy-declared parameter; <see cref="CanonicalClrParameterSpelling"/>
-    /// for a verbatim-stored CLR name.
-    /// </summary>
-    /// <summary>
     /// The steer every candidate of an overload set declares alike (<see cref="FunctionSymbol.KeywordSteer"/>),
     /// or null when any candidate declares none or they disagree — a refusal is steered only when the
     /// steer is true of whichever candidate the user meant (#1955).
@@ -3927,6 +3922,11 @@ internal partial class TypeChecker
             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
             span: kwarg.Span ?? kwarg.Value.Span);
 
+    /// <summary>
+    /// The ONE kwarg spelling that names <paramref name="param"/> in Sharpy source (#1591): the
+    /// declared name for a Sharpy-declared parameter; <see cref="CanonicalClrParameterSpelling"/>
+    /// for a verbatim-stored CLR name.
+    /// </summary>
     private static string CanonicalKeywordSpellingOf(ParameterSymbol param, bool clrParameterNames)
         => clrParameterNames ? CanonicalClrParameterSpelling(param.Name) : param.Name;
 
@@ -6388,23 +6388,32 @@ internal partial class TypeChecker
     /// Single seam for a resolved call-node target: records the target for codegen AND runs the
     /// symbol-carried call checks — facts the resolved <see cref="FunctionSymbol"/> owns, checked
     /// once whichever route resolved it: deprecation (<see cref="CheckDeprecatedUsage"/>) and the
-    /// static format-spec twin (<see cref="CheckStaticFormatSpecArguments"/>, #1956). It is not a
+    /// static format-spec twins (<see cref="CheckStaticFormatSpecArguments"/> for <c>format()</c>,
+    /// <see cref="CheckStaticFormatTemplateArguments"/> for <c>str.format</c>, #1956). It is not a
     /// pure recorder; moving a check out of it makes that check inert on every route that reaches
     /// only this seam (a single-overload builtin such as <c>format</c> never reaches
     /// <see cref="ResolveBuiltinOverloadCore"/>). Every call-node resolution route (single-candidate,
     /// overload, generic-function-type, pipe-forward) MUST go through this helper rather than
     /// calling <see cref="SemanticInfo.SetCallTarget"/> directly, so a future route inherits the
-    /// checks by construction (#1438). The construction route checks type-symbol and
+    /// checks by construction (#1438). A route whose binder supplies a positional argument the call
+    /// node does not spell passes it as <paramref name="implicitFirstArgument"/> — pipe-forward
+    /// passes the piped value (<c>x |> f(y)</c> binds as <c>f(x, y)</c>) — so the argument-binding
+    /// checks see the same positional list the route's binder does; every other route omits it.
+    /// The construction route checks type-symbol and
     /// function-symbol deprecation directly via <see cref="CheckDeprecatedUsage"/> (#1536) without
     /// recording a call target — recording __init__ as a call target would make emitter consumers
     /// see targets on constructor-call nodes, an unmeasured blast radius for zero benefit.
     /// </summary>
-    private void RecordResolvedCallTarget(FunctionCall call, FunctionSymbol symbol)
+    private void RecordResolvedCallTarget(
+        FunctionCall call, FunctionSymbol symbol, Expression? implicitFirstArgument = null)
     {
         _semanticInfo.SetCallTarget(call, symbol);
         CheckDeprecatedUsage(symbol, call);
-        CheckStaticFormatSpecArguments(symbol, call);
-        CheckStaticFormatTemplateArguments(symbol, call);
+        IReadOnlyList<Expression> positionalArguments = implicitFirstArgument is null
+            ? call.Arguments
+            : call.Arguments.Insert(0, implicitFirstArgument);
+        CheckStaticFormatSpecArguments(symbol, call, positionalArguments);
+        CheckStaticFormatTemplateArguments(symbol, call, positionalArguments);
     }
 
     /// <summary>
@@ -6415,8 +6424,11 @@ internal partial class TypeChecker
     /// operand kind through the one <see cref="FormatSpecGrammar"/> the f-string route uses, and a
     /// refusal is SPY0609 at the spec literal with the same wording. A dynamic spec, or a binding
     /// this seam cannot see (a spread before the slot), is left to Core's runtime refusal.
+    /// <paramref name="positionalArguments"/> is the route's effective positional list (see
+    /// <see cref="RecordResolvedCallTarget"/>), never <c>call.Arguments</c> read directly.
     /// </summary>
-    private void CheckStaticFormatSpecArguments(FunctionSymbol symbol, FunctionCall call)
+    private void CheckStaticFormatSpecArguments(
+        FunctionSymbol symbol, FunctionCall call, IReadOnlyList<Expression> positionalArguments)
     {
         var parameters = symbol.Parameters;
         for (int i = 0; i < parameters.Count; i++)
@@ -6424,7 +6436,7 @@ internal partial class TypeChecker
             if (parameters[i].FormatSpecOf is not { } valueParameterName)
                 continue;
 
-            if (BoundArgumentOf(call, parameters, i) is not { } specArg
+            if (BoundArgumentOf(call, positionalArguments, parameters, i) is not { } specArg
                 || UnwrapParenthesized(specArg) is not StringLiteral { Value.Length: > 0 } specLiteral)
                 continue;
 
@@ -6437,7 +6449,7 @@ internal partial class TypeChecker
                     break;
                 }
             }
-            if (valueIndex < 0 || BoundArgumentOf(call, parameters, valueIndex) is not { } valueArg)
+            if (valueIndex < 0 || BoundArgumentOf(call, positionalArguments, parameters, valueIndex) is not { } valueArg)
                 continue;
 
             var operandKind = FormatOperandKindOf(
@@ -6462,23 +6474,26 @@ internal partial class TypeChecker
     /// the template literal with CPython's wording. A field whose operand or spec is not static (a
     /// nested spec, a keyword name, an attribute/index access, an index past the arguments, any
     /// spread argument) and a template Core would reject outright are left to the runtime.
+    /// Operands are read from <paramref name="positionalArguments"/>, the route's effective
+    /// positional list (see <see cref="RecordResolvedCallTarget"/>).
     /// </summary>
-    private void CheckStaticFormatTemplateArguments(FunctionSymbol symbol, FunctionCall call)
+    private void CheckStaticFormatTemplateArguments(
+        FunctionSymbol symbol, FunctionCall call, IReadOnlyList<Expression> positionalArguments)
     {
         if (!symbol.IsFormatTemplateReceiver
             || call.Function is not MemberAccess { Object: var receiver }
             || UnwrapParenthesized(receiver) is not StringLiteral template
-            || call.Arguments.Any(a => a is SpreadElement)
+            || positionalArguments.Any(a => a is SpreadElement)
             || FormatTemplateGrammar.Split(template.Value) is not { } holes)
             return;
 
         foreach (var hole in holes)
         {
-            if (hole.ArgumentIndex is not { } index || index >= call.Arguments.Length
+            if (hole.ArgumentIndex is not { } index || index >= positionalArguments.Count
                 || hole.Spec is not { Length: > 0 } spec)
                 continue;
 
-            var operand = call.Arguments[index];
+            var operand = positionalArguments[index];
             var operandKind = hole.Conversion != null
                 ? FormatOperandKind.Str
                 : FormatOperandKindOf(
@@ -6494,21 +6509,24 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The written argument bound to <paramref name="parameters"/>[<paramref name="index"/>]:
-    /// the positional argument at that index, else the keyword argument naming it (by
-    /// <see cref="FindKeywordParameter"/>, the binder's own spelling rule). Null when nothing binds
-    /// it, or when a spread at or before the slot makes the positional binding unknowable.
+    /// The argument bound to <paramref name="parameters"/>[<paramref name="index"/>]: the
+    /// positional argument at that index of <paramref name="positionalArguments"/> (the route's
+    /// effective positional list, which on pipe-forward leads with the piped value), else the
+    /// keyword argument naming it (by <see cref="FindKeywordParameter"/>, the binder's own
+    /// spelling rule). Null when nothing binds it, or when a spread at or before the slot makes the
+    /// positional binding unknowable.
     /// </summary>
     private static Expression? BoundArgumentOf(
-        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters, int index)
+        FunctionCall call, IReadOnlyList<Expression> positionalArguments,
+        IReadOnlyList<ParameterSymbol> parameters, int index)
     {
-        for (int k = 0; k < call.Arguments.Length && k <= index; k++)
+        for (int k = 0; k < positionalArguments.Count && k <= index; k++)
         {
-            if (call.Arguments[k] is SpreadElement)
+            if (positionalArguments[k] is SpreadElement)
                 return null;
         }
-        if (index < call.Arguments.Length)
-            return call.Arguments[index];
+        if (index < positionalArguments.Count)
+            return positionalArguments[index];
 
         foreach (var kwarg in call.KeywordArguments)
         {

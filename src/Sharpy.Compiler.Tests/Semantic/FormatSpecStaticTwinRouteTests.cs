@@ -64,6 +64,10 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         // Sharpy accepts the spec by keyword (python3's format() takes no keywords — a pre-existing
         // deviation); the keyword-bound literal is a binding the check must reach all the same.
         ("builtin_keyword", (v, spec) => $"\"[\" + format({v}, format_spec=\"{spec}\") + \"]\"", false),
+        // Pipe-forward: `v |> format(spec)` binds as `format(v, spec)` — the piped value is the
+        // value argument and the written literal the spec, so the check must bind the route's
+        // effective positional list, not the call node's arguments.
+        ("pipe", (v, spec) => $"\"[\" + ({v} |> format(\"{spec}\")) + \"]\"", false),
         // A literal str.format template: the hole's spec is paired with its positional operand.
         ("strformat", (v, spec) => $"\"[{{:{spec}}}]\".format({v})", false),
     };
