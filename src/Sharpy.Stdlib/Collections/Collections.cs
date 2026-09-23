@@ -19,8 +19,14 @@ namespace Sharpy
     /// d.popleft()        # 0
     /// </code>
     /// </example>
+    /// <remarks>
+    /// Implements <see cref="ISized"/> (<c>__len__</c> → <c>len(d)</c> and truth testing:
+    /// <c>if d:</c> is false for an empty deque). <see cref="IReadOnlyCollection{T}"/> alone gave
+    /// <c>len()</c> a count but left every truth position refused (SPY0220), because the truth
+    /// classifier reads the dunder table's spelling, <see cref="ISized"/> (#1972).
+    /// </remarks>
     [SharpyModuleType("collections", "Deque")]
-    public class Deque<T> : IReadOnlyCollection<T>
+    public class Deque<T> : IReadOnlyCollection<T>, ISized
     {
         private readonly System.Collections.Generic.LinkedList<T> _list;
 

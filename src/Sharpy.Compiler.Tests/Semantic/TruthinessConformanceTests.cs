@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Tests.Integration;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -19,11 +20,16 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Adding a new truth position or type without updating this matrix is a loud failure.
 /// </summary>
 [Collection("HeavyCompilation")]
-public class TruthinessConformanceTests : IntegrationTestBase
+public class TruthinessConformanceTests : StdlibAwareIntegrationTestBase
 {
     public TruthinessConformanceTests(ITestOutputHelper output) : base(output) { }
 
+    // `import collections` + the Stdlib reference (StdlibAwareIntegrationTestBase): Stdlib
+    // collections are subjects too — their truthiness is discovered from the same CLR surface
+    // (ISized) as Core's, so a Stdlib row guards the class, not just the builtins (#1972).
     private const string Preamble = @"
+import collections
+
 class HasBool:
     def __bool__(self) -> bool:
         return True
@@ -60,6 +66,9 @@ class Box[T]:
         yield return new object[] { "None", "x: int? = None()" };
         yield return new object[] { "UDT __bool__", "x: HasBool = HasBool()" };
         yield return new object[] { "UDT __len__", "x: HasLen = HasLen()" };
+        // Stdlib: Deque<T> spells __len__ as ISized (#1972) — before that it was only
+        // IReadOnlyCollection<T>, so len() worked and every truth position was SPY0220.
+        yield return new object[] { "collections.deque", "x: collections.deque[int] = collections.deque[int]([1])" };
     }
 
     // Types that are NOT truth-testable (no falsy case). The two GENERIC subjects are the positive
