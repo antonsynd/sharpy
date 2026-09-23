@@ -117,6 +117,32 @@ def main() -> None:
 [     1]
 ```
 
+### The Alternate Form and `=` Padding Are One Rule Each
+
+`#` means the same thing on every float presentation type (`e E f F g G n %` and no type): the
+result always has a decimal point, and `g`/`G`/`n`/no-type keep their trailing zeros. On an integer
+presentation (`b o x X`) it adds the radix prefix. `=` alignment pads after the sign **and** the
+radix prefix, whatever the fill character — `0`, an explicit fill, or the default space:
+
+```python
+def main() -> None:
+    print(f"[{42:#.0f}]")
+    print(f"[{3.5:#g}]")
+    print(f"[{42:#.0%}]")
+    print(f"[{-255:*=#10x}]")
+    print(f"[{255:=#10x}]")
+    print(f"[{255:0=#10x}]")
+```
+
+```
+[42.]
+[3.50000]
+[4200.%]
+[-0x*****ff]
+[0x      ff]
+[0x000000ff]
+```
+
 ### The Sign Applies to Every Numeric Presentation Type
 
 A sign (`+`, `-`, or space) is applied to **every** numeric presentation type, including `%` and the
