@@ -562,6 +562,10 @@ class DocModule:
 # ---------------------------------------------------------------------------
 
 _EXTENSION_THIS_RE = re.compile(r"^this\s+\S+\s+\w+")
+# A C# parameter may carry attribute lists (`[FormatSpec("value")] string formatSpec = ""`). They
+# are compiler-facing metadata, never part of the Python signature, and an attribute argument can
+# itself contain `=` or `,` — so they are stripped before the default/type split (#1980 class).
+_PARAM_ATTRIBUTES_RE = re.compile(r'^(?:\s*\[(?:[^\]"]|"[^"]*")*\])+\s*')
 
 # Skip patterns
 _SKIP_NAMES = {
@@ -661,7 +665,7 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
     parts = _split_generic_args(param_str)
 
     for i, part in enumerate(parts):
-        part = part.strip()
+        part = _PARAM_ATTRIBUTES_RE.sub("", part.strip())
         if not part:
             continue
 

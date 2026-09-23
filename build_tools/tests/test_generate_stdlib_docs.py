@@ -436,6 +436,21 @@ class TestParseParams:
         params = _parse_params("int x = 0")
         assert params[0].default == "0"
 
+    def test_parameter_attribute_is_not_part_of_the_type(self):
+        params = _parse_params('object? value, [FormatSpec("value")] string formatSpec = ""')
+        assert [(p.name, p.type, p.default) for p in params] == [
+            ("value", "object | None", None),
+            ("format_spec", "str", '""'),
+        ]
+
+    def test_attribute_on_extension_this_is_still_skipped(self):
+        params = _parse_params("[FormatTemplate] this string s, params object[] args", is_extension=True)
+        assert [p.name for p in params] == ["args"]
+
+    def test_attribute_argument_with_equals_and_comma_is_stripped(self):
+        params = _parse_params('[Foo(X = 1, Y = "a,b]")] int count = 3')
+        assert [(p.name, p.type, p.default) for p in params] == [("count", "int", "3")]
+
 
 # ---------------------------------------------------------------------------
 # parse_cs_file
