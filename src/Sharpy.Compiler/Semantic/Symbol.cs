@@ -619,6 +619,13 @@ public record ParameterSymbol
     /// (e.g., IEnumerable&lt;T&gt; mapped to list[T]). Used for overload specificity comparison.
     /// </summary>
     public string? ClrTypeName { get; init; }
+    /// <summary>
+    /// For a discovered CLR format-spec parameter, the name of the parameter whose value the spec
+    /// formats (from <c>Sharpy.FormatSpecAttribute</c>, via
+    /// <see cref="Discovery.Caching.ParameterSignature.FormatSpecOf"/>); null otherwise. Read by
+    /// <c>TypeChecker.CheckStaticFormatSpecArguments</c> (#1956).
+    /// </summary>
+    public string? FormatSpecOf { get; init; }
 }
 
 /// <summary>

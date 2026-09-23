@@ -667,7 +667,8 @@ internal class CachedModuleDiscovery
                     DefaultValue = p.HasDefault ? DefaultValueParser.Parse(p.DefaultValue) : null,
                     IsVariadic = p.IsVariadic,
                     Documentation = p.Documentation,
-                    ClrTypeName = string.IsNullOrEmpty(p.Type.ClrTypeName) ? null : p.Type.ClrTypeName
+                    ClrTypeName = string.IsNullOrEmpty(p.Type.ClrTypeName) ? null : p.Type.ClrTypeName,
+                    FormatSpecOf = p.FormatSpecOf
                 })
                 .ToList(),
             AccessLevel = AccessLevel.Public,

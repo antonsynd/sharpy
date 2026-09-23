@@ -805,6 +805,7 @@ internal class BuiltinRegistry
                 HasDefault = param.HasDefaultValue,
                 DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
                 IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
+                FormatSpecOf = OverloadIndexBuilder.GetFormatSpecOf(param),
             });
         }
 

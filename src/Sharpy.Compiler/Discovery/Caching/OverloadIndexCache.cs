@@ -24,11 +24,12 @@ internal class OverloadIndexCache
     // v20: IOrderedEnumerable/ICollection/FrozenDict bridge arms (#1332, #1295, #1310).
     // v21: FieldSignature gains ClrName; field keys re-keyed to the Sharpy spelling (#1540).
     // v22: FieldSignature gains RecordedPythonName from SharpyFieldNameAttribute (#1607).
+    // v24: ParameterSignature gains FormatSpecOf from FormatSpecAttribute (#1956).
     // Format version covers *shape* changes (field additions/removals/renames in the serialized
     // index). Compiler identity (AssemblyIdentity.CompilerVersion) covers *mapping* changes —
     // a rebuilt compiler automatically invalidates every index by construction (#1313), so
     // manual bumps for CLR-type-mapping fixes are no longer needed.
-    internal const int CurrentCacheFormatVersion = 23;
+    internal const int CurrentCacheFormatVersion = 24;
 
     // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of
     // an overload index costs milliseconds per stdlib assembly and, before this, ran once per

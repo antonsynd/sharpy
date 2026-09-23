@@ -144,6 +144,28 @@ public class OverloadIndexBuilderMethodDiscoveryTests
         Assert.DoesNotContain("get_type", methodNames);
     }
 
+    /// <summary>
+    /// #1956: <c>Sharpy.FormatSpecAttribute</c> on <c>Builtins.Format</c>'s spec parameter is recorded
+    /// as <see cref="ParameterSignature.FormatSpecOf"/> naming the value parameter — and on no other
+    /// builtins parameter, so the checker's static-spec twin reaches exactly the call it was
+    /// declared on.
+    /// </summary>
+    [Fact]
+    public void FormatSpecAttribute_RecordedOnFormatSpecParameterOnly()
+    {
+        var format = Assert.Single(_index.Modules["builtins"].Functions["format"]);
+        Assert.Null(format.Parameters[0].FormatSpecOf);
+        Assert.Equal("value", format.Parameters[0].Name);
+        Assert.Equal("value", format.Parameters[1].FormatSpecOf);
+
+        var carriers = _index.Modules["builtins"].Functions
+            .SelectMany(kv => kv.Value.SelectMany(sig => sig.Parameters.Select(p => (kv.Key, p))))
+            .Where(t => t.p.FormatSpecOf != null)
+            .Select(t => $"{t.Key}.{t.p.Name}")
+            .ToList();
+        Assert.Equal(new[] { "format.formatSpec" }, carriers);
+    }
+
     [Fact]
     public void CacheFormatVersion_MatchesCurrent()
     {

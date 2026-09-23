@@ -738,8 +738,23 @@ internal class OverloadIndexBuilder
             HasDefault = param.HasDefaultValue,
             DefaultValue = param.HasDefaultValue ? ConvertDefaultValue(param.DefaultValue) : null,
             IsVariadic = param.GetCustomAttribute<ParamArrayAttribute>() != null,
-            Documentation = paramDoc
+            Documentation = paramDoc,
+            FormatSpecOf = GetFormatSpecOf(param)
         };
+    }
+
+    /// <summary>
+    /// Reads the value-parameter name recorded by <c>Sharpy.FormatSpecAttribute</c> on a format-spec
+    /// parameter (#1956). By full type name, like <see cref="GetRecordedPythonName"/>: discovery
+    /// takes no compile-time dependency on Core's attribute types.
+    /// </summary>
+    internal static string? GetFormatSpecOf(ParameterInfo param)
+    {
+        var attr = param.CustomAttributes.FirstOrDefault(
+            a => a.AttributeType.FullName == "Sharpy.FormatSpecAttribute");
+        if (attr == null || attr.ConstructorArguments.Count < 1)
+            return null;
+        return attr.ConstructorArguments[0].Value as string;
     }
 
     /// <remarks>

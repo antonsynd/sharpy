@@ -83,6 +83,7 @@ internal static class OverloadExpander
                     HasDefault = paramCount == totalParams && p.HasDefault,
                     DefaultValue = paramCount == totalParams ? p.DefaultValue : null,
                     IsVariadic = p.IsVariadic,
+                    FormatSpecOf = p.FormatSpecOf,
                 })
                 .ToList();
 

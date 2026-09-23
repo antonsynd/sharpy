@@ -226,6 +226,20 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
     // through the overload-index cache as a NullableType wrapping the concrete element type, NOT
     // the open System.Nullable<> definition. Before the fix, discovery serialized the OPEN
     // Nullable<> type, so a plain `bytes` argument failed to match the `bytes?` parameter.
+    /// <summary>
+    /// #1956: the discovered <c>format</c> symbol carries the spec parameter's
+    /// <see cref="ParameterSymbol.FormatSpecOf"/> through the cached signature, the fact
+    /// <c>TypeChecker.CheckStaticFormatSpecArguments</c> reads.
+    /// </summary>
+    [Fact]
+    public void GetModuleFunctions_Format_SpecParameterCarriesFormatSpecOf()
+    {
+        var format = Assert.Single(_discovery.GetModuleFunctions("builtins"), f => f.Name == "format");
+        Assert.Equal(2, format.Parameters.Count);
+        Assert.Null(format.Parameters[0].FormatSpecOf);
+        Assert.Equal("value", format.Parameters[1].FormatSpecOf);
+    }
+
     [Fact]
     public void GetModuleFunctions_NullableStructParameter_MapsToNullableOfElementType()
     {

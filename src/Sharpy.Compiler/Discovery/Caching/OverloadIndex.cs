@@ -125,6 +125,14 @@ internal class ParameterSignature
     public string? DefaultValue { get; set; }
     public bool IsVariadic { get; set; }
     public string? Documentation { get; set; }
+
+    /// <summary>
+    /// The name of the parameter whose value this parameter's format spec applies to, recorded
+    /// from <c>Sharpy.FormatSpecAttribute</c> (<c>Builtins.Format</c>'s <c>formatSpec</c> →
+    /// <c>"value"</c>); null for every other parameter. The checker validates a string-literal
+    /// argument bound here as a static format spec (#1956).
+    /// </summary>
+    public string? FormatSpecOf { get; set; }
 }
 
 /// <summary>
