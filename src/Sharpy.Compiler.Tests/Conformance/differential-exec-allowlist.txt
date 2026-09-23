@@ -179,8 +179,3 @@ fixture::truthiness_and_or_non_bool
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
 
-# format(255, spec '=' + '#' + width 10 + 'x'): CPython places the fill between the 0x/0o/0b radix prefix and the digits
-# ('0x      ff'); Sharpy places it before the prefix ('      0xff'). Known engine gap, pinned as a
-# hand-picked program because the seeded FormatSpecDifferential sample never draws the cell.
-# Cite: #1959 (format engine: '=' alignment places fill before the radix prefix). Drains on fix.
-handpicked::format_alt_radix_eq_align_1959

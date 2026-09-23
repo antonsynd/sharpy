@@ -869,9 +869,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 print("{:05}".format("cd"))
                 """),
             // '=' alignment with the '#' radix prefix: CPython pads BETWEEN the prefix and the digits
-            // ('0x      ff'); Sharpy pads before the prefix (#1959). The FormatSpecDifferential sweep's
-            // seeded sample never draws this cell, so it is pinned here and allowlisted citing #1959 —
-            // the row drains (fails as stale) when the engine renders it like CPython.
+            // ('0x      ff'). Fixed by #1959 (one prefix predicate for both '=' fill paths); kept as a
+            // regression program beside the FormatSpecDifferential '='+'#'+radix stratum.
             ("format_alt_radix_eq_align_1959", """
                 print(format(255, "=#10x"))
                 print(format(-255, "=#10x"))
