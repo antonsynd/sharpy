@@ -77,11 +77,11 @@ deployment closure (`StandaloneDeploymentTests`).
   `#1939`). Neither is widened here, and neither makes the gate fail today — they are
   written down so a green `check_allowlist_issue_state.sh` is not read as "every allowlist row cites
   a live issue".
-  1. **`build_tools/spec_blocks_allowlist.txt` is not scanned at all.** `allowlist_issue_state.py`
-     collects its `.txt` inputs from `src/**/Conformance/*-allowlist.txt`, and the spec-block
-     allowlist lives under `build_tools/` with a different suffix, so it falls outside the glob. Its
-     ~588 rows carry a first-error-code comment (`# SPY0348 first`) and **zero issue references**, so
-     even a widened glob would have nothing to verify. Giving those rows issue refs is the umbrella's
+  1. **`build_tools/spec_blocks_allowlist.txt` is scanned but has nothing to verify.** Since #1998,
+     `allowlist_issue_state.py` derives its `.txt` inputs from `git ls-files -- '*allowlist*.txt'`
+     (every tracked allowlist, wherever it lives — no directory roster), so the spec-block allowlist
+     is in the set. Its ~588 rows carry a first-error-code comment (`# SPY0348 first`) and **zero
+     issue references**, so the scan has nothing to verify there. Giving those rows issue refs is the umbrella's
      work; until then the spec-block ratchet drains only through
      `check_spec_blocks.sh`'s own stale-entry check, not through issue state.
   2. **C# rosters that are not `Skip` attributes are invisible.** The `.cs` half of the scan matches
