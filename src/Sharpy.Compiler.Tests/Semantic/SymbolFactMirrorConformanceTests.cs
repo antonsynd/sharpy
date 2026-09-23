@@ -561,6 +561,12 @@ def main() -> None:
         ["TypeSymbol.ClrType"] = "CLR interop — set by assembly discovery, never by .spy extraction",
         ["FunctionSymbol.ClrMethod"] = "CLR interop — see TypeSymbol.ClrType",
         ["FunctionSymbol.ClrMethodName"] = "CLR interop — see TypeSymbol.ClrType",
+        ["FunctionSymbol.IsFormatTemplateReceiver"] = "CLR interop — read from the Core [FormatTemplate] "
+            + "attribute by BuiltinRegistry.DiscoverStringExtensionMethods on live reflection (#1956); a "
+            + "builtin str method's fact, never produced by .spy extraction or carried across an import",
+        ["FunctionSymbol.KeywordSteer"] = "CLR interop — read from the Core [SharpyKeywordSteer] attribute by "
+            + "BuiltinRegistry.DiscoverStringExtensionMethods on live reflection (#1955); see "
+            + "FunctionSymbol.IsFormatTemplateReceiver",
         ["VariableSymbol.ClrFieldName"] = "CLR interop — set by assembly discovery (#1540), never by .spy extraction",
         ["TypeSymbol.ClrArityGroup"] = "CLR interop — set by GetNamespaceTypes (#1613) to carry the multi-arity "
             + "name group (EventHandler / EventHandler`1 / EventHandler`2), never by .spy extraction",
