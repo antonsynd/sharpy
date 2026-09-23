@@ -1,0 +1,11 @@
+# A LITERAL spec through format() gets the same static refusal an f-string hole's literal spec
+# gets (SPY0609, CPython's wording) — bare, builtins-qualified and keyword-bound alike (#1956).
+# Before the fix all three compiled and raised the ValueError only at runtime.
+import builtins
+
+
+def main() -> None:
+    s: str = "ab"
+    print(format(s, "=5"))
+    print(builtins.format(s, "+5"))
+    print(format(s, format_spec="#5"))

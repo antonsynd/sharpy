@@ -1,0 +1,11 @@
+# A DYNAMIC spec through format() cannot be checked at compile time, so the runtime twin of the
+# #1956 static refusal still fires: Core raises CPython's ValueError with the identical wording.
+# A valid literal spec on the same operand keeps compiling and printing.
+def main() -> None:
+    s: str = "ab"
+    spec: str = "=5"
+    try:
+        print(format(s, spec))
+    except ValueError as e:
+        print(f"ValueError: {e}")
+    print("[" + format(s, ">5") + "]")

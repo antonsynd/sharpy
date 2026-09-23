@@ -6364,19 +6364,95 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Single seam for recording a resolved call-node target: records the target for codegen AND
-    /// runs the deprecation check. Every call-node resolution route (single-candidate, overload,
-    /// generic-function-type, pipe-forward) MUST go through this helper rather than calling
-    /// <see cref="SemanticInfo.SetCallTarget"/> directly, so a future route inherits the deprecation
-    /// check by construction (#1438). The construction route checks type-symbol and function-symbol
-    /// deprecation directly via <see cref="CheckDeprecatedUsage"/> (#1536) without recording a call
-    /// target — recording __init__ as a call target would make emitter consumers see targets on
-    /// constructor-call nodes, an unmeasured blast radius for zero benefit.
+    /// Single seam for a resolved call-node target: records the target for codegen AND runs the
+    /// symbol-carried call checks — facts the resolved <see cref="FunctionSymbol"/> owns, checked
+    /// once whichever route resolved it: deprecation (<see cref="CheckDeprecatedUsage"/>) and the
+    /// static format-spec twin (<see cref="CheckStaticFormatSpecArguments"/>, #1956). It is not a
+    /// pure recorder; moving a check out of it makes that check inert on every route that reaches
+    /// only this seam (a single-overload builtin such as <c>format</c> never reaches
+    /// <see cref="ResolveBuiltinOverloadCore"/>). Every call-node resolution route (single-candidate,
+    /// overload, generic-function-type, pipe-forward) MUST go through this helper rather than
+    /// calling <see cref="SemanticInfo.SetCallTarget"/> directly, so a future route inherits the
+    /// checks by construction (#1438). The construction route checks type-symbol and
+    /// function-symbol deprecation directly via <see cref="CheckDeprecatedUsage"/> (#1536) without
+    /// recording a call target — recording __init__ as a call target would make emitter consumers
+    /// see targets on constructor-call nodes, an unmeasured blast radius for zero benefit.
     /// </summary>
     private void RecordResolvedCallTarget(FunctionCall call, FunctionSymbol symbol)
     {
         _semanticInfo.SetCallTarget(call, symbol);
         CheckDeprecatedUsage(symbol, call);
+        CheckStaticFormatSpecArguments(symbol, call);
+    }
+
+    /// <summary>
+    /// The static twin of Core's format-spec refusals on a call route (#1956): for each parameter
+    /// the callee declares a format spec (<see cref="ParameterSymbol.FormatSpecOf"/>, from Core's
+    /// <c>FormatSpecAttribute</c> — <c>format(value, format_spec)</c>), a STRING-LITERAL argument
+    /// bound to it, positionally or by keyword, is validated against the bound value argument's
+    /// operand kind through the one <see cref="FormatSpecGrammar"/> the f-string route uses, and a
+    /// refusal is SPY0609 at the spec literal with the same wording. A dynamic spec, or a binding
+    /// this seam cannot see (a spread before the slot), is left to Core's runtime refusal.
+    /// </summary>
+    private void CheckStaticFormatSpecArguments(FunctionSymbol symbol, FunctionCall call)
+    {
+        var parameters = symbol.Parameters;
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            if (parameters[i].FormatSpecOf is not { } valueParameterName)
+                continue;
+
+            if (BoundArgumentOf(call, parameters, i) is not { } specArg
+                || UnwrapParenthesized(specArg) is not StringLiteral { Value.Length: > 0 } specLiteral)
+                continue;
+
+            var valueIndex = -1;
+            for (int j = 0; j < parameters.Count; j++)
+            {
+                if (parameters[j].Name == valueParameterName)
+                {
+                    valueIndex = j;
+                    break;
+                }
+            }
+            if (valueIndex < 0 || BoundArgumentOf(call, parameters, valueIndex) is not { } valueArg)
+                continue;
+
+            var operandKind = FormatOperandKindOf(
+                UnwrapParenthesized(valueArg),
+                _semanticInfo.GetExpressionType(valueArg) ?? SemanticType.Unknown);
+            var message = FormatSpecGrammar.Validate(specLiteral.Value, operandKind);
+            if (message != null)
+            {
+                AddError(message, specLiteral.LineStart, specLiteral.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification, span: specLiteral.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The written argument bound to <paramref name="parameters"/>[<paramref name="index"/>]:
+    /// the positional argument at that index, else the keyword argument naming it (by
+    /// <see cref="FindKeywordParameter"/>, the binder's own spelling rule). Null when nothing binds
+    /// it, or when a spread at or before the slot makes the positional binding unknowable.
+    /// </summary>
+    private static Expression? BoundArgumentOf(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters, int index)
+    {
+        for (int k = 0; k < call.Arguments.Length && k <= index; k++)
+        {
+            if (call.Arguments[k] is SpreadElement)
+                return null;
+        }
+        if (index < call.Arguments.Length)
+            return call.Arguments[index];
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (ReferenceEquals(FindKeywordParameter(parameters, kwarg.Name), parameters[index]))
+                return kwarg.Value;
+        }
+        return null;
     }
 
     private void CheckDeprecatedUsage(Symbol symbol, Expression callSite)

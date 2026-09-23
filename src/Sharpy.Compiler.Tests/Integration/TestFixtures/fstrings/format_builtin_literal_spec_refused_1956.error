@@ -1,0 +1,4 @@
+SPY0609: '=' alignment not allowed in string format specifier @9:21
+SPY0609: Sign not allowed in string format specifier @10:30
+SPY0609: Alternate form (#) not allowed in string format specifier @11:33
+!count 3
