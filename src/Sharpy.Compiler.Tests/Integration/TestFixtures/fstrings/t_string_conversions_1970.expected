@@ -1,0 +1,33 @@
+ok s!r 'ab'
+ok s!s ab
+ok s!a 'ab'
+ok s= s='ab'
+ok s=:>6 s=    ab
+ok s=!r s='ab'
+ok s!r:{w}   'ab'
+ok xs!r [1, 2]
+ok xs!s [1, 2]
+ok xs!a [1, 2]
+ok xs= xs=[1, 2]
+ok xs=!r xs=[1, 2]
+ok xs!r:{w} [1, 2]
+ok n!r 5
+ok n!s 5
+ok n!a 5
+ok n= n=5
+ok n=:>6 n=     5
+ok n=!r n=5
+ok n!r:{w}      5
+ok e!r 'é'
+ok e!s é
+ok e!a '\xe9'
+ok e= e='é'
+ok e=:>6 e=     é
+ok e=!r e='é'
+ok e!r:{w}    'é'
+ok b!r:>6   True
+ok b!s:>6   True
+ok b!a:>6   True
+ok b= b=True
+ok b=:>6 b=     1
+ok b=!s:>6 b=  True

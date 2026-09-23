@@ -1,0 +1,54 @@
+# t-string holes honour !r / !s / !a / = exactly as f-strings do (#1970): each line renders the
+# same field through str(t"...") and through the f-string, and prints ok (or MISMATCH with both
+# values). This is the t-string RENDER agreeing with the f-string, not Python's str(Template).
+# Expected f-string values: python3 3.12 (the same f-strings); the t-string field shapes per
+# PEP 750, checked on python3.14 (t"{x=}" has strings ("x=", "") and conversion 'r').
+# xs=:>6 is omitted: python raises TypeError (a spec on a list with no conversion).
+# b (a bool) tells every conversion apart from none under a spec: str/repr spell True,
+# format() spells 1.
+def check(label: str, t: str, f: str) -> None:
+    if t == f:
+        print(f"ok {label} {f}")
+    else:
+        print(f"MISMATCH {label} t={t} f={f}")
+
+def main() -> None:
+    s: str = "ab"
+    xs: list[int] = [1, 2]
+    n: int = 5
+    e: str = chr(233)
+    b: bool = True
+    w: str = ">6"
+    check("s!r", str(t"{s!r}"), f"{s!r}")
+    check("s!s", str(t"{s!s}"), f"{s!s}")
+    check("s!a", str(t"{s!a}"), f"{s!a}")
+    check("s=", str(t"{s=}"), f"{s=}")
+    check("s=:>6", str(t"{s=:>6}"), f"{s=:>6}")
+    check("s=!r", str(t"{s=!r}"), f"{s=!r}")
+    check("s!r:{w}", str(t"{s!r:{w}}"), f"{s!r:{w}}")
+    check("xs!r", str(t"{xs!r}"), f"{xs!r}")
+    check("xs!s", str(t"{xs!s}"), f"{xs!s}")
+    check("xs!a", str(t"{xs!a}"), f"{xs!a}")
+    check("xs=", str(t"{xs=}"), f"{xs=}")
+    check("xs=!r", str(t"{xs=!r}"), f"{xs=!r}")
+    check("xs!r:{w}", str(t"{xs!r:{w}}"), f"{xs!r:{w}}")
+    check("n!r", str(t"{n!r}"), f"{n!r}")
+    check("n!s", str(t"{n!s}"), f"{n!s}")
+    check("n!a", str(t"{n!a}"), f"{n!a}")
+    check("n=", str(t"{n=}"), f"{n=}")
+    check("n=:>6", str(t"{n=:>6}"), f"{n=:>6}")
+    check("n=!r", str(t"{n=!r}"), f"{n=!r}")
+    check("n!r:{w}", str(t"{n!r:{w}}"), f"{n!r:{w}}")
+    check("e!r", str(t"{e!r}"), f"{e!r}")
+    check("e!s", str(t"{e!s}"), f"{e!s}")
+    check("e!a", str(t"{e!a}"), f"{e!a}")
+    check("e=", str(t"{e=}"), f"{e=}")
+    check("e=:>6", str(t"{e=:>6}"), f"{e=:>6}")
+    check("e=!r", str(t"{e=!r}"), f"{e=!r}")
+    check("e!r:{w}", str(t"{e!r:{w}}"), f"{e!r:{w}}")
+    check("b!r:>6", str(t"{b!r:>6}"), f"{b!r:>6}")
+    check("b!s:>6", str(t"{b!s:>6}"), f"{b!s:>6}")
+    check("b!a:>6", str(t"{b!a:>6}"), f"{b!a:>6}")
+    check("b=", str(t"{b=}"), f"{b=}")
+    check("b=:>6", str(t"{b=:>6}"), f"{b=:>6}")
+    check("b=!s:>6", str(t"{b=!s:>6}"), f"{b=!s:>6}")

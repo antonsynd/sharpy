@@ -624,6 +624,12 @@ internal partial class RoslynEmitter
             }
             else if (part.Expression != null)
             {
+                // '=' self-documenting: the verbatim captured source (incl. '=') ends the preceding
+                // string segment, exactly as the f-string emitter prints it before the value
+                // (PEP 750: t"{x=}" has strings ("x=", "")).
+                if (part.IsSelfDocumenting && part.SourceText != null)
+                    currentText += part.SourceText;
+
                 // Flush accumulated text as a string element
                 stringElements.Add(MakeStringLiteral(currentText));
                 currentText = string.Empty;
@@ -648,19 +654,33 @@ internal partial class RoslynEmitter
                 // the field had no ':'. Interpolation.ToString() applies it through PyFormat.Apply.
                 var specArg = InterpolationSpecArgument(part, map);
 
-                // new global::Sharpy.Interpolation(value, "exprText", spec)
+                // new global::Sharpy.Interpolation(value, "exprText", spec[, "r"/"s"/"a"]) — the
+                // conversion is the TypeChecker's recorded InterpolationLowering.Kind (the same fact
+                // the f-string emitter renders; '=' without a spec is already Repr there). A plain
+                // hole keeps the three-argument shape.
+                var arguments = new List<ArgumentSyntax>
+                {
+                    Argument(valueExpr),
+                    Argument(MakeStringLiteral(exprText)),
+                    Argument(specArg)
+                };
+                var conversion = RequireInterpolationLowering(part.Expression).Kind switch
+                {
+                    InterpolationKind.Repr => "r",
+                    InterpolationKind.Str => "s",
+                    InterpolationKind.Ascii => "a",
+                    _ => null,
+                };
+                if (conversion != null)
+                    arguments.Add(Argument(MakeStringLiteral(conversion)));
+
                 var interpolationExpr = ObjectCreationExpression(
                     QualifiedName(
                         AliasQualifiedName(
                             IdentifierName(Token(SyntaxKind.GlobalKeyword)),
                             IdentifierName("Sharpy")),
                         IdentifierName("Interpolation")))
-                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                    {
-                        Argument(valueExpr),
-                        Argument(MakeStringLiteral(exprText)),
-                        Argument(specArg)
-                    })));
+                    .WithArgumentList(ArgumentList(SeparatedList(arguments)));
 
                 interpolationElements.Add(interpolationExpr);
             }
