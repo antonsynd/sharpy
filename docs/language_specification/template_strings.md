@@ -43,6 +43,33 @@ Pi is 3.14
 [      hi]
 ```
 
+## Conversions and Self-Documenting Fields
+
+A t-string hole honours the conversion flags `!r`, `!s` and `!a` and the self-documenting `=`
+exactly as an f-string does. Each `Interpolation` records its conversion (`"r"`, `"s"`, `"a"`, or
+none — PEP 750's `conversion` field), and rendering applies it (`repr`, `str` or `ascii` of the
+value) before the format spec. A self-documenting `{x=}` keeps its `x=` text in the template's
+string segments and implies `!r` when no spec is given; with a spec (`{x=:>4}`) the value is
+formatted, not repr'd — the same rule as f-strings (PEP 750: `t"{x=}"` has strings `("x=", "")`
+and conversion `"r"`).
+
+```python
+def main() -> None:
+    s: str = "ab"
+    x: int = 1
+    e: str = "é"
+    print(t"{s!r:>6}|{s!a}|{x=}|{s=:>4}|{e!a}")
+```
+
+```
+  'ab'|'ab'|x=1|s=  ab|'\xe9'
+```
+
+"Rendering" here is Sharpy's rendering of a `Template` (what `print` and `str()` produce), which
+agrees byte-for-byte with the f-string on the same fields. Python's `str()` of a `Template` does not
+render it; the rendered form is a Sharpy convenience, and the structured fields are the PEP 750
+surface.
+
 ## Template Type
 
 T-strings produce a value of type `Template`. You can annotate variables explicitly:
@@ -82,6 +109,7 @@ combined = first + second
 | Prefix | `f` | `t` |
 | Result type | `str` | `Template` |
 | Interpolation | `{expr}` | `{expr}` |
+| Conversions, `=` | `!r` `!s` `!a`, `{x=}` | same, recorded per `Interpolation` |
 | Use case | String formatting | Structured interpolation |
 
 Both f-strings and t-strings share the same interpolation part structure internally (`FStringPart`), but t-strings preserve interpolation structure in the resulting `Template` object rather than eagerly producing a string.
