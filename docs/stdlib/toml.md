@@ -44,11 +44,11 @@ Write an object's TOML representation to a file path.
 
 Write an object's TOML representation to a file path, optionally sorting keys.
 
-### `toml.loads(new(: string s) where T : class,) -> Result[T, TOMLDecodeError]`
+### `toml.loads(s: str) -> Result[T, TOMLDecodeError]`
 
 Parse a TOML string into a typed model.
 
-### `toml.load(new(: TextFile fp) where T : class,) -> Result[T, TOMLDecodeError]`
+### `toml.load(fp: TextFile) -> Result[T, TOMLDecodeError]`
 
 Parse TOML content from a text file into a typed model.
 

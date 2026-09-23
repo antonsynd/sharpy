@@ -6,6 +6,16 @@ Classes for working with dates and times.
 import datetime
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `date_type` | `Type` | The Date type. |
+| `time_type` | `Type` | The Time type. |
+| `date_time_type` | `Type` | The DateTime type. |
+| `timedelta_type` | `Type` | The Timedelta type. |
+| `timezone_type` | `Type` | The Timezone type. |
+
 ## date
 
 Represents a date (year, month, day).
@@ -17,6 +27,10 @@ Represents a date (year, month, day).
 | `year` | `int` | The year component. |
 | `month` | `int` | The month component (1-12). |
 | `day` | `int` | The day component (1-31). |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the ISO 8601 string representation (yyyy-MM-dd).
 
 ### `today() -> Date`
 
@@ -56,7 +70,7 @@ Format the date using Python strftime format codes.
 
 ## time
 
-Represents a date (year, month, day).
+Represents a time (hour, minute, second, microsecond).
 
 ### Properties
 
@@ -66,6 +80,10 @@ Represents a date (year, month, day).
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
 | `microsecond` | `int` | The microsecond component (0-999999). |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the string representation (HH:mm:ss.ffffff).
 
 ### `isoformat() -> str`
 
@@ -77,7 +95,7 @@ Format the time using Python strftime format codes.
 
 ## datetime
 
-Represents a date (year, month, day).
+A combination of a date and a time.
 
 ### Properties
 
@@ -93,6 +111,10 @@ Represents a date (year, month, day).
 | `tzinfo` | `ITzinfo | None` | The timezone info, or null if naive. |
 | `date_component` | `Date` | The date component of this datetime. |
 | `time_component` | `Time` | The time component of this datetime. |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the string representation.
 
 ### `now() -> DateTime`
 
@@ -144,7 +166,7 @@ Convert to a different timezone.
 
 ## timedelta
 
-Represents a date (year, month, day).
+Represents the difference between two dates or times.
 
 ### Properties
 
@@ -155,29 +177,23 @@ Represents a date (year, month, day).
 | `microseconds` | `int` | The microseconds component of the time interval. |
 | `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the string representation.
+
 ### `abs() -> Timedelta`
 
 Return the absolute value of the timedelta.
 
 ## timezone
 
-Represents a date (year, month, day).
+Represents a fixed-offset timezone.
 
 ### Constants
 
 | Name | Type | Description |
 |------|------|-------------|
 | `utc` | `Timezone` | The UTC timezone. |
-
-### Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `date_type` | `Type` | The Date type. |
-| `time_type` | `Type` | The Time type. |
-| `date_time_type` | `Type` | The DateTime type. |
-| `timedelta_type` | `Type` | The Timedelta type. |
-| `timezone_type` | `Type` | The Timezone type. |
 
 ### `utcoffset(dt: DateTime | None = None) -> Timedelta`
 
@@ -190,3 +206,7 @@ Return the timezone name (dt parameter ignored for fixed-offset zones).
 ### `dst(dt: DateTime | None = None) -> Timedelta`
 
 Return DST offset (always zero for fixed-offset zones).
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the string representation.

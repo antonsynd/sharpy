@@ -32,8 +32,6 @@ import threading
 
 ## BrokenBarrierError
 
-A barrier synchronization primitive, similar to Python's `threading.Barrier`.
-
 ## Barrier
 
 A barrier synchronization primitive, similar to Python's `threading.Barrier`.
@@ -64,9 +62,9 @@ similar to Python's `threading.BoundedSemaphore`.
 
 ### `exit()`
 
-### `__enter__()) -> BoundedSemaphore`
+### `__enter__() -> BoundedSemaphore`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
 
 ## Event
 
@@ -94,9 +92,9 @@ A non-reentrant mutual exclusion lock, similar to Python's `threading.Lock`.
 
 ### `exit()`
 
-### `__enter__()) -> Lock`
+### `__enter__() -> Lock`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
 
 ## RLock
 
@@ -111,9 +109,9 @@ The same thread may acquire it multiple times without deadlocking.
 
 ### `exit()`
 
-### `__enter__()) -> RLock`
+### `__enter__() -> RLock`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
 
 ## Semaphore
 
@@ -127,9 +125,9 @@ A counting semaphore, similar to Python's `threading.Semaphore`.
 
 ### `exit()`
 
-### `__enter__()) -> Semaphore`
+### `__enter__() -> Semaphore`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
 
 ## Thread
 

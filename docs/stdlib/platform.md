@@ -59,6 +59,11 @@ Returns the name of the .NET implementation (always "CoreCLR" on .NET 5+).
 
 Returns the .NET framework description string.
 
+### `platform.architecture() -> tuple[str, str]`
+
+Returns a tuple (bits, linkage) identifying the architecture.
+bits is "64bit" or "32bit", linkage is always empty.
+
 ### `platform.uname() -> UnameResult`
 
 Returns a `UnameResult` containing system identification information.
@@ -77,3 +82,7 @@ Mirrors Python's platform.uname_result named tuple.
 | `release` | `str` | The operating system release version. |
 | `version` | `str` | The operating system version description. |
 | `machine` | `str` | The hardware machine identifier (e.g., "x86_64", "arm64"). |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns a string representation matching Python's uname_result format.

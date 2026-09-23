@@ -179,9 +179,13 @@ Return a new set with elements in either this set or the iterable but not both.
 
 Convert to a standard .NET HashSet.
 
-### `add(x): T = > _set.Add(x)`
+### `add(x: T)`
 
 Add an element to the set (no effect if already present).
+
+**Parameters:**
+
+- `x` (T) -- The element to add.
 
 ```python
 s = {1, 2}
@@ -193,9 +197,13 @@ s.add(2)    # {1, 2, 3}  (no change)
     For initializer literals and part of
     ICollection interface.
 
-### `discard(x): T = > _set.Remove(x)`
+### `discard(x: T)`
 
 Remove an element from the set if present (no error if not present).
+
+**Parameters:**
+
+- `x` (T) -- The element to discard.
 
 ```python
 s = {1, 2, 3}
@@ -203,7 +211,7 @@ s.discard(2)    # {1, 3}
 s.discard(9)    # {1, 3}  (no error)
 ```
 
-### `clear())`
+### `clear()`
 
 Remove all elements from the set.
 
@@ -246,9 +254,13 @@ s.remove(2)    # {1, 3}
 
 - `KeyError` -- Thrown if the element is not found.
 
-### `contains(x): T = > _set.Contains(x) -> bool`
+### `contains(x: T) -> bool`
 
 Returns whether the item is in the set.
+
+**Parameters:**
+
+- `x` (T) -- The element to check for.
 
 **Returns:** `True` if the element is found; otherwise `False`.
 
@@ -341,7 +353,11 @@ Update the set, keeping only elements found in either set or the iterable but no
 
 - `other` (Iterable[T]) -- The iterable to compute symmetric difference with.
 
-### `copy_to(array: list[T], array_index): int = > _set.CopyTo(array, arrayIndex)`
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns a string representation of this set.
+
+### `copy_to(array: list[T], array_index: int)`
 
 Copies the elements of the set to an array.
 

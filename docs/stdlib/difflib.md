@@ -32,6 +32,14 @@ import difflib
 
 ### `set_seq2(b: IList[T])`
 
+### `find_longest_match(a_lo: int, a_hi: int, b_lo: int, b_hi: int) -> tuple[int, int, int]`
+
+### `get_matching_blocks() -> list[tuple[int, int, int]]`
+
+### `get_opcodes() -> list[tuple[str, int, int, int, int]]`
+
+### `get_grouped_opcodes(n: int = 3) -> list[list[tuple[str, int, int, int, int]]]`
+
 ### `ratio() -> float`
 
 ### `quick_ratio() -> float`

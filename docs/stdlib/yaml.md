@@ -145,6 +145,12 @@ or a `YAMLError` on failure.
 Holds the comments associated with a single key (in a mapping) or item (in a
 sequence) for YAML roundtrip preservation, mirroring ruamel.yaml's comment model.
 
+!!! note
+    A node may have a comment on the line(s) preceding it (`BeforeComment`),
+    a comment trailing it on the same line (`InlineComment`), or a comment
+    on the line(s) following it (`AfterComment`). Comment text is stored
+    verbatim, without the leading `#` marker.
+
 ### Properties
 
 | Name | Type | Description |
@@ -208,7 +214,7 @@ the comments associated with each item by index.
 | `count` | `int` | The number of items in this sequence. |
 | `comments` | `IReadOnlyDictionary[int, CommentInfo]` | The comments associated with this sequence's items, keyed by item index. |
 
-### `add(item): object | None = > _items.Add(item)`
+### `add(item: object | None)`
 
 Appends an item to the end of the sequence.
 
@@ -241,8 +247,9 @@ Mirrors Python's `yaml.YAMLError`, which subclasses `Exception`.
 
 ## YAMLParseError
 
-Base exception for all yaml-related errors.
-Mirrors Python's `yaml.YAMLError`, which subclasses `Exception`.
+Exception raised when a YAML document cannot be parsed.
+Mirrors Python's `yaml.YAMLError` subclasses (scanner/parser errors),
+carrying the problem description, surrounding context, and source location.
 
 ### Properties
 

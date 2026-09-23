@@ -45,13 +45,17 @@ Represents the result of a finished subprocess.
 
 Raises CalledProcessError if the process exited with a non-zero status.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the Python-style string representation of the completed process.
+
 ## SubprocessError
 
 Base exception for subprocess-related failures.
 
 ## CalledProcessError
 
-Base exception for subprocess-related failures.
+Raised when a process exits with a non-zero status.
 
 ### Properties
 
@@ -64,7 +68,7 @@ Base exception for subprocess-related failures.
 
 ## TimeoutExpired
 
-Base exception for subprocess-related failures.
+Raised when a process exceeds the allowed timeout.
 
 ### Properties
 
@@ -88,6 +92,10 @@ Starts and manages a child process like Python's subprocess.Popen.
 | `stdin` | `StreamWriter | None` | Gets the redirected standard input writer, if available. |
 | `stdout_stream` | `StreamReader | None` | Gets the redirected standard output reader, if available. |
 | `stderr_stream` | `StreamReader | None` | Gets the redirected standard error reader, if available. |
+
+### `communicate(input: str | None = None, timeout: float | None = None) -> tuple[str | None, str | None]`
+
+Sends optional input, waits for completion, and returns captured output.
 
 ### `wait(timeout: float | None = None) -> int`
 

@@ -28,6 +28,8 @@ import calendar
 
 ### `calendar.weekday(year: int, month: int, day: int) -> int`
 
+### `calendar.monthrange(year: int, month: int) -> tuple[int, int]`
+
 ### `calendar.monthcalendar(year: int, month: int) -> list[list[int]]`
 
 ### `calendar.month(year: int, month: int, w: int = 2, l: int = 1) -> str`
@@ -52,7 +54,11 @@ import calendar
 
 ### `itermonthdays(year: int, month: int) -> Iterable[int]`
 
+### `itermonthdays2(year: int, month: int) -> Iterable[tuple[int, int]]`
+
 ### `monthdayscalendar(year: int, month: int) -> list[list[int]]`
+
+### `monthdays2calendar(year: int, month: int) -> list[list[tuple[int, int]]]`
 
 ## HTMLCalendar
 

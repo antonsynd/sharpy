@@ -128,6 +128,10 @@ Make an iterator that returns elements as long as the predicate is True.
 
 Make an iterator that filters elements returning only those for which the predicate is False.
 
+### `itertools.pairwise(iterable: Iterable[T]) -> Iterable[tuple[T, T]]`
+
+Return successive overlapping pairs taken from the input iterable.
+
 ### `itertools.islice(iterable: Iterable[T], stop: int) -> Iterable[T]`
 
 Make an iterator that returns selected elements from the iterable.

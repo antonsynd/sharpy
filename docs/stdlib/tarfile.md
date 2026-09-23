@@ -28,18 +28,15 @@ Equivalent to Python's `tarfile.TarError`.
 
 ## ReadError
 
-Base exception for tarfile errors.
-Equivalent to Python's `tarfile.TarError`.
+Raised when a tar archive cannot be read.
 
 ## CompressionError
 
-Base exception for tarfile errors.
-Equivalent to Python's `tarfile.TarError`.
+Raised for unsupported compression methods.
 
 ## ExtractError
 
-Base exception for tarfile errors.
-Equivalent to Python's `tarfile.TarError`.
+Raised when extraction fails.
 
 ## TarFile
 
@@ -70,6 +67,10 @@ Equivalent to Python's `tarfile.TarFile`.
 
 ### `close()`
 
+### `__str__() -> str`
+
+`repr()` uses the same method.
+
 ## TarInfo
 
 Metadata about a tar archive member.
@@ -97,3 +98,7 @@ Equivalent to Python's `tarfile.TarInfo`.
 ### `issym() -> bool`
 
 ### `islnk() -> bool`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.

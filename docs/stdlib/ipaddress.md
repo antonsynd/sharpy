@@ -49,6 +49,10 @@ Represents an IPv4 address.
 
 Returns the integer value of the address.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the dotted-decimal string form of the address.
+
 ## IPv4Network
 
 Represents an IPv4 network.
@@ -97,6 +101,10 @@ Determines whether this network is a subnet of another network.
 
 Determines whether this network is a supernet of another network.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the CIDR string form of the network.
+
 ## IPv6Address
 
 Represents an IPv6 address.
@@ -120,6 +128,10 @@ Represents an IPv6 address.
 ### `to_int() -> BigInteger`
 
 Returns the integer value of the address.
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the compressed string form of the address.
 
 ## IPv6Network
 
@@ -170,6 +182,10 @@ Determines whether this network is a subnet of another network.
 
 Determines whether this network is a supernet of another network.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the CIDR string form of the network.
+
 ## IPv4Interface
 
 Represents an IPv4 interface with an address and network.
@@ -186,9 +202,13 @@ Represents an IPv4 interface with an address and network.
 | `with_netmask` | `str` | Gets the interface in address/netmask notation. |
 | `with_hostmask` | `str` | Gets the interface in address/hostmask notation. |
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the address/prefix string form of the interface.
+
 ## IPv6Interface
 
-Represents an IPv4 interface with an address and network.
+Represents an IPv6 interface with an address and network.
 
 ### Properties
 
@@ -200,3 +220,7 @@ Represents an IPv4 interface with an address and network.
 | `prefixlen` | `int` | Gets the interface prefix length. |
 | `with_prefixlen` | `str` | Gets the interface in address/prefix notation. |
 | `with_netmask` | `str` | Gets the interface in address/netmask notation. |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the address/prefix string form of the interface.

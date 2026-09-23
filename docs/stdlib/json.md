@@ -160,6 +160,17 @@ Deserialize a JSON string to a Python-like object.
 
 **Returns:** The deserialized object.
 
+### `raw_decode(s: str, idx: int = 0) -> tuple[object | None, int]`
+
+Decode a JSON document from a string, starting at the given index.
+
+**Parameters:**
+
+- `s` (str) -- The JSON string to decode.
+- `idx` (int) -- The index in the string at which to begin decoding.
+
+**Returns:** A tuple of the decoded object and the index where the document ended.
+
 ## JSONEncoder
 
 Extensible JSON encoder. Subclass this to customize JSON encoding behavior.

@@ -146,6 +146,10 @@ print(t.tm_mday)    # depends on local timezone
 Represents a time value as a named tuple of components, similar to Python's
 `time.struct_time`.
 
+!!! note
+    Provides fields `tm_year`, `tm_mon`, `tm_mday`, `tm_hour`,
+    `tm_min`, `tm_sec`, `tm_wday`, `tm_yday`, and `tm_isdst`.
+
 ### Properties
 
 | Name | Type | Description |
@@ -159,3 +163,7 @@ Represents a time value as a named tuple of components, similar to Python's
 | `tm_wday` | `int` | Day of the week (0 = Monday, 6 = Sunday). Matches Python convention. |
 | `tm_yday` | `int` | Day of the year (1–366). |
 | `tm_isdst` | `int` | Daylight saving time flag: 1 if DST is in effect, 0 if not, -1 if unknown. |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns a string representation matching Python's `time.struct_time` format.

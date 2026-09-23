@@ -11,7 +11,7 @@ Supports negative indexing, slicing, and Python-style methods.
 
 ## Methods
 
-### `add(item): T = > _list.Add(item)`
+### `add(item: T)`
 
 !!! note
     For collection initializers. Also a part of the
@@ -67,9 +67,13 @@ sort customization, see Sorted() for their explanation).
 
 Creates a shallow copy this list as a .NET list.
 
-### `append(x): T = > _list.Add(x)`
+### `append(x: T)`
 
 Add an item to the end of the list. Similar to a[len(a):] = [x].
+
+**Parameters:**
+
+- `x` (T) -- The item to add.
 
 ```python
 x = [1, 2, 3]
@@ -90,7 +94,7 @@ x = [1, 2]
 x.extend([3, 4])    # [1, 2, 3, 4]
 ```
 
-### `clear())`
+### `clear()`
 
 Remove all items from the list.
 
@@ -158,7 +162,7 @@ x.remove(2)    # [1, 3, 2]
 
 - `ValueError` -- Thrown if the value is not found.
 
-### `reverse())`
+### `reverse()`
 
 Reverse the elements of the list in place.
 
@@ -214,9 +218,13 @@ x.index(2, 2)    # 3
 
 - `ValueError` -- Thrown if the value is not found.
 
-### `contains(x): T = > _list.Contains(x) -> bool`
+### `contains(x: T) -> bool`
 
 Returns whether the item is in the list.
+
+**Parameters:**
+
+- `x` (T) -- The value to check for.
 
 **Returns:** `True` if the item is found; otherwise `False`.
 
@@ -225,6 +233,10 @@ x = [1, 2, 3]
 2 in x    # True
 5 in x    # False
 ```
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns a string representation of this list.
 
 ### `get_slice(slice: Slice) -> list[T]`
 
@@ -255,15 +267,6 @@ Deletes a slice of the list.
 
 - `ValueError` -- Thrown if slice step is zero.
 
-### `reset()`
-
-Not supported: mirrors `ListIterator{T}`, which cannot
-be reset.
-
-**Raises:**
-
-- `NotSupportedException` -- Always thrown.
-
-### `copy_to(array: list[T], array_index): int = > _list.CopyTo(array, arrayIndex)`
+### `copy_to(array: list[T], array_index: int)`
 
 Copies the elements of the list to an array.

@@ -165,6 +165,10 @@ Set the value of an attribute.
 
 Return a list of attribute names.
 
+### `items() -> list[tuple[str, str]]`
+
+Return a list of (name, value) tuples for all attributes.
+
 ### `len() -> int`
 
 Return the number of direct child elements.
@@ -265,6 +269,10 @@ Iterate over all text content in this element and its descendants.
 
 **Returns:** An enumerable of text strings.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Return a string representation of the element.
+
 ## ElementTree
 
 Represents an XML document as an element tree.
@@ -356,6 +364,10 @@ Write the XML tree to a file.
 - `file_path` (str) -- The file path to write to.
 - `xml_declaration` (bool) -- Whether to include the XML declaration.
 - `encoding` (str) -- The encoding name (default: "utf-8").
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return a string representation of the tree.
 
 ## ParseError
 

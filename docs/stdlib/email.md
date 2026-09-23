@@ -6,6 +6,14 @@ Email message creation and parsing.
 import email
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `data` | `Bytes` |  |
+| `content_type` | `str` |  |
+| `filename` | `str | None` |  |
+
 ## Functions
 
 ### `email.message_from_string(text: str) -> EmailMessage`
@@ -33,14 +41,6 @@ import email
 Email message with headers and body.
 Equivalent to Python's `email.message.EmailMessage`.
 
-### Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `data` | `Bytes` |  |
-| `content_type` | `str` |  |
-| `filename` | `str | None` |  |
-
 ### `get_item(name: str) -> str | None`
 
 ### `set_item(name: str, value: str)`
@@ -52,6 +52,8 @@ Equivalent to Python's `email.message.EmailMessage`.
 ### `keys() -> list[str]`
 
 ### `values() -> list[str]`
+
+### `items() -> list[tuple[str, str]]`
 
 ### `get_all(name: str) -> list[str] | None`
 
@@ -66,10 +68,8 @@ Equivalent to Python's `email.errors.MessageError`.
 
 ## MessageParseError
 
-Base exception for email module errors.
-Equivalent to Python's `email.errors.MessageError`.
+Raised when an email message cannot be parsed.
 
 ## HeaderParseError
 
-Base exception for email module errors.
-Equivalent to Python's `email.errors.MessageError`.
+Raised when a header cannot be parsed.

@@ -23,3 +23,7 @@ import zoneinfo
 ### `tzname(dt: DateTime | None = None) -> str`
 
 ### `dst(dt: DateTime | None = None) -> Timedelta`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.

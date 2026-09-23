@@ -43,3 +43,7 @@ Represents a UUID value with Python uuid.UUID-style properties.
 |------|------|-------------|
 | `hex` | `str` | Get the UUID as 32 lowercase hexadecimal digits. |
 | `urn` | `str` | Get the UUID as a URN string. |
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the canonical hexadecimal string representation of the UUID.

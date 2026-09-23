@@ -106,10 +106,14 @@ Stores metadata describing a ZIP archive member.
 
 Returns True if the entry represents a directory.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns the Python-style string representation of the ZIP entry.
+
 ## BadZipFile
 
 Raised when a ZIP archive is invalid or unreadable.
 
 ## LargeZipFile
 
-Raised when a ZIP archive is invalid or unreadable.
+Raised when a ZIP archive would require ZIP64 support.

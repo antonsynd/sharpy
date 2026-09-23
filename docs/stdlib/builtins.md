@@ -510,6 +510,135 @@ DecimalMod(-7m, -3m)  // -1
 
 - `InvalidOperation` -- Thrown when *y* is zero
 
+### `divmod(x: int, y: int) -> tuple[int, int]`
+
+Return the quotient and remainder of dividing x by y.
+Uses Python's floored division semantics where the remainder has the same sign as the divisor.
+
+**Parameters:**
+
+- `x` (int) -- The dividend
+- `y` (int) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+```python
+divmod(7, 2)     # (3, 1)
+divmod(-7, 2)    # (-4, 1)
+divmod(10, 3)    # (3, 1)
+```
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `divmod(x: long, y: long) -> tuple[long, long]`
+
+Return the quotient and remainder of dividing x by y.
+Uses Python's floored division semantics where the remainder has the same sign as the divisor.
+
+**Parameters:**
+
+- `x` (long) -- The dividend
+- `y` (long) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `divmod(x: ulong, y: ulong) -> tuple[ulong, ulong]`
+
+Return the quotient and remainder of dividing two `ulong` operands.
+Both operands are non-negative, so floored and truncating division coincide; the
+overload exists so `divmod(uint64, uint64)` resolves instead of being refused
+(SPY0354) or widened to `double` — the same reason
+`FloorDiv(ulong, ulong)` and `FloorMod(ulong, ulong)` exist (#1662).
+
+**Parameters:**
+
+- `x` (ulong) -- The dividend
+- `y` (ulong) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `divmod(x: float, y: float) -> tuple[float, float]`
+
+Return the quotient and remainder of dividing x by y.
+Uses Python's floored division semantics where the remainder has the same sign as the divisor.
+
+**Parameters:**
+
+- `x` (float) -- The dividend
+- `y` (float) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `divmod(x: float32, y: float32) -> tuple[float32, float32]`
+
+Return the quotient and remainder of dividing x by y.
+Uses Python's floored division semantics where the remainder has the same sign as the divisor.
+
+**Parameters:**
+
+- `x` (float32) -- The dividend
+- `y` (float32) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `divmod(x: decimal, y: decimal) -> tuple[decimal, decimal]`
+
+Return the quotient and remainder of dividing x by y, using
+truncating division semantics where the remainder has the same sign as the
+dividend.
+
+**Parameters:**
+
+- `x` (decimal) -- The dividend
+- `y` (decimal) -- The divisor
+
+**Returns:** A tuple of (quotient, remainder)
+
+```python
+divmod(7m, 3m)     # (2, 1)
+divmod(-7m, 3m)    # (-2, -1)   -- int divmod(-7, 3) is (-3, 2)
+divmod(7m, -3m)    # (-2, 1)
+divmod(-7m, -3m)   # (2, -1)
+```
+
+!!! note
+    This overload deliberately differs from every sibling above, which are floored.
+    It is not an inconsistency to tidy up. CPython's `Decimal.__divmod__` truncates —
+    `divmod(Decimal(-7), Decimal(3))` is `(-2, -1)`, not the `(-3, 2)` that
+    `divmod(-7, 3)` gives — so matching the int/float siblings here would break parity
+    rather than restore it. Sharpy's floored `//`/`%` resolution (#1153) is scoped to
+    int/long/float operands; decimal `//` (#1174) and `%` (#1189) are already native
+    and truncating, and this overload agrees with them.
+    Zero divisor raises `InvalidOperation`, not
+    `ZeroDivisionError` — also deliberate, also CPython. In CPython
+    `divmod(Decimal(7), Decimal(0))` and `Decimal(7) % Decimal(0)` both raise
+    `InvalidOperation` while `Decimal(7) // Decimal(0)` raises `DivisionByZero`
+    (a `ZeroDivisionError` subclass). `divmod` follows the `%` side even though
+    its quotient half alone would follow the other. The two must not be unified.
+    The divmod identity `x == q * y + r` holds for all four sign combinations.
+
+**Raises:**
+
+- `InvalidOperation` -- Thrown when *y* is zero
+
 ### `double(b: bool) -> float`
 
 Convert bool to double. True becomes 1.0, False becomes 0.0.
@@ -2590,6 +2719,14 @@ Sums a sequence of long integers with a decimal start value.
 ### `sum(iterable: Iterable[ulong], start: decimal) -> decimal`
 
 Sums a sequence of unsigned long integers with a decimal start value.
+
+### `tuple(enumerable: Iterable[object]) -> tuple[T1, T2]`
+
+Convert IEnumerable to tuple (ValueTuple)
+
+### `tuple(enumerable: Iterable[object]) -> tuple[T1, T2, T3]`
+
+Convert IEnumerable to tuple (ValueTuple with 3 items)
 
 ### `type(obj: object | None) -> Type`
 

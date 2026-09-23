@@ -94,7 +94,7 @@ Represents the base exception for configparser errors.
 
 ## NoSectionError
 
-Represents the base exception for configparser errors.
+Raised when a requested section does not exist.
 
 ### Properties
 
@@ -104,7 +104,7 @@ Represents the base exception for configparser errors.
 
 ## NoOptionError
 
-Represents the base exception for configparser errors.
+Raised when a requested option does not exist.
 
 ### Properties
 
@@ -115,7 +115,7 @@ Represents the base exception for configparser errors.
 
 ## DuplicateSectionError
 
-Represents the base exception for configparser errors.
+Raised when adding a section that already exists.
 
 ### Properties
 
@@ -125,7 +125,7 @@ Represents the base exception for configparser errors.
 
 ## DuplicateOptionError
 
-Represents the base exception for configparser errors.
+Raised when adding an option that already exists.
 
 ### Properties
 
@@ -136,7 +136,7 @@ Represents the base exception for configparser errors.
 
 ## ParsingError
 
-Represents the base exception for configparser errors.
+Raised when parsing invalid configuration data.
 
 ### Properties
 
@@ -147,7 +147,7 @@ Represents the base exception for configparser errors.
 
 ## MissingSectionHeaderError
 
-Represents the base exception for configparser errors.
+Raised when data appears before any section header.
 
 ### Properties
 
@@ -159,7 +159,7 @@ Represents the base exception for configparser errors.
 
 ## InterpolationError
 
-Represents the base exception for configparser errors.
+Raised when interpolation fails for an option value.
 
 ### Properties
 
@@ -171,11 +171,7 @@ Represents the base exception for configparser errors.
 
 ## InterpolationDepthError
 
-Represents the base exception for configparser errors.
-
 ## InterpolationMissingOptionError
-
-Represents the base exception for configparser errors.
 
 ### Properties
 
@@ -184,8 +180,6 @@ Represents the base exception for configparser errors.
 | `reference` | `str` |  |
 
 ## InterpolationSyntaxError
-
-Represents the base exception for configparser errors.
 
 ## BasicInterpolation
 
@@ -201,7 +195,7 @@ Returns the value unchanged before storing it.
 
 ## ExtendedInterpolation
 
-Implements configparser.BasicInterpolation using %(name)s substitutions.
+Implements configparser.ExtendedInterpolation using ${section:option} substitutions.
 
 ### `before_get(parser: ConfigParser, section: str, option: str, raw_value: str) -> str`
 

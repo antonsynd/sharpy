@@ -19,17 +19,21 @@ import socket
 
 Create a socket error from a .NET SocketException.
 
-### `socket.connect(address: tuple[string host, int port])`
+### `socket.connect(address: tuple[str, int])`
 
 Connect to a remote (host, port) address.
 
-### `socket.bind(address: tuple[string host, int port])`
+### `socket.bind(address: tuple[str, int])`
 
 Bind the socket to a local (host, port) address.
 
 ### `socket.listen(backlog: int = 5)`
 
 Enable a server to accept connections with the given backlog.
+
+### `socket.accept() -> tuple[Socket, tuple[str, int]]`
+
+Accept a connection, returning (new socket, (remote_host, remote_port)).
 
 ### `socket.send(data: Sharpy.Bytes) -> int`
 
@@ -43,9 +47,13 @@ Send all data to the socket, continuing until every byte is sent.
 
 Receive up to bufsize bytes from the socket.
 
-### `socket.sendto(data: Sharpy.Bytes, address: tuple[string host, int port]) -> int`
+### `socket.sendto(data: Sharpy.Bytes, address: tuple[str, int]) -> int`
 
 Send data to a specific (host, port) address (UDP).
+
+### `socket.recvfrom(bufsize: int) -> tuple[Sharpy.Bytes, tuple[str, int]]`
+
+Receive data and the sender's address (UDP).
 
 ### `socket.setsockopt(level: int, optname: int, value: int)`
 
@@ -79,6 +87,14 @@ Shut down one or both halves of the connection (SHUT_RD/WR/RDWR).
 
 Close the socket.
 
+### `socket.getsockname() -> tuple[str, int]`
+
+Return the local (host, port) address the socket is bound to.
+
+### `socket.getpeername() -> tuple[str, int]`
+
+Return the remote (host, port) address the socket is connected to.
+
 ### `socket.fileno() -> int`
 
 Return the socket handle (file descriptor) as an integer.
@@ -95,7 +111,7 @@ Return the default timeout in seconds for new sockets, or None.
 
 Set the default timeout for new sockets. None means blocking mode.
 
-### `socket.create_connection(address: tuple[string host, int port], timeout: float | None = None) -> Socket`
+### `socket.create_connection(address: tuple[str, int], timeout: float | None = None) -> Socket`
 
 Connect to a TCP (host, port) address and return the connected socket.
 
@@ -110,6 +126,10 @@ Resolve a hostname to an IPv4 address string.
 ### `socket.getfqdn() -> str`
 
 Return the fully qualified domain name of the local host.
+
+### `socket.getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]`
+
+Resolve a socket address to a (host, service) tuple.
 
 ### `socket.htons(x: int) -> int`
 
@@ -150,3 +170,9 @@ similar to Python's `socket.inet_pton()`.
 
 Convert a packed binary IP address to string form for the given address family,
 similar to Python's `socket.inet_ntop()`.
+
+### `socket.getaddrinfo(host: str, port: int, family: int = 0, type: int = 0, proto: int = 0) -> list[tuple[int, int, int, str, tuple[str, int]]]`
+
+Resolve a hostname to a list of address info tuples, similar to Python's
+`socket.getaddrinfo()`. Returns a list of tuples
+(family, type, proto, canonname, sockaddr).

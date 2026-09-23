@@ -20,13 +20,13 @@ Equivalent to Python's `http.client.HTTPException`.
 
 ## InvalidURL
 
-Base exception for http module errors.
-Equivalent to Python's `http.client.HTTPException`.
+Raised when an invalid URL is provided.
+Equivalent to Python's `http.client.InvalidURL`.
 
 ## NotConnected
 
-Base exception for http module errors.
-Equivalent to Python's `http.client.HTTPException`.
+Raised when no request has been sent yet.
+Equivalent to Python's `http.client.NotConnected`.
 
 ## HTTPConnection
 
@@ -47,7 +47,7 @@ Lower-level HTTP connection. Equivalent to Python's `http.client.HTTPConnection`
 
 ## HTTPSConnection
 
-Lower-level HTTP connection. Equivalent to Python's `http.client.HTTPConnection`.
+HTTPS connection. Equivalent to Python's `http.client.HTTPSConnection`.
 
 ## HTTPResponse
 
@@ -66,6 +66,8 @@ Equivalent to Python's `http.client.HTTPResponse`.
 ### `read(amt: int) -> Bytes`
 
 ### `getheader(name: str, default_: str | None = None) -> str | None`
+
+### `getheaders() -> list[tuple[str, str]]`
 
 ### `close()`
 
@@ -150,3 +152,7 @@ Equivalent to Python's `http.HTTPStatus`.
 | `phrase` | `str` |  |
 
 ### `from_value(value: int) -> HTTPStatus`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.

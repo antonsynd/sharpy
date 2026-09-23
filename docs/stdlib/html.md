@@ -51,6 +51,11 @@ the end of input is reached. Any remaining data is treated as text data.
 
 Reset the parser instance. Loses all unprocessed data.
 
+### `getpos() -> tuple[int, int]`
+
+Return the current position as a (line, column) tuple.
+Line numbers are 1-based, column offsets are 0-based.
+
 ### `get_starttag_text() -> str | None`
 
 Return the text of the most recently opened start tag.

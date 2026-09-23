@@ -102,6 +102,10 @@ Get a parsed argument value with typed conversion.
 
 Check if a named argument exists.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Returns a string representation of the namespace.
+
 ## SubparsersAction
 
 Manages subparser commands for ArgumentParser.

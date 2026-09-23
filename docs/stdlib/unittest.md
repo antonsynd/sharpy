@@ -170,3 +170,8 @@ inheritance from TestCase and synthesizes xUnit lifecycle code:
   setup() → constructor body that calls Setup()
   teardown() → IDisposable.Dispose() that calls Teardown()
   @test methods → [Fact] public methods
+
+!!! note
+    This is a marker type with no xUnit dependency. The compiler handles all
+    xUnit integration during code generation. TestCase itself is a minimal
+    base class that user test classes inherit from.

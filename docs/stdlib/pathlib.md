@@ -116,6 +116,10 @@ Return a new path with the suffix changed.
 
 Return a relative path from this path to other.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Return the string representation of the path.
+
 ### `cwd() -> Path`
 
 Return the current working directory.

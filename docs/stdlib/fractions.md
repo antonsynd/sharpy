@@ -23,8 +23,12 @@ import fractions
 
 ### `pow(exponent: int) -> Fraction`
 
-### `abs()) -> Fraction`
+### `abs() -> Fraction`
 
 ### `to_long() -> long`
 
 ### `to_double() -> float`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.

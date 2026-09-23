@@ -7,7 +7,6 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 | Name | Type | Description |
 |------|------|-------------|
-| `current` | `K` |  |
 | `count` | `int` | Gets the number of key/value pairs in the dictionary. |
 
 ## Methods
@@ -53,7 +52,7 @@ d = {"a": 1, "b": 2}
 d.clear()    # {}
 ```
 
-### `contains(key): K = > IsNullKey(key) ? _hasNullKey : ContainsKey(key) -> bool`
+### `contains(key: K) -> bool`
 
 Check if *key* exists in the dictionary.
 Used by the compiler for `key in dict` expressions.
@@ -151,6 +150,21 @@ If the key is not found, return *default*.
 ```python
 d = {"a": 1}
 d.pop("z", 0)    # 0
+```
+
+### `pop_item(last: bool = True) -> tuple[K, V]`
+
+Remove and return a `(key, value)` pair from the dictionary.
+
+**Parameters:**
+
+- `last` (bool) -- If `True`, remove the last pair; otherwise the first.
+
+**Returns:** A tuple of the removed key and value.
+
+```python
+d = {"a": 1, "b": 2}
+d.popitem()    # ("b", 2)
 ```
 
 ### `set_default(key: K, @default: V) -> V`
@@ -254,10 +268,6 @@ Mirrors Python's `dict.fromkeys(iterable, value)`. All keys share the same value
 ```python
 d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
 ```
-
-### `move_next() -> bool`
-
-### `reset()`
 
 ### `add(key: K, value: V)`
 

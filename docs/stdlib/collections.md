@@ -6,10 +6,30 @@ Specialized container datatypes: ChainMap, Counter, Deque, DefaultDict, OrderedD
 import collections
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `deque_type` | `Type` | The Deque type. |
+| `counter_type` | `Type` | The Counter type. |
+| `default_dict_type` | `Type` | The DefaultDict type. |
+| `ordered_dict_type` | `Type` | The OrderedDict type. |
+| `chain_map_type` | `Type` | The ChainMap type. |
+
 ## ChainMap
 
 A ChainMap groups multiple dictionaries together to create a single, updateable view.
 Like Python's collections.ChainMap.
+
+!!! note
+    Implements `ISized` (`__len__` → `len(cm)`, the number of unique keys)
+    and `IEnumerable{T}` over the KEYS (`__iter__` → `for k in cm`,
+    `list(cm)`). Keys are the only generic `IEnumerable` the type exposes so
+    `list(cm)` binds `Builtins.List<K>(IEnumerable<K>)`; pairs are reached
+    through `Items` only (#1933). Keys/values/items iterate the maps in CPython's
+    REVERSED order — the last map is walked first and dedup keeps the first occurrence in that
+    reversed walk (for maps `{n,x},{n,y}` CPython yields keys `n, y, x`) — while VALUE
+    lookup stays first-map-wins via the indexer.
 
 ### Properties
 
@@ -35,6 +55,11 @@ Return all unique keys across all maps as a sized list, in CPython's merge order
 Return the values for the unique keys as a sized list, in CPython's merge key order.
 Each value is the first-map-wins lookup for its key.
 
+### `items() -> list[tuple[K, V]]`
+
+Return the (key, value) pairs as a sized list, in CPython's merge key order.
+Each value is the first-map-wins lookup for its key.
+
 ### `pop(key: K) -> V`
 
 Remove key from the first mapping. Raises KeyError if not found in first mapping.
@@ -43,10 +68,22 @@ Remove key from the first mapping. Raises KeyError if not found in first mapping
 
 Clear the first mapping.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Python's `repr(cm)`/`str(cm)`: `ChainMap({...}, {...})`, one
+`Dict{K, V}` repr per underlying map in `Maps` order. An empty
+ChainMap holds one empty map, so it prints `ChainMap({})` as CPython does.
+
 ## Deque
 
 A deque (double-ended queue) is a generalization of stacks and queues
 that supports adding and removing elements from either end.
+
+!!! note
+    Implements `ISized` (`__len__` → `len(d)` and truth testing:
+    `if d:` is False for an empty deque). `IReadOnlyCollection{T}` alone gave
+    `len()` a count but left every truth position refused (SPY0220), because the truth
+    classifier reads the dunder table's spelling, `ISized` (#1972).
 
 ### Properties
 
@@ -86,14 +123,31 @@ Extend the left side of the deque by appending elements from the iterable.
 
 ## Counter
 
-A deque (double-ended queue) is a generalization of stacks and queues
-that supports adding and removing elements from either end.
+A Counter is a dict subclass for counting hashable objects.
+
+!!! note
+    Implements `ISized` (`__len__` → `len(c)`, the number of distinct
+    elements) and `IEnumerable{T}` over the KEYS in first-seen order (`__iter__`
+    → `for k in c`, `list(c)`). Keys are the only generic `IEnumerable` the type
+    exposes so `list(c)` binds `Builtins.List<T>(IEnumerable<T>)` (#1933).
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
 | `count` | `int` | The number of distinct elements. Python's \`len(c)\`; ISized's \`__len__\`. |
+
+### `most_common(n: int | None = None) -> list[tuple[T, int]]`
+
+Return a list of the n most common elements and their counts.
+Elements with equal counts keep first-seen order, as CPython's stable sort does
+(`Counter("cba").most_common()` is `[('c', 1), ('b', 1), ('a', 1)]`, #1979).
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Python's `repr(c)`/`str(c)`: `Counter({...})` in most-common order, or
+`Counter()` when empty (CPython 3.12). The braces are `Dict{K, V}`'s own
+repr, so there is one spelling of the mapping rule.
 
 ### `elements() -> Iterable[T]`
 
@@ -125,23 +179,33 @@ Return the sum of all counts.
 
 Remove all elements from the counter.
 
-### `keys()) -> list[T]`
+### `keys() -> list[T]`
 
 The keys of the counter. Python: `c.keys()`. Returns a copy, not a live view.
 
-### `values()) -> list[int]`
+### `values() -> list[int]`
 
 The counts of the counter, in first-seen key order. Python: `c.values()`.
 
-### `contains(key): T = > ContainsKey(key) -> bool`
+### `items() -> list[tuple[T, int]]`
+
+The (element, count) pairs, in first-seen key order. Python: `c.items()`.
+
+### `contains(key: T) -> bool`
 
 Check if the counter contains a key (alias for ContainsKey).
 Used by the `in` operator.
 
 ## DefaultDict
 
-A deque (double-ended queue) is a generalization of stacks and queues
-that supports adding and removing elements from either end.
+Dictionary with default values for missing keys.
+
+!!! note
+    Implements `ISized` (`__len__` → `len(dd)`) and
+    `IEnumerable{T}` over the KEYS in insertion order (`__iter__` →
+    `for k in dd`, `list(dd)`), delegating both to the composed `Dict{K, V}`.
+    Keys are the only generic `IEnumerable` the type exposes so `list(dd)` binds
+    `Builtins.List<TKey>(IEnumerable<TKey>)` (#1933).
 
 ### Properties
 
@@ -149,26 +213,21 @@ that supports adding and removing elements from either end.
 |------|------|-------------|
 | `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
-| `deque_type` | `Type` | The Deque type. |
-| `counter_type` | `Type` | The Counter type. |
-| `default_dict_type` | `Type` | The DefaultDict type. |
-| `ordered_dict_type` | `Type` | The OrderedDict type. |
-| `chain_map_type` | `Type` | The ChainMap type. |
 
 ### `get(key: TKey, default_value: TValue = default!) -> TValue`
 
 Get the value for a key, or return a default value if the key is not present.
 
-### `contains(key): TKey = > ContainsKey(key) -> bool`
+### `contains(key: TKey) -> bool`
 
 Check if the dictionary contains a key (alias for ContainsKey).
 Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
 
-### `keys()) -> DictKeyView[TKey, TValue]`
+### `keys() -> DictKeyView[TKey, TValue]`
 
 The keys of the dictionary. Python: `d.keys()`. Returns a copy, not a live view.
 
-### `values()) -> DictValuesView[TKey, TValue]`
+### `values() -> DictValuesView[TKey, TValue]`
 
 The values of the dictionary. Python: `d.values()`. Returns a copy, not a live view.
 
@@ -190,6 +249,10 @@ Raises `KeyError` if the key is not found.
 Remove the specified key and return its value.
 If the key is not found, return *defaultValue*.
 
+### `items() -> list[tuple[TKey, TValue]]`
+
+Return a list of (key, value) tuples.
+
 ### `update(other: IDictionary[TKey, TValue])`
 
 Update the defaultdict with key-value pairs from another dictionary.
@@ -204,6 +267,15 @@ If *key* is in the dictionary, return its value.
 If not, insert *key* with *defaultValue*
 and return *defaultValue*.
 
+### `pop_item(last: bool = True) -> tuple[TKey, TValue]`
+
+Remove and return a (key, value) pair. If *last* is True,
+pairs are returned in LIFO order; otherwise in FIFO order.
+
+**Raises:**
+
+- `KeyError` -- Thrown if the defaultdict is empty.
+
 ### `remove(key: TKey)`
 
 Removes the item with the specified key from the defaultdict.
@@ -216,10 +288,27 @@ Removes the item with the specified key from the defaultdict.
 
 Convert to a standard .NET Dictionary.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Python's `repr(dd)`/`str(dd)`: `defaultdict(<factory>, {...})`, the
+pairs rendered by the composed `Dict{K, V}`'s own repr.
+
+!!! note
+    Documented deviation (owner ruling R-BN, #1968): CPython prints the factory's repr —
+    `defaultdict(<class 'int'>, {'n': 1})` — but a Sharpy factory is a .NET delegate
+    with no Python-meaningful repr, so the factory slot is always the literal placeholder
+    `<factory>`. The mapping part matches CPython exactly.
+
 ## OrderedDict
 
 A dictionary that remembers the order in which items were inserted.
 Like Python's collections.OrderedDict.
+
+!!! note
+    Implements `ISized` (`__len__` → `len(od)`) and
+    `IEnumerable{T}` over the KEYS in insertion order (`__iter__` → `for k in od`,
+    `list(od)`). This is the ONLY generic `IEnumerable` the type exposes so that
+    `list(od)` binds `Builtins.List<K>(IEnumerable<K>)` unambiguously (#1933).
 
 ### Properties
 
@@ -234,6 +323,11 @@ Remove the specified key and return its value.
 ### `pop(key: K, @default: V) -> V`
 
 Remove the specified key and return its value, or return default if not found.
+
+### `popitem(last: bool = True) -> tuple[K, V]`
+
+Remove and return a (key, value) pair. If last is True, pairs are returned in LIFO order;
+if False, in FIFO order.
 
 ### `move_to_end(key: K, last: bool = True)`
 
@@ -253,6 +347,10 @@ and order; `len`/`list`/iteration all work).
 
 Return the values in insertion order as a sized list.
 
+### `items() -> list[tuple[K, V]]`
+
+Return the (key, value) pairs in insertion order as a sized list.
+
 ### `copy() -> OrderedDict[K, V]`
 
 Return a shallow copy.
@@ -260,3 +358,9 @@ Return a shallow copy.
 ### `get(key: K, @default: V = default!) -> V`
 
 Get the value for a key, or a default.
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Python's `repr(od)`/`str(od)`: `OrderedDict({...})` with the pairs in
+insertion order, or `OrderedDict()` when empty (CPython 3.12). The braces are
+`Dict{K, V}`'s own repr, so there is one spelling of the mapping rule.
