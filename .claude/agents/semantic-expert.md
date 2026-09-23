@@ -120,7 +120,7 @@ Pluggable validators run after `TypeChecker.CheckModule()` via `ValidationPipeli
 | 50 | `ModuleLevelValidator` | Entry point validation |
 | 60 | `DecoratorValidator` | Decorator validation |
 | 150 | `SignatureValidator` | Dunder method signatures |
-| 250 | `DefaultParameterValidator` | Default parameter validation |
+| 250 | `ConstantPositionValidator` | Constant positions (parameter defaults, attribute args, match constants) — SPY0401 |
 | 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
 | 420 | `UnusedVariableValidator` | Unused variable warnings |
 | 430 | `UnusedImportValidator` | Unused import warnings |
