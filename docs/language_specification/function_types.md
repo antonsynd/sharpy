@@ -104,6 +104,7 @@ that function definitions may omit this return type annotation if it is
 `-> None`, function types of this sort on the other hand require it
 for parsing/syntactic reasons.
 
+<!-- spec-sweep: error SPY0104 -->
 ```python
 type SomeFuncType = (int, str) -> None  # OK
 type AnotherFuncType = (int, str)       # ERROR
@@ -113,6 +114,7 @@ type AnotherFuncType = (int, str)       # ERROR
 
 Function type **annotations** cannot specify optional parameters (parameters with default values). All parameters in a function type annotation are required. Note that lambda expressions *can* have default parameters — this restriction applies only to the type annotation syntax:
 
+<!-- spec-sweep: error SPY0104 -->
 ```python
 # ❌ Invalid - cannot specify defaults in function type annotations
 type BadCallback = (x: int, y: int = 0) -> int
@@ -146,6 +148,26 @@ A function type `A` is assignable to function type `B` if:
 3. Return types are covariant (A's return type assignable to B's)
 
 > **Design note:** Parameter compatibility uses bidirectional assignability rather than strict contravariance. This is a deliberate choice that simplifies common callback patterns while remaining sound for the cases Sharpy supports (no mutable function-type containers that would expose the unsoundness). Strict contravariant checking is enforced at **declaration sites** via `VarianceValidator` for interface and delegate type parameters -- see [Generic Variance](generic_variance.md).
+
+The examples in the rest of this page use a small class hierarchy (methods are non-virtual unless marked, so the overrides are explicit):
+
+<!-- spec-sweep: prelude -->
+```python
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    @override
+    def speak(self) -> str:
+        return "woof"
+
+class Cat(Animal):
+    @override
+    def speak(self) -> str:
+        return "meow"
+```
 
 ```python
 # Covariance in return types
@@ -188,7 +210,7 @@ print(doubler(5))  # 10
 
 ```python
 class Button:
-    on_click: ((Button) -> None)?
+    on_click: ((Button) -> None) | None
 
     def __init__(self):
         self.on_click = None
@@ -232,13 +254,16 @@ The collection families pin to their empty constructor (`() -> list[int]`) or th
 
 A user class or struct pins against its **declared constructors**:
 
+<!-- spec-sweep: prelude -->
 ```python
 class Point:
     x: int
 
     def __init__(self, x: int):
         self.x = x
+```
 
+```python
 mk: (int) -> Point = Point
 print(mk(7).x)                       # 7
 
@@ -247,13 +272,16 @@ print(list(map(Point, [1, 2, 3])))   # the class name as a factory, like map(int
 
 A class with no declared `__init__` offers exactly the zero-argument shape, and a **generic** class takes its type arguments from the target exactly as the collections do — from the target, never from the reference:
 
+<!-- spec-sweep: prelude -->
 ```python
 class Box[T]:
     value: T
 
     def __init__(self, value: T):
         self.value = value
+```
 
+```python
 mb: (int) -> Box[int] = Box         # the BARE name; the target supplies T
 print(mb(3).value)                  # 3
 ```
@@ -262,6 +290,7 @@ Writing the type arguments on the reference instead (`f = Box[int]`) is a *type*
 
 **2. Otherwise, an error (SPY0342).** A reference the context supplies no signature for has no way to acquire one, so it is refused where it is written rather than compiled into something arbitrary:
 
+<!-- spec-sweep: error SPY0342 -->
 ```python
 f = int                              # SPY0342 — a plain binding supplies no target type
 p_maker = Point                      # SPY0342 — the same for a user class
@@ -278,6 +307,7 @@ A lambda is what to reach for when the factory has to be a *value* that varies a
 ```python
 make: (int) -> Point = lambda v: Point(v)
 
+flag = True
 f: () -> Animal = lambda: Cat()
 if flag:
     f = lambda: Dog()
@@ -288,6 +318,7 @@ print(f().speak())                   # woof — the branch runs, as in Python
 
 **A type that cannot be constructed is not a constructor reference (SPY0346).** An interface, an enum, a union type name, a delegate type and an abstract class have no construction, so there is nothing for the name to denote:
 
+<!-- spec-sweep: error SPY0346 -->
 ```python
 s = IShape                           # SPY0346 — an interface has no constructor
 e = Color                            # SPY0346 — a member is the value you want: Color.RED
@@ -344,6 +375,7 @@ When in doubt, start with a function type. Promote to a `delegate` only when you
 
 In Python, passing a function with defaults through a variable preserves the defaults. In Sharpy, converting a function or lambda with default parameters to a function type erases the defaults — .NET delegates (`Func<>`, `Action<>`) do not carry default values. The compiler emits SPY0486 (warning) at the conversion site and SPY0277 (error) if a caller omits arguments through the delegate:
 
+<!-- spec-sweep: error SPY0277 -->
 ```python
 def add(a: int, b: int = 10) -> int:
     return a + b
