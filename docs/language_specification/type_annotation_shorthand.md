@@ -28,8 +28,8 @@ items: list[int] = [1, 2, 3]
 def process(data: [str]) -> [str]:
     return [s.upper() for s in data]
 
-# Equivalent to:
-def process(data: list[str]) -> list[str]:
+# Equivalent to (the same signature, shown under another name):
+def process_canonical(data: list[str]) -> list[str]:
     return [s.upper() for s in data]
 ```
 
@@ -133,11 +133,11 @@ The postfix `[]` syntax creates .NET array types:
 
 ```python
 # These represent .NET arrays (System.Array)
-buffer: int[] = ...
-matrix: int[][] = ...   # Array of arrays
+buffer: int[]
+matrix: int[][]      # Array of arrays
 
 # Can combine with other shorthand
-list_array: [int][] = ...  # Array of list[int]
+list_array: [int][]  # Array of list[int]
 ```
 
 ## Nullability and Result Syntax
@@ -166,7 +166,9 @@ buffer: int[]? = None()      # Optional[int[]]
 The `T | None` suffix marks a type as C# nullable (for .NET interop):
 
 ```python
-raw: str | None = dotnet_api()
+from System import Environment
+
+raw: str | None = Environment.GetEnvironmentVariable("HOME")
 ```
 
 **Note:** `| None` is the only valid inline union. Free unions like `int | str` are not supported. Use `union` declarations for custom sum types.
@@ -200,7 +202,7 @@ lookup: {str: int} !IOError = Err(IOError("file not found"))
 `!E` binds tighter than `| None`:
 
 ```python
-int !ValueError | None  # Result[int, ValueError] | None
+r: int !ValueError | None = None  # Result[int, ValueError] | None
 ```
 
 ## Nesting
@@ -253,6 +255,7 @@ point: (
 
 ## Error Cases
 
+<!-- spec-sweep: error SPY0114 -->
 ```python
 # ERROR: Empty list type requires element type
 x: [] = []  # Invalid - use list or specify element type
