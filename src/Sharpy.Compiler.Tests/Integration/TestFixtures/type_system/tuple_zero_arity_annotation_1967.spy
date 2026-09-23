@@ -1,0 +1,53 @@
+# tuple[()] and the () shorthand both spell the zero-arity tuple, in every annotation position (#1967).
+# Type-test positions (`as?`, a class-pattern head `case tuple[()]()`) read the zero-arity tuple as the
+# open generic `tuple` (SPY0345) in both spellings — tracked as #1981, not covered here.
+
+def ret_canonical() -> tuple[()]:
+    return ()
+
+def ret_shorthand() -> ():
+    return ()
+
+def param_canonical(x: tuple[()]) -> int:
+    return len(x)
+
+def param_shorthand(x: ()) -> int:
+    return len(x)
+
+def main():
+    # return
+    print(len(ret_canonical()))
+    print(len(ret_shorthand()))
+    # parameter
+    print(param_canonical(()))
+    print(param_shorthand(()))
+    # variable
+    v1: tuple[()] = ()
+    v2: () = ()
+    print(len(v1))
+    print(len(v2))
+    # list element
+    xs1: list[tuple[()]] = [(), ()]
+    xs2: list[()] = [(), ()]
+    print(len(xs1[0]))
+    print(len(xs2[1]))
+    # Optional argument
+    o1: tuple[()]? = Some(())
+    o2: ()? = Some(())
+    match o1:
+        case Some(t):
+            print(len(t))
+        case None():
+            print("none")
+    match o2:
+        case Some(t):
+            print(len(t))
+        case None():
+            print("none")
+    # nested: a 1-tuple whose element is the zero-arity tuple
+    n1: tuple[tuple[()]] = ((),)
+    n2: ((),) = ((),)
+    print(len(n1))
+    print(len(n2))
+    print(len(n1[0]))
+    print(len(n2[0]))

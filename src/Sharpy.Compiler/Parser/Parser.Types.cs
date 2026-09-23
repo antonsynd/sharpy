@@ -263,6 +263,7 @@ public partial class Parser
             bool isTuple = name == BuiltinNames.Tuple;
             bool hasNamedElements = false;
             bool hasUnnamedElements = false;
+            bool soleArgIsEmptyParens = false;
 
             do
             {
@@ -286,14 +287,33 @@ public partial class Parser
                         tupleElementNames.Add(null);
                         hasUnnamedElements = true;
                     }
+                    var argStartPosition = _position;
                     typeArgs.Add(ParseTypeAnnotation());
+                    soleArgIsEmptyParens = typeArgs.Count == 1
+                        && _position - argStartPosition == 2
+                        && _tokens[argStartPosition].Type == TokenType.LeftParen
+                        && _tokens[argStartPosition + 1].Type == TokenType.RightParen;
                 }
 
                 if (Current.Type == TokenType.Comma)
+                {
                     Advance();
+                    soleArgIsEmptyParens = false;
+                }
                 else
                     break;
             } while (true);
+
+            // tuple[()] is the zero-arity tuple (type_annotation_shorthand.md: the parser normalizes
+            // shorthand to the canonical AST, and `()` alone already parses to the zero-arity
+            // `tuple`). The argument must be exactly the two tokens `()` — `()?`, `()[]` and
+            // `() -> T` are other types — and the sole argument (no comma consumed), so
+            // `tuple[tuple[()]]` and `tuple[tuple]` stay 1-tuples (#1967).
+            if (isTuple && soleArgIsEmptyParens && typeArgs.Count == 1)
+            {
+                typeArgs.Clear();
+                tupleElementNames.Clear();
+            }
 
             // Validate: either all or none are named
             if (isTuple && hasNamedElements && hasUnnamedElements)

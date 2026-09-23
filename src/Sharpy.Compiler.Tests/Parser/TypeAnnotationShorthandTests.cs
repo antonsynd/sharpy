@@ -303,6 +303,65 @@ public class TypeAnnotationShorthandTests
         annotation.TypeArguments[1].Name.Should().Be("str");
     }
 
+    [Fact]
+    public void ParseTupleCanonical_EmptyParens_IsZeroArity()
+    {
+        // tuple[()] normalizes to the same AST as the () shorthand (#1967)
+        var annotation = ParseTypeAnnotation("tuple[()]");
+        annotation.Should().BeEquivalentTo(ParseTypeAnnotation("()"), options => options
+            .Including(a => a.Name)
+            .Including(a => a.TypeArguments)
+            .Including(a => a.TupleElementNames)
+            .Including(a => a.IsOptional));
+        annotation.Name.Should().Be("tuple");
+        annotation.TypeArguments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseTupleCanonical_NestedEmpty_IsOneElement()
+    {
+        // tuple[tuple[()]] is a 1-tuple whose element is the zero-arity tuple (#1967)
+        var annotation = ParseTypeAnnotation("tuple[tuple[()]]");
+        annotation.Name.Should().Be("tuple");
+        annotation.TypeArguments.Should().HaveCount(1);
+        annotation.TypeArguments[0].Name.Should().Be("tuple");
+        annotation.TypeArguments[0].TypeArguments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseTupleCanonical_BareTupleArg_StaysOneElement()
+    {
+        // Control: the bare name `tuple` as the sole argument is not the `()` spelling (#1967)
+        var annotation = ParseTypeAnnotation("tuple[tuple]");
+        annotation.Name.Should().Be("tuple");
+        annotation.TypeArguments.Should().HaveCount(1);
+        annotation.TypeArguments[0].Name.Should().Be("tuple");
+    }
+
+    [Theory]
+    [InlineData("tuple[()?]", "tuple")]
+    [InlineData("tuple[()[]]", "array")]
+    [InlineData("tuple[() -> int]", "function")]
+    [InlineData("tuple[((),)]", "tuple")]
+    public void ParseTupleCanonical_ParenArgThatIsNotEmptyTuple_StaysOneElement(string source, string elementName)
+    {
+        // Control: only the exact two tokens `()` normalize; other types spelled from `(` stay arguments (#1967)
+        var annotation = ParseTypeAnnotation(source);
+        annotation.Name.Should().Be("tuple");
+        annotation.TypeArguments.Should().HaveCount(1);
+        annotation.TypeArguments[0].Name.Should().Be(elementName);
+    }
+
+    [Fact]
+    public void ParseTupleCanonical_TrailingCommaAfterEmpty_IsRejected()
+    {
+        // Control: tuple[(),] is python's 1-tuple of the empty tuple, so it must never collapse to the
+        // zero-arity tuple. The grammar rejects a trailing comma in a type-argument list today; a change
+        // admitting one must replace this row with a 1-tuple assertion (#1967)
+        var error = ParseExpectingError("x: tuple[(),]");
+        error.Should().Contain("RightBracket");
+    }
+
     #endregion
 
     #region Array Shorthand T[]
