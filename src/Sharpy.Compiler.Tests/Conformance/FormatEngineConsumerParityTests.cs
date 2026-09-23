@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -467,14 +469,66 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// A string-operand spec CPython refuses. The f-string route with a LITERAL spec is refused at
-    /// compile time (SPY0609); <c>format(v, spec)</c> and <c>"{:spec}".format(v)</c> with a literal
-    /// spec get no static diagnostic (the inertness trap — sibling #1956) and are refused by
-    /// Core at runtime with the identical wording. <c>FStringOnly</c> marks the conversion cell,
-    /// whose kind (<c>Str</c> via <c>!r</c>) only exists on the f-string route.
+    /// A string-operand spec CPython refuses (#1956). <c>Conversion</c> is the field's conversion
+    /// (<c>!r</c> maps the operand kind to <c>Str</c>), empty for a plain field.
     /// </summary>
-    private sealed record StrRefusalCell(string Label, string Decl, string Value, string Spec, string Message, bool FStringOnly = false);
+    private sealed record StrRefusalCell(string Label, string Decl, string Value, string Spec, string Message, string Conversion = "");
 
+    /// <summary>How a spec reaches the engine: a string LITERAL the checker can see, or a DYNAMIC spec.</summary>
+    private enum SpecForm
+    {
+        Literal,
+        Dynamic,
+    }
+
+    // Literal rosters (the totality anchors).
+    private static readonly string[] RefusalRoutes = { "fstring", "builtin", "strformat" };
+    private static readonly SpecForm[] SpecForms = { SpecForm.Literal, SpecForm.Dynamic };
+
+    /// <summary>
+    /// The field expression for one (route, spec form), or null when the route has no spelling for
+    /// the cell (N/A). A dynamic spec is the variable <c>spec</c>; str.format's dynamic spelling is the
+    /// nested field <c>{:{}}</c> fed by an extra positional operand.
+    /// </summary>
+    private static string? RefusalExpr(StrRefusalCell cell, string route, SpecForm form) => (route, form) switch
+    {
+        ("fstring", SpecForm.Literal) => $"f\"{{{cell.Value}{cell.Conversion}:{cell.Spec}}}\"",
+        ("fstring", SpecForm.Dynamic) => $"f\"{{{cell.Value}{cell.Conversion}:{{spec}}}}\"",
+        // format() has no conversion field — a conversion cell has no builtin spelling.
+        ("builtin", _) when cell.Conversion.Length > 0 => null,
+        ("builtin", SpecForm.Literal) => $"format({cell.Value}, \"{cell.Spec}\")",
+        ("builtin", SpecForm.Dynamic) => $"format({cell.Value}, spec)",
+        ("strformat", SpecForm.Literal) => $"\"{{{cell.Conversion}:{cell.Spec}}}\".format({cell.Value})",
+        ("strformat", SpecForm.Dynamic) => $"\"{{{cell.Conversion}:{{}}}}\".format({cell.Value}, spec)",
+        _ => throw new ArgumentOutOfRangeException(nameof(route), route, null),
+    };
+
+    /// <summary>
+    /// Routes whose template or operands the checker cannot see, so a literal spec there has NO static
+    /// twin (N/A for the static column, with the reason) and Core refuses at runtime. They execute, and
+    /// are asserted to take the runtime direction.
+    /// </summary>
+    private static readonly (string Label, string Decls, string Expr, string Message, string WhyNoStaticTwin)[] RuntimeOnlyRefusals =
+    {
+        ("refuse.format_map", "", "\"{a:=5}\".format_map({\"a\": \"ab\"})",
+            "'=' alignment not allowed in string format specifier",
+            "format_map's operands are a mapping — the field's operand kind is Unknown by construction"),
+        ("refuse.str_receiver", "    t: str = \"{:=5}\"\n    s: str = \"ab\"\n", "t.format(s)",
+            "'=' alignment not allowed in string format specifier",
+            "the template is a str variable, not a literal — there is no hole to validate"),
+    };
+
+    private const string RefusalSentinel = "started";
+
+    /// <summary>
+    /// The route x spec-form refusal DIRECTION matrix (#1956). A literal spec CPython refuses must be
+    /// refused at COMPILE time — SPY0609 (the code is asserted, and the message is CPython's wording
+    /// verbatim) — and the program must never run (a sentinel printed before the call is absent). The
+    /// same spec reached dynamically must compile, run (sentinel present) and raise ValueError with
+    /// the identical wording at runtime, caught in-program so stdout pins the exact text. Asserting
+    /// WHERE the refusal happens is the point: SPY0609 carries CPython's text, so a check that only
+    /// searched output for the message would pass whichever side refused.
+    /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
     public void FormatEngine_StringOperandRefusals_FireOnEveryRoute()
@@ -483,60 +537,85 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct().Count());
 
         var failures = new List<string>();
+        int executed = 0, notApplicable = 0;
         foreach (var cell in cells)
         {
             var declLine = cell.Decl.Length > 0 ? "    " + cell.Decl + "\n" : "";
-
-            // Static (f-string, literal spec) → SPY0609 with CPython's wording.
-            var staticSource = "def main() -> None:\n" + declLine
-                + $"    print(f\"{{{cell.Value}:{cell.Spec}}}\")\n";
-            var staticResult = CompileAndExecute(staticSource, executionTimeoutMs: 15_000);
-            if (staticResult.Success)
+            foreach (var route in RefusalRoutes)
             {
-                failures.Add($"{cell.Label}/static: expected SPY0609 but the program printed '{staticResult.StandardOutput.TrimEnd()}'");
-            }
-            else
-            {
-                var spy0609 = staticResult.RawDiagnostics
-                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification).ToList();
-                if (spy0609.Count == 0)
-                    failures.Add($"{cell.Label}/static: expected SPY0609, got: {string.Join("; ", staticResult.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}");
-                else if (!spy0609.Any(d => d.Message.Contains(cell.Message, StringComparison.Ordinal)))
-                    failures.Add($"{cell.Label}/static: expected '{cell.Message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
-            }
-
-            if (cell.FStringOnly)
-                continue;
-
-            // The two RUNTIME arms: a literal spec through format() and through str.format gets no
-            // static diagnostic, so Core must raise the identical ValueError at runtime.
-            foreach (var (arm, expr) in new[]
-            {
-                ("builtin", $"format({cell.Value}, \"{cell.Spec}\")"),
-                ("strformat", $"\"{{:{cell.Spec}}}\".format({cell.Value})"),
-            })
-            {
-                var rtSource = "def main() -> None:\n" + declLine
-                    + $"    print({expr})\n";
-                var rtResult = CompileAndExecute(rtSource, executionTimeoutMs: 15_000);
-                if (rtResult.Success)
+                foreach (var form in SpecForms)
                 {
-                    failures.Add($"{cell.Label}/{arm}: expected a runtime ValueError but printed '{rtResult.StandardOutput.TrimEnd()}'");
-                    continue;
+                    var expr = RefusalExpr(cell, route, form);
+                    if (expr is null)
+                    {
+                        notApplicable++;
+                        continue;
+                    }
+                    executed++;
+                    var specDecl = form == SpecForm.Dynamic ? $"    spec: str = \"{cell.Spec}\"\n" : "";
+                    var id = $"{cell.Label}/{route}/{form}";
+                    var result = CompileAndExecute(RefusalProgram(declLine + specDecl, expr), executionTimeoutMs: 15_000);
+                    if (form == SpecForm.Literal)
+                        CheckStaticRefusal(id, result, cell.Message, failures);
+                    else
+                        CheckRuntimeRefusal(id, result, cell.Message, failures);
                 }
-                var haystack = rtResult.StandardError + "\n" + string.Join("\n", rtResult.CompilationErrors);
-                if (!haystack.Contains(cell.Message, StringComparison.Ordinal))
-                    failures.Add($"{cell.Label}/{arm}: expected '{cell.Message}', got stderr: {rtResult.StandardError.Trim()}");
             }
         }
 
-        Output.WriteLine($"String-operand refusal cells: {cells.Count}. Failures: {failures.Count}");
+        foreach (var row in RuntimeOnlyRefusals)
+        {
+            executed++;
+            var result = CompileAndExecute(RefusalProgram(row.Decls, row.Expr), executionTimeoutMs: 15_000);
+            CheckRuntimeRefusal(row.Label + " (static N/A: " + row.WhyNoStaticTwin + ")", result, row.Message, failures);
+        }
+
+        Output.WriteLine($"Refusal direction matrix: {cells.Count} cells x {RefusalRoutes.Length} routes x {SpecForms.Length} "
+            + $"spec forms = {cells.Count * RefusalRoutes.Length * SpecForms.Length} positions ({executed - RuntimeOnlyRefusals.Length} executing, "
+            + $"{notApplicable} N/A) + {RuntimeOnlyRefusals.Length} runtime-only rows. Failures: {failures.Count}");
         foreach (var f in failures)
             Output.WriteLine("  " + f);
 
+        // 10 cells x 3 routes x 2 forms = 60 positions: 58 executing + 2 N/A (the conversion cell has
+        // no format() spelling) — literal anchors, so a dropped route or form is a count failure.
+        Assert.Equal(60, cells.Count * RefusalRoutes.Length * SpecForms.Length);
+        Assert.Equal(2, notApplicable);
+        Assert.Equal(58 + RuntimeOnlyRefusals.Length, executed);
+
         Assert.True(failures.Count == 0,
-            $"{failures.Count} string-operand refusal routes disagree with python3:\n"
+            $"{failures.Count} refusal positions took the wrong direction or wording:\n"
             + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    private static string RefusalProgram(string decls, string expr)
+        => "def main() -> None:\n" + decls
+            + $"    print(\"{RefusalSentinel}\")\n"
+            + "    try:\n"
+            + $"        print({expr})\n"
+            + "    except ValueError as e:\n"
+            + "        print(\"ValueError:\", e)\n";
+
+    private static void CheckStaticRefusal(string id, ExecutionResult result, string message, List<string> failures)
+    {
+        var spy0609 = result.RawDiagnostics
+            .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification).ToList();
+        if (result.Success || result.StandardOutput.Contains(RefusalSentinel, StringComparison.Ordinal))
+            failures.Add($"{id}: expected a COMPILE-time SPY0609, but the program ran: stdout='{result.StandardOutput.TrimEnd()}'");
+        else if (spy0609.Count == 0)
+            failures.Add($"{id}: expected SPY0609, got: {string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message))}");
+        else if (!spy0609.Any(d => d.Message == message))
+            failures.Add($"{id}: expected SPY0609 '{message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
+    }
+
+    private static void CheckRuntimeRefusal(string id, ExecutionResult result, string message, List<string> failures)
+    {
+        var expected = RefusalSentinel + "\nValueError: " + message;
+        var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n');
+        if (!result.Success)
+            failures.Add($"{id}: expected to compile and refuse at RUNTIME, but compilation failed: "
+                + string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message).Concat(result.CompilationErrors)));
+        else if (actual != expected)
+            failures.Add($"{id}: expected stdout '{expected}', got '{actual}'");
     }
 
     private static IEnumerable<StrRefusalCell> StringOperandRefusalCells()
@@ -555,11 +634,57 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         // (python3: format('ab','=+5') -> Sign not allowed; format('ab','+=5') -> '=' alignment.)
         yield return new("refuse.str_sign_before_eq", decl, "s", "=+5", "Sign not allowed in string format specifier");
         yield return new("refuse.str_fill_then_eq", decl, "s", "+=5", "'=' alignment not allowed in string format specifier");
-        // The conversion cell: !r maps the operand kind to Str, so f"{5!r:=8}" is refused. This is
-        // the f-string static route only (there is no format()/str.format literal conversion route).
+        // The conversion cell: !r maps the operand kind to Str, so the int 5 is refused as a string.
+        // It reaches the f-string and str.format routes; format() has no conversion field (N/A).
         // python3 -c "'{!r:=8}'.format(5)"  =>  ValueError: '=' alignment not allowed in string format specifier
-        yield return new("refuse.str_conv_eq", "", "5!r", "=8",
-            "'=' alignment not allowed in string format specifier", FStringOnly: true);
+        yield return new("refuse.str_conv_eq", "", "5", "=8",
+            "'=' alignment not allowed in string format specifier", Conversion: "!r");
+    }
+
+    /// <summary>
+    /// #1955 (R-BE): str.format takes positional fields only, so a keyword stays SPY0234 and its
+    /// message carries the steer Core declares on <c>StringExtensions.Format</c> via
+    /// <c>[SharpyKeywordSteer]</c> — read from the attribute here, never re-typed, so the test follows
+    /// the Core fact. The positional and <c>format_map</c> spellings run (python3: both print 1).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_KeywordSteer()
+    {
+        var format = typeof(SharpyRT::Sharpy.StringExtensions).GetMethod(
+            nameof(SharpyRT::Sharpy.StringExtensions.Format), new[] { typeof(string), typeof(object[]) });
+        Assert.NotNull(format);
+        var steer = format!.GetCustomAttributes(typeof(SharpyRT::Sharpy.SharpyKeywordSteerAttribute), inherit: false)
+            .Cast<SharpyRT::Sharpy.SharpyKeywordSteerAttribute>().SingleOrDefault()?.Steer;
+        Assert.False(string.IsNullOrEmpty(steer), "StringExtensions.Format declares no [SharpyKeywordSteer]");
+
+        var failures = new List<string>();
+        foreach (var (label, expr) in new[]
+        {
+            ("steer.named_field", "\"{name}\".format(name=1)"),
+            ("steer.nested_width", "\"{:{w}}\".format(1234, w=8)"),
+        })
+        {
+            var result = CompileAndExecute("def main() -> None:\n    print(" + expr + ")\n", executionTimeoutMs: 15_000);
+            var spy0234 = result.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.UnknownKeywordArgument).ToList();
+            if (result.Success || spy0234.Count == 0 || !spy0234.All(d => d.Message.Contains(steer!, StringComparison.Ordinal)))
+                failures.Add($"{label}: expected SPY0234 carrying the steer, got success={result.Success}: "
+                    + string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message)));
+        }
+
+        foreach (var (label, expr) in new[]
+        {
+            ("steer.positional", "\"{0}\".format(1)"),
+            ("steer.format_map", "\"{x}\".format_map({\"x\": 1})"),
+        })
+        {
+            var result = CompileAndExecute("def main() -> None:\n    print(" + expr + ")\n", executionTimeoutMs: 15_000);
+            if (!result.Success || result.StandardOutput.TrimEnd('\n', '\r') != "1")
+                failures.Add($"{label}: expected '1', got success={result.Success} stdout='{result.StandardOutput}' "
+                    + $"errors: {string.Join("; ", result.CompilationErrors)}");
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
     private static IEnumerable<RefusalCell> RefusalCells()
