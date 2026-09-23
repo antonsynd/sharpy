@@ -267,6 +267,26 @@ def main() -> None:
 A non-empty spec on a `None` literal is refused the same way
 (`unsupported format string passed to NoneType.__format__`).
 
+The static check is one rule shared by **every route** that carries a literal spec: an f-string or
+t-string hole, the `format()` builtin (bare, `builtins.format`, or `format_spec=` by keyword), and
+each field of a `str.format` call whose template is a string literal. The same spec is refused with
+the same SPY0609 wording wherever it is written:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    s: str = "ab"
+    print(f"{s:=5}")            # SPY0609: '=' alignment not allowed in string format specifier
+    print(t"{s:=5}")            # SPY0609 (same wording)
+    print(format(s, "=5"))      # SPY0609 (same wording)
+    print("{:=5}".format(s))    # SPY0609 (same wording)
+```
+
+A `str.format` field with a nested spec (`"{:{w}}"`), an attribute or index field, a template held
+in a variable, and `format_map` are not visible to the static check; they are validated by the
+engine at runtime. `str.format` takes positional fields only — a keyword argument is refused with
+SPY0234 and a steer to an f-string or `format_map`.
+
 A **dynamic** spec (one with a nested field, or a hole whose type is not statically known) is
 validated by the engine at runtime and raises the same `ValueError`/`TypeError` Python would. The
 program below compiles, then raises `ValueError: Unknown format code 'q' for object of type 'int'`
