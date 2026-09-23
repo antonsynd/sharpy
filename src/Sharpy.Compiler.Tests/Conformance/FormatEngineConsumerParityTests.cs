@@ -482,7 +482,12 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     }
 
     // Literal rosters (the totality anchors).
-    private static readonly string[] RefusalRoutes = { "fstring", "builtin", "strformat" };
+    private static readonly string[] RefusalRoutes =
+    {
+        "fstring", "tstring", "builtin", "builtin_qualified", "builtin_keyword", "strformat",
+    };
+
+    private static bool IsBuiltinRoute(string route) => route.StartsWith("builtin", StringComparison.Ordinal);
     private static readonly SpecForm[] SpecForms = { SpecForm.Literal, SpecForm.Dynamic };
 
     /// <summary>
@@ -494,10 +499,19 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     {
         ("fstring", SpecForm.Literal) => $"f\"{{{cell.Value}{cell.Conversion}:{cell.Spec}}}\"",
         ("fstring", SpecForm.Dynamic) => $"f\"{{{cell.Value}{cell.Conversion}:{{spec}}}}\"",
+        // The t-string render shares the f-string's per-hole static check (CheckInterpolationPart).
+        ("tstring", SpecForm.Literal) => $"str(t\"{{{cell.Value}{cell.Conversion}:{cell.Spec}}}\")",
+        ("tstring", SpecForm.Dynamic) => $"str(t\"{{{cell.Value}{cell.Conversion}:{{spec}}}}\")",
         // format() has no conversion field — a conversion cell has no builtin spelling.
-        ("builtin", _) when cell.Conversion.Length > 0 => null,
+        (_, _) when IsBuiltinRoute(route) && cell.Conversion.Length > 0 => null,
         ("builtin", SpecForm.Literal) => $"format({cell.Value}, \"{cell.Spec}\")",
         ("builtin", SpecForm.Dynamic) => $"format({cell.Value}, spec)",
+        ("builtin_qualified", SpecForm.Literal) => $"builtins.format({cell.Value}, \"{cell.Spec}\")",
+        ("builtin_qualified", SpecForm.Dynamic) => $"builtins.format({cell.Value}, spec)",
+        // Sharpy binds the spec by keyword (python3's format() takes none — a pre-existing
+        // deviation); the keyword-bound literal is a binding the static twin must reach too.
+        ("builtin_keyword", SpecForm.Literal) => $"format({cell.Value}, format_spec=\"{cell.Spec}\")",
+        ("builtin_keyword", SpecForm.Dynamic) => $"format({cell.Value}, format_spec=spec)",
         ("strformat", SpecForm.Literal) => $"\"{{{cell.Conversion}:{cell.Spec}}}\".format({cell.Value})",
         ("strformat", SpecForm.Dynamic) => $"\"{{{cell.Conversion}:{{}}}}\".format({cell.Value}, spec)",
         _ => throw new ArgumentOutOfRangeException(nameof(route), route, null),
@@ -528,6 +542,11 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     /// the identical wording at runtime, caught in-program so stdout pins the exact text. Asserting
     /// WHERE the refusal happens is the point: SPY0609 carries CPython's text, so a check that only
     /// searched output for the message would pass whichever side refused.
+    ///
+    /// <para>This matrix pins the refusal DIRECTION per route and spec form across the consumers. The
+    /// checker-side semantics of the static twin — the spec literal's diagnostic location, operand
+    /// kinds beyond str (int, float, None, Unknown), str.format hole-to-operand pairing — live in
+    /// <c>Semantic/FormatSpecStaticTwinRouteTests</c> (#1956) and are not repeated here.</para>
     /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
@@ -554,7 +573,9 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
                     executed++;
                     var specDecl = form == SpecForm.Dynamic ? $"    spec: str = \"{cell.Spec}\"\n" : "";
                     var id = $"{cell.Label}/{route}/{form}";
-                    var result = CompileAndExecute(RefusalProgram(declLine + specDecl, expr), executionTimeoutMs: 15_000);
+                    var result = CompileAndExecute(
+                        RefusalProgram(declLine + specDecl, expr, importsBuiltins: route == "builtin_qualified"),
+                        executionTimeoutMs: 15_000);
                     if (form == SpecForm.Literal)
                         CheckStaticRefusal(id, result, cell.Message, failures);
                     else
@@ -576,19 +597,20 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         foreach (var f in failures)
             Output.WriteLine("  " + f);
 
-        // 10 cells x 3 routes x 2 forms = 60 positions: 58 executing + 2 N/A (the conversion cell has
-        // no format() spelling) — literal anchors, so a dropped route or form is a count failure.
-        Assert.Equal(60, cells.Count * RefusalRoutes.Length * SpecForms.Length);
-        Assert.Equal(2, notApplicable);
-        Assert.Equal(58 + RuntimeOnlyRefusals.Length, executed);
+        // 10 cells x 6 routes x 2 forms = 120 positions: 114 executing + 6 N/A (the conversion cell has
+        // no spelling on the three format() routes) — literal anchors, so a dropped route or form is
+        // a count failure.
+        Assert.Equal(120, cells.Count * RefusalRoutes.Length * SpecForms.Length);
+        Assert.Equal(6, notApplicable);
+        Assert.Equal(114 + RuntimeOnlyRefusals.Length, executed);
 
         Assert.True(failures.Count == 0,
             $"{failures.Count} refusal positions took the wrong direction or wording:\n"
             + string.Join("\n", failures.Select(f => "  " + f)));
     }
 
-    private static string RefusalProgram(string decls, string expr)
-        => "def main() -> None:\n" + decls
+    private static string RefusalProgram(string decls, string expr, bool importsBuiltins = false)
+        => (importsBuiltins ? "import builtins\n\n" : "") + "def main() -> None:\n" + decls
             + $"    print(\"{RefusalSentinel}\")\n"
             + "    try:\n"
             + $"        print({expr})\n"
