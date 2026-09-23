@@ -15,8 +15,17 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// comment sits on the cell). The mappings are {dict (control), defaultdict, OrderedDict, ChainMap,
 /// Counter}; the protocols are {len, in, for-k-in, list(x), keys/values/items length+order,
 /// reversed(x), == same type, == dict (both operand orders), bool empty/non-empty, construct from
-/// str, truth position (<c>if m:</c> and the ternary)}. Six cross-stdlib equality pairs (Design
-/// Decision 5) are asserted separately.
+/// str, truth position (<c>if m:</c> and the ternary), <c>str()</c>/<c>print</c>, <c>repr()</c>/<c>f"{}"</c>}.
+/// Six cross-stdlib equality pairs (Design Decision 5) are asserted separately.
+///
+/// <para>
+/// <c>str</c> and <c>repr</c> (#1968) are the <c>__str__</c>/<c>__repr__</c> columns, spelled
+/// <c>ToString()</c> in the dunder table. Without an override every mapping printed its KEY LIST
+/// (<c>['a', 'b', 'c']</c>) because <c>SequenceFormatting</c> renders any enumerable that does not
+/// render itself. Deviation: <c>defaultdict</c> prints <c>defaultdict(&lt;factory&gt;, {...})</c>
+/// where CPython prints the factory's repr (<c>&lt;class 'int'&gt;</c>) — owner ruling R-BN, documented
+/// on <c>DefaultDict.ToString</c>.
+/// </para>
 ///
 /// <para>
 /// <c>bool</c> and <c>truth</c> are two protocols on purpose: <c>bool(x)</c> is a conversion that
@@ -55,6 +64,7 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
     private static readonly string[] Protocols =
     {
         "len", "in", "for", "list", "views", "reversed", "eq_same", "eq_dict", "bool", "from_str", "truth",
+        "str", "repr",
     };
 
     /// <summary>One executing cell: a full Sharpy program and its python3-verified stdout.</summary>
@@ -113,6 +123,19 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
         "OrderedDict" => "    e: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()\n",
         "ChainMap" => "    e: collections.ChainMap[str, int] = collections.ChainMap[str, int]()\n",
         "Counter" => "    e: collections.Counter[str] = collections.Counter[str]()\n",
+        _ => throw new System.ArgumentOutOfRangeException(nameof(mapping), mapping, null),
+    };
+
+    // The python3 3.12.13 repr of `m` ({"a":1,"b":2,"c":3}) and of the empty `e`, per mapping.
+    // defaultdict: `<factory>` replaces CPython's `<class 'int'>` (R-BN deviation, #1968).
+    private static (string full, string empty) ReprOf(string mapping) => mapping switch
+    {
+        "dict" => ("{'a': 1, 'b': 2, 'c': 3}", "{}"),
+        "defaultdict" => ("defaultdict(<factory>, {'a': 1, 'b': 2, 'c': 3})", "defaultdict(<factory>, {})"),
+        "OrderedDict" => ("OrderedDict({'a': 1, 'b': 2, 'c': 3})", "OrderedDict()"),
+        "ChainMap" => ("ChainMap({'a': 1, 'b': 2, 'c': 3})", "ChainMap({})"),
+        // Most-common order: counts c=3, b=2, a=1.
+        "Counter" => ("Counter({'c': 3, 'b': 2, 'a': 1})", "Counter()"),
         _ => throw new System.ArgumentOutOfRangeException(nameof(mapping), mapping, null),
     };
 
@@ -190,6 +213,34 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
                 "    if m:\n        print(\"m-full\")\n    else:\n        print(\"m-empty\")\n" +
                 "    print(\"full\" if e else \"empty\", \"full\" if m else \"empty\")",
                 "e-empty\nm-full\nempty full"));
+
+            // str: str(m), print(m), str(e), print(e) — python3 3.12.13 (see ReprOf).
+            var (full, empty) = ReprOf(mapping);
+            cells.Add(new Cell(mapping, "str",
+                c + Empty(mapping) +
+                "    print(str(m))\n    print(m)\n    print(str(e))\n    print(e)",
+                full + "\n" + full + "\n" + empty + "\n" + empty));
+
+            // repr: repr(m), f"{m}", repr(e), f"{e}" — python3 3.12.13 (see ReprOf), plus one
+            // shape cell per mapping whose repr has a second axis.
+            string reprBody = c + Empty(mapping) +
+                "    print(repr(m))\n    print(f\"{m}\")\n    print(repr(e))\n    print(f\"{e}\")";
+            string reprExpected = full + "\n" + full + "\n" + empty + "\n" + empty;
+            if (mapping == "ChainMap")
+            {
+                // Two maps: one dict repr per map, in maps order —
+                // python3: ChainMap({'a': 1, 'b': 2, 'c': 3}, {'z': 9}).
+                reprBody += "\n    two: collections.ChainMap[str, int] = collections.ChainMap[str, int]({\"a\": 1, \"b\": 2, \"c\": 3}, {\"z\": 9})\n    print(repr(two))";
+                reprExpected += "\nChainMap({'a': 1, 'b': 2, 'c': 3}, {'z': 9})";
+            }
+            else if (mapping == "Counter")
+            {
+                // Ties keep first-seen order (CPython's stable most_common sort), NOT key order (#1979) —
+                // python3: Counter(["c", "b", "a", "b"]) -> Counter({'b': 2, 'c': 1, 'a': 1}).
+                reprBody += "\n    tie: collections.Counter[str] = collections.Counter[str]([\"c\", \"b\", \"a\", \"b\"])\n    print(repr(tie))";
+                reprExpected += "\nCounter({'b': 2, 'c': 1, 'a': 1})";
+            }
+            cells.Add(new Cell(mapping, "repr", reprBody, reprExpected));
         }
 
         // construct from str — Counter only; python3: Counter("abca") -> a:2,b:1,c:1.
@@ -322,10 +373,10 @@ public class StdlibMappingProtocolMatrixTests : StdlibIntegrationTestBase
         Assert.True(missing.Count == 0,
             "Matrix is not total — no cell and no N/A roster entry for: " + string.Join(", ", missing));
 
-        // Exactly 5 mappings × 11 protocols = 55 (mapping, protocol) positions.
-        Assert.Equal(55, Mappings.Length * Protocols.Length);
-        // 51 executing cells (55 positions − 4 N/A from_str rows).
-        Assert.Equal(51, executing.Count);
+        // Exactly 5 mappings × 13 protocols = 65 (mapping, protocol) positions.
+        Assert.Equal(65, Mappings.Length * Protocols.Length);
+        // 61 executing cells (65 positions − 4 N/A from_str rows).
+        Assert.Equal(61, executing.Count);
         Assert.Equal(4, na.Count);
     }
 }

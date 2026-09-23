@@ -190,22 +190,12 @@ namespace Sharpy
 
         /// <summary>
         /// Return a list of the n most common elements and their counts.
-        /// Elements with equal counts are ordered by their key if T implements IComparable, otherwise in arbitrary order.
+        /// Elements with equal counts keep first-seen order, as CPython's stable sort does
+        /// (<c>Counter("cba").most_common()</c> is <c>[('c', 1), ('b', 1), ('a', 1)]</c>, #1979).
         /// </summary>
         public Sharpy.List<(T, int)> MostCommon(int? n = null)
         {
-            var ordered = _counts.OrderByDescending(kv => kv.Value);
-
-            // Only apply ThenBy if T implements IComparable to avoid runtime exceptions
-            IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> sorted;
-            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)) || typeof(IComparable).IsAssignableFrom(typeof(T)))
-            {
-                sorted = ordered.ThenBy(kv => kv.Key);
-            }
-            else
-            {
-                sorted = ordered;
-            }
+            IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> sorted = ByCountDescending();
 
             if (n.HasValue)
             {
@@ -214,6 +204,23 @@ namespace Sharpy
 
             return new Sharpy.List<(T, int)>(sorted.Select(kv => (kv.Key, kv.Value)));
         }
+
+        /// <summary>
+        /// The pairs in most-common order — the one ordering <see cref="MostCommon"/> and
+        /// <see cref="ToString"/> share. <c>OrderByDescending</c> is a stable sort and the backing
+        /// dictionary enumerates in first-seen order (entries are never removed, only cleared), so
+        /// ties keep first-seen order.
+        /// </summary>
+        private IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> ByCountDescending()
+            => _counts.OrderByDescending(kv => kv.Value);
+
+        /// <summary>
+        /// Python's <c>repr(c)</c>/<c>str(c)</c>: <c>Counter({...})</c> in most-common order, or
+        /// <c>Counter()</c> when empty (CPython 3.12). The braces are <see cref="Dict{K, V}"/>'s own
+        /// repr, so there is one spelling of the mapping rule.
+        /// </summary>
+        public override string ToString()
+            => _counts.Count == 0 ? "Counter()" : "Counter(" + new Dict<T, int>(ByCountDescending()).ToString() + ")";
 
         /// <summary>
         /// Elements are returned in arbitrary order. Each element is repeated count times.
@@ -687,6 +694,18 @@ namespace Sharpy
 
         /// <summary>The (key, value) pairs, for equality comparison by sibling mappings.</summary>
         internal IEnumerable<KeyValuePair<TKey, TValue>> PairsForEquality() => _dict;
+
+        /// <summary>
+        /// Python's <c>repr(dd)</c>/<c>str(dd)</c>: <c>defaultdict(&lt;factory&gt;, {...})</c>, the
+        /// pairs rendered by the composed <see cref="Dict{K, V}"/>'s own repr.
+        /// </summary>
+        /// <remarks>
+        /// Documented deviation (owner ruling R-BN, #1968): CPython prints the factory's repr —
+        /// <c>defaultdict(&lt;class 'int'&gt;, {'n': 1})</c> — but a Sharpy factory is a .NET delegate
+        /// with no Python-meaningful repr, so the factory slot is always the literal placeholder
+        /// <c>&lt;factory&gt;</c>. The mapping part matches CPython exactly.
+        /// </remarks>
+        public override string ToString() => "defaultdict(<factory>, " + _dict.ToString() + ")";
 
         // ── Equality (Python __eq__): a defaultdict compares by contents like a plain dict — the
         //    default factory is not part of equality. Declared as operator ==/!= so the checker

@@ -309,6 +309,14 @@ namespace Sharpy
         /// <summary>The ordered (key, value) pairs, for equality comparison by sibling mappings.</summary>
         internal IReadOnlyList<KeyValuePair<K, V>> ItemsList => _items;
 
+        /// <summary>
+        /// Python's <c>repr(od)</c>/<c>str(od)</c>: <c>OrderedDict({...})</c> with the pairs in
+        /// insertion order, or <c>OrderedDict()</c> when empty (CPython 3.12). The braces are
+        /// <see cref="Dict{K, V}"/>'s own repr, so there is one spelling of the mapping rule.
+        /// </summary>
+        public override string ToString()
+            => _items.Count == 0 ? "OrderedDict()" : "OrderedDict(" + new Dict<K, V>(_items).ToString() + ")";
+
         // ── Equality (Python __eq__). OrderedDict == OrderedDict is ORDER-SENSITIVE; every other
         //    pairing compares by contents. Declared as operator ==/!= so the checker discovers them
         //    through the same CLR op_Equality path Dict<K,V> uses (Dict.cs:286) — no compiler arm (#1933).

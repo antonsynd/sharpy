@@ -228,6 +228,14 @@ namespace Sharpy
         internal IEnumerable<KeyValuePair<K, V>> PairsForEquality()
             => EnumerateKeys().Select(k => new KeyValuePair<K, V>(k, this[k]));
 
+        /// <summary>
+        /// Python's <c>repr(cm)</c>/<c>str(cm)</c>: <c>ChainMap({...}, {...})</c>, one
+        /// <see cref="Dict{K, V}"/> repr per underlying map in <see cref="Maps"/> order. An empty
+        /// ChainMap holds one empty map, so it prints <c>ChainMap({})</c> as CPython does.
+        /// </summary>
+        public override string ToString()
+            => "ChainMap(" + string.Join(", ", _maps.Select(map => map.ToString())) + ")";
+
         // ── Equality (Python __eq__): compare by contents (a ChainMap equals a mapping with the
         //    same flattened key/value pairs). Declared as operator ==/!= so the checker discovers
         //    them through the same CLR op_Equality path Dict<K,V> uses (Dict.cs:286) — no arm (#1933).
