@@ -16,7 +16,8 @@ namespace Sharpy
         /// Return a formatted version of the string, using positional arguments.
         /// Python: <c>str.format(*args)</c>
         /// </summary>
-        public static string Format(this string s, params object[] args)
+        [SharpyKeywordSteer("str.format takes positional fields only; use an f-string (f\"{...}\") or format_map({...})")]
+        public static string Format([FormatTemplate] this string s, params object[] args)
         {
             return FormatInternal(s, args, false, null!);
         }

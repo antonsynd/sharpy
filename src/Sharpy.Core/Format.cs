@@ -16,7 +16,7 @@ namespace Sharpy
         /// format(255, "x")       # "ff"
         /// </code>
         /// </example>
-        public static string Format(object? value, string formatSpec = "")
+        public static string Format(object? value, [FormatSpec("value")] string formatSpec = "")
         {
             return PyFormat.Apply(value, formatSpec);
         }
