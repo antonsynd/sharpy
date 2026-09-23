@@ -639,7 +639,7 @@ internal partial class TypeChecker
             }
         }
 
-        // Default parameter validation is handled by DefaultParameterValidator in the validation pipeline
+        // Default parameter validation is handled by ConstantPositionValidator in the validation pipeline
 
         // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Length; i++)

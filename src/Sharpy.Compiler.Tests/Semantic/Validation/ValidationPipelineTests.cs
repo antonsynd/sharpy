@@ -159,15 +159,12 @@ public class ValidationPipelineTests
         // ISemanticValidator in Sharpy.Compiler must be registered, minus an explicit, reasoned
         // exclusion set. The former literal count (37) passed vacuously — a new validator added
         // AND asserted while an old one silently dropped kept the count; set-equality cannot (#1904).
-        var excluded = new HashSet<Type>
-        {
-            // Superseded by ConstantPositionValidator (Order 250, #1788); dead code, deletion tracked
-            // by #1949. When it is deleted this exclusion goes with it and the set-equality still holds.
-            typeof(DefaultParameterValidator),
-        };
-        // The exclusion list IS the exemption, so it is anchored to a literal count: growing it is a
-        // visible edit, never a silent one.
-        Assert.Single(excluded);
+        var excluded = new HashSet<Type>();
+        // The exclusion list IS the exemption, and the empty roster is the contract: a concrete
+        // validator that is not registered is dead code to delete, not a row to add (#1949 — the
+        // last exclusion was a dead class the guard itself kept alive). Anchored to a literal so
+        // growing it is a visible edit, never a silent one.
+        Assert.Empty(excluded);
 
         var expected = typeof(SemanticValidatorBase).Assembly.GetTypes()
             .Where(t => typeof(ISemanticValidator).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false })

@@ -23,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// LINE, and that exactly one diagnostic carries that code.</para>
 ///
 /// <para><b>N/A cells.</b> Four cells at the ParameterDefault and LambdaParameterDefault positions
-/// are refused by <c>DefaultParameterValidator</c> (SPY0401) before the value reaches the store
+/// are refused by <c>ConstantPositionValidator</c> (SPY0401) before the value reaches the store
 /// seam — they are tested in <c>ParameterDefaultConstantMatrixTests</c> instead. All known-red
 /// cells have been drained (#1762 closed).</para>
 ///
@@ -362,16 +362,16 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     };
 
     // ── N/A cells ────────────────────────────────────────────────────────────────────────────
-    // These cells are refused by DefaultParameterValidator (SPY0401) BEFORE the value reaches the
+    // These cells are refused by ConstantPositionValidator (SPY0401) BEFORE the value reaches the
     // store seam — the store conversion is never consulted, so the matrix declines to measure it.
     // Tested in ParameterDefaultConstantMatrixTests instead.
 
     private static readonly Dictionary<string, string> NotApplicableCells = new()
     {
-        ["ParameterDefault×SomeIntoOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
-        ["ParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
-        ["LambdaParameterDefault×SomeIntoOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
-        ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["ParameterDefault×SomeIntoOptional"] = "refused by ConstantPositionValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["ParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by ConstantPositionValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["LambdaParameterDefault×SomeIntoOptional"] = "refused by ConstantPositionValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by ConstantPositionValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
         ["OperatorOperand×BareNoneIntoOptional"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
         ["OperatorOperand×NoneIntoNonNullable"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
 

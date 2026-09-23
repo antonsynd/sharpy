@@ -8,7 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
-public class DefaultParameterValidatorTests
+public class ConstantPositionValidatorPipelineTests
 {
     private (Module, SymbolTable, SemanticInfo, TypeChecker) CompileAndCheck(string source)
     {
@@ -667,7 +667,7 @@ def foo(a: list[int] = [], b: int = None, c: dict[str, int] = {}):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // Should have at least 3 errors from DefaultParameterValidator:
+        // Should have at least 3 errors from ConstantPositionValidator:
         // mutable list, None for non-nullable, mutable dict
         // Plus TypeChecker also adds type mismatch errors
         typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'a'"));

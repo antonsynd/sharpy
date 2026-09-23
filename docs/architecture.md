@@ -122,7 +122,6 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 160**: `EqualityContractValidator` — Equality contract checks
 - **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
 - **Order 250**: `ConstantPositionValidator` — Every constant position (def/lambda/`__init__`/dataclass parameter defaults, bracket-attribute arguments, match-case constant patterns). Consults `Validation/ConstantDefaultClassifier`, the one emittable-constant classifier (per-site admission tables `ParameterDefault`, `LambdaParameterDefault`, `DecoratorArgument`, `ModuleConst`); `DecoratorValidator` and `CodeGenInfoComputer` (`IsCompileTimeConstant`) read the same tables, and the emitter prints what they admit without re-deriving constant-ness
-- **Order 251**: `DefaultParameterValidator` — superseded by `ConstantPositionValidator` and registered by no pipeline; kept for reference at a distinct Order so no two validators share a slot
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
 - **Order 402**: `DefiniteAssignmentValidator` — bare-declared variable use-before-assign (#1559)
 - **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks

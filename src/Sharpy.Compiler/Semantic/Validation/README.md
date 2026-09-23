@@ -24,7 +24,7 @@ of semantic rules.
 - `SignatureValidator.cs` (Order 150) - Dunder method signatures, protocol conformance
 - `EqualityContractValidator.cs` (Order 160) - Equality contract checks (__eq__/__hash__)
 - `InterfaceConflictValidator.cs` (Order 170) - Interface conflict detection
-- `DefaultParameterValidator.cs` (Order 250) - Default parameter constraints
+- `ConstantPositionValidator.cs` (Order 250) - Constant positions (parameter defaults, bracket-attribute arguments, match-case constant patterns)
 - `ControlFlowValidator.cs` (Order 400) - CFG-based control flow analysis
 - `PropertyValidator.cs` (Order 410) - Property validation
 - `UnusedVariableValidator.cs` (Order 420) - Unused variable warnings
@@ -79,7 +79,7 @@ They do not require in-progress type inference state:
 - **Module-level rules** — entry point validation, top-level type annotations (ModuleLevelValidator)
 - **Decorator usage** — valid decorator targets and known decorators (DecoratorValidator)
 - **Signature checks** — dunder method signatures, protocol conformance (SignatureValidator)
-- **Default parameters** — mutable defaults, non-constant defaults (DefaultParameterValidator)
+- **Default parameters** — mutable defaults, non-constant defaults (ConstantPositionValidator)
 - **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidator)
 - **Member access** — private member access from outside class (AccessValidator)
 - **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidator)

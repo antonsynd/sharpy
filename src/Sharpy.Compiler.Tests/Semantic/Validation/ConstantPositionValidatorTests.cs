@@ -7,7 +7,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class DefaultParameterValidatorTests
+public class ConstantPositionValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {

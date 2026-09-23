@@ -372,7 +372,7 @@ public class DiagnosticSpanTests
     }
 
     [Fact]
-    public void DefaultParameterValidator_MutableDefault_DiagnosticHasSpan()
+    public void ConstantPositionValidator_MutableDefault_DiagnosticHasSpan()
     {
         var source = "def foo(items: list[int] = []):\n    pass\n";
         var (module, context) = ParseForValidation(source);

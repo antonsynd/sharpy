@@ -8,8 +8,8 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// One validator for every constant position — def/lambda/__init__/dataclass parameter defaults,
-/// bracket-attribute arguments, and match-case constant patterns — replacing the former
-/// <c>DefaultParameterValidator</c> and absorbing <c>DecoratorValidator.ValidateDecoratorArgumentsAreConstants</c>.
+/// bracket-attribute arguments, and match-case constant patterns — replacing the former per-default
+/// validator (deleted, #1949) and absorbing <c>DecoratorValidator.ValidateDecoratorArgumentsAreConstants</c>.
 ///
 /// <para>The classifier reads the SHAPE of the expression; two facts a shape alone cannot carry are
 /// supplied by the caller:
@@ -26,8 +26,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 {
     public override string Name => "ConstantPositionValidator";
     // The one constant-position validator the default pipeline registers, in the slot the superseded
-    // DefaultParameterValidator used to occupy (that class still exists, unregistered, at 251 — two
-    // validators sharing an Order made ValidationPipeline's unstable List.Sort the tiebreaker).
+    // per-default validator used to occupy (deleted, #1949).
     public override int Order => 250; // Before type checking (300)
 
     private ICompilerLogger _logger = NullLogger.Instance;
@@ -107,7 +106,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         base.VisitBindingPattern(node);
     }
 
-    // ── DefaultSlot machinery (from DefaultParameterValidator) ──────────
+    // ── DefaultSlot machinery ───────────────────────────────────────────
 
     /// <summary>
     /// One constant-position slot — a def/lambda parameter or a <c>@dataclass</c> field. The hosts

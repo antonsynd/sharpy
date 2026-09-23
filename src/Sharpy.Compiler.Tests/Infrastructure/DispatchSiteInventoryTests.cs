@@ -122,9 +122,6 @@ public class DispatchSiteInventoryTests
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.
-        // DefaultParameterValidator is superseded by ConstantPositionValidator but its file
-        // remains in the tree (shared worktree cannot delete) — this drains when it is deleted.
-        ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
         ["Semantic/Validation/EqualityContractValidator.cs::EqualityContractValidator.Validate"] = "walker-default-contract",
         ["Semantic/Validation/EventValidator.cs::EventValidator.TypeStatementName"] = "walker-default-contract",
         ["Semantic/Validation/EventValidator.cs::EventValidator.ValidateTypeStatement"] = "walker-default-contract",

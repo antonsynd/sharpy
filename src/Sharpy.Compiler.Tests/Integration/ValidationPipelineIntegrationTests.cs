@@ -491,7 +491,7 @@ public class ValidationPipelineHarnessTests : IntegrationTestBase
     [Fact]
     public void CompileAndExecute_MutableDefault_ReportsValidationError()
     {
-        // SPY0400: Mutable default — detected only by DefaultParameterValidator
+        // SPY0400: Mutable default — detected only by ConstantPositionValidator
         var result = CompileAndExecute(@"
 def foo(x: list[int] = []):
     pass
