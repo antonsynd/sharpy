@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Discovery.Caching;
+using Sharpy.TestInfrastructure;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Discovery.Caching;
@@ -241,6 +242,41 @@ public class OverloadIndexCacheTests : IDisposable
         Assert.NotNull(servedFromMemo);
         Assert.Contains("memoized_module", servedFromMemo.Modules.Keys);
         Assert.Null(rejected);
+    }
+
+    /// <summary>
+    /// Warm = cold for the #1956 fact: <see cref="ParameterSignature.FormatSpecOf"/> on the real
+    /// Sharpy.Core index survives the on-disk JSON round trip, not only the process-lifetime memo.
+    /// <see cref="OverloadIndexCache.Save"/> memoizes by path, so the file is copied into a SECOND
+    /// cache directory whose path was never memoized — its <c>TryLoad</c> must deserialize.
+    /// </summary>
+    [Fact]
+    public void FormatSpecOf_SurvivesTheOnDiskRoundTrip()
+    {
+        var built = new OverloadIndexBuilder().BuildFromAssembly(SharpyCoreReference.Assembly);
+        var diskOnlyDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        try
+        {
+            _cache.Save(built);
+            Directory.CreateDirectory(diskOnlyDir);
+            var files = Directory.GetFiles(_testCacheDir, "*.json.gz");
+            Assert.NotEmpty(files);
+            foreach (var file in files)
+                File.Copy(file, Path.Combine(diskOnlyDir, Path.GetFileName(file)));
+
+            var loaded = new OverloadIndexCache(diskOnlyDir).TryLoad(built.Identity);
+
+            Assert.NotNull(loaded);
+            Assert.NotSame(built, loaded);
+            var format = Assert.Single(loaded!.Modules["builtins"].Functions["format"]);
+            Assert.Null(format.Parameters[0].FormatSpecOf);
+            Assert.Equal("value", format.Parameters[1].FormatSpecOf);
+        }
+        finally
+        {
+            new OverloadIndexCache(diskOnlyDir).ClearAll();
+            _cache.ClearAll();
+        }
     }
 
     private static AssemblyIdentity MakeIdentity(string name, string compilerVersion) => new()
