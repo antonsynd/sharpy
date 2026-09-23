@@ -528,5 +528,63 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("prec.str", "sabc: str = \"abcdef\"", "sabc", ".3", "abc");
         // Numeric controls that must stay green: bool/int '0'-fill still =-synthesises.
         yield return new("zero.bool", "tt: bool = True", "tt", "05", "00001");
+
+        // ---- #1958: '#' forces the decimal point and keeps trailing zeros on EVERY float
+        //      presentation (e E f F g G n % and the type-less float), for int/bool operands that
+        //      take a float presentation, whole-valued floats, '0'-fill and grouping. Controls that
+        //      agreed before the fix: '#e' (always has a point), int '#n'/'#d' (integral), a
+        //      fractional float with a bare '#', and non-finite (no point is ever added).
+        // python3 -c "for v,s in [(42,'#g'),(42,'#G'),(42,'#e'),(42,'#.0f'),(42,'#.0F'),(42,'#.0%'),
+        //   (42,'#012.3g'),(42,'#n'),(42,'#d'),(3.5,'#.0'),(3.5,'#.4g'),(3.5,'#5n'),(3.5,'#.6'),
+        //   (3.5,'#.0E'),(3.5,'#.4e'),(3.5,'#'),(3.0,'#g'),(3.0,'#'),(3.0,'#.0f'),(3.0,'#n'),
+        //   (0.0,'#.0e'),(True,'#g'),(True,'#d'),(1234.5,'#_.0f'),(float('inf'),'#g'),
+        //   (float('inf'),'#.0f')]: print(repr(format(v,s)))"
+        yield return new("alt.g_int", "i42: int = 42", "i42", "#g", "42.0000");
+        yield return new("alt.G_int", "i42: int = 42", "i42", "#G", "42.0000");
+        yield return new("alt.e_int", "i42: int = 42", "i42", "#e", "4.200000e+01");
+        yield return new("alt.f0_int", "i42: int = 42", "i42", "#.0f", "42.");
+        yield return new("alt.F0_int", "i42: int = 42", "i42", "#.0F", "42.");
+        yield return new("alt.pct0_int", "i42: int = 42", "i42", "#.0%", "4200.%");
+        yield return new("alt.zerofill_g", "i42: int = 42", "i42", "#012.3g", "0000000042.0");
+        yield return new("alt.n_int", "i42: int = 42", "i42", "#n", "42");
+        yield return new("alt.d_int", "i42: int = 42", "i42", "#d", "42");
+        yield return new("alt.bare_prec0", "g: float = 3.5", "g", "#.0", "4.e+00");
+        yield return new("alt.g4", "g: float = 3.5", "g", "#.4g", "3.500");
+        yield return new("alt.n_width", "g: float = 3.5", "g", "#5n", "3.50000");
+        yield return new("alt.bare_prec6", "g: float = 3.5", "g", "#.6", "3.50000");
+        yield return new("alt.E0", "g: float = 3.5", "g", "#.0E", "4.E+00");
+        yield return new("alt.e4", "g: float = 3.5", "g", "#.4e", "3.5000e+00");
+        yield return new("alt.bare_float", "g: float = 3.5", "g", "#", "3.5");
+        yield return new("alt.whole_g", "w3: float = 3.0", "w3", "#g", "3.00000");
+        yield return new("alt.whole_bare", "w3: float = 3.0", "w3", "#", "3.0");
+        yield return new("alt.whole_f0", "w3: float = 3.0", "w3", "#.0f", "3.");
+        yield return new("alt.whole_n", "w3: float = 3.0", "w3", "#n", "3.00000");
+        yield return new("alt.zero_e0", "z0: float = 0.0", "z0", "#.0e", "0.e+00");
+        yield return new("alt.bool_g", "tt: bool = True", "tt", "#g", "1.00000");
+        yield return new("alt.bool_d", "tt: bool = True", "tt", "#d", "1");
+        yield return new("alt.group_f0", "d: float = 1234.5", "d", "#_.0f", "1_234.");
+        yield return new("alt.inf_g", "pinf: float = float(\"inf\")", "pinf", "#g", "inf");
+        yield return new("alt.inf_f0", "pinf: float = float(\"inf\")", "pinf", "#.0f", "inf");
+
+        // ---- #1959: '=' pads AFTER the sign and the radix prefix on every fill path — explicit
+        //      fill, the lone '=' (default space fill) and '0' fill (the control that agreed before
+        //      the fix, because GroupAndZeroFill already skipped the prefix). 'd'/'f' and a
+        //      prefix-less 'x' are sign-only controls.
+        // python3 -c "for v,s in [(255,'*=#010x'),(-255,'=#10x'),(255,'0=#10x'),(255,'*=+#10x'),
+        //   (-255,'*=#10x'),(-255,'*=#010x'),(255,'*=#10o'),(255,'*=#12b'),(-255,'*=#12_b'),
+        //   (42,'*=-#012_X'),(255,'*=+8x'),(42,'*=+6d'),(3.5,'*=+8.1f')]: print(repr(format(v,s)))"
+        yield return new("eqfill.star_hex", "q: int = 255", "q", "*=#010x", "0x******ff");
+        yield return new("eqfill.lone_neg_hex", "m: int = -255", "m", "=#10x", "-0x     ff");
+        yield return new("eqfill.zero_hex", "q: int = 255", "q", "0=#10x", "0x000000ff");
+        yield return new("eqfill.plus_hex", "q: int = 255", "q", "*=+#10x", "+0x*****ff");
+        yield return new("eqfill.neg_hex", "m: int = -255", "m", "*=#10x", "-0x*****ff");
+        yield return new("eqfill.neg_hex_w010", "m: int = -255", "m", "*=#010x", "-0x*****ff");
+        yield return new("eqfill.oct", "q: int = 255", "q", "*=#10o", "0o*****377");
+        yield return new("eqfill.bin", "q: int = 255", "q", "*=#12b", "0b**11111111");
+        yield return new("eqfill.neg_bin_group", "m: int = -255", "m", "*=#12_b", "-0b1111_1111");
+        yield return new("eqfill.upper_hex", "i42: int = 42", "i42", "*=-#012_X", "0X********2A");
+        yield return new("eqfill.nohash_hex", "q: int = 255", "q", "*=+8x", "+*****ff");
+        yield return new("eqfill.d", "i42: int = 42", "i42", "*=+6d", "+***42");
+        yield return new("eqfill.f", "g: float = 3.5", "g", "*=+8.1f", "+****3.5");
     }
 }

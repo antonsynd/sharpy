@@ -5,7 +5,14 @@
 # '# ... see #NNNN' comment and be DELETED when the divergence is fixed (drain-on-fix: a stale row
 # that no longer diverges fails the sweep). The human-readable spec is in the failure output.
 #
-# Empty today: the one known engine gap — '#' alternate form on float-family presentations (#1958)
-# — is excluded at generation (FormatSpecDifferentialTests.HitsKnownGap, cites #1958), so the swept
-# cells all match python3. When #1958 lands, delete that exclusion; any residual '#'-float divergence
-# then surfaces here for a fresh issue.
+# No cell is excluded at generation: the '#'-on-float exclusion (HitsKnownGap) was deleted when the
+# '#' alternate form was fixed on the float presentations, and the generator draws a whole-valued
+# float kind (3.0) so the '#' cells that keep a point and trailing zeros are swept too. Any
+# divergence therefore surfaces HERE, as a row citing a fresh issue — never the fixed one.
+# (Issue numbers are deliberately absent from this header: the issue-state gate reads a comment
+# paragraph's cites onto the rows beneath it.)
+
+# The static twin (SPY0609) names a different rule than CPython when a spec breaks two: for int
+# '<+z#010c' Sharpy reports the sign-with-'c' rule, CPython (and Core at runtime) the 'z' rule —
+# FormatSpecGrammar's check precedence differs from CPython's. see #1984
+formatspec::int::3c2b7a2330313063  # spec '<+z#010c' — see #1984

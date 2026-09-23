@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -16,13 +17,21 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>System.Random</c> draws every slot, so the corpus is byte-identical run-to-run), assembles each
 /// into a <c>try: print(format(v, "spec")) except ValueError</c>
 /// program, runs it under Sharpy (the production compile+execute path) and python3 3.12 (through
-/// <c>build_tools/differential_exec/run_programs.py</c>), and compares stdout byte-for-byte.
+/// <c>build_tools/differential_exec/run_programs.py</c>), and compares stdout byte-for-byte. The
+/// spec is a string literal, so a spec CPython refuses may be refused by Sharpy at compile time
+/// (SPY0609, the static twin of the runtime refusal, #1956): that counts as agreement only when the
+/// diagnostic's message is CPython's <c>ValueError</c> text verbatim — the sweep therefore also
+/// pins the compile-time grammar mirror (<c>FormatSpecGrammar</c>) to CPython.
 ///
 /// <para>Sweep discipline mirrors <see cref="DifferentialExecutionTests"/>: any non-allowlisted
 /// divergence fails the run; an allowlisted cell that no longer diverges fails until its line is
 /// deleted (drain-on-fix). Every allowlist row cites an issue. The values are fixed and exactly
-/// representable (int 42, float 3.5, bool True, str "ab"), so the sweep exercises the SPEC grammar,
-/// not float-repr pathology. Skips (no-op) when a suitable python3 is absent; CI pins 3.12.</para>
+/// representable (int 42, float 3.5, whole-valued float 3.0, bool True, str "ab"), so the sweep
+/// exercises the SPEC grammar, not float-repr pathology. The whole-valued float is its own kind
+/// because the '#' alternate form diverges most visibly there (<c>format(3.0, "#g")</c> is
+/// <c>3.00000</c>; the point and the trailing zeros are exactly what '#' keeps, #1958). No cell is
+/// excluded at generation: every drawn spec, '#' included, is compared. Skips (no-op) when a
+/// suitable python3 is absent; CI pins 3.12.</para>
 ///
 /// <para>Where the three consumers (format(), str.format, f-strings) are tied together by
 /// <c>FormatEngineConsumerParityTests</c>, this generator only needs the format() route.</para>
@@ -72,7 +81,11 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         foreach (var cell in cells)
         {
             var r = CompileAndExecute(ProgramFor(cell), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
-            sharpy[cell.Key] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut);
+            var staticRefusals = r.RawDiagnostics
+                .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
+                .Select(d => d.Message)
+                .ToList();
+            sharpy[cell.Key] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
         }
 
         // --- Python arm: one batch process, main() appended so CPython drives Sharpy's auto-entry. ---
@@ -83,6 +96,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
         var allowlist = Allowlist.Load();
         var divergences = new List<(Cell Cell, string Detail, bool Allowlisted)>();
+        int staticAgreements = 0;
         for (int i = 0; i < cells.Count; i++)
         {
             var cell = cells[i];
@@ -95,7 +109,13 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
             string sharpyOut = Normalize(s.Stdout);
             string pythonOut = Normalize(py.Stdout);
-            if (!s.Ok)
+            if (!s.Ok && IsStaticTwinOf(s, pythonOut))
+            {
+                // A literal spec CPython refuses at runtime is refused by Sharpy at COMPILE time
+                // (SPY0609, the static twin — #1956) with CPython's exact wording: agreement.
+                staticAgreements++;
+            }
+            else if (!s.Ok)
             {
                 divergences.Add((cell, $"Sharpy failed to compile/run (python ok): spec='{cell.Spec}' pyout='{pythonOut}'",
                     allowlist.Matches(cell.Key)));
@@ -117,6 +137,8 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         Output.WriteLine(
             $"Format-spec differential: {cells.Count} cells, {divergences.Count} divergent "
             + $"({offenders.Count} non-allowlisted, {stale.Count} stale-allowlisted). Wall={sw.Elapsed.TotalSeconds:F1}s.");
+        Output.WriteLine(
+            $"  of the agreeing cells, {staticAgreements} were refused at compile time (SPY0609) with CPython's ValueError wording.");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE {o.Cell.Key}  {o.Detail}");
         foreach (var k in stale)
@@ -133,12 +155,29 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
     private static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd('\n');
 
+    private const string PythonValueErrorPrefix = "ValueError: ";
+
+    /// <summary>
+    /// Whether a Sharpy compile failure is the static twin of CPython's runtime refusal: python3
+    /// printed exactly one <c>ValueError: msg</c> line and Sharpy reported SPY0609 with that same
+    /// <c>msg</c>. Any other compile failure — a different code, a different wording, or a refusal
+    /// of a spec CPython accepts — stays a divergence.
+    /// </summary>
+    private static bool IsStaticTwinOf(ArmOutcome sharpy, string pythonOut)
+    {
+        if (!pythonOut.StartsWith(PythonValueErrorPrefix, StringComparison.Ordinal) || pythonOut.Contains('\n'))
+            return false;
+        var message = pythonOut.Substring(PythonValueErrorPrefix.Length);
+        return sharpy.StaticRefusals.Contains(message, StringComparer.Ordinal);
+    }
+
     private static string ProgramFor(Cell cell)
     {
         var (ctype, lit) = cell.Kind switch
         {
             "int" => ("int", "42"),
             "float" => ("float", "3.5"),
+            "float_whole" => ("float", "3.0"),
             "bool" => ("bool", "True"),
             _ => ("str", "\"ab\""),
         };
@@ -159,7 +198,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         char[] signChars = { '+', '-', ' ' };
         char[] groupChars = { ',', '_' };
         char[] typeChars = { 'd', 'n', 'f', 'F', 'e', 'E', 'g', 'G', 'x', 'X', 'o', 'b', 'c', '%', 's' };
-        string[] kinds = { "int", "float", "bool", "str" };
+        string[] kinds = { "int", "float", "float_whole", "bool", "str" };
 
         var rng = new Random(GeneratedSeed);
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -191,36 +230,11 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             string spec = BuildSpec(fillAlign, fill, align, hasSign, sign, hasZ, hasHash, hasZero,
                 width, hasGroup, groupSep, hasPrec, prec, hasType, type);
             var cell = new Cell(kind, spec);
-            if (HitsKnownGap(cell))
-                continue;
             if (seen.Add(cell.Key))
                 cells.Add(cell);
         }
 
         return cells;
-    }
-
-    /// <summary>
-    /// Attributable up-front exclusion (the same pattern <see cref="DifferentialExecutionTests"/>
-    /// uses for Sharpy-only forms): a cell whose spec carries the alternate form <c>#</c> on a
-    /// float-family presentation (g/G/e/E/n or a float with no type code) exercises the ONE known
-    /// engine gap #1958 — the '#' flag is a no-op on those types in <c>PyFormat.FormatFinite</c>.
-    /// The radix types (b/o/x/X) implement '#' (the 0x/0o/0b prefix) and stay IN the sweep; <c>d</c>
-    /// and <c>s</c> are excluded too because '#' there is collaterally near the gap and covered by the
-    /// consumer-parity tests. DELETE this exclusion when #1958 lands — the sweep will then cover the
-    /// '#'-on-float cells and go red until the engine renders them like CPython.
-    /// </summary>
-    private static bool HitsKnownGap(Cell cell)
-    {
-        // TODO(#1958): delete this exclusion when the '#' alternate form renders on float-family
-        // presentations — the issue-state gate (build_tools/allowlist_issue_state.py, #1939) reads this
-        // roster comment, so a CLOSED #1958 fails the gate until the exclusion is gone (drain-on-fix).
-        if (!cell.Spec.Contains('#', StringComparison.Ordinal))
-            return false;
-        // The last spec char is the presentation type when it is a letter/'%'; a radix type keeps '#'.
-        char type = cell.Spec.Length > 0 ? cell.Spec[cell.Spec.Length - 1] : '\0';
-        bool radix = type == 'b' || type == 'o' || type == 'x' || type == 'X';
-        return !radix;
     }
 
     private static string BuildSpec(
@@ -259,7 +273,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         return sb.ToString();
     }
 
-    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut);
+    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut, IReadOnlyList<string> StaticRefusals);
 
     private sealed record PyResult(bool Ok, string Stdout, string Stderr, bool TimedOut, bool SyntaxError);
 
