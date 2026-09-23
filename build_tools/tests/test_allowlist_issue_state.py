@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from unittest.mock import patch
 
@@ -305,3 +306,45 @@ def test_gh_unavailable_exits_2(tmp_path):
         with pytest.raises(SystemExit) as exc:
             mod.main()
         assert exc.value.code == 2
+
+
+# ── Default file set (#1998) ───────────────────────────────────────────────────
+
+_REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def test_default_paths_cover_every_tracked_allowlist_from_any_cwd(tmp_path, monkeypatch):
+    """The default set is every tracked `*allowlist*.txt`, whatever the cwd — not a directory roster.
+
+    Literal anchors: the two allowlists outside the old `src/**/Conformance` + `build_tools` roster.
+    """
+    tracked = subprocess.run(
+        ["git", "ls-files", "--", "*allowlist*.txt"],
+        cwd=_REPO, capture_output=True, text=True, check=True,
+    ).stdout.split()
+    assert len(tracked) >= 14
+    for anchor in (
+        "src/Sharpy.Compiler.Tests/Project/warm-diagnostic-fidelity-allowlist.txt",
+        "src/Sharpy.Compiler/CodeGen/emitter-annotation-consumption-allowlist.txt",
+    ):
+        assert anchor in tracked
+
+    monkeypatch.chdir(tmp_path)
+    paths = set(mod._default_paths())
+    missing = [t for t in tracked if os.path.join(_REPO, t) not in paths]
+    assert missing == []
+
+
+def test_default_paths_not_a_checkout_exits_2(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        mod._default_paths(str(tmp_path))
+    assert exc.value.code == 2
+    assert "not a git checkout" in capsys.readouterr().err
+
+
+def test_default_paths_git_unavailable_exits_2(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PATH", str(tmp_path))
+    with pytest.raises(SystemExit) as exc:
+        mod._default_paths(_REPO)
+    assert exc.value.code == 2
+    assert "git not available" in capsys.readouterr().err

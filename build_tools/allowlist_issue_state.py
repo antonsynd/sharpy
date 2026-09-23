@@ -2,7 +2,8 @@
 """Check that allowlist rows and C# Skip attributes cite only OPEN GitHub issues.
 
 A row (or Skip) citing a CLOSED issue is stale — the fix landed but the entry was
-not drained. Exit 0 if clean, 1 if offences found, 2 if gh is unavailable.
+not drained. Exit 0 if clean, 1 if offences found, 2 if gh is unavailable or the
+allowlist set cannot be derived (no git, not a checkout).
 
 Usage:
     python3 build_tools/allowlist_issue_state.py [--paths FILE ...]
@@ -30,6 +31,9 @@ KNOWNRED_CELL_RE = re.compile(r'new\s+\w*KnownRed\w*\s*\(\s*"#?(\d+)"')
 DEVIATIONS_YAML = "deviations.yaml"
 DRAIN_EXEMPT = "drain-exempt:"
 NO_ISSUE_EXEMPT = "no-issue:"
+# The checkout this script lives in. `gh` resolves the repository from its cwd, so it runs here — the gate
+# works from any cwd (#1998).
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 @dataclass
@@ -156,7 +160,7 @@ def query_states(numbers: list[int]) -> dict[int, str]:
     try:
         subprocess.run(
             ["gh", "--version"],
-            capture_output=True, check=True,
+            capture_output=True, check=True, cwd=REPO_ROOT,
         )
     except (FileNotFoundError, subprocess.CalledProcessError):
         print("cannot verify issue state — gh not available or not authenticated",
@@ -168,7 +172,7 @@ def query_states(numbers: list[int]) -> dict[int, str]:
         try:
             result = subprocess.run(
                 ["gh", "issue", "view", str(num), "--json", "state", "-q", ".state"],
-                capture_output=True, text=True, check=True,
+                capture_output=True, text=True, check=True, cwd=REPO_ROOT,
             )
             states[num] = result.stdout.strip()
         except subprocess.CalledProcessError:
@@ -178,17 +182,32 @@ def query_states(numbers: list[int]) -> dict[int, str]:
     return states
 
 
-def _default_paths() -> list[str]:
-    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _tracked_allowlists(repo: str) -> list[str]:
+    """Every tracked `*allowlist*.txt` in the checkout at `repo` (#1998).
 
-    txt_paths = glob.glob(
-        os.path.join(repo, "src", "**", "Conformance", "*-allowlist.txt"),
-        recursive=True,
-    )
-    # #1939 (R-BD): the spec-block allowlist lives under build_tools, not src/**/Conformance. Bring it
-    # under the gate. Widening reddens nothing today — uncited .txt rows are skipped until Task 8 makes
-    # them an offence (DD14) — but a CLOSED cite in it would now be caught.
-    txt_paths += glob.glob(os.path.join(repo, "build_tools", "*allowlist*.txt"))
+    The set is derived from `git ls-files`, not from a directory roster: a roster is name-keyed, and an
+    allowlist added outside it (`Project/`, `CodeGen/`) was silently never scanned — the instrument passed
+    vacuously for it. No git or no checkout exits 2: an empty set would be the vacuous instrument again.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", repo, "ls-files", "-z", "--", "*allowlist*.txt"],
+            capture_output=True, text=True, check=True,
+        )
+    except FileNotFoundError:
+        print("cannot derive the allowlist set — git not available", file=sys.stderr)
+        sys.exit(2)
+    except subprocess.CalledProcessError:
+        print(f"cannot derive the allowlist set — {repo} is not a git checkout", file=sys.stderr)
+        sys.exit(2)
+    return [os.path.join(repo, p) for p in result.stdout.split("\0") if p]
+
+
+def _default_paths(repo: str | None = None) -> list[str]:
+    if repo is None:
+        repo = REPO_ROOT
+
+    txt_paths = _tracked_allowlists(repo)
 
     cs_globs = glob.glob(
         os.path.join(repo, "src", "*.Tests", "**", "*.cs"),
@@ -212,7 +231,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--paths", nargs="+", default=None,
-        help="Files to scan (default: src/**/Conformance/*-allowlist.txt + src/*.Tests/**/*.cs)",
+        help="Files to scan (default: every tracked *allowlist*.txt + src/*.Tests/**/*.cs)",
     )
     args = parser.parse_args()
 
