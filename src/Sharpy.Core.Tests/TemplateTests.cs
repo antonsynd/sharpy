@@ -252,4 +252,71 @@ public class InterpolationTests
 
         Assert.Equal("Interpolation(3.14, 'pi', '.2f')", interp.Repr());
     }
+
+    // ---- #1970: the PEP 750 conversion slot (4th ctor argument) ----
+    // Expected renders come from a python3.14 oracle rendering each PEP 750 Interpolation the way an
+    // f-string renders the same field — format(convert(value, conversion), format_spec):
+    //   python3.14 -c "from string.templatelib import *; s='ab'; i=t'{s!r:>6}'.interpolations[0]; print(repr(format(repr(i.value), i.format_spec)))"
+    // This is the t-string RENDER (Sharpy's Template.ToString), which agrees with the f-string —
+    // not Python's str(Template).
+
+    [Theory]
+    [InlineData("ab", "s", ">6", "r", "  'ab'")]      // f"{s!r:>6}"  (s = 'ab')
+    [InlineData("ab", "s", "", "r", "'ab'")]          // f"{s!r}"
+    [InlineData("ab", "s", ">6", "s", "    ab")]      // f"{s!s:>6}"
+    [InlineData("é", "e", "", "a", "'\\xe9'")]        // f"{e!a}"     (e = 'é')
+    [InlineData("é", "e", ">8", "a", "  '\\xe9'")]    // f"{e!a:>8}"
+    [InlineData(5, "n", ">4", "r", "   5")]           // f"{n!r:>4}"  (n = 5)
+    // A bool discriminates every conversion from none: str/repr/ascii spell True, format() spells 1.
+    // python3 -c "b = True; print(repr(f'{b!r:>6}'), repr(f'{b!s:>6}'), repr(f'{b!a:>6}'), repr(f'{b:>6}'))"
+    [InlineData(true, "b", ">6", "r", "  True")]      // f"{b!r:>6}"  (b = True)
+    [InlineData(true, "b", ">6", "s", "  True")]      // f"{b!s:>6}"
+    [InlineData(true, "b", ">6", "a", "  True")]      // f"{b!a:>6}"
+    [InlineData(true, "b", ">6", null, "     1")]     // f"{b:>6}"
+    [InlineData("ab", "s", ">6", null, "    ab")]     // f"{s:>6}" — no conversion: the value itself
+    public void ToString_WithConversion_AppliesItBeforeTheFormatSpec(
+        object value, string expression, string spec, string? conversion, string expected)
+    {
+        var interp = new Interpolation(value, expression, spec, conversion);
+
+        Assert.Equal(conversion, interp.Conversion);
+        Assert.Equal(expected, interp.ToString());
+    }
+
+    [Fact]
+    public void ToString_ReprConversion_NullValue_IsNone()
+    {
+        // python3.14: nn = None; t"{nn!r}" renders 'None'
+        Assert.Equal("None", new Interpolation(null!, "nn", "", "r").ToString());
+    }
+
+    [Fact]
+    public void ToString_SelfDocumentingTemplate_RendersLikeTheFString()
+    {
+        // PEP 750 §"Interpolation" / python3.14: x = 1; t"{x=}" has strings ('x=', '') and
+        // Interpolation(1, 'x', 'r', ''); f"{x=}" is 'x=1'.
+        var template = new Template(new[] { "x=", "" }, new[] { new Interpolation(1, "x", "", "r") });
+
+        Assert.Equal("x=1", template.ToString());
+    }
+
+    [Fact]
+    public void Constructor_UnknownConversion_RaisesValueError()
+    {
+        // python3.14 -c "from string.templatelib import Interpolation; Interpolation(1, 'x', 'q')"
+        //   =>  ValueError: Interpolation() argument 'conversion' must be one of 's', 'a' or 'r'
+        var ex = Assert.Throws<ValueError>(() => new Interpolation(1, "x", "", "q"));
+        Assert.Equal("Interpolation() argument 'conversion' must be one of 's', 'a' or 'r'", ex.Message);
+    }
+
+    [Fact]
+    public void Repr_WithConversion_SpellsEveryPep750Position()
+    {
+        // PEP 750 §"The Interpolation Type": Interpolation(value, expression, conversion, format_spec).
+        // python3.14: repr(t"{s!r:>6}".interpolations[0])  =>  Interpolation('ab', 's', 'r', '>6')
+        // (Sharpy's Repr spells the value with ToString(), as the 3-argument rows above do.)
+        Assert.Equal("Interpolation(ab, 's', 'r', '>6')", new Interpolation("ab", "s", ">6", "r").Repr());
+        // python3.14: repr(t"{x=}".interpolations[0])  =>  Interpolation(1, 'x', 'r', '')
+        Assert.Equal("Interpolation(1, 'x', 'r', '')", new Interpolation(1, "x", "", "r").Repr());
+    }
 }
