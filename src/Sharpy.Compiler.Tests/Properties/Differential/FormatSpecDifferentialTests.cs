@@ -17,11 +17,12 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>System.Random</c> draws every slot, so the corpus is byte-identical run-to-run), assembles each
 /// into a <c>try: print(format(v, "spec")) except ValueError</c>
 /// program, runs it under Sharpy (the production compile+execute path) and python3 3.12 (through
-/// <c>build_tools/differential_exec/run_programs.py</c>), and compares stdout byte-for-byte. The
-/// spec is a string literal, so a spec CPython refuses may be refused by Sharpy at compile time
-/// (SPY0609, the static twin of the runtime refusal, #1956): that counts as agreement only when the
-/// diagnostic's message is CPython's <c>ValueError</c> text verbatim — the sweep therefore also
-/// pins the compile-time grammar mirror (<c>FormatSpecGrammar</c>) to CPython.
+/// <c>build_tools/differential_exec/run_programs.py</c>), and compares stdout byte-for-byte. Every
+/// cell is compared in TWO columns (<see cref="Column"/>): the ENGINE column hides the spec in a
+/// variable so every cell exercises Core's runtime engine and its <c>ValueError</c> refusals; the
+/// STATIC column passes the literal, so a refused spec may meet the compile-time twin (SPY0609,
+/// #1956), which agrees only with CPython's <c>ValueError</c> text verbatim — pinning the grammar
+/// mirror (<c>FormatSpecGrammar</c>) to CPython without giving up runtime coverage.
 ///
 /// <para>Sweep discipline mirrors <see cref="DifferentialExecutionTests"/>: any non-allowlisted
 /// divergence fails the run; an allowlisted cell that no longer diverges fails until its line is
@@ -50,16 +51,42 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     // The contract wants at least this many distinct cells per run.
     private const int TargetCells = 240;
 
+    // The '='-after-radix-prefix stratum (#1959): a separately seeded draw so the uniform corpus
+    // above is unaffected by its size.
+    private const int EqualsPrefixStratumSeed = 0x1959_3D23;
+    private const int EqualsPrefixStratumCells = 40;
+
     private const int SharpyExecTimeoutMs = 12_000;
 
     private sealed record Cell(string Kind, string Spec)
     {
         // A key safe for the allowlist file: the spec is hex-encoded so a '#', '*', or whitespace in
         // it can never be read as a comment, a glob, or trimmed away. The human-readable spec travels
-        // in the divergence detail and in the row's trailing comment.
-        public string Key => "formatspec::" + Kind + "::"
+        // in the divergence detail and in the row's trailing comment. The column is part of the key:
+        // an engine-column row and a static-column row for the same spec are different facts.
+        public string Key(Column column) => "formatspec::" + ColumnName(column) + "::" + Kind + "::"
             + string.Concat(Encoding.UTF8.GetBytes(Spec).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
     }
+
+    /// <summary>
+    /// The two columns every cell is compared in. <see cref="Column.Engine"/> passes the spec through
+    /// a <c>str</c> variable, so the checker cannot see a literal and EVERY cell reaches Core's runtime
+    /// engine (<c>PyFormat</c>) — its output and its <c>ValueError</c> text are compared with python3.
+    /// <see cref="Column.Static"/> passes the spec as a string literal, so a spec CPython refuses may be
+    /// refused at compile time by the static twin (SPY0609, #1956); that agrees only when the
+    /// diagnostic's message is CPython's <c>ValueError</c> text verbatim, and a spec python accepts
+    /// that Sharpy refuses statically is an over-refusal divergence. Without a static twin on the
+    /// route, the literal program simply runs and is compared like the engine column.
+    /// </summary>
+    private enum Column
+    {
+        Engine,
+        Static,
+    }
+
+    private static readonly Column[] Columns = { Column.Engine, Column.Static };
+
+    private static string ColumnName(Column column) => column == Column.Engine ? "engine" : "static";
 
     [Fact]
     public void FormatSpec_DifferentialSweep_MatchesCPython()
@@ -73,81 +100,103 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
         var sw = Stopwatch.StartNew();
         var cells = GenerateCells(TargetCells);
-        Assert.True(cells.Count >= 200,
-            $"the grammar generator produced only {cells.Count} distinct cells (< 200): the spec space or iter is too small.");
+        Assert.True(cells.Count >= 200 + EqualsPrefixStratumCells,
+            $"the grammar generator produced only {cells.Count} distinct cells: the spec space or iter is too small.");
+        // Anchor: the '='-after-radix-prefix stratum (#1959) is really in the corpus.
+        int eqPrefixCells = cells.Count(IsEqualsPrefixCell);
+        Assert.True(eqPrefixCells >= EqualsPrefixStratumCells,
+            $"only {eqPrefixCells} '='+'#'+radix cells with room to pad were drawn (< {EqualsPrefixStratumCells}).");
 
-        // --- Sharpy arm: production compile + execute, sequential. ---
+        // --- Sharpy arm: production compile + execute, sequential, one program per cell x column. ---
         var sharpy = new Dictionary<string, ArmOutcome>(StringComparer.Ordinal);
         foreach (var cell in cells)
         {
-            var r = CompileAndExecute(ProgramFor(cell), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
-            var staticRefusals = r.RawDiagnostics
-                .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
-                .Select(d => d.Message)
-                .ToList();
-            sharpy[cell.Key] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
+            foreach (var column in Columns)
+            {
+                var r = CompileAndExecute(ProgramFor(cell, column), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
+                var staticRefusals = r.RawDiagnostics
+                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
+                    .Select(d => d.Message)
+                    .ToList();
+                sharpy[cell.Key(column)] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
+            }
         }
 
-        // --- Python arm: one batch process, main() appended so CPython drives Sharpy's auto-entry. ---
-        var requests = new List<(int Id, string Source)>(cells.Count);
+        // --- Python arm: one batch process, main() appended so CPython drives Sharpy's auto-entry.
+        //     Both columns run under python too (they are the same program to CPython), so each
+        //     column is compared with its own oracle run. ---
+        var requests = new List<(int Id, string Source)>(cells.Count * Columns.Length);
         for (int i = 0; i < cells.Count; i++)
-            requests.Add((i, ProgramFor(cells[i]) + "\nmain()\n"));
+        {
+            for (int c = 0; c < Columns.Length; c++)
+                requests.Add((i * Columns.Length + c, ProgramFor(cells[i], Columns[c]) + "\nmain()\n"));
+        }
         var pythonById = oracle.RunBatch(requests);
 
         var allowlist = Allowlist.Load();
-        var divergences = new List<(Cell Cell, string Detail, bool Allowlisted)>();
+        var divergences = new List<(Cell Cell, Column Column, string Detail, bool Allowlisted)>();
         int staticAgreements = 0;
         for (int i = 0; i < cells.Count; i++)
         {
             var cell = cells[i];
-            var s = sharpy[cell.Key];
-            pythonById.TryGetValue(i, out var py);
+            for (int c = 0; c < Columns.Length; c++)
+            {
+                var column = Columns[c];
+                var key = cell.Key(column);
+                var s = sharpy[key];
+                pythonById.TryGetValue(i * Columns.Length + c, out var py);
 
-            // The Python side must have run the cell (no syntax error, no timeout) to be an oracle.
-            if (py is null || py.SyntaxError || py.TimedOut || s.TimedOut)
-                continue;
+                // The Python side must have run the cell (no syntax error, no timeout) to be an oracle.
+                if (py is null || py.SyntaxError || py.TimedOut || s.TimedOut)
+                    continue;
 
-            string sharpyOut = Normalize(s.Stdout);
-            string pythonOut = Normalize(py.Stdout);
-            if (!s.Ok && IsStaticTwinOf(s, pythonOut))
-            {
-                // A literal spec CPython refuses at runtime is refused by Sharpy at COMPILE time
-                // (SPY0609, the static twin — #1956) with CPython's exact wording: agreement.
-                staticAgreements++;
-            }
-            else if (!s.Ok)
-            {
-                divergences.Add((cell, $"Sharpy failed to compile/run (python ok): spec='{cell.Spec}' pyout='{pythonOut}'",
-                    allowlist.Matches(cell.Key)));
-            }
-            else if (sharpyOut != pythonOut)
-            {
-                divergences.Add((cell, $"spec='{cell.Spec}': sharpy='{sharpyOut}' python='{pythonOut}'",
-                    allowlist.Matches(cell.Key)));
+                string sharpyOut = Normalize(s.Stdout);
+                string pythonOut = Normalize(py.Stdout);
+                if (!s.Ok && column == Column.Static && IsStaticTwinOf(s, pythonOut))
+                {
+                    // A literal spec CPython refuses at runtime is refused by Sharpy at COMPILE time
+                    // (SPY0609, the static twin — #1956) with CPython's exact wording: agreement.
+                    staticAgreements++;
+                }
+                else if (!s.Ok)
+                {
+                    string refusals = s.StaticRefusals.Count > 0 ? " SPY0609='" + string.Join("' / '", s.StaticRefusals) + "'" : "";
+                    divergences.Add((cell, column,
+                        $"Sharpy failed to compile/run (python ok): spec='{cell.Spec}' pyout='{pythonOut}'{refusals}",
+                        allowlist.Matches(key)));
+                }
+                else if (sharpyOut != pythonOut)
+                {
+                    divergences.Add((cell, column, $"spec='{cell.Spec}': sharpy='{sharpyOut}' python='{pythonOut}'",
+                        allowlist.Matches(key)));
+                }
             }
         }
 
         var offenders = divergences.Where(d => !d.Allowlisted).ToList();
         var stale = allowlist.ExactKeys
-            .Except(divergences.Select(d => d.Cell.Key), StringComparer.Ordinal)
+            .Except(divergences.Select(d => d.Cell.Key(d.Column)), StringComparer.Ordinal)
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
+        int engineDivergent = divergences.Count(d => d.Column == Column.Engine);
+        int staticDivergent = divergences.Count(d => d.Column == Column.Static);
 
         sw.Stop();
         Output.WriteLine(
-            $"Format-spec differential: {cells.Count} cells, {divergences.Count} divergent "
-            + $"({offenders.Count} non-allowlisted, {stale.Count} stale-allowlisted). Wall={sw.Elapsed.TotalSeconds:F1}s.");
-        Output.WriteLine(
-            $"  of the agreeing cells, {staticAgreements} were refused at compile time (SPY0609) with CPython's ValueError wording.");
+            $"Format-spec differential: {cells.Count} cells x {Columns.Length} columns, {divergences.Count} divergent "
+            + $"({offenders.Count} non-allowlisted, {stale.Count} stale-allowlisted); "
+            + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
+            + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError wording); "
+            + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
-            Output.WriteLine($"  DIVERGENCE {o.Cell.Key}  {o.Detail}");
+            Output.WriteLine($"  DIVERGENCE {o.Cell.Key(o.Column)}  {o.Detail}");
         foreach (var k in stale)
             Output.WriteLine($"  STALE {k}");
 
         Assert.True(offenders.Count == 0,
             $"Format-spec differential: {offenders.Count} non-allowlisted divergence(s) between Sharpy and python3. "
             + "Fix the engine, or add an allowlist entry citing an issue:\n"
-            + string.Join("\n", offenders.Take(40).Select(o => "  " + o.Cell.Key + "  " + o.Detail)));
+            + string.Join("\n", offenders.Take(40).Select(o => "  " + o.Cell.Key(o.Column) + "  " + o.Detail)));
         Assert.True(stale.Count == 0,
             $"Format-spec differential: {stale.Count} allowlist entr(ies) no longer diverge — delete them:\n"
             + string.Join("\n", stale.Select(k => "  " + k)));
@@ -171,21 +220,26 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         return sharpy.StaticRefusals.Contains(message, StringComparer.Ordinal);
     }
 
-    private static string ProgramFor(Cell cell)
+    private static string ProgramFor(Cell cell, Column column)
     {
         var (ctype, lit) = cell.Kind switch
         {
             "int" => ("int", "42"),
+            "int_neg" => ("int", "-255"),
             "float" => ("float", "3.5"),
             "float_whole" => ("float", "3.0"),
             "bool" => ("bool", "True"),
             _ => ("str", "\"ab\""),
         };
         // The spec grammar never generates '"', '\\', '{' or '}', so it embeds directly in a literal.
+        // Engine column: the spec travels through a str variable, so no static check can see it.
+        string specDecl = column == Column.Engine ? $"    spec: str = \"{cell.Spec}\"\n" : "";
+        string specArg = column == Column.Engine ? "spec" : $"\"{cell.Spec}\"";
         return "def main() -> None:\n"
             + $"    v: {ctype} = {lit}\n"
+            + specDecl
             + "    try:\n"
-            + $"        print(format(v, \"{cell.Spec}\"))\n"
+            + $"        print(format(v, {specArg}))\n"
             + "    except ValueError as e:\n"
             + "        print(\"ValueError:\", e)\n";
     }
@@ -230,11 +284,54 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             string spec = BuildSpec(fillAlign, fill, align, hasSign, sign, hasZ, hasHash, hasZero,
                 width, hasGroup, groupSep, hasPrec, prec, hasType, type);
             var cell = new Cell(kind, spec);
-            if (seen.Add(cell.Key))
+            if (seen.Add(cell.Key(Column.Engine)))
                 cells.Add(cell);
         }
 
+        // The '='-after-radix-prefix stratum (#1959). The uniform draw above almost never combines an
+        // '=' alignment, the '#' radix prefix, a radix type and a width wide enough to pad (the fixed
+        // seed drew none), so the explicit-fill / lone-'=' path of the alignment switch went unswept.
+        // A second, separately seeded draw restricted to that sub-grammar adds a fixed number of such
+        // cells: [fill]'=' [sign] '#' ['0'] width(10..14) ['_'] {x X o b}, on 42, -255 and True.
+        char[] radixTypes = { 'x', 'X', 'o', 'b' };
+        string[] stratumKinds = { "int", "int_neg", "bool" };
+        var stratumRng = new Random(EqualsPrefixStratumSeed);
+        int added = 0;
+        for (int iter = 0; iter < EqualsPrefixStratumCells * 40 && added < EqualsPrefixStratumCells; iter++)
+        {
+            int fillAlign = stratumRng.Next(1, 3); // 1 lone '=', 2 fill + '='
+            char fill = fillChars[stratumRng.Next(fillChars.Length)];
+            bool hasSign = stratumRng.Next(2) == 1;
+            char sign = signChars[stratumRng.Next(signChars.Length)];
+            bool hasZero = stratumRng.Next(4) == 0;
+            int width = stratumRng.Next(10, 15);
+            bool hasGroup = stratumRng.Next(2) == 1;
+            char type = radixTypes[stratumRng.Next(radixTypes.Length)];
+            string kind = stratumKinds[stratumRng.Next(stratumKinds.Length)];
+
+            string spec = BuildSpec(fillAlign, fill, '=', hasSign, sign, hasZ: false, hasHash: true, hasZero,
+                width, hasGroup, '_', hasPrec: false, prec: 0, hasType: true, type);
+            var cell = new Cell(kind, spec);
+            if (seen.Add(cell.Key(Column.Engine)))
+            {
+                cells.Add(cell);
+                added++;
+            }
+        }
+
         return cells;
+    }
+
+    /// <summary>
+    /// A cell of the #1959 class: '=' alignment + the '#' prefix on a radix type, with a width of at
+    /// least 10 (every radix rendering of 42, -255 and True is narrower than that before '_' grouping,
+    /// so the fill lands between the prefix and the digits).
+    /// </summary>
+    private static bool IsEqualsPrefixCell(Cell cell)
+    {
+        var m = Regex.Match(cell.Spec, @"^.?=[+\- ]?#0?(\d+)_?[xXob]$");
+        return m.Success && (cell.Kind == "int" || cell.Kind == "int_neg" || cell.Kind == "bool")
+            && int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) >= 10;
     }
 
     private static string BuildSpec(

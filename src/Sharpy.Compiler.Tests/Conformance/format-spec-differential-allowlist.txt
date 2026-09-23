@@ -1,6 +1,7 @@
 # Format-spec differential sweep allowlist (FormatSpecDifferentialTests).
 #
-# Each non-comment line is a cell key (formatspec::<kind>::<hex-encoded spec>) whose Sharpy vs
+# Each non-comment line is a cell key (formatspec::<column>::<kind>::<hex-encoded spec>, column =
+# engine | static — see FormatSpecDifferentialTests.Column) whose Sharpy vs
 # python3 stdout is a KNOWN, reviewed divergence. Every row MUST cite an open issue in a trailing
 # '# ... see #NNNN' comment and be DELETED when the divergence is fixed (drain-on-fix: a stale row
 # that no longer diverges fails the sweep). The human-readable spec is in the failure output.
@@ -15,4 +16,4 @@
 # The static twin (SPY0609) names a different rule than CPython when a spec breaks two: for int
 # '<+z#010c' Sharpy reports the sign-with-'c' rule, CPython (and Core at runtime) the 'z' rule —
 # FormatSpecGrammar's check precedence differs from CPython's. see #1984
-formatspec::int::3c2b7a2330313063  # spec '<+z#010c' — see #1984
+formatspec::static::int::3c2b7a2330313063  # spec '<+z#010c' — see #1984
