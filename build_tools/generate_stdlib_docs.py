@@ -254,6 +254,11 @@ def _fixup_prose(text: str) -> str:
     return text
 
 
+# A named value-tuple element: a type (ending in an identifier character, `>`, `]`, `)` or `?`)
+# followed by the element's name.
+_TUPLE_ELEMENT_NAME_RE = re.compile(r"^(.*[\w>\]\)?])\s+\w+$", re.DOTALL)
+
+
 def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     """Map a C# type string to Sharpy type notation.
 
@@ -281,11 +286,14 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     if cs_type in _TYPE_MAP:
         return _TYPE_MAP[cs_type]
 
-    # C# value-tuple syntax: (T1, T2, ...)
+    # C# value-tuple syntax: (T1, T2, ...). An element may carry a name — `(int day, int weekday)`,
+    # `(string host, int port) addr` — which is not part of the Python type (#1980).
     if cs_type.startswith("(") and cs_type.endswith(")"):
         inner = cs_type[1:-1]
         parts = _split_generic_args(inner)
-        mapped = ", ".join(map_type(p.strip(), current_module) for p in parts)
+        mapped = ", ".join(
+            map_type(_TUPLE_ELEMENT_NAME_RE.sub(r"\1", p.strip()), current_module) for p in parts
+        )
         return f"tuple[{mapped}]"
 
     # Generic types: Name<T1, T2>
@@ -543,6 +551,7 @@ class DocType:
     name: str
     cs_name: str
     summary: str = ""
+    remarks: str = ""
     members: list[DocMember] = field(default_factory=list)
 
 
@@ -567,6 +576,9 @@ _EXTENSION_THIS_RE = re.compile(r"^this\s+\S+\s+\w+")
 # itself contain `=` or `,` — so they are stripped before the default/type split (#1980 class).
 _PARAM_ATTRIBUTES_RE = re.compile(r'^(?:\s*\[(?:[^\]"]|"[^"]*")*\])+\s*')
 
+# The description prefix of the `__str__` row a `ToString` override renders as (#1980).
+_TOSTRING_REPR_NOTE = "`repr()` uses the same method."
+
 # Skip patterns
 _SKIP_NAMES = {
     "GetEnumerator",
@@ -574,7 +586,6 @@ _SKIP_NAMES = {
     "CompareTo",
     "GetHashCode",
     "Equals",
-    "ToString",
     "Dispose",
     "TryGetValue",
     "ContainsKey",
@@ -714,23 +725,53 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
     return params
 
 
+def _declaration_head(decl: str) -> tuple[str, int, bool]:
+    """Cut a declaration at its first top-level ``=>`` or ``{`` (#1980).
+
+    Returns ``(head, paren_depth, was_cut)``: the text before the body, the unclosed-paren depth
+    at the end of that text, and whether a body start was found. Strings and char literals are
+    skipped, so ``=> "("`` or a ``"{"`` default is never read as structure. The head is what the
+    member patterns match — a greedy parameter match over the whole line used to swallow an
+    expression body (``keys()) -> list[T]``).
+    """
+    depth = 0
+    i = 0
+    n = len(decl)
+    while i < n:
+        c = decl[i]
+        if c in "\"'":
+            i += 1
+            while i < n and decl[i] != c:
+                i += 2 if decl[i] == "\\" else 1
+            i += 1
+            continue
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif depth == 0 and (c == "{" or decl.startswith("=>", i)):
+            return decl[:i].rstrip(), depth, True
+        i += 1
+    return decl, depth, False
+
+
 def _join_declaration(lines: list[str], start: int) -> tuple[str, int]:
     """Join a multi-line declaration into a single string.
 
     Returns (joined_line, end_index).
-    Handles cases where ( ... ) spans multiple lines or { is on the next line.
+    Handles cases where ( ... ) spans multiple lines or { is on the next line. Lines are joined
+    while the parameter list is still open — counted on the declaration head only, so a tuple
+    type (`List<(T, int)> F(`) or a paren inside an expression body is not misread.
     """
     result = lines[start].strip()
     j = start
 
-    # If line has an opening paren, collect until closing paren
-    if "(" in result and ")" not in result:
-        depth = result.count("(") - result.count(")")
-        while depth > 0 and j + 1 < len(lines):
-            j += 1
-            next_line = lines[j].strip()
-            result += " " + next_line
-            depth += next_line.count("(") - next_line.count(")")
+    while j + 1 < len(lines):
+        _, depth, was_cut = _declaration_head(result)
+        if was_cut or depth <= 0:
+            break
+        j += 1
+        result += " " + lines[j].strip()
 
     return result, j
 
@@ -740,28 +781,42 @@ def _join_declaration(lines: list[str], start: int) -> tuple[str, int]:
 # (`global::Sharpy.Iterator<T>`, emitted since every CLR-backed/Sharpy-namespace
 # type is qualified — #1830/#1831/R-AQ) still matches; map_type() strips the
 # `global::` prefix before rendering.
+# A type may contain a tuple — `List<(T, int)>`, `(K, V)`, one nesting level deep — as a
+# parenthesised group NOT directly after an identifier (`Name(` is a parameter list, never a type).
+# Without it every tuple-returning member (`Counter.most_common`, every `items()`) was dropped (#1980).
+_TYPE_RE = (
+    r"(?:[\w<>\[\],\s\?\.:]|(?<!\w)\((?:[^()]|\([^()]*\))*\))+?"
+)
+
+# Matched against the declaration HEAD (`_declaration_head`: cut at the first top-level `=>`/`{`),
+# so the parameter list is the last parenthesised group, optionally followed by generic constraints.
 _METHOD_PATTERN = re.compile(
     r"^public\s+"
     r"((?:(?:static|override|virtual|sealed|new|async|unsafe)\s+)*)"  # modifiers
-    r"([\w<>\[\],\s\?\.:]+?)\s+"  # return type
+    r"(" + _TYPE_RE + r")\s+"  # return type
     r"(\w+)"  # method name
     r"(?:<([^>]+)>)?"  # optional type params
-    r"\((.*)\)"  # parameters (greedy to handle nested parens in type args)
+    r"\((.*?)\)"  # parameters (lazy; the anchored tail below extends it past nested parens)
+    r"\s*(?:where\b.*)?;?$"
 )
 
 _CONST_PATTERN = re.compile(
     r"^public\s+(?:const|static\s+readonly)\s+"
-    r"([\w<>\[\],\s\?\.:]+?)\s+"  # type
+    r"(" + _TYPE_RE + r")\s+"  # type
     r"(\w+)\s*=\s*(.+?)\s*;"
 )
 
 _PROPERTY_PATTERN = re.compile(
     r"^public\s+"
     r"((?:(?:static|override|virtual|sealed|new)\s+)*)"  # modifiers
-    r"([\w<>\[\],\s\?\.:]+?)\s+"  # type
+    r"(" + _TYPE_RE + r")\s+"  # type
     r"(\w+)\s*"  # name
     r"(?:=>|{\s*get)"
 )
+
+# A parameter-list shape: an identifier (optionally with type arguments) directly followed by `(`.
+# A tuple type's `(` follows `<`, `,` or whitespace, so it is not this shape.
+_PARAM_LIST_RE = re.compile(r"\w(?:<[^()]*>)?\(")
 
 
 _NON_PUBLIC_CLASS_RE = re.compile(
@@ -812,6 +867,51 @@ def _find_nonpublic_class_ranges(lines: list[str]) -> list[tuple[int, int]]:
             # so that a class declaration inside a comment is not misread.
             _, _, in_block_comment = _count_code_braces(line, in_block_comment)
 
+    return ranges
+
+
+_PUBLIC_TYPE_DECL_RE = re.compile(
+    r"(?:\[[^\]]*\]\s*)*public\s+"
+    r"(?:(?:sealed|abstract|static|partial|readonly|ref|unsafe|new)\s+)*"
+    r"(?:record\s+(?:class\s+|struct\s+)?|class\s+|struct\s+|interface\s+|enum\s+)"
+    r"(\w+)"
+)
+
+
+def _find_public_class_ranges(lines: list[str]) -> list[tuple[str, int, int]]:
+    """Find the line range of every public class/struct/record/interface/enum (#1980).
+
+    Returns ``(name, start, end)`` tuples (0-based inclusive, in declaration order), where
+    ``start`` is the declaration line and ``end`` the line of its closing brace. Each declaration
+    is brace-counted independently, so a nested type gets its own range INSIDE its parent's.
+    A member belongs to the innermost range it is declared in — its owner is a parse fact, not
+    its position relative to the next annotated class.
+    """
+    ranges: list[tuple[str, int, int]] = []
+    in_block_comment = False
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        match = None if in_block_comment else _PUBLIC_TYPE_DECL_RE.match(stripped)
+        _, _, in_block_comment = _count_code_braces(line, in_block_comment)
+        if not match:
+            continue
+
+        depth = 0
+        seen_open = False
+        block = False
+        end = len(lines) - 1
+        for j in range(idx, len(lines)):
+            opens, closes, block = _count_code_braces(lines[j], block)
+            depth += opens - closes
+            if opens:
+                seen_open = True
+            if seen_open and depth <= 0:
+                end = j
+                break
+            if not seen_open and lines[j].rstrip().endswith(";"):
+                end = j  # a bodiless declaration (`public record P(int X);`)
+                break
+        ranges.append((match.group(1), idx, end))
     return ranges
 
 
@@ -1010,11 +1110,13 @@ def parse_cs_file(
     is_extension: bool = False,
     is_builtins: bool = False,
     line_range: tuple[int, int] | None = None,
+    exclude_ranges: list[tuple[int, int]] | None = None,
 ) -> list[DocMember]:
     """Parse a C# file and extract documented public members.
 
     If *line_range* is given as ``(start, end)`` (0-based inclusive), only
-    declarations within that line range are considered.
+    declarations within that line range are considered; declarations inside any of
+    *exclude_ranges* (nested or annotated types owned elsewhere) are skipped.
     """
     text = filepath.read_text(encoding="utf-8")
     lines = text.split("\n")
@@ -1032,8 +1134,10 @@ def parse_cs_file(
             i += 1
             continue
 
-        # Skip members inside internal/private classes
-        if any(start <= i <= end for start, end in _non_public_ranges):
+        # Skip members inside internal/private classes and ranges owned by another type
+        if any(start <= i <= end for start, end in _non_public_ranges) or any(
+            start <= i <= end for start, end in exclude_ranges or ()
+        ):
             i += 1
             continue
 
@@ -1081,7 +1185,8 @@ def parse_cs_file(
             continue
 
         # Methods (must have parentheses)
-        method_match = _METHOD_PATTERN.match(joined)
+        head, _, _ = _declaration_head(joined)
+        method_match = _METHOD_PATTERN.match(head)
         if method_match and "(" in joined:
             modifiers, ret_type, mname, type_params, param_str = method_match.groups()
 
@@ -1130,13 +1235,19 @@ def parse_cs_file(
             if mapped_ret and mapped_ret != "None":
                 sig += f" -> {mapped_ret}"
 
+            summary = doc.get("summary", "")
+            if mname == "ToString":
+                # The dunder table maps BOTH `__str__` and `__repr__` to `ToString()`: one row,
+                # not two spellings of one fact.
+                summary = f"{_TOSTRING_REPR_NOTE} {summary}".rstrip()
+
             members.append(
                 DocMember(
                     kind="method",
                     name=sharpy_name,
                     cs_name=mname,
                     signature=sig,
-                    summary=doc.get("summary", ""),
+                    summary=summary,
                     params=params,
                     returns=doc.get("returns", ""),
                     return_type=mapped_ret,
@@ -1149,9 +1260,10 @@ def parse_cs_file(
             i = end_i + 1
             continue
 
-        # Properties (no parentheses in the declaration part before => or {)
+        # Properties (no parameter list in the declaration part before => or {; a tuple type's
+        # parentheses are not one)
         decl_part = joined.split("=>")[0].split("{")[0]
-        if "(" not in decl_part:
+        if not _PARAM_LIST_RE.search(decl_part):
             prop_match = _PROPERTY_PATTERN.match(joined)
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
@@ -1173,6 +1285,20 @@ def parse_cs_file(
         i = end_i + 1
 
     return members
+
+
+def _module_level(members: list[DocMember]) -> list[DocMember]:
+    """Members rendered at MODULE level (or as builtins) — a `ToString` override is dropped here.
+
+    `__str__` is a dunder of the type that declares it; an un-annotated class's members render at
+    module level, where its `ToString` would read as a module function `email.__str__()` (#1980).
+    """
+    return [m for m in members if m.cs_name != "ToString"]
+
+
+def _get_class_doc(lines: list[str], class_line: int) -> dict:
+    """The XML doc of the type declared at *class_line* — its own, not the file's first (#1980)."""
+    return _parse_xml_doc(_collect_doc_lines(lines, class_line))
 
 
 def _get_class_summary(filepath: Path) -> str:
@@ -1239,7 +1365,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
         for cs_file in sorted(subdir.glob("*.cs")):
             if cs_file.name == "__Init__.cs":
                 members = parse_cs_file(cs_file)
-                all_members.extend(members)
+                all_members.extend(_module_level(members))
                 continue
 
             # Check if this file contains SharpyModuleType-annotated classes.
@@ -1275,34 +1401,45 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                             (display_name, class_name, class_line, 0)
                         )
 
-                # Compute end lines (start of next class or EOF)
+                # Each annotated class owns exactly its declaring brace range (#1980); a nested
+                # type's range is excluded from its parent. The old bound — "up to the next
+                # annotated class" — folded an un-annotated trailing class into the last one.
+                public_ranges = _find_public_class_ranges(file_lines)
+                range_by_start = {start: end for _, start, end in public_ranges}
+                owned: list[tuple[int, int]] = []
                 for ci in range(len(annotated_classes)):
                     display_name, class_name, start, _ = annotated_classes[ci]
-                    end = (
-                        annotated_classes[ci + 1][2] - 1
-                        if ci + 1 < len(annotated_classes)
-                        else len(file_lines) - 1
-                    )
+                    end = range_by_start.get(start, len(file_lines) - 1)
                     annotated_classes[ci] = (display_name, class_name, start, end)
+                    owned.append((start, end))
 
                 # Parse each class range separately
                 for display_name, class_name, start, end in annotated_classes:
-                    type_summary = _get_class_summary(cs_file)
+                    class_doc = _get_class_doc(file_lines, start)
+                    nested = [
+                        (s, e) for _, s, e in public_ranges if start < s and e <= end
+                    ]
                     type_members = parse_cs_file(
                         cs_file,
                         line_range=(start, end),
+                        exclude_ranges=nested,
                     )
                     all_types.append(
                         DocType(
                             name=display_name,
                             cs_name=cs_file.stem,
-                            summary=type_summary,
+                            summary=class_doc.get("summary", ""),
+                            remarks=class_doc.get("remarks", ""),
                             members=type_members,
                         )
                     )
+
+                # Un-annotated public classes in an annotated file are module-level, as they are
+                # in every non-annotated file.
+                all_members.extend(_module_level(parse_cs_file(cs_file, exclude_ranges=owned)))
             else:
                 members = parse_cs_file(cs_file)
-                all_members.extend(members)
+                all_members.extend(_module_level(members))
 
         modules.append(
             DocModule(
@@ -1345,7 +1482,14 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
                 file_summary = _get_class_summary(cs_file)
                 if file_summary:
                     summary = file_summary
-            members = parse_cs_file(cs_file, is_extension=is_extension)
+            # A type page documents ONE type: members of a type nested in it (`Dict.KeyEnumerator`,
+            # `List.Enumerator`) are not the page type's members (#1980).
+            ranges = _find_public_class_ranges(cs_file.read_text(encoding="utf-8").split("\n"))
+            nested = [
+                (s, e) for _, s, e in ranges
+                if any(ps < s and e <= pe for _, ps, pe in ranges)
+            ]
+            members = parse_cs_file(cs_file, is_extension=is_extension, exclude_ranges=nested)
             all_members.extend(members)
 
         types.append(
@@ -1369,7 +1513,7 @@ def discover_builtins(core_dir: Path) -> DocModule:
         text = cs_file.read_text(encoding="utf-8")
         if "partial class Builtins" in text:
             members = parse_cs_file(cs_file, is_builtins=True)
-            all_members.extend(members)
+            all_members.extend(_module_level(members))
 
     # Builtins/ subdirectory — only files containing partial class Builtins
     builtins_dir = core_dir / "Builtins"
@@ -1381,7 +1525,7 @@ def discover_builtins(core_dir: Path) -> DocModule:
             if "partial class Builtins" not in text:
                 continue
             members = parse_cs_file(cs_file, is_builtins=True)
-            all_members.extend(members)
+            all_members.extend(_module_level(members))
 
     return DocModule(
         name="builtins",
@@ -1548,6 +1692,11 @@ def render_module_page(module: DocModule) -> str:
         lines.append("")
         if doc_type.summary:
             lines.append(_fixup_prose(doc_type.summary))
+            lines.append("")
+        if doc_type.remarks:
+            lines.append("!!! note")
+            for remark_line in _fixup_prose(doc_type.remarks).split("\n"):
+                lines.append(f"    {remark_line.strip()}")
             lines.append("")
 
         type_constants = [m for m in doc_type.members if m.kind == "constant"]

@@ -14,6 +14,7 @@ from build_tools.generate_stdlib_docs import (
     _collect_doc_lines,
     _count_code_braces,
     _find_nonpublic_class_ranges,
+    _find_public_class_ranges,
     _fixup_prose,
     _parse_params,
     _parse_xml_doc,
@@ -1823,3 +1824,279 @@ class TestVariadicAndKeywordReferenceRendering:
         members = parse_cs_file(f)
         assert len(members) == 1
         assert members[0].signature == "union(*others: int) -> int"
+
+
+# ---------------------------------------------------------------------------
+# #1980: members attributed by declaring type; per-class summaries/remarks;
+# `=>`-bodied and tuple-returning signatures; ToString renders as __str__
+# ---------------------------------------------------------------------------
+
+
+class TestDeclaringTypeAttribution:
+    """A member's owner is a parse fact (the brace range it is declared in), not a file position."""
+
+    # Shaped like src/Sharpy.Stdlib/Collections/Collections.cs: three annotated classes, each with
+    # its own summary, then an UN-annotated module-exports class trailing the last annotated one.
+    _MULTI = textwrap.dedent(
+        """\
+        using System;
+        namespace Sharpy
+        {
+            /// <summary>A double-ended queue.</summary>
+            [SharpyModuleType("collections", "Deque")]
+            public class Deque<T>
+            {
+                /// <summary>Append x.</summary>
+                public void Append(T x) { }
+            }
+
+            /// <summary>A dict subclass for counting hashable objects.</summary>
+            /// <remarks>Iterates over the KEYS in first-seen order.</remarks>
+            [SharpyModuleType("collections", "Counter")]
+            public class Counter<T> where T : notnull
+            {
+                /// <summary>Return the n most common elements and their counts.</summary>
+                public Sharpy.List<(T, int)> MostCommon(int? n = null)
+                {
+                    return new Sharpy.List<(T, int)>();
+                }
+
+                /// <summary>The (element, count) pairs.</summary>
+                public List<(T, int)> Items() => new List<(T, int)>(_counts.Select(kv => (kv.Key, kv.Value)));
+
+                /// <summary>The keys.</summary>
+                public List<T> Keys() => new List<T>(_counts.Keys);
+
+                /// <summary>Whether key is counted.</summary>
+                public bool Contains(T key) => _counts.ContainsKey(key);
+
+                /// <summary>Python's repr.</summary>
+                /// <remarks>Most-common order.</remarks>
+                public override string ToString() => "Counter()";
+
+                /// <inheritdoc/>
+                public override int GetHashCode() => 0;
+
+                /// <summary>Content equality.</summary>
+                public override bool Equals(object? obj) => false;
+            }
+
+            /// <summary>A dict that calls a factory for missing keys.</summary>
+            [SharpyModuleType("collections", "DefaultDict")]
+            public class DefaultDict<K, V>
+            {
+                /// <summary>The default factory.</summary>
+                public Func<V> DefaultFactory { get; }
+            }
+
+            /// <summary>Module exports for collections.</summary>
+            public static partial class Collections
+            {
+                /// <summary>The Deque type.</summary>
+                public static Type DequeType => typeof(Deque<>);
+            }
+        }
+        """
+    )
+
+    def _module(self, tmp_path: Path) -> DocModule:
+        TestDiscoverModulesTypeAnnotations._write_module(
+            None, tmp_path, "Collections", "collections", "Collections.cs", self._MULTI
+        )
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        return modules[0]
+
+    def _type(self, module: DocModule, name: str) -> DocType:
+        return next(t for t in module.types if t.name == name)
+
+    def _sigs(self, doc_type: DocType) -> list[str]:
+        return [m.signature for m in doc_type.members if m.kind == "method"]
+
+    def test_find_public_class_ranges_nested_and_trailing(self):
+        lines = textwrap.dedent(
+            """\
+            namespace N
+            {
+                public class Outer
+                {
+                    public int A() => 1;
+                    public struct Inner
+                    {
+                        public int B() => 2;
+                    }
+                }
+                public static class Trailing
+                {
+                }
+            }
+            """
+        ).split("\n")
+        assert _find_public_class_ranges(lines) == [
+            ("Outer", 2, 9),
+            ("Inner", 5, 8),
+            ("Trailing", 10, 12),
+        ]
+
+    def test_each_class_reads_its_own_summary(self, tmp_path: Path):
+        module = self._module(tmp_path)
+        assert [t.name for t in module.types] == ["Deque", "Counter", "DefaultDict"]
+        assert self._type(module, "Deque").summary == "A double-ended queue."
+        assert self._type(module, "Counter").summary == "A dict subclass for counting hashable objects."
+        assert self._type(module, "DefaultDict").summary == "A dict that calls a factory for missing keys."
+
+    def test_unannotated_trailing_class_is_module_level_not_folded(self, tmp_path: Path):
+        module = self._module(tmp_path)
+        default_dict = self._type(module, "DefaultDict")
+        assert [m.name for m in default_dict.members] == ["default_factory"]
+        assert [m.name for m in module.members] == ["deque_type"]
+
+    def test_expression_bodied_signatures_stop_at_the_arrow(self, tmp_path: Path):
+        sigs = self._sigs(self._type(self._module(tmp_path), "Counter"))
+        assert "keys() -> list[T]" in sigs
+        assert "contains(key: T) -> bool" in sigs
+        assert not any("=>" in s or "= >" in s or ")) ->" in s for s in sigs)
+
+    def test_tuple_returning_members_are_present(self, tmp_path: Path):
+        sigs = self._sigs(self._type(self._module(tmp_path), "Counter"))
+        assert "most_common(n: int | None = None) -> list[tuple[T, int]]" in sigs
+        assert "items() -> list[tuple[T, int]]" in sigs
+
+    def test_tostring_renders_one_str_row_with_its_remarks(self, tmp_path: Path):
+        counter = self._type(self._module(tmp_path), "Counter")
+        names = [m.name for m in counter.members if m.kind == "method"]
+        # Positive control and absence in one input: ToString renders, Equals/GetHashCode do not.
+        assert names.count("__str__") == 1
+        assert "__eq__" not in names and "__hash__" not in names
+
+        page = render_module_page(self._module(tmp_path))
+        section = page.split("## Counter", 1)[1].split("## DefaultDict", 1)[0]
+        assert "### `__str__() -> str`\n\n`repr()` uses the same method. Python's repr.\n" in section
+        assert "!!! note\n    Most-common order." in section
+
+    def test_class_remarks_render_as_a_note_under_the_heading(self, tmp_path: Path):
+        module = self._module(tmp_path)
+        assert self._type(module, "Counter").remarks == "Iterates over the KEYS in first-seen order."
+        page = render_module_page(module)
+        assert (
+            "## Counter\n\nA dict subclass for counting hashable objects.\n\n"
+            "!!! note\n    Iterates over the KEYS in first-seen order.\n"
+        ) in page
+
+    def test_nested_public_type_members_are_not_the_parents(self, tmp_path: Path):
+        body = textwrap.dedent(
+            """\
+            namespace Sharpy
+            {
+                /// <summary>Outer summary.</summary>
+                [SharpyModuleType("mod", "Outer")]
+                public class Outer
+                {
+                    /// <summary>Outer method.</summary>
+                    public int Before() => 1;
+
+                    /// <summary>Nested.</summary>
+                    public struct KeyEnumerator
+                    {
+                        /// <summary>Nested method.</summary>
+                        public bool MoveNext() => false;
+                    }
+
+                    /// <summary>Outer method after the nested type.</summary>
+                    public int After() => 2;
+                }
+            }
+            """
+        )
+        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Mod", "mod", "Outer.cs", body)
+        outer = discover_modules(tmp_path)[0].types[0]
+        assert [m.name for m in outer.members] == ["before", "after"]
+
+    def test_named_tuple_elements_render_their_types_only(self):
+        assert map_type("(int day, int weekday)") == "tuple[int, int]"
+        assert map_type("List<(int a, int b, int size)>") == "list[tuple[int, int, int]]"
+        assert map_type("(string? stdout, string? stderr)") == "tuple[str | None, str | None]"
+        assert map_type("(Bytes data, (string host, int port) addr)") == "tuple[Bytes, tuple[str, int]]"
+        assert map_type("(T, int)") == "tuple[T, int]"
+
+    def test_module_level_tostring_is_not_a_module_function(self, tmp_path: Path):
+        """An un-annotated class's members render at module level; its ToString must not become
+        `mod.__str__()`. The annotated class's ToString in the same file is the positive control."""
+        body = textwrap.dedent(
+            """\
+            namespace Sharpy
+            {
+                /// <summary>A message.</summary>
+                [SharpyModuleType("email", "EmailMessage")]
+                public class EmailMessage
+                {
+                    /// <summary>Message repr.</summary>
+                    public override string ToString() => "";
+                }
+
+                /// <summary>An attachment.</summary>
+                public class Attachment
+                {
+                    /// <summary>The file name.</summary>
+                    public string Filename { get; }
+
+                    /// <summary>Attachment repr.</summary>
+                    public override string ToString() => "";
+                }
+            }
+            """
+        )
+        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Email", "email", "EmailMessage.cs", body)
+        (tmp_path / "Email" / "Plain.cs").write_text(
+            textwrap.dedent(
+                """\
+                namespace Sharpy
+                {
+                    public class Policy
+                    {
+                        /// <summary>Policy repr.</summary>
+                        public override string ToString() => "";
+
+                        /// <summary>Clone.</summary>
+                        public Policy Clone() => this;
+                    }
+                }
+                """
+            ),
+            encoding="utf-8",
+        )
+        module = discover_modules(tmp_path)[0]
+        assert [m.name for m in module.types[0].members] == ["__str__"]
+        assert sorted(m.name for m in module.members) == ["clone", "filename"]
+
+    def test_core_type_page_excludes_a_nested_enumerator(self, tmp_path: Path):
+        from build_tools.generate_stdlib_docs import discover_core_types
+
+        subdir = tmp_path / "Partial.List"
+        subdir.mkdir()
+        (subdir / "List.Enumerator.cs").write_text(
+            textwrap.dedent(
+                """\
+                namespace Sharpy
+                {
+                    public partial class List<T>
+                    {
+                        /// <summary>Append x.</summary>
+                        public void Append(T x) { }
+
+                        public struct Enumerator
+                        {
+                            /// <summary>Reset the enumerator.</summary>
+                            public void Reset() { }
+                        }
+
+                        /// <summary>Clear.</summary>
+                        public void Clear() { }
+                    }
+                }
+                """
+            ),
+            encoding="utf-8",
+        )
+        page = next(t for t in discover_core_types(tmp_path) if t.name == "list")
+        assert [m.name for m in page.members] == ["append", "clear"]
