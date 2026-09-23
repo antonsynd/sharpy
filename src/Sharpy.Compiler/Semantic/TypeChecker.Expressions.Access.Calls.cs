@@ -2466,7 +2466,7 @@ internal partial class TypeChecker
                         .SelectMany(c => c.Parameters.Select(
                             p => CanonicalKeywordSpellingOf(p, c.ClrMethodName != null)))
                         .Distinct(StringComparer.Ordinal);
-                ReportUnknownKeywordArgument(kwarg, spellings);
+                ReportUnknownKeywordArgument(kwarg, spellings, SharedKeywordSteer(candidates));
                 return true;
 
             case OverloadFailureKind.PositionalOnlyKeyword:
@@ -3798,8 +3798,12 @@ internal partial class TypeChecker
 
             if (bindingFailure == OverloadFailureKind.UnknownKeyword)
             {
+                // The resolved callee was recorded at the seam before its keywords are validated, so
+                // its steer is a symbol fact read from there (null for a constructor route, which
+                // records no target).
                 ReportUnknownKeywordArgument(kwarg,
-                    parameters.Select(p => CanonicalKeywordSpellingOf(p, clrParameterNames)));
+                    parameters.Select(p => CanonicalKeywordSpellingOf(p, clrParameterNames)),
+                    _semanticInfo.GetCallTarget(call)?.KeywordSteer);
             }
             else if (CanonicalKeywordSpellingOf(param!, clrParameterNames) is { } canonicalSpelling
                 && canonicalSpelling != kwarg.Name)
@@ -3872,6 +3876,19 @@ internal partial class TypeChecker
     /// for a verbatim-stored CLR name.
     /// </summary>
     /// <summary>
+    /// The steer every candidate of an overload set declares alike (<see cref="FunctionSymbol.KeywordSteer"/>),
+    /// or null when any candidate declares none or they disagree — a refusal is steered only when the
+    /// steer is true of whichever candidate the user meant (#1955).
+    /// </summary>
+    private static string? SharedKeywordSteer(IReadOnlyList<FunctionSymbol>? candidates)
+    {
+        if (candidates == null || candidates.Count == 0)
+            return null;
+        var steer = candidates[0].KeywordSteer;
+        return steer != null && candidates.All(c => c.KeywordSteer == steer) ? steer : null;
+    }
+
+    /// <summary>
     /// SPY0234 at the keyword's own span, with a did-you-mean drawn from
     /// <paramref name="candidateSpellings"/>. The ONE phrasing of "this callee has no such
     /// parameter": the single-candidate route (<see cref="ValidateKeywordArguments"/>) and the
@@ -3879,12 +3896,16 @@ internal partial class TypeChecker
     /// overloaded callee cannot answer an unknown keyword with a different code or a different span
     /// than its single-candidate twin (#1810, Decision 6(b)).
     /// </summary>
-    private void ReportUnknownKeywordArgument(KeywordArgument kwarg, IEnumerable<string> candidateSpellings)
+    private void ReportUnknownKeywordArgument(
+        KeywordArgument kwarg, IEnumerable<string> candidateSpellings, string? steer = null)
     {
         var suggestion = EditDistance.FindClosestMatch(kwarg.Name, candidateSpellings);
         var unknownMessage = $"Unknown keyword argument '{kwarg.Name}'";
         if (suggestion != null)
             unknownMessage += $". Did you mean '{suggestion}'?";
+        // The callee's own steer (R-BE, #1955) — appended after any did-you-mean.
+        if (steer != null)
+            unknownMessage += (suggestion != null ? " " : ". ") + steer;
         AddError(unknownMessage,
             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
             span: kwarg.Span ?? kwarg.Value.Span,
@@ -6146,7 +6167,7 @@ internal partial class TypeChecker
                     ReportUnknownKeywordArgument(kwarg, candidates
                         .SelectMany(c => c.Parameters.Skip(1).Select(
                             pm => CanonicalKeywordSpellingOf(pm, c.ClrMethodName != null)))
-                        .Distinct(StringComparer.Ordinal));
+                        .Distinct(StringComparer.Ordinal), SharedKeywordSteer(candidates));
                     break;
                 case OverloadFailureKind.PositionalOnlyKeyword:
                     ReportPositionalOnlyByKeyword(kwarg);
@@ -6383,6 +6404,7 @@ internal partial class TypeChecker
         _semanticInfo.SetCallTarget(call, symbol);
         CheckDeprecatedUsage(symbol, call);
         CheckStaticFormatSpecArguments(symbol, call);
+        CheckStaticFormatTemplateArguments(symbol, call);
     }
 
     /// <summary>
@@ -6426,6 +6448,47 @@ internal partial class TypeChecker
             {
                 AddError(message, specLiteral.LineStart, specLiteral.ColumnStart,
                     code: DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification, span: specLiteral.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The <c>str.format</c> static twin (#1956): when the callee's receiver is a format template
+    /// (<see cref="FunctionSymbol.IsFormatTemplateReceiver"/>, from Core's
+    /// <c>FormatTemplateAttribute</c>) and the call's receiver is a string literal, the template is
+    /// split by <see cref="FormatTemplateGrammar"/>, each field is paired with the positional operand
+    /// it reads, and its static spec is validated against that operand's kind (<see cref="FormatOperandKind.Str"/>
+    /// under a conversion) through the one <see cref="FormatSpecGrammar"/>. A refusal is SPY0609 at
+    /// the template literal with CPython's wording. A field whose operand or spec is not static (a
+    /// nested spec, a keyword name, an attribute/index access, an index past the arguments, any
+    /// spread argument) and a template Core would reject outright are left to the runtime.
+    /// </summary>
+    private void CheckStaticFormatTemplateArguments(FunctionSymbol symbol, FunctionCall call)
+    {
+        if (!symbol.IsFormatTemplateReceiver
+            || call.Function is not MemberAccess { Object: var receiver }
+            || UnwrapParenthesized(receiver) is not StringLiteral template
+            || call.Arguments.Any(a => a is SpreadElement)
+            || FormatTemplateGrammar.Split(template.Value) is not { } holes)
+            return;
+
+        foreach (var hole in holes)
+        {
+            if (hole.ArgumentIndex is not { } index || index >= call.Arguments.Length
+                || hole.Spec is not { Length: > 0 } spec)
+                continue;
+
+            var operand = call.Arguments[index];
+            var operandKind = hole.Conversion != null
+                ? FormatOperandKind.Str
+                : FormatOperandKindOf(
+                    UnwrapParenthesized(operand),
+                    _semanticInfo.GetExpressionType(operand) ?? SemanticType.Unknown);
+            var message = FormatSpecGrammar.Validate(spec, operandKind);
+            if (message != null)
+            {
+                AddError(message, template.LineStart, template.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification, span: template.Span);
             }
         }
     }

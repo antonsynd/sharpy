@@ -64,6 +64,8 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         // Sharpy accepts the spec by keyword (python3's format() takes no keywords — a pre-existing
         // deviation); the keyword-bound literal is a binding the check must reach all the same.
         ("builtin_keyword", (v, spec) => $"\"[\" + format({v}, format_spec=\"{spec}\") + \"]\"", false),
+        // A literal str.format template: the hole's spec is paired with its positional operand.
+        ("strformat", (v, spec) => $"\"[{{:{spec}}}]\".format({v})", false),
     };
 
     [Fact]
@@ -99,12 +101,14 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
                         continue;
                     }
 
-                    // A call route reports at the spec literal (the f-string route at the hole's value).
+                    // A call route reports at the spec literal, str.format at the template literal (the
+                    // f-string route at the hole's value).
                     if (route != "fstring")
                     {
-                        var specLiteralOffset = source.IndexOf($"\"{cell.Spec}\"", StringComparison.Ordinal);
-                        if (spy0609[0].Span?.Start != specLiteralOffset)
-                            failures.Add($"{label}: SPY0609 at offset {spy0609[0].Span?.Start}, expected the spec literal at {specLiteralOffset}");
+                        var anchor = route == "strformat" ? $"\"[{{:{cell.Spec}}}]\"" : $"\"{cell.Spec}\"";
+                        var anchorOffset = source.IndexOf(anchor, StringComparison.Ordinal);
+                        if (spy0609[0].Span?.Start != anchorOffset)
+                            failures.Add($"{label}: SPY0609 at offset {spy0609[0].Span?.Start}, expected the literal at {anchorOffset}");
                     }
                     continue;
                 }
@@ -178,6 +182,122 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
                 d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification && d.Message == eq))
             failures.Add("parenthesized_literal: expected SPY0609, got: "
                 + string.Join("; ", parenthesized.RawDiagnostics.Select(d => d.Code + ": " + d.Message)));
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The str.format route pairs each field of a literal template with the operand it reads, the way
+    /// Core's <c>Vformat</c> does (#1956): manual and auto numbering, a conversion (the spec then
+    /// formats a <c>str</c>), and an auto field AFTER a nested-spec field (whose nested field claims an
+    /// index). A field whose spec or operand is not static — a nested spec, an index access, a
+    /// <c>str</c>-variable template — and a template Core rejects outright (mixed numbering) keep the
+    /// runtime refusal; valid fields keep printing.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void StrFormatTemplate_FieldsPairWithTheirOperands_1956()
+    {
+        const string eq = "'=' alignment not allowed in string format specifier";
+        // python3 3.12 for each expression (s = 'ab'): the refusal or the rendering noted per row.
+        var cells = new (string Label, string Expr, string? Static, string? Runtime, string? Output)[]
+        {
+            ("manual", "\"{0:=5}\".format(s)", eq, null, null),
+            ("manual_second", "\"{1:=5}\".format(1, s)", eq, null, null),
+            ("auto_second", "\"{}{:=5}\".format(1, s)", eq, null, null),
+            ("conversion", "\"{!r:=8}\".format(5)", eq, null, null),
+            ("after_nested", "\"{:{}}{:=5}\".format(1, \">3\", s)", eq, null, null),
+            ("nested_dynamic", "\"{:{}}\".format(s, \"=5\")", null, eq, null),
+            ("index_field", "\"{0[0]:=5}\".format(xs)", null, eq, null),
+            ("str_variable_template", "t.format(s)", null, eq, null),
+            ("mixed_numbering", "\"{}{0:=5}\".format(s)", null,
+                "cannot switch from automatic field numbering to manual field specification", null),
+            ("ok_manual", "\"{0:>5}\".format(s)", null, null, "   ab"),
+            ("ok_conversion", "\"{!r:>6}\".format(s)", null, null, "  'ab'"),
+            ("ok_nested", "\"{:{}}{:>3}\".format(1, \">3\", 2)", null, null, "  1  2"),
+        };
+
+        var failures = new List<string>();
+        foreach (var (label, expr, staticMessage, runtime, output) in cells)
+        {
+            var source = "def main() -> None:\n    s: str = \"ab\"\n    t: str = \"{:=5}\"\n    xs: list[str] = [\"ab\"]\n"
+                + "    print(" + expr + ")\n";
+            var result = CompileAndExecute(source, executionTimeoutMs: 15_000);
+            var spy0609 = result.RawDiagnostics
+                .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification).ToList();
+
+            if (staticMessage != null)
+            {
+                var templateOffset = source.IndexOf(expr.StartsWith('"') ? expr[..(expr.IndexOf("\".", StringComparison.Ordinal) + 1)] : expr,
+                    StringComparison.Ordinal);
+                if (spy0609.Count != 1 || spy0609[0].Message != staticMessage || spy0609[0].Span?.Start != templateOffset)
+                    failures.Add($"{label}: expected one SPY0609 '{staticMessage}' at the template (offset {templateOffset}), got "
+                        + string.Join("; ", result.RawDiagnostics.Select(d => $"{d.Code}@{d.Span?.Start}: {d.Message}")));
+            }
+            else if (spy0609.Count != 0)
+            {
+                failures.Add($"{label}: expected no SPY0609, got: {string.Join("; ", spy0609.Select(d => d.Message))}");
+            }
+            else if (runtime != null && !IsRuntimeRefusal(result, runtime))
+            {
+                failures.Add($"{label}: expected a runtime '{runtime}', got success={result.Success} "
+                    + $"errors: {string.Join("; ", result.CompilationErrors)} stderr: {result.StandardError.Trim()}");
+            }
+            else if (output != null && (!result.Success || result.StandardOutput.TrimEnd('\n', '\r') != output))
+            {
+                failures.Add($"{label}: expected '{output}', got success={result.Success} stdout='{result.StandardOutput}' "
+                    + $"errors: {string.Join("; ", result.CompilationErrors)}");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// #1955 (R-BE): str.format takes positional fields only, so a keyword stays SPY0234 — and the
+    /// message now carries the Core-declared steer to the two spellings that do take names. The
+    /// positional and <c>format_map</c> spellings run; a callee that declares no steer gets none
+    /// (the absence row's positive control is that its SPY0234 is present).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void StrFormatKeywords_CarryTheSteer_1955()
+    {
+        const string steer = "str.format takes positional fields only; use an f-string (f\"{...}\") or format_map({...})";
+        var failures = new List<string>();
+
+        foreach (var (label, expr) in new[]
+        {
+            ("named_field", "\"{name}\".format(name=1)"),
+            ("nested_width", "\"{:{w}}\".format(1234, w=8)"),
+        })
+        {
+            var result = CompileAndExecute("def main() -> None:\n    print(" + expr + ")\n", executionTimeoutMs: 15_000);
+            var spy0234 = result.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.UnknownKeywordArgument).ToList();
+            if (spy0234.Count != 1 || !spy0234[0].Message.EndsWith(steer, StringComparison.Ordinal))
+                failures.Add($"{label}: expected one SPY0234 ending with the steer, got: "
+                    + string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message)));
+        }
+
+        // python3: '{0}'.format(1) -> '1'; '{x}'.format_map({'x': 1}) -> '1'
+        foreach (var (label, expr) in new[]
+        {
+            ("positional", "\"{0}\".format(1)"),
+            ("format_map", "\"{x}\".format_map({\"x\": 1})"),
+        })
+        {
+            var result = CompileAndExecute("def main() -> None:\n    print(" + expr + ")\n", executionTimeoutMs: 15_000);
+            if (!result.Success || result.StandardOutput.TrimEnd('\n', '\r') != "1")
+                failures.Add($"{label}: expected '1', got success={result.Success} stdout='{result.StandardOutput}' "
+                    + $"errors: {string.Join("; ", result.CompilationErrors)}");
+        }
+
+        var unsteered = CompileAndExecute(
+            "def f(a: int) -> int:\n    return a\n\n\ndef main() -> None:\n    print(f(b=1))\n", executionTimeoutMs: 15_000);
+        var plain = unsteered.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Semantic.UnknownKeywordArgument).ToList();
+        if (plain.Count == 0 || plain.Any(d => d.Message.Contains("format_map", StringComparison.Ordinal)))
+            failures.Add("unsteered: expected a SPY0234 without the steer, got: "
+                + string.Join("; ", unsteered.RawDiagnostics.Select(d => d.Code + ": " + d.Message)));
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }

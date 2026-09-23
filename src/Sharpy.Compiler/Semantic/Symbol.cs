@@ -318,6 +318,22 @@ public record FunctionSymbol : Symbol
     /// </summary>
     public int? CacheMaxSize { get; internal set; }
 
+    /// <summary>
+    /// True when this method's receiver is a PEP 3101 format template whose replacement fields are
+    /// filled from the positional arguments — Core's <c>FormatTemplateAttribute</c> on the
+    /// <c>this string</c> parameter of <c>StringExtensions.Format</c> (<c>str.format</c>), read at
+    /// registration by <c>BuiltinRegistry.DiscoverStringExtensionMethods</c>. Read by
+    /// <c>TypeChecker.CheckStaticFormatTemplateArguments</c> (#1956).
+    /// </summary>
+    public bool IsFormatTemplateReceiver { get; init; }
+
+    /// <summary>
+    /// The sentence appended to SPY0234 when a call to this method passes a keyword it cannot
+    /// accept — Core's <c>SharpyKeywordSteerAttribute</c> (R-BE, #1955); null for every method that
+    /// declares none.
+    /// </summary>
+    public string? KeywordSteer { get; init; }
+
     public virtual bool Equals(FunctionSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

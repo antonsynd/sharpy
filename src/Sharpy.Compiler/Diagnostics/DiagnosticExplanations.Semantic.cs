@@ -334,7 +334,7 @@ public static partial class DiagnosticExplanations
             "Nothing is typically used as a return type for functions that never return:\ndef fail(msg: str) -> Nothing:\n    raise Error(msg)");
 
         Add(dict, DiagnosticCodes.Semantic.UnknownKeywordArgument, "Unknown keyword argument", "Semantic",
-            "A keyword argument was passed to a function using a name that does not match any parameter. Check the function signature for the correct parameter names.",
+            "A keyword argument was passed to a function using a name that does not match any parameter. Check the function signature for the correct parameter names. When the callee declares a steer (a Core SharpyKeywordSteer fact), the message ends with it: str.format takes positional fields only, so \"{name}\".format(name=1) is steered to an f-string (f\"{name}\") or format_map({\"name\": 1}).",
             "def greet(name: str):\n    print(name)\n\ngreet(nme=\"Alice\")  # typo in 'name'",
             "Use the correct parameter name:\n  greet(name=\"Alice\")");
 

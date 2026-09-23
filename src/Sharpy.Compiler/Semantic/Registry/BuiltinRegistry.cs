@@ -761,9 +761,19 @@ internal class BuiltinRegistry
                 // the first parameter (the `this string` extension target).
                 var signature = BuildExtensionMethodSignature(method);
                 var expanded = OverloadExpander.Expand(signature, "StringExtensions");
+                // The stripped `this string` parameter and the method itself carry two Core facts the
+                // signature cannot: the receiver is a format template (#1956), and the steer for an
+                // unknown keyword (#1955).
+                var isFormatTemplateReceiver = HasCoreAttribute(
+                    method.GetParameters()[0].CustomAttributes, "Sharpy.FormatTemplateAttribute");
+                var keywordSteer = GetKeywordSteer(method);
                 foreach (var overloadSig in expanded)
                 {
-                    methods.Add(_discovery.ConvertToFunctionSymbol(overloadSig, "str", sharedTypeParams: null));
+                    methods.Add(_discovery.ConvertToFunctionSymbol(overloadSig, "str", sharedTypeParams: null) with
+                    {
+                        IsFormatTemplateReceiver = isFormatTemplateReceiver,
+                        KeywordSteer = keywordSteer,
+                    });
                 }
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
@@ -771,6 +781,23 @@ internal class BuiltinRegistry
                 // Skip methods that can't be mapped (same pattern as OverloadIndexBuilder)
             }
         }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="attributes"/> holds the Core attribute named <paramref name="fullName"/>.
+    /// By full type name, like the discovery readers (<c>OverloadIndexBuilder.GetFormatSpecOf</c>).
+    /// </summary>
+    private static bool HasCoreAttribute(IEnumerable<CustomAttributeData> attributes, string fullName)
+        => attributes.Any(a => a.AttributeType.FullName == fullName);
+
+    /// <summary>The steer recorded by <c>Sharpy.SharpyKeywordSteerAttribute</c> on <paramref name="method"/>, or null.</summary>
+    private static string? GetKeywordSteer(MethodInfo method)
+    {
+        var attr = method.CustomAttributes.FirstOrDefault(
+            a => a.AttributeType.FullName == "Sharpy.SharpyKeywordSteerAttribute");
+        if (attr == null || attr.ConstructorArguments.Count < 1)
+            return null;
+        return attr.ConstructorArguments[0].Value as string;
     }
 
     /// <summary>

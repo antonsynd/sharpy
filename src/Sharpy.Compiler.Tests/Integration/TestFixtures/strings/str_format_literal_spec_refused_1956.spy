@@ -1,0 +1,9 @@
+# A LITERAL str.format template gets the static refusal an f-string hole's literal spec gets
+# (SPY0609, CPython's wording), per replacement field paired with the positional operand it reads —
+# auto-numbered, manual, and under a conversion (the spec then formats a str) (#1956). Before the
+# fix each compiled and raised the ValueError only at runtime.
+def main() -> None:
+    s: str = "ab"
+    print("{:=5}".format(s))
+    print("{1:+5}".format(1, s))
+    print("{!r:#8}".format(5))
