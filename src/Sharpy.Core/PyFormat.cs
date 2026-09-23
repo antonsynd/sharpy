@@ -458,7 +458,7 @@ namespace Sharpy
                 case 'n':
                     // Locale-aware in CPython; we use the invariant locale, so 'n' == 'd'/'g'.
                     result = isFloat
-                        ? FormatGeneral(value, precision, hasPrecision, false)
+                        ? FormatGeneral(value, precision, hasPrecision, false, altForm)
                         : FormatInteger(value);
                     break;
                 case 'f':
@@ -476,10 +476,10 @@ namespace Sharpy
                         CultureInfo.InvariantCulture));
                     break;
                 case 'g':
-                    result = FormatGeneral(value, precision, hasPrecision, false);
+                    result = FormatGeneral(value, precision, hasPrecision, false, altForm);
                     break;
                 case 'G':
-                    result = FormatGeneral(value, precision, hasPrecision, true);
+                    result = FormatGeneral(value, precision, hasPrecision, true, altForm);
                     break;
                 case 'x':
                     result = FormatRadix(value, 16, false, altForm ? "0x" : null);
@@ -509,7 +509,7 @@ namespace Sharpy
                         // #1883: str(value) is Builtins.Str — the one float authority — not .NET's
                         // ToString(), which drops the trailing ".0" and spells inf/nan its own way.
                         result = hasPrecision
-                            ? FormatFloatSignificant(value, precision)
+                            ? FormatFloatSignificant(value, precision, altForm)
                             : Builtins.Str(value);
                     }
                     else if (type == '\0' && isIntegral)
@@ -530,7 +530,63 @@ namespace Sharpy
                         "Unknown format code '" + type + "' for object of type '" + PyTypeName(value) + "'");
             }
 
+            // #1958: '#' is ONE rule for the whole float presentation family — the result always
+            // carries a decimal point (format(42, '#.0f') is '42.', format(3.5, '#.0') is '4.e+00').
+            // The trailing-zero half of the rule lives in FormatGeneral/FormatFloatSignificant.
+            // Integral presentations ('d', int 'n'/absent type, radix, 'c') are untouched, and this
+            // runs BEFORE GroupAndZeroFill so grouping stops at the forced point ('1_234.').
+            if (altForm && IsFloatPresentation(type, isFloat))
+            {
+                result = ForceDecimalPoint(result);
+            }
+
             return result;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="type"/> renders a float: <c>e E f F g G %</c> for any numeric
+        /// operand, and <c>n</c> or the absent type when the operand itself is a float.
+        /// </summary>
+        private static bool IsFloatPresentation(char type, bool isFloat)
+        {
+            switch (type)
+            {
+                case 'e':
+                case 'E':
+                case 'f':
+                case 'F':
+                case 'g':
+                case 'G':
+                case '%':
+                    return true;
+                case 'n':
+                case '\0':
+                    return isFloat;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// CPython's alternate-form decimal point (<c>Py_DTSF_ALT</c>): a finite float rendering with
+        /// no <c>.</c> gets one before the exponent marker, before a trailing <c>%</c>, or at the end.
+        /// </summary>
+        private static string ForceDecimalPoint(string s)
+        {
+            if (s.IndexOf('.') >= 0)
+            {
+                return s;
+            }
+            int at = s.IndexOf('e');
+            if (at < 0)
+            {
+                at = s.IndexOf('E');
+            }
+            if (at < 0 && s.EndsWith("%", StringComparison.Ordinal))
+            {
+                at = s.Length - 1;
+            }
+            return at < 0 ? s + "." : s.Insert(at, ".");
         }
 
         /// <summary>
@@ -627,9 +683,11 @@ namespace Sharpy
         /// <summary>
         /// CPython's <c>g</c>/<c>G</c> presentation: <paramref name="precision"/> significant digits
         /// (default 6, minimum 1), fixed when the decimal exponent is in <c>[-4, precision)</c> and
-        /// scientific otherwise, with trailing zeros stripped.
+        /// scientific otherwise, with trailing zeros stripped — unless <paramref name="altForm"/>
+        /// (<c>#</c>) is set, which keeps them (<c>format(3.5, '#g')</c> is <c>3.50000</c>).
         /// </summary>
-        private static string FormatGeneral(object value, int precision, bool hasPrecision, bool upper)
+        private static string FormatGeneral(object value, int precision, bool hasPrecision, bool upper,
+            bool altForm)
         {
             double d = ToDouble(value);
             int p = hasPrecision ? (precision == 0 ? 1 : precision) : 6;
@@ -646,19 +704,20 @@ namespace Sharpy
                 }
                 string fixedText = d.ToString(
                     "F" + frac.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                return StripFixedZeros(fixedText, false);
+                return altForm ? fixedText : StripFixedZeros(fixedText, false);
             }
 
             string sci = NormalizeScientific(d.ToString(eForm + precStr, CultureInfo.InvariantCulture));
-            return StripSciZeros(sci);
+            return altForm ? sci : StripSciZeros(sci);
         }
 
         /// <summary>
         /// CPython's float format with NO type character but a precision: like <c>g</c> but the
         /// switch to scientific happens one exponent earlier (<c>exp &gt;= precision - 1</c>) and a
-        /// fixed result always keeps at least one fractional digit.
+        /// fixed result always keeps at least one fractional digit. <paramref name="altForm"/>
+        /// (<c>#</c>) keeps every trailing zero, as it does for <c>g</c>.
         /// </summary>
-        private static string FormatFloatSignificant(object value, int precision)
+        private static string FormatFloatSignificant(object value, int precision, bool altForm)
         {
             double d = ToDouble(value);
             int p = precision == 0 ? 1 : precision;
@@ -674,11 +733,11 @@ namespace Sharpy
                 }
                 string fixedText = d.ToString(
                     "F" + frac.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-                return StripFixedZeros(fixedText, true);
+                return altForm ? fixedText : StripFixedZeros(fixedText, true);
             }
 
             string sci = NormalizeScientific(d.ToString("e" + precStr, CultureInfo.InvariantCulture));
-            return StripSciZeros(sci);
+            return altForm ? sci : StripSciZeros(sci);
         }
 
         private static int ParseExponent(string sci)
