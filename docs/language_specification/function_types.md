@@ -81,6 +81,31 @@ def main() -> None:
     # g(a=1, b=2)           # ERROR SPY0279 — `g` is a function-typed value
 ```
 
+**A bound method in value position is a typed delegate.** Reading `obj.method` without calling it
+produces a value of the method's function type with the receiver already bound — the same kind of
+value as a lambda. It is assignable to a matching function type, callable positionally, and can
+be stored, passed and returned like any other function-typed value. Its string form (`print(f)`,
+`str(f)`) is the underlying .NET delegate type name (for example ``System.Func`2[...]``), not
+Python's `<bound method ...>` text; that spelling is a .NET detail and is not portable output.
+
+```spy
+class Accumulator:
+    base: int
+
+    def __init__(self, base: int):
+        self.base = base
+
+    def add(self, x: int) -> int:
+        return self.base + x
+
+def main() -> None:
+    acc = Accumulator(10)
+    f = acc.add                 # the receiver `acc` is bound into the value
+    g: (int) -> int = acc.add   # assignable to a matching function type
+    print(f(3))                 # 13
+    print(g(4))                 # 14
+```
+
 ```python
 # NOT YET IMPLEMENTED — named parameters in function type aliases
 type EventHandler = (sender: object, args: EventArgs) -> None
