@@ -6,9 +6,13 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>
-/// The ONE format engine seen from all THREE of its user-facing consumers at once (#1883 and its
-/// two siblings). <c>format(v, spec)</c>, <c>"{:spec}".format(v)</c> and <c>f"{v:spec}"</c> must
-/// print the same bytes as each other AND as python3 3.12, for every cell below.
+/// The ONE format engine seen from all FOUR of its user-facing consumers at once (#1883 and its
+/// two siblings; the t-string joined with #1970). <c>format(v, spec)</c>, <c>"{:spec}".format(v)</c>,
+/// <c>f"{v:spec}"</c> and <c>str(t"{v:spec}")</c> must print the same bytes as each other AND as
+/// python3 3.12, for every cell below. The t-string consumer is Sharpy's RENDER of a template
+/// (<c>Interpolation.ToString</c> applies the conversion, then the spec) agreeing with the f-string;
+/// Python's own <c>str(Template)</c> does not render, so the oracle is the f-string's text (PEP 750:
+/// the interpolation's conversion and format_spec are exactly the f-string's).
 ///
 /// <para>Why three consumers and not one engine test: the engine was never the only renderer.
 /// <c>str.format</c>'s spec-less <c>"{}"</c> hole appended the object to a StringBuilder (so
@@ -26,12 +30,16 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
 {
     public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>One value, one spec — rendered three ways, expected to agree with python3.</summary>
+    /// <summary>One value, one spec — rendered four ways, expected to agree with python3.</summary>
     private sealed record Cell(string Label, string Decl, string Value, string Spec, string Expected);
+
+    // Literal: fstring, strformat, builtin, tstring. A consumer added to the program without
+    // bumping this fails the line-count check.
+    private const int Consumers = 4;
 
     [Fact]
     [Trait("Category", "Conformance")]
-    public void FormatEngine_AllThreeConsumersAgreeWithCPython()
+    public void FormatEngine_AllFourConsumersAgreeWithCPython()
     {
         var cells = Cells().ToList();
         Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct().Count());
@@ -51,10 +59,12 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             lines.Add($"    print(\"{cell.Label}|fstring|[\" + f\"{{{cell.Value}{spec}}}\" + \"]\")");
             lines.Add($"    print(\"{cell.Label}|strformat|[\" + \"{{{spec}}}\".format({cell.Value}) + \"]\")");
             lines.Add($"    print(\"{cell.Label}|builtin|[\" + format({cell.Value}, \"{cell.Spec}\") + \"]\")");
+            lines.Add($"    print(\"{cell.Label}|tstring|[\" + str(t\"{{{cell.Value}{spec}}}\") + \"]\")");
 
             expected.Add($"{cell.Label}|fstring|[{cell.Expected}]");
             expected.Add($"{cell.Label}|strformat|[{cell.Expected}]");
             expected.Add($"{cell.Label}|builtin|[{cell.Expected}]");
+            expected.Add($"{cell.Label}|tstring|[{cell.Expected}]");
         }
 
         var source = "def main() -> None:\n"
@@ -69,6 +79,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
         var failures = new List<string>();
 
+        Assert.Equal(cells.Count * Consumers, expected.Count);
         Assert.Equal(expected.Count, actual.Length);
         for (int i = 0; i < expected.Count; i++)
         {
@@ -76,13 +87,190 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
                 failures.Add($"expected '{expected[i]}', got '{actual[i]}'");
         }
 
-        Output.WriteLine($"Consumer-parity cells: {cells.Count} x 3 consumers = {expected.Count}. Failures: {failures.Count}");
+        Output.WriteLine($"Consumer-parity cells: {cells.Count} x {Consumers} consumers = {expected.Count}. Failures: {failures.Count}");
         foreach (var f in failures)
             Output.WriteLine("  " + f);
 
         Assert.True(failures.Count == 0,
             $"{failures.Count} of {expected.Count} consumer renderings disagree with python3:\n"
             + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    /// <summary>
+    /// One conversion field — <c>{operand FORM}</c> where FORM is a conversion (<c>!r</c>, <c>!s</c>,
+    /// <c>!a</c>), the self-documenting <c>=</c> (alone, with a spec, or with a conversion), or a
+    /// conversion followed by a spec. <see cref="Observable"/> says whether dropping the conversion
+    /// would change the bytes (python3: the rendering without the conversion differs from the
+    /// rendering with it); a non-observable cell is a CONTROL — it pins agreement, not the
+    /// conversion. The <c>=</c> prefix text is not the conversion and is present either way.
+    /// </summary>
+    private sealed record ConversionCell(string Operand, string Form, string Expected, bool Observable)
+    {
+        public string Label => "conv." + Operand + Form;
+
+        // str.format has no '=' (it is an f-/t-string feature); it takes the conversion forms only.
+        public bool HasStrFormatRoute => !Form.StartsWith("=", StringComparison.Ordinal);
+    }
+
+    // Literal rosters (the totality anchors), not derived from the cells.
+    private static readonly string[] ConversionOperands = { "s", "xs", "n", "e", "b" };
+    private static readonly string[] ConversionForms = { "!r", "!s", "!a", "=", "=:>6", "=!r", "!r:>6", "!s:>6", "!a:>6" };
+
+    // Declarations for the operands: str "ab", list [1, 2], int 5, str "é" (built with chr so the
+    // program source stays ASCII), bool True (str/repr spell True, format() spells 1 — the operand
+    // that makes a conversion observable under a spec).
+    private const string ConversionDecls =
+        "    s: str = \"ab\"\n"
+        + "    xs: list[int] = [1, 2]\n"
+        + "    n: int = 5\n"
+        + "    e: str = chr(233)\n"
+        + "    b: bool = True\n";
+
+    private static readonly (string Operand, string Form, string Reason)[] ConversionNotApplicable =
+    {
+        ("xs", "=:>6", "python3 raises TypeError: unsupported format string passed to list.__format__ "
+            + "('=' with a spec and no conversion formats the list itself); Sharpy renders it (#1988)"),
+    };
+
+    /// <summary>
+    /// #1970: the conversion (<c>!r</c>/<c>!s</c>/<c>!a</c>, and the implied <c>!r</c> of a bare
+    /// <c>=</c>) and the <c>=</c> text reach the t-string render exactly as they reach the f-string —
+    /// and the conversion forms through <c>str.format</c> too. Expected bytes are python3 3.12's
+    /// f-string output; the t-string route is expected to print the same (PEP 750).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_ConversionsAgreeAcrossRoutes()
+    {
+        var cells = ConversionCells().ToList();
+        Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct().Count());
+
+        var lines = new List<string>();
+        var expected = new List<string>();
+        foreach (var cell in cells)
+        {
+            var field = "{" + cell.Operand + cell.Form + "}";
+            lines.Add($"    print(\"{cell.Label}|fstring|[\" + f\"{field}\" + \"]\")");
+            lines.Add($"    print(\"{cell.Label}|tstring|[\" + str(t\"{field}\") + \"]\")");
+            expected.Add($"{cell.Label}|fstring|[{cell.Expected}]");
+            expected.Add($"{cell.Label}|tstring|[{cell.Expected}]");
+            if (cell.HasStrFormatRoute)
+            {
+                lines.Add($"    print(\"{cell.Label}|strformat|[\" + \"{{{cell.Form}}}\".format({cell.Operand}) + \"]\")");
+                expected.Add($"{cell.Label}|strformat|[{cell.Expected}]");
+            }
+        }
+
+        var source = "def main() -> None:\n" + ConversionDecls + string.Join("\n", lines) + "\n";
+        var result = CompileAndExecute(source, executionTimeoutMs: 30_000);
+        Assert.True(result.Success,
+            "the conversion program failed to compile or run: " + string.Join("; ", result.CompilationErrors)
+            + " / " + result.StandardError);
+
+        var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+        Assert.Equal(expected.Count, actual.Length);
+        var failures = new List<string>();
+        for (int i = 0; i < expected.Count; i++)
+        {
+            if (actual[i] != expected[i])
+                failures.Add($"expected '{expected[i]}', got '{actual[i]}'");
+        }
+
+        Output.WriteLine($"Conversion cells: {cells.Count} ({cells.Count(c => c.Observable)} observable, "
+            + $"{cells.Count(c => !c.Observable)} controls), {expected.Count} renderings. Failures: {failures.Count}");
+        foreach (var f in failures)
+            Output.WriteLine("  " + f);
+
+        Assert.True(failures.Count == 0,
+            $"{failures.Count} of {expected.Count} conversion renderings disagree with python3:\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_ConversionMatrix_IsTotal_AndEveryConversionIsObservable()
+    {
+        var executing = ConversionCells().Select(c => (c.Operand, c.Form)).ToHashSet();
+        var na = ConversionNotApplicable.Select(r => (r.Operand, r.Form)).ToHashSet();
+        var missing = ConversionOperands
+            .SelectMany(o => ConversionForms.Select(f => (o, f)))
+            .Where(p => !executing.Contains(p) && !na.Contains(p))
+            .ToList();
+        Assert.True(missing.Count == 0, "conversion matrix positions with no cell and no N/A row: "
+            + string.Join(", ", missing.Select(p => p.o + p.f)));
+        Assert.Empty(executing.Intersect(na));
+
+        // 5 operands x 9 forms = 45 positions: 44 executing + 1 N/A (literal anchors).
+        Assert.Equal(45, ConversionOperands.Length * ConversionForms.Length);
+        Assert.Equal(44, executing.Count);
+        Assert.Single(na);
+
+        // Each conversion character must be OBSERVABLE in at least one cell, or dropping it would
+        // pass vacuously: 'r' (!r, !r:>6, and the implied !r of a bare '=' / '=!r'), 's' (only under
+        // a spec — format(x, "") is str(x) by definition, so bare !s is a control for every operand),
+        // 'a'. '=:>6' carries no conversion (the '=' text only), so it is a control form.
+        var observableForms = ConversionCells().Where(c => c.Observable).Select(c => c.Form).ToHashSet();
+        foreach (var form in new[] { "!r", "!a", "=", "=!r", "!r:>6", "!s:>6", "!a:>6" })
+            Assert.True(observableForms.Contains(form), $"no observable operand for conversion form '{form}'");
+        Assert.DoesNotContain("!s", observableForms);
+        Assert.DoesNotContain("=:>6", observableForms);
+    }
+
+    private static IEnumerable<ConversionCell> ConversionCells()
+    {
+        // python3 3.12:
+        //   for name, v in [("s","ab"),("xs",[1,2]),("n",5),("e","\u00e9"),("b",True)]:
+        //     for form in ["!r","!s","!a","=","=:>6","=!r","!r:>6","!s:>6","!a:>6"]:
+        //       print(name, form, repr(eval('f"{' + name + form + '}"', {name: v})))
+        // Observable = the f-string text differs from the same field with the conversion removed
+        // (the '=' text kept; an implied !r counts as a conversion), as SHARPY renders it. The three
+        // xs conversion-plus-spec cells would be observable in python3 (format([1, 2], ">6") raises
+        // TypeError) but Sharpy's engine renders the unconverted list as its padded str (#1988), so
+        // dropping the conversion is invisible there: they are controls.
+        yield return new("s", "!r", "'ab'", true);
+        yield return new("s", "!s", "ab", false);
+        yield return new("s", "!a", "'ab'", true);
+        yield return new("s", "=", "s='ab'", true);
+        yield return new("s", "=:>6", "s=    ab", false);
+        yield return new("s", "=!r", "s='ab'", true);
+        yield return new("s", "!r:>6", "  'ab'", true);
+        yield return new("s", "!s:>6", "    ab", false);
+        yield return new("s", "!a:>6", "  'ab'", true);
+        yield return new("xs", "!r", "[1, 2]", false);
+        yield return new("xs", "!s", "[1, 2]", false);
+        yield return new("xs", "!a", "[1, 2]", false);
+        yield return new("xs", "=", "xs=[1, 2]", false);
+        yield return new("xs", "=!r", "xs=[1, 2]", false);
+        yield return new("xs", "!r:>6", "[1, 2]", false);
+        yield return new("xs", "!s:>6", "[1, 2]", false);
+        yield return new("xs", "!a:>6", "[1, 2]", false);
+        yield return new("n", "!r", "5", false);
+        yield return new("n", "!s", "5", false);
+        yield return new("n", "!a", "5", false);
+        yield return new("n", "=", "n=5", false);
+        yield return new("n", "=:>6", "n=     5", false);
+        yield return new("n", "=!r", "n=5", false);
+        yield return new("n", "!r:>6", "     5", false);
+        yield return new("n", "!s:>6", "     5", false);
+        yield return new("n", "!a:>6", "     5", false);
+        yield return new("e", "!r", "'\u00e9'", true);
+        yield return new("e", "!s", "\u00e9", false);
+        yield return new("e", "!a", "'\\xe9'", true);
+        yield return new("e", "=", "e='\u00e9'", true);
+        yield return new("e", "=:>6", "e=     \u00e9", false);
+        yield return new("e", "=!r", "e='\u00e9'", true);
+        yield return new("e", "!r:>6", "   '\u00e9'", true);
+        yield return new("e", "!s:>6", "     \u00e9", false);
+        yield return new("e", "!a:>6", "'\\xe9'", true);
+        yield return new("b", "!r", "True", false);
+        yield return new("b", "!s", "True", false);
+        yield return new("b", "!a", "True", false);
+        yield return new("b", "=", "b=True", false);
+        yield return new("b", "=:>6", "b=     1", false);
+        yield return new("b", "=!r", "b=True", false);
+        yield return new("b", "!r:>6", "  True", true);
+        yield return new("b", "!s:>6", "  True", true);
+        yield return new("b", "!a:>6", "  True", true);
     }
 
     /// <summary>
