@@ -495,7 +495,15 @@ namespace Sharpy
                     break;
                 case '%':
                     int pctPrec = hasPrecision ? precision : 6;
-                    result = (ToDouble(value) * 100.0).ToString(
+                    double scaled = ToDouble(value) * 100.0;
+                    if (double.IsInfinity(scaled))
+                    {
+                        // A finite float whose ×100 overflows (format(1.7976931348623157e308, '%'))
+                        // is spelled like any non-finite float — 'inf%', never .NET's 'Infinity%' —
+                        // and, like every non-finite rendering, takes no alternate-form point.
+                        return Builtins.Str(scaled) + "%";
+                    }
+                    result = scaled.ToString(
                         "F" + pctPrec.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture) + "%";
                     break;
                 case 's':

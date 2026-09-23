@@ -630,6 +630,21 @@ public class FormatApplyTests
         ex.Message.Should().Be("Invalid format specifier '.2fx' for object of type 'float'");
     }
 
+    [Theory]
+    [InlineData(1.7976931348623157e308, "%", "inf%")]            // format(1.7976931348623157e308, '%')
+    [InlineData(-1.7976931348623157e308, "%", "-inf%")]          // format(-1.7976931348623157e308, '%')
+    [InlineData(1.7976931348623157e308, "#%", "inf%")]           // format(1.7976931348623157e308, '#%')
+    [InlineData(1.7976931348623157e308, "#.0%", "inf%")]         // format(1.7976931348623157e308, '#.0%')
+    [InlineData(1.7976931348623157e308, "#10.2%", "      inf%")] // format(1.7976931348623157e308, '#10.2%')
+    [InlineData(1.7976931348623157e308, "+%", "+inf%")]          // format(1.7976931348623157e308, '+%')
+    public void Apply_Percent_FiniteValueWhoseScalingOverflows_IsSpelledInf(object value, string spec, string expected)
+    {
+        // python3 -c "print(repr(format(1.7976931348623157e308, '#%')))"  =>  'inf%'
+        // (found by the plan-791d3a refuting audit: .NET spelled the overflowed product 'Infinity',
+        // and #1958's alternate-form point then made it 'Infinity.%')
+        PyFormat.Apply(value, spec).Should().Be(expected);
+    }
+
     [Fact]
     public void Apply_NonFinite_Percent_KeepsTheSign()
     {
