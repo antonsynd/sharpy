@@ -58,6 +58,13 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
     private const int SharpyExecTimeoutMs = 12_000;
 
+    // The static column's positive control: at least this many cells must agree by a COMPILE-time
+    // SPY0609 carrying CPython's ValueError wording. Measured 129 @ 4e87ad374 (of 130 static cells
+    // CPython refuses; the other is an allowlisted wording divergence). The fixed seeds make the count
+    // deterministic, so a drop means the static twin (FormatSpecGrammar through
+    // CheckStaticFormatSpecArguments, #1956) stopped firing on literal specs, not that the corpus moved.
+    private const int StaticTwinAgreementFloor = 129;
+
     private sealed record Cell(string Kind, string Spec)
     {
         // A key safe for the allowlist file: the spec is hex-encoded so a '#', '*', or whitespace in
@@ -72,11 +79,13 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     /// The two columns every cell is compared in. <see cref="Column.Engine"/> passes the spec through
     /// a <c>str</c> variable, so the checker cannot see a literal and EVERY cell reaches Core's runtime
     /// engine (<c>PyFormat</c>) — its output and its <c>ValueError</c> text are compared with python3.
-    /// <see cref="Column.Static"/> passes the spec as a string literal, so a spec CPython refuses may be
+    /// <see cref="Column.Static"/> passes the spec as a string literal, so a spec CPython refuses must be
     /// refused at compile time by the static twin (SPY0609, #1956); that agrees only when the
     /// diagnostic's message is CPython's <c>ValueError</c> text verbatim, and a spec python accepts
-    /// that Sharpy refuses statically is an over-refusal divergence. Without a static twin on the
-    /// route, the literal program simply runs and is compared like the engine column.
+    /// that Sharpy refuses statically is an over-refusal divergence. A literal spec CPython refuses
+    /// that COMPILES and is refused only by Core at runtime is a divergence too, even though the
+    /// runtime text matches: the refusal came at the wrong stage (the twin is missing). Specs CPython
+    /// accepts run and are compared like the engine column.
     /// </summary>
     private enum Column
     {
@@ -165,6 +174,16 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                         $"Sharpy failed to compile/run (python ok): spec='{cell.Spec}' pyout='{pythonOut}'{refusals}",
                         allowlist.Matches(key)));
                 }
+                else if (column == Column.Static && IsCPythonRefusal(pythonOut))
+                {
+                    // The literal spec COMPILED and ran although CPython refuses it. Even when Core's
+                    // runtime ValueError repeats CPython's text (so stdout matches), the refusal came at
+                    // the wrong stage: a literal spec is visible to the checker and must meet the static
+                    // twin. Without this arm, removing the twin leaves the column green (#1956).
+                    divergences.Add((cell, column,
+                        $"{RuntimeOnlyReason}: spec='{cell.Spec}' sharpy='{sharpyOut}' python='{pythonOut}'",
+                        allowlist.Matches(key)));
+                }
                 else if (sharpyOut != pythonOut)
                 {
                     divergences.Add((cell, column, $"spec='{cell.Spec}': sharpy='{sharpyOut}' python='{pythonOut}'",
@@ -181,12 +200,15 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         int engineDivergent = divergences.Count(d => d.Column == Column.Engine);
         int staticDivergent = divergences.Count(d => d.Column == Column.Static);
 
+        int staticRuntimeOnly = divergences.Count(d => d.Column == Column.Static && d.Detail.StartsWith(RuntimeOnlyReason, StringComparison.Ordinal));
+
         sw.Stop();
         Output.WriteLine(
             $"Format-spec differential: {cells.Count} cells x {Columns.Length} columns, {divergences.Count} divergent "
             + $"({offenders.Count} non-allowlisted, {stale.Count} stale-allowlisted); "
             + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
-            + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError wording); "
+            + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError wording, "
+            + $"{staticRuntimeOnly} refused only at runtime); "
             + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE {o.Cell.Key(o.Column)}  {o.Detail}");
@@ -200,11 +222,16 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         Assert.True(stale.Count == 0,
             $"Format-spec differential: {stale.Count} allowlist entr(ies) no longer diverge — delete them:\n"
             + string.Join("\n", stale.Select(k => "  " + k)));
+        Assert.True(staticAgreements >= StaticTwinAgreementFloor,
+            $"Format-spec differential: only {staticAgreements} static-column cell(s) agree by a compile-time SPY0609 "
+            + $"(< {StaticTwinAgreementFloor}): the static twin no longer refuses the literal specs CPython refuses.");
     }
 
     private static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd('\n');
 
     private const string PythonValueErrorPrefix = "ValueError: ";
+
+    private const string RuntimeOnlyReason = "literal spec refused only at runtime: static twin missing";
 
     /// <summary>
     /// Whether a Sharpy compile failure is the static twin of CPython's runtime refusal: python3
@@ -214,11 +241,15 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     /// </summary>
     private static bool IsStaticTwinOf(ArmOutcome sharpy, string pythonOut)
     {
-        if (!pythonOut.StartsWith(PythonValueErrorPrefix, StringComparison.Ordinal) || pythonOut.Contains('\n'))
+        if (!IsCPythonRefusal(pythonOut))
             return false;
         var message = pythonOut.Substring(PythonValueErrorPrefix.Length);
         return sharpy.StaticRefusals.Contains(message, StringComparer.Ordinal);
     }
+
+    /// <summary>Whether python3 refused the cell: it printed exactly one <c>ValueError: msg</c> line.</summary>
+    private static bool IsCPythonRefusal(string pythonOut) =>
+        pythonOut.StartsWith(PythonValueErrorPrefix, StringComparison.Ordinal) && !pythonOut.Contains('\n');
 
     private static string ProgramFor(Cell cell, Column column)
     {
