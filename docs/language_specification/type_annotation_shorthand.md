@@ -115,6 +115,23 @@ y: (int,) = (42,)
 
 **Note:** In expression context, `(x)` is grouping while `(x,)` is a single-element tuple. In *type* annotation context, there is no ambiguity - `(T)` always means tuple. This applies to all type positions, including `isinstance`'s second argument: `isinstance(x, (int, str))` tests `tuple[int, str]`, not any-of.
 
+### The Empty Tuple
+
+`()` and `tuple[()]` are two spellings of the same zero-arity tuple type, in every type position — return, parameter, variable, a type argument (`list[tuple[()]]`), `?`, and nested (`tuple[tuple[()]]` is a one-element tuple whose element is the empty tuple):
+
+```spy
+def unit() -> tuple[()]:
+    return ()
+
+def main() -> None:
+    a: () = ()
+    b: tuple[()] = ()                  # the canonical spelling of the same type
+    nested: tuple[tuple[()]] = ((),)   # one element: the empty tuple
+    print(len(a), len(b), len(unit()), len(nested))   # 0 0 0 1
+```
+
+`tuple[]` is not the empty tuple: a postfix `[]` is the [array suffix](#array-shorthand), so `tuple[]` is an array whose element type is the bare `tuple`.
+
 ### Function Types vs Tuple Shorthand
 
 The presence of `->` distinguishes function types from tuple shorthand:
