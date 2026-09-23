@@ -1,0 +1,78 @@
+# A type argument written in EXPRESSION position — explicit generic construction and a generic
+# function called with explicit type arguments — reads `()` and `tuple[()]` as the zero-arity tuple,
+# the same type the annotation position gives them (#1967). Each line printed a compile failure before:
+# SPY0908 (CS7003 `ValueTuple<>`), SPY0220 'tuple[]' vs 'tuple[]', SPY0224 or SPY0342.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+def ident[T](x: T) -> T:
+    return x
+
+def main():
+    # explicit construction, canonical and shorthand
+    a = list[tuple[()]]()
+    a.append(())
+    print(len(a), len(a[0]))
+    b = list[()]()
+    b.append(())
+    b.append(())
+    print(len(b), len(b[1]))
+
+    # annotated and constructed: the two spellings of one type agree
+    c: list[tuple[()]] = list[tuple[()]]()
+    c.append(())
+    c.append(())
+    c.append(())
+    print(len(c))
+    d: dict[str, tuple[()]] = dict[str, tuple[()]]()
+    d["k"] = ()
+    print(len(d), len(d["k"]))
+    e = dict[str, ()]()
+    e["x"] = ()
+    e["y"] = ()
+    print(len(e))
+
+    # user generic class and generic function
+    f = Box[tuple[()]](())
+    g = Box[()](())
+    print(len(f.value), len(g.value))
+    print(len(ident[tuple[()]](())), len(ident[()](())))
+
+    # directly under `tuple`, `()` is the empty element list; as an element it is the empty tuple
+    t = tuple[()](())
+    print(len(t))
+    h = list[tuple[int, ()]]()
+    h.append((7, ()))
+    print(h[0][0], len(h[0]))
+
+    # control: the one-tuple whose element is the empty tuple
+    n = list[tuple[tuple[()]]]()
+    n.append(((),))
+    print(len(n), len(n[0]), len(n[0][0]))
+
+    # isinstance reads its operand through the same resolver; the `as?` operand and a `case` pattern
+    # head are the annotation route and still refuse the zero-arity tuple (#1981). isinstance's second
+    # argument is a TYPE position (builtin_functions.md, deviation isinstance-tuple-is-a-tuple-type):
+    # `()` there is the zero-arity tuple type and `((), int)` is tuple[tuple[()], int], so these
+    # values follow the Sharpy spec, not python's class-tuple reading.
+    o: object = ()
+    p: object = ((),)
+    q: object = ((), 1)
+    print(isinstance(o, tuple[()]), isinstance(p, tuple[()]))
+    print(isinstance(o, ()), isinstance(p, ()))
+    print(isinstance(o, ((), int)), isinstance(q, ((), int)))
+
+    # array construction spells the element type the checker resolved, not the written AST (#2003)
+    r = array[()](2)
+    print(len(r), r[0] == (), r[1])
+    s: array[()] = array[()](2)
+    print(len(s), s[0] == ())
+    u = array[tuple[()]](3)
+    print(len(u), len(u[2]))
+    w = array[int](2)
+    w[1] = 5
+    print(len(w), w[0], w[1])

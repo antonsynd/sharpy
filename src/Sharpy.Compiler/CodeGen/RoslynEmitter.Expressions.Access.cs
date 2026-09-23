@@ -870,7 +870,7 @@ internal partial class RoslynEmitter
         switch (reference.Kind)
         {
             case GenericReferenceKind.ArrayTypeRef:
-                return GenerateArrayConstruction(indexAccess, call);
+                return GenerateArrayConstruction(reference, call);
 
             case GenericReferenceKind.TupleTypeRef:
                 return GenerateTupleConversion(call);
@@ -969,13 +969,18 @@ internal partial class RoslynEmitter
     /// Array construction: <c>array[T](size)</c> → <c>new T[size]</c>. The array constructor takes
     /// exactly one argument (the size), which semantic analysis enforces; a differently shaped call
     /// falls through to the general call path rather than emitting an array creation.
+    /// <para>The element type is the one the checker resolved (the reference's single type
+    /// argument, which the resolver records only when the written argument resolves), never a
+    /// re-derivation from the written spelling: <c>array[()](2)</c> spelled from the AST emitted
+    /// <c>new object[2]</c> and <c>array[tuple[()]](3)</c> <c>new ValueTuple&lt;&gt;[3]</c> (CS7003) while
+    /// the checker typed both as arrays of the zero-arity tuple (#2003, #1967).</para>
     /// </summary>
-    private ExpressionSyntax? GenerateArrayConstruction(IndexAccess indexAccess, FunctionCall call)
+    private ExpressionSyntax? GenerateArrayConstruction(GenericReference reference, FunctionCall call)
     {
         if (call.Arguments.Length != 1)
             return null;
 
-        var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
+        var elementType = _typeMapper.MapSemanticType(reference.TypeArgs[0]);
         var sizeExpr = GenerateExpression(call.Arguments[0]);
         return ArrayCreationExpression(
             ArrayType(elementType)

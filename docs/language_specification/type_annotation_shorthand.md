@@ -117,7 +117,7 @@ y: (int,) = (42,)
 
 ### The Empty Tuple
 
-`()` and `tuple[()]` are two spellings of the same zero-arity tuple type in every annotation position — return, parameter, variable, a type argument (`list[tuple[()]]`), `?`, and nested (`tuple[tuple[()]]` is a one-element tuple whose element is the empty tuple). Neither spelling is yet accepted as the operand of a type test (`x as? ()`, a `case` pattern head, `isinstance`) — [#1981](https://github.com/antonsynd/sharpy/issues/1981):
+`()` and `tuple[()]` are two spellings of the same zero-arity tuple type in every annotation position — return, parameter, variable, a type argument (`list[tuple[()]]`), `?`, and nested (`tuple[tuple[()]]` is a one-element tuple whose element is the empty tuple). The same holds for a type argument written in expression position: `list[()]()` and `list[tuple[()]]()` construct a list of empty tuples, `Box[()](())` and `ident[tuple[()]](())` bind `T` to the empty tuple, and `dict[str, ()]()` takes it as an element. `isinstance(x, tuple[()])` tests for the empty tuple, but neither spelling is yet accepted as the operand of `as?`/`as!` or as a `case` pattern head ([#1981](https://github.com/antonsynd/sharpy/issues/1981)):
 
 ```spy
 def unit() -> tuple[()]:

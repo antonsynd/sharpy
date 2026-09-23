@@ -3302,6 +3302,11 @@ internal partial class TypeChecker
         if (shapes.HasFlag(TypeOperandShapes.UnwrapGrouping))
             expr = UnwrapParenthesized(expr);
 
+        // `()` read as a type is the zero-arity tuple — the element of `dict[str, ()]`, the sole
+        // argument of `list[()]` — exactly as the annotation position reads it (#1967).
+        if (IsZeroArityTupleTypeSpelling(expr, shapes))
+            return new TupleType { ElementTypes = new List<SemanticType>() };
+
         // Handle simple identifier as type name (e.g., "int", "str", "MyClass")
         if (expr is Identifier typeId)
         {
@@ -3363,7 +3368,6 @@ internal partial class TypeChecker
             TryReadGenericDefinition(indexAccess.Object, shapes) is { IsGeneric: true } nestedGenericType)
         {
             var nestedTypeId = indexAccess.Object as Identifier;
-            var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index, shapes);
 
             // `tuple[...]` is a TupleType, never GenericType("tuple", …), wherever it is written.
             // This is the #1200 rule, and it has to be applied HERE as well as at the top-level
@@ -3376,11 +3380,12 @@ internal partial class TypeChecker
             // RENDERING THEM IDENTICALLY: "Cannot return type 'Iterator[tuple[int, int]]' from
             // function expecting 'Iterator[tuple[int, int]]'" (#1470, the nested sibling of #1200).
             if (nestedTypeId != null
-                && TryBuildTupleTypeReference(nestedTypeId, nestedTypeArgs) is { } nestedTuple)
+                && TryBuildTupleTypeReference(nestedTypeId, indexAccess.Index, shapes) is { } nestedTuple)
             {
                 return nestedTuple;
             }
 
+            var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index, shapes);
             if (nestedTypeArgs != null
                 && (!shapes.HasFlag(TypeOperandShapes.RequireMatchingArity)
                     || nestedTypeArgs.Count == nestedGenericType.TypeParameters.Count))
@@ -3462,14 +3467,45 @@ internal partial class TypeChecker
     ///
     /// <para>Shared by both resolvers so the two entry points cannot drift again: fixing one and not
     /// the other is exactly how #1470 outlived #1200.</para>
+    ///
+    /// <para>The element list is read from the written <paramref name="index"/> rather than from a
+    /// resolved type-argument list because <c>tuple[()]</c> is the one spelling where the two differ:
+    /// its <c>()</c> is the empty element list — the zero-arity tuple, as the parser normalizes the
+    /// annotation (#1967) — while <c>G[()]</c> for any other <c>G</c> is ONE argument, the
+    /// zero-arity tuple.</para>
     /// </summary>
-    private TupleType? TryBuildTupleTypeReference(Identifier typeId, List<SemanticType>? elementTypes)
-        => typeId.Name == BuiltinNames.Tuple
-            && !typeId.IsNameBacktickEscaped
-            && _symbolTable.Lookup(typeId.Name) is TypeSymbol
-            && elementTypes is { Count: > 0 }
-                ? new TupleType { ElementTypes = elementTypes }
-                : null;
+    private TupleType? TryBuildTupleTypeReference(
+        Identifier typeId, Expression index, TypeOperandShapes shapes = TypeOperandShapes.Construction)
+    {
+        if (typeId.Name != BuiltinNames.Tuple
+            || typeId.IsNameBacktickEscaped
+            || _symbolTable.Lookup(typeId.Name) is not TypeSymbol)
+        {
+            return null;
+        }
+
+        var elementTypes = IsZeroArityTupleTypeSpelling(index, shapes)
+            ? new List<SemanticType>()
+            : TryResolveTypeArguments(index, shapes);
+        return elementTypes != null ? new TupleType { ElementTypes = elementTypes } : null;
+    }
+
+    /// <summary>
+    /// Whether an expression read as a type is the zero-arity tuple spelling <c>()</c>. The type
+    /// annotation shorthand makes <c>()</c> the zero-arity tuple type
+    /// (type_annotation_shorthand.md), and the parser normalizes it — and <c>tuple[()]</c> — for
+    /// annotations (#1967); a type argument written in EXPRESSION position (<c>list[()]()</c>,
+    /// <c>Box[tuple[()]](x)</c>) arrives here as an empty <see cref="TupleLiteral"/> instead. Read
+    /// naively, that literal is an empty type-argument LIST: <c>G[()]</c> was zero arguments
+    /// (SPY0224) and <c>tuple[()]</c> the open generic <c>tuple</c>, which reached Roslyn as
+    /// <c>ValueTuple&lt;&gt;</c> (CS7003 behind SPY0908). Python's <c>list[()].__args__</c> is
+    /// <c>()</c>; the Sharpy shorthand rule governs. The one test every expression-position
+    /// type-argument reader consults.
+    /// </summary>
+    private static bool IsZeroArityTupleTypeSpelling(
+        Expression expr, TypeOperandShapes shapes = TypeOperandShapes.Construction)
+        => (shapes.HasFlag(TypeOperandShapes.UnwrapGrouping) ? UnwrapParenthesized(expr) : expr)
+            is TupleLiteral { Elements.IsEmpty: true };
 
     /// <summary>
     /// Tries to resolve one or more type arguments from an index expression.
@@ -3481,8 +3517,10 @@ internal partial class TypeChecker
     {
         var typeArgs = new List<SemanticType>();
 
-        // Handle multiple type arguments: Pair[int, str] parses as TupleLiteral
-        if ((shapes.HasFlag(TypeOperandShapes.UnwrapGrouping)
+        // Handle multiple type arguments: Pair[int, str] parses as TupleLiteral. An empty one is not
+        // an empty list: `G[()]` is the single argument `()`, the zero-arity tuple (#1967).
+        if (!IsZeroArityTupleTypeSpelling(indexExpr, shapes)
+            && (shapes.HasFlag(TypeOperandShapes.UnwrapGrouping)
                 ? UnwrapParenthesized(indexExpr)
                 : indexExpr) is TupleLiteral tuple)
         {

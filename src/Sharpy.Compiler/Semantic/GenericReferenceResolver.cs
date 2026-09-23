@@ -211,8 +211,7 @@ internal partial class TypeChecker
             // SemanticInfo recording a top-level reference needs. #1470 was this rule holding here
             // and nowhere else.
             if (_symbolTable.Lookup(typeId.Name) is TypeSymbol tupleSymbol
-                && TryBuildTupleTypeReference(typeId, TryResolveTypeArguments(indexAccess.Index))
-                    is { } tupleType)
+                && TryBuildTupleTypeReference(typeId, indexAccess.Index) is { } tupleType)
             {
                 _semanticInfo.SetExpressionType(indexAccess, tupleType);
                 _semanticInfo.SetGenericReference(indexAccess, new GenericReference
@@ -387,10 +386,14 @@ internal partial class TypeChecker
             // Generic-method reference on an instance receiver (recv.convert[int], self.convert[str],
             // a.b.convert[int]) — user-defined or raw BCL (#1136). Gate on the member resolving to a
             // generic method BEFORE resolving the index as type arguments: the arity that steers BCL
-            // overload selection is read cheaply from the index shape (TupleLiteral element count).
+            // overload selection is read cheaply from the index shape (TupleLiteral element count;
+            // an empty `()` is one argument, the zero-arity tuple — #1967).
             else if (ownerType is not UnknownType)
             {
-                var typeArgCount = indexAccess.Index is TupleLiteral argTuple ? argTuple.Elements.Length : 1;
+                var typeArgCount = indexAccess.Index is TupleLiteral argTuple
+                    && !IsZeroArityTupleTypeSpelling(argTuple)
+                        ? argTuple.Elements.Length
+                        : 1;
                 if (TryResolveGenericInstanceMethod(ownerType, memberAccessObj.Member, typeArgCount)
                         is { } instanceMethod
                     && TryResolveTypeArguments(indexAccess.Index) is { } typeArgs)
