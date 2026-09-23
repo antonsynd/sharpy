@@ -1,0 +1,4 @@
+def main():
+    x: object = ()
+    y = x as? tuple[()]
+    print(y is not None)

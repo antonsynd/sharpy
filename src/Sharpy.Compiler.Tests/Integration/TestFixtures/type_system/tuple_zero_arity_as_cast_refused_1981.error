@@ -1,0 +1,4 @@
+# Pins the refusal (#1981): `tuple[()]` is the zero-arity tuple after #1967, and a type-test operand
+# reads it as the open generic `tuple` (SPY0345). Before #1967 this compiled and silently tested the
+# 1-tuple `tuple[tuple[]]` (printed False on `()`); it must not revert to that.
+'tuple' is a generic type, so it does not name a single type to test against, and nothing at this cast determines its type arguments @3:15
