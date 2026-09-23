@@ -8,8 +8,11 @@ namespace Sharpy
     /// f-string hole's spec gets.
     /// </summary>
     /// <remarks>
-    /// Discovery (<c>OverloadIndexBuilder.CreateParameterSignature</c>) records the attribute, read
-    /// by its full type name, as <c>ParameterSignature.FormatSpecOf</c>; the checker's
+    /// Discovery records the attribute, read by its full type name, as
+    /// <c>ParameterSignature.FormatSpecOf</c> on any reflected parameter — builtins and module
+    /// functions through <c>OverloadIndexBuilder.CreateParameterSignature</c> (and the overload-index
+    /// cache), <c>str</c> methods through <c>BuiltinRegistry.BuildExtensionMethodSignature</c> — and
+    /// carries it to <c>ParameterSymbol.FormatSpecOf</c>; the checker's
     /// <c>CheckStaticFormatSpecArguments</c> (run from <c>RecordResolvedCallTarget</c>) validates a
     /// string-literal argument bound to the marked parameter against the value argument's operand
     /// kind through <c>FormatSpecGrammar</c> and reports SPY0609 (#1956). A dynamic spec keeps the

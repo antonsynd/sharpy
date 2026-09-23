@@ -8,9 +8,12 @@ namespace Sharpy
     /// spelling that does accept it.
     /// </summary>
     /// <remarks>
-    /// The checker's <c>ReportUnknownClrKeyword</c> reads the attribute, by its full type name,
-    /// from every candidate method of the refused call; when all candidates carry the same steer it
-    /// is appended to the message (R-BE, #1955).
+    /// Read ONLY on the <c>str</c> methods, the <c>Sharpy.StringExtensions</c> extension methods
+    /// over <c>string</c>: the compiler's <c>BuiltinRegistry.DiscoverStringExtensionMethods</c>
+    /// reads the attribute, by its full type name, into <c>FunctionSymbol.KeywordSteer</c>; the
+    /// checker records the resolved callee at <c>RecordResolvedCallTarget</c>, and
+    /// <c>ReportUnknownKeywordArgument</c> appends that callee's steer to the SPY0234 message
+    /// (R-BE, #1955). On any other method the attribute is ignored.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     public sealed class SharpyKeywordSteerAttribute : Attribute

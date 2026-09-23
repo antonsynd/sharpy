@@ -268,8 +268,9 @@ A non-empty spec on a `None` literal is refused the same way
 (`unsupported format string passed to NoneType.__format__`).
 
 The static check is one rule shared by **every route** that carries a literal spec: an f-string or
-t-string hole, the `format()` builtin (bare, `builtins.format`, or `format_spec=` by keyword), and
-each field of a `str.format` call whose template is a string literal. The same spec is refused with
+t-string hole, the `format()` builtin (bare, `builtins.format`, `format_spec=` by keyword, or
+pipe-forward `s |> format("=5")`, which binds as `format(s, "=5")`), and each field of a
+`str.format` call whose template is a string literal. The same spec is refused with
 the same SPY0609 wording wherever it is written:
 
 <!-- spec-sweep: error SPY0609 -->
@@ -279,12 +280,15 @@ def main() -> None:
     print(f"{s:=5}")            # SPY0609: '=' alignment not allowed in string format specifier
     print(t"{s:=5}")            # SPY0609 (same wording)
     print(format(s, "=5"))      # SPY0609 (same wording)
+    print(s |> format("=5"))    # SPY0609 (same wording)
     print("{:=5}".format(s))    # SPY0609 (same wording)
 ```
 
-A `str.format` field with a nested spec (`"{:{w}}"`), an attribute or index field, a template held
+A `str.format` field with a nested spec (`"{:{}}"`), an attribute or index field, a template held
 in a variable, and `format_map` are not visible to the static check; they are validated by the
-engine at runtime. `str.format` takes positional fields only — a keyword argument is refused with
+engine at runtime. So are a `format` method-group value called later (`f = format; f(v, "=5")`,
+#1997), a pipe into a qualified callee (`s |> builtins.format("=5")`, #1999), and a `_` placeholder
+partial (`format(_, "=5")`, whose placeholder is typed `object?`). `str.format` takes positional fields only — a keyword argument is refused with
 SPY0234 and a steer to an f-string or `format_map`.
 
 A **dynamic** spec (one with a nested field, or a hole whose type is not statically known) is

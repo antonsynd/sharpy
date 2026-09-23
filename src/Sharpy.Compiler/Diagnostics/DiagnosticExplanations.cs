@@ -286,8 +286,9 @@ public static partial class DiagnosticExplanations
             "invalid format specification", "Semantic",
             "A static format spec (one with no nested {..} replacement fields) is not valid for the " +
             "operand's type. The check runs on every route that formats a statically-known operand " +
-            "with a literal spec: an f-string hole (f\"{s:=5}\"), the format() builtin with a " +
-            "string-literal spec, positional or format_spec= (format(s, \"=5\")), and a string-literal " +
+            "with a literal spec: an f-string or t-string hole (f\"{s:=5}\", t\"{s:=5}\"), the format() " +
+            "builtin with a string-literal spec, positional, format_spec= or pipe-forward " +
+            "(format(s, \"=5\"), s |> format(\"=5\")), and a string-literal " +
             "str.format template, per replacement field paired with its positional operand " +
             "(\"{:=5}\".format(s)). The spec grammar is [[fill]align][sign][z][#][0][width]" +
             "[grouping][.precision][type], and each type code is valid only for certain kinds — 'd', " +
