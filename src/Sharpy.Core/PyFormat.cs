@@ -219,15 +219,12 @@ namespace Sharpy
                         formatted = new string(fill, left) + formatted + new string(fill, right);
                         break;
                     case '=':
-                        // Padding between sign and digits
-                        if (formatted.Length > 0 && (formatted[0] == '+' || formatted[0] == '-' || formatted[0] == ' '))
-                        {
-                            formatted = formatted[0] + new string(fill, padding) + formatted.Substring(1);
-                        }
-                        else
-                        {
-                            formatted = new string(fill, padding) + formatted;
-                        }
+                        // Padding between the sign/radix prefix and the digits (#1959) — the SAME
+                        // predicate GroupAndZeroFill uses for the '0'-fill path, so an explicit or
+                        // default fill lands where the zeros would: format(-255, '*=#10x') is
+                        // '-0x*****ff'.
+                        int at = Math.Min(NumericPrefixLength(formatted, type, altForm), formatted.Length);
+                        formatted = formatted.Substring(0, at) + new string(fill, padding) + formatted.Substring(at);
                         break;
                 }
             }
@@ -831,6 +828,21 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// The ONE numeric-prefix predicate (#1959): how many leading characters of a rendered number
+        /// sit in front of its digit run — the sign (<c>+</c>, <c>-</c> or space) plus the two-character
+        /// <c>0x</c>/<c>0X</c>/<c>0o</c>/<c>0b</c> prefix that <c>#</c> puts on a radix type. Both
+        /// <c>=</c> paths pad at this offset: the <c>0</c>-fill path in <see cref="GroupAndZeroFill"/>
+        /// and the explicit/default-fill arm of the alignment switch.
+        /// </summary>
+        private static int NumericPrefixLength(string formatted, char type, bool altForm)
+        {
+            int signLen = formatted.Length > 0
+                && (formatted[0] == '-' || formatted[0] == '+' || formatted[0] == ' ') ? 1 : 0;
+            int prefixLen = altForm && (type == 'x' || type == 'X' || type == 'o' || type == 'b') ? 2 : 0;
+            return signLen + prefixLen;
+        }
+
+        /// <summary>
         /// Insert grouping separators into — and, when the <c>0</c> flag is in force, zero-fill —
         /// the DIGIT RUN of an already-formatted number, leaving the sign, the <c>0x</c>/<c>0o</c>/
         /// <c>0b</c> prefix and the fraction/exponent/percent tail alone.
@@ -848,11 +860,7 @@ namespace Sharpy
         private static string GroupAndZeroFill(
             string formatted, char type, bool altForm, char grouping, int minWidthTotal)
         {
-            int signLen = formatted.Length > 0
-                && (formatted[0] == '-' || formatted[0] == '+' || formatted[0] == ' ') ? 1 : 0;
-            int prefixLen = altForm && (type == 'x' || type == 'X' || type == 'o' || type == 'b') ? 2 : 0;
-
-            int digitsStart = signLen + prefixLen;
+            int digitsStart = NumericPrefixLength(formatted, type, altForm);
             if (digitsStart > formatted.Length)
             {
                 return formatted;
@@ -892,7 +900,7 @@ namespace Sharpy
                 return formatted;
             }
 
-            int minWidth = minWidthTotal <= 0 ? 0 : minWidthTotal - signLen - prefixLen - tail.Length;
+            int minWidth = minWidthTotal <= 0 ? 0 : minWidthTotal - digitsStart - tail.Length;
             string grouped = InsertThousandsGrouping(digits, minWidth, GroupSizeFor(type), separator);
 
             return formatted.Substring(0, digitsStart) + grouped + tail;
