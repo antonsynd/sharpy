@@ -379,85 +379,206 @@ namespace Sharpy
             throw new AttributeError("'" + typeName + "' object has no attribute '" + attr + "'");
         }
 
+        /// <summary>
+        /// One <c>[key]</c> step of a replacement field (#1986), CPython's rule: the key is an
+        /// <c>int</c> when every character is a decimal digit and a <c>str</c> otherwise (so
+        /// <c>{0[-1]}</c> indexes with the string <c>'-1'</c>), and <c>value[key]</c> is then
+        /// evaluated with the key as typed — a str indexes a character, a tuple or list takes an int
+        /// only, a mapping looks the key up without coercing it (<c>"{0[0]}".format({"0": 5})</c> is
+        /// <c>KeyError: 0</c>), and any other value with an indexer accepting the key is indexed
+        /// through it.
+        /// </summary>
         private static object ResolveItem(object value, string key)
         {
+            if (key.Length == 0)
+            {
+                throw new ValueError("Empty attribute in format string");
+            }
+
+            bool intKey = TryParseDecimalKey(key, out int index);
+            object typedKey = intKey ? (object)index : key;
+
             if (value == null)
             {
                 throw new TypeError("'NoneType' object is not subscriptable");
             }
 
-            // Try non-generic IList first (covers System.Collections.Generic.List<T>, arrays, etc.)
-            if (value is System.Collections.IList nonGenericList)
+            if (value is string s)
             {
-                if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int idx))
+                if (!intKey)
                 {
-                    if (idx < 0 || idx >= nonGenericList.Count)
-                    {
-                        throw new IndexError("list index out of range");
-                    }
-                    return nonGenericList[idx]!;
+                    throw new TypeError("string indices must be integers, not 'str'");
                 }
-                throw new KeyError(key);
+                if (index >= s.Length)
+                {
+                    throw new IndexError("string index out of range");
+                }
+                return s[index].ToString();
             }
 
-            // Try non-generic IDictionary (covers System.Collections.Generic.Dictionary<K,V>)
-            if (value is IDictionary nonGenericDict)
+            if (value is System.Runtime.CompilerServices.ITuple tuple)
             {
-                if (!nonGenericDict.Contains(key))
+                if (!intKey)
                 {
-                    throw new KeyError(key);
+                    throw new TypeError("tuple indices must be integers or slices, not str");
                 }
-                return nonGenericDict[key]!;
+                if (index >= tuple.Length)
+                {
+                    throw new IndexError("tuple index out of range");
+                }
+                return tuple[index]!;
             }
 
-            // Handle generic IList<T> types that don't implement non-generic IList
-            // (e.g., Sharpy.List<T>).
             var valueType = value.GetType();
-            Type? listInterface = FindGenericInterface(valueType, typeof(IList<>));
-            if (listInterface != null)
+            string pyName = PyFormat.PyTypeName(value);
+
+            // Sequences (non-generic IList covers Sharpy.List<T> and arrays; IList<T> the rest).
+            Type? listInterface = value is IList ? null : FindGenericInterface(valueType, typeof(IList<>));
+            if (value is IList || listInterface != null)
             {
-                if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int idx))
+                if (!intKey)
                 {
-                    int count = GetCollectionCount(value, valueType);
-                    if (idx < 0 || idx >= count)
-                    {
-                        throw new IndexError("list index out of range");
-                    }
-                    var indexerProp = listInterface.GetProperty("Item");
-                    return indexerProp!.GetValue(value, new object[] { idx })!;
+                    throw new TypeError(pyName + " indices must be integers or slices, not str");
                 }
-                throw new KeyError(key);
+                int count = value is IList nonGenericList ? nonGenericList.Count : GetCollectionCount(value, valueType);
+                if (index >= count)
+                {
+                    throw new IndexError(pyName + " index out of range");
+                }
+                return value is IList list
+                    ? list[index]!
+                    : listInterface!.GetProperty("Item")!.GetValue(value, new object[] { index })!;
             }
 
-            // Handle generic IDictionary<K,V> types that don't implement non-generic IDictionary
-            // (e.g., Sharpy.Dict<K,V>).
-            Type? dictInterface = FindGenericInterface(valueType, typeof(IDictionary<,>));
+            // Mappings: the key as typed, never coerced from its text.
+            Type? dictInterface = FindGenericInterface(valueType, typeof(IDictionary<,>))
+                ?? FindGenericInterface(valueType, typeof(IReadOnlyDictionary<,>));
             if (dictInterface != null)
             {
-                var containsMethod = dictInterface.GetMethod("ContainsKey");
-                var keyType = dictInterface.GetGenericArguments()[0];
-                object convertedKey;
-                try
+                if (!TryAdaptKey(typedKey, dictInterface.GetGenericArguments()[0], out object? clrKey)
+                    || !(bool)dictInterface.GetMethod("ContainsKey")!.Invoke(value, new[] { clrKey })!)
                 {
-                    convertedKey = keyType == typeof(string)
-                        ? (object)key
-                        : Convert.ChangeType(key, keyType, CultureInfo.InvariantCulture);
+                    throw new KeyError(Builtins.Repr(typedKey));
                 }
-                catch
+                return dictInterface.GetProperty("Item")!.GetValue(value, new[] { clrKey })!;
+            }
+            if (value is IDictionary nonGenericDict)
+            {
+                if (!nonGenericDict.Contains(typedKey))
                 {
-                    throw new KeyError(key);
+                    throw new KeyError(Builtins.Repr(typedKey));
                 }
-
-                bool contains = (bool)containsMethod!.Invoke(value, new[] { convertedKey })!;
-                if (!contains)
-                {
-                    throw new KeyError(key);
-                }
-                var indexerProp = dictInterface.GetProperty("Item");
-                return indexerProp!.GetValue(value, new[] { convertedKey })!;
+                return nonGenericDict[typedKey]!;
             }
 
-            throw new TypeError("'" + valueType.Name + "' object is not subscriptable");
+            // Any other value with a one-parameter indexer (a user __getitem__ emits one).
+            PropertyInfo? indexer = null;
+            object? indexerKey = null;
+            bool hasIndexer = false;
+            bool hasIntIndexer = false;
+            foreach (var property in valueType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var parameters = property.GetIndexParameters();
+                if (parameters.Length != 1 || property.GetMethod == null)
+                {
+                    continue;
+                }
+                hasIndexer = true;
+                Type parameterType = parameters[0].ParameterType;
+                hasIntIndexer |= TryAdaptKey(index, parameterType, out _) && parameterType != typeof(object);
+                if (indexer == null && TryAdaptKey(typedKey, parameterType, out object? adapted))
+                {
+                    indexer = property;
+                    indexerKey = adapted;
+                }
+            }
+            if (indexer != null)
+            {
+                try
+                {
+                    return indexer.GetValue(value, new[] { indexerKey })!;
+                }
+                catch (TargetInvocationException ex) when (ex.InnerException != null)
+                {
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+                    throw;
+                }
+            }
+            if (hasIndexer && !intKey && hasIntIndexer)
+            {
+                throw new TypeError(pyName + " indices must be integers or slices, not str");
+            }
+            if (hasIndexer)
+            {
+                throw new KeyError(Builtins.Repr(typedKey));
+            }
+            throw new TypeError("'" + pyName + "' object is not subscriptable");
+        }
+
+        /// <summary>
+        /// CPython's field-name integer: every character a decimal digit (Unicode <c>Nd</c>, as
+        /// <c>str.isdecimal</c>) — no sign, no whitespace. Overflow is CPython's ValueError.
+        /// </summary>
+        private static bool TryParseDecimalKey(string key, out int value)
+        {
+            value = 0;
+            long accumulator = 0;
+            foreach (char c in key)
+            {
+                int digit = CharUnicodeInfo.GetDecimalDigitValue(c);
+                if (digit < 0 || CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.DecimalDigitNumber)
+                {
+                    return false;
+                }
+                accumulator = accumulator * 10 + digit;
+                if (accumulator > int.MaxValue)
+                {
+                    throw new ValueError("Too many decimal digits in format string");
+                }
+            }
+            value = (int)accumulator;
+            return true;
+        }
+
+        /// <summary>
+        /// The key as the target parameter can take it without changing its python value: the
+        /// same object when the type admits it, or an int widened to another CLR numeric type
+        /// (python <c>0 == 0.0</c> and they hash alike). A str never becomes a number.
+        /// </summary>
+        private static bool TryAdaptKey(object key, Type target, out object? adapted)
+        {
+            adapted = null;
+            if (target.IsInstanceOfType(key))
+            {
+                adapted = key;
+                return true;
+            }
+            if (key is int i)
+            {
+                switch (target.IsEnum ? TypeCode.Object : Type.GetTypeCode(target))
+                {
+                    case TypeCode.SByte:
+                    case TypeCode.Byte:
+                    case TypeCode.Int16:
+                    case TypeCode.UInt16:
+                    case TypeCode.UInt32:
+                    case TypeCode.Int64:
+                    case TypeCode.UInt64:
+                    case TypeCode.Single:
+                    case TypeCode.Double:
+                    case TypeCode.Decimal:
+                        try
+                        {
+                            adapted = Convert.ChangeType(i, target, CultureInfo.InvariantCulture);
+                            return true;
+                        }
+                        catch (OverflowException)
+                        {
+                            return false;
+                        }
+                }
+            }
+            return false;
         }
 
         private static Type? FindGenericInterface(Type type, Type genericInterfaceDefinition)
