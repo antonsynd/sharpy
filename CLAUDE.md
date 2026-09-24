@@ -137,7 +137,3 @@ dotnet test --filter "DisplayName~test_name"                          # By test 
 ## Git & Release
 
 Use `/commit` and `/push` — `/push` runs the generated-artifact staleness gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) that CI also enforces. Run `/bump-version` before release-destined pushes.
-
-## MCP Navigation
-
-Filename patterns → Glob; text/regex → Grep. For structural queries prefer the MCP servers when connected (fall back down this list otherwise): `code-review-graph` (`.mcp.json`) for risk-scored review context, impact radius, call chains, and architecture overviews; CodeGraphContext (user-configured) for complexity triage and dead-code queries.
