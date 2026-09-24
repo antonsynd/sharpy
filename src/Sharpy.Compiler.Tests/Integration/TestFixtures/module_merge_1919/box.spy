@@ -1,0 +1,10 @@
+# Control for #1919: a NON-generic class named like its file merges — it becomes the module class
+# and absorbs the module's members, including main.
+class Box:
+    v: int
+
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+def main() -> None:
+    print(Box(7).v)

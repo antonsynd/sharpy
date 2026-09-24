@@ -335,9 +335,20 @@ internal partial class RoslynEmitter
         // below into a silent no-op, but every other kind raised SPY0520 and returned without
         // emitting the module class, so the entry point vanished and the build died with CS5001
         // (#1268, #1276).
-        ClassDeclarationSyntax? collidingTypeDecl = null;
+        // The merge decision is ModuleShape's, computed ONCE with the arity axis (#1919): only a
+        // NON-generic class named like the module merges. This method used to re-derive the decision
+        // with its own arity-less comparison — a second copy that merged the module into `Thing<T>`
+        // (CS5001 under `run`, CS0305 under `project`). A generic class named like the module cannot
+        // merge (the module class has arity 0) and cannot coexist either: it is nested INSIDE the
+        // module class, and C# compares a nested type's name without its arity (CS0542) — so it is
+        // refused below with the other kinds that cannot merge (SPY0520).
+        ClassDeclarationSyntax? collidingTypeDecl = _moduleShape!.MergedClassName is { } mergedClassName
+            ? moduleDeclarations
+                .OfType<ClassDeclarationSyntax>()
+                .FirstOrDefault(c => c.Identifier.Text == mergedClassName)
+            : null;
         {
-            // Find colliding type declarations and their generated syntax
+            // Refuse the colliding type kinds that cannot merge (a non-generic class merges above)
             foreach (var stmt in statements)
             {
                 string? typeName = stmt switch
@@ -354,13 +365,17 @@ internal partial class RoslynEmitter
                     _ => null
                 };
 
-                if (typeName != null && typeName == moduleClassName && stmt is ClassDef)
+                if (stmt is ClassDef { TypeParameters.Length: 0 })
                 {
-                    // Find the generated ClassDeclarationSyntax for this type
-                    collidingTypeDecl = moduleDeclarations
-                        .OfType<ClassDeclarationSyntax>()
-                        .FirstOrDefault(c => c.Identifier.Text == moduleClassName);
-                    break;
+                    continue;
+                }
+                else if (stmt is ClassDef generic && typeName == moduleClassName)
+                {
+                    _context.AddError(
+                        $"Type '{generic.Name}' conflicts with module class name '{moduleClassName}': a generic " +
+                        "class cannot merge into the module class, and C# cannot nest it inside a class of the same " +
+                        "name (CS0542). Rename the type or the source file to avoid this collision.",
+                        code: DiagnosticCodes.CodeGen.NameCollision);
                 }
                 else if (typeName != null && typeName == moduleClassName)
                 {
@@ -506,10 +521,16 @@ internal partial class RoslynEmitter
         // A user class whose emitted identifier equals the module class name merges INTO the module
         // class (animal.spy + class Animal). Only a ClassDef merges; a struct/interface/enum/union
         // of the same name is a collision error, not a merge (see GenerateModuleMembers).
+        //
+        // The arity axis (#1919): a GENERIC class named like the module (`class Thing[T]` in
+        // thing.spy) is C# `Thing<T>`, which cannot become the arity-0 module class `Thing`, so it
+        // never merges (GenerateModuleMembers refuses it with SPY0520: nested inside the module class
+        // it would be CS0542). GenerateModuleMembers reads this answer; it does not re-derive it.
         string? mergedClassName = null;
         foreach (var stmt in statements)
         {
             if (stmt is ClassDef cd
+                && cd.TypeParameters.Length == 0
                 && NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped) == moduleClassName)
             {
                 mergedClassName = moduleClassName;

@@ -60,8 +60,12 @@ universal qualification, produced a `CS0118` "is a namespace but is used like a 
 local top-level definition that shadows an imported name of the same spelling is left unqualified,
 so the local binding still wins.
 
-A `struct`, `interface`, or `enum` whose name equals the file-derived module class name is still an
-error (`SPY0520`): only a `class` can absorb the module's members and serve as the module class.
+A `struct`, `interface`, `enum`, `union`, or `delegate` whose name equals the file-derived module
+class name is still an error (`SPY0520`): only a `class` can absorb the module's members and serve as
+the module class — and only a NON-generic one. A generic class named like its file (`class
+Thing[T]` in `thing.spy`) is `Thing<T>` in C#: it cannot merge into the module class `Thing` (which
+has no type parameters), and it cannot sit inside it either, because C# compares a nested type's name
+without its arity (CS0542). It is refused with `SPY0520` too; rename the class or the file.
 
 ## Circular Import Handling
 

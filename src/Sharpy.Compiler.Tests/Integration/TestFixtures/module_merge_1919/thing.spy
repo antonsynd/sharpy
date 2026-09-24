@@ -1,0 +1,12 @@
+# A GENERIC class named like its file (#1919) cannot merge into the module class `Thing` (arity 0),
+# and C# cannot nest `Thing<T>` inside class `Thing` (CS0542 compares names without arity) — so it
+# is refused by name, like a struct/union/interface/enum of the same name. Prior commit: the module
+# merged into `Thing<T>` and died with CS5001 behind SPY0908.
+class Thing[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+def main() -> None:
+    print(Thing[int](7).v)
