@@ -314,12 +314,17 @@ public static partial class DiagnosticExplanations
             "(\"{:=5}\".format(s)). The spec grammar is [[fill]align][sign][z][#][0][width]" +
             "[grouping][.precision][type], and each type code is valid only for certain kinds — 'd', " +
             "'x', 'b' are integer codes, 'f', 'e', 'g' are float codes, 's' is the string code — so " +
-            "a mismatch (or an unknown code, trailing text, or a spec on the None literal) is refused " +
-            "by name with CPython's own ValueError/TypeError message. A dynamic spec is validated at " +
-            "runtime instead.",
+            "a mismatch (or an unknown code, or trailing text) is refused by name with CPython's own " +
+            "ValueError message, in CPython's rule order. A non-empty spec on a value whose type has " +
+            "no __format__ — the None literal, a list, dict, set, tuple, Optional, or a class that " +
+            "does not implement System.IFormattable — is CPython's TypeError (\"unsupported format " +
+            "string passed to list.__format__\"). A type that implements System.IFormattable owns " +
+            "its spec and is never refused; an enum formats as its str. A dynamic spec, or an operand " +
+            "whose runtime class the static type does not fix (object, an interface, a union), is " +
+            "validated at runtime instead.",
             "s: str = \"a\"\nprint(f\"{s:d}\")  # Unknown format code 'd' for object of type 'str'",
             "Use a type code valid for the operand (e.g. drop 'd' for a str, or convert the value " +
-            "first), or fix the malformed spec.");
+            "first, as in f\"{xs!r:>10}\" for a list), or fix the malformed spec.");
 
         Add(dict, DiagnosticCodes.SemanticOverflow.ImpossibleCoercion,
             "impossible coercion", "Semantic",

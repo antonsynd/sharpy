@@ -19,6 +19,44 @@ internal readonly record struct FormatOperand(FormatOperandKind Kind, string PyT
     public static FormatOperand Bool => new(FormatOperandKind.Bool, "bool");
     public static FormatOperand Integral => new(FormatOperandKind.Integral, "int");
     public static FormatOperand Float => new(FormatOperandKind.Float, "float");
+    public static FormatOperand Complex => new(FormatOperandKind.Complex, "complex");
+
+    /// <summary>A type that owns its spec (<c>System.IFormattable</c>): any spec is accepted (#1988).</summary>
+    public static FormatOperand Formattable => new(FormatOperandKind.Formattable, "object");
+
+    /// <summary>A type with no <c>__format__</c>: a non-empty spec is CPython's TypeError naming <paramref name="pyTypeName"/>.</summary>
+    public static FormatOperand NoFormat(string pyTypeName) => new(FormatOperandKind.NoFormat, pyTypeName);
+
+    /// <summary>
+    /// The python type name the runtime's messages spell for a value of CLR type
+    /// <paramref name="clr"/> — the static image of <c>Sharpy.PyFormat.PyTypeName</c>, keyed on CLR
+    /// identity: the Core collections, tuples, bytes and <c>Optional</c> by their python names,
+    /// anything else by its CLR name without the generic arity (a nested type by its own name).
+    /// </summary>
+    public static string PyTypeNameOf(Type clr)
+    {
+        if (typeof(System.Runtime.CompilerServices.ITuple).IsAssignableFrom(clr))
+            return "tuple";
+        if (clr == typeof(SharpyRT::Sharpy.Bytes))
+            return "bytes";
+        if (clr.IsGenericType)
+        {
+            var definition = clr.GetGenericTypeDefinition();
+            if (definition == typeof(SharpyRT::Sharpy.List<>))
+                return "list";
+            if (definition == typeof(SharpyRT::Sharpy.Dict<,>))
+                return "dict";
+            if (definition == typeof(SharpyRT::Sharpy.Set<>))
+                return "set";
+            if (definition == typeof(SharpyRT::Sharpy.FrozenSet<>))
+                return "frozenset";
+            if (definition == typeof(SharpyRT::Sharpy.Optional<>))
+                return "Optional";
+        }
+        var name = clr.Name;
+        var tick = name.IndexOf('`', StringComparison.Ordinal);
+        return tick < 0 ? name : name.Substring(0, tick);
+    }
 }
 
 /// <summary>

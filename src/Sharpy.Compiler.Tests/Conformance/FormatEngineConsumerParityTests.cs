@@ -39,6 +39,15 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     // bumping this fails the line-count check.
     private const int Consumers = 4;
 
+    // Module-level declarations the value cells read (#1988): F owns its spec through
+    // System.IFormattable, the CLR spelling of __format__ (python3's twin is
+    // `class F: def __format__(self, s): return "F<" + s + ">"`).
+    private const string FormattablePrelude =
+        "from System import IFormattable, IFormatProvider\n\n\n"
+        + "class F(IFormattable):\n"
+        + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
+        + "        return \"F<\" + fmt + \">\"\n\n\n";
+
     [Fact]
     [Trait("Category", "Conformance")]
     public void FormatEngine_AllFourConsumersAgreeWithCPython()
@@ -69,7 +78,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             expected.Add($"{cell.Label}|tstring|[{cell.Expected}]");
         }
 
-        var source = "def main() -> None:\n"
+        var source = FormattablePrelude + "def main() -> None:\n"
             + string.Join("", decls.Select(d => "    " + d + "\n"))
             + string.Join("\n", lines) + "\n";
 
@@ -115,23 +124,31 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     }
 
     // Literal rosters (the totality anchors), not derived from the cells.
-    private static readonly string[] ConversionOperands = { "s", "xs", "n", "e", "b" };
+    private static readonly string[] ConversionOperands = { "s", "xs", "st", "n", "e", "b" };
     private static readonly string[] ConversionForms = { "!r", "!s", "!a", "=", "=:>6", "=!r", "!r:>6", "!s:>6", "!a:>6" };
 
-    // Declarations for the operands: str "ab", list [1, 2], int 5, str "é" (built with chr so the
-    // program source stays ASCII), bool True (str/repr spell True, format() spells 1 — the operand
-    // that makes a conversion observable under a spec).
+    // Declarations for the operands: str "ab", list [1, 2], set {1}, int 5, str "é" (built with chr
+    // so the program source stays ASCII), bool True (str/repr spell True, format() spells 1 — the
+    // operand that makes a conversion observable under a spec).
     private const string ConversionDecls =
         "    s: str = \"ab\"\n"
         + "    xs: list[int] = [1, 2]\n"
+        + "    st: set[int] = {1}\n"
         + "    n: int = 5\n"
         + "    e: str = chr(233)\n"
         + "    b: bool = True\n";
 
-    private static readonly (string Operand, string Form, string Reason)[] ConversionNotApplicable =
+    /// <summary>
+    /// Conversion positions CPython refuses: <c>=</c> with a spec and no conversion formats the
+    /// operand ITSELF, and a list or set has no <c>__format__</c> — python3
+    /// <c>f"{xs=:>6}"</c> raises <c>TypeError: unsupported format string passed to list.__format__</c>.
+    /// The literal spec is refused at compile time (SPY0609) on the f- and t-string routes, the
+    /// dynamic one at runtime with the same TypeError (#1988, R-BY); <c>=</c> has no str.format route.
+    /// </summary>
+    private static readonly (string Operand, string Form, string Message)[] ConversionRefusals =
     {
-        ("xs", "=:>6", "python3 raises TypeError: unsupported format string passed to list.__format__ "
-            + "('=' with a spec and no conversion formats the list itself); Sharpy renders it (#1988)"),
+        ("xs", "=:>6", "unsupported format string passed to list.__format__"),
+        ("st", "=:>6", "unsupported format string passed to set.__format__"),
     };
 
     /// <summary>
@@ -193,19 +210,19 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     public void FormatEngine_ConversionMatrix_IsTotal_AndEveryConversionIsObservable()
     {
         var executing = ConversionCells().Select(c => (c.Operand, c.Form)).ToHashSet();
-        var na = ConversionNotApplicable.Select(r => (r.Operand, r.Form)).ToHashSet();
+        var refused = ConversionRefusals.Select(r => (r.Operand, r.Form)).ToHashSet();
         var missing = ConversionOperands
             .SelectMany(o => ConversionForms.Select(f => (o, f)))
-            .Where(p => !executing.Contains(p) && !na.Contains(p))
+            .Where(p => !executing.Contains(p) && !refused.Contains(p))
             .ToList();
-        Assert.True(missing.Count == 0, "conversion matrix positions with no cell and no N/A row: "
+        Assert.True(missing.Count == 0, "conversion matrix positions with no cell and no refusal row: "
             + string.Join(", ", missing.Select(p => p.o + p.f)));
-        Assert.Empty(executing.Intersect(na));
+        Assert.Empty(executing.Intersect(refused));
 
-        // 5 operands x 9 forms = 45 positions: 44 executing + 1 N/A (literal anchors).
-        Assert.Equal(45, ConversionOperands.Length * ConversionForms.Length);
-        Assert.Equal(44, executing.Count);
-        Assert.Single(na);
+        // 6 operands x 9 forms = 54 positions: 52 executing + 2 refused (literal anchors).
+        Assert.Equal(54, ConversionOperands.Length * ConversionForms.Length);
+        Assert.Equal(52, executing.Count);
+        Assert.Equal(2, refused.Count);
 
         // Each conversion character must be OBSERVABLE in at least one cell, or dropping it would
         // pass vacuously: 'r' (!r, !r:>6, and the implied !r of a bare '=' / '=!r'), 's' (only under
@@ -218,17 +235,53 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         Assert.DoesNotContain("=:>6", observableForms);
     }
 
+    /// <summary>
+    /// The refused conversion positions (#1988): a literal spec is SPY0609 at compile time and the
+    /// program never runs; the same spec reached dynamically compiles and raises CPython's TypeError
+    /// with the identical text. Both routes that spell <c>=</c> (f-string, t-string render) are asserted.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_ConversionRefusals_AreStaticForALiteralSpec()
+    {
+        var failures = new List<string>();
+        foreach (var (operand, form, message) in ConversionRefusals)
+        {
+            var colon = form.IndexOf(':', StringComparison.Ordinal);
+            var spec = form[(colon + 1)..];
+            var dynamicForm = form[..(colon + 1)] + "{spec}";
+            foreach (var (route, wrap) in new (string, Func<string, string>)[]
+            {
+                ("fstring", field => $"f\"{field}\""),
+                ("tstring", field => $"str(t\"{field}\")"),
+            })
+            {
+                var id = $"conv.{operand}{form}/{route}";
+                var literal = CompileAndExecute(
+                    RefusalProgram(ConversionDecls, wrap("{" + operand + form + "}")), executionTimeoutMs: 15_000);
+                CheckStaticRefusal(id + "/Literal", literal, message, failures);
+                var dynamic = CompileAndExecute(
+                    RefusalProgram(ConversionDecls + $"    spec: str = \"{spec}\"\n", wrap("{" + operand + dynamicForm + "}")),
+                    executionTimeoutMs: 15_000);
+                CheckRuntimeRefusal(id + "/Dynamic", dynamic, "TypeError", message, failures);
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
     private static IEnumerable<ConversionCell> ConversionCells()
     {
         // python3 3.12:
-        //   for name, v in [("s","ab"),("xs",[1,2]),("n",5),("e","\u00e9"),("b",True)]:
+        //   for name, v in [("s","ab"),("xs",[1,2]),("st",{1}),("n",5),("e","\u00e9"),("b",True)]:
         //     for form in ["!r","!s","!a","=","=:>6","=!r","!r:>6","!s:>6","!a:>6"]:
         //       print(name, form, repr(eval('f"{' + name + form + '}"', {name: v})))
         // Observable = the f-string text differs from the same field with the conversion removed
-        // (the '=' text kept; an implied !r counts as a conversion), as SHARPY renders it. The three
-        // xs conversion-plus-spec cells would be observable in python3 (format([1, 2], ">6") raises
-        // TypeError) but Sharpy's engine renders the unconverted list as its padded str (#1988), so
-        // dropping the conversion is invisible there: they are controls.
+        // (the '=' text kept; an implied !r counts as a conversion). The xs and st conversion-plus-spec
+        // cells are observable: without the conversion the spec formats the list/set ITSELF, which
+        // CPython and Sharpy refuse (TypeError / SPY0609, #1988). st!r:>6 is the discriminating cell —
+        // it prints '   {1}', so the padding visibly lands on the converted str, where xs!r:>6's
+        // '[1, 2]' is exactly six wide and would print the same bytes unpadded.
         yield return new("s", "!r", "'ab'", true);
         yield return new("s", "!s", "ab", false);
         yield return new("s", "!a", "'ab'", true);
@@ -243,9 +296,17 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("xs", "!a", "[1, 2]", false);
         yield return new("xs", "=", "xs=[1, 2]", false);
         yield return new("xs", "=!r", "xs=[1, 2]", false);
-        yield return new("xs", "!r:>6", "[1, 2]", false);
-        yield return new("xs", "!s:>6", "[1, 2]", false);
-        yield return new("xs", "!a:>6", "[1, 2]", false);
+        yield return new("xs", "!r:>6", "[1, 2]", true);
+        yield return new("xs", "!s:>6", "[1, 2]", true);
+        yield return new("xs", "!a:>6", "[1, 2]", true);
+        yield return new("st", "!r", "{1}", false);
+        yield return new("st", "!s", "{1}", false);
+        yield return new("st", "!a", "{1}", false);
+        yield return new("st", "=", "st={1}", false);
+        yield return new("st", "=!r", "st={1}", false);
+        yield return new("st", "!r:>6", "   {1}", true);
+        yield return new("st", "!s:>6", "   {1}", true);
+        yield return new("st", "!a:>6", "   {1}", true);
         yield return new("n", "!r", "5", false);
         yield return new("n", "!s", "5", false);
         yield return new("n", "!a", "5", false);
@@ -472,7 +533,9 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     /// A string-operand spec CPython refuses (#1956). <c>Conversion</c> is the field's conversion
     /// (<c>!r</c> maps the operand kind to <c>Str</c>), empty for a plain field.
     /// </summary>
-    private sealed record StrRefusalCell(string Label, string Decl, string Value, string Spec, string Message, string Conversion = "");
+    private sealed record StrRefusalCell(
+        string Label, string Decl, string Value, string Spec, string Message, string Conversion = "",
+        string Exception = "ValueError");
 
     /// <summary>How a spec reaches the engine: a string LITERAL the checker can see, or a DYNAMIC spec.</summary>
     private enum SpecForm
@@ -538,8 +601,10 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     /// The route x spec-form refusal DIRECTION matrix (#1956). A literal spec CPython refuses must be
     /// refused at COMPILE time — SPY0609 (the code is asserted, and the message is CPython's wording
     /// verbatim) — and the program must never run (a sentinel printed before the call is absent). The
-    /// same spec reached dynamically must compile, run (sentinel present) and raise ValueError with
-    /// the identical wording at runtime, caught in-program so stdout pins the exact text. Asserting
+    /// same spec reached dynamically must compile, run (sentinel present) and raise the same
+    /// exception (ValueError for a spec the operand's kind rejects, TypeError for an operand with no
+    /// <c>__format__</c>, #1988) with the identical wording at runtime, caught in-program so stdout
+    /// pins the exact text. Asserting
     /// WHERE the refusal happens is the point: SPY0609 carries CPython's text, so a check that only
     /// searched output for the message would pass whichever side refused.
     ///
@@ -550,9 +615,9 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
-    public void FormatEngine_StringOperandRefusals_FireOnEveryRoute()
+    public void FormatEngine_OperandRefusals_FireOnEveryRoute()
     {
-        var cells = StringOperandRefusalCells().ToList();
+        var cells = StringOperandRefusalCells().Concat(NoFormatOperandRefusalCells()).ToList();
         Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct().Count());
 
         var failures = new List<string>();
@@ -579,7 +644,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
                     if (form == SpecForm.Literal)
                         CheckStaticRefusal(id, result, cell.Message, failures);
                     else
-                        CheckRuntimeRefusal(id, result, cell.Message, failures);
+                        CheckRuntimeRefusal(id, result, cell.Exception, cell.Message, failures);
                 }
             }
         }
@@ -588,7 +653,7 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         {
             executed++;
             var result = CompileAndExecute(RefusalProgram(row.Decls, row.Expr), executionTimeoutMs: 15_000);
-            CheckRuntimeRefusal(row.Label + " (static N/A: " + row.WhyNoStaticTwin + ")", result, row.Message, failures);
+            CheckRuntimeRefusal(row.Label + " (static N/A: " + row.WhyNoStaticTwin + ")", result, "ValueError", row.Message, failures);
         }
 
         Output.WriteLine($"Refusal direction matrix: {cells.Count} cells x {RefusalRoutes.Length} routes x {SpecForms.Length} "
@@ -597,25 +662,30 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         foreach (var f in failures)
             Output.WriteLine("  " + f);
 
-        // 10 cells x 6 routes x 2 forms = 120 positions: 114 executing + 6 N/A (the conversion cell has
-        // no spelling on the three format() routes) — literal anchors, so a dropped route or form is
-        // a count failure.
-        Assert.Equal(120, cells.Count * RefusalRoutes.Length * SpecForms.Length);
+        // 15 cells (10 str-operand + 5 no-__format__ operand) x 6 routes x 2 forms = 180 positions:
+        // 174 executing + 6 N/A (the conversion cell has no spelling on the three format() routes) —
+        // literal anchors, so a dropped route, form or operand kind is a count failure.
+        Assert.Equal(180, cells.Count * RefusalRoutes.Length * SpecForms.Length);
         Assert.Equal(6, notApplicable);
-        Assert.Equal(114 + RuntimeOnlyRefusals.Length, executed);
+        Assert.Equal(174 + RuntimeOnlyRefusals.Length, executed);
 
         Assert.True(failures.Count == 0,
             $"{failures.Count} refusal positions took the wrong direction or wording:\n"
             + string.Join("\n", failures.Select(f => "  " + f)));
     }
 
+    // A user class with no __format__ (no System.IFormattable), for the no-__format__ refusal cells.
+    private const string RefusalPrelude = "class C:\n    x: int = 1\n\n\n";
+
     private static string RefusalProgram(string decls, string expr, bool importsBuiltins = false)
-        => (importsBuiltins ? "import builtins\n\n" : "") + "def main() -> None:\n" + decls
+        => (importsBuiltins ? "import builtins\n\n" : "") + RefusalPrelude + "def main() -> None:\n" + decls
             + $"    print(\"{RefusalSentinel}\")\n"
             + "    try:\n"
             + $"        print({expr})\n"
             + "    except ValueError as e:\n"
-            + "        print(\"ValueError:\", e)\n";
+            + "        print(\"ValueError:\", e)\n"
+            + "    except TypeError as e:\n"
+            + "        print(\"TypeError:\", e)\n";
 
     private static void CheckStaticRefusal(string id, ExecutionResult result, string message, List<string> failures)
     {
@@ -629,9 +699,10 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
             failures.Add($"{id}: expected SPY0609 '{message}', got: {string.Join("; ", spy0609.Select(d => d.Message))}");
     }
 
-    private static void CheckRuntimeRefusal(string id, ExecutionResult result, string message, List<string> failures)
+    private static void CheckRuntimeRefusal(
+        string id, ExecutionResult result, string exception, string message, List<string> failures)
     {
-        var expected = RefusalSentinel + "\nValueError: " + message;
+        var expected = RefusalSentinel + "\n" + exception + ": " + message;
         var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n');
         if (!result.Success)
             failures.Add($"{id}: expected to compile and refuse at RUNTIME, but compilation failed: "
@@ -661,6 +732,32 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         // python3 -c "'{!r:=8}'.format(5)"  =>  ValueError: '=' alignment not allowed in string format specifier
         yield return new("refuse.str_conv_eq", "", "5", "=8",
             "'=' alignment not allowed in string format specifier", Conversion: "!r");
+    }
+
+    /// <summary>
+    /// #1988 (R-BY): a non-empty spec on an operand with no <c>__format__</c> — a list, dict, set,
+    /// tuple or a user class that does not implement <c>System.IFormattable</c> — is CPython's
+    /// TypeError, raised before the spec is parsed. The static twin projects the operand's kind from
+    /// its static type, so the literal spec is SPY0609 on every route and the dynamic one Core's
+    /// TypeError with the same text. Before #1988 every one of these RAN, printing the padded str.
+    /// </summary>
+    private static IEnumerable<StrRefusalCell> NoFormatOperandRefusalCells()
+    {
+        // python3 -c "class C: pass
+        // for v in [[1, 2], {'a': 1}, {1}, (1, 2), C()]:
+        //   try: format(v, '>10')
+        //   except TypeError as e: print(e)"
+        //   =>  unsupported format string passed to list.__format__ (dict, set, tuple, C likewise)
+        yield return new("refuse.noformat_list", "xs: list[int] = [1, 2]", "xs", ">10",
+            "unsupported format string passed to list.__format__", Exception: "TypeError");
+        yield return new("refuse.noformat_dict", "d: dict[str, int] = {\"a\": 1}", "d", ">10",
+            "unsupported format string passed to dict.__format__", Exception: "TypeError");
+        yield return new("refuse.noformat_set", "st: set[int] = {1}", "st", ">10",
+            "unsupported format string passed to set.__format__", Exception: "TypeError");
+        yield return new("refuse.noformat_tuple", "tp: tuple[int, int] = (1, 2)", "tp", ">10",
+            "unsupported format string passed to tuple.__format__", Exception: "TypeError");
+        yield return new("refuse.noformat_user_class", "", "C()", ">10",
+            "unsupported format string passed to C.__format__", Exception: "TypeError");
     }
 
     /// <summary>
@@ -778,6 +875,16 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("empty.str", "s: str = \"hi\"", "s", "", "hi");
         yield return new("empty.list_int", "lst: list[int] = [1, 2]", "lst", "", "[1, 2]");
         yield return new("empty.list_float", "flst: list[float] = [1.0, 2.5]", "flst", "", "[1.0, 2.5]");
+
+        // ---- #1988: a type that owns its spec (System.IFormattable) gets it verbatim on every consumer;
+        //      a spec no builtin kind accepts is the type's own business (the static twin's positive
+        //      control: a Formattable operand is never refused).
+        // python3 -c 'class F:
+        //   def __format__(self, s): return "F<" + s + ">"
+        // print(format(F(),">10"), "{:>10}".format(F()), f"{F():>10}", format(F(),"garbage"))'
+        //   =>  F<>10> F<>10> F<>10> F<garbage>
+        yield return new("formattable.pad", "", "F()", ">10", "F<>10>");
+        yield return new("formattable.garbage", "", "F()", "garbage", "F<garbage>");
 
         // A float with a non-empty spec but NO type code takes the same str() route.
         // python3 -c 'print(repr(format(100.0,">10")))'  =>  '     100.0'

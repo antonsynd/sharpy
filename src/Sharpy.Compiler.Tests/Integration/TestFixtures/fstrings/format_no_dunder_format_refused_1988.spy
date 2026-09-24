@@ -1,0 +1,17 @@
+# A LITERAL non-empty spec on an operand with no __format__ (a list, dict, set, tuple, or a class
+# that does not implement System.IFormattable) is CPython's TypeError — refused at compile time
+# (SPY0609) on every route (#1988, R-BY). Before the fix each of these ran and printed the padded str.
+class C:
+    x: int = 1
+
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    d: dict[str, int] = {"a": 1}
+    st: set[int] = {1}
+    tp: tuple[int, int] = (1, 2)
+    print(f"{xs:>10}")
+    print(format(d, ">10"))
+    print("{:>10}".format(st))
+    print(str(t"{tp:>10}"))
+    print(f"{C():>10}")

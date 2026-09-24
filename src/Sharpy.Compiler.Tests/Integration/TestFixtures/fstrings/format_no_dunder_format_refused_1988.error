@@ -1,0 +1,6 @@
+SPY0609: unsupported format string passed to list.__format__ @13:14
+SPY0609: unsupported format string passed to dict.__format__ @14:21
+SPY0609: unsupported format string passed to set.__format__ @15:11
+SPY0609: unsupported format string passed to tuple.__format__ @16:18
+SPY0609: unsupported format string passed to C.__format__ @17:14
+!count 5

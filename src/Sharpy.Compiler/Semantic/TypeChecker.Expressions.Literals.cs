@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
@@ -767,31 +769,96 @@ internal partial class TypeChecker
 
     /// <summary>
     /// The compile-time operand a static format spec is validated against — the projection of the
-    /// value kinds <c>Sharpy.PyFormat</c> distinguishes at runtime, with the python type name Core's
-    /// messages spell. A None literal is its own kind; anything not a statically-known primitive is
-    /// <see cref="FormatOperand.Unknown"/> and is validated by Core at runtime instead.
+    /// value kinds <c>Sharpy.PyFormat</c> distinguishes at runtime (#1988, R-BY), with the python type
+    /// name Core's messages spell. A None literal is its own kind. A Sharpy-declared <c>enum</c>
+    /// formats as its <c>str</c>. A type whose CLR twin is known takes the kind the runtime gives
+    /// its values (<see cref="FormatOperandOfClr"/>). A Sharpy-declared class or struct owns its spec
+    /// when its base/interface closure reaches <c>System.IFormattable</c> (the CLR spelling of
+    /// <c>__format__</c>), and otherwise has no <c>__format__</c>. Everything whose runtime class
+    /// is not fixed by the static type (<c>object</c>, an interface, a union, a type parameter, a
+    /// nullable, <c>Unknown</c>) is <see cref="FormatOperand.Unknown"/>: never refused statically,
+    /// Core decides at runtime.
     /// </summary>
-    private static FormatOperand FormatOperandOf(Expression expr, SemanticType type)
+    private FormatOperand FormatOperandOf(Expression expr, SemanticType type)
     {
         if (expr is NoneLiteral)
         {
             return FormatOperand.NoneValue;
         }
 
-        if (type is BuiltinType { ClrType: { } clr })
+        switch (type)
         {
-            if (clr == typeof(string))
+            case UserDefinedType { Symbol.TypeKind: TypeKind.Enum }:
+                // A Sharpy-declared enum has no CLR type at compile time, so the arm keys on the
+                // symbol's kind: python's Enum.__format__ is str.__format__(str(self), spec).
                 return FormatOperand.Str;
-            if (clr == typeof(bool))
-                return FormatOperand.Bool;
-            if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
-                return FormatOperand.Float;
-            if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)
-                || clr == typeof(sbyte) || clr == typeof(uint) || clr == typeof(ulong) || clr == typeof(ushort))
-                return FormatOperand.Integral;
+            case BuiltinType or UserDefinedType or GenericType or TupleType or OptionalType
+                when TryGetClrType(type) is { } clr:
+                return FormatOperandOfClr(clr);
+        }
+
+        var symbol = type switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType generic => generic.GenericDefinition,
+            _ => null,
+        };
+        if (symbol is { TypeKind: TypeKind.Class or TypeKind.Struct })
+        {
+            // A base-typed hole holding a subclass that implements IFormattable is refused here
+            // although the runtime would delegate — the hazard R-BY accepts; the dynamic spec is
+            // the escape.
+            return OwnsFormatSpec(symbol) ? FormatOperand.Formattable : FormatOperand.NoFormat(symbol.Name);
         }
 
         return FormatOperand.Unknown;
+    }
+
+    /// <summary>
+    /// The operand kind the runtime gives a value of CLR type <paramref name="clr"/> — the static
+    /// image of <c>Sharpy.PyFormat.KindOf</c>, keyed on CLR identity: the numeric arms first (every
+    /// CLR number is also <c>IFormattable</c>), an enum as its <c>str</c>, <c>complex</c>, then
+    /// <c>System.IFormattable</c>; a type whose values may be of another class (<c>object</c>, an
+    /// interface, an abstract class) is not statically known; anything else has no
+    /// <c>__format__</c>.
+    /// </summary>
+    private static FormatOperand FormatOperandOfClr(Type clr)
+    {
+        if (clr == typeof(bool))
+            return FormatOperand.Bool;
+        if (clr == typeof(string) || clr == typeof(char) || clr.IsEnum || clr == typeof(Enum))
+            return FormatOperand.Str;
+        if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
+            return FormatOperand.Float;
+        if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)
+            || clr == typeof(sbyte) || clr == typeof(uint) || clr == typeof(ulong) || clr == typeof(ushort))
+            return FormatOperand.Integral;
+        if (clr == typeof(SharpyRT::Sharpy.Complex))
+            return FormatOperand.Complex;
+        if (ProtocolMembership.HasClrProtocolInterface(clr, IFormattableFullName))
+            return FormatOperand.Formattable;
+        if (clr == typeof(object) || clr == typeof(ValueType) || clr.IsInterface || (clr.IsAbstract && !clr.IsSealed)
+            || clr.IsGenericParameter || Nullable.GetUnderlyingType(clr) != null)
+            return FormatOperand.Unknown;
+        return FormatOperand.NoFormat(FormatOperand.PyTypeNameOf(clr));
+    }
+
+    private const string IFormattableFullName = "System.IFormattable";
+
+    /// <summary>
+    /// Whether a Sharpy-declared type owns its format spec: some type in its base chain, or an
+    /// interface any of them declares (transitively), is a CLR type implementing
+    /// <c>System.IFormattable</c> — <c>class F(IFormattable)</c> with <c>to_string(self, fmt, provider)</c>.
+    /// </summary>
+    private bool OwnsFormatSpec(TypeSymbol symbol)
+    {
+        for (var current = symbol; current != null; current = current.BaseType)
+        {
+            if (current.ClrType is { } clr && ProtocolMembership.HasClrProtocolInterface(clr, IFormattableFullName))
+                return true;
+        }
+        return GetInterfaces(symbol).Any(iface =>
+            iface.ClrType is { } clr && ProtocolMembership.HasClrProtocolInterface(clr, IFormattableFullName));
     }
 
     private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)

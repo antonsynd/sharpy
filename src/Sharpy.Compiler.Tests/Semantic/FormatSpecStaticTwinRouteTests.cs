@@ -53,7 +53,41 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         // An operand whose kind is not static is Core's to refuse at runtime, on every route alike.
         yield return new("unknown_operand", "o: object = \"ab\"", "o", "=5",
             RuntimeMessage: "'=' alignment not allowed in string format specifier");
+
+        // #1988 (R-BY): the operand kind is projected from the static type beyond the primitives.
+        // python3: format([1, 2], '>10') -> TypeError: unsupported format string passed to list.__format__
+        yield return new("list_no_format", "xs: list[int] = [1, 2]", "xs", ">10",
+            StaticMessage: "unsupported format string passed to list.__format__");
+        // python3: class C: pass; format(C(), '>10') -> TypeError: unsupported format string passed to C.__format__
+        yield return new("user_class_no_format", "", "C()", ">10",
+            StaticMessage: "unsupported format string passed to C.__format__");
+        // A type implementing System.IFormattable owns its spec: never refused, rendered by the type.
+        // python3 (class F: def __format__(self, s): return "F<" + s + ">"): format(F(), '>10') -> 'F<>10>';
+        // format(F(), 'garbage') -> 'F<garbage>' — the positive control for the absence of SPY0609.
+        yield return new("formattable_pad", "", "F()", ">10", Output: "F<>10>");
+        yield return new("formattable_garbage", "", "F()", "garbage", Output: "F<garbage>");
+        // A Sharpy-declared enum formats as its str (python's Enum.__format__ is str.__format__(str(self))).
+        // python3: format(Color.RED, 'd') -> ValueError: Unknown format code 'd' for object of type 'str'
+        yield return new("enum_d", "", "Color.RED", "d",
+            StaticMessage: "Unknown format code 'd' for object of type 'str'");
+        // python3: format(Color.RED, '>12') -> '   Color.RED'. Sharpy's str(Color.RED) is 'RED' (#2007);
+        // what this cell pins is that the str kind accepts the spec and pads to the width.
+        yield return new("enum_pad", "", "Color.RED", ">12", Output: "         RED");
+        // complex has its own __format__ (Core's Complex kind, #2018).
+        // python3: format(1+2j, 'd') -> ValueError: Unknown format code 'd' for object of type 'complex'
+        yield return new("complex_d", "", "complex(1, 2)", "d",
+            StaticMessage: "Unknown format code 'd' for object of type 'complex'");
     }
+
+    // Module-level declarations the cells read: C has no __format__, F owns its spec through
+    // System.IFormattable (the CLR spelling of __format__), Color is a Sharpy-declared enum.
+    private const string Prelude =
+        "from System import IFormattable, IFormatProvider\n\n\n"
+        + "class C:\n    x: int = 1\n\n\n"
+        + "class F(IFormattable):\n"
+        + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
+        + "        return \"F<\" + fmt + \">\"\n\n\n"
+        + "enum Color:\n    RED = 1\n\n\n";
 
     /// <summary>Route label → the call expression for (value, spec) and whether it needs <c>import builtins</c>.</summary>
     private static readonly (string Route, Func<string, string, string> Expr, bool ImportsBuiltins)[] Routes =
@@ -86,6 +120,7 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
             {
                 var label = $"{cell.Label}/{route}";
                 var source = (importsBuiltins ? "import builtins\n\n\n" : "")
+                    + Prelude
                     + "def main() -> None:\n"
                     + (cell.Decl.Length > 0 ? "    " + cell.Decl + "\n" : "")
                     + "    print(" + expr(cell.Value, cell.Spec) + ")\n";

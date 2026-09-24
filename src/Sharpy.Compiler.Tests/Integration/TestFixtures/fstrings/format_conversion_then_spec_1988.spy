@@ -1,0 +1,11 @@
+# A conversion (!r, !s, !a) turns the operand into a str BEFORE the spec applies, so a spec after a
+# conversion is legal on a list or set even though the unconverted operand has no __format__ (#1988).
+# The set cell shows the padding lands on the converted text.
+def main() -> None:
+    xs: list[int] = [1, 2]
+    st: set[int] = {1}
+    print("[" + f"{xs!r:>8}" + "]")
+    print("[" + f"{st!r:>6}" + "]")
+    print("[" + f"{st!s:<6}" + "]")
+    print("[" + "{!r:>6}".format(st) + "]")
+    print("[" + str(t"{st!a:^7}") + "]")

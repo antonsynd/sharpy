@@ -1,0 +1,20 @@
+# A class implementing System.IFormattable (the CLR spelling of __format__) owns its spec: every
+# route hands the spec to to_string(fmt, provider), and no spec is refused statically — not even
+# one no builtin type accepts (#1988). python3's twin: class F: def __format__(self, s): ...
+from System import IFormattable, IFormatProvider
+
+
+class F(IFormattable):
+    def to_string(self, fmt: str, provider: IFormatProvider) -> str:
+        return "F<" + fmt + ">"
+
+
+def main() -> None:
+    f: F = F()
+    spec: str = ">10"
+    print(f"{f:>10}")
+    print(format(f, ">10"))
+    print("{:>10}".format(f))
+    print(str(t"{f:>10}"))
+    print(f"{f:garbage}")
+    print(f"{f:{spec}}")
