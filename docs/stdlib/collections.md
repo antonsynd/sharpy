@@ -121,6 +121,12 @@ Extend the right side of the deque by appending elements from the iterable.
 
 Extend the left side of the deque by appending elements from the iterable.
 
+### `__str__() -> str`
+
+`repr()` uses the same method. Python's `repr` of the deque: `deque([1, 2])`, and `deque([])` when empty.
+There is no `maxlen` suffix — Sharpy's deque is unbounded, and CPython prints none
+for `maxlen=None`.
+
 ## Counter
 
 A Counter is a dict subclass for counting hashable objects.
@@ -225,11 +231,13 @@ Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
 
 ### `keys() -> DictKeyView[TKey, TValue]`
 
-The keys of the dictionary. Python: `d.keys()`. Returns a copy, not a live view.
+The keys of the dictionary. Python: `d.keys()`. A live view: later mutations of the
+defaultdict are reflected.
 
 ### `values() -> DictValuesView[TKey, TValue]`
 
-The values of the dictionary. Python: `d.values()`. Returns a copy, not a live view.
+The values of the dictionary. Python: `d.values()`. A live view: later mutations of
+the defaultdict are reflected.
 
 ### `copy() -> DefaultDict[TKey, TValue]`
 
@@ -249,9 +257,10 @@ Raises `KeyError` if the key is not found.
 Remove the specified key and return its value.
 If the key is not found, return *defaultValue*.
 
-### `items() -> list[tuple[TKey, TValue]]`
+### `items() -> DictItemsView[TKey, TValue]`
 
-Return a list of (key, value) tuples.
+The (key, value) pairs of the dictionary. Python: `d.items()`. A live view, like
+`Keys` and `Values`: later mutations of the defaultdict are reflected.
 
 ### `update(other: IDictionary[TKey, TValue])`
 

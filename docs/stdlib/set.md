@@ -355,7 +355,8 @@ Update the set, keeping only elements found in either set or the iterable but no
 
 ### `__str__() -> str`
 
-`repr()` uses the same method. Returns a string representation of this set.
+`repr()` uses the same method. Python's `repr` of the set: `{1, 2}`, and `set()` when empty (a bare
+`{}` is the empty dict).
 
 ### `copy_to(array: list[T], array_index: int)`
 
