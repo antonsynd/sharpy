@@ -204,7 +204,8 @@ namespace Sharpy
                 case FormatOperandKind.Integral:
                 case FormatOperandKind.Bool:
                     // int.__format__'s switch: the integer presentations reach format_long_internal
-                    // (precision, then z, then the 'c' rules); the float ones convert and have none.
+                    // (precision, then z, then 'c' with a sign, then 'c' with '#' — #1978); the float
+                    // ones convert and have none.
                     switch (type)
                     {
                         case 'b':
@@ -226,6 +227,11 @@ namespace Sharpy
                             if (type == 'c' && parsed.Sign != '\0')
                             {
                                 return FormatSpecError.Value("Sign not allowed with integer format specifier 'c'");
+                            }
+                            if (type == 'c' && parsed.AlternateForm)
+                            {
+                                return FormatSpecError.Value(
+                                    "Alternate form (#) not allowed with integer format specifier 'c'");
                             }
                             return null;
                         case 'e':

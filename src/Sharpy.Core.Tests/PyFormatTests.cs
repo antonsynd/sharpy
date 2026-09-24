@@ -14,7 +14,7 @@ public class PyFormatTests
 {
     /// <summary>
     /// The integer rules in CPython's order (<c>format_long_internal</c>): precision, then <c>z</c>,
-    /// then sign-with-<c>c</c>. Each row carries two or more violations, so a reordered arm names
+    /// then sign-with-<c>c</c>, then <c>#</c>-with-<c>c</c> (#1978). Each row carries two or more violations, so a reordered arm names
     /// the wrong rule. <c>z</c> precedes <c>#</c> in the grammar, so <c>#zc</c> is not a spec.
     /// </summary>
     public static IEnumerable<object[]> IntRuleOrderCells()
@@ -40,6 +40,13 @@ public class PyFormatTests
             yield return new object[] { value, "#zc", "Invalid format specifier '#zc' for object of type '" + name + "'" };
             // format(1, 'z.2q')      => ValueError: Unknown format code 'q' for object of type 'int'
             yield return new object[] { value, "z.2q", "Unknown format code 'q' for object of type '" + name + "'" };
+            // #1978: '#' with 'c' is refused after the sign rule.
+            // format(65, '#c')       => ValueError: Alternate form (#) not allowed with integer format specifier 'c'
+            yield return new object[] { value, "#c", "Alternate form (#) not allowed with integer format specifier 'c'" };
+            // format(65, '*=#5c')    => ValueError: Alternate form (#) not allowed with integer format specifier 'c'
+            yield return new object[] { value, "*=#5c", "Alternate form (#) not allowed with integer format specifier 'c'" };
+            // format(1, '<#10c')     => ValueError: Alternate form (#) not allowed with integer format specifier 'c'
+            yield return new object[] { value, "<#10c", "Alternate form (#) not allowed with integer format specifier 'c'" };
         }
     }
 
