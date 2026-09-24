@@ -226,33 +226,26 @@ internal partial class RoslynEmitter
                     break;
 
                 case ClassDef nestedClass:
-                    var nestedClassDecl = GenerateClassDeclaration(nestedClass);
-                    if (!HasExplicitAccessDecorator(nestedClass.Decorators))
-                        nestedClassDecl = ReplaceAccessModifier(nestedClassDecl, GetAccessModifierFromNameConvention(nestedClass.Name));
-                    members.Add(nestedClassDecl);
+                    members.Add(ReplaceAccessModifier(
+                        GenerateClassDeclaration(nestedClass), NestedTypeAccessKeyword(nestedClass.Name, nestedClass)));
                     break;
 
                 case StructDef nestedStruct:
-                    var nestedStructDecl = GenerateStructDeclaration(nestedStruct);
-                    if (!HasExplicitAccessDecorator(nestedStruct.Decorators))
-                        nestedStructDecl = ReplaceAccessModifier(nestedStructDecl, GetAccessModifierFromNameConvention(nestedStruct.Name));
-                    members.Add(nestedStructDecl);
+                    members.Add(ReplaceAccessModifier(
+                        GenerateStructDeclaration(nestedStruct), NestedTypeAccessKeyword(nestedStruct.Name, nestedStruct)));
                     break;
 
                 case InterfaceDef nestedInterface:
-                    var nestedInterfaceDecl = GenerateInterfaceDeclaration(nestedInterface);
-                    if (!HasExplicitAccessDecorator(nestedInterface.Decorators))
-                        nestedInterfaceDecl = ReplaceAccessModifier(nestedInterfaceDecl, GetAccessModifierFromNameConvention(nestedInterface.Name));
-                    members.Add(nestedInterfaceDecl);
+                    members.Add(ReplaceAccessModifier(
+                        GenerateInterfaceDeclaration(nestedInterface), NestedTypeAccessKeyword(nestedInterface.Name, nestedInterface)));
                     break;
 
                 case EnumDef nestedEnum:
                     var nestedEnumNode = GenerateEnumDeclaration(nestedEnum);
                     if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
                     {
-                        if (!HasExplicitAccessDecorator(nestedEnum.Decorators))
-                            nestedEnumMember = ReplaceAccessModifier(nestedEnumMember, GetAccessModifierFromNameConvention(nestedEnum.Name));
-                        members.Add(nestedEnumMember);
+                        members.Add(ReplaceAccessModifier(
+                            nestedEnumMember, NestedTypeAccessKeyword(nestedEnum.Name, nestedEnum)));
                     }
                     break;
 
@@ -263,18 +256,17 @@ internal partial class RoslynEmitter
                 case UnionDef nestedUnion:
                     if (GenerateUnionDeclaration(nestedUnion) is MemberDeclarationSyntax nestedUnionMember)
                     {
-                        if (!HasExplicitAccessDecorator(nestedUnion.Decorators))
-                            nestedUnionMember = ReplaceAccessModifier(nestedUnionMember, GetAccessModifierFromNameConvention(nestedUnion.Name));
-                        members.Add(nestedUnionMember);
+                        members.Add(ReplaceAccessModifier(
+                            nestedUnionMember, NestedTypeAccessKeyword(nestedUnion.Name, nestedUnion)));
                     }
                     break;
 
-                // DelegateDef carries no decorators, so the access level is taken purely from the
-                // name convention (a leading underscore → private/protected).
+                // DelegateDef carries no decorators, so its symbol's access level comes from the
+                // name convention alone (with the host axis, #1937).
                 case DelegateDef nestedDelegate:
                     members.Add(ReplaceAccessModifier(
                         GenerateDelegateDeclaration(nestedDelegate),
-                        GetAccessModifierFromNameConvention(nestedDelegate.Name)));
+                        NestedTypeAccessKeyword(nestedDelegate.Name, nestedDelegate)));
                     break;
 
                 default:
@@ -676,15 +668,6 @@ internal partial class RoslynEmitter
             // Fallback for dunders that don't map to operators
             return new[] { GenerateClassMethod(funcDef) };
         }
-    }
-
-    private static bool HasExplicitAccessDecorator(ImmutableArray<Decorator> decorators)
-    {
-        return decorators.Any(d => !d.IsBracketAttribute && (
-            d.Name == DecoratorNames.Public ||
-            d.Name == DecoratorNames.Protected ||
-            d.Name == DecoratorNames.Private ||
-            d.Name == DecoratorNames.Internal));
     }
 
     private static readonly SyntaxKind[] s_accessKinds =

@@ -50,6 +50,36 @@ internal partial class DecoratorValidator
                 code: DiagnosticCodes.Validation.AccessModifierOnDunder,
                 span: decorator.Span);
         }
+
+        ValidateProtectedOnStructMember(decorators, definitionName);
+    }
+
+    /// <summary>
+    /// Validates that <c>@protected</c> is not used on a struct member (method, field, property,
+    /// event, nested type). A struct is implicitly sealed, so there is no derived type to protect
+    /// for — C# refuses the modifier outright (CS0666). The <c>_name</c> convention maps to
+    /// <c>private</c> in a struct (<c>MemberClassification.ClassifyAccess</c>, #1937); an EXPLICIT
+    /// decorator is refused rather than silently rewritten. The sibling of
+    /// <see cref="ValidateVirtualOnStruct"/>, and it shares its code: both are the "inheritance-only
+    /// modifier on a struct member" refusal.
+    /// </summary>
+    private void ValidateProtectedOnStructMember(IEnumerable<Decorator> decorators, string definitionName)
+    {
+        if (_containingType?.Kind != ContainingTypeKind.Struct)
+            return;
+
+        var protectedDecorator = decorators.FirstOrDefault(d =>
+            !d.IsBracketAttribute && d.Name == DecoratorNames.Protected);
+        if (protectedDecorator == null)
+            return;
+
+        AddError(
+            $"Struct member '{definitionName}' cannot be @protected. " +
+            "Structs are sealed; use @private or the _name convention.",
+            protectedDecorator.LineStart,
+            protectedDecorator.ColumnStart,
+            code: DiagnosticCodes.Validation.VirtualOnStructMethod,
+            span: protectedDecorator.Span);
     }
 
     /// <summary>

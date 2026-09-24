@@ -276,7 +276,7 @@ internal partial class NameResolver
         // The same authority ModuleLoader.ExtractFields consumes, so a declared field and an
         // imported one are classified by one formula rather than two (#1441, the #1267 rule
         // extended from methods to fields).
-        var classification = Shared.MemberClassification.ClassifyField(field);
+        var classification = Shared.MemberClassification.ClassifyField(field, owningType.TypeKind);
         var accessLevel = classification.Access;
         var explicitAccess = classification.ExplicitAccess;
         bool isStatic = classification.IsStatic;
@@ -343,11 +343,9 @@ internal partial class NameResolver
         bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
         bool hasInit = propDef.Accessor == PropertyAccessor.Init;
 
-        var accessLevel = DetermineAccessLevel(propDef.Name);
-        // Override with explicit decorator
-        var explicitAccess = GetExplicitAccessLevel(propDef.Decorators);
-        if (explicitAccess != null)
-            accessLevel = explicitAccess.Value;
+        // The one access rule with the host axis (#1937) — a struct's `_p` is private, not protected.
+        var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
+            propDef.Name, propDef.Decorators, owningType.TypeKind);
 
         if (existingProp != null)
         {
@@ -358,6 +356,7 @@ internal partial class NameResolver
                 HasGetter = existingProp.HasGetter || hasGetter,
                 HasSetter = existingProp.HasSetter || hasSetter,
                 HasInit = existingProp.HasInit || hasInit,
+                GetterAccess = hasGetter && !existingProp.HasGetter ? accessLevel : existingProp.GetterAccess,
                 SetterAccess = hasSetter || hasInit ? accessLevel : existingProp.SetterAccess,
             };
 
@@ -415,11 +414,9 @@ internal partial class NameResolver
             hasRemove = true;
         }
 
-        var accessLevel = DetermineAccessLevel(eventDef.Name);
-        // Override with explicit decorator
-        var explicitAccess = GetExplicitAccessLevel(eventDef.Decorators);
-        if (explicitAccess != null)
-            accessLevel = explicitAccess.Value;
+        // The one access rule with the host axis (#1937) — a struct's `_e` is private, not protected.
+        var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
+            eventDef.Name, eventDef.Decorators, owningType.TypeKind);
 
         if (existingEvent != null)
         {
@@ -591,31 +588,6 @@ internal partial class NameResolver
         }
 
         _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias));
-    }
-
-    /// <summary>
-    /// Extracts the explicit access level from access modifier decorators, if any.
-    /// Returns null if no access modifier decorator is present.
-    /// </summary>
-    private static AccessLevel? GetExplicitAccessLevel(IEnumerable<Decorator> decorators)
-    {
-        AccessLevel? result = null;
-        foreach (var decorator in decorators)
-        {
-            var level = decorator.Name switch
-            {
-                DecoratorNames.Public => AccessLevel.Public,
-                DecoratorNames.Protected => AccessLevel.Protected,
-                DecoratorNames.Private => AccessLevel.Private,
-                DecoratorNames.Internal => AccessLevel.Internal,
-                _ => (AccessLevel?)null
-            };
-            if (level != null)
-            {
-                result = level;
-            }
-        }
-        return result;
     }
 
 }

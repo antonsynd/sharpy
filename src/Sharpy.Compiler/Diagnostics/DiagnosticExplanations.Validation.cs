@@ -136,12 +136,15 @@ public static partial class DiagnosticExplanations
             "Use a regular method name instead:\nclass Foo:\n    def custom(self) -> int:\n        return 42");
 
         Add(dict, DiagnosticCodes.Validation.VirtualOnStructMethod,
-            "@virtual on struct method",
+            "@virtual or @protected on a struct member",
             "Validation",
-            "Struct methods cannot be marked @virtual because structs are implicitly sealed in C# — " +
-            "they cannot be inherited from. The @virtual decorator only makes sense on class methods.",
-            "struct Point:\n    x: int\n    @virtual\n    def __str__(self) -> str:\n        return \"point\"",
-            "Remove the @virtual decorator:\nstruct Point:\n    x: int\n    def __str__(self) -> str:\n        return \"point\"");
+            "Struct methods cannot be marked @virtual, and no struct member (method, field, property, event, " +
+            "nested type) can be marked @protected, because structs are implicitly sealed in C# — they cannot " +
+            "be inherited from, so there is no derived type to override or protect for. Both decorators only " +
+            "make sense in a class. The _name convention, which means protected in a class, means private in " +
+            "a struct.",
+            "struct Point:\n    x: int\n    @virtual\n    def __str__(self) -> str:\n        return \"point\"\n    @protected\n    def helper(self) -> int:\n        return 1",
+            "Remove @virtual; use @private (or the _name convention) instead of @protected:\nstruct Point:\n    x: int\n    def __str__(self) -> str:\n        return \"point\"\n    def _helper(self) -> int:\n        return 1");
 
         Add(dict, DiagnosticCodes.Validation.NonExhaustiveMatchExpression, "Non-exhaustive match expression", "Validation",
             "A match expression does not cover all possible values of the scrutinee type. Match expressions must be exhaustive because they produce a value. " +

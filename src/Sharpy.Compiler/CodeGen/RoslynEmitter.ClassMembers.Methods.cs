@@ -17,7 +17,11 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
-    private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
+    /// <param name="access">
+    /// The access keyword when the caller owns it — only the <c>@lru_cache</c> renamed original,
+    /// a synthesized node no symbol is keyed to; every source method reads its symbol (#1937).
+    /// </param>
+    private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func, SyntaxKind? access = null)
     {
         // Clear declared variables and version tracking for new method scope
         ResetMethodScope(func);
@@ -99,7 +103,7 @@ internal partial class RoslynEmitter
         }
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
+        var modifiers = GenerateMethodModifiers(access ?? MemberAccessKeyword(func), func.Decorators);
 
         // @test methods must be public (xUnit requirement). Strip any private/protected/internal
         // modifiers and add public if not present.
@@ -371,7 +375,7 @@ internal partial class RoslynEmitter
         bool isAbstract = boolPropSymbol?.IsAbstract ?? false;
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
-        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(func), func.Decorators);
 
         // Ensure abstract modifier is present for abstract properties
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -423,7 +427,7 @@ internal partial class RoslynEmitter
         bool isAbstract = lenPropSymbol?.IsAbstract ?? false;
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
-        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(func), func.Decorators);
 
         // Ensure abstract modifier is present for abstract properties
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -460,42 +464,14 @@ internal partial class RoslynEmitter
         return property;
     }
 
-    private SyntaxTokenList GenerateMethodModifiers(string memberName, IReadOnlyList<Decorator> decorators)
+    /// <summary>
+    /// A member's C# modifiers: the access keyword the caller read from the member's symbol
+    /// (<see cref="MemberAccessKeyword(AccessLevel)"/> and its per-member-kind overloads, #1937), then
+    /// the decorator-driven ones.
+    /// </summary>
+    private SyntaxTokenList GenerateMethodModifiers(SyntaxKind access, IReadOnlyList<Decorator> decorators)
     {
-        var tokens = new List<SyntaxToken>();
-
-        // Check for access modifiers
-        bool hasAccessModifier = false;
-        foreach (var decorator in decorators)
-        {
-            if (decorator.IsBracketAttribute)
-                continue;
-            switch (decorator.Name)
-            {
-                case DecoratorNames.Private:
-                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Protected:
-                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Internal:
-                    tokens.Add(Token(SyntaxKind.InternalKeyword));
-                    hasAccessModifier = true;
-                    break;
-                case DecoratorNames.Public:
-                    tokens.Add(Token(SyntaxKind.PublicKeyword));
-                    hasAccessModifier = true;
-                    break;
-            }
-        }
-
-        // Default access modifier based on name convention when no explicit decorator
-        if (!hasAccessModifier)
-        {
-            tokens.Add(Token(GetAccessModifierFromNameConvention(memberName)));
-        }
+        var tokens = new List<SyntaxToken> { Token(access) };
 
         // Check for other modifiers
         foreach (var decorator in decorators)

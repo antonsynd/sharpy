@@ -217,7 +217,9 @@ internal partial class RoslynEmitter
             .Where(d => d.Name != DecoratorNames.LruCache && d.Name != DecoratorNames.Cache)
             .ToImmutableArray();
 
-        // Add an explicit private access decorator so GenerateMethodModifiers emits 'private'.
+        // Add an explicit private access decorator so the module-level path
+        // (GenerateFunctionDeclaration → GenerateModifiersFromDecorators) emits 'private'; the class
+        // path is handed the keyword directly, since no symbol is keyed to this synthesized node.
         // The Decorator.Name property is computed from QualifiedParts, so the parts must
         // contain the access modifier name.
         var privateDecorator = new Decorator
@@ -239,7 +241,7 @@ internal partial class RoslynEmitter
         MethodDeclarationSyntax method;
         if (_currentTypeSymbol != null)
         {
-            method = GenerateClassMethod(renamed);
+            method = GenerateClassMethod(renamed, SyntaxKind.PrivateKeyword);
         }
         else
         {

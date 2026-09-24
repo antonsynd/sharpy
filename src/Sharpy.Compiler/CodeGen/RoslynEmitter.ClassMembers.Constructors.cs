@@ -31,7 +31,7 @@ internal partial class RoslynEmitter
         // with user-declared variables.
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(func), func.Decorators);
 
         // Generate parameters with type annotations, skipping 'self' parameter
         // Reorder for C# compliance (required before optional, params last)

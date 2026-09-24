@@ -211,18 +211,18 @@ public class DeclarationKindDispatchTotalityTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // GetAccessLevel — NameResolver
+    // NestedTypeDecorators — NameResolver (the access decorators ClassifyAccess reads, #1937)
     // Same nested-type universe: only types that can be nested carry access decorators.
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void GetAccessLevel_Arms_MatchNestedTypeUniverse()
+    public void NestedTypeDecorators_Arms_MatchNestedTypeUniverse()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Semantic/NameResolver.Declarations.cs",
-            "GetAccessLevel");
+            "NestedTypeDecorators");
         Assert.NotEmpty(arms);
-        _output.WriteLine($"GetAccessLevel arms: {string.Join(", ", arms)}");
+        _output.WriteLine($"NestedTypeDecorators arms: {string.Join(", ", arms)}");
         Assert.True(arms.SetEquals(NestedTypeUniverse),
             $"Arms differ from nested-type universe.\n" +
             $"  Extra: {string.Join(", ", arms.Except(NestedTypeUniverse))}\n" +

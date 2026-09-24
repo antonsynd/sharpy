@@ -116,7 +116,18 @@ internal static class DataclassSynthesis
 
             var fieldSymbol = classSymbol.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
             if (fieldSymbol != null)
+            {
+                // A dataclass field belongs to the synthesized protocol, and every dataclass
+                // SUBCLASS re-synthesizes its constructor/__eq__/__repr__ over the inherited roster
+                // (the parentFields above), reading the base's field directly. So its emitted access
+                // floor is protected: a private one (`__x`, `@private x`) emits protected, or
+                // `@dataclass class B(A)` is CS0122 on `A.__X` (#1937 — the property used to be
+                // hard-coded public, #2012). Sharpy-level access is unchanged: AccessValidator reads
+                // the WRITTEN level, so `b.__x` outside `A` is still refused.
+                if (fieldSymbol.AccessLevel == AccessLevel.Private)
+                    fieldSymbol.AccessLevel = AccessLevel.Protected;
                 fields.Add(fieldSymbol);
+            }
         }
 
         return fields;

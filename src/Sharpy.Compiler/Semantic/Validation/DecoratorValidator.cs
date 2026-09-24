@@ -94,6 +94,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "class");
         ValidateTestCollectionDecorator(node.Decorators, node.Name, "class", allowOnThisKind: true);
 
+        ValidateProtectedOnStructMember(node.Decorators, NestedDefinitionName(node.Name));
+
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
         base.VisitClassDef(node);
@@ -107,6 +109,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "struct");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "struct");
         ValidateTestCollectionDecorator(node.Decorators, node.Name, "struct", allowOnThisKind: false);
+
+        ValidateProtectedOnStructMember(node.Decorators, NestedDefinitionName(node.Name));
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
@@ -123,6 +127,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateTestCollectionDecorator(node.Decorators, node.Name, "interface", allowOnThisKind: false);
         ValidateInterfaceDecorators(node);
 
+        ValidateProtectedOnStructMember(node.Decorators, NestedDefinitionName(node.Name));
+
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Interface);
         base.VisitInterfaceDef(node);
@@ -136,8 +142,18 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "enum");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "enum");
         ValidateTestCollectionDecorator(node.Decorators, node.Name, "enum", allowOnThisKind: false);
+        ValidateProtectedOnStructMember(node.Decorators, NestedDefinitionName(node.Name));
         base.VisitEnumDef(node);
     }
+
+    public override void VisitUnionDef(UnionDef node)
+    {
+        ValidateProtectedOnStructMember(node.Decorators, NestedDefinitionName(node.Name));
+        base.VisitUnionDef(node);
+    }
+
+    private string NestedDefinitionName(string name)
+        => _containingType != null ? $"{_containingType.Name}.{name}" : name;
 
     public override void VisitPropertyDef(PropertyDef node)
     {

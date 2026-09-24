@@ -677,20 +677,24 @@ internal partial class NameResolver
         if (_symbolTable.Lookup(declaration.Name) is TypeSymbol nestedSymbol)
         {
             nestedSymbol.DeclaringType = enclosingType;
-            var explicitAccess = GetAccessLevel(statement);
-            nestedSymbol.AccessLevel = explicitAccess ?? AccessLevelConventions.FromName(declaration.Name);
+            // The one member access rule with the host axis (#1937): a nested `_Inner` in a struct is
+            // private, not protected (CS0666), and the explicit decorator is read by the same
+            // last-wins helper every other member kind uses.
+            var (access, explicitAccess) = Shared.MemberClassification.ClassifyAccess(
+                declaration.Name, NestedTypeDecorators(statement), enclosingType.TypeKind);
+            nestedSymbol.AccessLevel = access;
             if (explicitAccess != null)
                 nestedSymbol.ExplicitAccessLevel = explicitAccess;
             enclosingType.NestedTypes.Add(nestedSymbol);
         }
     }
 
-    private static AccessLevel? GetAccessLevel(Statement statement)
+    private static System.Collections.Immutable.ImmutableArray<Decorator> NestedTypeDecorators(Statement statement)
     {
         // The seven type-declaring kinds' decorator lists. Delegate and alias carry no decorators
         // (neither DelegateDef nor TypeAlias has a Decorators property — the classifier reflects
-        // that with an empty array), so they can bear no access modifier and fall through to null.
-        var decorators = statement switch
+        // that with an empty array), so they can bear no access modifier.
+        return statement switch
         {
             ClassDef c => c.Decorators,
             StructDef s => s.Decorators,
@@ -701,17 +705,6 @@ internal partial class NameResolver
             TypeAlias _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty,
             _ => System.Collections.Immutable.ImmutableArray<Decorator>.Empty
         };
-
-        if (decorators.Any(d => d.Name == DecoratorNames.Public))
-            return AccessLevel.Public;
-        if (decorators.Any(d => d.Name == DecoratorNames.Protected))
-            return AccessLevel.Protected;
-        if (decorators.Any(d => d.Name == DecoratorNames.Private))
-            return AccessLevel.Private;
-        if (decorators.Any(d => d.Name == DecoratorNames.Internal))
-            return AccessLevel.Internal;
-
-        return null;
     }
 
 }

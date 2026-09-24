@@ -51,8 +51,11 @@ internal partial class RoslynEmitter
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
         }
 
+        // The field symbol's classified access, like every other member (#1937, #2012): a dataclass
+        // `_x` is protected (the AccessValidator already refuses `d._x` from outside, SPY0283), not the
+        // hard-coded public this site used to spell.
         var propDecl = PropertyDeclaration(propType, Identifier(propertyName))
-            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithModifiers(TokenList(Token(MemberAccessKeyword(varDecl))))
             .WithAccessorList(AccessorList(List(accessors)));
 
         // Add default value initializer if present. A comprehension/generator/lambda/walrus in the

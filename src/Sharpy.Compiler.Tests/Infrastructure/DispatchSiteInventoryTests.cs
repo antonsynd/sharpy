@@ -322,7 +322,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.EnumerateAllProperties"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.ValidateTypeBody"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.ValidateTypeStatement"] = "guarded-by:MemberKindValidatorTotalityTests",
-        ["Semantic/NameResolver.Declarations.cs::NameResolver.GetAccessLevel"] = "guarded-by:DeclarationKindDispatchTotalityTests",
+        ["Semantic/NameResolver.Declarations.cs::NameResolver.NestedTypeDecorators"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         ["Semantic/NameResolver.Declarations.cs::NameResolver.RefuseBuiltinTypeNameShadowing"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         ["Project/ProjectCompiler.Generators.cs::ProjectCompiler.GetDeclarationName"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         ["Services/ReplSession.cs::ReplSession.IsModuleLevelStatement"] = "guarded-by:DeclarationKindDispatchTotalityTests",

@@ -61,28 +61,8 @@ internal partial class RoslynEmitter
         var declaration = VariableDeclaration(fieldType)
             .WithVariables(SingletonSeparatedList(variable));
 
-        // Determine access modifier from decorators, defaulting based on name convention
-        var accessToken = Token(GetAccessModifierFromNameConvention(varDecl.Name));
-        foreach (var decorator in varDecl.Decorators)
-        {
-            switch (decorator.Name)
-            {
-                case DecoratorNames.Private:
-                    accessToken = Token(SyntaxKind.PrivateKeyword);
-                    break;
-                case DecoratorNames.Protected:
-                    accessToken = Token(SyntaxKind.ProtectedKeyword);
-                    break;
-                case DecoratorNames.Internal:
-                    accessToken = Token(SyntaxKind.InternalKeyword);
-                    break;
-                case DecoratorNames.Public:
-                    accessToken = Token(SyntaxKind.PublicKeyword);
-                    break;
-            }
-        }
-
-        var modifiers = TokenList(accessToken);
+        // Access is the field symbol's classified level, host axis included (#1937).
+        var modifiers = TokenList(Token(MemberAccessKeyword(varDecl)));
 
         // Read the compile-time constant fact from CodeGenInfo (#1791).
         var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
@@ -128,7 +108,7 @@ internal partial class RoslynEmitter
         ResetMethodScope();
 
         // Determine modifiers from the primary function's decorators
-        var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(primaryFunc), primaryFunc.Decorators);
 
         var indexerSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == primaryFunc.Name);
         bool isAbstract = indexerSymbol?.IsAbstract ?? false;
@@ -371,7 +351,7 @@ internal partial class RoslynEmitter
 
         // Apply modifiers from decorators on the auto-property (needed before the accessors so an
         // accessor-level modifier can be compared against the property's own).
-        var modifiers = GenerateMethodModifiers(autoProp.Name, autoProp.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(autoProp), autoProp.Decorators);
         var propertyAccess = GetAccessModifier(modifiers);
 
         // The auto half's declared accessor decides which halves exist; a custom accessor always
@@ -493,7 +473,7 @@ internal partial class RoslynEmitter
 
         // Determine property-level modifiers from the getter (or first property)
         var modifierSource = getterProp ?? first;
-        var modifiers = GenerateMethodModifiers(modifierSource.Name, modifierSource.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(modifierSource), modifierSource.Decorators);
 
         // Handle static: if any accessor has self, property is not static
         bool hasSelfParameter = propGroup.Any(p => p.Parameters.Any(param =>
@@ -570,7 +550,7 @@ internal partial class RoslynEmitter
             }
 
             // Apply accessor-level access modifier if it differs from property-level
-            var accessorModifiers = GenerateMethodModifiers(prop.Name, prop.Decorators);
+            var accessorModifiers = GenerateMethodModifiers(MemberAccessKeyword(prop), prop.Decorators);
             var accessorAccess = GetAccessModifier(accessorModifiers);
 
             if (accessorAccess != null && accessorAccess != propertyAccess)
@@ -636,7 +616,7 @@ internal partial class RoslynEmitter
     private AccessorDeclarationSyntax WithAccessorAccess(
         AccessorDeclarationSyntax accessor, PropertyDef accessorDef, SyntaxKind? propertyAccess)
     {
-        var accessorAccess = GetAccessModifier(GenerateMethodModifiers(accessorDef.Name, accessorDef.Decorators));
+        var accessorAccess = GetAccessModifier(GenerateMethodModifiers(MemberAccessKeyword(accessorDef), accessorDef.Decorators));
         return accessorAccess != null && accessorAccess != propertyAccess
             ? accessor.WithModifiers(TokenList(Token(accessorAccess.Value)))
             : accessor;
@@ -715,7 +695,7 @@ internal partial class RoslynEmitter
         }
 
         // Apply modifiers from decorators
-        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(propDef), propDef.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithAccessorList(AccessorList(List(accessors)));
@@ -833,7 +813,7 @@ internal partial class RoslynEmitter
         var setter = AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
             .WithBody(Block(setterStatements));
 
-        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(propDef), propDef.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithModifiers(modifiers)
@@ -939,7 +919,7 @@ internal partial class RoslynEmitter
             ?? propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Apply modifiers from decorators
-        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(propDef), propDef.Decorators);
 
         // Remove static if it has 'self' parameter (Pythonic convention)
         bool hasSelfParameter = propDef.Parameters.Any(p =>

@@ -1326,16 +1326,6 @@ internal partial class RoslynEmitter : ICodeEmitter
         return EmptyStatement();
     }
 
-    private static SyntaxKind GetAccessModifierFromNameConvention(string memberName)
-    {
-        return AccessLevelConventions.FromName(memberName) switch
-        {
-            AccessLevel.Private => SyntaxKind.PrivateKeyword,
-            AccessLevel.Protected => SyntaxKind.ProtectedKeyword,
-            _ => SyntaxKind.PublicKeyword,
-        };
-    }
-
     /// <summary>
     /// Maps underscore naming convention to access modifiers for module-level functions.
     /// Unlike class members where _name → protected, module-level _name → internal

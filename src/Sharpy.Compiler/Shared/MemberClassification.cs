@@ -27,10 +27,7 @@ internal static class MemberClassification
     /// </summary>
     public static Result Classify(FunctionDef def, TypeKind ownerKind, bool ownerIsAbstract)
     {
-        var access = AccessLevelConventions.FromName(def.Name);
-        var explicitAccess = GetExplicitAccessLevel(def.Decorators);
-        if (explicitAccess != null)
-            access = explicitAccess.Value;
+        var (access, explicitAccess) = ClassifyAccess(def.Name, def.Decorators, ownerKind);
 
         bool hasSelf = def.Parameters.Any(p =>
             string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
@@ -59,14 +56,12 @@ internal static class MemberClassification
     /// <c>ModuleLoader.ExtractFields</c> both answer this question, and when they answered it
     /// separately the extraction knew nothing of the <c>@private</c>/<c>@public</c> decorators — an
     /// explicitly-private imported field read as convention-public, and the decorator that set the
-    /// level was not recorded at all (#1441).
+    /// level was not recorded at all (#1441). The owner kind is the host axis
+    /// <see cref="ClassifyAccess"/> needs (#1937).
     /// </summary>
-    public static FieldResult ClassifyField(VariableDeclaration def)
+    public static FieldResult ClassifyField(VariableDeclaration def, TypeKind ownerKind)
     {
-        var access = AccessLevelConventions.FromName(def.Name);
-        var explicitAccess = GetExplicitAccessLevel(def.Decorators);
-        if (explicitAccess != null)
-            access = explicitAccess.Value;
+        var (access, explicitAccess) = ClassifyAccess(def.Name, def.Decorators, ownerKind);
 
         return new FieldResult(
             access,
@@ -144,13 +139,43 @@ internal static class MemberClassification
         => IsAbstractMember(def.Decorators, def.Body, def.IsFunctionStyle, ownerKind, ownerIsAbstract);
 
     /// <summary>
-    /// Extracts the explicit access level from access modifier decorators, if any.
+    /// The ONE access rule for a member of a type — method, field, property accessor, event
+    /// accessor, nested type (#1937). The explicit access decorator wins; otherwise the underscore
+    /// convention (<see cref="AccessLevelConventions.FromName"/>) decides. Then the HOST axis: a
+    /// struct is sealed, so <c>protected</c> has no meaning there and is <c>private</c> — C# refuses
+    /// a protected member in a struct outright (CS0666). The emitter reads the resulting
+    /// <c>Symbol.AccessLevel</c> (and <c>PropertySymbol.GetterAccess</c>/<c>SetterAccess</c>,
+    /// <c>EventSymbol</c>'s levels) instead of re-deriving access from the name, which is how
+    /// <c>_x</c> in a struct emitted <c>protected</c> at four sites that never looked at the host.
+    ///
+    /// <para><c>ExplicitAccess</c> is the decorator as WRITTEN, unmapped: an explicit
+    /// <c>@protected</c> on a struct member is refused by <c>DecoratorValidator</c> (SPY0415, beside
+    /// <c>@virtual</c>), and <c>AccessValidator</c> reads the written level for its message. Mapping
+    /// the effective level anyway keeps the symbol emit-legal for error recovery.</para>
+    /// </summary>
+    public static (AccessLevel Access, AccessLevel? ExplicitAccess) ClassifyAccess(
+        string name, IEnumerable<Decorator> decorators, TypeKind ownerKind)
+    {
+        var explicitAccess = GetExplicitAccessLevel(decorators);
+        var access = explicitAccess ?? AccessLevelConventions.FromName(name);
+        if (ownerKind == TypeKind.Struct && access == AccessLevel.Protected)
+            access = AccessLevel.Private;
+        return (access, explicitAccess);
+    }
+
+    /// <summary>
+    /// Extracts the explicit access level from access modifier decorators, if any. The last one
+    /// wins (two access decorators are refused by <c>DecoratorValidator</c>, SPY0430). A
+    /// bracket attribute is a CLR attribute pass-through, not the decorator (the #1373 rule
+    /// <see cref="HasAbstractDecorator"/> states).
     /// </summary>
     public static AccessLevel? GetExplicitAccessLevel(IEnumerable<Decorator> decorators)
     {
         AccessLevel? result = null;
         foreach (var decorator in decorators)
         {
+            if (decorator.IsBracketAttribute)
+                continue;
             var level = decorator.Name switch
             {
                 DecoratorNames.Public => AccessLevel.Public,

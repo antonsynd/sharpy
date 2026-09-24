@@ -705,6 +705,75 @@ def main() -> None:
             "warm must emit what cold emitted — a dropped Self fact changes the C#");
     }
 
+    private const string StructAccessLibSource = @"struct Meter:
+    _reading: int
+
+    def __init__(self, reading: int) -> None:
+        self._reading = reading
+
+    def _scaled(self) -> int:
+        return self._reading * 10
+
+    def show(self) -> None:
+        print(self._scaled())
+";
+
+    private const string StructAccessMainSource = @"from lib import Meter
+
+
+def main() -> None:
+    Meter(4).show()
+";
+
+    private const string StructAccessMainEditedSource = @"from lib import Meter
+
+
+def main() -> None:
+    Meter(5).show()
+";
+
+    /// <summary>
+    /// A struct's <c>_x</c> is classified <c>private</c> with the host axis (#1937), and
+    /// <c>Symbol.AccessLevel</c> round-trips through the symbol cache: a warm build must emit and
+    /// report exactly what the cold one did, and a consumer recompiled against the CACHED struct
+    /// must still build (no CS0666 — the emitted <c>lib</c> C# is served from the cache and says
+    /// <c>private</c>).
+    /// </summary>
+    [Fact]
+    public void WarmBuild_StructUnderscoreMember_IsObservationallyIdenticalToCold()
+    {
+        var lib = Write("structaccess", "lib.spy", StructAccessLibSource);
+        var main = Write("structaccess", "main.spy", StructAccessMainSource);
+        var config = Config("structaccess", lib, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue(
+            "a struct `_x` must compile cold (CS0666 before #1937). Diagnostics:\n" + Diagnostics(cold));
+        var coldGenerated = Generated(cold);
+        var coldDiagnostics = Diagnostics(cold);
+        var readingField = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(coldGenerated["lib.cs"])
+            .GetRoot().DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.FieldDeclarationSyntax>()
+            .Single(f => f.Declaration.Variables.Any(v => v.Identifier.Text == "_Reading"));
+        readingField.Modifiers.Select(m => Microsoft.CodeAnalysis.CSharp.CSharpExtensions.Kind(m))
+            .Should().Contain(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PrivateKeyword,
+                "the cold build's struct field is private — the fact the warm build must reproduce");
+
+        var warm = Build(config);
+        warm.Success.Should().BeTrue("warm build. Diagnostics:\n" + Diagnostics(warm));
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "both files must come from the cache for this to measure the serializer");
+        Diagnostics(warm).Should().Be(coldDiagnostics, "warm must report what cold reported");
+        Generated(warm).Should().BeEquivalentTo(coldGenerated, "warm must emit what cold emitted");
+
+        File.WriteAllText(main, StructAccessMainEditedSource);
+        var edited = Build(config);
+        edited.Success.Should().BeTrue(
+            "main recompiled against the cached struct. Diagnostics:\n" + Diagnostics(edited));
+        Skipped(edited).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib must be served from the cache while main recompiles against it");
+    }
+
     private const string NestedAliasLibSource = @"class Box:
     type Ids = list[int]
 

@@ -323,11 +323,6 @@ internal partial class NameResolver
         }
     }
 
-    private AccessLevel DetermineAccessLevel(string name)
-    {
-        return AccessLevelConventions.FromName(name);
-    }
-
     private void ValidateInterfaceMethod(FunctionDef method, string interfaceName)
     {
         // Interface methods can have:

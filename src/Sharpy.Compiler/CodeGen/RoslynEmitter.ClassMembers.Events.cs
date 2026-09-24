@@ -55,7 +55,7 @@ internal partial class RoslynEmitter
         var nullableType = NullableType(delegateType);
 
         // Build modifiers from decorators
-        var modifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(eventDef, accessorLevel: false), eventDef.Decorators);
 
         // Abstractness decides the type's nullability — an abstract event has no backing field, so it
         // is not nullable. Read from the symbol, which classifies an auto-event by its DECORATOR alone
@@ -119,7 +119,7 @@ internal partial class RoslynEmitter
         }
 
         // Determine event-level modifiers from decorators
-        var modifiers = GenerateMethodModifiers(first.Name, first.Decorators);
+        var modifiers = GenerateMethodModifiers(MemberAccessKeyword(first, accessorLevel: false), first.Decorators);
 
         // Handle static: if any accessor has self, event is not static
         bool hasSelfParameter = eventGroup.Any(e => e.Parameters.Any(p =>
@@ -206,7 +206,7 @@ internal partial class RoslynEmitter
             }
 
             // Apply accessor-level access modifier if it differs from event-level
-            var accessorModifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
+            var accessorModifiers = GenerateMethodModifiers(MemberAccessKeyword(eventDef, accessorLevel: true), eventDef.Decorators);
             var accessorAccess = GetAccessModifier(accessorModifiers);
 
             if (accessorAccess != null && accessorAccess != eventAccess)

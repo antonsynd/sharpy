@@ -428,7 +428,7 @@ internal class ModuleLoader
             ? classDef.BaseClasses.Skip(1).ToList()
             : new List<TypeAnnotation>();
 
-        var fields = ExtractFields(classDef.Body);
+        var fields = ExtractFields(classDef.Body, TypeKind.Class);
 
         var methods = new List<FunctionSymbol>();
         var ctors = new List<FunctionSymbol>();
@@ -525,7 +525,7 @@ internal class ModuleLoader
     {
         var accessLevel = GetAccessLevel(structDef.Name);
 
-        var fields = ExtractFields(structDef.Body);
+        var fields = ExtractFields(structDef.Body, TypeKind.Struct);
 
         var methods = new List<FunctionSymbol>();
         var ctors = new List<FunctionSymbol>();
@@ -647,7 +647,7 @@ internal class ModuleLoader
     /// imported <c>@final</c> field freely assignable and an imported defaulted field look
     /// mandatory — both on the import path only.
     /// </remarks>
-    private List<VariableSymbol> ExtractFields(ImmutableArray<Statement> body)
+    private List<VariableSymbol> ExtractFields(ImmutableArray<Statement> body, TypeKind ownerKind)
     {
         var fields = new List<VariableSymbol>();
         foreach (var stmt in body)
@@ -659,7 +659,7 @@ internal class ModuleLoader
             // (#1441): the local `Any(@static)`/`Any(@final)`/name-convention triple this replaces
             // had no notion of @private, so an explicitly-private imported field read as public and
             // the decorator that said so was not recorded at all.
-            var classification = Shared.MemberClassification.ClassifyField(varDecl);
+            var classification = Shared.MemberClassification.ClassifyField(varDecl, ownerKind);
 
             fields.Add(new VariableSymbol
             {
@@ -1264,10 +1264,9 @@ internal class ModuleLoader
             if (stmt is not PropertyDef propDef)
                 continue;
 
-            var accessLevel = GetAccessLevel(propDef.Name);
-            var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(propDef.Decorators);
-            if (explicitAccess != null)
-                accessLevel = explicitAccess.Value;
+            // The one access rule with the host axis, as NameResolver.ResolvePropertyDeclaration (#1937).
+            var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
+                propDef.Name, propDef.Decorators, ownerKind);
 
             // The SAME authority NameResolver consumes, not a mirror of it (#1374). This site and
             // NameResolver.ResolvePropertyDeclaration used to hold copies of one rule, which is how
@@ -1285,6 +1284,7 @@ internal class ModuleLoader
                     HasGetter = existing.HasGetter || hasGetter,
                     HasSetter = existing.HasSetter || hasSetter,
                     HasInit = existing.HasInit || hasInit,
+                    GetterAccess = hasGetter && !existing.HasGetter ? accessLevel : existing.GetterAccess,
                     SetterAccess = hasSetter || hasInit ? accessLevel : existing.SetterAccess,
                 };
                 properties[properties.IndexOf(existing)] = merged;
@@ -1326,10 +1326,9 @@ internal class ModuleLoader
             if (stmt is not EventDef eventDef)
                 continue;
 
-            var accessLevel = GetAccessLevel(eventDef.Name);
-            var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(eventDef.Decorators);
-            if (explicitAccess != null)
-                accessLevel = explicitAccess.Value;
+            // The one access rule with the host axis, as NameResolver.ResolveEventDeclaration (#1937).
+            var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
+                eventDef.Name, eventDef.Decorators, ownerKind);
 
             // Same authority as NameResolver.ResolveEventDeclaration (#1374) — see the property
             // extractor above for why this is a call and not a copy.

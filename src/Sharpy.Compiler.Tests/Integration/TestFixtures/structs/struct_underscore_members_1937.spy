@@ -1,0 +1,43 @@
+# A struct is sealed, so the `_name` convention (protected in a class) means private in a struct
+# (#1937): every member kind below used to emit `protected` — CS0666 — and now runs.
+delegate Handler() -> None
+
+struct Counter:
+    _count: int
+    _step: int = 2
+    __secret: int = 40
+
+    def __init__(self, start: int):
+        self._count = start
+
+    def _next(self) -> int:
+        return self._count + self._step
+
+    property get _doubled(self) -> int:
+        return self._count * 2
+
+    class _Label:
+        def text(self) -> str:
+            return "counter"
+
+    event _changed: Handler
+
+    def show(self) -> None:
+        print(Counter._Label().text())
+        print(self._count)
+        print(self._next())
+        print(self._doubled)
+        print(self.__secret + self._step)
+
+# A dataclass keeps the class rule: `_x` is protected, readable inside the class (#2012 — its
+# property used to be emitted public).
+@dataclass
+class Tag:
+    _name: str
+
+    def show(self) -> None:
+        print(self._name)
+
+def main() -> None:
+    Counter(5).show()
+    Tag("t").show()
