@@ -198,6 +198,34 @@ jobs:
     needs: [build-core, build-stdlib, build-cli, nuget-pack]
     runs-on: ubuntu-latest
     steps:
+      # Full history + tags: the notes are generated from the commits between
+      # the previous tag and this one (GitHub's --generate-notes lists merged
+      # PRs only, which here are just Dependabot's).
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve release range
+        id: range
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$TAG^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            echo "range=$PREV..$TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "range=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes (git-cliff, cliff.toml)
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: ${{ steps.range.outputs.range }} --tag ${{ steps.range.outputs.tag }} --strip header
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -209,17 +237,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
+          TAG="${{ steps.range.outputs.tag }}"
           PRERELEASE_FLAG=""
           if echo "$TAG" | grep -qE '[-](alpha|beta|rc)'; then
             PRERELEASE_FLAG="--prerelease"
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" artifacts/* --clobber
+            gh release edit "$TAG" --notes-file RELEASE_NOTES.md
           else
             gh release create "$TAG" \
               --title "$TAG" \
-              --generate-notes \
+              --notes-file RELEASE_NOTES.md \
               $PRERELEASE_FLAG \
               artifacts/*
           fi

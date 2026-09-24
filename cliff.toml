@@ -1,0 +1,61 @@
+# git-cliff configuration — generates the GitHub Release notes in
+# .github/workflows/release.yml from conventional-commit subjects.
+# Local preview: git cliff v0.19.0..v0.20.0 --tag v0.20.0 --strip header
+
+[changelog]
+header = ""
+body = """
+{% if version %}\
+## {{ version }} — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## Unreleased
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{{ commit.message | split(pat="\n") | first | trim }}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+postprocessors = [
+    # Subjects name generics (Dict<K,V>, G<int>) outside code spans; GitHub
+    # would strip them as HTML tags.
+    { pattern = '<', replace = "&lt;" },
+    # Link issue references: (#1234, #1235) → linked
+    { pattern = '([\s(,])#(\d+)', replace = "${1}[#${2}](https://github.com/antonsynd/sharpy/issues/${2})" },
+]
+
+[git]
+conventional_commits = true
+# Keep non-conventional subjects so commit_parsers decide; unmatched commits are dropped below.
+filter_unconventional = false
+split_commits = false
+protect_breaking_commits = true
+# Commits matching no parser are left out of the notes.
+filter_commits = true
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"
+
+# Order matters: the first matching parser wins. The <!-- N --> prefixes fix
+# the section order and are stripped by `striptags` in the template.
+commit_parsers = [
+    # Internal bookkeeping — never user-facing.
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^[Mm]erge", skip = true },
+    { message = "^revert", skip = true },
+    # Dependabot ("chore: Bump X from A to B", "chore(deps): bump ...").
+    { message = "^chore(\\([^)]*\\))?: [Bb]ump", group = "<!-- 6 -->Dependencies" },
+    { body = ".*BREAKING CHANGE", group = "<!-- 0 -->Breaking Changes" },
+    { message = "^[a-z]+(\\([^)]*\\))?!:", group = "<!-- 0 -->Breaking Changes" },
+    { message = "^feat", group = "<!-- 1 -->Features" },
+    { message = "^fix", group = "<!-- 2 -->Bug Fixes" },
+    { message = "^perf", group = "<!-- 3 -->Performance" },
+    { message = "^docs", group = "<!-- 4 -->Documentation" },
+    { message = "^(ci|build)", group = "<!-- 5 -->Build & CI" },
+    # test, style, bench, refactor, regen and other chores are left out.
+    { message = ".*", skip = true },
+]
