@@ -1974,6 +1974,41 @@ class TestDeclaringTypeAttribution:
         assert "### `__str__() -> str`\n\n`repr()` uses the same method. Python's repr.\n" in section
         assert "!!! note\n    Most-common order." in section
 
+    def test_iformattable_tostring_renders_as_format_not_a_second_str(self, tmp_path: Path):
+        """`ToString(format, provider)` is IFormattable's method — the CLR spelling of `__format__`
+        (dunder_methods.md) — so it is its own `__format__` row, not a second `__str__` carrying the
+        repr note. The arity-0 `ToString` in the same class is the positive control."""
+        body = textwrap.dedent(
+            """\
+            using System;
+            namespace Sharpy
+            {
+                /// <summary>A complex number.</summary>
+                [SharpyModuleType("cmath", "Complex")]
+                public class Complex : IFormattable
+                {
+                    /// <summary>Python's repr.</summary>
+                    public override string ToString() => "";
+
+                    /// <summary>Python's complex.__format__.</summary>
+                    /// <param name="format">The format spec.</param>
+                    /// <param name="formatProvider">Ignored.</param>
+                    public string ToString(string? format, IFormatProvider? formatProvider) => "";
+                }
+            }
+            """
+        )
+        TestDiscoverModulesTypeAnnotations._write_module(None, tmp_path, "Cmath", "cmath", "Complex.cs", body)
+        modules = discover_modules(tmp_path)
+        complex_type = self._type(modules[0], "Complex")
+        sigs = self._sigs(complex_type)
+        assert "__str__() -> str" in sigs
+        assert "__format__(format_spec: str) -> str" in sigs
+        assert [m.name for m in complex_type.members if m.kind == "method"].count("__str__") == 1
+        fmt = next(m for m in complex_type.members if m.name == "__format__")
+        assert "repr()" not in fmt.summary
+        assert fmt.params[0].description == "The format spec."
+
     def test_class_remarks_render_as_a_note_under_the_heading(self, tmp_path: Path):
         module = self._module(tmp_path)
         assert self._type(module, "Counter").remarks == "Iterates over the KEYS in first-seen order."

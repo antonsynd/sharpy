@@ -1215,6 +1215,13 @@ def parse_cs_file(
             sharpy_name = pascal_to_snake(mname)
             mapped_ret = map_type(ret_type.strip())
             is_static = "static" in modifiers
+            # `ToString(format, provider)` is `IFormattable`'s method — the CLR spelling of
+            # `__format__` (dunder_methods.md), not a second `__str__`. The name table is keyed on
+            # the name alone, so the arity decides which dunder this overload is.
+            is_format_overload = mname == "ToString" and len(params) == 2
+            if is_format_overload:
+                sharpy_name = "__format__"
+                params = [DocParam(name="format_spec", type="str", description=params[0].description)]
 
             # Build signature
             param_strs = []
@@ -1236,7 +1243,7 @@ def parse_cs_file(
                 sig += f" -> {mapped_ret}"
 
             summary = doc.get("summary", "")
-            if mname == "ToString":
+            if mname == "ToString" and not is_format_overload:
                 # The dunder table maps BOTH `__str__` and `__repr__` to `ToString()`: one row,
                 # not two spellings of one fact.
                 summary = f"{_TOSTRING_REPR_NOTE} {summary}".rstrip()

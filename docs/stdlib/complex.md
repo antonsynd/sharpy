@@ -38,3 +38,8 @@ Return the complex conjugate.
     is `(4+1j)` even though `repr(4.0)` is `4.0`. Precision is not otherwise
     reduced — `complex(1,2)/complex(3,-1)` is `(0.1+0.7000000000000001j)`, which is
     the cell a naive formatter gets wrong.
+
+### `__format__(format_spec: str) -> str`
+
+Python's `complex.__format__` — the CLR spelling of `__format__` (#2018):
+`format(c, spec)`, rendered by `PyFormat.Apply(object, string)`.
