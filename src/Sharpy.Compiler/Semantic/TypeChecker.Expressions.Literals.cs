@@ -807,7 +807,9 @@ internal partial class TypeChecker
         {
             // A base-typed hole holding a subclass that implements IFormattable is refused here
             // although the runtime would delegate — the hazard R-BY accepts; the dynamic spec is
-            // the escape.
+            // the escape. A Sharpy-declared type has no CLR type at compile time, so it is named by
+            // its declared (python) name, not through PyFormat.PyTypeName(Type); the runtime names
+            // the emitted CLR class, which differs for a non-PascalCase name (#2030).
             return OwnsFormatSpec(symbol) ? FormatOperand.Formattable : FormatOperand.NoFormat(symbol.Name);
         }
 
