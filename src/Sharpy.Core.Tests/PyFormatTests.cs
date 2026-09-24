@@ -730,4 +730,48 @@ public class PyFormatTests
     {
         PyFormat.Apply(value, spec).Should().Be(expected);
     }
+
+    // ---- The ONE python-type-name table, keyed on a CLR Type (the static twin's entry) ----
+
+    public static IEnumerable<object[]> TypeNameCells()
+    {
+        yield return new object[] { typeof(bool), "bool" };
+        yield return new object[] { typeof(double), "float" };
+        yield return new object[] { typeof(float), "float" };
+        yield return new object[] { typeof(decimal), "float" };
+        foreach (var t in new[] { typeof(int), typeof(long), typeof(short), typeof(byte), typeof(sbyte), typeof(uint), typeof(ulong), typeof(ushort) })
+        {
+            yield return new object[] { t, "int" };
+        }
+        yield return new object[] { typeof(string), "str" };
+        yield return new object[] { typeof(char), "str" };
+        yield return new object[] { typeof(Complex), "complex" };
+        yield return new object[] { typeof(Bytes), "bytes" };
+        yield return new object[] { typeof((int, string)), "tuple" };
+        yield return new object[] { typeof(List<int>), "list" };
+        yield return new object[] { typeof(Dict<string, int>), "dict" };
+        yield return new object[] { typeof(Set<int>), "set" };
+        yield return new object[] { typeof(FrozenSet<int>), "frozenset" };
+        yield return new object[] { typeof(Optional<int>), "Optional" };
+        yield return new object[] { typeof(C), "C" };
+        yield return new object[] { typeof(Outer.Inner<int>), "Inner" };
+        yield return new object[] { typeof(ValueError), "ValueError" };
+    }
+
+    [Theory]
+    [MemberData(nameof(TypeNameCells))]
+    public void PyTypeName_OfType_IsThePythonName(System.Type type, string expected)
+    {
+        PyFormat.PyTypeName(type).Should().Be(expected);
+    }
+
+    [Fact]
+    public void PyTypeName_OfValue_IsTheTypeTable()
+    {
+        // The runtime engine names a value by the same Type-keyed table the static twin uses.
+        var ex = Assert.Throws<TypeError>(() => PyFormat.Apply((1, 2), ">3"));
+        ex.Message.Should().Be("unsupported format string passed to " + PyFormat.PyTypeName(typeof((int, int))) + ".__format__");
+        Assert.Throws<ValueError>(() => PyFormat.Apply('a', "d")).Message
+            .Should().Be("Unknown format code 'd' for object of type '" + PyFormat.PyTypeName(typeof(char)) + "'");
+    }
 }

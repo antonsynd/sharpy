@@ -176,45 +176,53 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// The python type name of a value, as CPython's format and subscript messages spell it:
-        /// <c>list</c>, <c>dict</c>, <c>set</c>, <c>frozenset</c>, <c>tuple</c>, <c>bytes</c>,
-        /// <c>complex</c> for the Core collections and numbers, <c>Optional</c> for
-        /// <see cref="Optional{T}"/>, and otherwise the CLR type name without its generic arity
-        /// (<c>List`1</c> is never printed; a nested type prints its own name, not its outer's).
+        /// The python type name of a value, as CPython's format and subscript messages spell it —
+        /// <see cref="PyTypeName(Type)"/> of its runtime type, and <c>NoneType</c> for null.
         /// </summary>
-        internal static string PyTypeName(object? value)
-        {
-            switch (value)
-            {
-                case null:
-                    return "NoneType";
-                case bool _:
-                    return "bool";
-                case double _:
-                case float _:
-                case decimal _:
-                    return "float";
-                case int _:
-                case long _:
-                case short _:
-                case byte _:
-                case sbyte _:
-                case uint _:
-                case ulong _:
-                case ushort _:
-                    return "int";
-                case string _:
-                case char _:
-                    return "str";
-                case Complex _:
-                    return "complex";
-                case Bytes _:
-                    return "bytes";
-                case System.Runtime.CompilerServices.ITuple _:
-                    return "tuple";
-            }
+        internal static string PyTypeName(object? value) =>
+            value == null ? "NoneType" : PyTypeName(value.GetType());
 
-            Type type = value.GetType();
+        /// <summary>
+        /// The python type name of a CLR type, as CPython's format and subscript messages spell it:
+        /// <c>bool</c>, <c>float</c> (double/float/decimal), <c>int</c> (the eight CLR integers),
+        /// <c>str</c> (string/char), <c>complex</c>, <c>bytes</c>, <c>tuple</c> (any
+        /// <see cref="System.Runtime.CompilerServices.ITuple"/>), <c>list</c>/<c>dict</c>/<c>set</c>/
+        /// <c>frozenset</c> for the Core collections, <c>Optional</c> for <see cref="Optional{T}"/>,
+        /// and otherwise the CLR type name without its generic arity (<c>List`1</c> is never
+        /// printed; a nested type prints its own name, not its outer's). The ONE table: the runtime
+        /// engine names a value by it and the compiler's static twin names a static type by it.
+        /// </summary>
+        public static string PyTypeName(Type type)
+        {
+            if (type == typeof(bool))
+            {
+                return "bool";
+            }
+            if (type == typeof(double) || type == typeof(float) || type == typeof(decimal))
+            {
+                return "float";
+            }
+            if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)
+                || type == typeof(sbyte) || type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort))
+            {
+                return "int";
+            }
+            if (type == typeof(string) || type == typeof(char))
+            {
+                return "str";
+            }
+            if (type == typeof(Complex))
+            {
+                return "complex";
+            }
+            if (type == typeof(Bytes))
+            {
+                return "bytes";
+            }
+            if (typeof(System.Runtime.CompilerServices.ITuple).IsAssignableFrom(type))
+            {
+                return "tuple";
+            }
             if (type.IsGenericType)
             {
                 Type definition = type.GetGenericTypeDefinition();
