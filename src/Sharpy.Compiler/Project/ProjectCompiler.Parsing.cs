@@ -28,9 +28,6 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Phase 1: Parse all source files into AST modules
-    /// </summary>
-    /// <summary>
     /// SPY0526 (#1932, R-AX phase a): a package directory whose wrapper class spells the same C#
     /// identifier as the module class of a file inside it — <c>lib/lib.spy</c> nests module class
     /// <c>Lib</c> in wrapper <c>Lib</c>, CS0542 behind SPY0908. Refused by name after parsing, before
@@ -73,6 +70,9 @@ internal partial class ProjectCompiler
         return reported;
     }
 
+    /// <summary>
+    /// Phase 1: Parse all source files into AST modules
+    /// </summary>
     private bool ParseAllFiles(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         var filesToParse = config.SourceFiles.Count - _filesToSkip.Count;

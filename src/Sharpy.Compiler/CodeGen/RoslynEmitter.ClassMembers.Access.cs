@@ -119,21 +119,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private static SyntaxKind HostlessAccessKeyword(string name, IEnumerable<Decorator> decorators)
     {
-        SyntaxKind? explicitAccess = null;
-        foreach (var decorator in decorators)
-        {
-            if (decorator.IsBracketAttribute)
-                continue;
-            explicitAccess = decorator.Name switch
-            {
-                DecoratorNames.Public => SyntaxKind.PublicKeyword,
-                DecoratorNames.Protected => SyntaxKind.ProtectedKeyword,
-                DecoratorNames.Private => SyntaxKind.PrivateKeyword,
-                DecoratorNames.Internal => SyntaxKind.InternalKeyword,
-                _ => explicitAccess,
-            };
-        }
-        return explicitAccess ?? GetModuleLevelAccessModifier(name);
+        var explicitAccess = MemberClassification.GetExplicitAccessLevel(decorators);
+        return explicitAccess is { } level ? MemberAccessKeyword(level) : GetModuleLevelAccessModifier(name);
     }
 
     private SyntaxKind MissingMemberAccessSymbol(string kind, string name, int? line, int? column)
