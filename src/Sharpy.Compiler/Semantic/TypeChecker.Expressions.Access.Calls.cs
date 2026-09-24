@@ -6452,10 +6452,10 @@ internal partial class TypeChecker
             if (valueIndex < 0 || BoundArgumentOf(call, positionalArguments, parameters, valueIndex) is not { } valueArg)
                 continue;
 
-            var operandKind = FormatOperandKindOf(
+            var operand = FormatOperandOf(
                 UnwrapParenthesized(valueArg),
                 _semanticInfo.GetExpressionType(valueArg) ?? SemanticType.Unknown);
-            var message = FormatSpecGrammar.Validate(specLiteral.Value, operandKind);
+            var message = FormatSpecGrammar.Validate(specLiteral.Value, operand);
             if (message != null)
             {
                 AddError(message, specLiteral.LineStart, specLiteral.ColumnStart,
@@ -6469,7 +6469,7 @@ internal partial class TypeChecker
     /// (<see cref="FunctionSymbol.IsFormatTemplateReceiver"/>, from Core's
     /// <c>FormatTemplateAttribute</c>) and the call's receiver is a string literal, the template is
     /// split by <see cref="FormatTemplateGrammar"/>, each field is paired with the positional operand
-    /// it reads, and its static spec is validated against that operand's kind (<see cref="FormatOperandKind.Str"/>
+    /// it reads, and its static spec is validated against that operand (<see cref="FormatOperand.Str"/>
     /// under a conversion) through the one <see cref="FormatSpecGrammar"/>. A refusal is SPY0609 at
     /// the template literal with CPython's wording. A field whose operand or spec is not static (a
     /// nested spec, a keyword name, an attribute/index access, an index past the arguments, any
@@ -6494,12 +6494,12 @@ internal partial class TypeChecker
                 continue;
 
             var operand = positionalArguments[index];
-            var operandKind = hole.Conversion != null
-                ? FormatOperandKind.Str
-                : FormatOperandKindOf(
+            var formatOperand = hole.Conversion != null
+                ? FormatOperand.Str
+                : FormatOperandOf(
                     UnwrapParenthesized(operand),
                     _semanticInfo.GetExpressionType(operand) ?? SemanticType.Unknown);
-            var message = FormatSpecGrammar.Validate(spec, operandKind);
+            var message = FormatSpecGrammar.Validate(spec, formatOperand);
             if (message != null)
             {
                 AddError(message, template.LineStart, template.ColumnStart,

@@ -12,9 +12,9 @@ internal readonly record struct FormatTemplateHole(int? ArgumentIndex, char? Con
 /// <summary>
 /// Splits a LITERAL <c>str.format</c> template into its replacement fields at compile time, by name,
 /// mirroring <c>Sharpy.StringExtensions.Vformat</c> / <c>ReadReplacementField</c> /
-/// <c>ResolveFieldValue</c> (#1956) — the same mirror-by-name pattern as
-/// <see cref="FormatSpecGrammar"/>: the compile-time and runtime routes are different assemblies
-/// by design, and parity is pinned by tests, not by a shared splitter. Only the facts the static
+/// <c>ResolveFieldValue</c> (#1956). Unlike the spec rules (which <see cref="FormatSpecGrammar"/>
+/// takes from Core's one validator, #1984), the splitter is a mirror by design: parity is pinned by
+/// tests, not by a shared splitter. Only the facts the static
 /// spec check needs are produced (which operand each field reads, its conversion, its static spec);
 /// every template error Core raises (an unmatched brace, a bad conversion, mixed auto/manual
 /// numbering) makes <see cref="Split"/> return null, so the template is left wholly to Core's

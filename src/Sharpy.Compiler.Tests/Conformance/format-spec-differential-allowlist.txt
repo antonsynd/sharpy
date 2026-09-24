@@ -12,8 +12,3 @@
 # divergence therefore surfaces HERE, as a row citing a fresh issue — never the fixed one.
 # (Issue numbers are deliberately absent from this header: the issue-state gate reads a comment
 # paragraph's cites onto the rows beneath it.)
-
-# The static twin (SPY0609) names a different rule than CPython when a spec breaks two: for int
-# '<+z#010c' Sharpy reports the sign-with-'c' rule, CPython (and Core at runtime) the 'z' rule —
-# FormatSpecGrammar's check precedence differs from CPython's. see #1984
-formatspec::static::int::3c2b7a2330313063  # spec '<+z#010c' — see #1984

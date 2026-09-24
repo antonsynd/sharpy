@@ -21,8 +21,9 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// cell is compared in TWO columns (<see cref="Column"/>): the ENGINE column hides the spec in a
 /// variable so every cell exercises Core's runtime engine and its <c>ValueError</c> refusals; the
 /// STATIC column passes the literal, so a refused spec may meet the compile-time twin (SPY0609,
-/// #1956), which agrees only with CPython's <c>ValueError</c> text verbatim — pinning the grammar
-/// mirror (<c>FormatSpecGrammar</c>) to CPython without giving up runtime coverage.
+/// #1956), which agrees only with CPython's <c>ValueError</c> text verbatim — pinning the static twin
+/// (<c>FormatSpecGrammar</c>, a projection over Core's one validator since #1984) to CPython without
+/// giving up runtime coverage.
 ///
 /// <para>Sweep discipline mirrors <see cref="DifferentialExecutionTests"/>: any non-allowlisted
 /// divergence fails the run; an allowlisted cell that no longer diverges fails until its line is
@@ -59,11 +60,12 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     private const int SharpyExecTimeoutMs = 12_000;
 
     // The static column's positive control: at least this many cells must agree by a COMPILE-time
-    // SPY0609 carrying CPython's ValueError wording. Measured 129 @ 4e87ad374 (of 130 static cells
-    // CPython refuses; the other is an allowlisted wording divergence). The fixed seeds make the count
-    // deterministic, so a drop means the static twin (FormatSpecGrammar through
-    // CheckStaticFormatSpecArguments, #1956) stopped firing on literal specs, not that the corpus moved.
-    private const int StaticTwinAgreementFloor = 129;
+    // SPY0609 carrying CPython's ValueError wording. Measured 130 @ 912537730 + #1984's wrapper (all 130
+    // static cells CPython refuses; the '<+z#010c' wording divergence drained when FormatSpecGrammar
+    // became a projection over Core's validator). The fixed seeds make the count deterministic, so a
+    // drop means the static twin (FormatSpecGrammar through CheckStaticFormatSpecArguments, #1956)
+    // stopped firing on literal specs, not that the corpus moved.
+    private const int StaticTwinAgreementFloor = 130;
 
     private sealed record Cell(string Kind, string Spec)
     {

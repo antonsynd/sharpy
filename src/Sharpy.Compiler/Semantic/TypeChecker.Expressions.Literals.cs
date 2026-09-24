@@ -750,10 +750,10 @@ internal partial class TypeChecker
         // spec formats a STRING, so validate against Str; otherwise against the value's own kind.
         if (part.Spec != null && specIsStatic && staticSpec.Length > 0)
         {
-            var operandKind = kind == InterpolationKind.Format
-                ? FormatOperandKindOf(part.Expression, partType)
-                : FormatOperandKind.Str;
-            var message = FormatSpecGrammar.Validate(staticSpec, operandKind);
+            var operand = kind == InterpolationKind.Format
+                ? FormatOperandOf(part.Expression, partType)
+                : FormatOperand.Str;
+            var message = FormatSpecGrammar.Validate(staticSpec, operand);
             if (message != null)
             {
                 AddError(message, part.Expression.LineStart, part.Expression.ColumnStart,
@@ -766,32 +766,32 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The compile-time operand kind a static format spec is validated against — the projection of
-    /// the value kinds <c>Sharpy.PyFormat</c> distinguishes at runtime. A None literal is its own
-    /// kind; anything not a statically-known primitive is <see cref="FormatOperandKind.Unknown"/>
-    /// and is validated by Core at runtime instead.
+    /// The compile-time operand a static format spec is validated against — the projection of the
+    /// value kinds <c>Sharpy.PyFormat</c> distinguishes at runtime, with the python type name Core's
+    /// messages spell. A None literal is its own kind; anything not a statically-known primitive is
+    /// <see cref="FormatOperand.Unknown"/> and is validated by Core at runtime instead.
     /// </summary>
-    private static FormatOperandKind FormatOperandKindOf(Expression expr, SemanticType type)
+    private static FormatOperand FormatOperandOf(Expression expr, SemanticType type)
     {
         if (expr is NoneLiteral)
         {
-            return FormatOperandKind.NoneLiteral;
+            return FormatOperand.NoneValue;
         }
 
         if (type is BuiltinType { ClrType: { } clr })
         {
             if (clr == typeof(string))
-                return FormatOperandKind.Str;
+                return FormatOperand.Str;
             if (clr == typeof(bool))
-                return FormatOperandKind.Bool;
+                return FormatOperand.Bool;
             if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
-                return FormatOperandKind.Float;
+                return FormatOperand.Float;
             if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)
                 || clr == typeof(sbyte) || clr == typeof(uint) || clr == typeof(ulong) || clr == typeof(ushort))
-                return FormatOperandKind.Integral;
+                return FormatOperand.Integral;
         }
 
-        return FormatOperandKind.Unknown;
+        return FormatOperand.Unknown;
     }
 
     private SemanticType CheckBytesLiteral(BytesLiteralExpression bytesLit)
