@@ -365,11 +365,13 @@ internal partial class RoslynEmitter
                     _ => null
                 };
 
-                if (stmt is ClassDef { TypeParameters.Length: 0 })
+                // A class named like the module either merged (ModuleShape said so) or cannot: the
+                // shape is the one authority, so a class it did not merge — a generic one — is refused.
+                if (stmt is ClassDef && (typeName != moduleClassName || _moduleShape.MergedClassName != null))
                 {
                     continue;
                 }
-                else if (stmt is ClassDef generic && typeName == moduleClassName)
+                else if (stmt is ClassDef generic)
                 {
                     _context.AddError(
                         $"Type '{generic.Name}' conflicts with module class name '{moduleClassName}': a generic " +

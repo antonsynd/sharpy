@@ -105,7 +105,8 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
         {
             success.Should().BeFalse($"[{kind}×{mode}] must be refused");
             errors.Should().Contain(e => e.Code == DiagnosticCodes.CodeGen.NameCollision
-                && e.Message.StartsWith("Type 'Thing' conflicts with module class name 'Thing'"),
+                && e.Message.StartsWith("Type 'Thing' conflicts with module class name 'Thing'")
+                && e.Message.EndsWith("Rename the type or the source file to avoid this collision."),
                 $"[{kind}×{mode}] {string.Join(" | ", errors.Select(e => e.Code + " " + e.Message))}");
         }
     }
