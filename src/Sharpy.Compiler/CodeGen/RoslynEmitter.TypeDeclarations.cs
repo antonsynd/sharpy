@@ -1266,8 +1266,16 @@ internal partial class RoslynEmitter
             Token(SyntaxKind.SealedKeyword)
         );
 
+        // : global::System.IFormattable — the CLR spelling of __format__ (dunder_methods.md). A
+        // string enum is a sealed class, not a System.Enum, so without it the format engine sees a
+        // value with no __format__ and refuses every non-empty spec; python's StrEnum formats as
+        // its str (`f"{c:>5}"` → `  red`). The ToString(format, provider) member below delegates to
+        // the str rules on Value, so a literal and a dynamic spec agree with the static twin, which
+        // already projects every Sharpy enum to the str kind (#1988 regression, audit R1).
         var classDecl = ClassDeclaration(EscapedIdentifier(className))
-            .WithModifiers(modifiers);
+            .WithModifiers(modifiers)
+            .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
+                SimpleBaseType(MakeGlobalQualifiedName("System", "IFormattable")))));
 
         var stringType = PredefinedType(Token(SyntaxKind.StringKeyword));
         var members = new List<MemberDeclarationSyntax>();
@@ -1331,6 +1339,28 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword)))
             .WithParameterList(ParameterList())
             .WithExpressionBody(ArrowExpressionClause(IdentifierName("Value")))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // public string ToString(string? format, IFormatProvider? formatProvider)
+        //     => global::Sharpy.PyFormat.Apply(Value, format ?? "");
+        members.Add(MethodDeclaration(stringType, Identifier("ToString"))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[]
+            {
+                Parameter(Identifier("format")).WithType(NullableType(stringType)),
+                Parameter(Identifier("formatProvider"))
+                    .WithType(NullableType(MakeGlobalQualifiedName("System", "IFormatProvider")))
+            })))
+            .WithExpressionBody(ArrowExpressionClause(InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "PyFormat"), IdentifierName("Apply")))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(IdentifierName("Value")),
+                    Argument(BinaryExpression(SyntaxKind.CoalesceExpression,
+                        IdentifierName("format"),
+                        LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(""))))
+                })))))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
         // public static implicit operator string(LogLevel value) => value.Value;
