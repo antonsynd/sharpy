@@ -8,8 +8,12 @@ namespace Sharpy
     /// Represents an IPv4 address.
     /// </summary>
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv4Address : IComparable<IPv4Address>, IEquatable<IPv4Address>
+    public sealed class IPv4Address : IComparable<IPv4Address>, IEquatable<IPv4Address>, IFormattable
     {
+        /// <summary>python <c>__format__</c> (<c>_BaseAddress.__format__</c>); see <see cref="AddressFormat"/>.</summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) =>
+            AddressFormat.Format(ToString(), ToInt(), 4, 32, "IPv4Address", format);
+
         private readonly uint _value;
 
         /// <summary>

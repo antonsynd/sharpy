@@ -9,8 +9,12 @@ namespace Sharpy
     /// Represents an IPv6 address.
     /// </summary>
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv6Address : IComparable<IPv6Address>, IEquatable<IPv6Address>
+    public sealed class IPv6Address : IComparable<IPv6Address>, IEquatable<IPv6Address>, IFormattable
     {
+        /// <summary>python <c>__format__</c> (<c>_BaseAddress.__format__</c>); see <see cref="AddressFormat"/>.</summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) =>
+            AddressFormat.Format(ToString(), ToInt(), 6, 128, "IPv6Address", format);
+
         private readonly IPAddress _address;
         private readonly byte[] _bytes;
 

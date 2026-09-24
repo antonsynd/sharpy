@@ -8,8 +8,12 @@ namespace Sharpy
     /// Represents an IPv4 interface with an address and network.
     /// </summary>
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv4Interface
+    public sealed class IPv4Interface : IFormattable
     {
+        /// <summary>python <c>__format__</c>, inherited from <c>_BaseAddress</c>; see <see cref="AddressFormat"/>.</summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) =>
+            AddressFormat.Format(ToString(), Ip.ToInt(), 4, 32, "IPv4Interface", format);
+
         /// <summary>
         /// Gets the interface address.
         /// </summary>
@@ -83,8 +87,12 @@ namespace Sharpy
     /// Represents an IPv6 interface with an address and network.
     /// </summary>
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv6Interface
+    public sealed class IPv6Interface : IFormattable
     {
+        /// <summary>python <c>__format__</c>, inherited from <c>_BaseAddress</c>; see <see cref="AddressFormat"/>.</summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) =>
+            AddressFormat.Format(ToString(), Ip.ToInt(), 6, 128, "IPv6Interface", format);
+
         /// <summary>
         /// Gets the interface address.
         /// </summary>

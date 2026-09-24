@@ -8,8 +8,15 @@ namespace Sharpy
     /// Equivalent to Python's <c>http.HTTPStatus</c>.
     /// </summary>
     [SharpyModuleType("http", "HTTPStatus")]
-    public sealed class HTTPStatus : IEquatable<HTTPStatus>
+    public sealed class HTTPStatus : IEquatable<HTTPStatus>, IFormattable
     {
+        /// <summary>
+        /// python <c>__format__</c>: an <c>IntEnum</c> member formats as its integer value
+        /// (<c>format(HTTPStatus.OK, "&gt;6")</c> is <c>"   200"</c>), through Core's one engine.
+        /// </summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) =>
+            PyFormat.Apply(Value, format ?? "");
+
         private static readonly Dictionary<int, HTTPStatus> _valueMap = new Dictionary<int, HTTPStatus>();
 
         public int Value { get; }
