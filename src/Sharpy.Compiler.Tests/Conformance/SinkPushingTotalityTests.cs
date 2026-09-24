@@ -137,6 +137,7 @@ public class SinkPushingTotalityTests
         ["GenerateValueSafeEqualsExpression/BinaryExpression:CoalesceExpression"] = "null-equality fold over generated operands",
         ["GenerateValueSafeEqualsExpression/ConditionalAccessExpression"] = "null-equality fold over generated operands",
         ["GenerateLateBoundPreamble/BinaryExpression:CoalesceExpression"] = "late-bound default fold, no user sub-expression",
+        ["GenerateStringEnumClass/BinaryExpression:CoalesceExpression"] = "IFormattable.ToString body: `format ?? \"\"` folds the method's own parameter, no user sub-expression (#1988 audit R1)",
         ["GenerateTypeCoercion/ConditionalExpression"] = "coercion of one already-generated operand",
 
         // --- Statement and member scaffolding. ---
