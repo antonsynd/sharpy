@@ -253,10 +253,16 @@ namespace Sharpy
         #region String Representation
 
         /// <summary>
-        /// Returns a string representation of this set.
+        /// Python's <c>repr</c> of the set: <c>{1, 2}</c>, and <c>set()</c> when empty (a bare
+        /// <c>{}</c> is the empty dict).
         /// </summary>
         public override string ToString()
         {
+            if (_set.Count == 0)
+            {
+                return "set()";
+            }
+
             var builder = new StringBuilder();
             builder.Append('{');
 

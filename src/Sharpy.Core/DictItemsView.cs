@@ -265,6 +265,12 @@ namespace Sharpy
         /// <summary>Symmetric difference with a set on the left.</summary>
         public static Set<(K, V)> operator ^(Set<(K, V)> left, DictItemsView<K, V> right) => right.SymmetricDifference(left);
 
+        /// <summary>
+        /// Python's <c>repr</c> of the view: <c>dict_items([...])</c> around the list repr of its (key, value) pairs,
+        /// in the dictionary's iteration order.
+        /// </summary>
+        public override string ToString() => "dict_items(" + new List<(K, V)>(this).ToString() + ")";
+
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

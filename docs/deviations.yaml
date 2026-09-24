@@ -828,7 +828,7 @@ deviations:
     audience: python
     severity: none
     python_behavior: "`keys()`, `values()` and `items()` on a mapping return LIVE VIEW objects (`dict_keys`, `dict_values`, `dict_items`). A view reflects later mutations of the mapping, and does not support `append`."
-    sharpy_behavior: "They return a list copy taken at the call. Later mutations of the mapping are not reflected, and the copy has a list's full surface, so `append` succeeds and affects only the copy. Call them — `c.keys()`; the bare `c.keys` is the method itself, not a value, matching CPython."
+    sharpy_behavior: "The builtin `dict` and `defaultdict` match Python: their `keys()`, `values()` and `items()` return live views that print as `dict_keys([...])`, `dict_values([...])` and `dict_items([...])`. `Counter`, `OrderedDict` and `ChainMap` deviate: they return a list copy taken at the call, which prints as a list (`['a']`). Later mutations of the mapping are not reflected, and the copy has a list's full surface, so `append` succeeds and affects only the copy. Call them — `c.keys()`; the bare `c.keys` is the method itself, not a value, matching CPython."
     spec_ref: docs/language_specification/dotnet_interop.md
     existing_diagnostic: null
     planned_diagnostic: null

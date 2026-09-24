@@ -13,7 +13,8 @@ public partial class Set_Tests
         var s = new Set<int>();
 
         // When/then
-        Repr(s).Should().Be("{}");
+        // python3: print(str(set()), repr(set())) -> set() set()  ({} is the empty dict)
+        Repr(s).Should().Be("set()");
     }
 
     [Fact]

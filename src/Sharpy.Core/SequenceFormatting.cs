@@ -62,9 +62,11 @@ namespace Sharpy
 
         /// <summary>
         /// Whether the type provides its own <see cref="object.ToString"/> — i.e. printing it would
-        /// produce something its author chose, rather than a CLR type name.
+        /// produce something its author chose, rather than a CLR type name. Internal so the
+        /// collection repr sweep (<c>CollectionReprSweepTests</c>, #1995) asserts with this exact
+        /// predicate rather than a copy of it.
         /// </summary>
-        private static bool RendersItself(System.Type type)
+        internal static bool RendersItself(System.Type type)
         {
             // System.Type spelled out: the enclosing class declares a `Type(object?)` builtin, which
             // shadows the bare name here.

@@ -339,7 +339,7 @@ def test_default_dict_items_returns_key_value_tuples():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["x"] = 10
     dd["y"] = 20
-    items: list[tuple[str, int]] = dd.items()
+    items: list[tuple[str, int]] = list(dd.items())
     assert len(items) == 2
     assert ("x", 10) in items
     assert ("y", 20) in items

@@ -128,6 +128,13 @@ namespace Sharpy
         /// <summary>Return an enumerator over the deque elements.</summary>
         public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
 
+        /// <summary>
+        /// Python's <c>repr</c> of the deque: <c>deque([1, 2])</c>, and <c>deque([])</c> when empty.
+        /// There is no <c>maxlen</c> suffix — Sharpy's deque is unbounded, and CPython prints none
+        /// for <c>maxlen=None</c>.
+        /// </summary>
+        public override string ToString() => "deque(" + new List<T>(_list).ToString() + ")";
+
         /// <inheritdoc/>
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _list.GetEnumerator();
     }
@@ -572,12 +579,14 @@ namespace Sharpy
         public bool Contains(TKey key) => ContainsKey(key);
 
         /// <summary>
-        /// The keys of the dictionary. Python: <c>d.keys()</c>. Returns a copy, not a live view.
+        /// The keys of the dictionary. Python: <c>d.keys()</c>. A live view: later mutations of the
+        /// defaultdict are reflected.
         /// </summary>
         public DictKeyView<TKey, TValue> Keys() => _dict.Keys();
 
         /// <summary>
-        /// The values of the dictionary. Python: <c>d.values()</c>. Returns a copy, not a live view.
+        /// The values of the dictionary. Python: <c>d.values()</c>. A live view: later mutations of
+        /// the defaultdict are reflected.
         /// </summary>
         public DictValuesView<TKey, TValue> Values() => _dict.Values();
 
@@ -624,17 +633,10 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return a list of (key, value) tuples.
+        /// The (key, value) pairs of the dictionary. Python: <c>d.items()</c>. A live view, like
+        /// <see cref="Keys"/> and <see cref="Values"/>: later mutations of the defaultdict are reflected.
         /// </summary>
-        public List<(TKey, TValue)> Items()
-        {
-            var items = new List<(TKey, TValue)>();
-            foreach (var (k, v) in _dict.Items())
-            {
-                items.Add((k, v));
-            }
-            return items;
-        }
+        public DictItemsView<TKey, TValue> Items() => _dict.Items();
 
         /// <summary>
         /// Update the defaultdict with key-value pairs from another dictionary.

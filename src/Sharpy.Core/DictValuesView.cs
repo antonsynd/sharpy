@@ -71,6 +71,12 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Python's <c>repr</c> of the view: <c>dict_values([...])</c> around the list repr of its values,
+        /// in the dictionary's iteration order.
+        /// </summary>
+        public override string ToString() => "dict_values(" + new List<V>(this).ToString() + ")";
+
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

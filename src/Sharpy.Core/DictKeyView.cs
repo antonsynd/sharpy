@@ -378,6 +378,12 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Python's <c>repr</c> of the view: <c>dict_keys([...])</c> around the list repr of its keys,
+        /// in the dictionary's iteration order.
+        /// </summary>
+        public override string ToString() => "dict_keys(" + new List<K>(this).ToString() + ")";
+
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

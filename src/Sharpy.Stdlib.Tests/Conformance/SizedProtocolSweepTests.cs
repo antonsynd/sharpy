@@ -30,7 +30,8 @@ public class SizedProtocolSweepTests
     /// <summary>Exempt types (full name of the generic definition) → the issue that tracks them.</summary>
     private static readonly System.Collections.Generic.Dictionary<string, string> Exemptions = new();
 
-    private static readonly Assembly[] SweptAssemblies =
+    // Shared with CollectionReprSweepTests (#1995): one roster of counted public types.
+    internal static readonly Assembly[] SweptAssemblies =
     {
         typeof(ISized).Assembly,     // Sharpy.Core
         typeof(Deque<>).Assembly,    // Sharpy.Stdlib
@@ -49,7 +50,7 @@ public class SizedProtocolSweepTests
                 || i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IReadOnlyCollection<>)));
     }
 
-    private static System.Collections.Generic.IReadOnlyList<Type> CountedTypes()
+    internal static System.Collections.Generic.IReadOnlyList<Type> CountedTypes()
         => SweptAssemblies
             .SelectMany(a => a.GetExportedTypes())
             .Where(t => !t.IsInterface && HasCollectionCount(t))

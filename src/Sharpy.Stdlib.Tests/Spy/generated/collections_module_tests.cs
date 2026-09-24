@@ -753,8 +753,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["x"] = 10;
 #line (341, 5) - (341, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["y"] = 20;
-#line (342, 5) - (342, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.List<global::System.ValueTuple<string, int>> items = dd.Items();
+#line (342, 5) - (342, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+                Sharpy.List<global::System.ValueTuple<string, int>> items = new global::Sharpy.List<global::System.ValueTuple<string, int>>(dd.Items());
 #line (343, 5) - (343, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(items));
 #line (344, 5) - (344, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
