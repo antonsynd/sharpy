@@ -5,7 +5,7 @@ namespace Sharpy
     /// <summary>
     /// A complex number type, similar to Python's complex.
     /// </summary>
-    public readonly struct Complex
+    public readonly struct Complex : IFormattable
     {
         private readonly System.Numerics.Complex _inner;
 
@@ -224,10 +224,17 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Python's <c>complex.__format__</c> — the CLR spelling of <c>__format__</c> (#2018):
+        /// <c>format(c, spec)</c>, rendered by <see cref="PyFormat.Apply(object, string)"/>.
+        /// </summary>
+        public string ToString(string? format, IFormatProvider? formatProvider) =>
+            PyFormat.Apply(this, format ?? "");
+
+        /// <summary>
         /// <see cref="Builtins.FormatFloat(double)"/> with any trailing <c>.0</c> removed, which is
         /// the only way complex component formatting differs from <c>float</c>'s.
         /// </summary>
-        private static string Component(double value)
+        internal static string Component(double value)
         {
             string text = Builtins.FormatFloat(value);
             return text.EndsWith(".0", StringComparison.Ordinal)
@@ -247,7 +254,7 @@ namespace Sharpy
         /// <c>(1-nanj)</c> where CPython prints <c>(1+nanj)</c> — a divergence produced by copying
         /// the mechanism instead of the behaviour. Measured on both sides, not assumed.
         /// </remarks>
-        private static bool IsNegative(double value)
+        internal static bool IsNegative(double value)
             => !double.IsNaN(value) && BitConverter.DoubleToInt64Bits(value) < 0;
     }
 }

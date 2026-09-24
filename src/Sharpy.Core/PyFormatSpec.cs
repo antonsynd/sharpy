@@ -28,6 +28,9 @@ namespace Sharpy
         /// <summary><c>float</c> (<c>float.__format__</c>).</summary>
         Float,
 
+        /// <summary><c>complex</c> (<c>complex.__format__</c>, #2018).</summary>
+        Complex,
+
         /// <summary>A value whose type owns its spec (<c>System.IFormattable</c>): any spec is accepted.</summary>
         Formattable,
 
@@ -147,9 +150,9 @@ namespace Sharpy
                     return FormatSpecError.Type("unsupported format string passed to " + pyTypeName + ".__format__");
             }
 
-            // str's defaults are type 's', align '<'; int/bool's 'd', '>'; float's none, '>'.
+            // str's defaults are type 's', align '<'; int/bool's 'd', '>'; float's and complex's none, '>'.
             char defaultType = kind == FormatOperandKind.Str ? 's'
-                : kind == FormatOperandKind.Float ? '\0'
+                : kind == FormatOperandKind.Float || kind == FormatOperandKind.Complex ? '\0'
                 : 'd';
             char defaultAlign = kind == FormatOperandKind.Str ? '<' : '>';
 
@@ -245,6 +248,33 @@ namespace Sharpy
                         default:
                             return UnknownCode(type, pyTypeName);
                     }
+
+                case FormatOperandKind.Complex:
+                    // complex.__format__'s switch, then format_complex_internal: no zero padding
+                    // (an explicit '0' fill or the '0' flag), no '=' alignment (#2018).
+                    switch (type)
+                    {
+                        case '\0':
+                        case 'e':
+                        case 'E':
+                        case 'f':
+                        case 'F':
+                        case 'g':
+                        case 'G':
+                        case 'n':
+                            break;
+                        default:
+                            return UnknownCode(type, pyTypeName);
+                    }
+                    if (parsed.Fill == '0')
+                    {
+                        return FormatSpecError.Value("Zero padding is not allowed in complex format specifier");
+                    }
+                    if (parsed.Align == '=')
+                    {
+                        return FormatSpecError.Value("'=' alignment flag is not allowed in complex format specifier");
+                    }
+                    return null;
 
                 default:
                     // FormatOperandKind.Float: float.__format__'s switch is the only rule.

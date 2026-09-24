@@ -45,6 +45,10 @@ namespace Sharpy
                 throw error.ToException();
             }
 
+            if (kind == FormatOperandKind.Complex)
+            {
+                return RenderComplex((Complex)value!, parsed);
+            }
             return Render(value!, kind, parsed);
         }
 
@@ -74,6 +78,10 @@ namespace Sharpy
             {
                 return FormatOperandKind.Integral;
             }
+            if (value is Complex)
+            {
+                return FormatOperandKind.Complex;
+            }
             return FormatOperandKind.Unknown;
         }
 
@@ -100,14 +108,19 @@ namespace Sharpy
                     minWidthTotal: (spec.Align == '=' && spec.Fill == '0') ? spec.Width : 0);
             }
 
-            // Apply width and alignment
-            int width = spec.Width;
+            // Default: numbers right-align, strings left-align
+            char align = spec.Align != '\0' ? spec.Align : (IsNumeric(kind) ? '>' : '<');
+            return Pad(formatted, spec.Fill, align, spec.Width, spec.Type, spec.AlternateForm);
+        }
+
+        /// <summary>
+        /// Pad <paramref name="formatted"/> to <paramref name="width"/> with <paramref name="fill"/>
+        /// under <paramref name="align"/>. <c>=</c> pads after the sign and the radix prefix.
+        /// </summary>
+        private static string Pad(string formatted, char fill, char align, int width, char type, bool altForm)
+        {
             if (width > 0 && formatted.Length < width)
             {
-                char fill = spec.Fill;
-                // Default: numbers right-align, strings left-align
-                char align = spec.Align != '\0' ? spec.Align : (IsNumeric(kind) ? '>' : '<');
-
                 int padding = width - formatted.Length;
                 switch (align)
                 {
@@ -127,7 +140,7 @@ namespace Sharpy
                         // predicate GroupAndZeroFill uses for the '0'-fill path, so an explicit or
                         // default fill lands where the zeros would: format(-255, '*=#10x') is
                         // '-0x*****ff'.
-                        int at = Math.Min(NumericPrefixLength(formatted, spec.Type, spec.AlternateForm), formatted.Length);
+                        int at = Math.Min(NumericPrefixLength(formatted, type, altForm), formatted.Length);
                         formatted = formatted.Substring(0, at) + new string(fill, padding) + formatted.Substring(at);
                         break;
                 }
@@ -170,7 +183,95 @@ namespace Sharpy
             {
                 return "str";
             }
+            if (value is Complex)
+            {
+                return "complex";
+            }
             return value.GetType().Name;
+        }
+
+        /// <summary>
+        /// CPython's <c>format_complex_internal</c> (#2018), rendering from a spec
+        /// <see cref="PyFormatSpec.Validate"/> accepted for <see cref="FormatOperandKind.Complex"/>.
+        /// With no type, the parts are the complex repr's own (shortest, no trailing <c>.0</c>), or
+        /// <c>g</c> at the given precision, and the result is parenthesised unless the real part is
+        /// +0 (then only the imaginary part is printed, as <c>str()</c> does). With a type
+        /// (<c>n</c> is <c>g</c>), both parts are that float presentation. The real part takes the
+        /// spec's sign; the imaginary part always carries one — unless it stands alone. Grouping and
+        /// <c>z</c> apply per part; fill, alignment (default <c>&gt;</c>) and width to the whole.
+        /// </summary>
+        private static string RenderComplex(Complex value, PyFormatSpec spec)
+        {
+            double re = value.Real;
+            double im = value.Imag;
+            char type = spec.Type;
+            bool skipRe = false;
+            bool addParens = false;
+            if (type == '\0')
+            {
+                type = spec.HasPrecision ? 'g' : 'r';
+                if (re == 0.0 && !Complex.IsNegative(re))
+                {
+                    skipRe = true;
+                }
+                else
+                {
+                    addParens = true;
+                }
+            }
+            if (type == 'n')
+            {
+                type = 'g';
+            }
+
+            string text = skipRe ? "" : ComplexPart(re, type, spec, spec.Sign);
+            text += ComplexPart(im, type, spec, skipRe ? spec.Sign : '+') + "j";
+            if (addParens)
+            {
+                text = "(" + text + ")";
+            }
+            return Pad(text, spec.Fill, spec.Align != '\0' ? spec.Align : '>', spec.Width, spec.Type, spec.AlternateForm);
+        }
+
+        /// <summary>One part of a complex rendering: presentation, <c>z</c>, sign, grouping.</summary>
+        private static string ComplexPart(double part, char type, PyFormatSpec spec, char sign)
+        {
+            string result;
+            if (double.IsNaN(part) || double.IsInfinity(part))
+            {
+                result = Builtins.Str(part);
+                if (type == 'E' || type == 'F' || type == 'G')
+                {
+                    result = result.ToUpperInvariant();
+                }
+            }
+            else if (type == 'r')
+            {
+                result = Complex.Component(part);
+                if (spec.AlternateForm)
+                {
+                    result = ForceDecimalPoint(result);
+                }
+            }
+            else
+            {
+                result = FormatFinite(part, type, spec.Precision, spec.HasPrecision, spec.AlternateForm,
+                    isFloat: true, isIntegral: false);
+            }
+
+            if (spec.NegativeZeroCoercion && IsNegativeZeroText(result))
+            {
+                result = result.Substring(1);
+            }
+            if (result.Length > 0 && result[0] != '-' && (sign == '+' || sign == ' '))
+            {
+                result = sign + result;
+            }
+            if (spec.Grouping != '\0')
+            {
+                result = GroupAndZeroFill(result, type, false, spec.Grouping, minWidthTotal: 0);
+            }
+            return result;
         }
 
         private static string FormatValue(object value, FormatOperandKind kind, PyFormatSpec spec)
