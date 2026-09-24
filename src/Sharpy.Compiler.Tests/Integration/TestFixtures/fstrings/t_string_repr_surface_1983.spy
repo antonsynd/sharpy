@@ -1,0 +1,46 @@
+# PEP 750 Template/Interpolation surface (#1983 repr, #1991 expression text, #1996 typed members):
+# repr() shapes, iteration and attributes. Every line is python3.14's output for the same program
+# except the last, which differs by design (see the comment at the end of main).
+def main() -> None:
+    x: int = 1
+    s: str = "ab"
+    w: int = 5
+    xs: list[int] = [1, 2]
+    # repr() — PEP 750's spelling, five shapes
+    print(repr(t""))
+    print(repr(t"plain"))
+    print(repr(t"{x}"))
+    print(repr(t"a{x}b{s!r:>6}"))
+    print(repr(t"{x=}"))
+    print(repr(t"{xs}{None}{ x :{w}}"))
+    tp = t"a{x}b{s!r:>6}"
+    print(repr(tp.interpolations[1]))
+    # strings: len / index / iteration
+    print(len(tp.strings))
+    print(repr(tp.strings[0]))
+    print(repr(tp.strings[2]))
+    for st in tp.strings:
+        print(repr(st))
+    # interpolations and values
+    print(len(tp.interpolations))
+    print(len(tp.values))
+    for v in tp.values:
+        print(repr(v))
+    # one Interpolation's fields
+    i = tp.interpolations[1]
+    print(repr(i.value))
+    print(repr(i.expression))
+    print(repr(i.conversion))
+    print(repr(i.format_spec))
+    print(repr(tp.interpolations[0].conversion))
+    print(repr(tp.interpolations[0].format_spec))
+    # iteration: non-empty strings and Interpolations, interleaved
+    for part in tp:
+        print(repr(part))
+    print(list(tp))
+    print(list(t""))
+    print(len(list(t"{x}{x}")))
+    # print(part) of an Interpolation renders its value in Sharpy (plan-bf0244 Decision 11);
+    # python3.14 prints the repr here: Interpolation(1, 'x', None, '')
+    for part in t"q{x}":
+        print(part)

@@ -1,0 +1,32 @@
+Template(strings=('',), interpolations=())
+Template(strings=('plain',), interpolations=())
+Template(strings=('', ''), interpolations=(Interpolation(1, 'x', None, ''),))
+Template(strings=('a', 'b', ''), interpolations=(Interpolation(1, 'x', None, ''), Interpolation('ab', 's', 'r', '>6')))
+Template(strings=('x=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))
+Template(strings=('', '', '', ''), interpolations=(Interpolation([1, 2], 'xs', None, ''), Interpolation(None, 'None', None, ''), Interpolation(1, ' x', None, '5')))
+Interpolation('ab', 's', 'r', '>6')
+3
+'a'
+''
+'a'
+'b'
+''
+2
+2
+1
+'ab'
+'ab'
+'s'
+'r'
+'>6'
+None
+''
+'a'
+Interpolation(1, 'x', None, '')
+'b'
+Interpolation('ab', 's', 'r', '>6')
+['a', Interpolation(1, 'x', None, ''), 'b', Interpolation('ab', 's', 'r', '>6')]
+[]
+2
+q
+1

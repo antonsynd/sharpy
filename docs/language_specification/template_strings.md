@@ -68,7 +68,9 @@ def main() -> None:
 "Rendering" here is Sharpy's rendering of a `Template` (what `print` and `str()` produce), which
 agrees byte-for-byte with the f-string on the same fields. Python's `str()` of a `Template` does not
 render it; the rendered form is a Sharpy convenience, and the structured fields are the PEP 750
-surface.
+surface. The same holds for a single `Interpolation`: `print(i)` / `str(i)` renders its converted,
+formatted value, where Python prints its repr (`Interpolation(1, 'x', None, '')`). `repr()` of
+either is PEP 750's spelling (see [repr()](#repr)).
 
 ## Template Type
 
@@ -78,6 +80,104 @@ T-strings produce a value of type `Template`. You can annotate variables explici
 name = "Alice"
 greeting: Template = t"Hi {name}"
 print(greeting)
+```
+
+`Template` is the runtime class `Sharpy.Template`; its members, iteration and `+` are checked
+against that class, so an unknown member is a compile-time error (SPY0203), exactly as for any
+other class.
+
+## Template and Interpolation Attributes
+
+A `Template` exposes PEP 750's structural fields:
+
+| Member | Type | Meaning |
+|--------|------|---------|
+| `strings` | `array[str]` | The literal segments; always one more than the interpolations (empty segments included) |
+| `interpolations` | `array[Interpolation]` | One per hole, in source order |
+| `values` | `array[object]` | Each interpolation's evaluated value |
+
+and each `Interpolation`:
+
+| Member | Type | Meaning |
+|--------|------|---------|
+| `value` | `object` | The hole's evaluated value |
+| `expression` | `str` | The hole's source text, from just after `{` to the `}`, `=`, `!` or `:` that ends it — leading whitespace kept, trailing whitespace stripped (`t"{ x }"` → `' x'`, `t"{d['k']}"` → `"d['k']"`) |
+| `conversion` | `str \| None` | `"r"`, `"s"`, `"a"`, or `None` |
+| `format_spec` | `str` | The spec, with nested fields already evaluated (`t"{x:{w}}"` with `w = 5` → `'5'`); `''` when there is none |
+
+```python
+def main() -> None:
+    x: int = 1
+    s: str = "ab"
+    tp = t"a{x}b{ s !r:>6}"
+    print(len(tp.strings), repr(tp.strings[0]), repr(tp.strings[2]))
+    print(len(tp.interpolations), len(tp.values))
+    i = tp.interpolations[1]
+    print(repr(i.value), repr(i.expression), repr(i.conversion), repr(i.format_spec))
+    print(repr(tp.interpolations[0].conversion), repr(tp.interpolations[0].format_spec))
+```
+
+```
+3 'a' ''
+2 2
+'ab' ' s' 'r' '>6'
+None ''
+```
+
+The three arrays are .NET arrays: index them, take `len()`, or iterate them. Printing one directly
+does not yet match Python: `print(tp.strings)` spreads the array into `print`'s arguments and prints
+the segments space-separated, where Python prints the tuple `('a', 'b', '')` (#2011).
+
+A hole's expression cannot yet span lines: a newline inside a replacement field is refused
+(SPY0015, #2022), although Python accepts it.
+
+## Iteration
+
+Iterating a `Template` yields its non-empty string segments and its `Interpolation`s, interleaved in
+source order (PEP 750); the element type is `object`. An empty t-string yields nothing.
+
+```python
+def main() -> None:
+    x: int = 1
+    tp = t"a{x}b"
+    for part in tp:
+        print(repr(part))
+    print(list(tp))
+    print(list(t""))
+```
+
+```
+'a'
+Interpolation(1, 'x', None, '')
+'b'
+['a', Interpolation(1, 'x', None, ''), 'b']
+[]
+```
+
+## repr()
+
+`repr()` of a `Template` or an `Interpolation` is PEP 750's spelling: a `Template` shows its strings
+and interpolations as tuples, and an `Interpolation` always shows four positions — value (as
+`repr`), expression, conversion (`None` when absent) and format spec. `!r`, `ascii()` and `repr()`
+of a list containing them use the same spelling.
+
+```python
+def main() -> None:
+    x: int = 1
+    s: str = "ab"
+    print(repr(t""))
+    print(repr(t"plain"))
+    print(repr(t"{x}"))
+    print(repr(t"a{x}b{s!r:>6}"))
+    print(repr(t"{x=}"))
+```
+
+```
+Template(strings=('',), interpolations=())
+Template(strings=('plain',), interpolations=())
+Template(strings=('', ''), interpolations=(Interpolation(1, 'x', None, ''),))
+Template(strings=('a', 'b', ''), interpolations=(Interpolation(1, 'x', None, ''), Interpolation('ab', 's', 'r', '>6')))
+Template(strings=('x=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))
 ```
 
 ## Triple-Quoted T-Strings
