@@ -46,6 +46,15 @@ namespace Sharpy
             if (obj is System.Exception ex)
                 return ex.GetType().Name + "(" + ReprString(ex.Message) + ")";
 
+            // PEP 750: a Template/Interpolation's ToString() RENDERS (template_strings.md), so its
+            // repr is a separate spelling, reached here so repr(), !r, ascii() and every container
+            // element agree (#1983). Before the plain-sequence arm: a Template is enumerable.
+            if (obj is Template template)
+                return template.Repr();
+
+            if (obj is Interpolation interpolation)
+                return interpolation.Repr();
+
             // Boxed floats must route through the Python float formatter, otherwise
             // .NET's default ToString() drops the trailing ".0" on whole values and
             // every container element (list/set/dict/tuple all funnel through Repr)

@@ -127,7 +127,8 @@ public class TemplateTests
             new[] { "hello" },
             System.Array.Empty<Interpolation>());
 
-        Assert.Equal("Template(strings=['hello'], interpolations=[])", template.Repr());
+        // python3.14: repr(t"hello")  =>  Template(strings=('hello',), interpolations=())
+        Assert.Equal("Template(strings=('hello',), interpolations=())", template.Repr());
     }
 
     [Fact]
@@ -137,7 +138,9 @@ public class TemplateTests
             new[] { "Hello ", "" },
             new[] { new Interpolation("world", "name", "") });
 
-        Assert.Equal("Template(strings=['Hello ', ''], interpolations=[Interpolation(world, 'name')])", template.Repr());
+        // python3.14: name = 'world'; repr(t"Hello {name}")
+        //   =>  Template(strings=('Hello ', ''), interpolations=(Interpolation('world', 'name', None, ''),))
+        Assert.Equal("Template(strings=('Hello ', ''), interpolations=(Interpolation('world', 'name', None, ''),))", template.Repr());
     }
 
     [Fact]
@@ -242,7 +245,9 @@ public class InterpolationTests
     {
         var interp = new Interpolation("hello", "greeting", "");
 
-        Assert.Equal("Interpolation(hello, 'greeting')", interp.Repr());
+        // python3.14: greeting = 'hello'; repr(t"{greeting}".interpolations[0])
+        //   =>  Interpolation('hello', 'greeting', None, '')
+        Assert.Equal("Interpolation('hello', 'greeting', None, '')", interp.Repr());
     }
 
     [Fact]
@@ -250,7 +255,8 @@ public class InterpolationTests
     {
         var interp = new Interpolation(3.14, "pi", ".2f");
 
-        Assert.Equal("Interpolation(3.14, 'pi', '.2f')", interp.Repr());
+        // python3.14: pi = 3.14; repr(t"{pi:.2f}".interpolations[0])  =>  Interpolation(3.14, 'pi', None, '.2f')
+        Assert.Equal("Interpolation(3.14, 'pi', None, '.2f')", interp.Repr());
     }
 
     // ---- #1970: the PEP 750 conversion slot (4th ctor argument) ----
@@ -314,9 +320,115 @@ public class InterpolationTests
     {
         // PEP 750 §"The Interpolation Type": Interpolation(value, expression, conversion, format_spec).
         // python3.14: repr(t"{s!r:>6}".interpolations[0])  =>  Interpolation('ab', 's', 'r', '>6')
-        // (Sharpy's Repr spells the value with ToString(), as the 3-argument rows above do.)
-        Assert.Equal("Interpolation(ab, 's', 'r', '>6')", new Interpolation("ab", "s", ">6", "r").Repr());
+        Assert.Equal("Interpolation('ab', 's', 'r', '>6')", new Interpolation("ab", "s", ">6", "r").Repr());
         // python3.14: repr(t"{x=}".interpolations[0])  =>  Interpolation(1, 'x', 'r', '')
         Assert.Equal("Interpolation(1, 'x', 'r', '')", new Interpolation(1, "x", "", "r").Repr());
+    }
+
+    // ---- #1983 (R-BS): PEP 750 repr — python3.14 is the oracle for every expected string.
+    //   /opt/homebrew/bin/python3.14 -c "from string.templatelib import Template as T, Interpolation as I; print(repr(...))"
+
+    [Fact]
+    public void Repr_StringsAndInterpolations_ArePythonTuplesOfEveryArity()
+    {
+        // python3.14: repr(T('a'))  =>  Template(strings=('a',), interpolations=())
+        Assert.Equal("Template(strings=('a',), interpolations=())",
+            new Template(new[] { "a" }, System.Array.Empty<Interpolation>()).Repr());
+        // python3.14: repr(T('a', I(1, 'x', None, ''), 'b'))
+        //   =>  Template(strings=('a', 'b'), interpolations=(Interpolation(1, 'x', None, ''),))
+        Assert.Equal("Template(strings=('a', 'b'), interpolations=(Interpolation(1, 'x', None, ''),))",
+            new Template(new[] { "a", "b" }, new[] { new Interpolation(1, "x", "") }).Repr());
+        // python3.14: repr(T('a', I(1, 'x', None, ''), 'b', I(2, 'y', None, ''), 'c'))
+        Assert.Equal(
+            "Template(strings=('a', 'b', 'c'), interpolations=(Interpolation(1, 'x', None, ''), Interpolation(2, 'y', None, '')))",
+            new Template(new[] { "a", "b", "c" }, new[] { new Interpolation(1, "x", ""), new Interpolation(2, "y", "") }).Repr());
+    }
+
+    private sealed class UserRepr
+    {
+        // A Sharpy class's __repr__/__str__ is ToString() in the dunder table.
+        public override string ToString() => "U<1>";
+    }
+
+    public static TheoryData<object?, string> ValueReprRows() => new()
+    {
+        // python3.14: repr(I(v, 'v', None, '')) for each v
+        { "ab", "Interpolation('ab', 'v', None, '')" },
+        { 7, "Interpolation(7, 'v', None, '')" },
+        { 2.0, "Interpolation(2.0, 'v', None, '')" },
+        { new List<object> { 1, "a" }, "Interpolation([1, 'a'], 'v', None, '')" },
+        { null, "Interpolation(None, 'v', None, '')" },
+        { true, "Interpolation(True, 'v', None, '')" },
+        // class U: def __repr__(self): return 'U<1>'
+        { new UserRepr(), "Interpolation(U<1>, 'v', None, '')" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ValueReprRows))]
+    public void Repr_Value_IsTheValuesRepr(object? value, string expected)
+    {
+        Assert.Equal(expected, new Interpolation(value!, "v", "").Repr());
+    }
+
+    [Theory]
+    // python3.14: repr(I(1, 'x', c, '')) for c in None, 'r', 's', 'a'
+    [InlineData(null, "Interpolation(1, 'x', None, '')")]
+    [InlineData("r", "Interpolation(1, 'x', 'r', '')")]
+    [InlineData("s", "Interpolation(1, 'x', 's', '')")]
+    [InlineData("a", "Interpolation(1, 'x', 'a', '')")]
+    public void Repr_Conversion_IsNoneOrTheQuotedLetter(string? conversion, string expected)
+    {
+        Assert.Equal(expected, new Interpolation(1, "x", "", conversion).Repr());
+    }
+
+    [Theory]
+    // python3.14: repr(I(1, 'x', None, '')) / repr(I(1, 'x', None, '>6'))
+    [InlineData("", "Interpolation(1, 'x', None, '')")]
+    [InlineData(">6", "Interpolation(1, 'x', None, '>6')")]
+    public void Repr_FormatSpec_IsAlwaysTheFourthPosition(string spec, string expected)
+    {
+        Assert.Equal(expected, new Interpolation(1, "x", spec).Repr());
+    }
+
+    [Fact]
+    public void Repr_Expression_IsTheConstructedTextRepr()
+    {
+        // python3.14: repr(I(7, "d['k']", None, ''))  =>  Interpolation(7, "d['k']", None, '')
+        Assert.Equal("Interpolation(7, \"d['k']\", None, '')", new Interpolation(7, "d['k']", "").Repr());
+    }
+
+    [Fact]
+    public void BuiltinsRepr_ReachesTheTemplateAndInterpolationRepr()
+    {
+        var interp = new Interpolation(5, "x", ">6", "r");
+        var template = new Template(new[] { "", "" }, new[] { interp });
+
+        // python3.14: x = 5; repr(t"{x!r:>6}")
+        //   =>  Template(strings=('', ''), interpolations=(Interpolation(5, 'x', 'r', '>6'),))
+        Assert.Equal("Template(strings=('', ''), interpolations=(Interpolation(5, 'x', 'r', '>6'),))", Builtins.Repr(template));
+        Assert.Equal("Interpolation(5, 'x', 'r', '>6')", Builtins.Repr(interp));
+        // The renderer is untouched (Decision 11 / D4): str() and print() still render.
+        Assert.Equal("     5", template.ToString());
+        Assert.Equal("     5", interp.ToString());
+    }
+
+    [Fact]
+    public void Ascii_EscapesTheRepr()
+    {
+        // python3.14: ascii(I('é', 'e', None, ''))  =>  Interpolation('\xe9', 'e', None, '')
+        Assert.Equal("Interpolation('\\xe9', 'e', None, '')", Builtins.Ascii(new Interpolation("é", "e", "")));
+        // python3.14: ascii(T('é', I('é', 'e', None, ''), ''))
+        //   =>  Template(strings=('\xe9', ''), interpolations=(Interpolation('\xe9', 'e', None, ''),))
+        Assert.Equal("Template(strings=('\\xe9', ''), interpolations=(Interpolation('\\xe9', 'e', None, ''),))",
+            Builtins.Ascii(new Template(new[] { "é", "" }, new[] { new Interpolation("é", "e", "") })));
+    }
+
+    [Fact]
+    public void Repr_NestedInAList_GoesThroughBuiltinsRepr()
+    {
+        // python3.14: repr([T('a'), I(1, 'x', None, '')])
+        //   =>  [Template(strings=('a',), interpolations=()), Interpolation(1, 'x', None, '')]
+        var xs = new List<object> { new Template(new[] { "a" }, System.Array.Empty<Interpolation>()), new Interpolation(1, "x", "") };
+        Assert.Equal("[Template(strings=('a',), interpolations=()), Interpolation(1, 'x', None, '')]", Builtins.Repr(xs));
     }
 }

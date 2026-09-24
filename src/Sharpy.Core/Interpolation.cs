@@ -69,17 +69,18 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Returns a Python-style repr of this Interpolation. With a conversion, every PEP 750
-        /// position is spelled — <c>Interpolation(value, 'expr', 'r', 'spec')</c>.
+        /// Python's <c>repr</c> of this Interpolation, in PEP 750's positional order — always all four
+        /// positions: <c>Interpolation(value, expression, conversion, format_spec)</c>, each spelled
+        /// with <see cref="Builtins.Repr"/> and a missing conversion as <c>None</c>
+        /// (python3.14: <c>Interpolation('ab', 's', None, '&gt;6')</c>). <see cref="ToString"/> stays
+        /// the renderer; <c>repr()</c>, <c>!r</c> and <c>ascii()</c> reach this through
+        /// <see cref="Builtins.Repr"/>.
         /// </summary>
         public string Repr()
         {
-            var valueRepr = Value == null ? "None" : Value.ToString();
-            if (Conversion != null)
-                return $"Interpolation({valueRepr}, '{Expression}', '{Conversion}', '{FormatSpec}')";
-            if (string.IsNullOrEmpty(FormatSpec))
-                return $"Interpolation({valueRepr}, '{Expression}')";
-            return $"Interpolation({valueRepr}, '{Expression}', '{FormatSpec}')";
+            return "Interpolation(" + Builtins.Repr(Value) + ", " + Builtins.Repr(Expression) + ", "
+                + (Conversion == null ? "None" : Builtins.Repr(Conversion)) + ", "
+                + Builtins.Repr(FormatSpec) + ")";
         }
     }
 }

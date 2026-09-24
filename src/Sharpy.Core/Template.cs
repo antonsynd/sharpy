@@ -67,29 +67,37 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Returns a Python-style repr of this Template.
+        /// Python's <c>repr</c> of this Template (PEP 750, python3.14):
+        /// <c>Template(strings=('a', 'b'), interpolations=(Interpolation(1, 'x', None, ''),))</c> — both
+        /// fields spelled as Python tuples. <see cref="ToString"/> stays the renderer; <c>repr()</c>,
+        /// <c>!r</c> and <c>ascii()</c> reach this through <see cref="Builtins.Repr"/>.
         /// </summary>
         public string Repr()
         {
-            var sb = new StringBuilder();
-            sb.Append("Template(strings=[");
+            var strings = new string[Strings.Length];
             for (int i = 0; i < Strings.Length; i++)
             {
-                if (i > 0)
-                    sb.Append(", ");
-                sb.Append('\'');
-                sb.Append(Strings[i]);
-                sb.Append('\'');
+                strings[i] = Builtins.Repr(Strings[i]);
             }
-            sb.Append("], interpolations=[");
+
+            var interpolations = new string[Interpolations.Length];
             for (int i = 0; i < Interpolations.Length; i++)
             {
-                if (i > 0)
-                    sb.Append(", ");
-                sb.Append(Interpolations[i].Repr());
+                interpolations[i] = Interpolations[i].Repr();
             }
-            sb.Append("])");
-            return sb.ToString();
+
+            return "Template(strings=" + PyTuple(strings) + ", interpolations=" + PyTuple(interpolations) + ")";
+        }
+
+        /// <summary>
+        /// Python tuple syntax over already-repr'd items: <c>()</c>, <c>('a',)</c>, <c>('a', 'b')</c>.
+        /// (<see cref="Builtins.Repr"/> cannot be handed the array — it would print a list.)
+        /// </summary>
+        private static string PyTuple(string[] items)
+        {
+            if (items.Length == 1)
+                return "(" + items[0] + ",)";
+            return "(" + string.Join(", ", items) + ")";
         }
 
         /// <summary>
