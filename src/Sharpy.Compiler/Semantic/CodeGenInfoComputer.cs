@@ -365,6 +365,7 @@ internal class CodeGenInfoComputer
             // as they are emitted as-is in C#
 
             DetectEnumMemberCollisions(enumDef, isStringEnum);
+            DetectEnumEnclosingTypeCollisions(enumDef);
         }
     }
 
@@ -405,6 +406,10 @@ internal class CodeGenInfoComputer
                     else if (stmt is UnionDef nestedUnion)
                     {
                         DetectUnionEnclosingTypeCollisions(nestedUnion);
+                    }
+                    else if (stmt is EnumDef nestedEnum)
+                    {
+                        DetectEnumEnclosingTypeCollisions(nestedEnum);
                     }
                     break;
             }
@@ -847,7 +852,7 @@ internal class CodeGenInfoComputer
             {
                 if (reportedEnclosing.Add(originalName))
                     ReportMemberEnclosingTypeCollision(
-                        originalName, csharpName, typeSymbol.Name, position, UnionMemberKind.None);
+                        originalName, csharpName, typeSymbol.Name, position, EnclosingCollisionMemberKind.None);
                 continue;
             }
 
@@ -915,19 +920,21 @@ internal class CodeGenInfoComputer
     /// C# error as SPY0908. Rung 4 by necessity: no CLR surface spells "collides after PascalCasing".
     /// The steer is the corrected R-AW wording: an escaped DECLARATION alone is not enough, because
     /// every unescaped use still spells the PascalCased name (the closed #478 contract — access sites
-    /// read their own escape flag); a union case field has no escape hatch at all.
+    /// read their own escape flag); a union case, a union case field and a string-enum member have no
+    /// escape hatch at all (their declarations are emitted without consulting the escape flag).
     /// </summary>
     private void ReportMemberEnclosingTypeCollision(
         string originalName,
         string csharpName,
         string enclosingOriginalName,
         DeclarationPosition? position,
-        UnionMemberKind unionMember)
+        EnclosingCollisionMemberKind memberKind)
     {
-        var (noun, steer) = unionMember switch
+        var (noun, steer) = memberKind switch
         {
-            UnionMemberKind.Case => ("Union case", "Rename the case (a union case name cannot be backtick-escaped)."),
-            UnionMemberKind.CaseField => ("Union case field", "Rename the field (a union case field cannot be backtick-escaped)."),
+            EnclosingCollisionMemberKind.EnumMember => ("Enum member", "Rename the member (an enum member name cannot be backtick-escaped)."),
+            EnclosingCollisionMemberKind.Case => ("Union case", "Rename the case (a union case name cannot be backtick-escaped)."),
+            EnclosingCollisionMemberKind.CaseField => ("Union case field", "Rename the field (a union case field cannot be backtick-escaped)."),
             _ => ("Member", $"Rename the member, or backtick-escape the declaration AND every use (`{originalName}`, " +
                             $"v.`{originalName}`) to keep the Python spelling."),
         };
@@ -940,8 +947,11 @@ internal class CodeGenInfoComputer
             phase: CompilerPhase.CodeGeneration);
     }
 
-    /// <summary>Which union-emitted member a SPY0525 names — neither has an escape hatch.</summary>
-    private enum UnionMemberKind { None, Case, CaseField }
+    /// <summary>
+    /// Which kind of member a SPY0525 names when it is not an ordinary class/struct member — a union
+    /// case, a union case field, or a string-enum member; none of the three has an escape hatch.
+    /// </summary>
+    private enum EnclosingCollisionMemberKind { None, Case, CaseField, EnumMember }
 
     /// <summary>
     /// SPY0525 in a NESTED host (#1871): the module-level walk (<see cref="DetectMemberCollisions"/>)
@@ -973,7 +983,7 @@ internal class CodeGenInfoComputer
             {
                 ReportMemberEnclosingTypeCollision(
                     originalName, csharpName, nested.Name,
-                    FindMemberPosition(nested.Body, originalName), UnionMemberKind.None);
+                    FindMemberPosition(nested.Body, originalName), EnclosingCollisionMemberKind.None);
             }
         }
     }
@@ -999,18 +1009,21 @@ internal class CodeGenInfoComputer
             {
                 ReportMemberEnclosingTypeCollision(
                     originalName, csharpName, unionDef.Name,
-                    FindMemberPosition(unionDef.Body, originalName), UnionMemberKind.None);
+                    FindMemberPosition(unionDef.Body, originalName), EnclosingCollisionMemberKind.None);
             }
         }
         foreach (var caseDef in unionDef.Cases)
         {
             var caseName = NameMangler.Transform(caseDef.Name, NameContext.Type);
-            if (caseName == unionName)
+            // A case SPELLED like its union (`union Opt: case Opt(v: int)`) is SPY0368
+            // (UnionCaseNameConflict, TypeChecker.Definitions) — one defect, one diagnostic, so this
+            // arm owns only the case that collides AFTER mangling (`union Q: case q()`).
+            if (caseName == unionName && !string.Equals(caseDef.Name, unionDef.Name, StringComparison.Ordinal))
             {
                 ReportMemberEnclosingTypeCollision(
                     caseDef.Name, caseName, unionDef.Name,
                     DeclarationPosition.From(caseDef.NameLineStart, caseDef.NameColumnStart, caseDef.LineStart, caseDef.ColumnStart),
-                    UnionMemberKind.Case);
+                    EnclosingCollisionMemberKind.Case);
             }
 
             foreach (var field in caseDef.Fields)
@@ -1021,9 +1034,55 @@ internal class CodeGenInfoComputer
                     ReportMemberEnclosingTypeCollision(
                         field.Name, fieldName, caseDef.Name,
                         DeclarationPosition.From(field.LineStart, field.ColumnStart, field.LineStart, field.ColumnStart),
-                        UnionMemberKind.CaseField);
+                        EnclosingCollisionMemberKind.CaseField);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// The enum host of SPY0525 (#1871): a STRING enum lowers to a sealed class
+    /// (<c>GenerateStringEnumClass</c>) holding one singleton field per member plus the synthesized
+    /// <see cref="StringEnumShape.SynthesizedMembers"/>, so a member whose field is named like the
+    /// enum (<c>enum Color: Color = "c"</c>) — or an enum named like a synthesized member
+    /// (<c>enum Value</c>) — is CS0542. Both names come from <see cref="StringEnumShape"/>, the
+    /// authority the emitter declares them through; the enum itself goes through
+    /// <c>NameCasing.ResolveType</c> as there. An int-backed enum is a real C# <c>enum</c>, whose
+    /// member MAY share its name (<c>enum Color { Color }</c> compiles and runs, measured), so it is
+    /// not walked. Called for top-level and nested enums alike.
+    /// </summary>
+    private void DetectEnumEnclosingTypeCollisions(EnumDef enumDef)
+    {
+        if (!NameResolver.IsStringEnum(enumDef))
+            return;
+
+        var className = NameCasing.ResolveType(enumDef.Name, enumDef.IsNameBacktickEscaped);
+
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var member in enumDef.Members)
+        {
+            var fieldName = StringEnumShape.MemberFieldName(member.Name);
+            if (fieldName == className && reported.Add(member.Name))
+            {
+                ReportMemberEnclosingTypeCollision(
+                    member.Name, fieldName, enumDef.Name,
+                    DeclarationPosition.From(member.LineStart, member.ColumnStart), EnclosingCollisionMemberKind.EnumMember);
+            }
+        }
+
+        if (StringEnumShape.SynthesizedMembers.Contains(className, StringComparer.Ordinal))
+        {
+            var position = DeclarationPosition.From(
+                enumDef.NameLineStart, enumDef.NameColumnStart, enumDef.LineStart, enumDef.ColumnStart);
+            _diagnostics.AddError(
+                $"String enum '{enumDef.Name}' would be emitted as the class '{className}', which declares the " +
+                $"synthesized member '{className}' — the same name as its enclosing type (C# forbids this, " +
+                $"CS0542). Rename the enum (a string enum's class synthesizes the members " +
+                $"{string.Join(", ", StringEnumShape.SynthesizedMembers)}).",
+                line: position?.Line,
+                column: position?.Column,
+                code: DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision,
+                phase: CompilerPhase.CodeGeneration);
         }
     }
 
@@ -1081,7 +1140,7 @@ internal class CodeGenInfoComputer
     /// </summary>
     private static string EnumMemberCSharpName(string memberName, bool isStringEnum)
         => isStringEnum
-            ? NameMangler.ToConstantCase(memberName)
+            ? StringEnumShape.MemberFieldName(memberName)
             : NameMangler.ToEnumMemberName(memberName);
 
     /// <summary>

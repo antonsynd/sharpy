@@ -1118,7 +1118,7 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>The generated name of a string enum's all-members list (#1284).</summary>
-    internal const string StringEnumValuesMember = "Values";
+    internal const string StringEnumValuesMember = StringEnumShape.ValuesList;
 
     /// <summary>
     /// The C# expression `for x in SomeEnum` iterates. An int-backed enum is a real C# enum and
@@ -1290,12 +1290,12 @@ internal partial class RoslynEmitter
             })))
             .WithBody(Block(
                 ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName("Name"), IdentifierName("name"))),
+                    IdentifierName(StringEnumShape.NameProperty), IdentifierName("name"))),
                 ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName("Value"), IdentifierName("value"))))));
+                    IdentifierName(StringEnumShape.ValueProperty), IdentifierName("value"))))));
 
         // public string Name { get; }  /  public string Value { get; }
-        foreach (var propName in new[] { "Name", "Value" })
+        foreach (var propName in new[] { StringEnumShape.NameProperty, StringEnumShape.ValueProperty })
         {
             members.Add(PropertyDeclaration(stringType, Identifier(propName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -1308,7 +1308,7 @@ internal partial class RoslynEmitter
         var memberFieldNames = new List<string>();
         foreach (var member in enumDef.Members)
         {
-            var fieldName = NameMangler.Transform(member.Name, NameContext.Constant);
+            var fieldName = StringEnumShape.MemberFieldName(member.Name);
             memberFieldNames.Add(fieldName);
 
             // Use the explicit value if provided, otherwise the member name as written.
@@ -1335,15 +1335,15 @@ internal partial class RoslynEmitter
         }
 
         // public override string ToString() => Value;
-        members.Add(MethodDeclaration(stringType, Identifier("ToString"))
+        members.Add(MethodDeclaration(stringType, Identifier(StringEnumShape.ToStringMethod))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword)))
             .WithParameterList(ParameterList())
-            .WithExpressionBody(ArrowExpressionClause(IdentifierName("Value")))
+            .WithExpressionBody(ArrowExpressionClause(IdentifierName(StringEnumShape.ValueProperty)))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
         // public string ToString(string? format, IFormatProvider? formatProvider)
         //     => global::Sharpy.PyFormat.Apply(Value, format ?? "");
-        members.Add(MethodDeclaration(stringType, Identifier("ToString"))
+        members.Add(MethodDeclaration(stringType, Identifier(StringEnumShape.ToStringMethod))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[]
             {

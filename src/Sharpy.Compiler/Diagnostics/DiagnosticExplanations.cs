@@ -145,12 +145,17 @@ public static partial class DiagnosticExplanations
             "field 'q' in class 'Q', which both compile to 'Q'. C# forbids a member named like its enclosing " +
             "class or struct (CS0542), whatever the member kind (field, property, method, const, event, nested " +
             "type) and whatever the nested type's arity. A union case's fields are the case class's members, and " +
-            "a case is a member of its union, so the same rule applies there.",
+            "a case is a member of its union, so the same rule applies there (a case spelled exactly like its " +
+            "union is SPY0368 instead). A string-backed enum lowers to a class too: a member whose field is named " +
+            "like the enum ('Color = \"c\"' in 'enum Color') is refused, and so is a string enum named like a " +
+            "member its class synthesizes (Name, Value, Values, ToString). An int-backed enum is a C# enum, whose " +
+            "members may share its name, and an interface member may share its interface's — neither is refused.",
             "class Q:\n    q: int   # compiles to 'Q', the same as its class",
             "Rename the member, or backtick-escape the declaration AND every use (`q` in the class, v.`q` at each " +
             "access) to keep the Python spelling: an escaped name is emitted verbatim, so it no longer PascalCases " +
             "into the type name. Escaping the declaration alone leaves the unescaped uses spelling 'Q'. A union " +
-            "case, and a union case field, has no escape hatch — rename it.");
+            "case, a union case field and a string-enum member have no escape hatch — rename them; a string enum " +
+            "named like a synthesized member — rename the enum.");
 
         Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package directory and module file emit the same identifier", "CodeGen",
             "In a project, each directory above a source file becomes a C# wrapper class and the file itself " +

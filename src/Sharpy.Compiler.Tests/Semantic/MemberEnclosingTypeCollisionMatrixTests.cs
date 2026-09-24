@@ -14,7 +14,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Cells.</b> member kind {field, property, method, const, nested type} × host {class,
 /// struct, dataclass} → SPY0525 with the rename-or-escape steer; the union host {case field, case
 /// named like its union} → SPY0525 with the rename-only steer (no escape hatch there); a nested
-/// host (<c>class Outer: class Inner: inner</c>) — the module-level walk never visits it. The
+/// host (<c>class Outer: class Inner: inner</c>) — the module-level walk never visits it; the string-enum
+/// host (a member field named like the enum, or an enum named like a synthesized member) → SPY0525
+/// with a rename steer, beside the measured controls whose C# shape ALLOWS the name (int enum,
+/// interface) and the union case spelled like its union (SPY0368 alone, never both). The
 /// escaped twins (declaration AND every use backtick-escaped) RUN: the positive control that the
 /// refusal is keyed on the emitted name, not the source spelling. The escaped-declaration-only twin
 /// stays CS1061 behind SPY0908 — the closed #478 contract (an access site reads its own escape
@@ -86,6 +89,95 @@ public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
         AssertRefused(declaration + "\ndef main() -> None:\n    print(1)\n", message, steer, line);
     }
 
+    private const string EnumMemberSteer = "Rename the member (an enum member name cannot be backtick-escaped).";
+    private const string EnumNameSteer =
+        "Rename the enum (a string enum's class synthesizes the members Name, Value, Values, ToString).";
+
+    /// <summary>
+    /// The enum host (plan-bf0244 verify): a STRING enum lowers to a sealed class, so a member whose
+    /// singleton field is named like the enum — or an enum named like a member the class synthesizes —
+    /// is CS0542. Prior commit: every cell is SPY0908 (CS0542) under <c>run</c>.
+    /// </summary>
+    public static IEnumerable<object[]> EnumCells() => new[]
+    {
+        new object[] { "string_enum_member", "enum Color:\n    Color = \"c\"\n    RED = \"r\"\n",
+            "Enum member 'Color' would be emitted as 'Color', the same name as its enclosing type 'Color'", EnumMemberSteer, 2 },
+        new object[] { "string_enum_member_mangled", "enum Color:\n    color = \"c\"\n    RED = \"r\"\n",
+            "Enum member 'color' would be emitted as 'Color', the same name as its enclosing type 'Color'", EnumMemberSteer, 2 },
+        new object[] { "nested_string_enum_member", "class Outer:\n    enum Color:\n        Color = \"c\"\n        RED = \"r\"\n",
+            "Enum member 'Color' would be emitted as 'Color', the same name as its enclosing type 'Color'", EnumMemberSteer, 3 },
+        new object[] { "string_enum_named_Value", "enum Value:\n    A = \"a\"\n",
+            "String enum 'Value' would be emitted as the class 'Value', which declares the synthesized member 'Value'", EnumNameSteer, 1 },
+        new object[] { "string_enum_named_name", "enum name:\n    A = \"a\"\n",
+            "String enum 'name' would be emitted as the class 'Name', which declares the synthesized member 'Name'", EnumNameSteer, 1 },
+        new object[] { "string_enum_named_Values", "enum Values:\n    A = \"a\"\n",
+            "String enum 'Values' would be emitted as the class 'Values', which declares the synthesized member 'Values'", EnumNameSteer, 1 },
+        new object[] { "string_enum_named_ToString", "enum ToString:\n    A = \"a\"\n",
+            "String enum 'ToString' would be emitted as the class 'ToString', which declares the synthesized member 'ToString'", EnumNameSteer, 1 },
+        new object[] { "nested_string_enum_named_value", "struct Outer:\n    x: int = 0\n    enum value:\n        A = \"a\"\n",
+            "String enum 'value' would be emitted as the class 'Value', which declares the synthesized member 'Value'", EnumNameSteer, 3 },
+    };
+
+    [Theory]
+    [MemberData(nameof(EnumCells))]
+    public void StringEnumHost_IsSpy0525(string name, string declaration, string message, string steer, int line)
+    {
+        _ = name;
+        AssertRefused(declaration + "\ndef main() -> None:\n    print(1)\n", message, steer, line);
+    }
+
+    /// <summary>
+    /// Measured controls — hosts whose emitted C# shape ALLOWS a member named like the type, so a
+    /// refusal there would be a false one: an int-backed enum is a C# <c>enum</c> (<c>enum Color {
+    /// Color }</c> is legal), and an interface member may share its interface's name. Prior commit:
+    /// all RUN with this output (unchanged).
+    /// </summary>
+    public static IEnumerable<object[]> LegalSameNameHosts() => new[]
+    {
+        new object[] { "int_enum", "enum Color:\n    Color = 1\n    RED = 2\n",
+            "print(Color.Color.value)\n    print(Color.RED.value)", "1\n2\n" },
+        new object[] { "nested_int_enum", "class Outer:\n    enum Color:\n        Color = 1\n        RED = 2\n",
+            // Compared, not `.value`: a NESTED enum's `.value` is CS1061 today (#2038).
+            "c = Outer.Color.Color\n    print(c == Outer.Color.RED)\n    print(c == Outer.Color.Color)", "False\nTrue\n" },
+        new object[] { "interface_method", "interface Shape:\n    def shape(self) -> int: ...\n\nclass Sq(Shape):\n    def shape(self) -> int:\n        return 4\n",
+            "s: Shape = Sq()\n    print(s.shape())", "4\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(LegalSameNameHosts))]
+    public void HostsWhoseCSharpShapeAllowsTheName_Run(string name, string declaration, string use, string expected)
+    {
+        var source = declaration + "\ndef main() -> None:\n    " + use + "\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue($"[{name}] {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision);
+        result.StandardOutput.Should().Be(expected, $"[{name}]");
+    }
+
+    public static IEnumerable<object[]> UnionCaseSpelledLikeItsUnion() => new[]
+    {
+        new object[] { "top_level", "union Opt:\n    case Opt(v: int)\n    case Nothing()\n" },
+        new object[] { "nested", "class Outer:\n    union Opt:\n        case Opt(v: int)\n        case Nothing()\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnionCaseSpelledLikeItsUnion))]
+    public void UnionCaseSpelledLikeItsUnion_IsSpy0368Once(string name, string declaration)
+    {
+        // One defect, one diagnostic: SPY0368 (UnionCaseNameConflict) owns the case spelled exactly
+        // like its union; SPY0525's union arm owns only the case that collides after mangling
+        // (`union Q: case q()`, the union_case_named_like_union cell). Prior commit: SPY0368 AND
+        // SPY0525 on the same case.
+        var source = declaration + "\ndef main() -> None:\n    print(1)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        var errors = result.RawDiagnostics.Where(d => d.IsError).ToList();
+        errors.Should().ContainSingle($"[{name}] {string.Join(" | ", errors.Select(d => d.Code + " " + d.Message))}");
+        errors[0].Code.Should().Be(DiagnosticCodes.Semantic.UnionCaseNameConflict);
+    }
+
     public static IEnumerable<object[]> EscapedTwins() => new[]
     {
         new object[] { "class_field", "class Q:\n    `q`: int = 1\n", "print(Q().`q`)" },
@@ -128,6 +220,9 @@ public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
     {
         TypeHostCells().Should().HaveCount(15, "3 hosts × 5 member kinds");
         UnionAndNestedCells().Should().HaveCount(4);
+        EnumCells().Should().HaveCount(8, "3 member cells (top-level, mangled, nested) + 5 enum-name cells (4 synthesized names + nested)");
+        LegalSameNameHosts().Should().HaveCount(3);
+        UnionCaseSpelledLikeItsUnion().Should().HaveCount(2);
         EscapedTwins().Should().HaveCount(5);
     }
 

@@ -85,6 +85,24 @@ def main() -> None:
         print(x.name)
 ```
 
+Because a string-backed enum lowers to a class, no name the class declares may equal the enum's own
+(C#'s CS0542). A member that compiles to the enum's name, and a string enum named like one of the
+members its class synthesizes (`Name`, `Value`, `Values`, `ToString` — so `enum value` too), are
+refused with `SPY0525`: rename the member or the enum (an enum member's declaration cannot be
+backtick-escaped). An integer-backed enum is a C# `enum`, whose members may share its name, so
+`enum Color: Color = 1` compiles.
+
+<!-- spec-sweep: error SPY0525 -->
+```python
+enum Color:
+    Color = "c"    # SPY0525: emitted as 'Color', the same name as its enclosing type
+    RED = "r"
+
+
+def main() -> None:
+    print(Color.RED)
+```
+
 *Implementation*
 - *Integer enums: ✅ Native - C# `enum`*
 - *String enums: 🔄 Lowered - sealed class of singleton instances carrying `Name`/`Value`, with
