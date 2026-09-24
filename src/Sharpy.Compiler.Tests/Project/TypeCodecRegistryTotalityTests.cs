@@ -228,7 +228,6 @@ def main() -> None:
         },
         "TupleType" => new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Str } },
         "TaskType" => new TaskType { ResultType = SemanticType.Int },
-        "TemplateType" => TemplateType.Instance,
         "TypeParameterType" => new TypeParameterType { Name = "T" },
         "GenericFunctionType" => new GenericFunctionType
         {

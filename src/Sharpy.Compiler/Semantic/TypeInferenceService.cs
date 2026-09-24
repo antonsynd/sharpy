@@ -408,12 +408,6 @@ internal class TypeInferenceService
             return right;
         }
 
-        // Template concatenation: Template + Template -> Template
-        if (left is TemplateType && right is TemplateType && op == BinaryOperator.Add)
-        {
-            return TemplateType.Instance;
-        }
-
         // List concatenation
         if (left is GenericType { Name: BuiltinNames.List } leftList &&
             right is GenericType { Name: BuiltinNames.List } rightList)

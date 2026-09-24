@@ -192,11 +192,6 @@ internal class TypeResolver
         {
             result = LiteralStringType.Instance;
         }
-        // Handle Template type annotation (PEP 750) — same shared-tail routing (#1781).
-        else if (!escaped && annotation.Name == BuiltinNames.Template)
-        {
-            result = TemplateType.Instance;
-        }
         // Try builtin types first
         else if (!escaped && TryResolveBuiltinType(annotation.Name, out var builtinType))
         {

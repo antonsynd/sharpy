@@ -11,9 +11,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
 /// Totality test for <see cref="SemanticType.CanonicalKey"/> (#1718).
-/// For each of the 20 sealed leaf types: construct an equal-by-value pair and a distinct pair;
+/// For each of the 19 sealed leaf types: construct an equal-by-value pair and a distinct pair;
 /// assert <c>a.CanonicalKey == b.CanonicalKey ⟺ a.Equals(b)</c> and <c>GetHashCode</c>
-/// consistency. The leaf count is anchored to the literal 20, not derived.
+/// consistency. The leaf count is anchored to the literal 19, not derived.
 /// <para>
 /// A third family covers the wrapper leaves: a wrapper never keys as its payload. Without it a
 /// wrapper whose key arm dropped its marker (<c>int?</c> keying as <c>int</c>) survived every
@@ -28,7 +28,7 @@ public class SemanticTypeIdentityTotalityTests
     /// The number of sealed leaf types in the SemanticType hierarchy. A 21st test-double leaf
     /// must fail this anchor.
     /// </summary>
-    private const int ExpectedLeafCount = 20;
+    private const int ExpectedLeafCount = 19; // 20 → 19: TemplateType retired (#1996)
 
     [Fact]
     public void LeafCount_MatchesExpectedLiteral()
@@ -270,7 +270,6 @@ public class SemanticTypeIdentityTotalityTests
         yield return ("TaskType",
             new TaskType { ResultType = intType },
             new TaskType { ResultType = intType });
-        yield return ("TemplateType", TemplateType.Instance, TemplateType.Instance);
         yield return ("LiteralStringType", LiteralStringType.Instance, LiteralStringType.Instance);
         yield return ("UnmappedClrType",
             new UnmappedClrType { ClrTypeName = "System.Linq.IGrouping" },

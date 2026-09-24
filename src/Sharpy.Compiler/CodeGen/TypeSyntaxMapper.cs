@@ -79,9 +79,6 @@ internal class TypeSyntaxMapper
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => RoslynEmitter.TypeParameterIdentifierName(typeParam.Name),
 
-            // Template emits as Sharpy.Template
-            TemplateType => RoslynEmitter.ParseQualifiedTypeName("global::" + CSharpTypeNames.SharpyTemplate),
-
             // LiteralString emits as string (compile-time only distinction)
             LiteralStringType => PredefinedType(Token(SyntaxKind.StringKeyword)),
 

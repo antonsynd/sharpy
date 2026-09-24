@@ -80,7 +80,7 @@ All types are immutable records inheriting from `SemanticType` (`Semantic/Semant
 SemanticType (abstract)
 ├── BuiltinType       — Int, Long, Float, Double, Float32, Bool, Str (singletons)
 ├── GenericType       — list[int], dict[str, int] (Name + TypeArguments)
-├── UserDefinedType   — Classes, structs, interfaces (Name + Symbol)
+├── UserDefinedType   — Classes, structs, interfaces (Name + Symbol); also CLR-backed registry builtins (bytes, Template)
 ├── NullableType      — T? for .NET interop (UnderlyingType)
 ├── OptionalType      — T? as safe tagged union (UnderlyingType)
 ├── FunctionType      — Lambdas/delegates (ParameterTypes + ReturnType)
@@ -93,7 +93,6 @@ SemanticType (abstract)
 ├── SelfType          — Self type for covariant return annotations
 ├── UnionType         — Tagged unions (v0.2.x placeholder)
 ├── TaskType          — Async Task types (v0.2.x placeholder)
-├── TemplateType      — Template/format string types
 ├── LiteralStringType — Compile-time string literal types
 ├── VoidType          — None return type
 └── UnknownType       — Error recovery

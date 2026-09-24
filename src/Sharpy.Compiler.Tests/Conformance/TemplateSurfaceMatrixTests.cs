@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -18,6 +19,15 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>=</c>-form strings and the evaluated nested spec are pinned on the same line. The oracle is the
 /// identical program run by <c>/opt/homebrew/bin/python3.14</c> (2026-09-23); every expected line
 /// below is its stdout.</para>
+///
+/// <para><b>Typed surface (#1996).</b> A t-string and a <c>Template</c> annotation are the registry
+/// symbol's CLR-backed type (<c>Sharpy.Template</c>), so members, <c>__iter__</c>, <c>+</c> and SPY0203
+/// come from reflection — there is no bespoke semantic record. Axes: attribute {strings,
+/// interpolations, values, value, expression, conversion, format_spec} × route {t-string literal,
+/// <c>Template</c>-annotated parameter} probed by <c>b: bool = …</c> (SPY0220 naming the
+/// CLR-derived type; an <c>Unknown</c> member would be silent and surface as SPY0908), <c>.bogus</c> ×
+/// {Template, Interpolation} → SPY0203, iteration element type, <c>t"a" + t"b"</c> typed
+/// <c>Template</c>, <c>t"a" + 1</c> refused (SPY0222), and the executed values against python3.14.</para>
 ///
 /// <para>A newline inside the hole (<c>t"""{\nx\n}"""</c> → python <c>'\nx'</c>) is not a cell: the
 /// Sharpy lexer refuses a newline in a replacement field today (SPY0015, #2022).</para>
@@ -71,5 +81,142 @@ public class TemplateSurfaceMatrixTests : IntegrationTestBase
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    private const string LiteralRoute = "def main():\n    x = 1\n    tp = t\"a{x}b\"\n";
+    private const string AnnotationRoute = "def f(tp: Template):\n";
+
+    /// <summary>(label, program, expected code, expected message substring). Each is the checker's
+    /// opinion of a surface expression; before #1996 every member cell was silent (Unknown) and the
+    /// C# compiler refused it (SPY0908), and iteration was SPY0320.</summary>
+    private static readonly (string Label, string Source, string Code, string Message)[] TypeCells =
+    {
+        ("literal.strings", LiteralRoute + "    b: bool = tp.strings\n", DiagnosticCodes.Semantic.TypeMismatch, "'array[str]'"),
+        ("literal.interpolations", LiteralRoute + "    b: bool = tp.interpolations\n", DiagnosticCodes.Semantic.TypeMismatch, "'array[Interpolation]'"),
+        ("literal.values", LiteralRoute + "    b: bool = tp.values\n", DiagnosticCodes.Semantic.TypeMismatch, "'array[object]'"),
+        ("literal.value", LiteralRoute + "    b: bool = tp.interpolations[0].value\n", DiagnosticCodes.Semantic.TypeMismatch, "'object'"),
+        ("literal.expression", LiteralRoute + "    b: bool = tp.interpolations[0].expression\n", DiagnosticCodes.Semantic.TypeMismatch, "'str'"),
+        ("literal.conversion", LiteralRoute + "    b: bool = tp.interpolations[0].conversion\n", DiagnosticCodes.Semantic.TypeMismatch, "'str | None'"),
+        ("literal.format_spec", LiteralRoute + "    b: bool = tp.interpolations[0].format_spec\n", DiagnosticCodes.Semantic.TypeMismatch, "'str'"),
+        ("literal.bogus", LiteralRoute + "    print(tp.bogus)\n", DiagnosticCodes.Semantic.UndefinedMember, "Type 'Template' has no member 'bogus'"),
+        ("literal.interpolation_bogus", LiteralRoute + "    print(tp.interpolations[0].bogus)\n", DiagnosticCodes.Semantic.UndefinedMember, "Type 'Interpolation' has no member 'bogus'"),
+        ("literal.iter_element", "def main():\n    x = 1\n    for part in t\"a{x}b\":\n        b: bool = part\n", DiagnosticCodes.Semantic.TypeMismatch, "'object'"),
+        ("literal.self", LiteralRoute + "    b: bool = tp\n", DiagnosticCodes.Semantic.TypeMismatch, "'Template'"),
+        ("add.template_template", "def main():\n    b: bool = t\"a\" + t\"b\"\n", DiagnosticCodes.Semantic.TypeMismatch, "'Template'"),
+        ("add.template_int", "def main():\n    y = t\"a\" + 1\n", DiagnosticCodes.Semantic.InvalidBinaryOperation, "Type 'Template' does not support operator '+'"),
+        ("annotation.self", AnnotationRoute + "    b: bool = tp\n", DiagnosticCodes.Semantic.TypeMismatch, "'Template'"),
+        ("annotation.strings", AnnotationRoute + "    b: bool = tp.strings\n", DiagnosticCodes.Semantic.TypeMismatch, "'array[str]'"),
+        ("annotation.interpolations", AnnotationRoute + "    b: bool = tp.interpolations\n", DiagnosticCodes.Semantic.TypeMismatch, "'array[Interpolation]'"),
+        ("annotation.bogus", AnnotationRoute + "    print(tp.bogus)\n", DiagnosticCodes.Semantic.UndefinedMember, "Type 'Template' has no member 'bogus'"),
+        ("annotation.iter_element", AnnotationRoute + "    for part in tp:\n        b: bool = part\n", DiagnosticCodes.Semantic.TypeMismatch, "'object'"),
+    };
+
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void TemplateSurface_IsTypedThroughTheClrTwin()
+    {
+        Assert.Equal(TypeCells.Length, TypeCells.Select(c => c.Label).Distinct().Count());
+
+        var failures = new List<string>();
+        foreach (var (label, source, code, message) in TypeCells)
+        {
+            var program = label.StartsWith("annotation.", StringComparison.Ordinal)
+                ? source + "\ndef main():\n    f(t\"a\")\n"
+                : source;
+            var result = CompileAndExecute(program, executionTimeoutMs: 15_000);
+            if (result.Success)
+            {
+                failures.Add($"{label}: expected {code} but it compiled and ran");
+                continue;
+            }
+            var all = string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"));
+            if (!result.RawDiagnostics.Any(d => d.Code == code && d.Message.Contains(message, StringComparison.Ordinal)))
+                failures.Add($"{label}: expected {code} containing {message}, got {all}");
+            if (result.RawDiagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError))
+                failures.Add($"{label}: SPY0908 reached — the checker had no opinion: {all}");
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// Executed surface, pinned from <c>/opt/homebrew/bin/python3.14</c> running the identical program
+    /// (minus the <c>Template</c> annotation). One line differs BY DESIGN (plan-bf0244 Decision 11,
+    /// <c>template_strings.md</c>): <c>print(part)</c> of an <c>Interpolation</c> renders its value in
+    /// Sharpy (<c>1</c>) where python prints the repr (<c>Interpolation(1, 'x', None, '')</c>).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void TemplateSurface_ExecutesLikePython314()
+    {
+        const string source = """
+            def main():
+                x = 1
+                s = "ab"
+                tp = t"a{x}b{s!r:>6}"
+                print(len(tp.strings))
+                print(tp.strings[0])
+                print(tp.strings[2])
+                for st in tp.strings:
+                    print(repr(st))
+                print(len(tp.interpolations))
+                print(repr(tp.interpolations[1]))
+                print(len(tp.values))
+                print(tp.values[0])
+                print(tp.values[1])
+                i = tp.interpolations[1]
+                print(i.value)
+                print(i.expression)
+                print(i.conversion)
+                print(i.format_spec)
+                print(tp.interpolations[0].conversion)
+                for part in tp:
+                    print(repr(part))
+                print(list(tp))
+                print(len(list(tp)))
+                print(list(t""))
+                both = t"a{x}" + t"b"
+                print(repr(both))
+                ann: Template = t"z{x}"
+                print(repr(ann))
+                for part in t"q{x}":
+                    print(part)
+
+            """;
+
+        var expected = string.Join("\n", new[]
+        {
+            "3",
+            "a",
+            "",
+            "'a'",
+            "'b'",
+            "''",
+            "2",
+            "Interpolation('ab', 's', 'r', '>6')",
+            "2",
+            "1",
+            "ab",
+            "ab",
+            "s",
+            "r",
+            ">6",
+            "None",
+            "'a'",
+            "Interpolation(1, 'x', None, '')",
+            "'b'",
+            "Interpolation('ab', 's', 'r', '>6')",
+            "['a', Interpolation(1, 'x', None, ''), 'b', Interpolation('ab', 's', 'r', '>6')]",
+            "4",
+            "[]",
+            "Template(strings=('a', 'b'), interpolations=(Interpolation(1, 'x', None, ''),))",
+            "Template(strings=('z', ''), interpolations=(Interpolation(1, 'x', None, ''),))",
+            "q",
+            "1", // python3.14: Interpolation(1, 'x', None, '') — Sharpy renders (Decision 11)
+        }) + "\n";
+
+        var result = CompileAndExecute(source, executionTimeoutMs: 15_000);
+        Assert.True(result.Success, "compile/run failed: " + string.Join("; ", result.CompilationErrors) + result.StandardError);
+        Assert.Equal(expected, result.StandardOutput.Replace("\r\n", "\n"));
     }
 }

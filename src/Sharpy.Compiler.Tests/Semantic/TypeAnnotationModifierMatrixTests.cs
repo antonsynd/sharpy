@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using System.Collections.Immutable;
 using FluentAssertions;
 using Sharpy.Compiler.Logging;
@@ -197,7 +199,8 @@ public class TypeAnnotationModifierMatrixTests
                 type.Should().BeOfType<LiteralStringType>();
                 break;
             case "Template":
-                type.Should().BeOfType<TemplateType>();
+                // The registry symbol's CLR-backed type, not a bespoke record (#1996).
+                type.Should().BeOfType<UserDefinedType>().Which.ClrType.Should().Be(typeof(SharpyRT::Sharpy.Template));
                 break;
             case "Self":
                 type.Should().BeOfType<SelfType>();
@@ -241,7 +244,7 @@ public class TypeAnnotationModifierMatrixTests
                 payload.Should().BeOfType<LiteralStringType>();
                 break;
             case "Template":
-                payload.Should().BeOfType<TemplateType>();
+                payload.Should().BeOfType<UserDefinedType>().Which.ClrType.Should().Be(typeof(SharpyRT::Sharpy.Template));
                 break;
             case "Self":
                 payload.Should().BeOfType<SelfType>();

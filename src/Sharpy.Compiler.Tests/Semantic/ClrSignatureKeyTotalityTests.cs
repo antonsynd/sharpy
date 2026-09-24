@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
 /// Totality guard for <see cref="ClrSignatureKey"/> (#1721, plan-499995 contract (ii)): the one
-/// CLR-mapped signature key is total over the 20 <see cref="SemanticType"/> leaves. Every leaf is
+/// CLR-mapped signature key is total over the 19 <see cref="SemanticType"/> leaves. Every leaf is
 /// either an ERASING arm (its CLR identity differs from its <see cref="SemanticType.CanonicalKey"/>
 /// for some value, and the arm recurses) or an IDENTITY leaf (the CLR key IS the canonical key).
 /// Both rosters are literal lists; their union is compared to the reflection census, so a 21st
@@ -18,7 +18,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class ClrSignatureKeyTotalityTests
 {
-    private const int ExpectedLeafCount = 20;
+    private const int ExpectedLeafCount = 19; // 20 → 19: TemplateType retired (#1996)
 
     /// <summary>Leaves whose CLR identity erases something C# does not see, recursing inward.</summary>
     private static readonly string[] ErasingLeaves =
@@ -38,11 +38,11 @@ public class ClrSignatureKeyTotalityTests
     {
         nameof(UnknownType), nameof(VoidType), nameof(BuiltinType), nameof(UserDefinedType),
         nameof(ModuleType), nameof(TypeParameterType), nameof(SelfType), nameof(GenericFunctionType),
-        nameof(ConstructorReferenceType), nameof(UnionType), nameof(TemplateType), nameof(UnmappedClrType),
+        nameof(ConstructorReferenceType), nameof(UnionType), nameof(UnmappedClrType),
     };
 
     [Fact]
-    public void LeafRosters_PartitionTheCensus_AnchoredToLiteral20()
+    public void LeafRosters_PartitionTheCensus_AnchoredToLiteral19()
     {
         var census = typeof(SemanticType).Assembly.GetTypes()
             .Where(t => t.IsSealed && !t.IsAbstract && t.IsSubclassOf(typeof(SemanticType)))
@@ -181,7 +181,6 @@ public class ClrSignatureKeyTotalityTests
         yield return new object[] { nameof(GenericFunctionType), new GenericFunctionType { FunctionSymbol = new FunctionSymbol { Name = "f" }, TypeArguments = new List<SemanticType> { SemanticType.Int } } };
         yield return new object[] { nameof(ConstructorReferenceType), new ConstructorReferenceType { Name = "C" } };
         yield return new object[] { nameof(UnionType), new UnionType { Name = "U", Symbol = new TypeSymbol { Name = "U", DefiningModule = "m" }, CaseTypes = new List<SemanticType> { SemanticType.Int } } };
-        yield return new object[] { nameof(TemplateType), new TemplateType() };
         yield return new object[] { nameof(UnmappedClrType), new UnmappedClrType { ClrTypeName = "System.Object" } };
     }
 

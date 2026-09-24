@@ -8,7 +8,7 @@ using FunctionType = Sharpy.Compiler.Semantic.FunctionType;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Totality guard for the type walkers over the 20 <see cref="SemanticType"/> leaves (#1797's
+/// Totality guard for the type walkers over the 19 <see cref="SemanticType"/> leaves (#1797's
 /// latent class, plan-499995 Phase 3 task 4). <see cref="TypeSubstitution.Apply"/> must DESCEND
 /// every leaf that can carry a type parameter — a parameter that survives substitution inside a
 /// wrapper leaks into the emitted C# as a bare <c>T</c> (CS0246) — and pass every childless leaf
@@ -19,7 +19,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class TypeWalkerTotalityTests
 {
-    private const int ExpectedLeafCount = 20;
+    private const int ExpectedLeafCount = 19; // 20 → 19: TemplateType retired (#1996)
 
     /// <summary>Leaves that can contain another type and therefore a type parameter.</summary>
     private static readonly string[] DescendingLeaves =
@@ -37,7 +37,7 @@ public class TypeWalkerTotalityTests
     {
         nameof(UnknownType), nameof(VoidType), nameof(BuiltinType), nameof(UserDefinedType),
         nameof(ModuleType), nameof(TypeParameterType), nameof(SelfType), nameof(GenericFunctionType),
-        nameof(ConstructorReferenceType), nameof(TemplateType), nameof(LiteralStringType),
+        nameof(ConstructorReferenceType), nameof(LiteralStringType),
         nameof(UnmappedClrType),
     };
 
@@ -46,7 +46,7 @@ public class TypeWalkerTotalityTests
         new Dictionary<string, SemanticType>(StringComparer.Ordinal) { ["T"] = SemanticType.Int };
 
     [Fact]
-    public void Rosters_PartitionTheCensus_AnchoredToLiteral20()
+    public void Rosters_PartitionTheCensus_AnchoredToLiteral19()
     {
         var census = typeof(SemanticType).Assembly.GetTypes()
             .Where(t => t.IsSealed && !t.IsAbstract && t.IsSubclassOf(typeof(SemanticType)))
@@ -115,7 +115,6 @@ public class TypeWalkerTotalityTests
         yield return new object[] { nameof(SelfType), new SelfType { DeclaringType = new TypeSymbol { Name = "C", DefiningModule = "m" } } };
         yield return new object[] { nameof(GenericFunctionType), new GenericFunctionType { FunctionSymbol = new FunctionSymbol { Name = "f" }, TypeArguments = new List<SemanticType> { SemanticType.Int } } };
         yield return new object[] { nameof(ConstructorReferenceType), new ConstructorReferenceType { Name = "C" } };
-        yield return new object[] { nameof(TemplateType), new TemplateType() };
         yield return new object[] { nameof(LiteralStringType), LiteralStringType.Instance };
         yield return new object[] { nameof(UnmappedClrType), new UnmappedClrType { ClrTypeName = "System.Object" } };
     }

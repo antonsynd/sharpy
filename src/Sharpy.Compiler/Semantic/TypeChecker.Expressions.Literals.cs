@@ -686,7 +686,12 @@ internal partial class TypeChecker
         {
             CheckInterpolationPart(part);
         }
-        return TemplateType.Instance;
+
+        // PEP 750: a t-string is its registry symbol's CLR-backed type (Sharpy.Template), so its
+        // members, __iter__, operators and SPY0203 come from reflection, as for bytes (#1996).
+        var templateSymbol = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Template)
+            ?? throw new InvalidOperationException("Template type must be registered in BuiltinRegistry");
+        return new UserDefinedType { Name = templateSymbol.Name, Symbol = templateSymbol };
     }
 
     /// <summary>

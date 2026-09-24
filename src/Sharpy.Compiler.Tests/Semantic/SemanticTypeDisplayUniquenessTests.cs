@@ -128,7 +128,6 @@ public class SemanticTypeDisplayUniquenessTests
                 CaseTypes = new List<SemanticType> { Int64 }
             }),
             ("TaskType", new TaskType { ResultType = Int64 }),
-            ("TemplateType", TemplateType.Instance),
             ("LiteralStringType", LiteralStringType.Instance),
             ("UnmappedClrType", new UnmappedClrType { ClrTypeName = "System.Linq.IGrouping" }),
         };

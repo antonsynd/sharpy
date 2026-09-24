@@ -126,7 +126,10 @@ internal class IncrementalCompilationCache
     //      type with an empty alias list and `Outer.Id` reported SPY0202 where the cold build resolved
     //      it. Module-level aliases are unaffected (they re-extract fresh on import); only the
     //      cache-restored, TryDefine'd enclosing type shadowed re-extraction and needed the fact.
-    internal const int CurrentSchemaVersion = 34;
+    // v35: the "template" SemanticType codec tag is retired (#1996). A t-string / `Template`
+    //      annotation is now the registry symbol's UserDefinedType ("user:Template"); a v34 entry can
+    //      carry "template" payloads the codec no longer decodes.
+    internal const int CurrentSchemaVersion = 35;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

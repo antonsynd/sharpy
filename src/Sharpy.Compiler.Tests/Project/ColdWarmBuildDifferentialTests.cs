@@ -705,6 +705,71 @@ def main() -> None:
             "warm must emit what cold emitted — a dropped Self fact changes the C#");
     }
 
+    private const string TemplateLibSource = @"def exclaim(tp: Template) -> Template:
+    return tp + t""!""
+";
+
+    private const string TemplateMainSource = @"from lib import exclaim
+
+def main() -> None:
+    x = 1
+    r = exclaim(t""a{x}"")
+    print(repr(r))
+";
+
+    private const string TemplateMainEditedSource = @"from lib import exclaim
+
+def main() -> None:
+    x = 2
+    b: bool = exclaim(t""a{x}"")
+";
+
+    /// <summary>
+    /// A <c>Template</c> parameter/return type is the registry symbol's CLR-backed
+    /// <c>UserDefinedType</c> (#1996; the retired <c>TemplateType</c> record had its own
+    /// <c>"template"</c> codec tag): a warm build restores <c>lib</c>'s signature through the
+    /// <c>"user"</c> channel and must report and emit exactly what the cold build did. The
+    /// both-files-cached half replays cached C# and diagnostics, so it cannot see the decode; the
+    /// consumer RECOMPILED against the cached signature can: <c>b: bool = exclaim(…)</c> must say
+    /// SPY0220 <c>'Template'</c> exactly as a cold build of the same final layout does (a lost decode
+    /// is silent Unknown → SPY0908). Member access on the decoded type is a separate, pre-existing
+    /// gap shared with <c>bytes</c> — the registry symbol is not restored (#2027).
+    /// </summary>
+    [Fact]
+    public void WarmBuild_TemplateSignature_IsObservationallyIdenticalToCold()
+    {
+        var lib = Write("template", "lib.spy", TemplateLibSource);
+        var main = Write("template", "main.spy", TemplateMainSource);
+        var config = Config("template", lib, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue("the Template specimen must compile cold. Diagnostics:\n" + Diagnostics(cold));
+        var coldGenerated = Generated(cold);
+        var coldDiagnostics = Diagnostics(cold);
+
+        var warm = Build(config);
+        warm.Success.Should().BeTrue("warm build. Diagnostics:\n" + Diagnostics(warm));
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "both files must come from the cache for this to measure the serializer");
+        Diagnostics(warm).Should().Be(coldDiagnostics, "warm must report what cold reported");
+        Generated(warm).Should().BeEquivalentTo(coldGenerated, "warm must emit what cold emitted");
+
+        File.WriteAllText(main, TemplateMainEditedSource);
+        var edited = Build(config);
+        Skipped(edited).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib must be served from the cache while main recompiles against it");
+
+        var freshLib = Write("template-cold", "lib.spy", TemplateLibSource);
+        var freshMain = Write("template-cold", "main.spy", TemplateMainEditedSource);
+        var coldEdited = Build(Config("template-cold", freshLib, freshMain));
+        Skipped(coldEdited).Should().BeEmpty("the control build is cold");
+        Diagnostics(coldEdited).Should().Contain("SPY0220").And.Contain("'Template'",
+            "the cold consumer types the call as Template");
+
+        Diagnostics(edited).Should().Be(Diagnostics(coldEdited),
+            "a consumer compiled against the cached Template signature must type it as cold does");
+    }
+
     private const string StructAccessLibSource = @"struct Meter:
     _reading: int
 

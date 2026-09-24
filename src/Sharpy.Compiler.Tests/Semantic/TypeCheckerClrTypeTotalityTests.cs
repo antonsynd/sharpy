@@ -50,7 +50,6 @@ public class TypeCheckerClrTypeTotalityTests
         nameof(ConstructorReferenceType),
         nameof(UnionType),
         nameof(TaskType),
-        nameof(TemplateType),
         nameof(LiteralStringType),
     };
 

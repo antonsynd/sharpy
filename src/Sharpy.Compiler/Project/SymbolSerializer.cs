@@ -1624,11 +1624,6 @@ internal static class SymbolSerializer
                     ? new TaskType { ResultType = null }
                     : new TaskType { ResultType = Deserialize(value) });
 
-            // TemplateType: PEP 750 template strings
-            Register<TemplateType>("template",
-                _ => "",
-                _ => TemplateType.Instance);
-
             Register<LiteralStringType>("literalstring",
                 _ => "",
                 _ => LiteralStringType.Instance);

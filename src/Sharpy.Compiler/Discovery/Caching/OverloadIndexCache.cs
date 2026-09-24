@@ -25,11 +25,13 @@ internal class OverloadIndexCache
     // v21: FieldSignature gains ClrName; field keys re-keyed to the Sharpy spelling (#1540).
     // v22: FieldSignature gains RecordedPythonName from SharpyFieldNameAttribute (#1607).
     // v24: ParameterSignature gains FormatSpecOf from FormatSpecAttribute (#1956).
+    // v25: the "template" SemanticType codec tag is retired — Template is its registry symbol's
+    //      UserDefinedType (#1996); a v24 index can hold tags the new codec cannot decode.
     // Format version covers *shape* changes (field additions/removals/renames in the serialized
     // index). Compiler identity (AssemblyIdentity.CompilerVersion) covers *mapping* changes —
     // a rebuilt compiler automatically invalidates every index by construction (#1313), so
     // manual bumps for CLR-type-mapping fixes are no longer needed.
-    internal const int CurrentCacheFormatVersion = 24;
+    internal const int CurrentCacheFormatVersion = 25;
 
     // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of
     // an overload index costs milliseconds per stdlib assembly and, before this, ran once per
