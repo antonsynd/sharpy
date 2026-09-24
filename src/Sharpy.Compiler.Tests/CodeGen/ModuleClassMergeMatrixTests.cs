@@ -111,6 +111,45 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
         }
     }
 
+    /// <summary>
+    /// A library module holding ONLY the class (no module-level member). This is the one cell the
+    /// SPY0520 refusal turned from worked into refused: at d17ddb956 a module with only
+    /// <c>class Thing[T]</c> emitted <c>public class Thing&lt;T&gt;</c> as its module class and
+    /// <c>Thing[int](7).get()</c> printed <c>7</c>. The owner re-ruled it on 2026-09-24 (plan-bf0244
+    /// verify): the refusal stays uniform — "merges only when the module has nothing else" would
+    /// be a cliff that one added helper flips. The general cure, user types emitted beside the
+    /// module class, is #2039. The non-generic class in the same layout still merges and runs, which
+    /// is the positive control.
+    /// </summary>
+    [Theory]
+    [InlineData("generic_class")]
+    [InlineData("class")]
+    public void LibraryModuleHoldingOnlyTheType_GenericIsRefusedUniformly(string kind)
+    {
+        var (declaration, merges) = Kinds[kind];
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Merge").WithEntryPoint("main.spy");
+        helper.AddSourceFile("thing.spy", declaration);
+        helper.AddSourceFile("main.spy", "from thing import Thing\n\ndef main() -> None:\n    print(" + Construction(kind) + ")\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+        var errors = helper.LastCompilationResult?.Diagnostics.GetErrors()
+            .Select(d => (Code: d.Code ?? "", d.Message)).ToList() ?? new List<(string Code, string Message)>();
+
+        if (merges)
+        {
+            exec.Success.Should().BeTrue(string.Join(" | ", errors.Select(e => e.Message)));
+            exec.StandardOutput.Trim().Should().Be("7");
+        }
+        else
+        {
+            exec.Success.Should().BeFalse("a generic class named like its module is refused even when the module holds nothing else");
+            errors.Should().Contain(e => e.Code == DiagnosticCodes.CodeGen.NameCollision
+                && e.Message.StartsWith("Type 'Thing' conflicts with module class name 'Thing'"),
+                string.Join(" | ", errors.Select(e => e.Code + " " + e.Message)));
+        }
+    }
+
     [Fact]
     public void Matrix_IsTotal() => Cells().Should().HaveCount(16, "8 kinds × 2 modes");
 }

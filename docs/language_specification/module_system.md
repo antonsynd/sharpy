@@ -67,7 +67,12 @@ class name is still an error (`SPY0520`): only a `class` can absorb the module's
 the module class — and only a NON-generic one. A generic class named like its file (`class
 Thing[T]` in `thing.spy`) is `Thing<T>` in C#: it cannot merge into the module class `Thing` (which
 has no type parameters), and it cannot sit inside it either, because C# compares a nested type's name
-without its arity (CS0542). It is refused with `SPY0520` too; rename the class or the file.
+without its arity (CS0542). It is refused with `SPY0520` too; rename the class or the file. The
+refusal is uniform: it applies even to a module that holds nothing but the generic class, whose
+module class could otherwise simply *be* `Thing<T>`. A rule that depended on whether the module has
+other members would flip to an error the moment one helper function is added. Emitting user types
+beside the module class instead of nested in it would lift the refusal for every case at once
+(#2039).
 
 ## Circular Import Handling
 
