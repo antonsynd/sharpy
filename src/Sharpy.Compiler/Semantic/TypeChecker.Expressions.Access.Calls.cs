@@ -6468,14 +6468,18 @@ internal partial class TypeChecker
     /// The <c>str.format</c> static twin (#1956): when the callee's receiver is a format template
     /// (<see cref="FunctionSymbol.IsFormatTemplateReceiver"/>, from Core's
     /// <c>FormatTemplateAttribute</c>) and the call's receiver is a string literal, the template is
-    /// split by <see cref="FormatTemplateGrammar"/>, each field is paired with the positional operand
-    /// it reads, and its static spec is validated against that operand (<see cref="FormatOperand.Str"/>
-    /// under a conversion) through the one <see cref="FormatSpecGrammar"/>. A refusal is SPY0609 at
-    /// the template literal with CPython's wording. A field whose operand or spec is not static (a
-    /// nested spec, a keyword name, an attribute/index access, an index past the arguments, any
-    /// spread argument) and a template Core would reject outright are left to the runtime.
-    /// Operands are read from <paramref name="positionalArguments"/>, the route's effective
-    /// positional list (see <see cref="RecordResolvedCallTarget"/>).
+    /// split by <see cref="FormatTemplateGrammar"/>, each field is paired with the operand it reads,
+    /// and its static spec is validated against that operand (<see cref="FormatOperand.Str"/> under a
+    /// conversion) through the one <see cref="FormatSpecGrammar"/>. A refusal is SPY0609 at the
+    /// template literal with CPython's wording. Fields are walked IN ORDER and the walk stops at the
+    /// first field it cannot decide, because CPython raises the first field's error (#1984): an index
+    /// past the positional arguments (IndexError), an attribute/index access, or a keyword field no
+    /// keyword argument of the call names (KeyError). A keyword field the call does name is decided
+    /// and its spec is checked against that argument. The first refused spec is reported and ends
+    /// the walk. A nested (dynamic) spec is skipped, any spread argument and a template Core would
+    /// reject outright leave the whole template to the runtime. Operands are read from
+    /// <paramref name="positionalArguments"/>, the route's effective positional list (see
+    /// <see cref="RecordResolvedCallTarget"/>).
     /// </summary>
     private void CheckStaticFormatTemplateArguments(
         FunctionSymbol symbol, FunctionCall call, IReadOnlyList<Expression> positionalArguments)
@@ -6489,11 +6493,18 @@ internal partial class TypeChecker
 
         foreach (var hole in holes)
         {
-            if (hole.ArgumentIndex is not { } index || index >= positionalArguments.Count
-                || hole.Spec is not { Length: > 0 } spec)
+            Expression operand;
+            if (hole.ArgumentIndex is { } index && index < positionalArguments.Count)
+                operand = positionalArguments[index];
+            else if (hole.KeywordName is { } name
+                     && call.KeywordArguments.FirstOrDefault(k => k.Name == name) is { } keyword)
+                operand = keyword.Value;
+            else
+                break;
+
+            if (hole.Spec is not { Length: > 0 } spec)
                 continue;
 
-            var operand = positionalArguments[index];
             var formatOperand = hole.Conversion != null
                 ? FormatOperand.Str
                 : FormatOperandOf(
@@ -6504,6 +6515,7 @@ internal partial class TypeChecker
             {
                 AddError(message, template.LineStart, template.ColumnStart,
                     code: DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification, span: template.Span);
+                break;
             }
         }
     }

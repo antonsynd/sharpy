@@ -1,13 +1,14 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// One replacement field of a literal <c>str.format</c> template that the checker can pair with a
-/// positional operand: <see cref="ArgumentIndex"/> is the positional argument the field reads (null
-/// when the field is not a bare positional reference — a keyword name, or a <c>.attr</c>/<c>[key]</c>
-/// access whose value is not the operand itself); <see cref="Spec"/> is the static spec text (null
-/// when the spec holds nested replacement fields, so its text is only known at runtime).
+/// One replacement field of a literal <c>str.format</c> template that the checker can pair with an
+/// operand: <see cref="ArgumentIndex"/> is the positional argument the field reads (null when the
+/// field is not a bare positional reference — a keyword name, or a <c>.attr</c>/<c>[key]</c> access
+/// whose value is not the operand itself); <see cref="KeywordName"/> is the name of a bare keyword
+/// field (<c>{name}</c>, no access path), null otherwise; <see cref="Spec"/> is the static spec text
+/// (null when the spec holds nested replacement fields, so its text is only known at runtime).
 /// </summary>
-internal readonly record struct FormatTemplateHole(int? ArgumentIndex, char? Conversion, string? Spec);
+internal readonly record struct FormatTemplateHole(int? ArgumentIndex, char? Conversion, string? Spec, string? KeywordName = null);
 
 /// <summary>
 /// Splits a LITERAL <c>str.format</c> template into its replacement fields at compile time, by name,
@@ -89,7 +90,7 @@ internal static class FormatTemplateGrammar
                 }
 
                 // The outer field claims its index before the nested fields of its spec (Core's order).
-                if (!ResolveFieldIndex(fieldExpr, numbering, out var argumentIndex))
+                if (!ResolveFieldIndex(fieldExpr, numbering, out var argumentIndex, out var keywordName))
                     return false;
 
                 string? spec;
@@ -111,7 +112,7 @@ internal static class FormatTemplateGrammar
                 }
 
                 if (!nested)
-                    holes.Add(new FormatTemplateHole(argumentIndex, conversion, spec));
+                    holes.Add(new FormatTemplateHole(argumentIndex, conversion, spec, keywordName));
             }
             else if (c == '}')
             {
@@ -163,11 +164,14 @@ internal static class FormatTemplateGrammar
     /// Mirrors <c>ResolveFieldValue</c>'s numbering: an empty base field is auto-numbered, a decimal
     /// one is manual, and switching between the two is Core's runtime error (false). A keyword name
     /// (Core's runtime refusal) or an access path yields a null index — the field reads something
-    /// other than a positional operand itself.
+    /// other than a positional operand itself; a bare keyword name (no access path) is returned in
+    /// <paramref name="keywordName"/>.
     /// </summary>
-    private static bool ResolveFieldIndex(string fieldExpr, Numbering numbering, out int? argumentIndex)
+    private static bool ResolveFieldIndex(
+        string fieldExpr, Numbering numbering, out int? argumentIndex, out string? keywordName)
     {
         argumentIndex = null;
+        keywordName = null;
         int accessStart = fieldExpr.IndexOfAny(AccessPathStarts);
         string baseField = accessStart >= 0 ? fieldExpr.Substring(0, accessStart) : fieldExpr;
 
@@ -189,6 +193,8 @@ internal static class FormatTemplateGrammar
         }
         else
         {
+            if (accessStart < 0)
+                keywordName = baseField;
             return true;
         }
 

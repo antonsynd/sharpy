@@ -231,7 +231,9 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
     /// formats a <c>str</c>), and an auto field AFTER a nested-spec field (whose nested field claims an
     /// index). A field whose spec or operand is not static — a nested spec, an index access, a
     /// <c>str</c>-variable template — and a template Core rejects outright (mixed numbering) keep the
-    /// runtime refusal; valid fields keep printing.
+    /// runtime refusal; valid fields keep printing. Fields are walked in order and the walk ends at the
+    /// first field the checker cannot decide (#1984): a later field's refusal never pre-empts an
+    /// earlier field's runtime error.
     /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
@@ -251,6 +253,23 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
             ("str_variable_template", "t.format(s)", null, eq, null),
             ("mixed_numbering", "\"{}{0:=5}\".format(s)", null,
                 "cannot switch from automatic field numbering to manual field specification", null),
+            // #1984 (Decision 7): fields are walked in order and the walk stops at the first field the
+            // checker cannot decide, because CPython raises the FIRST field's error.
+            // python3: '{5}{0:=5}'.format('ab') -> IndexError: Replacement index 5 out of range for positional args tuple
+            ("order_out_of_range_first", "\"{5}{0:=5}\".format(s)", null,
+                "Replacement index 5 out of range for positional args tuple", null),
+            // python3: '{0:=5}{5}'.format('ab') -> ValueError: '=' alignment ... (field 0 fails first)
+            ("order_refused_first", "\"{0:=5}{5}\".format(s)", eq, null, null),
+            // Only the FIRST refused field is reported: python3 '{0:=5}{1:+5}'.format('ab', 'ab') raises
+            // on field 0 and never reaches field 1's sign refusal.
+            ("order_first_refusal_only", "\"{0:=5}{1:+5}\".format(s, s)", eq, null, null),
+            // A keyword field the call names is decided, so the walk continues to field 1 (SPY0234 is
+            // reported for the keyword itself). python3: '{name}{0:=5}'.format('ab', name=1) -> ValueError: '=' ...
+            ("order_keyword_matched", "\"{name}{0:=5}\".format(s, name=1)", eq, null, null),
+            // A keyword field no argument names ends the walk (python3: KeyError: 'name'); Core's runtime
+            // message differs from python's (#2008).
+            ("order_keyword_unmatched", "\"{name}{0:=5}\".format(s)", null,
+                "cannot use keyword arguments with format(), use format_map()", null),
             ("ok_manual", "\"{0:>5}\".format(s)", null, null, "   ab"),
             ("ok_conversion", "\"{!r:>6}\".format(s)", null, null, "  'ab'"),
             ("ok_nested", "\"{:{}}{:>3}\".format(1, \">3\", 2)", null, null, "  1  2"),
