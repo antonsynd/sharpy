@@ -13,8 +13,11 @@ namespace Sharpy
     {
         /// <summary>
         /// Format <paramref name="value"/> according to the Python format specification
-        /// <paramref name="spec"/>. An empty spec yields <c>str(value)</c>; a non-empty spec on
-        /// <c>None</c> raises <see cref="TypeError"/>, matching CPython.
+        /// <paramref name="spec"/>. An empty spec yields <c>str(value)</c>; otherwise the spec is
+        /// validated for the value's operand kind by <see cref="PyFormatSpec.Validate"/> — the one
+        /// parser and rule table, shared with the compiler's static twin (#1984, R-BX) — and the
+        /// value is rendered from the spec it returns. A refused spec raises CPython's
+        /// <see cref="ValueError"/> or <see cref="TypeError"/>.
         /// </summary>
         public static string Apply(object? value, string spec)
         {
@@ -29,180 +32,81 @@ namespace Sharpy
                 return value == null ? "None" : Builtins.Str(value);
             }
 
-            if (value == null)
+            FormatOperandKind kind = KindOf(value);
+            string pyTypeName = PyTypeName(value);
+            PyFormatSpec parsed;
+            FormatSpecError? error = kind == FormatOperandKind.Unknown
+                // A value with no python operand kind yet is parsed but no rule applies; it renders
+                // its ToString() under the spec (#1988 gives it a kind).
+                ? PyFormatSpec.Parse(spec, '>', pyTypeName, out parsed)
+                : PyFormatSpec.Validate(spec, kind, pyTypeName, out parsed);
+            if (error != null)
             {
-                throw new TypeError("unsupported format string passed to NoneType.__format__");
+                throw error.ToException();
             }
 
-            return ApplyFormatSpec(value, spec);
+            return Render(value!, kind, parsed);
         }
 
-        private static string ApplyFormatSpec(object value, string spec)
+        /// <summary>
+        /// The operand kind of a runtime value — which CPython <c>__format__</c> it takes.
+        /// </summary>
+        private static FormatOperandKind KindOf(object? value)
         {
-            // Parse: [[fill]align][sign][z][#][0][width][grouping][.precision][type]
-            int pos = 0;
-            char fill = ' ';
-            char align = '\0';
-            char sign = '\0';
-            bool zCoerce = false;
-            bool altForm = false;
-            int width = 0;
-            char grouping = '\0';
-            int precision = -1;
-            bool hasPrecision = false;
-            char type = '\0';
-
-            // Parse fill and align
-            bool fillSpecified = false;
-            if (spec.Length >= 2 && IsAlign(spec[1]))
+            if (value == null)
             {
-                fill = spec[0];
-                align = spec[1];
-                fillSpecified = true;
-                pos = 2;
+                return FormatOperandKind.NoneValue;
             }
-            else if (spec.Length >= 1 && IsAlign(spec[0]))
+            if (value is bool)
             {
-                align = spec[0];
-                pos = 1;
+                return FormatOperandKind.Bool;
             }
-
-            // Parse sign
-            if (pos < spec.Length && (spec[pos] == '+' || spec[pos] == '-' || spec[pos] == ' '))
-            {
-                sign = spec[pos];
-                pos++;
-            }
-
-            // Parse z (PEP 682 negative-zero coercion) — after the sign, before '#'
-            if (pos < spec.Length && spec[pos] == 'z')
-            {
-                zCoerce = true;
-                pos++;
-            }
-
-            // Parse # (alternate form)
-            if (pos < spec.Length && spec[pos] == '#')
-            {
-                altForm = true;
-                pos++;
-            }
-
-            // Parse 0 (zero padding). CPython's backward-compat rule (#1945): the '0' flag sets
-            // fill='0' unless a fill was given explicitly, and synthesises '=' alignment only when
-            // the operand's default alignment is '>' (numbers). A string keeps its '<' default, so
-            // format('ab', '05') is 'ab000' (fill '0', left-aligned), NOT '000ab' (=-synthesis).
-            if (pos < spec.Length && spec[pos] == '0')
-            {
-                if (!fillSpecified)
-                {
-                    fill = '0';
-                }
-                if (align == '\0' && !(value is string))
-                {
-                    align = '=';
-                }
-                pos++;
-            }
-
-            // Parse width
-            int widthStart = pos;
-            while (pos < spec.Length && spec[pos] >= '0' && spec[pos] <= '9')
-            {
-                pos++;
-            }
-            if (pos > widthStart)
-            {
-                width = int.Parse(spec.Substring(widthStart, pos - widthStart), CultureInfo.InvariantCulture);
-            }
-
-            // Parse grouping (, or _)
-            if (pos < spec.Length && (spec[pos] == ',' || spec[pos] == '_'))
-            {
-                grouping = spec[pos];
-                pos++;
-            }
-
-            // Parse precision
-            if (pos < spec.Length && spec[pos] == '.')
-            {
-                pos++;
-                int precStart = pos;
-                while (pos < spec.Length && spec[pos] >= '0' && spec[pos] <= '9')
-                {
-                    pos++;
-                }
-                precision = precStart == pos
-                    ? 0
-                    : int.Parse(spec.Substring(precStart, pos - precStart), CultureInfo.InvariantCulture);
-                hasPrecision = true;
-            }
-
-            // Parse type — exactly one trailing character; anything left over is invalid.
-            if (pos < spec.Length)
-            {
-                type = spec[pos];
-                pos++;
-            }
-            if (pos != spec.Length)
-            {
-                throw new ValueError(
-                    "Invalid format specifier '" + spec + "' for object of type '" + PyTypeName(value) + "'");
-            }
-
-            // Grouping is legal only with a subset of the presentation types, and CPython checks that
-            // BEFORE it checks the type against the operand: format(1.5, ',b') is "Cannot specify ','
-            // with 'b'.", not "Unknown format code 'b' for object of type 'float'". An absent type
-            // stands for the operand's default one ('s' for str), which is why format('a', '_') is
-            // refused by name.
-            if (grouping != '\0')
-            {
-                char effectiveType = type != '\0' ? type : (value is string ? 's' : '\0');
-                if (!GroupingAllowedWith(grouping, effectiveType))
-                {
-                    throw new ValueError(
-                        "Cannot specify '" + grouping + "' with '" + effectiveType + "'.");
-                }
-            }
-
-            // String operands (#1945): CPython refuses a numeric type code first, then a sign, z,
-            // '#' and '=' alignment in that exact order. This is the runtime twin of
-            // FormatSpecGrammar.StringOperandRefusal (the f-string static path); they carry the same
-            // wording and order by design (the M4/M5 same-logic-twice-with-cross-references pattern).
             if (value is string)
             {
-                if (type != '\0' && type != 's')
-                {
-                    throw new ValueError("Unknown format code '" + type + "' for object of type 'str'");
-                }
-                string? strRefusal = StringOperandRefusal(sign, zCoerce, altForm, align);
-                if (strRefusal != null)
-                {
-                    throw new ValueError(strRefusal);
-                }
+                return FormatOperandKind.Str;
             }
+            if (value is double || value is float || value is decimal)
+            {
+                return FormatOperandKind.Float;
+            }
+            if (value is int || value is long || value is short || value is byte
+                || value is sbyte || value is uint || value is ulong || value is ushort)
+            {
+                return FormatOperandKind.Integral;
+            }
+            return FormatOperandKind.Unknown;
+        }
 
+        private static bool IsNumeric(FormatOperandKind kind) =>
+            kind == FormatOperandKind.Integral || kind == FormatOperandKind.Bool || kind == FormatOperandKind.Float;
+
+        /// <summary>
+        /// Render a value from its validated spec: the presentation type, then grouping and zero
+        /// fill over the digit run, then width and alignment. No rule is checked here — a refusal
+        /// can only come from <see cref="PyFormatSpec.Validate"/>.
+        /// </summary>
+        private static string Render(object value, FormatOperandKind kind, PyFormatSpec spec)
+        {
             // Format the value — sign included, grouping and zero-fill NOT (both depend on the
             // width, and CPython interleaves them: the separators go INSIDE the zero fill).
-            string formatted = FormatValue(value, type, precision, hasPrecision, altForm, sign, zCoerce);
+            string formatted = FormatValue(value, kind, spec);
 
             // Grouping + zero-fill over the digit run only, never over the sign, the 0x/0o/0b prefix
             // or the fraction/exponent tail.
-            if (IsNumericValue(value))
+            if (IsNumeric(kind))
             {
                 formatted = GroupAndZeroFill(
-                    formatted, type, altForm, grouping,
-                    minWidthTotal: (align == '=' && fill == '0') ? width : 0);
+                    formatted, spec.Type, spec.AlternateForm, spec.Grouping,
+                    minWidthTotal: (spec.Align == '=' && spec.Fill == '0') ? spec.Width : 0);
             }
 
             // Apply width and alignment
+            int width = spec.Width;
             if (width > 0 && formatted.Length < width)
             {
-                if (align == '\0')
-                {
-                    // Default: numbers right-align, strings left-align
-                    align = IsNumericValue(value) ? '>' : '<';
-                }
+                char fill = spec.Fill;
+                // Default: numbers right-align, strings left-align
+                char align = spec.Align != '\0' ? spec.Align : (IsNumeric(kind) ? '>' : '<');
 
                 int padding = width - formatted.Length;
                 switch (align)
@@ -223,79 +127,13 @@ namespace Sharpy
                         // predicate GroupAndZeroFill uses for the '0'-fill path, so an explicit or
                         // default fill lands where the zeros would: format(-255, '*=#10x') is
                         // '-0x*****ff'.
-                        int at = Math.Min(NumericPrefixLength(formatted, type, altForm), formatted.Length);
+                        int at = Math.Min(NumericPrefixLength(formatted, spec.Type, spec.AlternateForm), formatted.Length);
                         formatted = formatted.Substring(0, at) + new string(fill, padding) + formatted.Substring(at);
                         break;
                 }
             }
 
             return formatted;
-        }
-
-        private static bool IsAlign(char c)
-        {
-            return c == '<' || c == '>' || c == '^' || c == '=';
-        }
-
-        /// <summary>
-        /// The ONE ordered string-operand option rule (#1945). CPython's string formatter, once the
-        /// type code has been accepted, refuses a sign, a negative-zero coercion (<c>z</c>), the
-        /// alternate form (<c>#</c>) and <c>=</c> alignment — in that order — with these exact
-        /// messages. Returns the <see cref="ValueError"/> text, or <c>null</c> when the spec is legal
-        /// for a string. Mirrored statically by <c>FormatSpecGrammar.StringOperandRefusal</c>.
-        /// </summary>
-        private static string? StringOperandRefusal(char sign, bool zCoerce, bool altForm, char align)
-        {
-            if (sign != '\0')
-            {
-                return sign == ' '
-                    ? "Space not allowed in string format specifier"
-                    : "Sign not allowed in string format specifier";
-            }
-            if (zCoerce)
-            {
-                return "Negative zero coercion (z) not allowed in string format specifier";
-            }
-            if (altForm)
-            {
-                return "Alternate form (#) not allowed in string format specifier";
-            }
-            if (align == '=')
-            {
-                return "'=' alignment not allowed in string format specifier";
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// CPython's grouping/presentation-type matrix (PEP 378 + PEP 515): both separators are
-        /// allowed with <c>d e E f F g G %</c> and the absent type; <c>_</c> is additionally allowed
-        /// with the radix types <c>b o x X</c> (where it groups every FOUR digits), and <c>,</c> is
-        /// not. Everything else — including <c>c</c>, <c>n</c>, <c>s</c> and any unknown code — is
-        /// refused.
-        /// </summary>
-        private static bool GroupingAllowedWith(char grouping, char type)
-        {
-            switch (type)
-            {
-                case '\0':
-                case 'd':
-                case 'e':
-                case 'E':
-                case 'f':
-                case 'F':
-                case 'g':
-                case 'G':
-                case '%':
-                    return true;
-                case 'b':
-                case 'o':
-                case 'x':
-                case 'X':
-                    return grouping == '_';
-                default:
-                    return false;
-            }
         }
 
         /// <summary>
@@ -308,15 +146,13 @@ namespace Sharpy
             return type == 'b' || type == 'o' || type == 'x' || type == 'X' ? 4 : 3;
         }
 
-        private static bool IsNumericValue(object value)
-        {
-            return value is int || value is long || value is double || value is float
-                || value is decimal || value is short || value is byte || value is bool;
-        }
-
         /// <summary>Python type name used in format-error messages.</summary>
-        private static string PyTypeName(object value)
+        private static string PyTypeName(object? value)
         {
+            if (value == null)
+            {
+                return "NoneType";
+            }
             if (value is bool)
             {
                 return "bool";
@@ -337,58 +173,12 @@ namespace Sharpy
             return value.GetType().Name;
         }
 
-        private static string FormatValue(object value, char type, int precision, bool hasPrecision,
-            bool altForm, char sign, bool zCoerce)
+        private static string FormatValue(object value, FormatOperandKind kind, PyFormatSpec spec)
         {
-            bool isBool = value is bool;
-            bool isFloat = value is double || value is float || value is decimal;
-            bool isIntegral = isBool || value is int || value is long || value is short || value is byte
-                || value is sbyte || value is uint || value is ulong || value is ushort;
-            bool isStr = value is string;
-
-            // Enforce the CPython type-code validity matrix before formatting.
-            if (isStr)
-            {
-                if (type != '\0' && type != 's')
-                {
-                    throw new ValueError("Unknown format code '" + type + "' for object of type 'str'");
-                }
-            }
-            else if (isFloat)
-            {
-                if (type == 'b' || type == 'c' || type == 'd' || type == 'o'
-                    || type == 'x' || type == 'X' || type == 's')
-                {
-                    throw new ValueError(
-                        "Unknown format code '" + type + "' for object of type 'float'");
-                }
-            }
-            else if (isIntegral)
-            {
-                if (type == 's')
-                {
-                    throw new ValueError(
-                        "Unknown format code 's' for object of type '" + PyTypeName(value) + "'");
-                }
-                bool integerPresentation = type == '\0' || type == 'b' || type == 'c' || type == 'd'
-                    || type == 'n' || type == 'o' || type == 'x' || type == 'X';
-                if (hasPrecision && integerPresentation)
-                {
-                    throw new ValueError("Precision not allowed in integer format specifier");
-                }
-                if (zCoerce && integerPresentation)
-                {
-                    throw new ValueError("Negative zero coercion (z) not allowed in integer format specifier");
-                }
-            }
-
-            // The sign is ONE rule (#1944): every numeric presentation type takes it, including '%'.
-            // The single exception is 'c' (character), where CPython refuses a sign BEFORE rendering
-            // the code point — format(65, '+c') is a ValueError, not a sign-less 'A'.
-            if (type == 'c' && sign != '\0' && isIntegral)
-            {
-                throw new ValueError("Sign not allowed with integer format specifier 'c'");
-            }
+            bool isFloat = kind == FormatOperandKind.Float;
+            bool isIntegral = kind == FormatOperandKind.Integral || kind == FormatOperandKind.Bool;
+            char type = spec.Type;
+            char sign = spec.Sign;
 
             string result;
 
@@ -407,17 +197,17 @@ namespace Sharpy
             }
             else
             {
-                result = FormatFinite(value, type, precision, hasPrecision, altForm, isFloat, isIntegral);
+                result = FormatFinite(value, type, spec.Precision, spec.HasPrecision, spec.AlternateForm, isFloat, isIntegral);
             }
 
             // PEP 682: coerce a formatted negative zero to positive zero.
-            if (zCoerce && IsNegativeZeroText(result))
+            if (spec.NegativeZeroCoercion && IsNegativeZeroText(result))
             {
                 result = result.Substring(1);
             }
 
-            // Apply sign — to every numeric presentation type including '%'. 'c' was already refused
-            // above (a sign is never allowed with the character type).
+            // Apply sign — to every numeric presentation type including '%'. The validator refuses a
+            // sign with 'c' (#1944), so a 'c' rendering never carries one.
             if (sign != '\0' && (isIntegral || isFloat) && type != 'c')
             {
                 if (result.Length > 0 && result[0] != '-')
