@@ -38,10 +38,6 @@ struct Point:
     x: int
     y: int
 
-# Using implicit parameterless constructor (zero-initialized)
-p1 = Point()           # x = 0, y = 0
-
-# Using explicit constructor
 struct Vector:
     x: float
     y: float
@@ -50,8 +46,13 @@ struct Vector:
         self.x = x
         self.y = y
 
-v1 = Vector(1.0, 2.0)  # x = 1.0, y = 2.0
-v2 = Vector()          # x = 0.0, y = 0.0 (implicit parameterless still exists)
+def main() -> None:
+    # Using implicit parameterless constructor (zero-initialized)
+    p1 = Point()           # x = 0, y = 0
+
+    # Using explicit constructor
+    v1 = Vector(1.0, 2.0)  # x = 1.0, y = 2.0
+    v2 = Vector()          # x = 0.0, y = 0.0 (implicit parameterless still exists)
 ```
 
 **Structs and Interface Default Methods:**
@@ -72,16 +73,18 @@ struct Point(IDescribable):
         self.y = y
 
     # Can override default, or use it as-is
+    @override
     def describe(self) -> str:
         return f"Point({self.x}, {self.y})"
 
-# Direct call - no boxing
-p = Point(10, 20)
-print(p.describe())  # "Point(10, 20)" - efficient
+def main() -> None:
+    # Direct call - no boxing
+    p = Point(10, 20)
+    print(p.describe())  # "Point(10, 20)" - efficient
 
-# Interface call - requires boxing (allocates)
-d: IDescribable = p  # Boxing occurs here
-print(d.describe())  # "Point(10, 20)" - works but allocates
+    # Interface call - requires boxing (allocates)
+    d: IDescribable = p  # Boxing occurs here
+    print(d.describe())  # "Point(10, 20)" - works but allocates
 ```
 
 **Performance Note:** When a struct is assigned to an interface variable or passed as an interface parameter, the struct is boxed (copied to the heap). For performance-critical code, prefer calling struct methods directly rather than through interface references.
@@ -95,8 +98,9 @@ struct Point:
     x: int
     y: int = 0
 
-p1 = Point(1, 2)   # x = 1, y = 2
-p2 = Point(3)      # x = 3, y = 0 (default)
+def main() -> None:
+    p1 = Point(1, 2)   # x = 1, y = 2
+    p2 = Point(3)      # x = 3, y = 0 (default)
 ```
 
 All fields can have defaults:
@@ -107,13 +111,15 @@ struct Config:
     height: int = 600
     fullscreen: bool = False
 
-c1 = Config()                    # 800, 600, False
-c2 = Config(1024, 768, True)     # 1024, 768, True
-c3 = Config(1920)                # 1920, 600, False
+def main() -> None:
+    c1 = Config()                    # 800, 600, False
+    c2 = Config(1024, 768, True)     # 1024, 768, True
+    c3 = Config(1920)                # 1920, 600, False
 ```
 
 **Ordering rule:** Once a field has a default value, all subsequent fields must also have defaults (same as function parameters):
 
+<!-- spec-sweep: error SPY0435 -->
 ```python
 # OK: defaults at the end
 struct Good:
@@ -176,10 +182,75 @@ Output:
 0.0
 ```
 
+**Defaults on auto-properties.** A defaulted auto-property is a constructor parameter exactly like
+a defaulted field: the synthesized constructor takes it as an optional parameter, and when every
+constructor parameter has a default, the explicit parameterless constructor applies every default
+-- `H()` never zero-initializes a defaulted member:
+
+```python
+struct H:
+    property x: int = 3
+
+def main() -> None:
+    print(H().x)       # 3
+    print(H(x=5).x)    # 5
+```
+
+Output:
+
+```
+3
+5
+```
+
+A property whose default is not a constant (a list literal, a call) is not a constructor
+parameter: it keeps its initializer, which every constructor -- the parameterless one included --
+runs. With an explicit `__init__` no constructor is synthesized, and a property default is an
+ordinary initializer.
+
 **When to Use Structs:**
 - Small data structures (typically < 16 bytes)
 - Immutable value types (Vector2, Point, Color)
 - Types that benefit from value semantics
+
+## Visibility
+
+Struct members follow the class access rules ([decorators.md](decorators.md#access-modifiers)) with
+one difference: a struct is implicitly sealed, so nothing derives from it and `protected` has no
+meaning. The `_name` convention -- `protected` in a class -- means **`private`** in a struct, and
+`__name` is `private` as everywhere. An explicit `@protected` on a struct member (field, method,
+property, event, nested type) is refused (`SPY0415`, the same code as `@virtual` on a struct
+method); write `@private`, or use the `_name` convention. Access from outside the struct
+(`c._count`) is refused exactly as for a class member (`SPY0283`).
+
+```python
+struct Counter:
+    _count: int
+
+    def __init__(self, start: int):
+        self._count = start
+
+    def _step(self) -> int:
+        return 2
+
+    def advance(self) -> int:
+        self._count += self._step()
+        return self._count
+
+def main() -> None:
+    c = Counter(5)
+    print(c.advance())   # 7
+```
+
+<!-- spec-sweep: error SPY0415 -->
+```python
+struct Gauge:
+    level: int
+
+    @protected                # ERROR SPY0415: structs are sealed
+    def calibrate(self) -> int:
+        return 1
+```
 
 ## Value Semantics
 
@@ -194,12 +265,13 @@ struct Point:
     x: int
     y: int
 
-p1 = Point(10, 20)
-p2 = p1              # p2 is a COPY of p1
+def main() -> None:
+    p1 = Point(10, 20)
+    p2 = p1              # p2 is a COPY of p1
 
-p2.x = 99            # Only p2.x changes
-print(p1.x)          # Prints: 10 (p1 is unchanged)
-print(p2.x)          # Prints: 99
+    p2.x = 99            # Only p2.x changes
+    print(p1.x)          # Prints: 10 (p1 is unchanged)
+    print(p2.x)          # Prints: 99
 ```
 
 This is different from classes, where assignment creates a new reference to the same object:
@@ -213,12 +285,13 @@ class PointClass:
         self.x = x
         self.y = y
 
-p1 = PointClass(10, 20)
-p2 = p1              # p2 references the SAME object as p1
+def main() -> None:
+    p1 = PointClass(10, 20)
+    p2 = p1              # p2 references the SAME object as p1
 
-p2.x = 99            # Changes the shared object
-print(p1.x)          # Prints: 99 (p1.x also changed!)
-print(p2.x)          # Prints: 99
+    p2.x = 99            # Changes the shared object
+    print(p1.x)          # Prints: 99 (p1.x also changed!)
+    print(p2.x)          # Prints: 99
 ```
 
 ### Pass-by-Value
@@ -232,9 +305,10 @@ struct Counter:
 def increment(c: Counter) -> None:
     c.count += 1
 
-counter = Counter(10)
-increment(counter)
-print(counter.count)  # Prints: 10 (unchanged - function modified a copy)
+def main() -> None:
+    counter = Counter(10)
+    increment(counter)
+    print(counter.count)  # Prints: 10 (unchanged - function modified a copy)
 ```
 
 ### Inline Storage
@@ -267,8 +341,10 @@ def analyze(data: in LargeData) -> int:
     # 'data' cannot be modified (read-only)
     return data.process()
 
-large = LargeData([1, 2, 3, 4, 5])
-result = analyze(large)  # No copy! Efficient.
+def main() -> None:
+    large = LargeData([1, 2, 3, 4, 5])
+    result = analyze(large)  # No copy! Efficient.
+    print(result)            # 15
 ```
 
 **Use `in T` when:**
@@ -289,9 +365,10 @@ def increment(c: ref Counter) -> None:
     # Changes to 'c' affect the original struct
     c.count += 1
 
-counter = Counter(10)
-increment(counter)
-print(counter.count)  # Prints: 11 (modified!)
+def main() -> None:
+    counter = Counter(10)
+    increment(ref counter)
+    print(counter.count)  # Prints: 11 (modified!)
 ```
 
 **Use `ref T` when:**
@@ -317,9 +394,9 @@ def try_parse_point(text: str, result: out Point) -> bool:
     result = Point(int(parts[0]), int(parts[1]))
     return True
 
-point: Point
-if try_parse_point("10,20", point):
-    print(f"Parsed: ({point.x}, {point.y})")
+def main() -> None:
+    if try_parse_point("10,20", out parsed: Point):
+        print(f"Parsed: ({parsed.x}, {parsed.y})")
 ```
 
 **Use `out T` when:**
@@ -354,11 +431,13 @@ struct Vector2:
     def scale(self, factor: float) -> Vector2:
         return Vector2(self.x * factor, self.y * factor)
 
-# Immutable usage pattern
-v1 = Vector2(1.0, 2.0)
-v2 = Vector2(3.0, 4.0)
-v3 = v1 + v2           # Creates new Vector2
-v4 = v3.scale(2.0)     # Creates new Vector2
+def main() -> None:
+    # Immutable usage pattern
+    v1 = Vector2(1.0, 2.0)
+    v2 = Vector2(3.0, 4.0)
+    v3 = v1 + v2           # Creates new Vector2
+    v4 = v3.scale(2.0)     # Creates new Vector2
+    print(v4.x)            # 8.0
 ```
 
 **Benefits of immutable structs:**

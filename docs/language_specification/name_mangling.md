@@ -25,7 +25,7 @@ Leading underscores are preserved for access modifier semantics:
 
 | Pattern | Preservation | Purpose |
 |---------|--------------|---------|
-| `_name` | Keep single `_` | Private member |
+| `_name` | Keep single `_` | Protected member by convention (private in a struct, internal at module level — see [decorators.md](decorators.md#access-modifiers)) |
 | `__name` | Keep double `__` | Private (name-mangled in Python style if needed) |
 | `__name__` | Special handling | Dunder method |
 
@@ -132,8 +132,16 @@ Collisions are more likely with names that differ only in underscore placement:
 Identifiers already in `camelCase` form (start lowercase, contain uppercase letters, no underscores) are preserved as-is in both PascalCase and camelCase contexts:
 
 ```python
-httpClient = create_client()   # httpClient stays as httpClient in C#
-iPhone = get_device()          # iPhone stays as iPhone in C#
+def create_client() -> str:
+    return "client"
+
+def get_device() -> str:
+    return "device"
+
+def main() -> None:
+    httpClient = create_client()   # httpClient stays as httpClient in C#
+    iPhone = get_device()          # iPhone stays as iPhone in C#
+    print(httpClient, iPhone)      # client device
 ```
 
 **Rationale:** `camelCase` names are already valid C# identifiers — mangling them would destroy the author's intended casing (e.g., `httpClient` would incorrectly become `Httpclient`). This preserves interop-friendly names and avoids surprising transformations.
@@ -141,8 +149,16 @@ iPhone = get_device()          # iPhone stays as iPhone in C#
 Similarly, `PascalCase` identifiers (start uppercase, no underscores) are preserved as-is:
 
 ```python
-XMLParser = create_parser()    # XMLParser stays as XMLParser in C#
-HttpClient = get_client()      # HttpClient stays as HttpClient in C#
+def create_parser() -> str:
+    return "parser"
+
+def get_client() -> str:
+    return "client"
+
+def main() -> None:
+    XMLParser = create_parser()    # XMLParser stays as XMLParser in C#
+    HttpClient = get_client()      # HttpClient stays as HttpClient in C#
+    print(XMLParser, HttpClient)   # parser client
 ```
 
 ## Unrecognized Name Forms
@@ -201,6 +217,7 @@ See [dunder_methods.md](dunder_methods.md) for complete dunder specifications.
 
 Sharpy follows a simplified acronym rule: all-caps segments are treated as single words and converted to title case:
 
+<!-- spec-sweep: fragment -->
 ```python
 # All-caps become title case
 HTTP_STATUS → HttpStatus
@@ -272,11 +289,13 @@ namespace the declaration enters:
 through, and Sharpy resolves annotations statically — so after `class double:` there is no answer to
 what `x: double` means. Backtick-escape the name to declare a user type with that spelling:
 
+<!-- spec-sweep: error SPY0212 -->
 ```python
 class double:             # ERROR SPY0212: 'double' is a builtin type name
     v: int
+```
 
-
+```python
 class `double`:           # OK — a distinct symbol, fully usable including constructible
     v: int
 
@@ -330,11 +349,14 @@ Write snake_case in Sharpy source code. The compiler mangles method names to Pas
 ```python
 # Calling .NET — use snake_case, compiler emits PascalCase
 from system import Console
-Console.write_line("Hello")  # Emits Console.WriteLine("Hello")
 
 # Sharpy method calling C#
 def print_message(msg: str):   # Sharpy convention (snake_case)
     Console.write_line(msg)    # Emits Console.WriteLine(msg)
+
+def main() -> None:
+    Console.write_line("Hello")  # Emits Console.WriteLine("Hello")
+    print_message("Hi")
 ```
 
 When .NET code calls Sharpy-compiled code, it sees the mangled PascalCase names:
@@ -356,6 +378,7 @@ Some CLR method names with acronyms don't round-trip cleanly through name mangli
 
 The compiler preserves original CLR names from assembly discovery and uses them directly during code generation, so `is_os_platform()` correctly emits `IsOSPlatform()`. For cases where the compiler cannot resolve the original name, use backtick escaping to pass the exact CLR name through:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Backtick escaping bypasses name mangling entirely
 obj.`IsOSPlatform`(platform)

@@ -6,6 +6,7 @@ Decorators modify the behavior of functions, members, methods, and classes.
 
 When multiple decorators are applied, they are processed bottom-up (closest to the definition first), matching Python semantics:
 
+<!-- spec-sweep: fragment -->
 ```python
 @A
 @B
@@ -16,6 +17,7 @@ def foo():
 
 For Sharpy's built-in decorators (`@virtual`, `@override`, `@abstract`, `@final`, etc.), the order typically doesn't matter since they're metadata flags rather than transforming decorators. However, it's conventional to place them in a consistent order:
 
+<!-- spec-sweep: fragment -->
 ```python
 # Recommended ordering (when applicable)
 @virtual         # Inheritance behavior
@@ -39,6 +41,11 @@ Note that Sharpy does not support any version of class methods equating to Pytho
 | `@private` or `__name` | `private` | Declaring class only |
 | `@internal` | `internal` | Same assembly |
 
+**Host kind:** the table is for a class member. A struct is sealed, so in a **struct** the `_name`
+convention means `private` (C# has no protected struct member), and an explicit `@protected` on a
+struct member is refused (`SPY0415`, like `@virtual` on a struct method) -- see
+[structs.md](structs.md#visibility). At module level (no host type) `_name` means `internal`.
+
 **Assembly Boundaries for `@internal`:**
 
 In Sharpy, an assembly corresponds to a compiled project. Assembly boundaries are defined by:
@@ -49,6 +56,7 @@ In Sharpy, an assembly corresponds to a compiled project. Assembly boundaries ar
 
 `@internal` members are accessible from any file within the same project but not from other projects that reference it.
 
+<!-- spec-sweep: fragment -->
 ```python
 # In mylib/internal_utils.spy (part of mylib.spyproj)
 @internal
@@ -104,15 +112,8 @@ class Calculator:
 
     # Also valid, `@static` is implied when the method
     # does not have `self` as the first parameter.
-    def add(x: int, y: int) -> int:
-        return x + y
-
-    # WRONG: Cannot use `@static` on a method that has
-    # `self` as the first parameter, as that makes it an
-    # instance method.
-    @static
-    def reverse_add(self, x: int, y: int) -> int:
-        return x + y
+    def subtract(x: int, y: int) -> int:
+        return x - y
 
     @virtual
     def compute(self, x: int) -> int:
@@ -137,10 +138,24 @@ class CannotBeExtended:
     """This class cannot be subclassed."""
     pass
 
-# Usage
-result = Calculator.add(5, 3)        # Static method call
-calc = ScientificCalculator()
-calc.compute(4)                      # Returns 16 (overridden method)
+def main() -> None:
+    result = Calculator.add(5, 3)        # Static method call
+    calc = ScientificCalculator()
+    print(result)                        # 8
+    print(calc.compute(4))               # 16 (overridden method)
+```
+
+It is WRONG to use `@static` on a method that has `self` as the first parameter, as that makes
+it an instance method. (The checker does not refuse this yet — it surfaces as a C# error at the
+call site, tracked by #2026.)
+
+<!-- spec-sweep: fragment -->
+```python
+class Calculator:
+    # WRONG: `self` makes this an instance method
+    @static
+    def reverse_add(self, x: int, y: int) -> int:
+        return x + y
 ```
 
 **Note:** Sharpy uses `@final` rather than C#'s `sealed` keyword to align with Python's `typing.final` decorator and Java's `final` keyword. The compiled output uses C#'s `sealed` keyword.
@@ -184,10 +199,10 @@ class Circle(Shape):
     def perimeter(self) -> float:
         return 2 * 3.14159 * self.radius
 
-# Usage
-# shape = Shape("test")    # ERROR: Cannot instantiate abstract class
-circle = Circle(5.0)       # OK
-print(circle.describe())   # "Circle with area 78.53975"
+def main() -> None:
+    # shape = Shape("test")    # ERROR: Cannot instantiate abstract class
+    circle = Circle(5.0)       # OK
+    print(circle.describe())   # "Circle with area 78.53975"
 ```
 
 The explicit `@abstract` decorator on methods is still supported but optional when using ellipsis body in an `@abstract` class.
@@ -266,17 +281,17 @@ const LOUD: bool = True
 def foo() -> None:
     pass
 
-@[some_attr("a" + "b", flag="x" if LOUD else "y")]
+@[obsolete("a" + "b", DiagnosticId="x" if LOUD else "y")]
 def bar() -> None:
     pass
 
 # ❌ A const whose initializer is a call is not compile-time at any position
-const DYNAMIC: float = max(4.0, 1.0)   # emits 'static readonly', not 'const'
-# @[some_attr(DYNAMIC)]                # ERROR SPY0425: 'DYNAMIC' is not a compile-time constant:
+const DYNAMIC: str = str(max(4, 1))    # emits 'static readonly', not 'const'
+# @[obsolete(DYNAMIC)]                 # ERROR SPY0425: 'DYNAMIC' is not a compile-time constant:
 #                                      #                its initializer is a call
 
 # ❌ str repetition lowers to a call
-# @[some_attr("ab" * 2)]               # ERROR SPY0425
+# @[obsolete("ab" * 2)]                # ERROR SPY0425
 ```
 
 ### Known Decorators vs. Bracket Attributes
@@ -321,10 +336,11 @@ class Data:
 def legacy() -> None: ...
 
 # Combining Sharpy modifier with bracket attribute
-@virtual
-@[obsolete("Will be removed in v2")]
-def legacy_method(self) -> None:
-    pass
+class Service:
+    @virtual
+    @[obsolete("Will be removed in v2")]
+    def legacy_method(self) -> None:
+        pass
 
 # type() maps to typeof() in attribute arguments
 @[system.diagnostics.debugger_type_proxy(type(str))]
@@ -356,6 +372,7 @@ You can define your own .NET attributes by subclassing `System.Attribute`. Custo
 
 #### Defining a Custom Attribute
 
+<!-- spec-sweep: prelude -->
 ```python
 from System import Attribute
 
@@ -475,8 +492,10 @@ class Widget:
     def __init__(self, a: str, b: str):
         self.value = len(a) + len(b)
 
-w = Widget(5)        # SPY0466: resolves to the deprecated int overload
-v = Widget("a", "b") # no warning
+def main() -> None:
+    w = Widget(5)        # SPY0466: resolves to the deprecated int overload
+    v = Widget("a", "b") # no warning
+    print(w.value + v.value)   # 7
 ```
 
 `@must_use` on `__init__` is **not applicable**: must-be-used semantics belongs to the
@@ -487,10 +506,15 @@ construction through the type channel (verified by the
 ```python
 @must_use
 class Widget:
-    ...
+    n: int
 
-Widget(3)            # SPY0480: value of '@must_use' type 'Widget' is silently discarded
-w = Widget(4)        # no warning
+    def __init__(self, n: int):
+        self.n = n
+
+def main() -> None:
+    Widget(3)            # SPY0480: value of '@must_use' type 'Widget' is silently discarded
+    w = Widget(4)        # no warning
+    print(w.n)           # 4
 ```
 
 ## Flexible Argument Decorators
