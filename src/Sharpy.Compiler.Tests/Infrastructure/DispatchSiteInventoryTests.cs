@@ -80,6 +80,9 @@ public class DispatchSiteInventoryTests
         // a nested union's cases are walked by DetectUnionEnclosingTypeCollisions, every other kind
         // has no member namespace of its own.
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectNestedEnclosingTypeCollisions"] = "refusal-net:MemberEnclosingTypeCollisionMatrixTests",
+        // Audit R4: a union body's member names, spelled as the emitter spells them; the kinds a
+        // body can hold that emit no member (pass, docstring, alias) contribute no name.
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.UnionBodyMemberNames"] = "refusal-net:MemberEnclosingTypeCollisionMatrixTests",
 
         // ExhaustivenessHelper — pattern exhaustiveness/irrefutability
         ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.CollectCoveredCases"] = "guarded-by:ExhaustivenessHelperTotalityTests",

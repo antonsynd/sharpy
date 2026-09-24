@@ -68,6 +68,11 @@ public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
         new object[] { "union_case_named_like_union", "union Q:\n    case q(v: int)\n    case R()\n",
             "Union case 'q' would be emitted as 'Q', the same name as its enclosing type 'Q'",
             "Rename the case (a union case name cannot be backtick-escaped).", 2 },
+        // The union's OWN members (audit R4): the body is emitted into the union's base class.
+        // A method is the only member kind a union body admits (property/const are SPY0104).
+        new object[] { "union_method", "union Shape:\n    case Circle(r: float)\n    case Sq(s: float)\n\n    def shape(self) -> int:\n        return 1\n",
+            "Member 'shape' would be emitted as 'Shape', the same name as its enclosing type 'Shape'",
+            "Rename the member, or backtick-escape the declaration AND every use (`shape`, v.`shape`) to keep the Python spelling.", 5 },
         new object[] { "nested_host", "class Outer:\n    class Inner:\n        inner: int = 1\n",
             "Member 'inner' would be emitted as 'Inner', the same name as its enclosing type 'Inner'",
             "Rename the member, or backtick-escape the declaration AND every use (`inner`, v.`inner`) to keep the Python spelling.", 3 },
@@ -87,6 +92,8 @@ public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
         new object[] { "struct_field", "struct Q:\n    `q`: int = 1\n", "print(Q().`q`)" },
         new object[] { "dataclass_field", "@dataclass\nclass Q:\n    `q`: int = 1\n", "print(Q().`q`)" },
         new object[] { "class_method", "class Q:\n    def `q`(self) -> int:\n        return 1\n", "print(Q().`q`())" },
+        new object[] { "union_method", "union Q:\n    case A()\n    case B()\n\n    def `q`(self) -> int:\n        return 1\n",
+            "v: Q = Q.A()\n    print(v.`q`())" },
     };
 
     [Theory]
@@ -120,8 +127,8 @@ public class MemberEnclosingTypeCollisionMatrixTests : IntegrationTestBase
     public void Matrix_IsTotal()
     {
         TypeHostCells().Should().HaveCount(15, "3 hosts × 5 member kinds");
-        UnionAndNestedCells().Should().HaveCount(3);
-        EscapedTwins().Should().HaveCount(4);
+        UnionAndNestedCells().Should().HaveCount(4);
+        EscapedTwins().Should().HaveCount(5);
     }
 
     private void AssertRefused(string source, string message, string steer, int line)

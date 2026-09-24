@@ -989,6 +989,19 @@ internal class CodeGenInfoComputer
     private void DetectUnionEnclosingTypeCollisions(UnionDef unionDef)
     {
         var unionName = NameCasing.ResolveType(unionDef.Name, unionDef.IsNameBacktickEscaped);
+
+        // The union's OWN members (audit R4): the body is emitted into the abstract base class by
+        // GenerateClassMembers, so `union Shape: … def shape(self)` is CS0542 like any class member.
+        var reportedOwn = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (originalName, csharpName) in UnionBodyMemberNames(unionDef.Body))
+        {
+            if (csharpName == unionName && reportedOwn.Add(originalName))
+            {
+                ReportMemberEnclosingTypeCollision(
+                    originalName, csharpName, unionDef.Name,
+                    FindMemberPosition(unionDef.Body, originalName), UnionMemberKind.None);
+            }
+        }
         foreach (var caseDef in unionDef.Cases)
         {
             var caseName = NameMangler.Transform(caseDef.Name, NameContext.Type);
@@ -1010,6 +1023,49 @@ internal class CodeGenInfoComputer
                         DeclarationPosition.From(field.LineStart, field.ColumnStart, field.LineStart, field.ColumnStart),
                         UnionMemberKind.CaseField);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The emitted names of a union body's members, spelled as the emitter spells them for a type
+    /// whose members carry no <c>CodeGenInfo</c> (a module-level union's body is emitted through
+    /// <c>GenerateClassMembers</c> from the AST): a method through <c>DunderNameMapping</c> else
+    /// <c>ResolveMethod</c>, a field/const through <c>ResolveField</c>, a property/event through
+    /// <c>ResolveMethod</c>, a nested type through <c>ResolveType</c>/<c>ResolveInterface</c>.
+    /// </summary>
+    private static IEnumerable<(string OriginalName, string CSharpName)> UnionBodyMemberNames(
+        IEnumerable<Statement> body)
+    {
+        foreach (var stmt in body)
+        {
+            switch (stmt.UnwrapDecorated())
+            {
+                case FunctionDef f:
+                    yield return (f.Name, DunderNameMapping.ResolveCSharpName(f.Name)
+                        ?? NameCasing.ResolveMethod(f.Name, f.IsNameBacktickEscaped));
+                    break;
+                case VariableDeclaration v:
+                    yield return (v.Name, NameCasing.ResolveField(v.Name, v.IsNameBacktickEscaped));
+                    break;
+                case PropertyDef p:
+                    yield return (p.Name, NameCasing.ResolveMethod(p.Name, p.IsNameBacktickEscaped));
+                    break;
+                case EventDef e:
+                    yield return (e.Name, NameCasing.ResolveMethod(e.Name, e.IsNameBacktickEscaped));
+                    break;
+                case ClassDef c:
+                    yield return (c.Name, NameCasing.ResolveType(c.Name, c.IsNameBacktickEscaped));
+                    break;
+                case StructDef st:
+                    yield return (st.Name, NameCasing.ResolveType(st.Name, st.IsNameBacktickEscaped));
+                    break;
+                case EnumDef en:
+                    yield return (en.Name, NameCasing.ResolveType(en.Name, en.IsNameBacktickEscaped));
+                    break;
+                case InterfaceDef i:
+                    yield return (i.Name, NameCasing.ResolveInterface(i.Name, i.IsNameBacktickEscaped));
+                    break;
             }
         }
     }
