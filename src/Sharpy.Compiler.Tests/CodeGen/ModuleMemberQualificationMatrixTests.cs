@@ -888,6 +888,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         // (`src/`) a root-level src.spy has no wrapper; measured from the project dir it would get
         // wrapper `Src` and collide with its own module class `Src`.
         new object[] { "file_named_like_source_root", new[] { ("src.spy", LibF), ("main.spy", "from src import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        // a/b/a is legal C#: a nested type may share a name with a NON-enclosing ancestor (audit R3).
+        new object[] { "non_adjacent_equal_dirs", new[] { ("a/b/a/x.spy", LibF), ("main.spy", "from a.b.a.x import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        new object[] { "init_in_equal_dirs", new[] { ("a/a/__init__.spy", LibF), ("main.spy", "from a.a import f\n\ndef main() -> None:\n    print(f())\n") }, "__init__.spy", "A" },
         new object[] { "mangling_equal", new[] { ("my_lib/myLib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") }, "myLib.spy", "MyLib" },
     };
 
@@ -922,7 +925,34 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         Path.GetFileName(refusal.FilePath).Should().Be(refusedFile);
     }
 
+    /// <summary>
+    /// Adjacent directories that mangle alike (audit R3): `a/a/x.spy` nests wrapper `A` in wrapper `A`
+    /// (CS0542 behind SPY0908 before). Same helper, same code, a directory-rename steer naming both.
+    /// </summary>
+    [Theory]
+    [InlineData("a/a/x.spy", "a", "a", "A")]
+    [InlineData("my_pkg/myPkg/x.spy", "my_pkg", "myPkg", "MyPkg")]
+    public void Subdirectory_AdjacentEqualDirectories_AreSpy0526(string path, string outer, string inner, string identifier)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile(path, LibF);
+        helper.AddSourceFile("main.spy", "def main() -> None:\n    print(7)\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeFalse(path);
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+        var refusal = errors.Should().ContainSingle(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+            string.Join("\n", exec.CompilationErrors)).Subject;
+        refusal.Message.Should().StartWith(
+            $"Package directory '{outer}' and its subdirectory '{inner}' both emit the C# identifier '{identifier}'");
+        refusal.Message.Should().EndWith("Rename one of the directories.");
+    }
+
     [Fact]
     public void Subdirectory_Axis_IsTotal()
-        => SubdirectoryLayouts().Should().HaveCount(8);
+        => SubdirectoryLayouts().Should().HaveCount(10);
 }

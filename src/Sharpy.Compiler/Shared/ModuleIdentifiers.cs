@@ -20,6 +20,10 @@ internal static class ModuleIdentifiers
     /// Empty for a root-level file or when either path is unknown (single-file compilation).
     /// </summary>
     public static List<string> WrapperSegments(string? sourceRoot, string? filePath)
+        => WrapperDirectories(sourceRoot, filePath).Select(NameMangler.ToNamespacePart).ToList();
+
+    /// <summary>The source spellings of the directories <see cref="WrapperSegments"/> mangles, in order.</summary>
+    private static List<string> WrapperDirectories(string? sourceRoot, string? filePath)
     {
         if (string.IsNullOrEmpty(sourceRoot) || string.IsNullOrEmpty(filePath))
             return new List<string>();
@@ -29,15 +33,41 @@ internal static class ModuleIdentifiers
         if (string.IsNullOrEmpty(relativeDir) || relativeDir == ".")
             return new List<string>();
 
-        var segments = relativeDir
+        var directories = relativeDir
             .Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(NameMangler.ToNamespacePart)
             .ToList();
 
-        if (Path.GetFileNameWithoutExtension(filePath) == DunderNames.Init && segments.Count > 0)
-            segments.RemoveAt(segments.Count - 1);
+        if (Path.GetFileNameWithoutExtension(filePath) == DunderNames.Init && directories.Count > 0)
+            directories.RemoveAt(directories.Count - 1);
 
-        return segments;
+        return directories;
+    }
+
+    /// <summary>
+    /// A class nested in a class of the same emitted name along <paramref name="filePath"/>'s
+    /// wrapper chain (#1932): two ADJACENT directories that mangle alike (<c>a/a/x.spy</c> → wrapper
+    /// <c>A</c> in wrapper <c>A</c>), or the innermost directory and the module class
+    /// (<c>lib/lib.spy</c>). Either is CS0542. Non-adjacent repeats (<c>a/b/a/x.spy</c>) are legal C#
+    /// — a nested type may share a name with a non-enclosing ancestor. Null when there is none.
+    /// </summary>
+    public static NestedNameCollision? FindNestedNameCollision(
+        string? sourceRoot, string filePath, bool willGenerateMainMethod)
+    {
+        var directories = WrapperDirectories(sourceRoot, filePath);
+        if (directories.Count == 0)
+            return null;
+
+        var wrappers = directories.Select(NameMangler.ToNamespacePart).ToList();
+        for (var i = 0; i + 1 < wrappers.Count; i++)
+        {
+            if (wrappers[i] == wrappers[i + 1])
+                return new NestedNameCollision(directories[i], directories[i + 1], wrappers[i], InnerIsModule: false);
+        }
+
+        var moduleClass = ModuleClassName(filePath, willGenerateMainMethod);
+        return wrappers[^1] == moduleClass
+            ? new NestedNameCollision(directories[^1], Path.GetFileName(filePath), moduleClass, InnerIsModule: true)
+            : null;
     }
 
     /// <summary>
@@ -60,3 +90,10 @@ internal static class ModuleIdentifiers
         return NameMangler.ToNamespacePart(fileName);
     }
 }
+
+/// <summary>
+/// Two emitted classes of one name, one directly inside the other: <paramref name="Outer"/> is the
+/// outer directory's source spelling, <paramref name="Inner"/> the inner directory's or the module
+/// file's name (<paramref name="InnerIsModule"/>).
+/// </summary>
+internal sealed record NestedNameCollision(string Outer, string Inner, string Identifier, bool InnerIsModule);

@@ -157,9 +157,11 @@ public static partial class DiagnosticExplanations
             "becomes the module class nested inside it. When the innermost directory and the file mangle to the " +
             "same identifier — 'lib/lib.spy', 'a/b/b.spy', 'my_lib/myLib.spy' — the module class would be nested " +
             "in a class of the same name, which C# forbids (CS0542). Directories are measured from the project's " +
-            "common source directory. Whether the module is imported does not matter: every file is emitted.",
+            "common source directory. Whether the module is imported does not matter: every file is emitted. Two " +
+            "ADJACENT directories that mangle alike ('a/a/x.spy') nest wrapper 'A' in wrapper 'A' and are refused the " +
+            "same way; a repeat that is not adjacent ('a/b/a/x.spy') is legal C#.",
             "# project layout\nsrc/main.spy\nsrc/lib/lib.spy   # wrapper 'Lib' would hold module class 'Lib'",
-            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy').");
+            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy'); for two directories, rename one of them.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +

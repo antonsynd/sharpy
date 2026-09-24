@@ -29,7 +29,9 @@ nested in it — so `lib/lib.spy` would nest module class `Lib` in wrapper `Lib`
 (CS0542). The project refuses such a layout by name (`SPY0526`: "Package directory 'lib' and
 module 'lib.spy' both emit the C# identifier 'Lib'... Rename the file or the directory"). The rule
 compares the *emitted* identifiers, so it also catches spellings that mangle alike
-(`my_lib/myLib.spy`) and nested packages (`a/b/b.spy`); directories are measured from the project's
+(`my_lib/myLib.spy`) and nested packages (`a/b/b.spy`), and it applies between two ADJACENT
+directories as well (`a/a/x.spy` nests wrapper `A` in wrapper `A`: "Rename one of the
+directories"; a non-adjacent repeat such as `a/b/a/x.spy` is legal); directories are measured from the project's
 common source directory, and a file is checked whether or not anything imports it. A package
 whose directory differs from its modules (`pkg/lib.spy`), or that has only an `__init__.spy`,
 builds normally. (A later change emitting packages as namespaces is expected to relax this.)
