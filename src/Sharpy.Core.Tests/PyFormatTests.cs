@@ -745,6 +745,7 @@ public class PyFormatTests
         }
         yield return new object[] { typeof(string), "str" };
         yield return new object[] { typeof(char), "str" };
+        yield return new object[] { typeof(System.Numerics.BigInteger), "int" };
         yield return new object[] { typeof(Complex), "complex" };
         yield return new object[] { typeof(Bytes), "bytes" };
         yield return new object[] { typeof((int, string)), "tuple" };
@@ -773,5 +774,283 @@ public class PyFormatTests
         ex.Message.Should().Be("unsupported format string passed to " + PyFormat.PyTypeName(typeof((int, int))) + ".__format__");
         Assert.Throws<ValueError>(() => PyFormat.Apply('a', "d")).Message
             .Should().Be("Unknown format code 'd' for object of type '" + PyFormat.PyTypeName(typeof(char)) + "'");
+    }
+
+    // ---- #1988 regression (plan-bf0244 verify): every CLR integer is a python int ----------------
+
+    /// <summary>
+    /// Every CLR integer python would call <c>int</c> formats with <c>int.__format__</c> at any
+    /// magnitude (#1988 regression R1: a <see cref="System.Numerics.BigInteger"/> fell to the
+    /// IFormattable arm, so <c>format(big, '>6')</c> was <c>'>6'</c>; and the renderer narrowed to
+    /// <c>long</c>, so a value beyond it threw a raw OverflowException). The value column is the
+    /// decimal digits of a BigInteger; each row is CPython 3.12's rendering, quoted.
+    /// </summary>
+    public static IEnumerable<object[]> BigIntegerCells()
+    {
+        // python3 -c "print(repr(format(1, '>6')))" => '     1'
+        yield return new object[] { "1", ">6", "     1" };
+        // python3 -c "print(repr(format(1, 'd')))" => '1'
+        yield return new object[] { "1", "d", "1" };
+        // python3 -c "print(repr(format(1, ',')))" => '1'
+        yield return new object[] { "1", ",", "1" };
+        // python3 -c "print(repr(format(1, '_x')))" => '1'
+        yield return new object[] { "1", "_x", "1" };
+        // python3 -c "print(repr(format(1, '#b')))" => '0b1'
+        yield return new object[] { "1", "#b", "0b1" };
+        // python3 -c "print(repr(format(1, '+040')))" => '+000000000000000000000000000000000000001'
+        yield return new object[] { "1", "+040", "+000000000000000000000000000000000000001" };
+        // python3 -c "print(repr(format(1, '=^20')))" => '=========1=========='
+        yield return new object[] { "1", "=^20", "=========1==========" };
+        // python3 -c "print(repr(format(1, 'e')))" => '1.000000e+00'
+        yield return new object[] { "1", "e", "1.000000e+00" };
+        // python3 -c "print(repr(format(1, '.2%')))" => '100.00%'
+        yield return new object[] { "1", ".2%", "100.00%" };
+        // python3 -c "print(repr(format(10**30, '>6')))" => '1000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", ">6", "1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, 'd')))" => '1000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", "d", "1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, ',')))" => '1,000,000,000,000,000,000,000,000,000,000'
+        yield return new object[] { "1000000000000000000000000000000", ",", "1,000,000,000,000,000,000,000,000,000,000" };
+        // python3 -c "print(repr(format(10**30, '_x')))" => 'c_9f2c_9cd0_4674_edea_4000_0000'
+        yield return new object[] { "1000000000000000000000000000000", "_x", "c_9f2c_9cd0_4674_edea_4000_0000" };
+        // python3 -c "print(repr(format(10**30, '#b')))" => '0b1100100111110010110010011100110100000100011001110100111011011110101001000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", "#b", "0b1100100111110010110010011100110100000100011001110100111011011110101001000000000000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, '+040')))" => '+000000001000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", "+040", "+000000001000000000000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, '=^20')))" => '1000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", "=^20", "1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, 'e')))" => '1.000000e+30'
+        yield return new object[] { "1000000000000000000000000000000", "e", "1.000000e+30" };
+        // python3 -c "print(repr(format(10**30, '.2%')))" => '100000000000000005366162204393472.00%'
+        yield return new object[] { "1000000000000000000000000000000", ".2%", "100000000000000005366162204393472.00%" };
+        // python3 -c "print(repr(format(-(10**30), '>6')))" => '-1000000000000000000000000000000'
+        yield return new object[] { "-1000000000000000000000000000000", ">6", "-1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), 'd')))" => '-1000000000000000000000000000000'
+        yield return new object[] { "-1000000000000000000000000000000", "d", "-1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), ',')))" => '-1,000,000,000,000,000,000,000,000,000,000'
+        yield return new object[] { "-1000000000000000000000000000000", ",", "-1,000,000,000,000,000,000,000,000,000,000" };
+        // python3 -c "print(repr(format(-(10**30), '_x')))" => '-c_9f2c_9cd0_4674_edea_4000_0000'
+        yield return new object[] { "-1000000000000000000000000000000", "_x", "-c_9f2c_9cd0_4674_edea_4000_0000" };
+        // python3 -c "print(repr(format(-(10**30), '#b')))" => '-0b1100100111110010110010011100110100000100011001110100111011011110101001000000000000000000000000000000'
+        yield return new object[] { "-1000000000000000000000000000000", "#b", "-0b1100100111110010110010011100110100000100011001110100111011011110101001000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), '+040')))" => '-000000001000000000000000000000000000000'
+        yield return new object[] { "-1000000000000000000000000000000", "+040", "-000000001000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), '=^20')))" => '-1000000000000000000000000000000'
+        yield return new object[] { "-1000000000000000000000000000000", "=^20", "-1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), 'e')))" => '-1.000000e+30'
+        yield return new object[] { "-1000000000000000000000000000000", "e", "-1.000000e+30" };
+        // python3 -c "print(repr(format(-(10**30), '.2%')))" => '-100000000000000005366162204393472.00%'
+        yield return new object[] { "-1000000000000000000000000000000", ".2%", "-100000000000000005366162204393472.00%" };
+        // python3 -c "print(repr(format(2**64, '>6')))" => '18446744073709551616'
+        yield return new object[] { "18446744073709551616", ">6", "18446744073709551616" };
+        // python3 -c "print(repr(format(2**64, 'd')))" => '18446744073709551616'
+        yield return new object[] { "18446744073709551616", "d", "18446744073709551616" };
+        // python3 -c "print(repr(format(2**64, ',')))" => '18,446,744,073,709,551,616'
+        yield return new object[] { "18446744073709551616", ",", "18,446,744,073,709,551,616" };
+        // python3 -c "print(repr(format(2**64, '_x')))" => '1_0000_0000_0000_0000'
+        yield return new object[] { "18446744073709551616", "_x", "1_0000_0000_0000_0000" };
+        // python3 -c "print(repr(format(2**64, '#b')))" => '0b10000000000000000000000000000000000000000000000000000000000000000'
+        yield return new object[] { "18446744073709551616", "#b", "0b10000000000000000000000000000000000000000000000000000000000000000" };
+        // python3 -c "print(repr(format(2**64, '+040')))" => '+000000000000000000018446744073709551616'
+        yield return new object[] { "18446744073709551616", "+040", "+000000000000000000018446744073709551616" };
+        // python3 -c "print(repr(format(2**64, '=^20')))" => '18446744073709551616'
+        yield return new object[] { "18446744073709551616", "=^20", "18446744073709551616" };
+        // python3 -c "print(repr(format(2**64, 'e')))" => '1.844674e+19'
+        yield return new object[] { "18446744073709551616", "e", "1.844674e+19" };
+        // python3 -c "print(repr(format(2**64, '.2%')))" => '1844674407370955161600.00%'
+        yield return new object[] { "18446744073709551616", ".2%", "1844674407370955161600.00%" };
+        // python3 -c "print(repr(format(-(2**63), '>6')))" => '-9223372036854775808'
+        yield return new object[] { "-9223372036854775808", ">6", "-9223372036854775808" };
+        // python3 -c "print(repr(format(-(2**63), 'd')))" => '-9223372036854775808'
+        yield return new object[] { "-9223372036854775808", "d", "-9223372036854775808" };
+        // python3 -c "print(repr(format(-(2**63), ',')))" => '-9,223,372,036,854,775,808'
+        yield return new object[] { "-9223372036854775808", ",", "-9,223,372,036,854,775,808" };
+        // python3 -c "print(repr(format(-(2**63), '_x')))" => '-8000_0000_0000_0000'
+        yield return new object[] { "-9223372036854775808", "_x", "-8000_0000_0000_0000" };
+        // python3 -c "print(repr(format(-(2**63), '#b')))" => '-0b1000000000000000000000000000000000000000000000000000000000000000'
+        yield return new object[] { "-9223372036854775808", "#b", "-0b1000000000000000000000000000000000000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(2**63), '+040')))" => '-000000000000000000009223372036854775808'
+        yield return new object[] { "-9223372036854775808", "+040", "-000000000000000000009223372036854775808" };
+        // python3 -c "print(repr(format(-(2**63), '=^20')))" => '-9223372036854775808'
+        yield return new object[] { "-9223372036854775808", "=^20", "-9223372036854775808" };
+        // python3 -c "print(repr(format(-(2**63), 'e')))" => '-9.223372e+18'
+        yield return new object[] { "-9223372036854775808", "e", "-9.223372e+18" };
+        // python3 -c "print(repr(format(-(2**63), '.2%')))" => '-922337203685477580800.00%'
+        yield return new object[] { "-9223372036854775808", ".2%", "-922337203685477580800.00%" };
+        // python3 -c "print(repr(format(65, 'c')))" => 'A'
+        yield return new object[] { "65", "c", "A" };
+        // python3 -c "print(repr(format(2**64, 'X')))" => '10000000000000000'
+        yield return new object[] { "18446744073709551616", "X", "10000000000000000" };
+        // python3 -c "print(repr(format(-(2**64), '#o')))" => '-0o2000000000000000000000'
+        yield return new object[] { "-18446744073709551616", "#o", "-0o2000000000000000000000" };
+        // python3 -c "print(repr(format(10**30, 'f')))" => '1000000000000000019884624838656.000000'
+        yield return new object[] { "1000000000000000000000000000000", "f", "1000000000000000019884624838656.000000" };
+        // python3 -c "print(repr(format(10**30, 'g')))" => '1e+30'
+        yield return new object[] { "1000000000000000000000000000000", "g", "1e+30" };
+        // python3 -c "print(repr(format(10**30, 'n')))" => '1000000000000000000000000000000'
+        yield return new object[] { "1000000000000000000000000000000", "n", "1000000000000000000000000000000" };
+        // python3 -c "print(repr(format(-(10**30), '*=+45,')))" => '-***1,000,000,000,000,000,000,000,000,000,000'
+        yield return new object[] { "-1000000000000000000000000000000", "*=+45,", "-***1,000,000,000,000,000,000,000,000,000,000" };
+    }
+
+    [Theory]
+    [MemberData(nameof(BigIntegerCells))]
+    public void Apply_BigInteger_IsAPythonInt(string digits, string spec, string expected)
+    {
+        var value = System.Numerics.BigInteger.Parse(digits, System.Globalization.CultureInfo.InvariantCulture);
+        PyFormat.Apply(value, spec).Should().Be(expected);
+    }
+
+    /// <summary>
+    /// <c>ulong.MaxValue</c> as a <c>ulong</c> — a pre-existing cell of the same class: at d17ddb956
+    /// and d1190a568 <c>format(ulong.MaxValue, 'd')</c> threw a raw OverflowException from
+    /// <c>Convert.ToInt64</c>. <c>long.MinValue</c> as a <c>long</c> is the long path's edge.
+    /// </summary>
+    public static IEnumerable<object[]> ULongMaxCells()
+    {
+        // python3 -c "print(repr(format(2**64-1, '>6')))" => '18446744073709551615'
+        yield return new object[] { ">6", "18446744073709551615" };
+        // python3 -c "print(repr(format(2**64-1, 'd')))" => '18446744073709551615'
+        yield return new object[] { "d", "18446744073709551615" };
+        // python3 -c "print(repr(format(2**64-1, ',')))" => '18,446,744,073,709,551,615'
+        yield return new object[] { ",", "18,446,744,073,709,551,615" };
+        // python3 -c "print(repr(format(2**64-1, '_x')))" => 'ffff_ffff_ffff_ffff'
+        yield return new object[] { "_x", "ffff_ffff_ffff_ffff" };
+        // python3 -c "print(repr(format(2**64-1, '#b')))" => '0b1111111111111111111111111111111111111111111111111111111111111111'
+        yield return new object[] { "#b", "0b1111111111111111111111111111111111111111111111111111111111111111" };
+        // python3 -c "print(repr(format(2**64-1, '+040')))" => '+000000000000000000018446744073709551615'
+        yield return new object[] { "+040", "+000000000000000000018446744073709551615" };
+        // python3 -c "print(repr(format(2**64-1, '=^20')))" => '18446744073709551615'
+        yield return new object[] { "=^20", "18446744073709551615" };
+        // python3 -c "print(repr(format(2**64-1, 'e')))" => '1.844674e+19'
+        yield return new object[] { "e", "1.844674e+19" };
+        // python3 -c "print(repr(format(2**64-1, '.2%')))" => '1844674407370955161600.00%'
+        yield return new object[] { ".2%", "1844674407370955161600.00%" };
+    }
+
+    [Theory]
+    [MemberData(nameof(ULongMaxCells))]
+    public void Apply_ULongMax_IsAPythonInt(string spec, string expected)
+    {
+        PyFormat.Apply(ulong.MaxValue, spec).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Apply_LongMin_IsAPythonInt()
+    {
+        // python3 -c "print(repr(format(-2**63, '_x')))" => '-8000_0000_0000_0000'
+        PyFormat.Apply(long.MinValue, "_x").Should().Be("-8000_0000_0000_0000");
+        // python3 -c "print(repr(format(-2**63, ',')))" => '-9,223,372,036,854,775,808'
+        PyFormat.Apply(long.MinValue, ",").Should().Be("-9,223,372,036,854,775,808");
+    }
+
+    [Fact]
+    public void Apply_IntBeyondItsConversion_RaisesCPythonsOverflowError()
+    {
+        var huge = System.Numerics.BigInteger.Pow(10, 400);
+        // python3 -c "format(10**400, 'e')" => OverflowError: int too large to convert to float
+        Assert.Throws<OverflowError>(() => PyFormat.Apply(huge, "e")).Message
+            .Should().Be("int too large to convert to float");
+        // python3 -c "format(10**400, '%')" => OverflowError: int too large to convert to float
+        Assert.Throws<OverflowError>(() => PyFormat.Apply(huge, "%")).Message
+            .Should().Be("int too large to convert to float");
+        // python3 -c "format(2**70, 'c')" => OverflowError: Python int too large to convert to C long
+        Assert.Throws<OverflowError>(() => PyFormat.Apply(System.Numerics.BigInteger.Pow(2, 70), "c")).Message
+            .Should().Be("Python int too large to convert to C long");
+        // python3 -c "format(-1, 'c')" => OverflowError: %c arg not in range(0x110000)
+        Assert.Throws<OverflowError>(() => PyFormat.Apply(new System.Numerics.BigInteger(-1), "c")).Message
+            .Should().Be("%c arg not in range(0x110000)");
+    }
+
+    [Fact]
+    public void Apply_BigInteger_RefusalNamesInt()
+    {
+        // python3 -c "format(10**30, 's')" => ValueError: Unknown format code 's' for object of type 'int'
+        Assert.Throws<ValueError>(() => PyFormat.Apply(System.Numerics.BigInteger.Pow(10, 30), "s")).Message
+            .Should().Be("Unknown format code 's' for object of type 'int'");
+    }
+
+#if NET10_0_OR_GREATER
+    [Fact]
+    public void Apply_Int128_UInt128_NInt_ArePythonInts_Half_IsAPythonFloat()
+    {
+        // python3 -c "print(repr(format(2**127-1, ',')))" => '170,141,183,460,469,231,731,687,303,715,884,105,727'
+        PyFormat.Apply(System.Int128.MaxValue, ",").Should().Be("170,141,183,460,469,231,731,687,303,715,884,105,727");
+        // python3 -c "print(repr(format(-(2**127), 'x')))" => '-80000000000000000000000000000000'
+        PyFormat.Apply(System.Int128.MinValue, "x").Should().Be("-80000000000000000000000000000000");
+        // python3 -c "print(repr(format(2**128-1, '#X')))" => '0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+        PyFormat.Apply(System.UInt128.MaxValue, "#X").Should().Be("0XFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        // python3 -c "print(repr(format(-5, '+d')))" => '-5'
+        PyFormat.Apply((nint)(-5), "+d").Should().Be("-5");
+        // python3 -c "print(repr(format(2**64-1, ',')))" => '18,446,744,073,709,551,615'
+        PyFormat.Apply(nuint.MaxValue, ",").Should().Be("18,446,744,073,709,551,615");
+        // python3 -c "print(repr(format(1.5, '.2f')))" => '1.50'
+        PyFormat.Apply((System.Half)1.5, ".2f").Should().Be("1.50");
+        // python3 -c "print(repr(format(1.5, '>8')))" => '     1.5'
+        PyFormat.Apply((System.Half)1.5, ">8").Should().Be("     1.5");
+        // python3 -c "print(repr(format(1.5, 'e')))" => '1.500000e+00'
+        PyFormat.Apply((System.Half)1.5, "e").Should().Be("1.500000e+00");
+        // python3 -c "print(repr(format(float('inf'), 'f')))" => 'inf'
+        PyFormat.Apply(System.Half.PositiveInfinity, "f").Should().Be("inf");
+        PyFormat.KindOf(typeof(System.Int128)).Should().Be(FormatOperandKind.Integral);
+        PyFormat.KindOf(typeof(System.UInt128)).Should().Be(FormatOperandKind.Integral);
+        PyFormat.KindOf(typeof(nint)).Should().Be(FormatOperandKind.Integral);
+        PyFormat.KindOf(typeof(nuint)).Should().Be(FormatOperandKind.Integral);
+        PyFormat.KindOf(typeof(System.Half)).Should().Be(FormatOperandKind.Float);
+    }
+#endif
+
+    // ---- #1988 regression R2: a spec an IFormattable type rejects is a python ValueError ---------
+
+    [Fact]
+    public void Apply_FormattableRejectingItsSpec_RaisesValueError()
+    {
+        // Sharpy-only message: python has no Guid/TimeSpan; the wording is CPython's for a rejected
+        // spec (python3 -c "format(1, 'abc')" => ValueError: Invalid format specifier 'abc' for object of type 'int').
+        // At d1190a568 both threw a raw System.FormatException, which `except ValueError` cannot catch.
+        var guid = Assert.Throws<ValueError>(() => PyFormat.Apply(System.Guid.Empty, ">40"));
+        guid.Message.Should().Be("Invalid format specifier '>40' for object of type 'Guid'");
+        guid.InnerException.Should().BeOfType<System.FormatException>();
+        Assert.Throws<ValueError>(() => PyFormat.Apply(System.TimeSpan.FromSeconds(5.0), ">10")).Message
+            .Should().Be("Invalid format specifier '>10' for object of type 'TimeSpan'");
+    }
+
+    [Fact]
+    public void Apply_FormattableAcceptingItsSpec_StillOwnsIt()
+    {
+        // The positive control of the Formattable arm (R-BY): the type owns its spec, so DateTime's
+        // own "yyyy" renders the year — python's datetime(2020,1,1).__format__('%Y') is '2020'.
+        PyFormat.Apply(new System.DateTime(2020, 1, 1), "yyyy").Should().Be("2020");
+    }
+
+    /// <summary>An IFormattable whose ToString throws something other than FormatException.</summary>
+    private sealed class Throws : System.IFormattable
+    {
+        public string ToString(string? format, System.IFormatProvider? formatProvider) =>
+            throw new System.InvalidOperationException("mine");
+    }
+
+    [Fact]
+    public void Apply_FormattableThrowingAnythingElse_IsNotTranslated()
+    {
+        // Only FormatException is a rejected spec; the type's own errors propagate unchanged.
+        Assert.Throws<System.InvalidOperationException>(() => PyFormat.Apply(new Throws(), ">3")).Message
+            .Should().Be("mine");
+    }
+
+    [Fact]
+    public void KindOf_Value_IsKindOfItsType()
+    {
+        PyFormat.KindOf((object?)null).Should().Be(FormatOperandKind.NoneValue);
+        foreach (object v in new object[] { 1, 1L, (byte)1, ulong.MaxValue, System.Numerics.BigInteger.One, 1.5, 'a', "s", true,
+            System.Guid.Empty, System.DayOfWeek.Monday, new List<int>() })
+        {
+            PyFormat.KindOf(v).Should().Be(PyFormat.KindOf(v.GetType()), v.GetType().Name);
+        }
+        PyFormat.KindOf(typeof(System.Numerics.BigInteger)).Should().Be(FormatOperandKind.Integral);
+        PyFormat.KindOf(typeof(System.Guid)).Should().Be(FormatOperandKind.Formattable);
+        PyFormat.KindOf(typeof(System.DayOfWeek)).Should().Be(FormatOperandKind.Str);
+        PyFormat.KindOf(typeof(System.Enum)).Should().Be(FormatOperandKind.Str);
+        PyFormat.KindOf(typeof(List<int>)).Should().Be(FormatOperandKind.NoFormat);
     }
 }

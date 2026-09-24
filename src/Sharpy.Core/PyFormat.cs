@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using BigInteger = System.Numerics.BigInteger;
 
 namespace Sharpy
 {
@@ -33,6 +34,7 @@ namespace Sharpy
             }
 
             FormatOperandKind kind = KindOf(value);
+            string pyTypeName = value == null ? "NoneType" : FormatOperandTypeName(value.GetType());
             if (kind == FormatOperandKind.Str && !(value is string))
             {
                 // An enum formats as its str — python's Enum.__format__ is str.__format__(str(self),
@@ -40,7 +42,7 @@ namespace Sharpy
                 value = Builtins.Str(value!);
             }
 
-            FormatSpecError? error = PyFormatSpec.Validate(spec, kind, PyTypeName(value), out PyFormatSpec parsed);
+            FormatSpecError? error = PyFormatSpec.Validate(spec, kind, pyTypeName, out PyFormatSpec parsed);
             if (error != null)
             {
                 throw error.ToException();
@@ -51,7 +53,19 @@ namespace Sharpy
                 case FormatOperandKind.Formattable:
                     // The type owns its spec: IFormattable is the CLR spelling of __format__
                     // (dunder_methods.md), so format(F(), ">10") is whatever F makes of ">10" (#1988).
-                    return ((IFormattable)value!).ToString(spec, CultureInfo.InvariantCulture);
+                    try
+                    {
+                        return ((IFormattable)value!).ToString(spec, CultureInfo.InvariantCulture);
+                    }
+                    catch (FormatException e)
+                    {
+                        // A spec the type rejects is CPython's ValueError for a rejected spec — a
+                        // raw System.FormatException is uncatchable by `except ValueError` (Guid
+                        // under '>40', TimeSpan under '>10'). Only FormatException is translated:
+                        // anything else the type throws is its own error.
+                        throw new ValueError(
+                            "Invalid format specifier '" + spec + "' for object of type '" + pyTypeName + "'", e);
+                    }
                 case FormatOperandKind.Complex:
                     return RenderComplex((Complex)value!, parsed);
                 default:
@@ -60,45 +74,89 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// The operand kind of a runtime value — which CPython <c>__format__</c> it takes (#1988,
-        /// R-BY). The numeric arms come before <see cref="IFormattable"/>, which every CLR number
-        /// also implements; an enum is IFormattable too and formats as its str. A value with no
-        /// <c>__format__</c> — a list, dict, set, tuple, frozenset, bytes, <c>Optional</c>, an
-        /// exception or a class that does not implement <see cref="IFormattable"/> — refuses any
+        /// The operand kind of a runtime value — <see cref="KindOf(Type)"/> of its runtime type, and
+        /// <see cref="FormatOperandKind.NoneValue"/> for null.
+        /// </summary>
+        public static FormatOperandKind KindOf(object? value) =>
+            value == null ? FormatOperandKind.NoneValue : KindOf(value.GetType());
+
+        /// <summary>
+        /// The operand kind of a CLR type — which CPython <c>__format__</c> its values take (#1988,
+        /// R-BY). The ONE table: the runtime engine classifies a value by its runtime type here, and
+        /// the compiler's static twin classifies a static type by the same call (R-BX). The numeric
+        /// arms come before <see cref="IFormattable"/>, which every CLR number also implements: every
+        /// CLR integer python would call <c>int</c> (<see cref="IsInteger"/>, including
+        /// <see cref="BigInteger"/>) takes <c>int.__format__</c>, every CLR binary/decimal float
+        /// takes <c>float.__format__</c>. An enum is IFormattable too and formats as its str. A type
+        /// with no <c>__format__</c> — a list, dict, set, tuple, frozenset, bytes, <c>Optional</c>,
+        /// an exception or a class that does not implement <see cref="IFormattable"/> — refuses any
         /// non-empty spec with CPython's TypeError.
         /// </summary>
-        private static FormatOperandKind KindOf(object? value)
+        public static FormatOperandKind KindOf(Type type)
         {
-            if (value == null)
-            {
-                return FormatOperandKind.NoneValue;
-            }
-            if (value is bool)
+            if (type == typeof(bool))
             {
                 return FormatOperandKind.Bool;
             }
-            if (value is string || value is char || value is Enum)
+            if (type == typeof(string) || type == typeof(char) || typeof(Enum).IsAssignableFrom(type))
             {
                 return FormatOperandKind.Str;
             }
-            if (value is double || value is float || value is decimal)
+            if (IsFloat(type))
             {
                 return FormatOperandKind.Float;
             }
-            if (value is int || value is long || value is short || value is byte
-                || value is sbyte || value is uint || value is ulong || value is ushort)
+            if (IsInteger(type))
             {
                 return FormatOperandKind.Integral;
             }
-            if (value is Complex)
+            if (type == typeof(Complex))
             {
                 return FormatOperandKind.Complex;
             }
-            if (value is IFormattable)
+            if (typeof(IFormattable).IsAssignableFrom(type))
             {
                 return FormatOperandKind.Formattable;
             }
             return FormatOperandKind.NoFormat;
+        }
+
+        /// <summary>
+        /// The python type name CPython's format messages name an operand of CLR type
+        /// <paramref name="type"/> by: <c>str</c> for the str kind (an enum or a char formats as its
+        /// str), otherwise <see cref="PyTypeName(Type)"/>. Shared with the compiler's static twin.
+        /// </summary>
+        public static string FormatOperandTypeName(Type type) =>
+            KindOf(type) == FormatOperandKind.Str ? "str" : PyTypeName(type);
+
+        /// <summary>
+        /// Every CLR integer type python would call <c>int</c>: the eight fixed-width primitives,
+        /// <see cref="BigInteger"/>, and on net10.0 <c>Int128</c>, <c>UInt128</c>, <c>nint</c> and
+        /// <c>nuint</c>. Python's int is unbounded, so a value outside <c>long</c> still renders
+        /// exactly (<see cref="ToInteger"/>).
+        /// </summary>
+        private static bool IsInteger(Type type)
+        {
+            return type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)
+                || type == typeof(sbyte) || type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort)
+                || type == typeof(BigInteger)
+#if NET10_0_OR_GREATER
+                || type == typeof(Int128) || type == typeof(UInt128) || type == typeof(nint) || type == typeof(nuint)
+#endif
+                ;
+        }
+
+        /// <summary>
+        /// Every CLR float type python would call <c>float</c>: <c>double</c>, <c>float</c>,
+        /// <c>decimal</c>, and on net10.0 <c>Half</c>.
+        /// </summary>
+        private static bool IsFloat(Type type)
+        {
+            return type == typeof(double) || type == typeof(float) || type == typeof(decimal)
+#if NET10_0_OR_GREATER
+                || type == typeof(Half)
+#endif
+                ;
         }
 
         private static bool IsNumeric(FormatOperandKind kind) =>
@@ -184,7 +242,7 @@ namespace Sharpy
 
         /// <summary>
         /// The python type name of a CLR type, as CPython's format and subscript messages spell it:
-        /// <c>bool</c>, <c>float</c> (double/float/decimal), <c>int</c> (the eight CLR integers),
+        /// <c>bool</c>, <c>float</c> and <c>int</c> (by <see cref="KindOf(Type)"/>: every CLR float and integer),
         /// <c>str</c> (string/char), <c>complex</c>, <c>bytes</c>, <c>tuple</c> (any
         /// <see cref="System.Runtime.CompilerServices.ITuple"/>), <c>list</c>/<c>dict</c>/<c>set</c>/
         /// <c>frozenset</c> for the Core collections, <c>Optional</c> for <see cref="Optional{T}"/>,
@@ -194,26 +252,21 @@ namespace Sharpy
         /// </summary>
         public static string PyTypeName(Type type)
         {
-            if (type == typeof(bool))
+            // The numeric names read the kind table, so a type is "int" exactly when it formats as one.
+            switch (KindOf(type))
             {
-                return "bool";
-            }
-            if (type == typeof(double) || type == typeof(float) || type == typeof(decimal))
-            {
-                return "float";
-            }
-            if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)
-                || type == typeof(sbyte) || type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort))
-            {
-                return "int";
+                case FormatOperandKind.Bool:
+                    return "bool";
+                case FormatOperandKind.Float:
+                    return "float";
+                case FormatOperandKind.Integral:
+                    return "int";
+                case FormatOperandKind.Complex:
+                    return "complex";
             }
             if (type == typeof(string) || type == typeof(char))
             {
                 return "str";
-            }
-            if (type == typeof(Complex))
-            {
-                return "complex";
             }
             if (type == typeof(Bytes))
             {
@@ -352,7 +405,7 @@ namespace Sharpy
             // spelling of the same value; Builtins.Str is the authority for the first one.
             if (isFloat && IsNonFinite(value))
             {
-                string nonFinite = Builtins.Str(value);
+                string nonFinite = Builtins.Str(ToDouble(value));
                 if (type == 'F' || type == 'E' || type == 'G')
                 {
                     nonFinite = nonFinite.ToUpperInvariant();
@@ -445,7 +498,12 @@ namespace Sharpy
                     result = FormatRadix(value, 2, false, altForm ? "0b" : null);
                     break;
                 case 'c':
-                    result = FormatCodePoint(ToLong(value));
+                    if (!ToInteger(value, out long codePoint, out _))
+                    {
+                        // CPython converts to a C long before its range check.
+                        throw new OverflowError("Python int too large to convert to C long");
+                    }
+                    result = FormatCodePoint(codePoint);
                     break;
                 case '%':
                     int pctPrec = hasPrecision ? precision : 6;
@@ -558,7 +616,10 @@ namespace Sharpy
         /// </summary>
         private static string FormatRadix(object value, int radix, bool upper, string? prefix)
         {
-            long v = ToLong(value);
+            if (!ToInteger(value, out long v, out BigInteger big))
+            {
+                return (big.Sign < 0 ? "-" : "") + (prefix ?? "") + BigRadixDigits(BigInteger.Abs(big), radix, upper);
+            }
             bool negative = v < 0;
             // long.MinValue has no positive counterpart; render its magnitude unsigned.
             ulong magnitude = negative
@@ -589,6 +650,35 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// The base-<paramref name="radix"/> (2, 8 or 16) digits of a non-negative integer beyond the
+        /// <c>long</c> range, read from its bits — a power-of-two radix is a fixed number of bits per
+        /// digit, so no division is needed.
+        /// </summary>
+        private static string BigRadixDigits(BigInteger magnitude, int radix, bool upper)
+        {
+            int bitsPerDigit = radix == 16 ? 4 : radix == 8 ? 3 : 1;
+            byte[] bytes = magnitude.ToByteArray(); // little-endian two's complement; non-negative here
+            int totalBits = bytes.Length * 8;
+            string alphabet = upper ? "0123456789ABCDEF" : "0123456789abcdef";
+            var sb = new System.Text.StringBuilder();
+            for (int bit = 0; bit < totalBits; bit += bitsPerDigit)
+            {
+                int digit = 0;
+                for (int k = 0; k < bitsPerDigit; k++)
+                {
+                    int at = bit + k;
+                    if (at < totalBits && ((bytes[at >> 3] >> (at & 7)) & 1) != 0)
+                    {
+                        digit |= 1 << k;
+                    }
+                }
+                sb.Insert(0, alphabet[digit]);
+            }
+            string digits = sb.ToString().TrimStart('0');
+            return digits.Length == 0 ? "0" : digits;
+        }
+
+        /// <summary>
         /// CPython's <c>c</c> presentation: the character at that code point. Out-of-range is
         /// <c>OverflowError("%c arg not in range(0x110000)")</c> — never a raw .NET
         /// <see cref="ArgumentOutOfRangeException"/>, which used to abort the process (#1883 sibling).
@@ -613,15 +703,12 @@ namespace Sharpy
         /// <summary>Whether a float value is an infinity or a NaN.</summary>
         private static bool IsNonFinite(object value)
         {
-            if (value is double d)
+            if (value is decimal)
             {
-                return double.IsNaN(d) || double.IsInfinity(d);
+                return false;
             }
-            if (value is float f)
-            {
-                return float.IsNaN(f) || float.IsInfinity(f);
-            }
-            return false;
+            double d = ToDouble(value);
+            return double.IsNaN(d) || double.IsInfinity(d);
         }
 
         /// <summary>
@@ -786,7 +873,9 @@ namespace Sharpy
 
         private static string FormatInteger(object value)
         {
-            return ToLong(value).ToString(CultureInfo.InvariantCulture);
+            return ToInteger(value, out long small, out BigInteger big)
+                ? small.ToString(CultureInfo.InvariantCulture)
+                : big.ToString(CultureInfo.InvariantCulture);
         }
 
         private static string FormatFloat(object value, int precision)
@@ -795,22 +884,108 @@ namespace Sharpy
                 "F" + precision.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         }
 
-        private static long ToLong(object value)
+        /// <summary>
+        /// The exact value of a bool or integral operand (<see cref="IsInteger"/>): true with
+        /// <paramref name="small"/> when it fits in a <c>long</c> — the common path, no allocation —
+        /// else false with <paramref name="big"/>. Python's int is unbounded, so a <c>ulong</c> above
+        /// <c>long.MaxValue</c>, a large <see cref="BigInteger"/> or an <c>Int128</c> must never be
+        /// narrowed (a raw <see cref="OverflowException"/> is not a python error).
+        /// </summary>
+        private static bool ToInteger(object value, out long small, out BigInteger big)
         {
-            if (value is bool b)
+            big = default;
+            switch (value)
             {
-                return b ? 1L : 0L;
+                case bool b:
+                    small = b ? 1L : 0L;
+                    return true;
+                case int i:
+                    small = i;
+                    return true;
+                case long l:
+                    small = l;
+                    return true;
+                case short sh:
+                    small = sh;
+                    return true;
+                case byte by:
+                    small = by;
+                    return true;
+                case sbyte sb:
+                    small = sb;
+                    return true;
+                case ushort us:
+                    small = us;
+                    return true;
+                case uint ui:
+                    small = ui;
+                    return true;
+                case ulong ul:
+                    big = ul;
+                    break;
+                case BigInteger bi:
+                    big = bi;
+                    break;
+#if NET10_0_OR_GREATER
+                case nint n:
+                    small = n;
+                    return true;
+                case nuint nu:
+                    big = nu;
+                    break;
+                case Int128 i128:
+                    big = i128;
+                    break;
+                case UInt128 u128:
+                    big = u128;
+                    break;
+#endif
+                default:
+                    // KindOf admits no other integral operand.
+                    throw new InvalidOperationException(
+                        "unreachable: " + value.GetType() + " is not a python int");
             }
-            return Convert.ToInt64(value, CultureInfo.InvariantCulture);
+
+            if (big >= long.MinValue && big <= long.MaxValue)
+            {
+                small = (long)big;
+                return true;
+            }
+            small = 0;
+            return false;
         }
 
+        /// <summary>
+        /// A numeric operand as a double: a float as itself, an int as CPython's <c>float(int)</c> —
+        /// which the float presentation types (<c>e E f F g G %</c>) apply to an int — raising
+        /// CPython's OverflowError when the int is beyond the double range.
+        /// </summary>
         private static double ToDouble(object value)
         {
-            if (value is bool b)
+            switch (value)
             {
-                return b ? 1.0 : 0.0;
+                case double d:
+                    return d;
+                case float f:
+                    return f;
+                case decimal m:
+                    return (double)m;
+#if NET10_0_OR_GREATER
+                case Half h:
+                    return (double)h;
+#endif
             }
-            return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+            // BigInteger's explicit double conversion truncates (10**30 becomes the double below
+            // 1e30); CPython's float(int) rounds to nearest, which the round-trip parse does.
+            double result = ToInteger(value, out long small, out BigInteger big)
+                ? small
+                : double.Parse(big.ToString(CultureInfo.InvariantCulture), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+            if (double.IsInfinity(result))
+            {
+                throw new OverflowError("int too large to convert to float");
+            }
+            return result;
         }
 
         /// <summary>

@@ -1,0 +1,17 @@
+# IPv6Address.to_int() is a System.Numerics.BigInteger — a python int — so every int spec formats
+# it with int.__format__ (#1988 regression, plan-bf0244 verify: it fell to the IFormattable arm and
+# BigInteger.ToString(">6") printed "[>6]"). Python spells to_int() as int(addr):
+#   python3 -c "from ipaddress import IPv6Address as A; o=int(A('::1')); f=int(A('::ff')); m=int(A('ffff::'))
+#   print(f'[{o:>6}]'); print(f'[{o:,}]'); print(f'[{f:x}]'); print(f'[{m:,}]'); print(f'[{m:#_x}]')"
+from ipaddress import IPv6Address
+
+
+def main() -> None:
+    one = IPv6Address('::1').to_int()
+    ff = IPv6Address('::ff').to_int()
+    top = IPv6Address('ffff::').to_int()
+    print(f"[{one:>6}]")
+    print(f"[{one:,}]")
+    print(f"[{ff:x}]")
+    print(f"[{top:,}]")
+    print(f"[{top:#_x}]")

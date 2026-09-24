@@ -1,0 +1,25 @@
+# Every CLR integer is a python int under a format spec, at any magnitude (#1988 regression,
+# plan-bf0244 verify), and a spec an IFormattable type rejects is a catchable ValueError.
+# The ipaddress half of the regression (IPv6Address('::1').to_int() under '>6') is the stdlib
+# fixture format_ipv6_to_int_is_int_verify.spy — this project has no stdlib.
+# Expected lines are python3 3.12's where python has the cell:
+#   python3 -c "v=2**128; print(f'[{v:>6}]'); print(f'[{v:,}]'); print(f'[{v:_x}]'); print(f'[{-v:+040}]')"
+#   python3 -c "print(f'[{2**64-1:d}]'); print(f'[{2**64-1:#o}]')"
+# The Guid line is Sharpy-only (python has no Guid); its wording is CPython's for a rejected spec.
+from System import Guid, UInt64
+from System.Numerics import BigInteger
+
+
+def main() -> None:
+    v: BigInteger = BigInteger.parse("340282366920938463463374607431768211456")
+    print(f"[{v:>6}]")
+    print(f"[{v:,}]")
+    print(f"[{v:_x}]")
+    print(f"[{-v:+040}]")
+    u: UInt64 = UInt64.MaxValue
+    print(f"[{u:d}]")
+    print(f"[{u:#o}]")
+    try:
+        print(f"[{Guid.Empty:>40}]")
+    except ValueError as e:
+        print(e)

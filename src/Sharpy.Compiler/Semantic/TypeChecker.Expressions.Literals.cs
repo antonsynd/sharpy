@@ -817,34 +817,30 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The operand kind the runtime gives a value of CLR type <paramref name="clr"/> — the static
-    /// image of <c>Sharpy.PyFormat.KindOf</c>, keyed on CLR identity: the numeric arms first (every
-    /// CLR number is also <c>IFormattable</c>), an enum as its <c>str</c>, <c>complex</c>, then
-    /// <c>System.IFormattable</c>; a type whose values may be of another class (<c>object</c>, an
-    /// interface, an abstract class) is not statically known; anything else has no
-    /// <c>__format__</c> and is named by Core's <c>PyFormat.PyTypeName(Type)</c>, the one table the
-    /// runtime names values by.
+    /// The operand kind the runtime gives a value of CLR type <paramref name="clr"/> — Core's own
+    /// <c>Sharpy.PyFormat.KindOf(Type)</c>, the ONE kind table the runtime engine classifies values by
+    /// (R-BX: the static and runtime twins are the same code; no CLR-type arm is restated here). The
+    /// compiler adds only what a static type cannot say: a type whose values may be of another
+    /// class (<c>object</c>, <c>ValueType</c>, an interface, an abstract class, a type parameter, a
+    /// <c>Nullable&lt;T&gt;</c>) and that Core finds no <c>__format__</c> on is not statically known.
+    /// The python type name is Core's too (<c>PyFormat.FormatOperandTypeName(Type)</c>).
     /// </summary>
-    private static FormatOperand FormatOperandOfClr(Type clr)
+    internal static FormatOperand FormatOperandOfClr(Type clr)
     {
-        if (clr == typeof(bool))
-            return FormatOperand.Bool;
-        if (clr == typeof(string) || clr == typeof(char) || clr.IsEnum || clr == typeof(Enum))
-            return FormatOperand.Str;
-        if (clr == typeof(double) || clr == typeof(float) || clr == typeof(decimal))
-            return FormatOperand.Float;
-        if (clr == typeof(int) || clr == typeof(long) || clr == typeof(short) || clr == typeof(byte)
-            || clr == typeof(sbyte) || clr == typeof(uint) || clr == typeof(ulong) || clr == typeof(ushort))
-            return FormatOperand.Integral;
-        if (clr == typeof(SharpyRT::Sharpy.Complex))
-            return FormatOperand.Complex;
-        if (ProtocolMembership.HasClrProtocolInterface(clr, IFormattableFullName))
-            return FormatOperand.Formattable;
-        if (clr == typeof(object) || clr == typeof(ValueType) || clr.IsInterface || (clr.IsAbstract && !clr.IsSealed)
-            || clr.IsGenericParameter || Nullable.GetUnderlyingType(clr) != null)
+        var kind = SharpyRT::Sharpy.PyFormat.KindOf(clr);
+        if (kind == SharpyRT::Sharpy.FormatOperandKind.NoFormat && !IsStaticallyKnownFormatClass(clr))
             return FormatOperand.Unknown;
-        return FormatOperand.NoFormat(SharpyRT::Sharpy.PyFormat.PyTypeName(clr));
+        return new FormatOperand(kind, SharpyRT::Sharpy.PyFormat.FormatOperandTypeName(clr));
     }
+
+    /// <summary>
+    /// Whether a value of static type <paramref name="clr"/> is of exactly that runtime class: not
+    /// <c>object</c>/<c>ValueType</c>, an interface, an abstract non-sealed class, a generic
+    /// parameter or a <c>Nullable&lt;T&gt;</c> (whose boxed value is its underlying type or null).
+    /// </summary>
+    private static bool IsStaticallyKnownFormatClass(Type clr)
+        => !(clr == typeof(object) || clr == typeof(ValueType) || clr.IsInterface || (clr.IsAbstract && !clr.IsSealed)
+            || clr.IsGenericParameter || Nullable.GetUnderlyingType(clr) != null);
 
     private const string IFormattableFullName = "System.IFormattable";
 
