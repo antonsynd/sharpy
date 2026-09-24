@@ -25,8 +25,9 @@ A t-string hole may carry a format spec (`{expr:spec}`), including nested replac
 the spec (`{expr:>{width}}`), exactly like an f-string. Each `Interpolation` keeps its evaluated
 value and its spec; rendering the `Template` applies the spec through the same one Python-format
 engine (`Sharpy.PyFormat.Apply`) that f-strings, `str.format` and `format()` use — a t-string is not
-a fourth format authority. Holes and their nested spec fields evaluate left to right, in source
-order:
+a fourth format authority. A literal spec in a t-string hole gets the f-string's static check too
+(SPY0609 with CPython's wording, see [Invalid Format Specs](fstrings.md#invalid-format-specs)). Holes
+and their nested spec fields evaluate left to right, in source order:
 
 ```python
 def main() -> None:

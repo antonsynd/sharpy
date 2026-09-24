@@ -77,6 +77,22 @@ has the same meaning as in Python, and is applied by the one engine:
 | `.precision` | digits / significant figures | same engine | `f"{3.14159:.2f}"` → `3.14` |
 | type `d f e g x X o b c n % s` | presentation | same engine | `f"{255:X}"` → `FF` |
 
+`z` reads the **rendered** text, as CPython does: any rendering whose digits are all zero drops its
+minus sign, including the exponent and percent forms and a negative value that rounds to zero:
+
+```python
+def main() -> None:
+    print(f"[{-0.0:z.1e}]")
+    print(f"[{-1e-9:z.1%}]")
+    print(f"[{-0.0:z.0%}]")
+```
+
+```
+[0.0e+00]
+[0.0%]
+[0%]
+```
+
 A bare width with no alignment (`{5:5}`) pads to the field width — a case the old emitter-side
 translator dropped:
 
@@ -172,6 +188,14 @@ def main() -> None:
     print(f"[{65:+c}]")   # SPY0609: Sign not allowed with integer format specifier 'c'
 ```
 
+The alternate form is refused with `c` the same way — `c` has no radix prefix to add:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    print(f"[{65:#c}]")   # SPY0609: Alternate form (#) not allowed with integer format specifier 'c'
+```
+
 ### String Operands
 
 A string operand takes only fill/align, width and precision. The `0` flag zero-fills a string but
@@ -202,9 +226,8 @@ def main() -> None:
     print(f"[{s:=5}]")   # SPY0609: '=' alignment not allowed in string format specifier
 ```
 
-The same refusals fire at runtime (as a `ValueError`) for a dynamic spec, and — because a literal
-spec passed through `format(v, spec)` or `"{:spec}".format(v)` is not seen by the static validator —
-those two routes are refused only at runtime.
+The same refusals fire at runtime (as a `ValueError`) for a dynamic spec. A literal spec is
+refused statically on every route that carries one — see [Invalid Format Specs](#invalid-format-specs).
 
 ## Nested Replacement Fields
 
@@ -290,6 +313,134 @@ engine at runtime. So are a `format` method-group value called later (`f = forma
 #1997), a pipe into a qualified callee (`s |> builtins.format("=5")`, #1999), and a `_` placeholder
 partial (`format(_, "=5")`, whose placeholder is typed `object?`). `str.format` takes positional fields only — a keyword argument is refused with
 SPY0234 and a steer to an f-string or `format_map`.
+
+The fields of a literal `str.format` template are checked **in order**, and the check stops at the
+first field it cannot decide — an index past the arguments, an attribute or index field, or a
+keyword field no argument names — because CPython raises the *first* field's error. So
+`"{5}{0:=5}".format("ab")` compiles and raises `IndexError: Replacement index 5 out of range for
+positional args tuple` at runtime (CPython's error), while `"{0:=5}{5}".format("ab")` is SPY0609.
+
+### Refusal Precedence
+
+A spec that breaks more than one rule is refused with the rule CPython checks first. One validator
+in the runtime (`Sharpy.PyFormatSpec`) holds the rules; the static check calls it, so the order and
+the wording are the same at compile time and at runtime:
+
+| Operand | Order (first refusal wins) |
+|---------|----------------------------|
+| every kind | the spec does not parse (`Invalid format specifier`) → `,`/`_` with a presentation type that takes no grouping → unknown presentation type for the operand |
+| `int`, `bool` (integer presentations `b c d o x X n`) | precision → `z` → sign with `c` → `#` with `c` |
+| `str` | sign → `z` → `#` → `=` alignment |
+| `complex` | zero padding → `=` alignment |
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    print(f"[{65:+.3c}]")       # SPY0609: Precision not allowed in integer format specifier
+    print(f"[{65:<+z#010c}]")   # SPY0609: Negative zero coercion (z) not allowed in integer format specifier
+```
+
+### Types Without `__format__`
+
+A non-empty spec on a value whose type has no `__format__` — a `list`, `dict`, `set`, `frozenset`,
+`tuple`, `bytes`, `Optional`, or a class that does not implement `System.IFormattable` — is
+CPython's `TypeError`, raised before the spec is even parsed. A literal spec is refused statically
+as **SPY0609** on every route; a dynamic one raises the `TypeError` at runtime:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+class Point:
+    x: int = 0
+
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    print(f"[{xs:>8}]")        # SPY0609: unsupported format string passed to list.__format__
+    print(f"[{Point():>8}]")   # SPY0609: unsupported format string passed to Point.__format__
+```
+
+The empty spec is never refused (it is `str(value)`), and a conversion turns the operand into a
+`str` *before* the spec applies, so `!r`/`!s`/`!a` followed by a spec is the way to pad a
+collection's text:
+
+```python
+def main() -> None:
+    xs: list[int] = [1, 2]
+    print(f"[{xs!r:>8}]")
+    spec: str = ">8"
+    try:
+        print(f"[{xs:{spec}}]")
+    except TypeError as e:
+        print("TypeError:", e)
+```
+
+```
+[  [1, 2]]
+TypeError: unsupported format string passed to list.__format__
+```
+
+`Optional` has no Python twin; it is refused like the collections — unwrap it first. An `enum` member formats as its `str`, as in Python (`Enum.__format__` is
+`str.__format__(str(self), spec)`), so `f"{Color.RED:>5}"` pads the member's text and
+`f"{Color.RED:d}"` is SPY0609 `Unknown format code 'd' for object of type 'str'`.
+
+**A type that owns its spec.** Sharpy spells `__format__` as the CLR interface
+`System.IFormattable` (see [Dunder Methods](dunder_methods.md)): a class that implements it
+receives any non-empty spec verbatim in `to_string(fmt, provider)` on every route, and no spec is
+refused statically — the spec is the type's own business:
+
+```python
+from System import IFormattable, IFormatProvider
+
+
+class Money(IFormattable):
+    cents: int
+
+    def __init__(self, cents: int):
+        self.cents = cents
+
+    def to_string(self, fmt: str, provider: IFormatProvider) -> str:
+        if fmt == "short":
+            return "$" + str(self.cents // 100)
+        return "$" + str(self.cents // 100) + "." + str(self.cents % 100)
+
+
+def main() -> None:
+    m: Money = Money(1250)
+    print(f"[{m:short}]")
+    print(f"[{m:full}]")
+    print(format(m, "short"))
+```
+
+```
+[$12]
+[$12.50]
+$12
+```
+
+This is also how a .NET type's own format strings reach it — **Sharpy-only**, with no Python twin:
+`DateTime` is `IFormattable`, so its .NET format string applies:
+
+```python
+from System import DateTime
+
+
+def main() -> None:
+    d: DateTime = DateTime(2020, 1, 2)
+    print(f"{d:yyyy}")
+    print(format(d, "yyyy-MM-dd"))
+```
+
+```
+2020
+2020-01-02
+```
+
+Two differences from CPython follow from deciding the kind from the **static** type. A hole typed
+as a base class that holds a subclass implementing `IFormattable` is refused statically, where
+CPython would dispatch to the subclass at runtime; write the spec dynamically (`f"{v:{spec}}"`) or
+type the hole as the subclass. And an empty spec on an `IFormattable` value renders `str(value)`,
+where CPython calls `__format__("")` (#2031). A hole typed `object`, an interface or a union is
+never refused statically — its runtime value decides.
 
 A **dynamic** spec (one with a nested field, or a hole whose type is not statically known) is
 validated by the engine at runtime and raises the same `ValueError`/`TypeError` Python would. The

@@ -381,7 +381,7 @@ not a producer name.
 | `__float__(self) -> float` | Not supported | Not yet designed |
 | `__floor__(self) -> float` | Not supported | `Math.Floor()` doesn't dispatch to this |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
-| `__format__(self, spec: str)` | Not supported | Not yet designed, but possibly synthesizes `IFormattable.ToString(format, provider)` |
+| `__format__(self, spec: str)` | Not supported (SPY0414) | The CLR spelling is `IFormattable.ToString(format, provider)`: declare `class C(IFormattable)` with `def to_string(self, fmt: str, provider: IFormatProvider) -> str` (`from System import IFormattable, IFormatProvider`), and every format route hands it the spec. See [Types Without `__format__`](fstrings.md#types-without-__format__). A dunder spelling that synthesizes the interface is #2009 |
 | `__index__(self) -> int` | Not supported | Not yet designed, but should be used for integer conversion in slice contexts | |
 | `__int__(self) -> int` | Not supported | Not yet designed |
 | `__matmul__(self, other: T) -> U` | Experimental (behind `matmul` feature) | `@` matrix multiplication (PEP 465). C# has no `@` operator, so it lowers to a `MatMul(other)` instance method rather than a C# operator overload. Enable with `--enable-feature=matmul` or `<Features>matmul</Features>`; ungated use is rejected with SPY0331. `@=` augmented assignment is also supported. |
