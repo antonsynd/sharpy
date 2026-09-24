@@ -1,0 +1,12 @@
+# The escape hatch for #1871: a member escaped at its declaration AND at every use is emitted
+# verbatim (`q`), so it no longer PascalCases into its class's name `Q`.
+class Q:
+    `q`: int = 1
+
+    def bump(self) -> None:
+        self.`q` += 1
+
+def main() -> None:
+    v = Q()
+    v.bump()
+    print(v.`q`)

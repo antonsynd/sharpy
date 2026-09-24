@@ -140,6 +140,18 @@ public static partial class DiagnosticExplanations
             "# File: bubble_sort.spy\ndef bubble_sort(arr: list[int]) -> list[int]:\n    ...\n# 'bubble_sort' compiles to 'BubbleSort', same as class 'BubbleSort' from filename",
             "Rename the function or the source file so the function's PascalCase name does not match the filename's PascalCase name.");
 
+        Add(dict, DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision, "Member name equals its enclosing type's", "CodeGen",
+            "A member's emitted C# name equals the emitted name of the type that declares it — for example a " +
+            "field 'q' in class 'Q', which both compile to 'Q'. C# forbids a member named like its enclosing " +
+            "class or struct (CS0542), whatever the member kind (field, property, method, const, event, nested " +
+            "type) and whatever the nested type's arity. A union case's fields are the case class's members, and " +
+            "a case is a member of its union, so the same rule applies there.",
+            "class Q:\n    q: int   # compiles to 'Q', the same as its class",
+            "Rename the member, or backtick-escape the declaration AND every use (`q` in the class, v.`q` at each " +
+            "access) to keep the Python spelling: an escaped name is emitted verbatim, so it no longer PascalCases " +
+            "into the type name. Escaping the declaration alone leaves the unescaped uses spelling 'Q'. A union " +
+            "case, and a union case field, has no escape hatch — rename it.");
+
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +
             "(for example a conditional expression as the receiver of a member access) was not wrapped in parentheses. " +

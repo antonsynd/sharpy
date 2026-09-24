@@ -1,0 +1,8 @@
+# A member whose emitted C# name equals its enclosing type's is C# CS0542 (#1871): `q` compiles to
+# `Q`, the class's own name. Refused by name (SPY0525) with the rename-or-escape steer.
+class Q:
+    count: int = 0
+    q: int = 1
+
+def main() -> None:
+    print(Q().count)

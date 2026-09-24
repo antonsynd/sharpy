@@ -1,0 +1,2 @@
+# SPY0525 at the member's name token (line 5, column 5), with the corrected R-AW steer.
+Member 'q' would be emitted as 'Q', the same name as its enclosing type 'Q' (C# forbids this, CS0542). Rename the member, or backtick-escape the declaration AND every use (`q`, v.`q`) to keep the Python spelling. @5:5

@@ -90,6 +90,9 @@ internal class CodeGenInfoComputer
                 case EnumDef enumDef:
                     ProcessEnumDef(enumDef);
                     break;
+                case UnionDef unionDef:
+                    DetectUnionEnclosingTypeCollisions(unionDef);
+                    break;
                 case FunctionDef funcDef:
                     ProcessFunctionDef(funcDef, isModuleLevel: true);
                     break;
@@ -299,7 +302,8 @@ internal class CodeGenInfoComputer
 
             // Process class members
             ProcessTypeMembers(typeSymbol, classDef.Body);
-            DetectMemberCollisions(typeSymbol, classDef.Body);
+            DetectMemberCollisions(typeSymbol, classDef.Body,
+                enclosingCSharpName: NameCasing.ResolveType(classDef.Name, classDef.IsNameBacktickEscaped));
         }
     }
 
@@ -317,7 +321,8 @@ internal class CodeGenInfoComputer
             ComputeSynthesizedInterfaces(typeSymbol, structDef.Body);
 
             ProcessTypeMembers(typeSymbol, structDef.Body);
-            DetectMemberCollisions(typeSymbol, structDef.Body);
+            DetectMemberCollisions(typeSymbol, structDef.Body,
+                enclosingCSharpName: NameCasing.ResolveType(structDef.Name, structDef.IsNameBacktickEscaped));
         }
     }
 
@@ -334,7 +339,9 @@ internal class CodeGenInfoComputer
             });
 
             ProcessTypeMembers(typeSymbol, interfaceDef.Body);
-            DetectMemberCollisions(typeSymbol, interfaceDef.Body);
+            // No enclosing-type seed: CS0542 is a class/struct rule, an interface member may share
+            // its interface's name.
+            DetectMemberCollisions(typeSymbol, interfaceDef.Body, enclosingCSharpName: null);
         }
     }
 
@@ -391,7 +398,14 @@ internal class CodeGenInfoComputer
                 // carry no member body — the classifier returns an empty Body and they fall through.
                 default:
                     if (stmt.TryGetNestedDeclaration(out var nested) && !nested.Body.IsEmpty)
+                    {
                         ProcessNestedTypeMembers(typeSymbol, nested.Name, nested.Body);
+                        DetectNestedEnclosingTypeCollisions(typeSymbol, stmt, nested);
+                    }
+                    else if (stmt is UnionDef nestedUnion)
+                    {
+                        DetectUnionEnclosingTypeCollisions(nestedUnion);
+                    }
                     break;
             }
         }
@@ -802,12 +816,16 @@ internal class CodeGenInfoComputer
 
     /// <summary>
     /// Detects name collisions among the members of a type after mangling — fields, methods,
-    /// properties, events and nested types, plus the type's own type parameters.
+    /// properties, events and nested types, plus the type's own type parameters — and, for a class
+    /// or struct (<paramref name="enclosingCSharpName"/> non-null), a member whose emitted name
+    /// equals the type's own (SPY0525, #1871).
     /// </summary>
-    private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
+    private void DetectMemberCollisions(
+        TypeSymbol typeSymbol, IEnumerable<Statement> body, string? enclosingCSharpName)
     {
         // CSharpName → (originalName, where it was first declared)
         var seen = new Dictionary<string, (string originalName, DeclarationPosition? position)>();
+        var reportedEnclosing = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var tp in typeSymbol.TypeParameters)
         {
@@ -821,6 +839,17 @@ internal class CodeGenInfoComputer
         foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
         {
             var position = FindMemberPosition(body, originalName);
+
+            // Checked BEFORE the same-name dedupe below: a member spelled exactly like its type
+            // (`class Q: Q: int`) has the type's original name too, and must not be read as a
+            // redeclaration of it.
+            if (csharpName == enclosingCSharpName)
+            {
+                if (reportedEnclosing.Add(originalName))
+                    ReportMemberEnclosingTypeCollision(
+                        originalName, csharpName, typeSymbol.Name, position, UnionMemberKind.None);
+                continue;
+            }
 
             if (seen.TryGetValue(csharpName, out var existing))
             {
@@ -875,6 +904,111 @@ internal class CodeGenInfoComputer
                         column: position?.Column,
                         code: DiagnosticCodes.CodeGen.MemberNameCollision,
                         phase: CompilerPhase.CodeGeneration);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// SPY0525 (#1871, R-AW): a member whose emitted C# name equals its enclosing class's or
+    /// struct's is CS0542, whatever the member kind — refused here by name rather than leaking the
+    /// C# error as SPY0908. Rung 4 by necessity: no CLR surface spells "collides after PascalCasing".
+    /// The steer is the corrected R-AW wording: an escaped DECLARATION alone is not enough, because
+    /// every unescaped use still spells the PascalCased name (the closed #478 contract — access sites
+    /// read their own escape flag); a union case field has no escape hatch at all.
+    /// </summary>
+    private void ReportMemberEnclosingTypeCollision(
+        string originalName,
+        string csharpName,
+        string enclosingOriginalName,
+        DeclarationPosition? position,
+        UnionMemberKind unionMember)
+    {
+        var (noun, steer) = unionMember switch
+        {
+            UnionMemberKind.Case => ("Union case", "Rename the case (a union case name cannot be backtick-escaped)."),
+            UnionMemberKind.CaseField => ("Union case field", "Rename the field (a union case field cannot be backtick-escaped)."),
+            _ => ("Member", $"Rename the member, or backtick-escape the declaration AND every use (`{originalName}`, " +
+                            $"v.`{originalName}`) to keep the Python spelling."),
+        };
+        _diagnostics.AddError(
+            $"{noun} '{originalName}' would be emitted as '{csharpName}', the same name as its enclosing " +
+            $"type '{enclosingOriginalName}' (C# forbids this, CS0542). {steer}",
+            line: position?.Line,
+            column: position?.Column,
+            code: DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision,
+            phase: CompilerPhase.CodeGeneration);
+    }
+
+    /// <summary>Which union-emitted member a SPY0525 names — neither has an escape hatch.</summary>
+    private enum UnionMemberKind { None, Case, CaseField }
+
+    /// <summary>
+    /// SPY0525 in a NESTED host (#1871): the module-level walk (<see cref="DetectMemberCollisions"/>)
+    /// never visits a nested type's own members, so `class Outer: class Inner: inner: int` was CS0542
+    /// behind SPY0908. A nested class/struct checks its members against its own emitted name; a
+    /// nested union its cases and case fields.
+    /// </summary>
+    private void DetectNestedEnclosingTypeCollisions(TypeSymbol enclosing, Statement stmt, NestedDeclaration nested)
+    {
+        string? hostName = stmt switch
+        {
+            ClassDef c => NameCasing.ResolveType(c.Name, c.IsNameBacktickEscaped),
+            StructDef st => NameCasing.ResolveType(st.Name, st.IsNameBacktickEscaped),
+            _ => null
+        };
+        if (stmt is UnionDef nestedUnion)
+            DetectUnionEnclosingTypeCollisions(nestedUnion);
+        if (hostName == null)
+            return;
+
+        var nestedSymbol = enclosing.NestedTypes.FirstOrDefault(t => t.Name == nested.Name);
+        if (nestedSymbol == null)
+            return;
+
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (originalName, csharpName) in EnumerateMemberNames(nestedSymbol, nested.Body))
+        {
+            if (csharpName == hostName && reported.Add(originalName))
+            {
+                ReportMemberEnclosingTypeCollision(
+                    originalName, csharpName, nested.Name,
+                    FindMemberPosition(nested.Body, originalName), UnionMemberKind.None);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The union host of SPY0525 (#1871): a union emits an abstract base class holding one sealed
+    /// case class per case, and each case's fields are properties of its case class — so a case
+    /// named like its union, or a field named like its case, is CS0542. Spelled exactly as
+    /// <c>GenerateUnionDeclaration</c>/<c>GenerateUnionCaseClass</c> spell them (the union through
+    /// <c>NameCasing.ResolveType</c>, a case through <c>NameMangler.Transform(Type)</c>, a field
+    /// through <c>NameCasing.ResolveField</c>, which ignore the escape flag for cases and fields).
+    /// </summary>
+    private void DetectUnionEnclosingTypeCollisions(UnionDef unionDef)
+    {
+        var unionName = NameCasing.ResolveType(unionDef.Name, unionDef.IsNameBacktickEscaped);
+        foreach (var caseDef in unionDef.Cases)
+        {
+            var caseName = NameMangler.Transform(caseDef.Name, NameContext.Type);
+            if (caseName == unionName)
+            {
+                ReportMemberEnclosingTypeCollision(
+                    caseDef.Name, caseName, unionDef.Name,
+                    DeclarationPosition.From(caseDef.NameLineStart, caseDef.NameColumnStart, caseDef.LineStart, caseDef.ColumnStart),
+                    UnionMemberKind.Case);
+            }
+
+            foreach (var field in caseDef.Fields)
+            {
+                var fieldName = NameCasing.ResolveField(field.Name, false);
+                if (fieldName == caseName)
+                {
+                    ReportMemberEnclosingTypeCollision(
+                        field.Name, fieldName, caseDef.Name,
+                        DeclarationPosition.From(field.LineStart, field.ColumnStart, field.LineStart, field.ColumnStart),
+                        UnionMemberKind.CaseField);
                 }
             }
         }

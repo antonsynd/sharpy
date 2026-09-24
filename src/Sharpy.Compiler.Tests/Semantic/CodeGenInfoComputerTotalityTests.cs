@@ -44,6 +44,8 @@ public class CodeGenInfoComputerTotalityTests
         nameof(InterfaceDef),
         nameof(EnumDef),
         nameof(FunctionDef),
+        // #1871: a union's cases and case fields are walked for SPY0525.
+        nameof(UnionDef),
     };
 
     private static readonly HashSet<string> ComputeForModule_Skipped = new()
@@ -70,7 +72,6 @@ public class CodeGenInfoComputerTotalityTests
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),
-        nameof(UnionDef),
         nameof(DelegateDef),
         nameof(EventDef),
     };

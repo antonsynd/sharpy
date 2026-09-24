@@ -76,6 +76,10 @@ public class DispatchSiteInventoryTests
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessModuleLevelDeclarations"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.EnumerateMemberNames"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.FindMemberPosition"] = "guarded-by:CodeGenInfoComputerTotalityTests",
+        // #1871: SPY0525's nested host names only the two kinds CS0542 applies to (class, struct);
+        // a nested union's cases are walked by DetectUnionEnclosingTypeCollisions, every other kind
+        // has no member namespace of its own.
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectNestedEnclosingTypeCollisions"] = "refusal-net:MemberEnclosingTypeCollisionMatrixTests",
 
         // ExhaustivenessHelper — pattern exhaustiveness/irrefutability
         ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.CollectCoveredCases"] = "guarded-by:ExhaustivenessHelperTotalityTests",
