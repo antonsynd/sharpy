@@ -733,7 +733,8 @@ def main() -> None:
     /// consumer RECOMPILED against the cached signature can: <c>b: bool = exclaim(…)</c> must say
     /// SPY0220 <c>'Template'</c> exactly as a cold build of the same final layout does (a lost decode
     /// is silent Unknown → SPY0908). Member access on the decoded type is a separate, pre-existing
-    /// gap shared with <c>bytes</c> — the registry symbol is not restored (#2027).
+    /// gap shared with <c>bytes</c> — the registry symbol is not restored (#2027; parked as
+    /// <see cref="AfterAWarmRestore_ARegistryTypesMembersStillResolve"/>).
     /// </summary>
     [Fact]
     public void WarmBuild_TemplateSignature_IsObservationallyIdenticalToCold()
@@ -768,6 +769,51 @@ def main() -> None:
 
         Diagnostics(edited).Should().Be(Diagnostics(coldEdited),
             "a consumer compiled against the cached Template signature must type it as cold does");
+    }
+
+    /// <summary>
+    /// A consumer recompiled against a cache-served signature must type the MEMBERS of a CLR-backed
+    /// registry type as a cold build does. The <c>"user"</c> codec restores the type without its
+    /// registry symbol, so member access goes Unknown: warm SPY0908, cold SPY0220 (#2027). The class
+    /// covers every registry UDT, so the twins run together — <c>bytes</c> (pre-existing) and
+    /// <c>Template</c> (#1996: before it both builds were Unknown; now cold is typed, warm is not —
+    /// cold improved, warm did not regress). Drains when #2027 closes.
+    /// </summary>
+    [Theory(Skip = "#2027: a CLR-backed registry type in a cache-served signature loses its registry symbol — member access is Unknown warm, typed cold")]
+    [InlineData("bytes",
+        "def f() -> bytes:\n    return b\"xy\"\n",
+        "from lib import f\n\ndef main() -> None:\n    print(len(f()))\n",
+        "from lib import f\n\ndef main() -> None:\n    b: bool = f().hex()\n",
+        "'str'")]
+    [InlineData("template",
+        "def exclaim(tp: Template) -> Template:\n    return tp + t\"!\"\n",
+        "from lib import exclaim\n\ndef main() -> None:\n    x = 1\n    print(repr(exclaim(t\"a{x}\")))\n",
+        "from lib import exclaim\n\ndef main() -> None:\n    x = 2\n    b: bool = exclaim(t\"a{x}\").interpolations\n",
+        "'array[Interpolation]'")]
+    public void AfterAWarmRestore_ARegistryTypesMembersStillResolve(
+        string area, string libSource, string mainSource, string mainEditedSource, string coldTypeName)
+    {
+        var lib = Write("registry-" + area, "lib.spy", libSource);
+        var main = Write("registry-" + area, "main.spy", mainSource);
+        var config = Config("registry-" + area, lib, main);
+
+        var first = Build(config);
+        first.Success.Should().BeTrue("the specimen must compile cold. Diagnostics:\n" + Diagnostics(first));
+
+        File.WriteAllText(main, mainEditedSource);
+        var edited = Build(config);
+        Skipped(edited).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib must be served from the cache while main recompiles against it");
+
+        var freshLib = Write("registry-" + area + "-cold", "lib.spy", libSource);
+        var freshMain = Write("registry-" + area + "-cold", "main.spy", mainEditedSource);
+        var coldEdited = Build(Config("registry-" + area + "-cold", freshLib, freshMain));
+        Skipped(coldEdited).Should().BeEmpty("the control build is cold");
+        Diagnostics(coldEdited).Should().Contain("SPY0220").And.Contain(coldTypeName,
+            "the cold consumer types the member through the registry symbol");
+
+        Diagnostics(edited).Should().Be(Diagnostics(coldEdited),
+            "a consumer compiled against the cached signature must type its members as cold does");
     }
 
     private const string StructAccessLibSource = @"struct Meter:
