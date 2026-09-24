@@ -601,12 +601,15 @@ public partial class Lexer
     /// When trivia preservation is enabled, attaches any pending trivia as leading trivia.
     /// </summary>
     private Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition,
-        int? sourceLength = null)
+        int? sourceLength = null, string? fstringExpressionText = null)
     {
         var token = new Token(type, value, startLine, startColumn, startPosition);
 
         if (sourceLength.HasValue)
             token = token with { SourceLength = sourceLength };
+
+        if (fstringExpressionText != null)
+            token = token with { FStringExpressionText = fstringExpressionText };
 
         if (_preserveTrivia && _pendingTrivia!.Count > 0
             && type is not (TokenType.Indent or TokenType.Dedent))

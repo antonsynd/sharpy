@@ -646,8 +646,12 @@ internal partial class RoslynEmitter
                         valueExpr);
                 }
 
-                // Derive expression text from the AST node
-                var exprText = DeriveExpressionText(part.Expression);
+                // The hole's source text as the lexer captured it (#1991) — never re-derived from the
+                // AST, which cannot spell whitespace, argument lists or quote choice.
+                var exprText = part.ExpressionText ?? throw new InvalidOperationException(
+                    "No ExpressionText on a t-string hole at "
+                    + $"line {part.Expression.LineStart}, column {part.Expression.ColumnStart} — the lexer "
+                    + "attaches it to every replacement field's terminator and the parser copies it (#1991).");
 
                 // The spec is a string evaluated at construction (PEP 750): a literal for a static
                 // spec, an interpolated string over the nested fields for a dynamic one. Empty when
@@ -726,28 +730,6 @@ internal partial class RoslynEmitter
                 Argument(stringsArray),
                 Argument(interpolationsArray)
             })));
-    }
-
-    /// <summary>
-    /// Derives a human-readable expression text from an AST expression node.
-    /// Used for the Interpolation.Expression field in template strings.
-    /// </summary>
-    private static string DeriveExpressionText(Expression expr)
-    {
-        return expr switch
-        {
-            Identifier id => id.Name,
-            MemberAccess ma => $"{DeriveExpressionText(ma.Object)}.{ma.Member}",
-            FunctionCall call => $"{DeriveExpressionText(call.Function)}()",
-            BinaryOp bin => $"{DeriveExpressionText(bin.Left)} {bin.Operator} {DeriveExpressionText(bin.Right)}",
-            UnaryOp unary => $"{unary.Operator}{DeriveExpressionText(unary.Operand)}",
-            IntegerLiteral intLit => intLit.Value,
-            FloatLiteral floatLit => floatLit.Value,
-            StringLiteral strLit => $"\"{strLit.Value}\"",
-            BooleanLiteral boolLit => boolLit.Value ? "True" : "False",
-            IndexAccess idx => $"{DeriveExpressionText(idx.Object)}[{DeriveExpressionText(idx.Index)}]",
-            _ => "<expr>"
-        };
     }
 
     /// <summary>

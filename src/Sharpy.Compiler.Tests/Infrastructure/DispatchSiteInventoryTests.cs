@@ -167,7 +167,6 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Expressions.Literals.cs::RoslynEmitter.DeriveExpressionText"] = "refusal-net:FileBasedIntegrationTests",
         // Partial classifier over top-level statement kinds collecting the library-mode extracted
         // type names into the module shape (#1802); `_ => null` default is benign (non-type
         // statements contribute no name). Extraction correctness is covered by the library-mode

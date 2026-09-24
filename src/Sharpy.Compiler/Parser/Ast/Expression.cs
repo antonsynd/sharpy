@@ -89,6 +89,15 @@ public record FStringPart
     public bool IsSelfDocumenting { get; init; }  // True when the replacement field used the '=' specifier
 
     /// <summary>
+    /// The hole's expression source text, captured by the lexer: from just after <c>{</c> to the
+    /// top-level terminator (<c>}</c>, <c>=</c>, <c>!</c>, <c>:</c>), leading whitespace kept and
+    /// trailing whitespace stripped — PEP 750's <c>Interpolation.expression</c> (<c>t"{ x }"</c> →
+    /// <c>" x"</c>, #1991). Set by the parser on every replacement field; <c>null</c> only on text
+    /// parts and on ASTs built without source.
+    /// </summary>
+    public string? ExpressionText { get; init; }
+
+    /// <summary>
     /// Yields every expression this part contributes to the tree — its own hole expression and,
     /// recursively, the expressions inside nested spec replacement fields — so the checker and LSP
     /// see references made only inside a spec (<c>{x:{w}}</c> uses <c>w</c>).

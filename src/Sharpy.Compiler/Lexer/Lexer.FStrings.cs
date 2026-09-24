@@ -325,6 +325,17 @@ public partial class Lexer
     }
 
     /// <summary>
+    /// The hole's expression source text (PEP 750 <c>Interpolation.expression</c>, #1991): from just
+    /// after the field's <c>{</c> to its top-level terminator at <paramref name="terminatorPosition"/>
+    /// (<c>}</c>, <c>=</c>, <c>!</c> or <c>:</c>), leading whitespace kept, trailing whitespace stripped
+    /// — python3.14: <c>t"{ x }"</c> → <c>' x'</c>. Attached to the terminator token, which the parser
+    /// reads right after the expression.
+    /// </summary>
+    private string HoleExpressionText(FStringField field, int terminatorPosition) =>
+        _source.Substring(field.ExprStartPosition, terminatorPosition - field.ExprStartPosition)
+            .TrimEnd(' ', '\t', '\f', '\n', '\r');
+
+    /// <summary>
     /// Get the next token while inside an f-string
     /// </summary>
     private Token NextFStringToken()
@@ -360,7 +371,8 @@ public partial class Lexer
                 {
                     // End of this field's expression — pop the field.
                     context.Fields.Pop();
-                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
+                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition,
+                        fstringExpressionText: HoleExpressionText(field, startPosition));
                 }
                 else
                 {
@@ -399,7 +411,8 @@ public partial class Lexer
                 if (field.InnerBraceDepth == 0)
                 {
                     context.Fields.Pop();
-                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
+                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition,
+                        fstringExpressionText: HoleExpressionText(field, startPosition));
                 }
                 else
                 {
@@ -439,7 +452,7 @@ public partial class Lexer
                 // would be Value.Length and the span would overrun the following '}' (#1016,
                 // non-monotonic token positions).
                 return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition,
-                    sourceLength: _position - startPosition);
+                    sourceLength: _position - startPosition, fstringExpressionText: HoleExpressionText(field, startPosition));
             }
 
             // Check for conversion flag (!r / !s / !a) at the top level of a replacement
@@ -458,7 +471,8 @@ public partial class Lexer
                     var conversion = _source[_position + 1];
                     _position += 2;  // consume '!' and the flag char
                     _column += 2;
-                    return CreateToken(TokenType.FStringConversion, conversion.ToString(), startLine, startColumn, startPosition);
+                    return CreateToken(TokenType.FStringConversion, conversion.ToString(), startLine, startColumn, startPosition,
+                        fstringExpressionText: HoleExpressionText(field, startPosition));
                 }
 
                 if (validFlag)
@@ -482,10 +496,12 @@ public partial class Lexer
             // spec text (possibly empty — which itself signals to the parser that a spec exists).
             if (current == ':' && field.InnerBraceDepth == 0 && field.ParenDepth == 0)
             {
+                var expressionText = HoleExpressionText(field, startPosition);
                 _position++;
                 _column++;
                 field.InFormatSpec = true;
-                return NextFStringSpecToken(context, field, atSpecStart: true);
+                var specStart = NextFStringSpecToken(context, field, atSpecStart: true);
+                return specStart with { FStringExpressionText = expressionText };
             }
 
             // Nested f-string start (e.g., f"outer {f'inner {x}'}")

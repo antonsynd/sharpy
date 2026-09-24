@@ -238,6 +238,17 @@ public record Token : ILocatable
     public int? SourceLength { get; init; }
 
     /// <summary>
+    /// Set only on a replacement field's top-level terminator tokens —
+    /// <see cref="TokenType.FStringSelfDoc"/>, <see cref="TokenType.FStringConversion"/>, the first
+    /// <see cref="TokenType.FStringFormatSpec"/> and <see cref="TokenType.FStringExprEnd"/>: the
+    /// hole's verbatim source text from just after <c>{</c> to that token, leading whitespace kept
+    /// and trailing whitespace stripped (PEP 750 <c>Interpolation.expression</c>, #1991). The parser
+    /// reads it from the terminator right after the expression. It is not part of
+    /// <see cref="Value"/> (those tokens' values are load-bearing) and never affects the span.
+    /// </summary>
+    public string? FStringExpressionText { get; init; }
+
+    /// <summary>
     /// The length of this token in characters.
     /// Returns SourceLength when available (for tokens where Value differs from
     /// source representation, like string literals), otherwise Value.Length.

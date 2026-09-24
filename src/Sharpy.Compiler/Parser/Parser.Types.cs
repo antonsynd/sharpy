@@ -742,6 +742,10 @@ public partial class Parser
         // Parse the expression (tokens are already emitted by lexer)
         var expr = ParseExpression();
 
+        // The lexer attaches the hole's source text to whichever terminator ('=', '!', ':' or '}')
+        // follows the expression (#1991).
+        var expressionText = Current.FStringExpressionText;
+
         // Optional specifiers, in Python field order: '=' self-doc, '!' conversion, ':' format spec.
         string? sourceText = null;
         bool isSelfDocumenting = false;
@@ -769,6 +773,7 @@ public partial class Parser
             Conversion = conversion,
             SourceText = sourceText,
             IsSelfDocumenting = isSelfDocumenting,
+            ExpressionText = expressionText,
         };
 
         // Expect FStringExprEnd
