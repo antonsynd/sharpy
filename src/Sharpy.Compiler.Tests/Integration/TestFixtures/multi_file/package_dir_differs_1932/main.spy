@@ -1,0 +1,6 @@
+# Control for #1932: the directory and the module file mangle to different identifiers (`Pkg`
+# wrapping module class `Lib`), so the layout builds and runs.
+from pkg.lib import f
+
+def main() -> None:
+    print(f())

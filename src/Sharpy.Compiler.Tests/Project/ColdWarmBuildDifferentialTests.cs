@@ -774,6 +774,41 @@ def main() -> None:
             "lib must be served from the cache while main recompiles against it");
     }
 
+    /// <summary>
+    /// SPY0526 (#1932) is a path-only project-phase refusal, so it must be reported identically by a
+    /// warm build whose other files come from the cache and by a cold build of the same layout: the
+    /// first build (main.spy + lib/core.spy) succeeds and writes the cache; adding lib/lib.spy makes
+    /// the wrapper `Lib` hold module class `Lib`; the warm rebuild (main/core skipped) and a cold
+    /// build of the final layout in a fresh area report the same diagnostics.
+    /// </summary>
+    [Fact]
+    public void PackageModuleCollision_IsReportedIdenticallyWarmAndCold()
+    {
+        const string main = "from lib.core import g\n\ndef main() -> None:\n    print(g())\n";
+        const string core = "def g() -> int:\n    return 1\n";
+        const string lib = "def f() -> int:\n    return 7\n";
+
+        var warmMain = Write("pkgwarm", "main.spy", main);
+        var warmCore = Write(Path.Combine("pkgwarm", "lib"), "core.spy", core);
+        var first = Build(Config("pkgwarm", warmMain, warmCore));
+        first.Success.Should().BeTrue("the collision-free layout builds. Diagnostics:\n" + Diagnostics(first));
+
+        var warmLib = Write(Path.Combine("pkgwarm", "lib"), "lib.spy", lib);
+        var warm = Build(Config("pkgwarm", warmMain, warmCore, warmLib));
+        warm.Success.Should().BeFalse("lib/lib.spy nests module class Lib in wrapper Lib");
+        Skipped(warm).Should().Contain(new[] { "main.spy", "core.spy" },
+            "the unchanged files come from the cache — the positive control that this is a WARM build");
+
+        var coldMain = Write("pkgcold", "main.spy", main);
+        var coldCore = Write(Path.Combine("pkgcold", "lib"), "core.spy", core);
+        var coldLib = Write(Path.Combine("pkgcold", "lib"), "lib.spy", lib);
+        var cold = Build(Config("pkgcold", coldMain, coldCore, coldLib));
+        cold.Success.Should().BeFalse();
+
+        Diagnostics(cold).Should().Contain("SPY0526@lib.spy:1:1");
+        Diagnostics(warm).Should().Be(Diagnostics(cold), "warm must report what cold reports");
+    }
+
     private const string NestedAliasLibSource = @"class Box:
     type Ids = list[int]
 

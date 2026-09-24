@@ -597,26 +597,11 @@ internal partial class RoslynEmitter
     /// </summary>
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
-        // Module class name is derived from the source file name
+        // Module class name is derived from the source file name — the one authority the project's
+        // SPY0526 check also reads (#1932): __init__.spy → its directory, an entry main.spy →
+        // "Program" (avoids CS0542 Main.Main()), any other file → the mangled stem.
         if (!string.IsNullOrEmpty(_context.SourceFilePath))
-        {
-            var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
-            if (fileName == DunderNames.Init)
-            {
-                // __init__.spy → use directory name as class name
-                var dirName = Path.GetFileName(Path.GetDirectoryName(_context.SourceFilePath));
-                return NameMangler.ToNamespacePart(dirName ?? "Module");
-            }
-
-            // Entry point: main.spy → "Program" (avoids CS0542: Main.Main() conflict),
-            // other files → PascalCase of filename
-            if (willGenerateMainMethod && fileName.Equals("main", StringComparison.OrdinalIgnoreCase))
-            {
-                return "Program";
-            }
-
-            return NameMangler.ToNamespacePart(fileName);
-        }
+            return ModuleIdentifiers.ModuleClassName(_context.SourceFilePath, willGenerateMainMethod);
 
         return "Module"; // Fallback
     }

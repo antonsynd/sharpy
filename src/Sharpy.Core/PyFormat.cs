@@ -33,27 +33,39 @@ namespace Sharpy
             }
 
             FormatOperandKind kind = KindOf(value);
-            string pyTypeName = PyTypeName(value);
-            PyFormatSpec parsed;
-            FormatSpecError? error = kind == FormatOperandKind.Unknown
-                // A value with no python operand kind yet is parsed but no rule applies; it renders
-                // its ToString() under the spec (#1988 gives it a kind).
-                ? PyFormatSpec.Parse(spec, '>', pyTypeName, out parsed)
-                : PyFormatSpec.Validate(spec, kind, pyTypeName, out parsed);
+            if (kind == FormatOperandKind.Str && !(value is string))
+            {
+                // An enum formats as its str — python's Enum.__format__ is str.__format__(str(self),
+                // spec) — and a char is a one-character str (#1988).
+                value = Builtins.Str(value!);
+            }
+
+            FormatSpecError? error = PyFormatSpec.Validate(spec, kind, PyTypeName(value), out PyFormatSpec parsed);
             if (error != null)
             {
                 throw error.ToException();
             }
 
-            if (kind == FormatOperandKind.Complex)
+            switch (kind)
             {
-                return RenderComplex((Complex)value!, parsed);
+                case FormatOperandKind.Formattable:
+                    // The type owns its spec: IFormattable is the CLR spelling of __format__
+                    // (dunder_methods.md), so format(F(), ">10") is whatever F makes of ">10" (#1988).
+                    return ((IFormattable)value!).ToString(spec, CultureInfo.InvariantCulture);
+                case FormatOperandKind.Complex:
+                    return RenderComplex((Complex)value!, parsed);
+                default:
+                    return Render(value!, kind, parsed);
             }
-            return Render(value!, kind, parsed);
         }
 
         /// <summary>
-        /// The operand kind of a runtime value — which CPython <c>__format__</c> it takes.
+        /// The operand kind of a runtime value — which CPython <c>__format__</c> it takes (#1988,
+        /// R-BY). The numeric arms come before <see cref="IFormattable"/>, which every CLR number
+        /// also implements; an enum is IFormattable too and formats as its str. A value with no
+        /// <c>__format__</c> — a list, dict, set, tuple, frozenset, bytes, <c>Optional</c>, an
+        /// exception or a class that does not implement <see cref="IFormattable"/> — refuses any
+        /// non-empty spec with CPython's TypeError.
         /// </summary>
         private static FormatOperandKind KindOf(object? value)
         {
@@ -65,7 +77,7 @@ namespace Sharpy
             {
                 return FormatOperandKind.Bool;
             }
-            if (value is string)
+            if (value is string || value is char || value is Enum)
             {
                 return FormatOperandKind.Str;
             }
@@ -82,7 +94,11 @@ namespace Sharpy
             {
                 return FormatOperandKind.Complex;
             }
-            return FormatOperandKind.Unknown;
+            if (value is IFormattable)
+            {
+                return FormatOperandKind.Formattable;
+            }
+            return FormatOperandKind.NoFormat;
         }
 
         private static bool IsNumeric(FormatOperandKind kind) =>
@@ -159,35 +175,74 @@ namespace Sharpy
             return type == 'b' || type == 'o' || type == 'x' || type == 'X' ? 4 : 3;
         }
 
-        /// <summary>Python type name used in format-error messages.</summary>
-        private static string PyTypeName(object? value)
+        /// <summary>
+        /// The python type name of a value, as CPython's format and subscript messages spell it:
+        /// <c>list</c>, <c>dict</c>, <c>set</c>, <c>frozenset</c>, <c>tuple</c>, <c>bytes</c>,
+        /// <c>complex</c> for the Core collections and numbers, <c>Optional</c> for
+        /// <see cref="Optional{T}"/>, and otherwise the CLR type name without its generic arity
+        /// (<c>List`1</c> is never printed; a nested type prints its own name, not its outer's).
+        /// </summary>
+        internal static string PyTypeName(object? value)
         {
-            if (value == null)
+            switch (value)
             {
-                return "NoneType";
+                case null:
+                    return "NoneType";
+                case bool _:
+                    return "bool";
+                case double _:
+                case float _:
+                case decimal _:
+                    return "float";
+                case int _:
+                case long _:
+                case short _:
+                case byte _:
+                case sbyte _:
+                case uint _:
+                case ulong _:
+                case ushort _:
+                    return "int";
+                case string _:
+                case char _:
+                    return "str";
+                case Complex _:
+                    return "complex";
+                case Bytes _:
+                    return "bytes";
+                case System.Runtime.CompilerServices.ITuple _:
+                    return "tuple";
             }
-            if (value is bool)
+
+            Type type = value.GetType();
+            if (type.IsGenericType)
             {
-                return "bool";
+                Type definition = type.GetGenericTypeDefinition();
+                if (definition == typeof(List<>))
+                {
+                    return "list";
+                }
+                if (definition == typeof(Dict<,>))
+                {
+                    return "dict";
+                }
+                if (definition == typeof(Set<>))
+                {
+                    return "set";
+                }
+                if (definition == typeof(FrozenSet<>))
+                {
+                    return "frozenset";
+                }
+                if (definition == typeof(Optional<>))
+                {
+                    return "Optional";
+                }
             }
-            if (value is double || value is float || value is decimal)
-            {
-                return "float";
-            }
-            if (value is int || value is long || value is short || value is byte
-                || value is sbyte || value is uint || value is ulong || value is ushort)
-            {
-                return "int";
-            }
-            if (value is string)
-            {
-                return "str";
-            }
-            if (value is Complex)
-            {
-                return "complex";
-            }
-            return value.GetType().Name;
+
+            string name = type.Name;
+            int tick = name.IndexOf('`');
+            return tick < 0 ? name : name.Substring(0, tick);
         }
 
         /// <summary>
@@ -422,8 +477,10 @@ namespace Sharpy
                     }
                     break;
                 default:
-                    throw new ValueError(
-                        "Unknown format code '" + type + "' for object of type '" + PyTypeName(value) + "'");
+                    // PyFormatSpec.Validate admits no other presentation type for a str, int, bool or
+                    // float operand, and no other operand kind reaches this renderer.
+                    throw new InvalidOperationException(
+                        "unreachable: presentation type '" + type + "' passed PyFormatSpec.Validate");
             }
 
             // #1958: '#' is ONE rule for the whole float presentation family — the result always

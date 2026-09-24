@@ -152,6 +152,15 @@ public static partial class DiagnosticExplanations
             "into the type name. Escaping the declaration alone leaves the unescaped uses spelling 'Q'. A union " +
             "case, and a union case field, has no escape hatch — rename it.");
 
+        Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package directory and module file emit the same identifier", "CodeGen",
+            "In a project, each directory above a source file becomes a C# wrapper class and the file itself " +
+            "becomes the module class nested inside it. When the innermost directory and the file mangle to the " +
+            "same identifier — 'lib/lib.spy', 'a/b/b.spy', 'my_lib/myLib.spy' — the module class would be nested " +
+            "in a class of the same name, which C# forbids (CS0542). Directories are measured from the project's " +
+            "common source directory. Whether the module is imported does not matter: every file is emitted.",
+            "# project layout\nsrc/main.spy\nsrc/lib/lib.spy   # wrapper 'Lib' would hold module class 'Lib'",
+            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy').");
+
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +
             "(for example a conditional expression as the receiver of a member access) was not wrapped in parentheses. " +

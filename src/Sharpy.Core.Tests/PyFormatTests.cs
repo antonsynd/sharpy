@@ -541,4 +541,104 @@ public class PyFormatTests
         error.Should().NotBeNull();
         error!.Message.Should().Be(message);
     }
+
+    // ---- #1988 (R-BY): the operand-kind axis — no __format__ is a TypeError, IFormattable owns
+    // its spec, an enum formats as its str ----
+
+    /// <summary>A class with no <c>__format__</c> spelling (python: <c>class C: pass</c>).</summary>
+    private sealed class C
+    {
+    }
+
+    /// <summary>
+    /// The CLR spelling of python's <c>class F: def __format__(self, s): return "F&lt;" + s + "&gt;"</c>.
+    /// </summary>
+    private sealed class F : System.IFormattable
+    {
+        public string ToString(string? format, System.IFormatProvider? formatProvider) => "F<" + format + ">";
+
+        public override string ToString() => "F()";
+    }
+
+    private static class Outer
+    {
+        public sealed class Inner<T>
+        {
+        }
+    }
+
+    public static IEnumerable<object[]> NoFormatOperands()
+    {
+        // python3: format(v, '>10') / format(v, 'd') / format(v, 'garbage{{')
+        //   => TypeError: unsupported format string passed to <name>.__format__   (every row)
+        yield return new object[] { new List<int>(new[] { 1, 2 }), "list" };            // [1, 2]
+        yield return new object[] { new Dict<string, int> { ["a"] = 1 }, "dict" };      // {'a': 1}
+        yield return new object[] { new Set<int>(new[] { 1 }), "set" };                 // {1}
+        yield return new object[] { (1, 2), "tuple" };                                  // (1, 2)
+        yield return new object[] { new FrozenSet<int>(new[] { 1 }), "frozenset" };     // frozenset([1])
+        yield return new object[] { new Bytes(new byte[] { 97, 98 }), "bytes" };        // b'ab'
+        yield return new object[] { new C(), "C" };                                     // class C: pass
+        yield return new object[] { new ValueError("x"), "ValueError" };                // ValueError('x')
+        // Sharpy-only rows (no python twin): Optional has no __format__, a nested generic class
+        // prints its own name without the arity.
+        yield return new object[] { Optional<int>.Some(1), "Optional" };
+        yield return new object[] { new Outer.Inner<int>(), "Inner" };
+    }
+
+    [Theory]
+    [MemberData(nameof(NoFormatOperands))]
+    public void Apply_NoFormatOperand_NonEmptySpec_IsATypeError(object value, string pyName)
+    {
+        foreach (var spec in new[] { ">10", "d", "garbage{{" })
+        {
+            var ex = Assert.Throws<TypeError>(() => PyFormat.Apply(value, spec));
+            ex.Message.Should().Be("unsupported format string passed to " + pyName + ".__format__");
+        }
+        // python3: format(v, '') == str(v) — never refused.
+        PyFormat.Apply(value, "").Should().Be(Builtins.Str(value));
+    }
+
+    [Theory]
+    [InlineData(">10", "F<>10>")]         // python3: format(F(), '>10') => 'F<>10>'
+    [InlineData("d", "F<d>")]             // python3: format(F(), 'd') => 'F<d>'
+    [InlineData("garbage{{", "F<garbage{{>")] // python3: format(F(), 'garbage{{') => 'F<garbage{{>'
+    public void Apply_FormattableOperand_OwnsItsSpec(string spec, string expected)
+    {
+        PyFormat.Apply(new F(), spec).Should().Be(expected);
+        "{0:>10}".Format(new F()).Should().Be("F<>10>");
+    }
+
+    [Fact]
+    public void Apply_FormattableOperand_EmptySpec_IsStr()
+    {
+        // Sharpy's empty spec is str(value) on every route (the f-string plain hole is Builtins.Str);
+        // python would call F.__format__('') and print 'F<>'.
+        PyFormat.Apply(new F(), "").Should().Be("F()");
+    }
+
+    [Fact]
+    public void Apply_ClrFormattable_IsDelegated()
+    {
+        // Sharpy-only (a CLR type, no python twin): the spec is the type's own.
+        PyFormat.Apply(new System.DateTime(2020, 1, 2), "yyyy").Should().Be("2020");
+    }
+
+    [Fact]
+    public void Apply_Enum_FormatsAsItsStr()
+    {
+        // python3: format(Color.RED, '>10') => ' Color.RED' (str.__format__ of str(self)); Sharpy's
+        // str(enum) is the member name (a separate deviation), and the spec applies to that text.
+        PyFormat.Apply(System.DayOfWeek.Monday, ">8").Should().Be("  Monday");
+        // python3: format(Color.RED, 'd') => ValueError: Unknown format code 'd' for object of type 'str'
+        var ex = Assert.Throws<ValueError>(() => PyFormat.Apply(System.DayOfWeek.Monday, "d"));
+        ex.Message.Should().Be("Unknown format code 'd' for object of type 'str'");
+    }
+
+    [Fact]
+    public void StrFormat_NoFormatOperand_IsATypeError()
+    {
+        // python3: '{0:>10}'.format([1, 2]) => TypeError: unsupported format string passed to list.__format__
+        var ex = Assert.Throws<TypeError>(() => "{0:>10}".Format(new List<int>(new[] { 1, 2 })));
+        ex.Message.Should().Be("unsupported format string passed to list.__format__");
+    }
 }

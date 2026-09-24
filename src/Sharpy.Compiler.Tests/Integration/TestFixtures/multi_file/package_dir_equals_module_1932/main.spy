@@ -1,0 +1,6 @@
+# A package directory whose wrapper class spells the same C# identifier as a module file inside it
+# (#1932): util/util.spy would nest module class `Util` in wrapper `Util` (C# CS0542). Refused by name.
+from util.util import f
+
+def main() -> None:
+    print(f())

@@ -304,7 +304,7 @@ namespace Sharpy
         /// alignment: the <c>0</c> flag synthesises <c>=</c> only when it is <c>&gt;</c> (numbers), so
         /// <c>format('ab', '05')</c> is <c>'ab000'</c>.
         /// </summary>
-        internal static FormatSpecError? Parse(
+        private static FormatSpecError? Parse(
             string spec, char defaultAlign, string pyTypeName, out PyFormatSpec parsed)
         {
             parsed = default;

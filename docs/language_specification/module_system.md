@@ -16,11 +16,23 @@ project/
 
 The `__init__.spy` file can re-export symbols for convenient imports:
 
+<!-- spec-sweep: fragment -->
 ```python
 # utils/__init__.spy
 from utils.helpers import format_string, parse_input
 from utils.math.vectors import Vector2, Vector3
 ```
+
+**A package directory may not spell the same identifier as a module file inside it.** Each
+directory above a source file becomes a C# wrapper class, and the file becomes the module class
+nested in it — so `lib/lib.spy` would nest module class `Lib` in wrapper `Lib`, which C# forbids
+(CS0542). The project refuses such a layout by name (`SPY0526`: "Package directory 'lib' and
+module 'lib.spy' both emit the C# identifier 'Lib'... Rename the file or the directory"). The rule
+compares the *emitted* identifiers, so it also catches spellings that mangle alike
+(`my_lib/myLib.spy`) and nested packages (`a/b/b.spy`); directories are measured from the project's
+common source directory, and a file is checked whether or not anything imports it. A package
+whose directory differs from its modules (`pkg/lib.spy`), or that has only an `__init__.spy`,
+builds normally. (A later change emitting packages as namespaces is expected to relax this.)
 
 ## Name Qualification in Generated C#
 
@@ -57,6 +69,7 @@ error (`SPY0520`): only a `class` can absorb the module's members and serve as t
 
 All circular imports are rejected at compile time with diagnostic `SPY0302`. When `ModuleLoader` detects that a module being loaded is already on the import chain (tracked via `_importChain` Stack), it emits an error with the full cycle path and returns `null`, preventing the module from loading.
 
+<!-- spec-sweep: fragment -->
 ```python
 # file: parent.spy
 from child import Child  # ERROR: SPY0302 circular import detected
@@ -97,6 +110,7 @@ The following usages are NOT type-annotation-only and would still require a non-
 
 **Example of proposed behavior:**
 
+<!-- spec-sweep: fragment -->
 ```python
 # file: parent.spy
 from child import Child  # OK - Child used only in type annotations

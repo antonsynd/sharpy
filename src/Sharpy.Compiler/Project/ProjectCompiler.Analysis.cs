@@ -46,6 +46,8 @@ internal partial class ProjectCompiler
             using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ProjectParse))
             {
                 ParseAllFiles(config, ct);
+                // Reported, not aborting: the editor keeps its semantic model (#1932)
+                ReportPackageModuleNameCollisions(config);
                 if (!_projectModel!.Units.Values.Any(u => u.Ast != null))
                 {
                     return CreateAnalysisResult(success: false);

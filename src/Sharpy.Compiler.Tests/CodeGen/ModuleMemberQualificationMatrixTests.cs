@@ -862,4 +862,67 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         bare.GeneratedCSharp.Should().Contain(construction,
             "the bare spelling is the control: both routes take ONE lowering (#1907)");
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Subdirectory axis (#1932, R-AX phase a): each directory above a file is a wrapper class and
+    // the file is the module class nested in it. When the innermost wrapper and the module class
+    // mangle to one identifier (`lib/lib.spy` → wrapper `Lib` holding module class `Lib`) C# refuses
+    // it (CS0542); the project refuses it by name first (SPY0526), from the SAME helper the emitter
+    // spells both names with (ModuleIdentifiers). The helper lays sources out under `src/`, so the
+    // wrapper segments are measured from `src/` (the common source root), not the project dir.
+    // Prior commit: every refused layout was CS0542 behind SPY0908; the running layouts ran.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private const string LibF = "def f() -> int:\n    return 7\n";
+
+    public static IEnumerable<object[]> SubdirectoryLayouts() => new[]
+    {
+        // name, files (path → content), refused file (null = runs and prints 7), expected identifier
+        new object[] { "dir_differs_from_file", new[] { ("pkg/lib.spy", LibF), ("main.spy", "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        new object[] { "dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") }, "lib.spy", "Lib" },
+        new object[] { "dir_equals_file_with_init", new[] { ("lib/__init__.spy", "X: int = 1\n"), ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") }, "lib.spy", "Lib" },
+        new object[] { "nested_dir_equals_file", new[] { ("a/b/b.spy", LibF), ("main.spy", "from a.b.b import f\n\ndef main() -> None:\n    print(f())\n") }, "b.spy", "B" },
+        new object[] { "unimported_dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") }, "lib.spy", "Lib" },
+        new object[] { "init_only", new[] { ("lib/__init__.spy", LibF), ("main.spy", "from lib import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        // Discriminates the ROOT the segments are measured from: under the common source root
+        // (`src/`) a root-level src.spy has no wrapper; measured from the project dir it would get
+        // wrapper `Src` and collide with its own module class `Src`.
+        new object[] { "file_named_like_source_root", new[] { ("src.spy", LibF), ("main.spy", "from src import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        new object[] { "mangling_equal", new[] { ("my_lib/myLib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") }, "myLib.spy", "MyLib" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SubdirectoryLayouts))]
+    public void Subdirectory_DirEqualsModule_IsSpy0526_ElseRuns(
+        string name, (string, string)[] files, string? refusedFile, string? identifier)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        foreach (var (path, content) in files)
+            helper.AddSourceFile(path, content);
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        if (refusedFile == null)
+        {
+            exec.Success.Should().BeTrue($"[{name}] {string.Join("\n", exec.CompilationErrors)}");
+            exec.StandardOutput.Trim().Should().Be("7", $"[{name}]");
+            return;
+        }
+
+        exec.Success.Should().BeFalse($"[{name}] must be refused");
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{name}] the refusal is SPY0526, not CS0542 behind SPY0908");
+        var refusal = errors.Should().ContainSingle(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+            $"[{name}] {string.Join("\n", exec.CompilationErrors)}").Subject;
+        refusal.Message.Should().Contain($"module '{refusedFile}' both emit the C# identifier '{identifier}'");
+        refusal.Message.Should().EndWith("Rename the file or the directory.");
+        Path.GetFileName(refusal.FilePath).Should().Be(refusedFile);
+    }
+
+    [Fact]
+    public void Subdirectory_Axis_IsTotal()
+        => SubdirectoryLayouts().Should().HaveCount(8);
 }

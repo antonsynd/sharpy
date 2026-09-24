@@ -5,6 +5,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Project;
 
@@ -29,6 +30,53 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Phase 1: Parse all source files into AST modules
     /// </summary>
+    /// <summary>
+    /// SPY0526 (#1932, R-AX phase a): a package directory whose wrapper class spells the same C#
+    /// identifier as the module class of a file inside it — <c>lib/lib.spy</c> nests module class
+    /// <c>Lib</c> in wrapper <c>Lib</c>, CS0542 behind SPY0908. Refused by name after parsing, before
+    /// any analysis, for EVERY source file (an un-imported file is still emitted). Rung 4 by
+    /// necessity: no CLR surface spells "these two paths mangle to one identifier". Both names come
+    /// from <see cref="ModuleIdentifiers"/>, the authority the emitter spells them with, relative to
+    /// the same common source root (<see cref="ComputeSourceRootPath"/>), so the refusal and the
+    /// emission cannot disagree. Path-only, so a warm build reports exactly what a cold one does.
+    /// </summary>
+    /// <returns><c>true</c> when at least one collision was reported.</returns>
+    private bool ReportPackageModuleNameCollisions(ProjectConfig config)
+    {
+        var sourceRoot = ComputeSourceRootPath(config);
+        var reported = false;
+        foreach (var sourceFile in config.SourceFiles)
+        {
+            var wrappers = ModuleIdentifiers.WrapperSegments(sourceRoot, sourceFile);
+            if (wrappers.Count == 0)
+                continue;
+
+            // An entry main.spy emits "Program"; a unit with no AST (served from the incremental
+            // cache) built successfully before, so it is taken to emit its entry point too.
+            var ast = _projectModel?.GetUnit(sourceFile)?.Ast;
+            var willGenerateMain = ast?.Body.Any(s => s is FunctionDef { Name: "main" }) ?? true;
+            var moduleClass = ModuleIdentifiers.ModuleClassName(sourceFile, willGenerateMain);
+            if (wrappers[^1] != moduleClass)
+                continue;
+
+            var directory = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(sourceFile))) ?? "";
+            if (Path.GetFileNameWithoutExtension(sourceFile) == Semantic.DunderNames.Init)
+                directory = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(sourceFile)))) ?? "";
+            _diagnostics.AddError(
+                $"Package directory '{directory}' and module '{Path.GetFileName(sourceFile)}' both emit the C# " +
+                $"identifier '{moduleClass}' (a class cannot be nested in a class of the same name, CS0542). " +
+                "Rename the file or the directory.",
+                line: 1,
+                column: 1,
+                filePath: sourceFile,
+                code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                phase: CompilerPhase.CodeGeneration);
+            reported = true;
+        }
+
+        return reported;
+    }
+
     private bool ParseAllFiles(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         var filesToParse = config.SourceFiles.Count - _filesToSkip.Count;

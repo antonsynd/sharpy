@@ -220,44 +220,13 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Computes the list of wrapper class names from the directory path.
-    /// For regular files: all directory parts are wrappers.
-    /// For __init__.spy: all directory parts EXCEPT the last are wrappers
-    /// (the last directory is the module class itself).
+    /// Computes the list of wrapper class names from the directory path — through the one
+    /// authority <see cref="ModuleIdentifiers.WrapperSegments"/>, which the project's SPY0526 check
+    /// also reads (#1932). For regular files: all directory parts are wrappers. For __init__.spy:
+    /// all directory parts EXCEPT the last are wrappers (the last directory is the module class).
     /// </summary>
     private List<string> ComputeWrapperClasses()
-    {
-        if (string.IsNullOrEmpty(_context.ProjectRootPath) ||
-            string.IsNullOrEmpty(_context.SourceFilePath))
-        {
-            return new List<string>();
-        }
-
-        var relativePath = Path.GetRelativePath(_context.ProjectRootPath, _context.SourceFilePath);
-        var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
-
-        if (string.IsNullOrEmpty(relativeDir) || relativeDir == ".")
-        {
-            // Root-level file: no wrappers needed
-            return new List<string>();
-        }
-
-        var dirParts = relativeDir
-            .Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => NameMangler.ToNamespacePart(p))
-            .ToList();
-
-        if (fileName == DunderNames.Init)
-        {
-            // __init__.spy: last directory is the module class, not a wrapper
-            // e.g., pkg/sub/__init__.spy → wrappers = [Pkg], module = Sub
-            if (dirParts.Count > 0)
-                dirParts.RemoveAt(dirParts.Count - 1);
-        }
-
-        return dirParts;
-    }
+        => ModuleIdentifiers.WrapperSegments(_context.ProjectRootPath, _context.SourceFilePath);
 
     private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)
     {

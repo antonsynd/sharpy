@@ -264,6 +264,12 @@ internal partial class ProjectCompiler
             }
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Phase 1b: a package directory spelling its module file's identifier (#1932)
+            if (ReportPackageModuleNameCollisions(config))
+            {
+                return CreateFailureResult();
+            }
+
             // Phase 2: Initialize shared symbol table and semantic info
             InitializeSharedState();
 

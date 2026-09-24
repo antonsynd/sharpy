@@ -842,9 +842,9 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Code generation diagnostic codes (SPY0500-SPY0599).
-    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0525, SPY0550-SPY0555, SPY0599 (24 codes)
+    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0526, SPY0550-SPY0555, SPY0599 (25 codes)
     /// Reserved: SPY0521 (TypeReExportNotSupported — for future type re-export support)
-    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0526-SPY0549, SPY0556-SPY0569 (source generators), SPY0570-SPY0598 (64 codes)
+    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0527-SPY0549, SPY0556-SPY0569 (source generators), SPY0570-SPY0598 (63 codes)
     /// </summary>
     public static class CodeGen
     {
@@ -864,7 +864,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Expression and operator errors (SPY0518-SPY0525)
+        #region Expression and operator errors (SPY0518-SPY0526)
 
         // SPY0511-SPY0517: Reserved for future statement-level codegen diagnostics
         public const string UnsupportedExpressionType = "SPY0518";  // Active
@@ -877,7 +877,12 @@ public static class DiagnosticCodes
         // A member whose emitted C# name equals its enclosing type's (CS0542) — refused by name at
         // semantic time (CodeGenInfoComputer), the SPY0522/SPY0523 phase-tagged precedent (#1871, R-AW).
         public const string MemberEnclosingTypeCollision = "SPY0525"; // Active (#1871)
-        // SPY0526-SPY0549: Reserved for future codegen diagnostics
+        // A package directory whose wrapper class spells the same C# identifier as the module class
+        // of a file inside it (`lib/lib.spy` → wrapper `Lib` holding module class `Lib`, CS0542) —
+        // refused by the project compiler before analysis, phase-tagged like SPY0522/SPY0523 (#1932,
+        // R-AX phase a; P14b relaxes it with namespaces).
+        public const string PackageModuleNameCollision = "SPY0526"; // Active (#1932)
+        // SPY0527-SPY0549: Reserved for future codegen diagnostics
 
         #endregion
 

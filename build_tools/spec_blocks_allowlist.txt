@@ -274,9 +274,6 @@ method_overloading.md::43f8776c84  # SPY0200 first #1952
 method_overloading.md::4417243806  # SPY0604 first #1952
 method_overloading.md::88398db0ea  # SPY0244 first #1952
 method_overloading.md::e06f25c63f  # SPY0200 first #1952
-module_system.md::4b94f84753  # SPY0300 first #1952
-module_system.md::83ede31f0c  # SPY0300 first #1952
-module_system.md::bf270e0cd1  # SPY0300 first #1952
 name_shadowing.md::09ded56250  # SPY0212 first #1952
 name_shadowing.md::539905f758  # SPY0492 first #1952
 name_shadowing.md::72bf3bfb98  # SPY0226 first #1952
