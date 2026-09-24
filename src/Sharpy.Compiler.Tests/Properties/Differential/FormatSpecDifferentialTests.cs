@@ -15,13 +15,13 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// mini-language against python3. It generates <c>(operand kind, spec)</c> cells from the grammar
 /// <c>[[fill]align][sign][z][#][0][width][grouping][.precision][type]</c> (a single fixed-seed
 /// <c>System.Random</c> draws every slot, so the corpus is byte-identical run-to-run), assembles each
-/// into a <c>try: print(format(v, "spec")) except ValueError</c>
+/// into a <c>try: print(format(v, "spec")) except ValueError / TypeError</c>
 /// program, runs it under Sharpy (the production compile+execute path) and python3 3.12 (through
 /// <c>build_tools/differential_exec/run_programs.py</c>), and compares stdout byte-for-byte. Every
 /// cell is compared in TWO columns (<see cref="Column"/>): the ENGINE column hides the spec in a
-/// variable so every cell exercises Core's runtime engine and its <c>ValueError</c> refusals; the
+/// variable so every cell exercises Core's runtime engine and its <c>ValueError</c>/<c>TypeError</c> refusals; the
 /// STATIC column passes the literal, so a refused spec may meet the compile-time twin (SPY0609,
-/// #1956), which agrees only with CPython's <c>ValueError</c> text verbatim — pinning the static twin
+/// #1956), which agrees only with CPython's refusal text verbatim — pinning the static twin
 /// (<c>FormatSpecGrammar</c>, a projection over Core's one validator since #1984) to CPython without
 /// giving up runtime coverage.
 ///
@@ -29,7 +29,11 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// divergence fails the run; an allowlisted cell that no longer diverges fails until its line is
 /// deleted (drain-on-fix). Every allowlist row cites an issue. The values are fixed and exactly
 /// representable (int 42, float 3.5, whole-valued float 3.0, bool True, str "ab"), so the sweep
-/// exercises the SPEC grammar, not float-repr pathology. The whole-valued float is its own kind
+/// exercises the SPEC grammar, not float-repr pathology. A separately seeded kind-axis stratum and
+/// three explicit strata widen the operand axis (#1988 #1989 #1978): negative zero (-0.0) and a
+/// negative value that renders as zero (-1e-9) under 'z'; the no-<c>__format__</c> kinds (list,
+/// dict, set, tuple — CPython's TypeError); a class that owns its spec (Sharpy's
+/// <c>System.IFormattable</c> ↔ python's <c>__format__</c>); and '#' with 'c'. The whole-valued float is its own kind
 /// because the '#' alternate form diverges most visibly there (<c>format(3.0, "#g")</c> is
 /// <c>3.00000</c>; the point and the trailing zeros are exactly what '#' keeps, #1958). No cell is
 /// excluded at generation: every drawn spec, '#' included, is compared. Skips (no-op) when a
@@ -57,15 +61,20 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     private const int EqualsPrefixStratumSeed = 0x1959_3D23;
     private const int EqualsPrefixStratumCells = 40;
 
+    // The kind-axis stratum (#1988 #1989): the same grammar draw over the operand kinds the uniform
+    // corpus does not carry, separately seeded so the uniform corpus is unchanged.
+    private const int KindAxisStratumSeed = 0x1988_4B1D;
+    private const int KindAxisStratumCells = 84;
+
     private const int SharpyExecTimeoutMs = 12_000;
 
     // The static column's positive control: at least this many cells must agree by a COMPILE-time
-    // SPY0609 carrying CPython's ValueError wording. Measured 130 @ 912537730 + #1984's wrapper (all 130
-    // static cells CPython refuses; the '<+z#010c' wording divergence drained when FormatSpecGrammar
-    // became a projection over Core's validator). The fixed seeds make the count deterministic, so a
-    // drop means the static twin (FormatSpecGrammar through CheckStaticFormatSpecArguments, #1956)
-    // stopped firing on literal specs, not that the corpus moved.
-    private const int StaticTwinAgreementFloor = 130;
+    // SPY0609 carrying CPython's ValueError/TypeError wording. Measured 219 @ 195992e40 + the widened corpus, on
+    // top of the #1988 static kinds (435 cells; was 130 of 280 before the kind-axis and explicit
+    // strata). The fixed seeds and explicit strata make the count deterministic, so a drop means the
+    // static twin (FormatSpecGrammar through CheckStaticFormatSpecArguments, #1956) stopped firing on
+    // literal specs — or stopped projecting an operand kind (#1988) — not that the corpus moved.
+    private const int StaticTwinAgreementFloor = 219;
 
     private sealed record Cell(string Kind, string Spec)
     {
@@ -80,10 +89,10 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     /// <summary>
     /// The two columns every cell is compared in. <see cref="Column.Engine"/> passes the spec through
     /// a <c>str</c> variable, so the checker cannot see a literal and EVERY cell reaches Core's runtime
-    /// engine (<c>PyFormat</c>) — its output and its <c>ValueError</c> text are compared with python3.
+    /// engine (<c>PyFormat</c>) — its output and its refusal text are compared with python3.
     /// <see cref="Column.Static"/> passes the spec as a string literal, so a spec CPython refuses must be
     /// refused at compile time by the static twin (SPY0609, #1956); that agrees only when the
-    /// diagnostic's message is CPython's <c>ValueError</c> text verbatim, and a spec python accepts
+    /// diagnostic's message is CPython's refusal text verbatim, and a spec python accepts
     /// that Sharpy refuses statically is an over-refusal divergence. A literal spec CPython refuses
     /// that COMPILES and is refused only by Core at runtime is a divergence too, even though the
     /// runtime text matches: the refusal came at the wrong stage (the twin is missing). Specs CPython
@@ -117,6 +126,13 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         int eqPrefixCells = cells.Count(IsEqualsPrefixCell);
         Assert.True(eqPrefixCells >= EqualsPrefixStratumCells,
             $"only {eqPrefixCells} '='+'#'+radix cells with room to pad were drawn (< {EqualsPrefixStratumCells}).");
+        // Anchors (#1988 #1989 #1978): every operand kind of the literal roster is in the corpus, and
+        // the explicit strata are really drawn — a kind or stratum dropped from generation is a failure,
+        // not a quietly smaller sweep.
+        var missingKinds = AllKinds.Where(k => !cells.Any(c => c.Kind == k)).ToList();
+        Assert.True(missingKinds.Count == 0, "operand kinds with no cell: " + string.Join(", ", missingKinds));
+        foreach (var (kind, spec) in AltFormCStratum().Concat(NegativeZeroStratum()).Concat(OperandKindStratum()))
+            Assert.Contains(new Cell(kind, spec), cells);
 
         // --- Sharpy arm: production compile + execute, sequential, one program per cell x column. ---
         var sharpy = new Dictionary<string, ArmOutcome>(StringComparer.Ordinal);
@@ -124,7 +140,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         {
             foreach (var column in Columns)
             {
-                var r = CompileAndExecute(ProgramFor(cell, column), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
+                var r = CompileAndExecute(ProgramFor(cell, column, forPython: false), "format_spec_diff.spy", executionTimeoutMs: SharpyExecTimeoutMs);
                 var staticRefusals = r.RawDiagnostics
                     .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
                     .Select(d => d.Message)
@@ -140,7 +156,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         for (int i = 0; i < cells.Count; i++)
         {
             for (int c = 0; c < Columns.Length; c++)
-                requests.Add((i * Columns.Length + c, ProgramFor(cells[i], Columns[c]) + "\nmain()\n"));
+                requests.Add((i * Columns.Length + c, ProgramFor(cells[i], Columns[c], forPython: true) + "\nmain()\n"));
         }
         var pythonById = oracle.RunBatch(requests);
 
@@ -209,7 +225,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             $"Format-spec differential: {cells.Count} cells x {Columns.Length} columns, {divergences.Count} divergent "
             + $"({offenders.Count} non-allowlisted, {stale.Count} stale-allowlisted); "
             + $"engine column {engineDivergent} divergent, static column {staticDivergent} divergent "
-            + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError wording, "
+            + $"({staticAgreements} agreeing by a compile-time SPY0609 with CPython's ValueError/TypeError wording, "
             + $"{staticRuntimeOnly} refused only at runtime); "
             + $"{eqPrefixCells} '='+'#'+radix cells. Wall={sw.Elapsed.TotalSeconds:F1}s.");
         foreach (var o in offenders.Take(40))
@@ -231,29 +247,37 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
     private static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd('\n');
 
-    private const string PythonValueErrorPrefix = "ValueError: ";
+    // CPython's two refusals of a spec: ValueError (the operand's __format__ rejects it) and TypeError
+    // (the operand has no __format__, #1988). The static twin carries either text verbatim.
+    private static readonly string[] PythonRefusalPrefixes = { "ValueError: ", "TypeError: " };
 
     private const string RuntimeOnlyReason = "literal spec refused only at runtime: static twin missing";
 
     /// <summary>
     /// Whether a Sharpy compile failure is the static twin of CPython's runtime refusal: python3
-    /// printed exactly one <c>ValueError: msg</c> line and Sharpy reported SPY0609 with that same
-    /// <c>msg</c>. Any other compile failure — a different code, a different wording, or a refusal
-    /// of a spec CPython accepts — stays a divergence.
+    /// printed exactly one <c>ValueError: msg</c> or <c>TypeError: msg</c> line and Sharpy reported
+    /// SPY0609 with that same <c>msg</c>. Any other compile failure — a different code, a different
+    /// wording, or a refusal of a spec CPython accepts — stays a divergence.
     /// </summary>
     private static bool IsStaticTwinOf(ArmOutcome sharpy, string pythonOut)
     {
         if (!IsCPythonRefusal(pythonOut))
             return false;
-        var message = pythonOut.Substring(PythonValueErrorPrefix.Length);
+        var message = pythonOut.Substring(pythonOut.IndexOf(": ", StringComparison.Ordinal) + 2);
         return sharpy.StaticRefusals.Contains(message, StringComparer.Ordinal);
     }
 
-    /// <summary>Whether python3 refused the cell: it printed exactly one <c>ValueError: msg</c> line.</summary>
+    /// <summary>Whether python3 refused the cell: it printed exactly one <c>ValueError: msg</c> or <c>TypeError: msg</c> line.</summary>
     private static bool IsCPythonRefusal(string pythonOut) =>
-        pythonOut.StartsWith(PythonValueErrorPrefix, StringComparison.Ordinal) && !pythonOut.Contains('\n');
+        PythonRefusalPrefixes.Any(p => pythonOut.StartsWith(p, StringComparison.Ordinal)) && !pythonOut.Contains('\n');
 
-    private static string ProgramFor(Cell cell, Column column)
+    /// <summary>
+    /// The cell's program. The two languages share it except for the <c>formattable</c> kind's class:
+    /// Sharpy spells <c>__format__</c> as <c>System.IFormattable</c> (<c>to_string(fmt, provider)</c>,
+    /// #1988), python3 as <c>__format__</c> — both return <c>F&lt;spec&gt;</c>, so the cell is a real
+    /// value-parity cell, not a Sharpy-only one.
+    /// </summary>
+    private static string ProgramFor(Cell cell, Column column, bool forPython)
     {
         var (ctype, lit) = cell.Kind switch
         {
@@ -261,21 +285,76 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             "int_neg" => ("int", "-255"),
             "float" => ("float", "3.5"),
             "float_whole" => ("float", "3.0"),
+            "float_negzero" => ("float", "-0.0"),
+            "float_tiny" => ("float", "-1e-9"),
             "bool" => ("bool", "True"),
-            _ => ("str", "\"ab\""),
+            "str" => ("str", "\"ab\""),
+            "list" => ("list[int]", "[1, 2]"),
+            "dict" => ("dict[str, int]", "{\"a\": 1}"),
+            "set" => ("set[int]", "{1}"),
+            "tuple" => ("tuple[int, int]", "(1, 2)"),
+            "formattable" => ("F", "F()"),
+            _ => throw new ArgumentOutOfRangeException(nameof(cell), cell.Kind, "no declaration for this operand kind"),
         };
+        string prelude = cell.Kind != "formattable" ? ""
+            : forPython
+                ? "class F:\n    def __format__(self, s):\n        return \"F<\" + s + \">\"\n\n\n"
+                : "from System import IFormattable, IFormatProvider\n\n\n"
+                    + "class F(IFormattable):\n"
+                    + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
+                    + "        return \"F<\" + fmt + \">\"\n\n\n";
         // The spec grammar never generates '"', '\\', '{' or '}', so it embeds directly in a literal.
         // Engine column: the spec travels through a str variable, so no static check can see it.
         string specDecl = column == Column.Engine ? $"    spec: str = \"{cell.Spec}\"\n" : "";
         string specArg = column == Column.Engine ? "spec" : $"\"{cell.Spec}\"";
-        return "def main() -> None:\n"
+        return prelude
+            + "def main() -> None:\n"
             + $"    v: {ctype} = {lit}\n"
             + specDecl
             + "    try:\n"
             + $"        print(format(v, {specArg}))\n"
             + "    except ValueError as e:\n"
-            + "        print(\"ValueError:\", e)\n";
+            + "        print(\"ValueError:\", e)\n"
+            + "    except TypeError as e:\n"
+            + "        print(\"TypeError:\", e)\n";
     }
+
+    // The literal roster of operand kinds (the anchor): the uniform draw's five, the '='-prefix
+    // stratum's int_neg, and the kind-axis stratum's seven (#1988 #1989).
+    private static readonly string[] UniformKinds = { "int", "float", "float_whole", "bool", "str" };
+    private static readonly string[] KindAxisKinds =
+        { "float_negzero", "float_tiny", "list", "dict", "set", "tuple", "formattable" };
+    private static readonly string[] AllKinds = UniformKinds.Append("int_neg").Concat(KindAxisKinds).ToArray();
+
+    /// <summary>
+    /// #1978: '#' with the 'c' presentation type, alone and beside the other int rules it competes
+    /// with (sign, z, '=' fill). The uniform draw reaches 'c' but rarely with '#' and a legal width,
+    /// so the stratum is explicit.
+    /// </summary>
+    private static IEnumerable<(string Kind, string Spec)> AltFormCStratum() =>
+        from kind in new[] { "int", "int_neg", "bool" }
+        from spec in new[] { "#c", "*=#5c", "+#c", "#zc", "#10c", "<#c" }
+        select (kind, spec);
+
+    /// <summary>
+    /// #1989: every rendering of a negative zero or a negative value that rounds to zero, under 'z',
+    /// across the presentations whose digits can all be zero (e E % g G n f, the type-less float, with
+    /// and without a sign). CPython coerces on the RENDERED text, so -1e-9 under 'z.1%' is '0.0%'.
+    /// </summary>
+    private static IEnumerable<(string Kind, string Spec)> NegativeZeroStratum() =>
+        from kind in new[] { "float_negzero", "float_tiny" }
+        from spec in new[] { "z", "z.0e", "z.1e", "z.2E", "z.0%", "z.1%", "z.1g", "z.3G", "z.1n", "z.0f", "z.3", "+z.1e", " z.2%", "z010.1e" }
+        select (kind, spec);
+
+    /// <summary>
+    /// #1988: the operand kinds with no __format__ (list, dict, set, tuple) and one that owns its spec
+    /// (formattable) under the empty spec (str(value), never refused — the positive control), a
+    /// padding spec, a numeric code and a spec no builtin kind parses.
+    /// </summary>
+    private static IEnumerable<(string Kind, string Spec)> OperandKindStratum() =>
+        from kind in new[] { "list", "dict", "set", "tuple", "formattable" }
+        from spec in new[] { "", ">10", "d", "abc", "*^9" }
+        select (kind, spec);
 
     private static List<Cell> GenerateCells(int target)
     {
@@ -285,7 +364,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         char[] signChars = { '+', '-', ' ' };
         char[] groupChars = { ',', '_' };
         char[] typeChars = { 'd', 'n', 'f', 'F', 'e', 'E', 'g', 'G', 'x', 'X', 'o', 'b', 'c', '%', 's' };
-        string[] kinds = { "int", "float", "float_whole", "bool", "str" };
+        string[] kinds = UniformKinds;
 
         var rng = new Random(GeneratedSeed);
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -350,6 +429,48 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
                 cells.Add(cell);
                 added++;
             }
+        }
+
+        // The kind-axis stratum (#1988 #1989): the uniform grammar draw over the operand kinds the
+        // uniform corpus above does not carry — a separately seeded draw, so the uniform corpus (and
+        // its measured floor) is unaffected by the kind roster's size.
+        var kindRng = new Random(KindAxisStratumSeed);
+        int kindAdded = 0;
+        for (int iter = 0; iter < KindAxisStratumCells * 40 && kindAdded < KindAxisStratumCells; iter++)
+        {
+            int fillAlign = kindRng.Next(0, 3);
+            char fill = fillChars[kindRng.Next(fillChars.Length)];
+            char align = alignChars[kindRng.Next(alignChars.Length)];
+            bool hasSign = kindRng.Next(2) == 1;
+            char sign = signChars[kindRng.Next(signChars.Length)];
+            bool hasZ = kindRng.Next(2) == 1;
+            bool hasHash = kindRng.Next(2) == 1;
+            bool hasZero = kindRng.Next(2) == 1;
+            int width = kindRng.Next(0, 13);
+            bool hasGroup = kindRng.Next(2) == 1;
+            char groupSep = groupChars[kindRng.Next(groupChars.Length)];
+            bool hasPrec = kindRng.Next(2) == 1;
+            int prec = kindRng.Next(0, 7);
+            bool hasType = kindRng.Next(2) == 1;
+            char type = typeChars[kindRng.Next(typeChars.Length)];
+            string kind = KindAxisKinds[kindRng.Next(KindAxisKinds.Length)];
+
+            string spec = BuildSpec(fillAlign, fill, align, hasSign, sign, hasZ, hasHash, hasZero,
+                width, hasGroup, groupSep, hasPrec, prec, hasType, type);
+            var cell = new Cell(kind, spec);
+            if (seen.Add(cell.Key(Column.Engine)))
+            {
+                cells.Add(cell);
+                kindAdded++;
+            }
+        }
+
+        // The explicit strata: every listed (kind, spec) is drawn, whatever the seeds produced.
+        foreach (var (kind, spec) in AltFormCStratum().Concat(NegativeZeroStratum()).Concat(OperandKindStratum()))
+        {
+            var cell = new Cell(kind, spec);
+            if (seen.Add(cell.Key(Column.Engine)))
+                cells.Add(cell);
         }
 
         return cells;
