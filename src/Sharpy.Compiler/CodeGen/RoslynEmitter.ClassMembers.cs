@@ -317,10 +317,11 @@ internal partial class RoslynEmitter
                 members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
             }
 
-            // Generate auto-constructor(s) for structs with instance fields but no explicit __init__
+            // Generate auto-constructor(s) for structs with a constructor roster (instance fields,
+            // defaulted auto-properties — #1938) but no explicit __init__
             if (initMethods.Count == 0
                 && _currentTypeSymbol is { TypeKind: Semantic.TypeKind.Struct }
-                && body.OfType<VariableDeclaration>().Any(IsSynthesizedConstructorField))
+                && (StructConstructorRoster(body).Count > 0 || HasInitializerOnlyInstanceProperty(body)))
             {
                 members.AddRange(GenerateStructAutoConstructors(className, body));
             }

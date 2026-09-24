@@ -304,34 +304,104 @@ internal partial class RoslynEmitter
             ElseClause(Block(AssignProperty(EscapedIdentifierName(paramName)))));
     }
 
+    /// <summary>
+    /// Whether <paramref name="prop"/> is a member of the synthesized struct constructor's roster,
+    /// exactly like a defaulted instance field (#1938): an optional parameter, an assignment in both
+    /// constructor bodies, and a vote in the "does this struct need a constructor" gate. Before, the
+    /// roster saw fields only, so <c>struct H: property x: int = 3</c> emitted a property
+    /// initializer with no declared constructor (CS8983 behind SPY0908) and <c>H(x=5)</c> had no
+    /// parameter. Read from the materialized <see cref="Semantic.PropertySymbol.IsConstructorParameter"/>
+    /// (Rule 2), never re-derived from the AST.
+    /// </summary>
+    private bool IsSynthesizedConstructorProperty(PropertyDef prop)
+        => _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == prop.Name) is { IsConstructorParameter: true };
+
+    /// <summary>
+    /// Whether the struct has an instance auto-property whose initializer is NOT a roster member
+    /// (its default is not a constant parameter default): C# still requires a declared constructor
+    /// beside it (CS8983), and <c>H()</c> must run that initializer — so the explicit parameterless
+    /// constructor is emitted for it too (#1938; the spec's "an implicit parameterless constructor
+    /// always exists").
+    /// </summary>
+    private bool HasInitializerOnlyInstanceProperty(IReadOnlyList<Statement> body)
+        => body.OfType<PropertyDef>().Any(p => !p.IsFunctionStyle && p.DefaultValue != null
+            && !IsSynthesizedConstructorProperty(p)
+            && _currentTypeSymbol?.Properties.FirstOrDefault(s => s.Name == p.Name) is { IsStatic: false });
+
+    /// <summary>One member of the synthesized struct constructor's roster: its source name (the
+    /// parameter), annotation, default, emitted member name, and the per-instance-default fact.</summary>
+    private sealed record StructConstructorMember(
+        string Name,
+        TypeAnnotation? Type,
+        Expression? Default,
+        string CSharpName,
+        bool RequiresPerInstanceDefault);
+
+    /// <summary>
+    /// The ONE roster of the synthesized struct constructor, in body order: every instance field
+    /// (<see cref="IsSynthesizedConstructorField"/>) and every defaulted instance auto-property
+    /// (<see cref="IsSynthesizedConstructorProperty"/>, #1938). The gate in
+    /// <c>GenerateClassMembers</c> and both synthesized constructors read this list.
+    /// </summary>
+    private List<StructConstructorMember> StructConstructorRoster(IReadOnlyList<Statement> body)
+    {
+        var roster = new List<StructConstructorMember>();
+        foreach (var stmt in body)
+        {
+            switch (stmt)
+            {
+                case VariableDeclaration fieldDecl when IsSynthesizedConstructorField(fieldDecl):
+                    var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
+                    var fieldInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+                    roster.Add(new StructConstructorMember(
+                        fieldDecl.Name,
+                        fieldDecl.Type,
+                        fieldDecl.InitialValue,
+                        fieldInfo?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
+                        fieldInfo?.RequiresPerInstanceDefault == true));
+                    break;
+
+                case PropertyDef prop when IsSynthesizedConstructorProperty(prop):
+                    // A property default is validated as a constant parameter default
+                    // (ConstantPositionValidator.StructPropertySlot), so it never needs the
+                    // per-instance lowering.
+                    roster.Add(new StructConstructorMember(
+                        prop.Name,
+                        prop.Type,
+                        prop.DefaultValue,
+                        NameCasing.ResolveMethod(prop.Name, prop.IsNameBacktickEscaped),
+                        RequiresPerInstanceDefault: false));
+                    break;
+            }
+        }
+
+        return roster;
+    }
+
     private List<ConstructorDeclarationSyntax> GenerateStructAutoConstructors(
         string className,
         IReadOnlyList<Statement> body)
     {
         var constructors = new List<ConstructorDeclarationSyntax>();
 
-        // Collect instance field declarations in body order (consts and @static excluded)
-        var fieldDecls = body.OfType<VariableDeclaration>()
-            .Where(IsSynthesizedConstructorField)
-            .ToList();
+        // The roster in body order (consts and @static excluded; defaulted auto-properties included)
+        var fieldDecls = StructConstructorRoster(body);
 
         // Partition into required (no default) and optional (with default), preserving order within each group
-        var requiredFields = fieldDecls.Where(f => f.InitialValue == null).ToList();
-        var optionalFields = fieldDecls.Where(f => f.InitialValue != null).ToList();
+        var requiredFields = fieldDecls.Where(f => f.Default == null).ToList();
+        var optionalFields = fieldDecls.Where(f => f.Default != null).ToList();
         var orderedFields = requiredFields.Concat(optionalFields).ToList();
 
         // When all fields have defaults, generate an explicit parameterless constructor.
         // Without this, `new T()` on a struct uses zero-initialization and skips
-        // the constructor whose parameters all happen to be optional.
-        if (requiredFields.Count == 0 && optionalFields.Count > 0)
+        // the constructor whose parameters all happen to be optional. An initializer-only
+        // property needs it too (CS8983; its initializer runs in the empty-bodied constructor).
+        if (requiredFields.Count == 0 && (optionalFields.Count > 0 || HasInitializerOnlyInstanceProperty(body)))
         {
             var parameterlessStatements = new List<StatementSyntax>();
             foreach (var fieldDecl in optionalFields)
             {
-                var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
-                var propName = fieldSymbol != null
-                    ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
-                    : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
+                var propName = fieldDecl.CSharpName;
 
                 // A comprehension/generator/lambda/walrus in the default hoists under its own scope
                 // sink so it has somewhere to land — flushed as a prologue ahead of the assignment
@@ -340,7 +410,7 @@ internal partial class RoslynEmitter
                 // sentinel needed (R-A) — only the hoist-sink safety is new here.
                 parameterlessStatements.AddRange(FlushIntoStatement(() =>
                 {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
+                    var defaultExpr = GenerateExpression(fieldDecl.Default!);
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -367,9 +437,7 @@ internal partial class RoslynEmitter
                 ? _typeMapper.MapType(fieldDecl.Type)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-            var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
-            bool requiresPerInstanceDefault =
-                fieldSymbol != null && GetCodeGenInfo(fieldSymbol)?.RequiresPerInstanceDefault == true;
+            bool requiresPerInstanceDefault = fieldDecl.RequiresPerInstanceDefault;
 
             ParameterSyntax param;
             if (requiresPerInstanceDefault)
@@ -388,10 +456,10 @@ internal partial class RoslynEmitter
                 param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
                 // Add default value if present
-                if (fieldDecl.InitialValue != null)
+                if (fieldDecl.Default != null)
                 {
                     param = param.WithDefault(GenerateParameterDefault(
-                        fieldDecl.InitialValue,
+                        fieldDecl.Default,
                         fieldDecl.Type is { IsOptional: true }));
                 }
             }
@@ -403,20 +471,15 @@ internal partial class RoslynEmitter
         var statements = new List<StatementSyntax>();
         foreach (var fieldDecl in orderedFields)
         {
-            var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
-            var propName = fieldSymbol != null
-                ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
-                : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
+            var propName = fieldDecl.CSharpName;
             var paramName = fieldDecl.Name;
-            bool requiresPerInstanceDefault =
-                fieldSymbol != null && GetCodeGenInfo(fieldSymbol)?.RequiresPerInstanceDefault == true;
 
-            if (requiresPerInstanceDefault)
+            if (fieldDecl.RequiresPerInstanceDefault)
             {
                 // The default evaluates only on the absent-argument path (#1684 R-A, #1901) —
                 // one shared arm with the dataclass host.
                 statements.Add(GeneratePerInstanceDefaultAssignment(
-                    fieldDecl.InitialValue!, propName, paramName));
+                    fieldDecl.Default!, propName, paramName));
             }
             else
             {

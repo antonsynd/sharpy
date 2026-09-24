@@ -1,0 +1,9 @@
+# A defaulted auto-property in a struct is a constructor-owned default, exactly like a defaulted
+# field (#1938): H() honours the default (an explicit parameterless constructor is emitted — without
+# one, C# `new H()` zero-initializes and would print 0), and H(x=5) binds the parameter.
+struct H:
+    property x: int = 3
+
+def main() -> None:
+    print(H().x)
+    print(H(x=5).x)

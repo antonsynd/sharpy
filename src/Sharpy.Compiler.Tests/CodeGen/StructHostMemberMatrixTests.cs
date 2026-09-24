@@ -279,6 +279,62 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
             yield return i;
     }
 
+    // ── #1938: the struct constructor roster sees defaulted auto-properties ─────────────────────
+
+    /// <summary>
+    /// struct × {defaulted field, defaulted auto-property, both, defaulted property + explicit
+    /// <c>__init__</c>, <c>const</c> (control), no defaults (control)} × construction {<c>H()</c>,
+    /// <c>H(x=5)</c>}. The discriminating value is <c>3</c> from <c>H()</c>: any declared constructor
+    /// satisfies CS8983, but without an explicit PARAMETERLESS one <c>H()</c> zero-initializes and
+    /// prints <c>0</c>. python3 oracle: the <c>@dataclass</c> twin of each struct prints the same.
+    /// Prior commit: every auto-property cell was CS8983 (+ CS1739 for <c>H(x=5)</c>) behind SPY0908.
+    /// </summary>
+    public static IEnumerable<object[]> ConstructorRosterCells() => new[]
+    {
+        new object[] { "field", "struct H:\n    x: int = 3\n", "print(H().x)\n    print(H(x=5).x)\n", "3\n5\n", true },
+        new object[] { "property", "struct H:\n    property x: int = 3\n", "print(H().x)\n    print(H(x=5).x)\n", "3\n5\n", true },
+        new object[] { "both", "struct H:\n    y: int = 1\n    property x: int = 3\n",
+            "print(H().x)\n    print(H().y)\n    print(H(x=5).x)\n    print(H(2, 6).x)\n", "3\n1\n5\n6\n", true },
+        new object[] { "property_explicit_init",
+            "struct H:\n    property x: int = 3\n    y: int\n\n    def __init__(self, y: int) -> None:\n        self.y = y\n",
+            "print(H(7).x)\n    print(H(7).y)\n", "3\n7\n", false },
+        // A defaulted property before a required field: the roster partitions required-first, so
+        // H(4) binds y (prior commit: RUNS — ctor(y) + initializer — and prints the same values;
+        // no ordering refusal is added for properties, that would reject a working program).
+        new object[] { "property_before_required",
+            "struct H:\n    property x: int = 3\n    y: int\n", "print(H(4).x)\n    print(H(4).y)\n    print(H(4, x=5).x)\n", "3\n4\n5\n", false },
+        // A non-constant default is not a parameter (CS1736) — it keeps its initializer, and the
+        // explicit parameterless constructor runs it (prior commit: CS8983 behind SPY0908 when
+        // alone; RUNS beside a required field, unchanged). python3: field(default_factory=list).
+        new object[] { "initializer_only_property",
+            "struct H:\n    property xs: list[int] = [1]\n", "print(H().xs)\n", "[1]\n", true },
+        new object[] { "initializer_only_property_beside_required",
+            "struct H:\n    property xs: list[int] = [1]\n    y: int\n", "print(H(4).xs)\n    print(H(4).y)\n", "[1]\n4\n", false },
+        new object[] { "const_control", "struct H:\n    const K: int = 9\n    x: int\n", "print(H(4).x)\n    print(H.K)\n", "4\n9\n", false },
+        new object[] { "no_default_control", "struct H:\n    x: int\n", "print(H(4).x)\n", "4\n", false },
+    };
+
+    [Theory]
+    [MemberData(nameof(ConstructorRosterCells))]
+    public void StructConstructorRoster_HonoursEveryDefault(
+        string name, string declaration, string body, string expected, bool expectsParameterlessCtor)
+    {
+        var source = declaration + "\ndef main() -> None:\n    " + body;
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{name}] no CS8983/CS1739 behind SPY0908. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue($"[{name}] {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(expected, $"[{name}]\n{source}");
+
+        var parameterless = HostDeclaration(result.GeneratedCSharp!).Members
+            .OfType<ConstructorDeclarationSyntax>()
+            .Count(c => c.ParameterList.Parameters.Count == 0);
+        parameterless.Should().Be(expectsParameterlessCtor ? 1 : 0,
+            $"[{name}] an explicit parameterless constructor exactly when every roster member is defaulted");
+    }
+
     [Fact]
     public void Matrix_IsTotal()
     {
@@ -286,6 +342,7 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
         ExecutingCells().Should().HaveCount(15);
         SpelledMembers.Should().HaveCount(6);
         OutsideAccessCells().Should().HaveCount(3);
+        ConstructorRosterCells().Should().HaveCount(9);
     }
 
     // ── C# tree helpers ──────────────────────────────────────────────────────────────────────

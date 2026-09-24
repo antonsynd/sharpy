@@ -173,6 +173,9 @@ public class CodeGenInfoComputerTotalityTests
     {
         nameof(VariableDeclaration),
         nameof(FunctionDef),
+        // #1938: a struct's defaulted auto-property may be a synthesized-constructor parameter
+        // (PropertySymbol.IsConstructorParameter).
+        nameof(PropertyDef),
     };
 
     private static readonly HashSet<string> ProcessTypeMembers_Skipped = new()
@@ -206,7 +209,6 @@ public class CodeGenInfoComputerTotalityTests
         nameof(InterfaceDef),
         nameof(EnumDef),
         nameof(TypeAlias),
-        nameof(PropertyDef),
         nameof(ImportStatement),
         nameof(FromImportStatement),
         nameof(MatchStatement),

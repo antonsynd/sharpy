@@ -363,12 +363,20 @@ internal class CodeGenInfoComputer
 
     private void ProcessTypeMembers(TypeSymbol typeSymbol, IEnumerable<Statement> body)
     {
+        // A struct with no explicit __init__ gets a synthesized constructor whose roster is its
+        // instance fields AND its defaulted auto-properties (#1938).
+        bool synthesizesStructConstructor = typeSymbol.TypeKind == TypeKind.Struct
+            && !body.OfType<FunctionDef>().Any(f => f.Name == DunderNames.Init);
+
         foreach (var stmt in body)
         {
             switch (stmt)
             {
                 case VariableDeclaration fieldDecl:
                     ProcessField(typeSymbol, fieldDecl);
+                    break;
+                case PropertyDef propDef when synthesizesStructConstructor:
+                    MarkStructConstructorProperty(typeSymbol, propDef);
                     break;
                 case FunctionDef funcDef:
                     ProcessMethodDef(typeSymbol, funcDef);
@@ -387,6 +395,29 @@ internal class CodeGenInfoComputer
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// Materializes <see cref="PropertySymbol.IsConstructorParameter"/> (#1938): a defaulted instance
+    /// auto-property of a constructor-synthesizing struct is a roster member when its default is an
+    /// admitted constant parameter default — the same admission a def parameter default passes, so
+    /// the synthesized constructor can carry it as a C# default value (a non-constant one would be
+    /// CS1736). No resolvers are passed (as for <see cref="RequiresPerInstanceDefault"/>): a literal,
+    /// a signed literal or <c>None</c> qualifies; any other default keeps its initializer, and the
+    /// struct still gets its explicit parameterless constructor from the emitter.
+    /// </summary>
+    private static void MarkStructConstructorProperty(TypeSymbol typeSymbol, PropertyDef propDef)
+    {
+        if (!MemberClassification.IsConstructorOwnedProperty(propDef))
+            return;
+
+        var kind = Validation.ConstantDefaultClassifier.Classify(propDef.DefaultValue!);
+        if (!Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ParameterDefault))
+            return;
+
+        var index = typeSymbol.Properties.FindIndex(p => p.Name == propDef.Name && !p.IsStatic);
+        if (index >= 0)
+            typeSymbol.Properties[index] = typeSymbol.Properties[index] with { IsConstructorParameter = true };
     }
 
     private void ProcessNestedTypeMembers(TypeSymbol enclosing, string name, IEnumerable<Statement> body)

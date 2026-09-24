@@ -154,6 +154,9 @@ public class DispatchSiteInventoryTests
         // ══════════════════════════════════════════════════════════════════════
 
         // Emitter dispatch — FileBasedIntegrationTests covers via running fixtures
+        // #1938: the struct constructor roster ranges over the two roster-bearing member kinds
+        // (instance field, defaulted auto-property); every other statement is not a roster member.
+        ["CodeGen/RoslynEmitter.ClassMembers.Constructors.cs::RoslynEmitter.StructConstructorRoster"] = "refusal-net:StructHostMemberMatrixTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
         // Partial classifier over top-level statement kinds collecting locally-defined function and

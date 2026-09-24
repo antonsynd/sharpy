@@ -90,6 +90,26 @@ internal static class MemberClassification
         => !def.IsConst && !def.Decorators.Any(d => d.Name == DecoratorNames.Static);
 
     /// <summary>
+    /// Whether <paramref name="def"/> has the SHAPE of a struct constructor-roster property (#1938):
+    /// a defaulted instance auto-property, like a defaulted instance field. Before, the roster saw
+    /// fields only, so <c>struct H: property x: int = 3</c> emitted a property initializer with no
+    /// declared constructor (CS8983) and <c>H(x=5)</c> had no parameter to bind. The full fact —
+    /// shape, host, no explicit <c>__init__</c>, a constant default — is materialized as
+    /// <c>PropertySymbol.IsConstructorParameter</c> by <c>CodeGenInfoComputer</c>.
+    ///
+    /// <para>Excluded: a function-style property (no initializer), a <c>@static</c> one (class
+    /// storage), an explicit-interface implementation (not assignable as <c>this.X</c>), and an
+    /// observed property (<c>before_set</c>/<c>after_set</c>) — a constructor store would fire its
+    /// observers. CodeGen must NOT call this (Rule 2).</para>
+    /// </summary>
+    public static bool IsConstructorOwnedProperty(PropertyDef def)
+        => !def.IsFunctionStyle
+            && def.DefaultValue != null
+            && def.ExplicitInterface == null
+            && def.Observers.IsEmpty
+            && !def.Decorators.Any(d => d.Name == DecoratorNames.Static);
+
+    /// <summary>
     /// Whether a member carries the Sharpy <c>@abstract</c> DECORATOR.
     /// </summary>
     /// <remarks>

@@ -562,6 +562,18 @@ public record PropertySymbol
     public string? ExplicitInterface { get; init; }
 
     /// <summary>
+    /// True for a defaulted instance auto-property of a struct with no explicit <c>__init__</c>
+    /// whose default is a constant parameter default: the property is a member of the synthesized
+    /// struct constructor's roster, exactly like a defaulted field (#1938) — an optional parameter
+    /// carrying the default, assigned in both synthesized constructors. Set at
+    /// <c>CodeGenInfoComputer.ProcessTypeMembers</c> (the materialization pass, so it is a fact of the
+    /// compilation that EMITS the struct; the import extractor leaves it false). A defaulted property
+    /// whose default is not an admitted parameter default keeps its initializer and is not a
+    /// parameter — graceful, never a new refusal.
+    /// </summary>
+    public bool IsConstructorParameter { get; init; }
+
+    /// <summary>
     /// Store-time observer clauses (<c>before_set</c>/<c>after_set</c>) declared on this
     /// auto-property. Empty for properties without observers. Populated during name resolution
     /// from <see cref="PropertyDef.Observers"/>; consumed by hover/completion and the codegen
