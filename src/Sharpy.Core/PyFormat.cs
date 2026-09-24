@@ -616,21 +616,43 @@ namespace Sharpy
             return false;
         }
 
+        /// <summary>
+        /// PEP 682's <c>z</c> test, on the RENDERED text as CPython applies it (#1989): a leading
+        /// <c>-</c> and every digit of the mantissa — the text before an <c>e</c>/<c>E</c> exponent,
+        /// without a trailing <c>%</c>, ignoring <c>.</c>, <c>,</c> and <c>_</c> — is <c>0</c>. So
+        /// <c>-0e+00</c>, <c>-0.00E+00</c> and <c>-0.0%</c> coerce (the last also for -1e-9 under
+        /// <c>z.1%</c>, which rounds to zero), while <c>-1e-09</c>, <c>-inf</c> and <c>-nan</c> do not.
+        /// </summary>
         private static bool IsNegativeZeroText(string s)
         {
-            if (s.Length == 0 || s[0] != '-')
+            if (s.Length < 2 || s[0] != '-')
             {
                 return false;
             }
-            for (int i = 1; i < s.Length; i++)
+            int end = s.Length;
+            if (s[end - 1] == '%')
+            {
+                end--;
+            }
+            int exponent = s.IndexOfAny(new[] { 'e', 'E' }, 1);
+            if (exponent >= 0 && exponent < end)
+            {
+                end = exponent;
+            }
+            bool sawDigit = false;
+            for (int i = 1; i < end; i++)
             {
                 char c = s[i];
-                if (c != '0' && c != '.' && c != ',' && c != '_')
+                if (c == '0')
+                {
+                    sawDigit = true;
+                }
+                else if (c != '.' && c != ',' && c != '_')
                 {
                     return false;
                 }
             }
-            return true;
+            return sawDigit;
         }
 
         /// <summary>

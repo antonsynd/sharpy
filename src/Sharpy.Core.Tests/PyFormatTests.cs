@@ -641,4 +641,93 @@ public class PyFormatTests
         var ex = Assert.Throws<TypeError>(() => "{0:>10}".Format(new List<int>(new[] { 1, 2 })));
         ex.Message.Should().Be("unsupported format string passed to list.__format__");
     }
+
+    // ---- #1989: 'z' coerces every all-zero rendering, read off the rendered mantissa ----
+
+    /// <summary>
+    /// PEP 682 coerces on the RENDERED text: a <c>-</c> whose mantissa digits are all zero loses its
+    /// sign under every float presentation — <c>e</c>/<c>E</c> exponent forms and <c>%</c> included,
+    /// and <c>-1e-9</c> under <c>z.1%</c> (it renders <c>-0.0%</c>). A non-zero mantissa keeps it.
+    /// Every row is python3 3.12.13, quoted with the z-less rendering beside it.
+    /// </summary>
+    [Theory]
+    [InlineData(-0.0, "z.0e", "0e+00")]              // format(-0.0, 'z.0e') => '0e+00' (without z: '-0e+00')
+    [InlineData(-0.0, "z.1e", "0.0e+00")]            // format(-0.0, 'z.1e') => '0.0e+00' (without z: '-0.0e+00')
+    [InlineData(-0.0, "ze", "0.000000e+00")]         // format(-0.0, 'ze') => '0.000000e+00' (without z: '-0.000000e+00')
+    [InlineData(-0.0, "zE", "0.000000E+00")]         // format(-0.0, 'zE') => '0.000000E+00' (without z: '-0.000000E+00')
+    [InlineData(-0.0, "z.2E", "0.00E+00")]           // format(-0.0, 'z.2E') => '0.00E+00' (without z: '-0.00E+00')
+    [InlineData(-0.0, "z%", "0.000000%")]            // format(-0.0, 'z%') => '0.000000%' (without z: '-0.000000%')
+    [InlineData(-0.0, "z.1%", "0.0%")]               // format(-0.0, 'z.1%') => '0.0%' (without z: '-0.0%')
+    [InlineData(-0.0, "z.0%", "0%")]                 // format(-0.0, 'z.0%') => '0%' (without z: '-0%')
+    [InlineData(-0.0, "z.1", "0e+00")]               // format(-0.0, 'z.1') => '0e+00' (without z: '-0e+00')
+    [InlineData(-0.0, "z.3", "0.0")]                 // format(-0.0, 'z.3') => '0.0' (without z: '-0.0')
+    [InlineData(-0.0, "zg", "0")]                    // format(-0.0, 'zg') => '0' (without z: '-0')
+    [InlineData(-0.0, "z.1g", "0")]                  // format(-0.0, 'z.1g') => '0' (without z: '-0')
+    [InlineData(-0.0, "zG", "0")]                    // format(-0.0, 'zG') => '0' (without z: '-0')
+    [InlineData(-0.0, "z.2G", "0")]                  // format(-0.0, 'z.2G') => '0' (without z: '-0')
+    [InlineData(-0.0, "zn", "0")]                    // format(-0.0, 'zn') => '0' (without z: '-0')
+    [InlineData(-0.0, "z.1n", "0")]                  // format(-0.0, 'z.1n') => '0' (without z: '-0')
+    [InlineData(-0.0, "z", "0.0")]                   // format(-0.0, 'z') => '0.0' (without z: '-0.0')
+    [InlineData(-0.0, "+z.0e", "+0e+00")]            // format(-0.0, '+z.0e') => '+0e+00' (without z: '-0e+00')
+    [InlineData(-0.0, "z.1f", "0.0")]                // format(-0.0, 'z.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-0.0, "z,.1f", "0.0")]               // format(-0.0, 'z,.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-0.0, "z_.3%", "0.000%")]            // format(-0.0, 'z_.3%') => '0.000%' (without z: '-0.000%')
+    [InlineData(-0.0, "z#.0e", "0.e+00")]            // format(-0.0, 'z#.0e') => '0.e+00' (without z: '-0.e+00')
+    [InlineData(-0.0, "z#.0%", "0.%")]               // format(-0.0, 'z#.0%') => '0.%' (without z: '-0.%')
+    [InlineData(-0.0, " z.0e", " 0e+00")]            // format(-0.0, ' z.0e') => ' 0e+00' (without z: '-0e+00')
+    [InlineData(-0.0, "z>10.1e", "zz-0.0e+00")]      // format(-0.0, 'z>10.1e') => 'zz-0.0e+00' (without z: '  -0.0e+00')
+    [InlineData(-1e-09, "z.0e", "-1e-09")]           // format(-1e-09, 'z.0e') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z.1e", "-1.0e-09")]         // format(-1e-09, 'z.1e') => '-1.0e-09' (without z: '-1.0e-09')
+    [InlineData(-1e-09, "ze", "-1.000000e-09")]      // format(-1e-09, 'ze') => '-1.000000e-09' (without z: '-1.000000e-09')
+    [InlineData(-1e-09, "zE", "-1.000000E-09")]      // format(-1e-09, 'zE') => '-1.000000E-09' (without z: '-1.000000E-09')
+    [InlineData(-1e-09, "z.2E", "-1.00E-09")]        // format(-1e-09, 'z.2E') => '-1.00E-09' (without z: '-1.00E-09')
+    [InlineData(-1e-09, "z%", "0.000000%")]          // format(-1e-09, 'z%') => '0.000000%' (without z: '-0.000000%')
+    [InlineData(-1e-09, "z.1%", "0.0%")]             // format(-1e-09, 'z.1%') => '0.0%' (without z: '-0.0%')
+    [InlineData(-1e-09, "z.0%", "0%")]               // format(-1e-09, 'z.0%') => '0%' (without z: '-0%')
+    [InlineData(-1e-09, "z.1", "-1e-09")]            // format(-1e-09, 'z.1') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z.3", "-1e-09")]            // format(-1e-09, 'z.3') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "zg", "-1e-09")]             // format(-1e-09, 'zg') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z.1g", "-1e-09")]           // format(-1e-09, 'z.1g') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "zG", "-1E-09")]             // format(-1e-09, 'zG') => '-1E-09' (without z: '-1E-09')
+    [InlineData(-1e-09, "z.2G", "-1E-09")]           // format(-1e-09, 'z.2G') => '-1E-09' (without z: '-1E-09')
+    [InlineData(-1e-09, "zn", "-1e-09")]             // format(-1e-09, 'zn') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z.1n", "-1e-09")]           // format(-1e-09, 'z.1n') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z", "-1e-09")]              // format(-1e-09, 'z') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "+z.0e", "-1e-09")]          // format(-1e-09, '+z.0e') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z.1f", "0.0")]              // format(-1e-09, 'z.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-1e-09, "z,.1f", "0.0")]             // format(-1e-09, 'z,.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-1e-09, "z_.3%", "0.000%")]          // format(-1e-09, 'z_.3%') => '0.000%' (without z: '-0.000%')
+    [InlineData(-1e-09, "z#.0e", "-1.e-09")]         // format(-1e-09, 'z#.0e') => '-1.e-09' (without z: '-1.e-09')
+    [InlineData(-1e-09, "z#.0%", "0.%")]             // format(-1e-09, 'z#.0%') => '0.%' (without z: '-0.%')
+    [InlineData(-1e-09, " z.0e", "-1e-09")]          // format(-1e-09, ' z.0e') => '-1e-09' (without z: '-1e-09')
+    [InlineData(-1e-09, "z>10.1e", "zz-1.0e-09")]    // format(-1e-09, 'z>10.1e') => 'zz-1.0e-09' (without z: '  -1.0e-09')
+    [InlineData(-1e-05, "z.0e", "-1e-05")]           // format(-1e-05, 'z.0e') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z.1e", "-1.0e-05")]         // format(-1e-05, 'z.1e') => '-1.0e-05' (without z: '-1.0e-05')
+    [InlineData(-1e-05, "ze", "-1.000000e-05")]      // format(-1e-05, 'ze') => '-1.000000e-05' (without z: '-1.000000e-05')
+    [InlineData(-1e-05, "zE", "-1.000000E-05")]      // format(-1e-05, 'zE') => '-1.000000E-05' (without z: '-1.000000E-05')
+    [InlineData(-1e-05, "z.2E", "-1.00E-05")]        // format(-1e-05, 'z.2E') => '-1.00E-05' (without z: '-1.00E-05')
+    [InlineData(-1e-05, "z%", "-0.001000%")]         // format(-1e-05, 'z%') => '-0.001000%' (without z: '-0.001000%')
+    [InlineData(-1e-05, "z.1%", "0.0%")]             // format(-1e-05, 'z.1%') => '0.0%' (without z: '-0.0%')
+    [InlineData(-1e-05, "z.0%", "0%")]               // format(-1e-05, 'z.0%') => '0%' (without z: '-0%')
+    [InlineData(-1e-05, "z.1", "-1e-05")]            // format(-1e-05, 'z.1') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z.3", "-1e-05")]            // format(-1e-05, 'z.3') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "zg", "-1e-05")]             // format(-1e-05, 'zg') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z.1g", "-1e-05")]           // format(-1e-05, 'z.1g') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "zG", "-1E-05")]             // format(-1e-05, 'zG') => '-1E-05' (without z: '-1E-05')
+    [InlineData(-1e-05, "z.2G", "-1E-05")]           // format(-1e-05, 'z.2G') => '-1E-05' (without z: '-1E-05')
+    [InlineData(-1e-05, "zn", "-1e-05")]             // format(-1e-05, 'zn') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z.1n", "-1e-05")]           // format(-1e-05, 'z.1n') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z", "-1e-05")]              // format(-1e-05, 'z') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "+z.0e", "-1e-05")]          // format(-1e-05, '+z.0e') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z.1f", "0.0")]              // format(-1e-05, 'z.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-1e-05, "z,.1f", "0.0")]             // format(-1e-05, 'z,.1f') => '0.0' (without z: '-0.0')
+    [InlineData(-1e-05, "z_.3%", "-0.001%")]         // format(-1e-05, 'z_.3%') => '-0.001%' (without z: '-0.001%')
+    [InlineData(-1e-05, "z#.0e", "-1.e-05")]         // format(-1e-05, 'z#.0e') => '-1.e-05' (without z: '-1.e-05')
+    [InlineData(-1e-05, "z#.0%", "0.%")]             // format(-1e-05, 'z#.0%') => '0.%' (without z: '-0.%')
+    [InlineData(-1e-05, " z.0e", "-1e-05")]          // format(-1e-05, ' z.0e') => '-1e-05' (without z: '-1e-05')
+    [InlineData(-1e-05, "z>10.1e", "zz-1.0e-05")]    // format(-1e-05, 'z>10.1e') => 'zz-1.0e-05' (without z: '  -1.0e-05')
+    public void Apply_NegativeZeroCoercion_ReadsTheRenderedMantissa(double value, string spec, string expected)
+    {
+        PyFormat.Apply(value, spec).Should().Be(expected);
+    }
 }
