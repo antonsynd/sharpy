@@ -77,6 +77,11 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         // python3: format(1+2j, 'd') -> ValueError: Unknown format code 'd' for object of type 'complex'
         yield return new("complex_d", "", "complex(1, 2)", "d",
             StaticMessage: "Unknown format code 'd' for object of type 'complex'");
+        // python3: format(1+2j, '0>10') -> ValueError: Zero padding is not allowed in complex format specifier
+        yield return new("complex_zero_pad", "", "complex(1, 2)", "0>10",
+            StaticMessage: "Zero padding is not allowed in complex format specifier");
+        // python3: format(1+2j, '>10') -> '    (1+2j)'
+        yield return new("complex_pad", "", "complex(1, 2)", ">10", Output: "    (1+2j)");
     }
 
     // Module-level declarations the cells read: C has no __format__, F owns its spec through

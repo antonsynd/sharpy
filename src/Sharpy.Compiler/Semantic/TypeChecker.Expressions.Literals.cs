@@ -820,7 +820,8 @@ internal partial class TypeChecker
     /// CLR number is also <c>IFormattable</c>), an enum as its <c>str</c>, <c>complex</c>, then
     /// <c>System.IFormattable</c>; a type whose values may be of another class (<c>object</c>, an
     /// interface, an abstract class) is not statically known; anything else has no
-    /// <c>__format__</c>.
+    /// <c>__format__</c> and is named by Core's <c>PyFormat.PyTypeName(Type)</c>, the one table the
+    /// runtime names values by.
     /// </summary>
     private static FormatOperand FormatOperandOfClr(Type clr)
     {
@@ -840,7 +841,7 @@ internal partial class TypeChecker
         if (clr == typeof(object) || clr == typeof(ValueType) || clr.IsInterface || (clr.IsAbstract && !clr.IsSealed)
             || clr.IsGenericParameter || Nullable.GetUnderlyingType(clr) != null)
             return FormatOperand.Unknown;
-        return FormatOperand.NoFormat(FormatOperand.PyTypeNameOf(clr));
+        return FormatOperand.NoFormat(SharpyRT::Sharpy.PyFormat.PyTypeName(clr));
     }
 
     private const string IFormattableFullName = "System.IFormattable";
