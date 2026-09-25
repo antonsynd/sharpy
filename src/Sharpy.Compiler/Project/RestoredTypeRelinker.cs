@@ -137,6 +137,8 @@ internal sealed class RestoredTypeRelinker
         }
         foreach (var nested in type.NestedTypes)
             RelinkType(nested);
+        foreach (var unionCase in type.UnionCases)
+            RelinkType(unionCase);
     }
 
     private void RelinkFunction(FunctionSymbol function)

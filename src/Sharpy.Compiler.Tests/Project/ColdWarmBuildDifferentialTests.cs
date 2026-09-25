@@ -808,6 +808,16 @@ def main() -> None:
             "S(3)", "from lib import S\n", "S(3)", "{v}.x", "({v} + {v}).x", false, "{v}.x"),
         ["userenum"] = new("Color", "enum Color:\n    RED = 1\n    GREEN = 2\n\n\n",
             "Color.GREEN", "from lib import Color\n", "Color.GREEN", "{v}.value", "{v} == {v}", false, "{v}.value"),
+        // A tagged union (#2071): its cases were not on the wire, so a cache-restored union had none —
+        // the case pattern and the case construction were SPY0202 warm. The member is a union method.
+        ["userunion"] = new("Shape",
+            "union Shape:\n    case Circle(r: int)\n    case Square(s: int)\n\n"
+            + "    def area(self) -> int:\n        match self:\n            case Shape.Circle(r):\n                return r * r\n"
+            + "            case Shape.Square(s):\n                return s * s\n\n\n",
+            "Shape.Circle(2)", "", "Shape.Circle(2)", "{v}.area()", null, false, "{v}.area()",
+            Prelude: "from lib import Shape\n\n\n",
+            StatementUse: "match {v}:\n        case Shape.Circle(r):\n            print(r)\n        case Shape.Square(s):\n"
+                + "            print(s)\n    print(Shape.Square(3).area())"),
         // Beyond the issue's list: a stdlib-module type and a .NET-namespace type lose their symbol the
         // same way (measured warm SPY0908 / cold SPY0220; `date == date` warm SPY0402).
         ["moduledate"] = new("date", "from datetime import date\n\n\n", "date(2020, 1, 2)",

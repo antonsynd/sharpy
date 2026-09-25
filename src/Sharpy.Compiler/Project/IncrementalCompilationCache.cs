@@ -135,7 +135,9 @@ internal class IncrementalCompilationCache
     // v37: the "user" SemanticType codec carries the declaring symbol's origin, `name@origin`
     //      (#2027). A v36 entry carries bare names, which decode symbol-less and relink to nothing —
     //      the warm build would type every cached user-defined type's members as Unknown again.
-    internal const int CurrentSchemaVersion = 37;
+    // v38: CachedSymbol carries a union's cases (#2071). A v37 entry restores a union with no
+    //      cases, so a warm consumer's `case Shape.Circle(r)` is SPY0202 where the cold build matches.
+    internal const int CurrentSchemaVersion = 38;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

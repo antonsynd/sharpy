@@ -153,6 +153,14 @@ internal record CachedSymbol
     public List<CachedSymbol>? NestedTypes { get; init; }
 
     /// <summary>
+    /// For a union TypeSymbol: its case types (serialized as CachedSymbol with Kind=Type, fields
+    /// included). A case is not a nested type — it is the union's own child, whose base type is the
+    /// union — so it rode nowhere, and a cache-restored union had no cases: `case Shape.Circle(r)`
+    /// was SPY0202 on a warm build where the cold build matched it (#2071).
+    /// </summary>
+    public List<CachedSymbol>? UnionCases { get; init; }
+
+    /// <summary>
     /// For TypeSymbol: nested type aliases (<c>type Id = int</c> in a class/struct/interface body,
     /// #1729/#1897). A nested alias is a MEMBER of its enclosing type, so — like NestedTypes, Methods
     /// and Fields — it travels in the enclosing type's cache entry. Unlike a module-level alias (a

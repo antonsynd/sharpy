@@ -105,6 +105,15 @@ internal static class SymbolSerializer
                 SerializeTypeSymbol(nt, ComputeSymbolId(nt, nt.DefiningFilePath ?? filePath), nt.DefiningFilePath ?? filePath, binding)).ToList();
         }
 
+        // Serialize union cases (#2071): a case is the union's child, not a nested type, and its
+        // fields are typed by the declaring build's checker — both must survive a warm restore.
+        List<CachedSymbol>? unionCases = null;
+        if (ts.UnionCases.Count > 0)
+        {
+            unionCases = ts.UnionCases.Select(c =>
+                SerializeTypeSymbol(c, ComputeSymbolId(c, c.DefiningFilePath ?? filePath), c.DefiningFilePath ?? filePath, binding)).ToList();
+        }
+
         // Serialize nested type aliases (#1897): a nested alias is a member of its enclosing type and
         // must survive the warm cache with the rest of the type's structure, else a cache-restored
         // type answers `Outer.Id` with SPY0202 on a warm build. Its target travels too.
@@ -167,6 +176,7 @@ internal static class SymbolSerializer
             Methods = methods,
             Constructors = constructors,
             NestedTypes = nestedTypes,
+            UnionCases = unionCases,
             NestedTypeAliases = nestedTypeAliases,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
@@ -603,6 +613,12 @@ internal static class SymbolSerializer
             .Select(nt => DeserializeTypeSymbol(nt, symbolRegistry, typeResolver, binding))
             .ToList() ?? new List<TypeSymbol>();
 
+        // Deserialize union cases (#2071). Each case's base type is its union, set below exactly as
+        // name resolution sets it (the symbol, no written reference).
+        var unionCases = cached.UnionCases?
+            .Select(c => DeserializeTypeSymbol(c, symbolRegistry, typeResolver, binding))
+            .ToList() ?? new List<TypeSymbol>();
+
         // Deserialize nested type aliases (#1897) — reconstructs each alias WITH its target so the
         // warm-restored type resolves `Outer.Id` exactly as the cold build does.
         var nestedTypeAliases = cached.NestedTypeAliases?
@@ -631,6 +647,7 @@ internal static class SymbolSerializer
             Methods = methods,
             Constructors = constructors,
             NestedTypes = nestedTypes,
+            UnionCases = unionCases,
             NestedTypeAliases = nestedTypeAliases,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
@@ -664,6 +681,9 @@ internal static class SymbolSerializer
         }
 
         symbol.Documentation = cached.Documentation;
+
+        foreach (var unionCase in unionCases)
+            unionCase.BaseType = symbol;
 
         // Set DeclaringType on nested types and register them
         foreach (var nested in nestedTypes)

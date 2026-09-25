@@ -98,6 +98,8 @@ internal partial class ProjectCompiler
             type.DeriveMethodTables();
             foreach (var nested in type.NestedTypes)
                 DeriveTables(nested);
+            foreach (var unionCase in type.UnionCases)
+                DeriveTables(unionCase);
         }
         foreach (var type in restoredByFile.SelectMany(file => file.Symbols).OfType<TypeSymbol>())
             DeriveTables(type);
@@ -137,8 +139,8 @@ internal partial class ProjectCompiler
                             semanticBinding.AddInterface(typeSymbol, iface);
                         }
 
-                        // Register variable types for fields
-                        foreach (var field in typeSymbol.Fields)
+                        // Register variable types for fields — a union's restored cases' too (#2071)
+                        foreach (var field in typeSymbol.Fields.Concat(typeSymbol.UnionCases.SelectMany(c => c.Fields)))
                         {
                             if (field.Type != SemanticType.Unknown)
                             {
@@ -193,6 +195,13 @@ internal partial class ProjectCompiler
                 restoredTypes.TryAdd((PathNormalizer.Normalize(file), CachedTypeOrigin.QualifiedName(type)), type);
             foreach (var nested in type.NestedTypes)
                 Index(nested, file);
+            foreach (var unionCase in type.UnionCases)
+            {
+                // A case is spelled bare or qualified by its union (`Shape.Circle`).
+                Index(unionCase, file);
+                if (file is { Length: > 0 })
+                    restoredTypes.TryAdd((PathNormalizer.Normalize(file), CachedTypeOrigin.QualifiedName(type) + "." + unionCase.Name), unionCase);
+            }
         }
         foreach (var type in _restoredSymbols.Values.OfType<TypeSymbol>())
             Index(type, null);
