@@ -15,6 +15,8 @@ Sharpy uses Pythonic `snake_case` naming conventions in source code, but generat
 | `__dunder__` methods | Special mapping | `__init__` → constructor |
 | `CAPS_SNAKE_CASE` constants | `PascalCase` | `MAX_SIZE` → `MaxSize` |
 
+The rule is the runtime's too: it lives in `Sharpy.Core` (`Sharpy.NameMangling`), the compiler delegates to it, and `str.format`'s `{0.attr}` field finds the member the compiler emitted for `attr` by the same rule before trying the spelling as written (a backtick-escaped member is emitted verbatim). See `docs/deviations.yaml`, entry `str-format-attr-clr-spelling-leak`, for the one spelling that reaches a CLR name Python would not.
+
 ## Transformation Algorithm
 
 The name mangling algorithm transforms identifiers as follows:

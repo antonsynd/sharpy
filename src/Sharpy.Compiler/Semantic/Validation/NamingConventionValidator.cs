@@ -1,4 +1,7 @@
+extern alias SharpyRT;
+
 using Sharpy.Compiler.Shared;
+using NameForm = SharpyRT::Sharpy.NameForm;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Text;

@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using System.Text.RegularExpressions;
 
 namespace Sharpy.Compiler.Shared;
@@ -8,6 +10,12 @@ namespace Sharpy.Compiler.Shared;
 /// PascalCase/camelCase; the reverse direction (C#/.NET -> Sharpy) demangles PascalCase
 /// back to snake_case/SCREAMING_SNAKE_CASE for discovered .NET APIs.
 /// </summary>
+/// <remarks>
+/// The forward member rule is Sharpy.Core's <c>NameMangling</c> (#2040, R-CG): the runtime needs it
+/// too (<c>str.format</c>'s <c>{0.attr}</c>), so it is written once there and every forward method
+/// here delegates, adding only the C#-text concern this class owns — keyword escaping. The module
+/// identifier casings, the collection-verb tables and the reverse direction stay here.
+/// </remarks>
 internal static class NameMangler
 {
     // Python collection method mappings to C# equivalents.
@@ -52,212 +60,37 @@ internal static class NameMangler
         // (e.g. socket's `error`, `timeout`) are mangled consistently in both declaration and
         // reference positions. Without this, `class error` would declare `error` but be
         // referenced as `Error`, producing non-compiling C#.
-        return EscapeKeywordIfNeeded(ToPascalCase(name));
+        return ToPascalCase(name);
     }
 
     /// <summary>
-    /// Convert snake_case to PascalCase for methods and functions.
-    /// Uses form detection to handle different naming conventions:
-    /// - SnakeCase/SingleWordLower: split on _, capitalize each segment (preserving rest)
-    /// - ScreamingSnakeCase: split on _, title-case each segment (normalizing rest)
-    /// - PascalCase/SingleWordUpper: pass through as-is
-    /// - CamelCase: pass through as-is
-    /// - Unrecognized: pass through as-is
+    /// Convert snake_case to PascalCase for methods and functions — Sharpy.Core's
+    /// <c>NameMangling.ToPascalCase</c> (the one copy of the rule, #2040), escaped when the result is
+    /// a C# keyword.
     /// </summary>
     public static string ToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // Handle double-private prefix (__foo but NOT __foo__)
-        var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
-        // Handle single-private prefix (_foo but NOT __foo)
-        var hasPrivatePrefix = !hasDoublePrivatePrefix && name.StartsWith("_") && !name.StartsWith("__");
-
-        string cleanName;
-        if (hasDoublePrivatePrefix)
-            cleanName = name[2..];
-        else if (hasPrivatePrefix)
-            cleanName = name[1..];
-        else
-            cleanName = name;
-
-        // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
-        var trailingUnderscoreCount = 0;
-        for (int i = cleanName.Length - 1; i >= 0 && cleanName[i] == '_'; i--)
-            trailingUnderscoreCount++;
-        // Remove trailing underscores for processing (but preserve if they're the entire name)
-        if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
-            cleanName = cleanName[..^trailingUnderscoreCount];
-
-        // Detect name form and transform accordingly
-        var form = NameFormDetector.Detect(cleanName);
-        var result = form switch
-        {
-            NameForm.SnakeCase or NameForm.SingleWordLower =>
-                string.Join("", cleanName.Split('_').Select(CapitalizePreserving)),
-            NameForm.ScreamingSnakeCase =>
-                string.Join("", cleanName.Split('_').Select(CapitalizeNormalizing)),
-            NameForm.PascalCase or NameForm.SingleWordUpper => cleanName,
-            NameForm.CamelCase => cleanName,
-            NameForm.Dunder => cleanName, // Dunders pass through — callers use DunderMapping directly
-            _ => cleanName, // Unrecognized
-        };
-
-        // Restore trailing underscores
-        if (trailingUnderscoreCount > 0)
-            result += new string('_', trailingUnderscoreCount);
-
-        // Restore prefix
-        if (hasDoublePrivatePrefix)
-            result = "__" + result;
-        else if (hasPrivatePrefix)
-            result = "_" + result;
-
-        return EscapeKeywordIfNeeded(result);
-    }
+        => EscapeKeywordIfNeeded(SharpyRT::Sharpy.NameMangling.ToPascalCase(name));
 
     /// <summary>
-    /// Convert snake_case to camelCase for variables and parameters.
-    /// Uses form detection to handle different naming conventions:
-    /// - SnakeCase/SingleWordLower: first segment lowercase, rest capitalized (preserving)
-    /// - ScreamingSnakeCase: first segment fully lowered, rest title-cased (normalizing)
-    /// - PascalCase: first char to lower, rest preserved
-    /// - CamelCase: pass through as-is
-    /// - SingleWordUpper: fully lowercase
-    /// - Unrecognized: pass through as-is
+    /// Convert snake_case to camelCase for variables and parameters — Sharpy.Core's
+    /// <c>NameMangling.ToCamelCase</c>, escaped when the result is a C# keyword.
     /// </summary>
     public static string ToCamelCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // Handle dunder methods - shouldn't be used for variables, but just in case
-        if (name.StartsWith("__") && name.EndsWith("__") && name.Length > 4)
-            return name;
-
-        // Handle double-private prefix (__foo but NOT __foo__)
-        var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
-        // Handle single-private prefix (_foo but NOT __foo)
-        var hasPrivatePrefix = !hasDoublePrivatePrefix && name.StartsWith("_") && !name.StartsWith("__");
-
-        string cleanName;
-        if (hasDoublePrivatePrefix)
-            cleanName = name[2..];
-        else if (hasPrivatePrefix)
-            cleanName = name[1..];
-        else
-            cleanName = name;
-
-        // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
-        var trailingUnderscoreCount = 0;
-        for (int i = cleanName.Length - 1; i >= 0 && cleanName[i] == '_'; i--)
-            trailingUnderscoreCount++;
-        // Remove trailing underscores for processing (but preserve if they're the entire name)
-        if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
-            cleanName = cleanName[..^trailingUnderscoreCount];
-
-        // Detect name form and transform accordingly
-        var form = NameFormDetector.Detect(cleanName);
-        string result;
-        switch (form)
-        {
-            case NameForm.SnakeCase or NameForm.SingleWordLower:
-                {
-                    var parts = cleanName.Split('_');
-                    result = parts[0].ToLowerInvariant();
-                    if (parts.Length > 1)
-                        result += string.Join("", parts.Skip(1).Select(CapitalizePreserving));
-                    break;
-                }
-            case NameForm.ScreamingSnakeCase:
-                {
-                    var parts = cleanName.Split('_');
-                    result = parts[0].ToLowerInvariant();
-                    if (parts.Length > 1)
-                        result += string.Join("", parts.Skip(1).Select(CapitalizeNormalizing));
-                    break;
-                }
-            case NameForm.PascalCase:
-                result = char.ToLowerInvariant(cleanName[0]) + cleanName[1..];
-                break;
-            case NameForm.SingleWordUpper:
-                result = cleanName.ToLowerInvariant();
-                break;
-            case NameForm.CamelCase:
-                result = cleanName;
-                break;
-            default:
-                result = cleanName; // Unrecognized, Dunder — pass through
-                break;
-        }
-
-        // Restore trailing underscores
-        if (trailingUnderscoreCount > 0)
-            result += new string('_', trailingUnderscoreCount);
-
-        // Restore prefix
-        if (hasDoublePrivatePrefix)
-            result = "__" + result;
-        else if (hasPrivatePrefix)
-            result = "_" + result;
-
-        return EscapeKeywordIfNeeded(result);
-    }
+        => EscapeKeywordIfNeeded(SharpyRT::Sharpy.NameMangling.ToCamelCase(name));
 
     /// <summary>
-    /// Resolve constant names. SCREAMING_SNAKE_CASE is preserved as-is to retain
-    /// Python identity and align with .NET conventions (e.g., Math.PI, Double.NaN).
-    /// Uses form detection:
-    /// - ScreamingSnakeCase: preserved as-is. MAX_SIZE → MAX_SIZE
-    /// - SingleWordUpper: preserved as-is. PI → PI, HTTP → HTTP
-    /// - SnakeCase: PascalCase (same as ToPascalCase for snake_case). max_size → MaxSize
-    /// - PascalCase/CamelCase: pass through
-    /// - Unrecognized: pass through
+    /// Resolve constant names (SCREAMING_SNAKE_CASE kept, snake_case → PascalCase) — Sharpy.Core's
+    /// <c>NameMangling.ToConstantCase</c>, escaped when the result is a C# keyword.
     /// </summary>
     public static string ToConstantCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        var form = NameFormDetector.Detect(name);
-        var result = form switch
-        {
-            NameForm.ScreamingSnakeCase => name, // preserve SCREAMING_SNAKE_CASE as-is
-            NameForm.SingleWordUpper => name, // preserve single-word uppercase as-is
-            NameForm.SnakeCase or NameForm.SingleWordLower =>
-                string.Join("", name.Split('_').Select(CapitalizePreserving)),
-            _ => name, // PascalCase, CamelCase, Unrecognized — pass through
-        };
-
-        return EscapeKeywordIfNeeded(result);
-    }
+        => EscapeKeywordIfNeeded(SharpyRT::Sharpy.NameMangling.ToConstantCase(name));
 
     /// <summary>
-    /// Resolve enum member names. SCREAMING_SNAKE_CASE / single-word uppercase forms
-    /// (the typical Python enum convention) are preserved as-is to retain Python identity.
-    /// Other forms (e.g., snake_case) are normalized to PascalCase.
-    /// - ScreamingSnakeCase: preserved. RED → RED, DARK_BLUE → DARK_BLUE
-    /// - SingleWordUpper: preserved. RED → RED
-    /// - other forms: title-case each underscore-delimited segment. dark_blue → DarkBlue
+    /// Resolve int-enum member names (SCREAMING_SNAKE_CASE kept, other forms title-cased) —
+    /// Sharpy.Core's <c>NameMangling.ToEnumMemberName</c>, escaped when the result is a C# keyword.
     /// </summary>
     public static string ToEnumMemberName(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        var form = NameFormDetector.Detect(name);
-        if (form is NameForm.ScreamingSnakeCase or NameForm.SingleWordUpper)
-            return EscapeKeywordIfNeeded(name); // preserve SCREAMING_SNAKE_CASE as-is
-
-        // Split by underscores (RemoveEmptyEntries handles consecutive underscores)
-        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
-        var capitalizedParts = parts.Select(part =>
-            string.IsNullOrEmpty(part) ? part :
-            char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
-
-        return string.Join("", capitalizedParts);
-    }
+        => EscapeKeywordIfNeeded(SharpyRT::Sharpy.NameMangling.ToEnumMemberName(name));
 
     /// <summary>
     /// Transform identifier based on context
@@ -406,23 +239,13 @@ internal static class NameMangler
     public static IReadOnlyDictionary<string, string> ClrCollectionVerbMap => _clrCollectionVerbMap;
 
     /// <summary>
-    /// For snake_case: capitalize first char, preserve rest as-is.
+    /// Module-identifier segments: capitalize the first char, preserve the rest.
     /// </summary>
     private static string CapitalizePreserving(string word)
     {
         if (string.IsNullOrEmpty(word))
             return word;
         return char.ToUpperInvariant(word[0]) + word[1..];
-    }
-
-    /// <summary>
-    /// For SCREAMING_SNAKE_CASE: capitalize first char, normalize rest to lowercase.
-    /// </summary>
-    private static string CapitalizeNormalizing(string word)
-    {
-        if (string.IsNullOrEmpty(word))
-            return word;
-        return char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
     }
 
     private static string EscapeKeywordIfNeeded(string name)

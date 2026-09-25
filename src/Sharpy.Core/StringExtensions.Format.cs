@@ -364,22 +364,42 @@ namespace Sharpy
                 throw new AttributeError("'NoneType' object has no attribute '" + attr + "'");
             }
 
+            // The member is found by the name the compiler emitted for it — the same forward rule,
+            // NameMangling.ToPascalCase (#2040, R-CG): a Sharpy field `n_items` is the CLR property
+            // `NItems`. Then the verbatim spelling, which is how a backtick-escaped member (and any
+            // CLR member already spelled as written) is emitted.
             var type = value.GetType();
-            var prop = type.GetProperty(attr, BindingFlags.Public | BindingFlags.Instance);
-            if (prop != null)
+            var mangled = NameMangling.ToPascalCase(attr);
+            if (TryGetInstanceMember(value, type, mangled, out var member)
+                || (mangled != attr && TryGetInstanceMember(value, type, attr, out member)))
             {
-                return prop.GetValue(value)!;
-            }
-
-            var field = type.GetField(attr, BindingFlags.Public | BindingFlags.Instance);
-            if (field != null)
-            {
-                return field.GetValue(value)!;
+                return member!;
             }
 
             // Python-style error message
             string typeName = type.Name;
             throw new AttributeError("'" + typeName + "' object has no attribute '" + attr + "'");
+        }
+
+        /// <summary>A public instance property, then field, of <paramref name="type"/> named exactly <paramref name="name"/>.</summary>
+        private static bool TryGetInstanceMember(object value, Type type, string name, out object? member)
+        {
+            var prop = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null && prop.GetIndexParameters().Length == 0)
+            {
+                member = prop.GetValue(value);
+                return true;
+            }
+
+            var field = type.GetField(name, BindingFlags.Public | BindingFlags.Instance);
+            if (field != null)
+            {
+                member = field.GetValue(value);
+                return true;
+            }
+
+            member = null;
+            return false;
         }
 
         /// <summary>

@@ -1835,3 +1835,27 @@ deviations:
         cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]({"a": 1, "b": 2, "c": 3})
         for k in reversed(cm):
             print(k)                 # c, b, a — admitted, not a TypeError
+
+  - id: str-format-attr-clr-spelling-leak
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "A `str.format` attribute field names the attribute exactly: `\"{0.N}\".format(h)` on an object whose attribute is `n` is `AttributeError: 'H' object has no attribute 'N'`."
+    sharpy_behavior: "The `{0.attr}` field resolves the member the compiler emitted for `attr` — the forward name rule, `NameMangling.ToPascalCase` (#2040, R-CG) — and then the spelling as written. The rule is not injective: the field `n` is emitted as the CLR member `N`, and `N` maps to itself, so `{0.N}` also finds it and prints the value instead of raising. Only a spelling that is already the member's emitted CLR name reaches it this way."
+    spec_ref: docs/language_specification/name_mangling.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        class H:
+            def __init__(self): self.n = 4
+        "{0.n}".format(H())   # '4'
+        "{0.N}".format(H())   # AttributeError: 'H' object has no attribute 'N'
+      sharpy: |
+        class H:
+            n: int
+            def __init__(self) -> None:
+                self.n = 4
+        "{0.n}".format(H())   # '4'
+        "{0.N}".format(H())   # '4' — the emitted CLR member N is found
