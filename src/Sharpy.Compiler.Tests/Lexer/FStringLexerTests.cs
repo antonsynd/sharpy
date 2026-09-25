@@ -696,4 +696,58 @@ line2""""""";
     }
 
     #endregion
+
+    #region PEP 701 hole grammar (#2022)
+
+    [Theory]
+    [InlineData("f\"{x\n}\"")]                  // newline before '}' in a single-quoted f-string
+    [InlineData("f\"{\nx}\"")]                  // newline after '{'
+    [InlineData("f\"{x +\n1}\"")]               // inside a binary
+    [InlineData("f\"{x\r\n+ 1}\"")]             // CRLF
+    [InlineData("f\"{x\r+ 1}\"")]               // bare CR
+    [InlineData("f\"{x # c\n}\"")]              // comment to end of line
+    [InlineData("f\"{x # }\n}\"")]              // '}' inside a comment closes nothing
+    [InlineData("f\"{x \\\n+ 1}\"")]            // backslash continuation
+    [InlineData("f\"{x!r\n}\"")]                // newline after a conversion
+    [InlineData("f\"{x!r # c\n:>4}\"")]         // comment after a conversion, then a spec
+    [InlineData("f\"{\fx}\"")]                  // form feed
+    [InlineData("t\"{x # c\n=}\"")]
+    public void Hole_WhitespaceNewlinesAndComments_Lex(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        lexer.Diagnostics.HasErrors.Should().BeFalse(string.Join("; ", lexer.Diagnostics.GetErrors().Select(d => d.Code + " " + d.Message)));
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
+        tokens.Should().NotContain(t => t.Type == TokenType.Newline);
+    }
+
+    [Theory]
+    [InlineData("print(f\"a {x)\ny = 1\n", ')', 13)]
+    [InlineData("print(f\"a {x]\ny = 1\n", ']', 13)]
+    [InlineData("print(f\"a {(x))}\"\ny = 1\n", ')', 15)]
+    public void Hole_UnmatchedCloser_IsRefusedWhereItStands(string source, char closer, int column)
+    {
+        // CPython: "f-string: unmatched ')'". Without the refusal a hole that may now span lines would
+        // swallow the following lines (the unclosed hole reports far from its cause).
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var error = lexer.Diagnostics.GetErrors().Should().ContainSingle().Subject;
+        error.Code.Should().Be(Sharpy.Compiler.Diagnostics.DiagnosticCodes.Lexer.UnmatchedBraceInFString);
+        error.Message.Should().Be($"f-string: unmatched '{closer}'");
+        error.Line.Should().Be(1);
+        error.Column.Should().Be(column);
+        // Recovery resumes on the next line: 'y = 1' lexes as its own statement.
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y" && t.Line == 2);
+    }
+
+    [Fact]
+    public void Hole_Comment_IsCommentTrivia_WhenTriviaIsPreserved()
+    {
+        var lexer = new LexerNs.Lexer("v = f\"{x # note\n}\"\n", preserveTrivia: true);
+        var tokens = lexer.TokenizeAll();
+        var trivia = tokens.SelectMany(t => (t.LeadingTrivia ?? Array.Empty<LexerNs.Trivia>()).Concat(t.TrailingTrivia ?? Array.Empty<LexerNs.Trivia>()));
+        trivia.Should().ContainSingle(t => t.Kind == LexerNs.TriviaKind.Comment && t.Text == "# note" && t.Line == 1 && t.Column == 10);
+    }
+
+    #endregion
 }

@@ -115,6 +115,32 @@ public class RangeFormattingTests : IDisposable
     }
 
     [Fact]
+    public async Task MultiLineHole_InteriorIsNotReindentedAsync()
+    {
+        // PEP 701 (#2022): a replacement field may span lines; its interior is the hole's source text
+        // (a t-string's Interpolation.expression), so formatting never re-indents it.
+        var source = "def foo(x: int) -> Template:\n    v = t\"\"\"{\n  x\n      + 1\n}\"\"\"\n    return v";
+        var edits = await FormatRangeAsync(source, 0, 0, 5, 12);
+
+        edits.Should().NotContain(e => e.Range.Start.Line >= 2 && e.Range.Start.Line <= 3,
+            "the hole's interior lines are its source text");
+    }
+
+    [Fact]
+    public async Task MultiLineHole_ParseErrorFallback_InteriorIsNotReindentedAsync()
+    {
+        // The indent-only fallback (the document fails to parse) must skip a multi-line hole's
+        // interior and closing line like a multi-line string's (#2022). Positive control: line 1,
+        // over-indented, IS re-indented by the same request.
+        var source = "def foo(x: int) -> Template:\n        v = t\"{\n  x\n      + 1\n}\"\n    return v\nclass: # missing name";
+        var edits = await FormatRangeAsync(source, 0, 0, 5, 12);
+
+        edits.Should().Contain(e => e.Range.Start.Line == 1 && e.NewText == "    v = t\"{");
+        edits.Should().NotContain(e => e.Range.Start.Line >= 2 && e.Range.Start.Line <= 4,
+            "the hole's interior and closing lines are its source text");
+    }
+
+    [Fact]
     public async Task FirstLine_FormattedAsync()
     {
         var source = "  x: int = 1\ndef foo():\n    pass";

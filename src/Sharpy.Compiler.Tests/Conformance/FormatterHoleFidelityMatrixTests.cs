@@ -25,7 +25,11 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>Format(F) == F</c>. Axes: prefix {f, t, df} × quoting {single, triple} × hole {leading/trailing
 /// ws, tab, index with quotes, dict-headed, set-headed, nested spec <c>{ w }</c> (and a dict-headed
 /// nested spec field), <c>!r</c> after ws, <c>=</c> with conversion and spec, brace inside a string,
-/// nested f-string, same-quote string}. The generated-AST cell covers the fallback path (an AST built
+/// nested f-string, same-quote string, newline after <c>{</c>/inside a binary/before <c>}</c>/after
+/// <c>!r</c>/before <c>=</c>, <c>#</c> comment (single- and triple-quoted), <c>}</c> and <c>{</c> inside a
+/// comment, <c>#</c> inside a nested string, backslash continuation, df dedent with a brace inside an
+/// in-hole string or comment (the prescan follows the hole grammar), a statement's trailing comment
+/// after a multi-line hole (#2022)}. The generated-AST cell covers the fallback path (an AST built
 /// without source re-visits the expression and must pad a brace-headed hole on both the top-level and
 /// nested-spec paths — python's <c>ast.unparse</c> rule).</para>
 /// </summary>
@@ -62,6 +66,23 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         { "t.selfdoc_ws", "print(repr(t\"{ x = }\"))", "Template(strings=(' x = ', ''), interpolations=(Interpolation(5, ' x', 'r', ''),))" },
         { "t.spec_nested_ws", "print(repr(t\"{ x :{ w }}\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, ' x', None, '6'),))" },
         { "t.triple_index_quotes", "print(repr(t\"\"\"{ d['k'] }\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(7, \" d['k']\", None, ''),))" },
+        // PEP 701 hole grammar (#2022): the unparser writes df/triple as a single-quoted f"...", so a
+        // verbatim multi-line hole is legal output only because single-quoted holes may span lines.
+        { "f.nl_around", "print(f\"\"\"{\n        x\n    }\"\"\")", "5" },
+        { "f.nl_single_quoted", "print(f\"{x +\n        1}\")", "6" },
+        { "f.comment", "print(f\"{x # c\n    }\")", "5" },
+        { "f.brace_in_comment", "print(f\"\"\"{x # }\n    }\"\"\")", "5" },
+        { "f.conv_then_newline", "print(f\"{x!r\n    }\")", "5" },
+        { "f.conv_comment_spec", "print(f\"{x!r # c\n    :>4}|\")", "   5|" },
+        { "f.selfdoc_comment", "print(f\"\"\"{x # c\n=}\"\"\")", "x \n=5" },
+        { "f.continuation", "print(f\"{x \\\n+ 1}\")", "6" },
+        { "f.selfdoc_newline_trailing_comment", "print(f\"{x\n=}\")  # note", "x\n=5" },
+        { "t.nl_around", "print(repr(t\"\"\"{\nx\n}\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, '\\nx', None, ''),))" },
+        { "t.comment_excised", "print(repr(t\"\"\"{x # c1\n + 1 # c2\n}\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(6, 'x \\n + 1', None, ''),))" },
+        { "t.selfdoc_comment", "print(repr(t\"\"\"{x # c\n=}\"\"\"))", "Template(strings=('x \\n=', ''), interpolations=(Interpolation(5, 'x', 'r', ''),))" },
+        { "df.dedent_brace_in_string", "print(df\"\"\"\n        a{'{'}b\n        \"\"\")", "a{b" },
+        { "df.dedent_brace_in_comment", "print(df\"\"\"\n        a{x # {\n        }b\n        \"\"\")", "a5b" },
+        { "f.hash_in_string", "print(f\"{ '#' # d\n    }\")", "#" },
     };
 
     [Theory]

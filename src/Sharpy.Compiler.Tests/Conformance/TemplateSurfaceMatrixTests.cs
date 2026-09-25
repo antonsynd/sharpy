@@ -29,8 +29,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// {Template, Interpolation} → SPY0203, iteration element type, <c>t"a" + t"b"</c> typed
 /// <c>Template</c>, <c>t"a" + 1</c> refused (SPY0222), and the executed values against python3.14.</para>
 ///
-/// <para>A newline inside the hole (<c>t"""{\nx\n}"""</c> → python <c>'\nx'</c>) is not a cell: the
-/// Sharpy lexer refuses a newline in a replacement field today (SPY0015, #2022).</para>
+/// <para><b>Hole grammar (#2022, PEP 701).</b> Inside a hole, whitespace may span lines (single- and
+/// triple-quoted), a <c>#</c> comment runs to end of line and is excised from the expression text
+/// (a <c>}</c> inside it closes nothing; a <c>#</c> inside a nested string is not a comment),
+/// excision precedes the trailing-whitespace strip (<c>'x \n + 1'</c>), the <c>=</c> text keeps
+/// newlines, whitespace/newline/comment may follow <c>!r</c>, a backslash continuation is kept
+/// verbatim, and a form feed is whitespace. Oracle: python3.14 (2026-09-25).</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class TemplateSurfaceMatrixTests : IntegrationTestBase
@@ -56,6 +60,20 @@ public class TemplateSurfaceMatrixTests : IntegrationTestBase
         ("shape.index_quotes", "t\"{d['k']}\"", "Template(strings=('', ''), interpolations=(Interpolation(7, \"d['k']\", None, ''),))"),
         ("shape.brace_in_string", "t\"{'{'}\"", "Template(strings=('', ''), interpolations=(Interpolation('{', \"'{'\", None, ''),))"),
         ("shape.dict_braces", "t\"{ {'a':1}['a'] }\"", "Template(strings=('', ''), interpolations=(Interpolation(1, \" {'a':1}['a']\", None, ''),))"),
+        ("nl.around", "t\"\"\"{\nx\n}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(1, '\\nx', None, ''),))"),
+        ("nl.single_quoted", "t\"{\nx}\"", "Template(strings=('', ''), interpolations=(Interpolation(1, '\\nx', None, ''),))"),
+        ("nl.inside_binary", "t\"\"\"{x +\n1}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x +\\n1', None, ''),))"),
+        ("nl.before_spec", "t\"{x\n:>4}\"", "Template(strings=('', ''), interpolations=(Interpolation(1, 'x', None, '>4'),))"),
+        ("nl.before_eq", "t\"\"\"{x\n=}\"\"\"", "Template(strings=('x\\n=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("nl.before_bang", "t\"\"\"{x\n!r}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("comment.excised", "t\"\"\"{x # c1\n + 1 # c2\n}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x \\n + 1', None, ''),))"),
+        ("comment.brace_in_comment", "t\"\"\"{x # }\n}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(1, 'x', None, ''),))"),
+        ("comment.selfdoc", "t\"\"\"{x # c\n=}\"\"\"", "Template(strings=('x \\n=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("comment.after_eq", "t\"{x = # c\n}\"", "Template(strings=('x = \\n', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("comment.after_conv", "t\"{x !r # c\n}\"", "Template(strings=('', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("comment.hash_in_string", "t\"{ '#' # d\n}\"", "Template(strings=('', ''), interpolations=(Interpolation('#', \" '#'\", None, ''),))"),
+        ("continuation", "t\"{x \\\n+ 1}\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x \\\\\\n+ 1', None, ''),))"),
+        ("ws.formfeed", "t\"{\fx\f}\"", "Template(strings=('', ''), interpolations=(Interpolation(1, '\\x0cx', None, ''),))"),
     };
 
     [Fact]

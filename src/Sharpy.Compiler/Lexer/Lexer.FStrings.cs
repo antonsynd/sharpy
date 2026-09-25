@@ -33,6 +33,12 @@ public partial class Lexer
         public int ParenDepth { get; set; }        // ()/[] nesting within the field's expression
         public int InnerBraceDepth { get; set; }   // dict/set {} nesting within the field's expression
         public int ExprStartPosition { get; set; } // source position of the first char after '{'
+
+        /// <summary>
+        /// The <c>#</c> comments inside this field's expression, as [start, end) source spans (the
+        /// newline is not part of a comment). Excised from the python-visible texts (#2022).
+        /// </summary>
+        public List<(int Start, int End)>? CommentSpans { get; set; }
     }
 
     /// <summary>
@@ -183,7 +189,9 @@ public partial class Lexer
     /// <summary>
     /// Scan forward from the current position to find the closing """ of a triple-quoted
     /// f-string, and return the number of whitespace characters on its line (the dedent amount).
-    /// Tracks brace depth so that """ sequences inside interpolated expressions are ignored.
+    /// Tracks brace depth so that """ sequences inside interpolated expressions are ignored, and
+    /// follows the hole grammar (#2022): a string literal or a <c>#</c> comment inside a hole is opaque
+    /// to the brace count (<c>{'{'}</c> opens nothing, <c>{x # }</c> closes nothing).
     /// Returns 0 if no valid whitespace-only line before the close could be determined.
     /// Does not mutate lexer state.
     /// </summary>
@@ -241,6 +249,17 @@ public partial class Lexer
             }
             else
             {
+                if (c == '#')
+                {
+                    while (i < _source.Length && _source[i] != '\n' && _source[i] != '\r')
+                        i++;
+                    continue;
+                }
+                if (c == '"' || c == '\'')
+                {
+                    i = SkipStringLiteralInPrescan(i);
+                    continue;
+                }
                 if (c == '{')
                 {
                     braceDepth++;
@@ -261,6 +280,40 @@ public partial class Lexer
             i++;
         }
         return 0;
+    }
+
+    /// <summary>
+    /// Returns the position just past the string literal whose opening quote is at
+    /// <paramref name="start"/> (single or triple quoted; a backslash skips the next character, as
+    /// it does for termination in every prefix kind). Stops at the end of the source.
+    /// </summary>
+    private int SkipStringLiteralInPrescan(int start)
+    {
+        var quote = _source[start];
+        var triple = start + 2 < _source.Length && _source[start + 1] == quote && _source[start + 2] == quote;
+        var i = start + (triple ? 3 : 1);
+        while (i < _source.Length)
+        {
+            var c = _source[i];
+            if (c == '\\')
+            {
+                i += 2;
+                continue;
+            }
+            if (c == quote)
+            {
+                if (!triple)
+                    return i + 1;
+                if (i + 2 < _source.Length && _source[i + 1] == quote && _source[i + 2] == quote)
+                    return i + 3;
+            }
+            else if (!triple && (c == '\n' || c == '\r'))
+            {
+                return i;
+            }
+            i++;
+        }
+        return i;
     }
 
     /// <summary>
@@ -327,13 +380,111 @@ public partial class Lexer
     /// <summary>
     /// The hole's expression source text (PEP 750 <c>Interpolation.expression</c>, #1991): from just
     /// after the field's <c>{</c> to its top-level terminator at <paramref name="terminatorPosition"/>
-    /// (<c>}</c>, <c>=</c>, <c>!</c> or <c>:</c>), leading whitespace kept, trailing whitespace stripped
-    /// — python3.14: <c>t"{ x }"</c> → <c>' x'</c>. Attached to the terminator token, which the parser
-    /// reads right after the expression.
+    /// (<c>}</c>, <c>=</c>, <c>!</c> or <c>:</c>), leading whitespace kept, comments excised, THEN
+    /// trailing whitespace stripped (#2022) — python3.14: <c>t"{ x }"</c> → <c>' x'</c>,
+    /// <c>t"""{x # c1\n + 1 # c2\n}"""</c> → <c>'x \n + 1'</c>. Attached to the terminator token, which
+    /// the parser reads right after the expression.
     /// </summary>
     private string HoleExpressionText(FStringField field, int terminatorPosition) =>
-        _source.Substring(field.ExprStartPosition, terminatorPosition - field.ExprStartPosition)
-            .TrimEnd(' ', '\t', '\f', '\n', '\r');
+        ExciseHoleComments(field, terminatorPosition).TrimEnd(' ', '\t', '\f', '\n', '\r');
+
+    /// <summary>
+    /// The hole's source from just after <c>{</c> to <paramref name="endPosition"/> with the field's
+    /// own <c>#</c> comments removed (newlines kept) — python's view of the hole text (#2022).
+    /// </summary>
+    private string ExciseHoleComments(FStringField field, int endPosition)
+    {
+        if (field.CommentSpans is not { Count: > 0 } spans)
+            return _source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition);
+
+        var sb = new StringBuilder();
+        var from = field.ExprStartPosition;
+        foreach (var (start, end) in spans)
+        {
+            if (start >= endPosition)
+                break;
+            sb.Append(_source, from, start - from);
+            from = end;
+        }
+        if (from < endPosition)
+            sb.Append(_source, from, endPosition - from);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// PEP 701: inside a replacement field's expression, whitespace is insignificant and may span
+    /// lines. Consumes space, tab, form feed, newlines (<c>\r\n</c>/<c>\n</c>/<c>\r</c>), a backslash
+    /// line continuation, and <c>#</c> comments to end of line — recording each comment's span on
+    /// <paramref name="field"/> and, when trivia is preserved, as Comment trivia like the main loop
+    /// (#2022).
+    /// </summary>
+    private void SkipHoleTrivia(FStringField field)
+    {
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+            if (c == ' ' || c == '\t' || c == '\f')
+            {
+                _position++;
+                _column++;
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                SkipHoleNewline();
+            }
+            else if (c == '\\' && _position + 1 < _source.Length && (_source[_position + 1] == '\n' || _source[_position + 1] == '\r'))
+            {
+                _position++;
+                SkipHoleNewline();
+            }
+            else if (c == '#')
+            {
+                var start = _position;
+                SkipComment();
+                (field.CommentSpans ??= new List<(int, int)>()).Add((start, _position));
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    private void SkipHoleNewline()
+    {
+        if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
+            _position += 2;
+        else
+            _position++;
+        _line++;
+        _column = 1;
+    }
+
+    /// <summary>
+    /// Non-mutating twin of <see cref="SkipHoleTrivia"/>: the position of the first character at or
+    /// after <paramref name="position"/> that is not hole whitespace, a newline, a continuation or a
+    /// comment.
+    /// </summary>
+    private int PeekPastHoleTrivia(int position)
+    {
+        var i = position;
+        while (i < _source.Length)
+        {
+            var c = _source[i];
+            if (c == ' ' || c == '\t' || c == '\f' || c == '\n' || c == '\r')
+                i++;
+            else if (c == '\\' && i + 1 < _source.Length && (_source[i + 1] == '\n' || _source[i + 1] == '\r'))
+                i += 2;
+            else if (c == '#')
+            {
+                while (i < _source.Length && _source[i] != '\n' && _source[i] != '\r')
+                    i++;
+            }
+            else
+                break;
+        }
+        return i;
+    }
 
     /// <summary>
     /// The hole's raw source (#2024): from just after the field's <c>{</c> to
@@ -401,8 +552,9 @@ public partial class Lexer
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
-            // For everything else, tokenize normally (but skip indentation handling)
-            SkipWhitespace();
+            // For everything else, tokenize normally (but skip indentation handling). Whitespace,
+            // newlines, continuations and comments are insignificant inside a hole (PEP 701, #2022).
+            SkipHoleTrivia(field);
 
             if (_position >= _source.Length)
                 throw ReportError("Unterminated f-string expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
@@ -446,24 +598,22 @@ public partial class Lexer
             if (current == '=' && field.InnerBraceDepth == 0 && field.ParenDepth == 0
                 && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
             {
-                // Consume '=' and any trailing whitespace; the captured SourceText is the
-                // verbatim inner text from just after '{' through '=' and trailing spaces,
-                // which the emitter prints literally before the value (matches CPython).
+                // Consume '=' and any trailing whitespace (newlines and comments included, #2022);
+                // the captured SourceText is the inner text from just after '{' through '=' and the
+                // trailing whitespace, comments excised, which the emitter prints literally before
+                // the value (matches CPython: t"""{x # c\n=}""".strings[0] == 'x \n=').
+                var expressionText = HoleExpressionText(field, startPosition);
                 _position++;
                 _column++;
-                while (_position < _source.Length && (_source[_position] == ' ' || _source[_position] == '\t'))
-                {
-                    _position++;
-                    _column++;
-                }
-                var selfDocText = _source.Substring(field.ExprStartPosition, _position - field.ExprStartPosition);
+                SkipHoleTrivia(field);
+                var selfDocText = ExciseHoleComments(field, _position);
                 // Value is the verbatim 'expr=' text the emitter prints literally, but the token's
                 // SOURCE span is only the '=' (+trailing whitespace) it owns — the expression chars
                 // are already covered by their own tokens. Without an explicit SourceLength, Length
                 // would be Value.Length and the span would overrun the following '}' (#1016,
                 // non-monotonic token positions).
                 return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition,
-                    sourceLength: _position - startPosition, fstringExpressionText: HoleExpressionText(field, startPosition),
+                    sourceLength: _position - startPosition, fstringExpressionText: expressionText,
                     fstringRawText: HoleRawText(field, _position));
             }
 
@@ -475,8 +625,10 @@ public partial class Lexer
             {
                 bool validFlag = _position + 1 < _source.Length &&
                     (_source[_position + 1] == 'r' || _source[_position + 1] == 's' || _source[_position + 1] == 'a');
-                bool properlyTerminated = _position + 2 < _source.Length &&
-                    (_source[_position + 2] == '}' || _source[_position + 2] == ':');
+                // Whitespace, newlines and comments may follow the flag (PEP 701, #2022).
+                var afterFlag = validFlag ? PeekPastHoleTrivia(_position + 2) : _position + 2;
+                bool properlyTerminated = afterFlag < _source.Length &&
+                    (_source[afterFlag] == '}' || _source[afterFlag] == ':');
 
                 if (validFlag && properlyTerminated)
                 {
@@ -537,10 +689,17 @@ public partial class Lexer
 
             // Track ()/[] nesting so '='/'!' specifiers are only recognised at the top level
             // of the replacement field (e.g. keyword args in dict(a=1) must not trigger '=').
+            // A closer with nothing open is refused where it stands (CPython: "f-string: unmatched
+            // ')'"), so an unclosed hole cannot swallow the lines after it now that a hole may span
+            // lines (#2022).
             if (current == '(' || current == '[')
                 field.ParenDepth++;
-            else if ((current == ')' || current == ']') && field.ParenDepth > 0)
+            else if (current == ')' || current == ']')
+            {
+                if (field.ParenDepth == 0)
+                    throw ReportError($"f-string: unmatched '{current}'", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
                 field.ParenDepth--;
+            }
 
             // Operators and delimiters
             return ReadOperatorOrDelimiter();

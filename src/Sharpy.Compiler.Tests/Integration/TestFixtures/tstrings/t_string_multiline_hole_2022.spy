@@ -1,0 +1,21 @@
+# PEP 701 replacement fields in t-strings (#2022): Interpolation.expression is the hole's source with
+# comments excised, THEN trailing whitespace stripped; the `=` text keeps newlines. Every line is
+# python3.14's output for the same program.
+def main() -> None:
+    x: int = 1
+    print(repr(t"""{
+x
+}"""))
+    print(repr(t"{x +
+1}"))
+    print(repr(t"""{x # c1
+ + 1 # c2
+}"""))
+    print(repr(t"""{x # }
+}"""))
+    print(repr(t"""{x # c
+=}"""))
+    print(repr(t"{x !r # c
+}"))
+    print(repr(t"{x \
++ 1}"))

@@ -110,7 +110,7 @@ public static partial class DiagnosticExplanations
             "Close the expression brace:\n  msg: str = f\"Value: {x + 1}\"");
 
         Add(dict, DiagnosticCodes.Lexer.UnmatchedBraceInFString, "Unmatched brace in f-string", "Lexer",
-            "A closing brace } was found in an f-string without a matching opening brace, or vice versa. To include a literal brace in an f-string, use {{ or }}.",
+            "A closing brace } was found in an f-string without a matching opening brace, or vice versa; or a ) or ] inside a replacement field closes nothing (f\"{x)}\" — CPython's \"f-string: unmatched ')'\"), which is refused where it stands so an unclosed field cannot swallow the following lines. To include a literal brace in an f-string, use {{ or }}.",
             "msg: str = f\"100%}\"",
             "Escape literal braces by doubling them:\n  msg: str = f\"100%}}\"");
 

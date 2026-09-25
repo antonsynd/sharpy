@@ -108,7 +108,7 @@ internal sealed partial class UnparseVisitor
         _w.Write("{");
         if (part.RawText != null)
         {
-            _w.Write(part.RawText);
+            _w.WriteOpaque(part.RawText);
         }
         else if (part.IsSelfDocumenting && part.SourceText != null)
         {

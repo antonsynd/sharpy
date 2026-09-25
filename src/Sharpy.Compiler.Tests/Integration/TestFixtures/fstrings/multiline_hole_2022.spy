@@ -1,0 +1,29 @@
+# PEP 701 replacement fields (#2022): inside a hole, whitespace may span lines in single- and
+# triple-quoted f-strings, a `#` comment runs to end of line (a `}` inside it closes nothing), a
+# backslash continues the line, and whitespace, newlines and comments may follow a conversion.
+def main() -> None:
+    x: int = 5
+    names: list[str] = ["a", "b"]
+    print(f"{x +
+        1}")
+    print(f"""total: {
+        x * 2  # doubled
+    }""")
+    print(f"{x # a comment with a } brace
+    }")
+    print(f"{x!r
+    :>4}|")
+    print(f"{x!r # after the conversion
+    }")
+    print(f"{x \
++ 1}")
+    print(f"""{x# c
+=}""")
+    print(f"{', '.join(
+        names
+    )}")
+    print(f"{ '#' # a hash inside a string is not a comment
+    }")
+    print(df"""
+        a{'{'}b
+        """)

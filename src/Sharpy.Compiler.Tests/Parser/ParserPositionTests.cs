@@ -41,6 +41,21 @@ public class ParserPositionTests
     #region Basic Expressions
 
     [Fact]
+    public void Position_OperandAfterANewlineInsideAHole_TrackedCorrectly()
+    {
+        // PEP 701 (#2022): the right operand sits on the hole's second line.
+        var module = Parse("v = f\"{x +\n  y}\"\n");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var literal = assign.Value.Should().BeOfType<FStringLiteral>().Subject;
+        var binary = literal.Parts.Single(p => p.Expression != null).Expression.Should().BeOfType<BinaryOp>().Subject;
+
+        binary.Right.LineStart.Should().Be(2);
+        binary.Right.ColumnStart.Should().Be(3);
+        binary.Left.LineStart.Should().Be(1);
+        binary.Left.ColumnStart.Should().Be(8);
+    }
+
+    [Fact]
     public void Position_IntegerLiteral_TrackedCorrectly()
     {
         var module = Parse("42");

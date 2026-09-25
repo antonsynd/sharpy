@@ -97,7 +97,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
     private void InsertTrailingTriviaAtFirstNewline(IReadOnlyList<Trivia> trivia, int startPos)
     {
-        var nlIdx = _w.IndexOf(_options.LineEnding, startPos);
+        var nlIdx = _w.IndexOfLineEndingOutsideOpaque(_options.LineEnding, startPos);
         if (nlIdx < 0)
             return;
 

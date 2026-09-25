@@ -46,12 +46,33 @@ internal static class IndentationService
         return (lineIndent, tokens);
     }
 
+    /// <summary>
+    /// The 1-based lines whose text must not be re-indented: every line of a multi-line string or
+    /// f-string text token, and the continuation lines of a replacement field that spans lines
+    /// (PEP 701, #2022) — re-indenting a hole's interior changes a t-string's
+    /// <c>Interpolation.expression</c>.
+    /// </summary>
     internal static HashSet<int> FindMultiLineStringLines(List<Token> tokens)
     {
         var result = new HashSet<int>();
+        var openHoleLines = new Stack<int>();
 
         foreach (var token in tokens)
         {
+            if (token.Type == TokenType.FStringExprStart)
+            {
+                openHoleLines.Push(token.Line);
+                continue;
+            }
+
+            if (token.Type == TokenType.FStringExprEnd && openHoleLines.Count > 0)
+            {
+                var holeStart = openHoleLines.Pop();
+                for (var line = holeStart + 1; line <= token.Line; line++)
+                    result.Add(line);
+                continue;
+            }
+
             if (token.Type != TokenType.String && token.Type != TokenType.FStringText)
                 continue;
 

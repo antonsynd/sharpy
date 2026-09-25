@@ -58,6 +58,21 @@ public class TStringExpressionTextTests
         { "t\"{ {'a':1}['a'] }\"", " {'a':1}['a']", TokenType.FStringExprEnd }, // dict braces inside the hole
         { "t\"{x != 1}\"", "x != 1", TokenType.FStringExprEnd },         // '!=' is not a terminator
         { "t\"{f(a=1)}\"", "f(a=1)", TokenType.FStringExprEnd },         // '=' inside () is not a terminator
+        // PEP 701 hole grammar (#2022): newlines, comments (excised BEFORE the rstrip), continuation,
+        // form feed — python3.14 oracles.
+        { "t\"\"\"{\nx\n}\"\"\"", "\nx", TokenType.FStringExprEnd },          // newline after '{' and before '}'
+        { "t\"{\nx}\"", "\nx", TokenType.FStringExprEnd },                    // single-quoted t-string
+        { "t\"\"\"{x +\n1}\"\"\"", "x +\n1", TokenType.FStringExprEnd },       // newline inside a binary
+        { "t\"{x\n:>4}\"", "x", TokenType.FStringFormatSpec },               // newline before ':'
+        { "t\"\"\"{x\n=}\"\"\"", "x", TokenType.FStringSelfDoc },                // newline before '='
+        { "t\"\"\"{x\n!r}\"\"\"", "x", TokenType.FStringConversion },            // newline before '!'
+        { "t\"\"\"{x # c1\n + 1 # c2\n}\"\"\"", "x \n + 1", TokenType.FStringExprEnd }, // comments excised, then rstrip
+        { "t\"\"\"{x # }\n}\"\"\"", "x", TokenType.FStringExprEnd },            // '}' inside a comment closes nothing
+        { "t\"\"\"{x # c\n=}\"\"\"", "x", TokenType.FStringSelfDoc },
+        { "t\"{x !r # c\n}\"", "x", TokenType.FStringConversion },           // comment after '!r'
+        { "t\"{ '#' # d\n}\"", " '#'", TokenType.FStringExprEnd },            // '#' inside a string is not a comment
+        { "t\"{x \\\n+ 1}\"", "x \\\n+ 1", TokenType.FStringExprEnd },       // continuation kept verbatim
+        { "t\"{\fx\f}\"", "\fx", TokenType.FStringExprEnd },                 // form feed is whitespace
     };
 
     [Theory]
@@ -76,6 +91,18 @@ public class TStringExpressionTextTests
         var first = tokens.First(t => t.FStringExpressionText != null);
         first.Type.Should().Be(terminator);
         first.FStringExpressionText.Should().Be(expected);
+    }
+
+    /// <summary>The <c>=</c> text keeps newlines and excises comments (python3.14:
+    /// <c>t"""{x # c\n=}""".strings[0] == 'x \n='</c>, <c>t"{x = # c\n}".strings[0] == 'x = \n'</c>).</summary>
+    [Theory]
+    [InlineData("t\"\"\"{x # c\n=}\"\"\"", "x \n=")]
+    [InlineData("t\"{x = # c\n}\"", "x = \n")]
+    [InlineData("t\"{x = \n}\"", "x = \n")]
+    [InlineData("t\"\"\"{x\n=}\"\"\"", "x\n=")]
+    public void SelfDocText_KeepsNewlines_ExcisesComments(string tstring, string expected)
+    {
+        FirstHole(tstring).SourceText.Should().Be(expected);
     }
 
     [Fact]

@@ -216,6 +216,26 @@ string""""""";
     }
 
     [Fact]
+    public void Position_AfterANewlineInsideAHole_TracksLineAndColumn()
+    {
+        // PEP 701 (#2022): a hole may span lines; tokens after the in-hole newline carry the new line.
+        var tokens = Tokenize("v = f\"{x +\n  y}\"\nz = 1");
+
+        var y = tokens.Single(t => t.Type == TokenType.Identifier && t.Value == "y");
+        y.Line.Should().Be(2);
+        y.Column.Should().Be(3);
+        var close = tokens.Single(t => t.Type == TokenType.FStringExprEnd);
+        close.Line.Should().Be(2);
+        close.Column.Should().Be(4);
+        var end = tokens.Single(t => t.Type == TokenType.FStringEnd);
+        end.Line.Should().Be(2);
+        end.Column.Should().Be(5);
+        var z = tokens.Single(t => t.Type == TokenType.Identifier && t.Value == "z");
+        z.Line.Should().Be(3);
+        z.Column.Should().Be(1);
+    }
+
+    [Fact]
     public void Position_RawString_TrackedCorrectly()
     {
         var source = @"path = r""C:\Users\test""";

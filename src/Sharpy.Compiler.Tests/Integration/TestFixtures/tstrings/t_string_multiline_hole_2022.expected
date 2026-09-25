@@ -1,0 +1,7 @@
+Template(strings=('', ''), interpolations=(Interpolation(1, '\nx', None, ''),))
+Template(strings=('', ''), interpolations=(Interpolation(2, 'x +\n1', None, ''),))
+Template(strings=('', ''), interpolations=(Interpolation(2, 'x \n + 1', None, ''),))
+Template(strings=('', ''), interpolations=(Interpolation(1, 'x', None, ''),))
+Template(strings=('x \n=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))
+Template(strings=('', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))
+Template(strings=('', ''), interpolations=(Interpolation(2, 'x \\\n+ 1', None, ''),))
