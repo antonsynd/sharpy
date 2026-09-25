@@ -128,6 +128,7 @@ namespace Sharpy
     }
 
     /// <summary>An email attachment with binary data.</summary>
+    [SharpyModuleType("email", "Attachment")]
     public sealed class Attachment
     {
         public Bytes Data { get; }
