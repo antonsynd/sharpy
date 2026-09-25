@@ -443,6 +443,14 @@ public sealed record UserDefinedType : SemanticType
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? Symbol { get; init; }
 
+    /// <summary>
+    /// Where the declaring symbol lives, as the incremental cache carried it (#2027): set only by the
+    /// cache decoder, whose decode is symbol-less, and read by the post-restore relink pass that binds
+    /// <see cref="Symbol"/> from it. Null for every type analysis produced. Not part of equality
+    /// (<see cref="Equals(UserDefinedType?)"/> compares <see cref="SemanticType.CanonicalKey"/>).
+    /// </summary>
+    public string? CacheOrigin { get; init; }
+
     public override string CanonicalKey
     {
         get

@@ -527,6 +527,44 @@ public record TypeSymbol : Symbol
         return overloads;
     }
 
+    /// <summary>
+    /// Files <paramref name="method"/> under the dunder table its name selects —
+    /// <see cref="OperatorMethods"/> for an operator dunder, <see cref="ProtocolMethods"/> for a
+    /// protocol dunder — and answers which, or null for neither. The one rule both the declaring
+    /// build (<c>NameResolver</c>) and a cache restore (<see cref="DeriveMethodTables"/>) apply.
+    /// </summary>
+    internal string? RegisterDunderMethod(FunctionSymbol method)
+    {
+        var table = Registry.OperatorRegistry.IsOperatorDunder(method.Name) ? OperatorMethods
+            : Registry.ProtocolRegistry.IsProtocolDunder(method.Name) ? ProtocolMethods
+            : null;
+        if (table == null)
+            return null;
+
+        if (!table.TryGetValue(method.Name, out var overloads))
+        {
+            overloads = new List<FunctionSymbol>();
+            table[method.Name] = overloads;
+        }
+        overloads.Add(method);
+        return ReferenceEquals(table, OperatorMethods) ? "operator" : "protocol";
+    }
+
+    /// <summary>
+    /// Rebuilds the tables derived from <see cref="Methods"/> — <see cref="MethodOverloads"/> and the
+    /// two dunder tables — for a type restored from the incremental cache, which carries only the
+    /// method list (#2027). Derived rather than put on the wire, so a warm build indexes its methods
+    /// by the same rule a cold build does: without the dunder tables a cached class's
+    /// <c>__add__</c> did not exist warm (SPY0222 on <c>P(1) + P(2)</c>, cold builds).
+    /// </summary>
+    internal void DeriveMethodTables()
+    {
+        foreach (var (name, overloads) in BuildMethodOverloads(Methods))
+            MethodOverloads.TryAdd(name, overloads);
+        foreach (var method in Methods)
+            RegisterDunderMethod(method);
+    }
+
     public virtual bool Equals(TypeSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

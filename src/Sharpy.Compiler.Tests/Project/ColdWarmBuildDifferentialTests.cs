@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -733,8 +734,8 @@ def main() -> None:
     /// consumer RECOMPILED against the cached signature can: <c>b: bool = exclaim(…)</c> must say
     /// SPY0220 <c>'Template'</c> exactly as a cold build of the same final layout does (a lost decode
     /// is silent Unknown → SPY0908). Member access on the decoded type is a separate, pre-existing
-    /// gap shared with <c>bytes</c> — the registry symbol is not restored (#2027; parked as
-    /// <see cref="AfterAWarmRestore_ARegistryTypesMembersStillResolve"/>).
+    /// gap shared with <c>bytes</c> — the registry symbol was not restored (#2027; covered by
+    /// <see cref="AfterAWarmRestore_ACachedUserDefinedTypeTypesAsCold"/>).
     /// </summary>
     [Fact]
     public void WarmBuild_TemplateSignature_IsObservationallyIdenticalToCold()
@@ -772,48 +773,182 @@ def main() -> None:
     }
 
     /// <summary>
-    /// A consumer recompiled against a cache-served signature must type the MEMBERS of a CLR-backed
-    /// registry type as a cold build does. The <c>"user"</c> codec restores the type without its
-    /// registry symbol, so member access goes Unknown: warm SPY0908, cold SPY0220 (#2027). The class
-    /// covers every registry UDT, so the twins run together — <c>bytes</c> (pre-existing) and
-    /// <c>Template</c> (#1996: before it both builds were Unknown; now cold is typed, warm is not —
-    /// cold improved, warm did not regress). Drains when #2027 closes.
+    /// One kind of user-defined type a cached signature can carry (#2027): how <c>lib.spy</c> declares
+    /// and builds a value of it, how <c>main.spy</c> builds one locally (for the parameter position),
+    /// and the consumer uses — a member, an operator (null: the kind has none), iteration, and the
+    /// <c>b: bool =</c> probe member (typed ≠ bool cold, so a typed member is SPY0220 and an untyped
+    /// one is silent).
     /// </summary>
-    [Theory(Skip = "#2027: a CLR-backed registry type in a cache-served signature loses its registry symbol — member access is Unknown warm, typed cold")]
-    [InlineData("bytes",
-        "def f() -> bytes:\n    return b\"xy\"\n",
-        "from lib import f\n\ndef main() -> None:\n    print(len(f()))\n",
-        "from lib import f\n\ndef main() -> None:\n    b: bool = f().hex()\n",
-        "'str'")]
-    [InlineData("template",
-        "def exclaim(tp: Template) -> Template:\n    return tp + t\"!\"\n",
-        "from lib import exclaim\n\ndef main() -> None:\n    x = 1\n    print(repr(exclaim(t\"a{x}\")))\n",
-        "from lib import exclaim\n\ndef main() -> None:\n    x = 2\n    b: bool = exclaim(t\"a{x}\").interpolations\n",
-        "'array[Interpolation]'")]
-    public void AfterAWarmRestore_ARegistryTypesMembersStillResolve(
-        string area, string libSource, string mainSource, string mainEditedSource, string coldTypeName)
+    private sealed record UdtKind(
+        string Type, string Decl, string Value, string MainImport, string Local,
+        string Member, string? Operator, bool Iterable, string Probe,
+        string Prelude = "", string? StatementUse = null);
+
+    private static readonly Dictionary<string, UdtKind> UdtKinds = new()
     {
-        var lib = Write("registry-" + area, "lib.spy", libSource);
-        var main = Write("registry-" + area, "main.spy", mainSource);
-        var config = Config("registry-" + area, lib, main);
+        ["bytes"] = new("bytes", "", "b\"xy\"", "", "b\"xy\"", "{v}.hex()", "{v} + {v}", true, "{v}.hex()"),
+        ["slice"] = new("slice", "", "slice(1, 3)", "", "slice(1, 3)", "{v}.stop", "{v} == {v}", false, "{v}.stop"),
+        ["complex"] = new("complex", "", "complex(1.0, 2.0)", "", "complex(1.0, 2.0)", "{v}.real", "{v} + {v}", false, "{v}.real"),
+        // The operator row is the plan's warm SPY0222 false refusal `repr(f() + t"!")`.
+        ["template"] = new("Template", "", "t\"a\"", "", "t\"a\"", "{v}.strings", "repr({v} + t\"!\")", true, "{v}.strings"),
+        // A builtin exception exposes no member surface (every System.Exception member is refused),
+        // so its uses are the upcast and `raise` — both refused warm (SPY0220/SPY0242) while cold built.
+        ["valueerror"] = new("ValueError", UpcastDef, "ValueError(\"boom\")", "", "ValueError(\"boom\")",
+            "upcast({v})", null, false, "upcast({v})", Prelude: UpcastDef,
+            StatementUse: "try:\n        raise {v}\n    except ValueError as caught:\n        print(str(caught))"),
+        // The operator row is the plan's warm SPY0222 false refusal `f() + f()` with `__add__`.
+        ["userclass"] = new("P",
+            "class P:\n    x: int\n\n    def __init__(self, x: int) -> None:\n        self.x = x\n\n"
+            + "    def __add__(self, other: P) -> P:\n        return P(self.x + other.x)\n\n"
+            + "    def __iter__(self) -> int:\n        yield self.x\n\n\n",
+            "P(2)", "from lib import P\n", "P(2)", "{v}.x", "({v} + {v}).x", true, "{v}.x"),
+        ["userstruct"] = new("S",
+            "struct S:\n    x: int\n\n    def __init__(self, x: int) -> None:\n        self.x = x\n\n"
+            + "    def __add__(self, other: S) -> S:\n        return S(self.x + other.x)\n\n\n",
+            "S(3)", "from lib import S\n", "S(3)", "{v}.x", "({v} + {v}).x", false, "{v}.x"),
+        ["userenum"] = new("Color", "enum Color:\n    RED = 1\n    GREEN = 2\n\n\n",
+            "Color.GREEN", "from lib import Color\n", "Color.GREEN", "{v}.value", "{v} == {v}", false, "{v}.value"),
+        // Beyond the issue's list: a stdlib-module type and a .NET-namespace type lose their symbol the
+        // same way (measured warm SPY0908 / cold SPY0220; `date == date` warm SPY0402).
+        ["moduledate"] = new("date", "from datetime import date\n\n\n", "date(2020, 1, 2)",
+            "from datetime import date\n", "date(2020, 1, 2)", "{v}.year", "{v} == {v}", false, "{v}.year"),
+        ["clrstringbuilder"] = new("StringBuilder", "from system.text import StringBuilder\n\n\n",
+            "StringBuilder(\"ab\")", "from system.text import StringBuilder\n", "StringBuilder(\"ab\")",
+            "{v}.Length", null, false, "{v}.Length"),
+        // The #1325 control: an escape-declared `bytes` is the USER's class — a file origin that must
+        // never relink to the registry `bytes` (whose `.x` does not exist).
+        ["escapedbytes"] = new("`bytes`",
+            "class `bytes`:\n    x: int\n\n    def __init__(self) -> None:\n        self.x = 5\n\n\n",
+            "`bytes`()", "from lib import `bytes`\n", "`bytes`()", "{v}.x", null, false, "{v}.x"),
+    };
 
-        var first = Build(config);
-        first.Success.Should().BeTrue("the specimen must compile cold. Diagnostics:\n" + Diagnostics(first));
+    private const string UpcastDef = "def upcast(e: Exception) -> str:\n    return str(e)\n\n\n";
 
-        File.WriteAllText(main, mainEditedSource);
-        var edited = Build(config);
-        Skipped(edited).Should().BeEquivalentTo(new[] { "lib.spy" },
+    private static readonly string[] UdtPositions = { "return", "parameter", "field", "property", "lambda" };
+
+    public static IEnumerable<object[]> UdtKindTimesPosition()
+        => from kind in UdtKinds.Keys from position in UdtPositions select new object[] { kind, position };
+
+    private static string UdtLib(UdtKind k, string position) => k.Decl + position switch
+    {
+        "return" => $"def make() -> {k.Type}:\n    return {k.Value}\n",
+        "parameter" => $"def take(v: {k.Type}) -> None:\n    print({k.Member.Replace("{v}", "v")})\n",
+        "field" => $"class Box:\n    item: {k.Type}\n\n    def __init__(self) -> None:\n        self.item = {k.Value}\n",
+        "property" => $"class Box:\n    property get item: {k.Type}\n\n    def __init__(self) -> None:\n        self.item = {k.Value}\n",
+        "lambda" => $"def apply(f: ({k.Type}) -> None) -> None:\n    f({k.Value})\n",
+        _ => throw new ArgumentOutOfRangeException(nameof(position)),
+    };
+
+    /// <summary>
+    /// The three consumer programs for a cell: the initial one (imports the entry point, uses nothing,
+    /// so the cache is written by a build that succeeds), the USES program (every applicable use,
+    /// must build and run), and the PROBE program (must be refused exactly as cold refuses it). The
+    /// parameter position's consumer use is the call itself: a valid argument runs, `take(1)` is the
+    /// probe.
+    /// </summary>
+    private static (string Initial, string Uses, string Probe) UdtMains(UdtKind k, string position)
+    {
+        var entry = position switch
+        {
+            "return" => "make",
+            "parameter" => "take",
+            "field" or "property" => "Box",
+            _ => "apply",
+        };
+        var head = (position == "parameter" ? k.MainImport : "") + $"from lib import {entry}\n\n\n" + k.Prelude;
+        string M(string template) => template.Replace("{v}", "v");
+        var initial = head + "def main() -> None:\n    print(0)\n";
+        switch (position)
+        {
+            case "parameter":
+                return (initial,
+                    head + $"def main() -> None:\n    take({k.Local})\n",
+                    head + "def main() -> None:\n    take(1)\n");
+            case "lambda":
+                {
+                    var uses = new List<string> { $"    apply(lambda v: print({M(k.Member)}))" };
+                    if (k.Operator != null)
+                        uses.Add($"    apply(lambda v: print({M(k.Operator)}))");
+                    if (k.Iterable)
+                        uses.Add("    apply(lambda v: print(list(v)))");
+                    return (initial,
+                        head + "def main() -> None:\n" + string.Join("\n", uses) + "\n",
+                        head + "def expect_bool(b: bool) -> None:\n    print(b)\n\n\n"
+                            + $"def main() -> None:\n    apply(lambda v: expect_bool({M(k.Probe)}))\n");
+                }
+            default:
+                {
+                    var access = position == "return" ? "make()" : "Box().item";
+                    var uses = new List<string> { $"    v = {access}", $"    print({M(k.Member)})" };
+                    if (k.Operator != null)
+                        uses.Add($"    print({M(k.Operator)})");
+                    if (k.Iterable)
+                        uses.AddRange(new[] { "    for e in v:", "        print(e)" });
+                    if (k.StatementUse != null)
+                        uses.Add("    " + M(k.StatementUse));
+                    return (initial,
+                        head + "def main() -> None:\n" + string.Join("\n", uses) + "\n",
+                        head + $"def main() -> None:\n    v = {access}\n    b: bool = {M(k.Probe)}\n    print(b)\n");
+                }
+        }
+    }
+
+    /// <summary>
+    /// A consumer recompiled against a cache-served signature types every user-defined type in it
+    /// exactly as a cold build does (#2027): UDT kind × cached position × consumer use. The
+    /// <c>"user"</c> codec used to write the bare name, so a cached type came back symbol-less —
+    /// member access, operators and iteration went Unknown (SPY0908) or were refused (SPY0222, the
+    /// two false refusals of valid programs) where the cold build typed them.
+    ///
+    /// <para>Warm = <c>lib.spy</c> served from the cache while <c>main.spy</c> recompiles after a
+    /// CONTENT edit (staleness is content-hash; <c>touch</c> would re-serve both) — asserted, it is
+    /// the positive control that the decode was exercised. Cold = the same final sources in a
+    /// directory never built. Compared: the diagnostic multisets (both programs) and the stdout of the
+    /// uses program; the cold probe must be refused (positive control that the probe is typed).</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(UdtKindTimesPosition))]
+    public void AfterAWarmRestore_ACachedUserDefinedTypeTypesAsCold(string kind, string position)
+    {
+        var k = UdtKinds[kind];
+        var lib = UdtLib(k, position);
+        var (initial, uses, probe) = UdtMains(k, position);
+
+        using var warm = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        warm.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", initial);
+        var first = warm.Compile();
+        first.Success.Should().BeTrue($"the {kind}/{position} specimen must build cold first. Diagnostics:\n{Diagnostics(first)}");
+
+        warm.UpdateSourceFile("main.spy", uses);
+        var warmUses = warm.CompileAndExecute();
+        var warmUsesBuild = warm.LastCompilationResult!;
+        Skipped(warmUsesBuild).Should().BeEquivalentTo(new[] { "lib.spy" },
             "lib must be served from the cache while main recompiles against it");
 
-        var freshLib = Write("registry-" + area + "-cold", "lib.spy", libSource);
-        var freshMain = Write("registry-" + area + "-cold", "main.spy", mainEditedSource);
-        var coldEdited = Build(Config("registry-" + area + "-cold", freshLib, freshMain));
-        Skipped(coldEdited).Should().BeEmpty("the control build is cold");
-        Diagnostics(coldEdited).Should().Contain("SPY0220").And.Contain(coldTypeName,
-            "the cold consumer types the member through the registry symbol");
+        warm.UpdateSourceFile("main.spy", probe);
+        var warmProbe = warm.Compile();
+        Skipped(warmProbe).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib must still be served from the cache for the probe build");
 
-        Diagnostics(edited).Should().Be(Diagnostics(coldEdited),
-            "a consumer compiled against the cached signature must type its members as cold does");
+        using var coldU = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        coldU.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", uses);
+        var coldUses = coldU.CompileAndExecute();
+        var coldUsesBuild = coldU.LastCompilationResult!;
+        Skipped(coldUsesBuild).Should().BeEmpty("the control build is cold");
+        coldUses.Success.Should().BeTrue($"the cold uses program must build and run. Diagnostics:\n{Diagnostics(coldUsesBuild)}");
+
+        using var coldP = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        coldP.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", probe);
+        var coldProbe = coldP.Compile();
+        coldProbe.Diagnostics.GetErrors().Should().NotBeEmpty(
+            "the cold probe must be refused — else it is not typed and proves nothing");
+
+        Diagnostics(warmUsesBuild).Should().Be(Diagnostics(coldUsesBuild),
+            $"{kind}/{position}: a consumer compiled against the cached signature must report what cold reports");
+        warmUses.Success.Should().BeTrue($"{kind}/{position}: the warm uses program must build and run");
+        warmUses.StandardOutput.Should().Be(coldUses.StandardOutput, $"{kind}/{position}: warm must print what cold prints");
+        Diagnostics(warmProbe).Should().Be(Diagnostics(coldProbe),
+            $"{kind}/{position}: the probe must be typed warm exactly as cold types it");
     }
 
     private const string StructAccessLibSource = @"struct Meter:

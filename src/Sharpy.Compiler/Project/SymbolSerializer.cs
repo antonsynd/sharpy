@@ -1454,9 +1454,23 @@ internal static class SymbolSerializer
                     };
                 });
 
+            // Format: name@origin (#2027). The name alone lost the symbol for every non-generic
+            // user-defined type — registry (`bytes`, `Template`, `ValueError`), stdlib-module
+            // (`date`) and project (a user class/struct/enum) alike — so a consumer recompiled
+            // against a cached signature typed its members, operators and iteration as Unknown
+            // (SPY0908) or refused valid programs (SPY0222) where the cold build typed them. The
+            // origin says where the symbol lives (CachedTypeOrigin); decode stays symbol-less and
+            // RestoredTypeRelinker binds the symbol after every cached file is restored. `@` cannot
+            // occur in a type name, so the first one splits the payload.
             Register<UserDefinedType>("user",
-                udt => udt.Name,
-                value => new UserDefinedType { Name = value });
+                udt => CachedTypeOrigin.Of(udt) is { } origin ? $"{udt.Name}@{origin}" : udt.Name,
+                value =>
+                {
+                    var at = value.IndexOf('@', StringComparison.Ordinal);
+                    return at < 0
+                        ? new UserDefinedType { Name = value }
+                        : new UserDefinedType { Name = value[..at], CacheOrigin = value[(at + 1)..] };
+                });
 
             Register<UnmappedClrType>("unmappedclr",
                 uct => uct.ClrTypeName,

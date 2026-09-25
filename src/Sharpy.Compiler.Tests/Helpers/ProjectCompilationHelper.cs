@@ -139,6 +139,24 @@ public class ProjectCompilationHelper : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Assemblies the compiler discovers stdlib modules from (<c>CompilerOptions.References</c>, the
+    /// channel the CLI feeds) — distinct from the project's <c>&lt;Reference&gt;</c> items, which only
+    /// reach the emitted assembly's compilation.
+    /// </summary>
+    public List<string> ModuleReferences { get; } = new();
+
+    /// <summary>
+    /// Makes the stdlib modules (<c>datetime</c>, <c>collections</c>, …) importable, as the CLI does by
+    /// loading <c>Sharpy.Stdlib.dll</c> as a module reference.
+    /// </summary>
+    public ProjectCompilationHelper WithStdlibModules()
+    {
+        ModuleReferences.AddRange(TestProjectScaffold.ResolveRuntimeDllPaths()
+            .Where(p => Path.GetFileName(p) == "Sharpy.Stdlib.dll"));
+        return WithRuntimeReferences();
+    }
+
     private static string BuildRuntimeReferenceItems()
     {
         // DLL list and resolution shared with the compiler's own scaffold so the two
@@ -387,7 +405,8 @@ public class ProjectCompilationHelper : IDisposable
         var compilerOptions = new CompilerOptions
         {
             Incremental = Incremental,
-            Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures)
+            Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures),
+            References = ModuleReferences.Count > 0 ? ModuleReferences.ToArray() : null
         };
         var compiler = new Compiler(compilerOptions, _logger);
 

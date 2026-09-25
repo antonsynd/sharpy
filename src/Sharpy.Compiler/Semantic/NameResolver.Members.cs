@@ -227,27 +227,11 @@ internal partial class NameResolver
             }
         }
 
-        // Register operator dunder methods in cache (validation moved to SignatureValidator)
-        if (OperatorRegistry.IsOperatorDunder(method.Name))
+        // Register operator/protocol dunder methods in their tables (validation moved to
+        // SignatureValidator) — the rule a cache restore re-applies (TypeSymbol.DeriveMethodTables).
+        if (owningType.RegisterDunderMethod(funcSymbol) is { } table)
         {
-            if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
-            {
-                overloads = new List<FunctionSymbol>();
-                owningType.OperatorMethods[method.Name] = overloads;
-            }
-            overloads.Add(funcSymbol);
-            _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
-        }
-        // Register protocol dunder methods in cache (validation moved to SignatureValidator)
-        else if (ProtocolRegistry.IsProtocolDunder(method.Name))
-        {
-            if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))
-            {
-                overloads = new List<FunctionSymbol>();
-                owningType.ProtocolMethods[method.Name] = overloads;
-            }
-            overloads.Add(funcSymbol);
-            _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
+            _logger.LogDebug($"Registered {table} method: {owningType.Name}.{method.Name}");
         }
     }
 

@@ -132,7 +132,10 @@ internal class IncrementalCompilationCache
     // v36: FileCacheEntry carries DeclaresEntryMain (#2013). A cache-served unit has no AST, so the
     //      SPY0526 check assumed it declared main() and spelled its module class "Program": a warm
     //      build refused a library program/main.spy without main() that the cold build accepted.
-    internal const int CurrentSchemaVersion = 36;
+    // v37: the "user" SemanticType codec carries the declaring symbol's origin, `name@origin`
+    //      (#2027). A v36 entry carries bare names, which decode symbol-less and relink to nothing —
+    //      the warm build would type every cached user-defined type's members as Unknown again.
+    internal const int CurrentSchemaVersion = 37;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
