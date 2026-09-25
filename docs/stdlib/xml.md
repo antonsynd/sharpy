@@ -141,14 +141,14 @@ Represents an XML element.
 Mirrors Python's xml.etree.ElementTree.Element.
 Wraps `XElement` and provides a Python-compatible API.
 
-### `get(key: str, @default: str | None = None) -> str | None`
+### `get(key: str, default: str | None = None) -> str | None`
 
 Get the value of an attribute, or a default value if not found.
 
 **Parameters:**
 
 - `key` (str) -- The attribute name.
-- `@default` (str | None)
+- `default` (str | None) -- The default value if the attribute is not found.
 
 **Returns:** The attribute value, or *default*.
 
@@ -228,14 +228,14 @@ Find all matching child elements by path.
 
 **Returns:** A list of matching elements.
 
-### `find_text(path: str, @default: str | None = None, namespaces: dict[str, str] | None = None) -> str | None`
+### `find_text(path: str, default: str | None = None, namespaces: dict[str, str] | None = None) -> str | None`
 
 Find the text content of the first matching child element.
 
 **Parameters:**
 
 - `path` (str) -- An XPath-like path expression.
-- `@default` (str | None)
+- `default` (str | None) -- Default value if not found.
 - `namespaces` (dict[str, str] | None) -- Optional namespace prefix mapping.
 
 **Returns:** The text content of the matching element, or *default*.

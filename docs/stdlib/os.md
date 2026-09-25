@@ -54,7 +54,7 @@ Change the current working directory to the specified path.
 
 Get an environment variable, return None if it doesn't exist.
 
-### `os.getenv(key: str, @default: str) -> str`
+### `os.getenv(key: str, default: str) -> str`
 
 Get an environment variable, return default if it doesn't exist.
 

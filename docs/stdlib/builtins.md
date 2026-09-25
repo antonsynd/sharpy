@@ -1284,7 +1284,7 @@ Convert decimal to int16 (truncates toward zero).
 
 Parse string to int16.
 
-### `int16(s: str, @base: int) -> short`
+### `int16(s: str, base: int) -> short`
 
 Parse string to int16 with explicit base.
 
@@ -1340,7 +1340,7 @@ Convert decimal to int8 (truncates toward zero).
 
 Parse string to int8.
 
-### `int8(s: str, @base: int) -> sbyte`
+### `int8(s: str, base: int) -> sbyte`
 
 Parse string to int8 with explicit base (2, 8, 10, or 16).
 
@@ -1670,11 +1670,11 @@ Return the largest item in an iterable, using a key function for comparison.
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `max(iterable: Iterable[T], @default: T) -> T`
+### `max(iterable: Iterable[T], default: T) -> T`
 
 Return the largest item in an iterable, or default if the iterable is empty.
 
-### `max(iterable: Iterable[T], key: (T) -> TKey, @default: T) -> T`
+### `max(iterable: Iterable[T], key: (T) -> TKey, default: T) -> T`
 
 Return the largest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -1737,11 +1737,11 @@ Return the smallest item in an iterable, using a key function for comparison.
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `min(iterable: Iterable[T], @default: T) -> T`
+### `min(iterable: Iterable[T], default: T) -> T`
 
 Return the smallest item in an iterable, or default if the iterable is empty.
 
-### `min(iterable: Iterable[T], key: (T) -> TKey, @default: T) -> T`
+### `min(iterable: Iterable[T], key: (T) -> TKey, default: T) -> T`
 
 Return the smallest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -1792,14 +1792,14 @@ next(it)    # 3
 
 - `StopIteration` -- Thrown when the iterator is exhausted
 
-### `next(iterator: Iterator[T], @default: T) -> T`
+### `next(iterator: Iterator[T], default: T) -> T`
 
 Retrieve the next item from the iterator, or return default if exhausted.
 
 **Parameters:**
 
 - `iterator` (Iterator[T]) -- The iterator to advance
-- `@default` (T)
+- `default` (T) -- The value to return if the iterator is exhausted
 
 **Returns:** The next item, or default if exhausted
 
@@ -2772,7 +2772,7 @@ Convert decimal to uint16 (truncates toward zero).
 
 Parse string to uint16.
 
-### `u_int16(s: str, @base: int) -> ushort`
+### `u_int16(s: str, base: int) -> ushort`
 
 Parse string to uint16 with explicit base.
 
@@ -2828,7 +2828,7 @@ Convert decimal to uint32 (truncates toward zero).
 
 Parse string to uint32.
 
-### `u_int32(s: str, @base: int) -> uint`
+### `u_int32(s: str, base: int) -> uint`
 
 Parse string to uint32 with explicit base.
 
@@ -2884,7 +2884,7 @@ Convert decimal to uint64 (truncates toward zero).
 
 Parse string to uint64.
 
-### `u_int64(s: str, @base: int) -> ulong`
+### `u_int64(s: str, base: int) -> ulong`
 
 Parse string to uint64 with explicit base.
 
@@ -2940,7 +2940,7 @@ Convert decimal to uint8 (truncates toward zero).
 
 Parse string to uint8.
 
-### `u_int8(s: str, @base: int) -> byte`
+### `u_int8(s: str, base: int) -> byte`
 
 Parse string to uint8 with explicit base.
 

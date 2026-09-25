@@ -17,7 +17,7 @@ Projects this dictionary's entries as string-keyed pairs for
 reflection-free JSON dispatch. Returns an empty sequence when
  is not `string`.
 
-### `fromkeys(keys: Iterable[K], value: V = default!) -> dict[K, V]`
+### `fromkeys(keys: Iterable[K], value: V = None) -> dict[K, V]`
 
 Create a new dictionary with keys from *keys* and values set to *value*.
 
@@ -74,7 +74,7 @@ d.get("a")    # Some(1)
 d.get("z")    # None
 ```
 
-### `get(key: K, @default: V) -> V`
+### `get(key: K, default: V) -> V`
 
 Return the value for *key* if present, otherwise
 *default*.
@@ -82,7 +82,7 @@ Return the value for *key* if present, otherwise
 **Parameters:**
 
 - `key` (K) -- The key to look up.
-- `@default` (V)
+- `default` (V) -- The fallback value.
 
 **Returns:** The value for the key, or the default.
 
@@ -135,7 +135,7 @@ d.pop("a")    # 1, d is {"b": 2}
 
 - `KeyError` -- Thrown if the key is not found.
 
-### `pop(key: K, @default: V) -> V`
+### `pop(key: K, default: V) -> V`
 
 Remove the specified key and return the corresponding value.
 If the key is not found, return *default*.
@@ -143,7 +143,7 @@ If the key is not found, return *default*.
 **Parameters:**
 
 - `key` (K) -- The key to remove.
-- `@default` (V)
+- `default` (V) -- Value to return if key is not found.
 
 **Returns:** The removed value or the default.
 
@@ -167,7 +167,7 @@ d = {"a": 1, "b": 2}
 d.popitem()    # ("b", 2)
 ```
 
-### `set_default(key: K, @default: V) -> V`
+### `set_default(key: K, default: V) -> V`
 
 If *key* is in the dictionary, return its value.
 If not, insert *key* with *default*
@@ -176,7 +176,7 @@ and return *default*.
 **Parameters:**
 
 - `key` (K) -- The key to look up or insert.
-- `@default` (V)
+- `default` (V) -- The value to insert if key is absent.
 
 **Returns:** The existing or newly inserted value.
 

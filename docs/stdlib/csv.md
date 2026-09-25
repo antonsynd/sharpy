@@ -36,7 +36,7 @@ Create a CSV reader from a list of lines.
 
 Create a CSV writer that writes to a TextWriter.
 
-### `csv.dict_reader(lines: list[str], fieldnames: Optional[list[str]] = default) -> CsvDictReader`
+### `csv.dict_reader(lines: list[str], fieldnames: Optional[list[str]] = None) -> CsvDictReader`
 
 Create a CSV DictReader from a list of lines.
 

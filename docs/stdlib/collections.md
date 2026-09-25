@@ -42,7 +42,7 @@ Like Python's collections.ChainMap.
 Return a new ChainMap with a new map followed by all previous maps.
 If no map is provided, an empty dict is used.
 
-### `get(key: K, @default: V = default!) -> V`
+### `get(key: K, default: V = None) -> V`
 
 Get a value, searching through all maps.
 
@@ -220,7 +220,7 @@ Dictionary with default values for missing keys.
 | `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
 
-### `get(key: TKey, default_value: TValue = default!) -> TValue`
+### `get(key: TKey, default_value: TValue = None) -> TValue`
 
 Get the value for a key, or return a default value if the key is not present.
 
@@ -329,7 +329,7 @@ Like Python's collections.OrderedDict.
 
 Remove the specified key and return its value.
 
-### `pop(key: K, @default: V) -> V`
+### `pop(key: K, default: V) -> V`
 
 Remove the specified key and return its value, or return default if not found.
 
@@ -364,7 +364,7 @@ Return the (key, value) pairs in insertion order as a sized list.
 
 Return a shallow copy.
 
-### `get(key: K, @default: V = default!) -> V`
+### `get(key: K, default: V = None) -> V`
 
 Get the value for a key, or a default.
 

@@ -40,7 +40,7 @@ Return e raised to the power of x.
 
 Return the natural logarithm of x (base e).
 
-### `math.log(x: float, @base: float) -> float`
+### `math.log(x: float, base: float) -> float`
 
 Return the logarithm of x to the given base.
 
