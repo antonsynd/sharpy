@@ -71,6 +71,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/ConstEligibility.cs::ConstEligibility.Collect"] = "guarded-by:ConstEligibleTypeTotalityTests",
         ["Semantic/ConstEligibility.cs::ConstEligibility.IsOperandTypeIndependentNativeOperator"] = "guarded-by:ConstEligibleTypeTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ComputeForModule"] = "guarded-by:CodeGenInfoComputerTotalityTests",
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.SetDeclaredTypeNames"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectModuleLevelCollisions"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessTypeMembers"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessModuleLevelDeclarations"] = "guarded-by:CodeGenInfoComputerTotalityTests",

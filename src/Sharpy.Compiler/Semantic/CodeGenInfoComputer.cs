@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Collections.Frozen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Shared;
@@ -105,6 +106,11 @@ internal class CodeGenInfoComputer
                     break;
             }
         }
+
+        // Every declared TYPE — top-level and nested, of every kind — carries its emitted C# name
+        // and its source spelling, the fact the emitter's [SharpyName] stamp reads (#2006, R-CF).
+        foreach (var stmt in module.Body)
+            SetDeclaredTypeNames(stmt, enclosing: null);
 
         // Third pass: Detect module-level name collisions
         DetectModuleLevelCollisions(module);
@@ -292,6 +298,57 @@ internal class CodeGenInfoComputer
             return NameCasing.ResolveConstant(name, symbol.IsNameBacktickEscaped);
         }
         return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
+    }
+
+    /// <summary>
+    /// Records a type declaration's emitted C# name and source spelling on its symbol — and on its
+    /// union cases' and nested types' symbols — with the spellers the emitter's declaration sites
+    /// use. The emitter stamps <c>[SharpyName]</c> from this when the two differ (#2006, R-CF):
+    /// union, union-case, delegate and every nested type symbol had no type-level
+    /// <see cref="CodeGenInfo"/> before. Merged into an existing record, never replacing its other
+    /// facts.
+    /// </summary>
+    private void SetDeclaredTypeNames(Statement stmt, TypeSymbol? enclosing)
+    {
+        var (name, csharpName, body) = stmt switch
+        {
+            ClassDef d => (d.Name, NameCasing.ResolveType(d.Name, d.IsNameBacktickEscaped), d.Body),
+            StructDef d => (d.Name, NameCasing.ResolveType(d.Name, d.IsNameBacktickEscaped), d.Body),
+            InterfaceDef d => (d.Name, NameCasing.ResolveInterface(d.Name, d.IsNameBacktickEscaped), d.Body),
+            EnumDef d => (d.Name, NameCasing.ResolveType(d.Name, d.IsNameBacktickEscaped), ImmutableArray<Statement>.Empty),
+            UnionDef d => (d.Name, NameCasing.ResolveType(d.Name, d.IsNameBacktickEscaped), d.Body),
+            DelegateDef d => (d.Name, NameCasing.ResolveType(d.Name, d.IsNameBacktickEscaped), ImmutableArray<Statement>.Empty),
+            _ => ((string?)null, (string?)null, ImmutableArray<Statement>.Empty),
+        };
+        if (name == null || csharpName == null)
+            return;
+
+        var symbol = enclosing != null
+            ? enclosing.NestedTypes.FirstOrDefault(t => t.Name == name)
+            : _symbolTable.Lookup(name) as TypeSymbol;
+        if (symbol == null)
+            return;
+
+        SetTypeNames(symbol, csharpName, name);
+        if (stmt is UnionDef union)
+        {
+            foreach (var caseDef in union.Cases)
+            {
+                if (symbol.UnionCases.FirstOrDefault(c => c.Name == caseDef.Name) is { } caseSymbol)
+                    SetTypeNames(caseSymbol, NameMangler.Transform(caseDef.Name, NameContext.Type), caseDef.Name);
+            }
+        }
+
+        foreach (var member in body)
+            SetDeclaredTypeNames(member, symbol);
+    }
+
+    private void SetTypeNames(TypeSymbol typeSymbol, string csharpName, string originalName)
+    {
+        var existing = _semanticBinding.GetCodeGenInfo(typeSymbol);
+        SetCodeGenInfo(typeSymbol, existing is null
+            ? new CodeGenInfo { CSharpName = csharpName, OriginalName = originalName }
+            : existing with { CSharpName = csharpName, OriginalName = originalName });
     }
 
     private void ProcessClassDef(ClassDef classDef)

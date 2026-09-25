@@ -86,6 +86,12 @@ namespace Sharpy
                 return sequenceStr;
             }
 
+            // Python's default object.__str__ for a Sharpy type that does not render itself (#2006).
+            if (PyFormat.TryFormatInstanceFallback(x, out var instanceStr))
+            {
+                return instanceStr;
+            }
+
             return x.ToString() ?? "";
         }
 

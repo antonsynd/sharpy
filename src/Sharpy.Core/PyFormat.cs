@@ -322,9 +322,119 @@ namespace Sharpy
                 }
             }
 
+            return PythonSimpleName(type);
+        }
+
+        /// <summary>
+        /// A type's own python name: its <see cref="SharpyNameAttribute"/> when the compiler stamped
+        /// one (the emitted CLR name differs from the source spelling, #2006), else the CLR name
+        /// without its generic arity.
+        /// </summary>
+        private static string PythonSimpleName(Type type)
+        {
+            if (Attribute.GetCustomAttribute(type, typeof(SharpyNameAttribute), inherit: false) is SharpyNameAttribute named)
+            {
+                return named.PythonName;
+            }
+
             string name = type.Name;
             int tick = name.IndexOf('`');
             return tick < 0 ? name : name.Substring(0, tick);
+        }
+
+        /// <summary>
+        /// The dotted python name an instance fallback prints, <c>mod.Outer.C</c> (#2006, R-CF):
+        /// <c>mod</c> is the nearest <see cref="SharpyModuleTypeAttribute"/> module or
+        /// <see cref="SharpyModuleAttribute"/> module on the type or its declaring chain, and
+        /// <c>__main__</c> when there is none (the entry module is unstamped); the qualname is the
+        /// declaring types strictly inside the module class, each through
+        /// <see cref="PythonSimpleName"/>. An attribute walk, never a nesting depth, so it holds for
+        /// module classes nested in package wrappers and for types emitted beside their module class.
+        /// </summary>
+        public static string PyQualifiedName(Type type)
+        {
+            var names = new System.Collections.Generic.List<string>();
+            string? module = null;
+            for (Type? current = type; current != null; current = current.DeclaringType)
+            {
+                if (Attribute.GetCustomAttribute(current, typeof(SharpyModuleTypeAttribute), inherit: false) is SharpyModuleTypeAttribute moduleType)
+                {
+                    module = moduleType.ModuleName;
+                    names.Insert(0, Attribute.IsDefined(current, typeof(SharpyNameAttribute), inherit: false)
+                        ? PythonSimpleName(current)
+                        : moduleType.PythonName ?? PythonSimpleName(current));
+                    break;
+                }
+
+                if (Attribute.GetCustomAttribute(current, typeof(SharpyModuleAttribute), inherit: false) is SharpyModuleAttribute moduleClass)
+                {
+                    module = moduleClass.ModuleName;
+                    // A class merged with its module (thing.spy's class Thing) IS the module class
+                    // and a user class: it is part of the qualname (`thing.Thing`,
+                    // `thing.Thing.Inner`). A static module class never is.
+                    if (!(current.IsAbstract && current.IsSealed))
+                    {
+                        names.Insert(0, PythonSimpleName(current));
+                    }
+                    break;
+                }
+
+                // The unstamped outermost static class is the entry module class: not part of the
+                // qualname.
+                if (current.DeclaringType == null && current != type && current.IsAbstract && current.IsSealed)
+                {
+                    break;
+                }
+
+                names.Insert(0, PythonSimpleName(current));
+            }
+
+            return (module ?? "__main__") + "." + string.Join(".", names);
+        }
+
+        /// <summary>
+        /// Python's default <c>object.__repr__</c>/<c>__str__</c>, <c>&lt;mod.C object&gt;</c> (the
+        /// address omitted), for an instance of a Sharpy-declared type that does not render itself
+        /// (#2006, R-CF). The last arm of <see cref="Builtins.Str(object)"/> and
+        /// <see cref="Builtins.Repr(object)"/>. A CLR interop type (no Sharpy module attribute on its
+        /// chain and not nested in a module class) keeps its own <see cref="object.ToString"/>, and
+        /// an enum keeps its member name until an enum arm owns it (#2007).
+        /// </summary>
+        internal static bool TryFormatInstanceFallback(object value, out string formatted)
+        {
+            formatted = string.Empty;
+            Type type = value.GetType();
+            if (type.IsEnum || value is Delegate || Builtins.RendersItself(type) || !IsSharpyDeclared(type))
+            {
+                return false;
+            }
+
+            formatted = "<" + PyQualifiedName(type) + " object>";
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the type was declared in Sharpy source: a Sharpy name/module attribute on it or
+        /// its declaring chain, or nested in a static (module) class.
+        /// </summary>
+        private static bool IsSharpyDeclared(Type type)
+        {
+            for (Type? current = type; current != null; current = current.DeclaringType)
+            {
+                if (Attribute.IsDefined(current, typeof(SharpyNameAttribute), inherit: false)
+                    || Attribute.IsDefined(current, typeof(SharpyModuleAttribute), inherit: false)
+                    || Attribute.IsDefined(current, typeof(SharpyModuleTypeAttribute), inherit: false))
+                {
+                    return true;
+                }
+
+                if (current.DeclaringType == null)
+                {
+                    return current != type && current.IsAbstract && current.IsSealed;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

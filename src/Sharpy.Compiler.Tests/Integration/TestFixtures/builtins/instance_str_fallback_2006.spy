@@ -1,0 +1,30 @@
+# An instance without __str__ prints python's fallback <module.qualname object> on every route;
+# python appends " at 0x..." (deviation instance-repr-no-address). #2006, R-CF.
+class D:
+    pass
+
+class Outer:
+    class C:
+        pass
+
+class my_thing:
+    pass
+
+struct Pt:
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Named:
+    def __str__(self) -> str:
+        return "named"
+
+def main() -> None:
+    print(D())
+    print(str(Outer.C()))
+    print(repr(my_thing()))
+    print(f"{Pt(1)}")
+    xs: list[object] = [D(), Outer.C()]
+    print(xs)
+    print({"k": my_thing()})
+    print(Named())

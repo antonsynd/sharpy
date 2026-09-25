@@ -449,6 +449,44 @@ public class CodeGenInfoComputerTotalityTests
             $"  Missing: {string.Join(", ", FindMemberPosition_Handled.Except(switchArms))}");
     }
 
+    // --- SetDeclaredTypeNames (#2006, R-CF) ---
+
+    /// <summary>
+    /// Every TYPE-declaring statement kind carries its emitted C# name and source spelling — the fact
+    /// the emitter's <c>[SharpyName]</c> stamp reads. The set is the nested-declaration classifier's
+    /// (<c>StatementExtensions.TryGetNestedDeclaration</c>) minus the alias, which declares no type.
+    /// </summary>
+    private static readonly HashSet<string> SetDeclaredTypeNames_Handled = new()
+    {
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(InterfaceDef),
+        nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
+    };
+
+    [Fact]
+    public void SetDeclaredTypeNames_SwitchArms_MatchClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(SourceFile, "SetDeclaredTypeNames");
+        Assert.True(switchArms.SetEquals(SetDeclaredTypeNames_Handled),
+            $"SetDeclaredTypeNames switch arms differ from expected.\n" +
+            $"  Extra: {string.Join(", ", switchArms.Except(SetDeclaredTypeNames_Handled))}\n" +
+            $"  Missing: {string.Join(", ", SetDeclaredTypeNames_Handled.Except(switchArms))}");
+    }
+
+    [Fact]
+    public void SetDeclaredTypeNames_CoversEveryTypeDeclaringKind()
+    {
+        var typeDeclaring = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Parser/Ast/StatementExtensions.cs", "TryGetNestedDeclaration")
+            .Where(n => n != nameof(TypeAlias));
+        Assert.True(SetDeclaredTypeNames_Handled.SetEquals(typeDeclaring),
+            "a type-declaring statement kind has no [SharpyName] fact: "
+            + string.Join(", ", typeDeclaring.Except(SetDeclaredTypeNames_Handled)));
+    }
+
     // --- Cross-method union covers the Statement universe ---
 
     [Fact]

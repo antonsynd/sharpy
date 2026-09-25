@@ -409,6 +409,13 @@ internal partial class RoslynEmitter
             var augmentedType = collidingTypeDecl.WithMembers(
                 collidingTypeDecl.Members.AddRange(otherDeclarations));
 
+            // The merged class IS the module class, so a non-entry one carries [SharpyModule] too:
+            // its instances name their module (`<thing.Thing object>`), not __main__ (#2006, R-CF).
+            if (!_context.IsEntryPoint)
+            {
+                augmentedType = augmentedType.AddAttributeLists(SharpyModuleAttributeList(GetSharpyModuleName()));
+            }
+
             return augmentedType;
         }
 
@@ -449,15 +456,8 @@ internal partial class RoslynEmitter
         // Add [SharpyModule] attribute to non-entry-point module classes
         if (!_context.IsEntryPoint)
         {
-            var sharpyModuleName = GetSharpyModuleName();
             moduleClassDecl = moduleClassDecl
-                .WithAttributeLists(SingletonList(
-                    AttributeList(SingletonSeparatedList(
-                        Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyModule"),
-                            AttributeArgumentList(SingletonSeparatedList(
-                                AttributeArgument(LiteralExpression(
-                                    SyntaxKind.StringLiteralExpression,
-                                    Literal(sharpyModuleName))))))))));
+                .WithAttributeLists(SingletonList(SharpyModuleAttributeList(GetSharpyModuleName())));
         }
 
         // Module class is always partial (allows merging with wrapper declarations
@@ -471,6 +471,15 @@ internal partial class RoslynEmitter
 
         return moduleClass;
     }
+
+    /// <summary><c>[global::Sharpy.SharpyModule("&lt;dotted module name&gt;")]</c> for a module class.</summary>
+    private static AttributeListSyntax SharpyModuleAttributeList(string sharpyModuleName)
+        => AttributeList(SingletonSeparatedList(
+            Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyModule"),
+                AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal(sharpyModuleName))))))));
 
     /// <summary>
     /// Annotates an extracted top-level type declaration with

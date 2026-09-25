@@ -1859,3 +1859,47 @@ deviations:
                 self.n = 4
         "{0.n}".format(H())   # '4'
         "{0.N}".format(H())   # '4' — the emitted CLR member N is found
+
+  - id: instance-repr-no-address
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "An instance of a class without `__str__`/`__repr__` prints as `<module.qualname object at 0x10372d4e0>` — the defining module (`__main__` for the script), the dotted qualified name, and the object's memory address."
+    sharpy_behavior: "The same fallback without the address — `<__main__.D object>`, `<__main__.Outer.C object>`, `<pkg.shapes.Box object>` — so it can be pinned by a test (the `iterator-repr-no-address` rule). The module and qualified name are python's spelling, recorded by the compiler (`[SharpyModule]`, and `[SharpyName]` on a type whose emitted CLR name differs from its source name) and read by `PyFormat.PyQualifiedName` (#2006, R-CF). Every route agrees: `print`, `str`, `repr`, f-strings, `format`, `str.format` and container elements."
+    spec_ref: docs/language_specification/dunder_methods.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        class D: pass
+        print(D())      # <__main__.D object at 0x10372d4e0>
+        print([D()])    # [<__main__.D object at 0x10372d4e0>]
+      sharpy: |
+        class D:
+            pass
+        print(D())      # <__main__.D object>
+        print([D()])    # [<__main__.D object>]
+
+  - id: str-only-class-repr-is-str
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "A class declaring only `__str__` keeps `object.__repr__`: `repr(s)` and a container element print `<__main__.S object at 0x…>`, while `str(s)`/`print(s)` use `__str__`."
+    sharpy_behavior: "`__str__` and `__repr__` both map to `ToString()`, so a class declaring only `__str__` also `repr`s as its `__str__` — `repr(s)`, `f\"{s!r}\"` and `[s]` print the `__str__` text. Tracked by #2057."
+    spec_ref: docs/language_specification/dunder_methods.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        class S:
+            def __str__(self): return "S-str"
+        print(S())     # S-str
+        print([S()])   # [<__main__.S object at 0x10372d4e0>]
+      sharpy: |
+        class S:
+            def __str__(self) -> str:
+                return "S-str"
+        print(S())     # S-str
+        print([S()])   # [S-str]

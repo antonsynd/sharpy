@@ -79,6 +79,12 @@ namespace Sharpy
                 return sequenceRepr;
             }
 
+            // Python's default object.__repr__ for a Sharpy type that does not render itself (#2006).
+            if (PyFormat.TryFormatInstanceFallback(obj, out var instanceRepr))
+            {
+                return instanceRepr;
+            }
+
             return obj.ToString() ?? "None";
         }
 

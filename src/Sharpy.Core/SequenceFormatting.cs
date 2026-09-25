@@ -70,8 +70,14 @@ namespace Sharpy
         {
             // System.Type spelled out: the enclosing class declares a `Type(object?)` builtin, which
             // shadows the bare name here.
+            // ValueType's and Enum's ToString are the runtime's defaults for a struct and an enum,
+            // not a rendering their author chose: a struct without __str__ printed its CLR full
+            // name (#2006, R-CF).
             var toString = type.GetMethod("ToString", System.Type.EmptyTypes);
-            return toString != null && toString.DeclaringType != typeof(object);
+            return toString != null
+                && toString.DeclaringType != typeof(object)
+                && toString.DeclaringType != typeof(System.ValueType)
+                && toString.DeclaringType != typeof(System.Enum);
         }
     }
 }

@@ -442,7 +442,8 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add C# attributes from unknown decorators
-        var classAttributes = GenerateAttributeListsFromDecorators(classDef.Decorators);
+        var classAttributes = WithPythonNameAttribute(
+            GenerateAttributeListsFromDecorators(classDef.Decorators), DeclaredTypeSymbol(classDef.Name));
         if (classAttributes.Count > 0)
         {
             classDecl = classDecl.WithAttributeLists(classAttributes);
@@ -921,7 +922,8 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add C# attributes from unknown decorators
-        var structAttributes = GenerateAttributeListsFromDecorators(structDef.Decorators);
+        var structAttributes = WithPythonNameAttribute(
+            GenerateAttributeListsFromDecorators(structDef.Decorators), DeclaredTypeSymbol(structDef.Name));
         if (structAttributes.Count > 0)
         {
             structDecl = structDecl.WithAttributeLists(structAttributes);
@@ -980,7 +982,8 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add C# attributes from custom decorators
-        var interfaceAttributes = GenerateAttributeListsFromDecorators(interfaceDef.Decorators);
+        var interfaceAttributes = WithPythonNameAttribute(
+            GenerateAttributeListsFromDecorators(interfaceDef.Decorators), DeclaredTypeSymbol(interfaceDef.Name));
         if (interfaceAttributes.Count > 0)
         {
             interfaceDecl = interfaceDecl.WithAttributeLists(interfaceAttributes);
@@ -1217,6 +1220,38 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The symbol a type DECLARATION emits: a nested type is its enclosing type's child (the global
+    /// lookup cannot see it, #1371), a top-level one the module's.
+    /// </summary>
+    private TypeSymbol? DeclaredTypeSymbol(string name)
+        => _currentTypeSymbol?.NestedTypes.FirstOrDefault(n => n.Name == name)
+            ?? _context.LookupSymbol(name) as TypeSymbol;
+
+    /// <summary>
+    /// Appends <c>[global::Sharpy.SharpyName("&lt;source&gt;")]</c> when the declared type's emitted
+    /// metadata name differs from its source spelling (#2006, R-CF) — read from the symbol's
+    /// materialized <see cref="CodeGenInfo"/> (<c>CSharpName</c>, its keyword escape stripped, vs
+    /// <c>OriginalName</c>), so a PascalCase type carries no attribute and its snapshot does not move.
+    /// The runtime names the type through it in messages and in <c>&lt;mod.C object&gt;</c>.
+    /// </summary>
+    private SyntaxList<AttributeListSyntax> WithPythonNameAttribute(SyntaxList<AttributeListSyntax> attributeLists, TypeSymbol? declared)
+    {
+        if (declared == null || GetCodeGenInfo(declared) is not { CSharpName: { } csharpName, OriginalName: { } originalName })
+            return attributeLists;
+
+        var metadataName = csharpName.StartsWith('@') ? csharpName[1..] : csharpName;
+        if (metadataName == originalName)
+            return attributeLists;
+
+        return attributeLists.Add(AttributeList(SingletonSeparatedList(
+            Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyName"),
+                AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal(originalName)))))))));
+    }
+
+    /// <summary>
     /// The symbol an enum DECLARATION emits: a nested enum is its enclosing type's child (the global
     /// lookup cannot see it), a top-level one the module's.
     /// </summary>
@@ -1255,6 +1290,7 @@ internal partial class RoslynEmitter
             .ToArray();
 
         var enumDecl = EnumDeclaration(EscapedIdentifier(enumName))
+            .WithAttributeLists(WithPythonNameAttribute(default, enumSymbol))
             .WithModifiers(modifiers)
             .WithMembers(SeparatedList(members));
 
@@ -1299,6 +1335,7 @@ internal partial class RoslynEmitter
         // the str rules on Value, so a literal and a dynamic spec agree with the static twin, which
         // already projects every Sharpy enum to the str kind (#1988 regression, audit R1).
         var classDecl = ClassDeclaration(EscapedIdentifier(className))
+            .WithAttributeLists(WithPythonNameAttribute(default, DeclaredEnumSymbol(enumDef)))
             .WithModifiers(modifiers)
             .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
                 SimpleBaseType(MakeGlobalQualifiedName("System", "IFormattable")))));
@@ -1911,7 +1948,8 @@ internal partial class RoslynEmitter
                 Token(SyntaxKind.AbstractKeyword)));
 
         // Add C# attributes from unknown decorators
-        var unionAttributes = GenerateAttributeListsFromDecorators(unionDef.Decorators);
+        var unionAttributes = WithPythonNameAttribute(
+            GenerateAttributeListsFromDecorators(unionDef.Decorators), unionSymbol);
         if (unionAttributes.Count > 0)
         {
             classDecl = classDecl.WithAttributeLists(unionAttributes);
@@ -1973,6 +2011,7 @@ internal partial class RoslynEmitter
 
         // public sealed class CaseName : BaseClass
         var caseDecl = ClassDeclaration(EscapedIdentifier(caseName))
+            .WithAttributeLists(WithPythonNameAttribute(default, caseSymbol))
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.SealedKeyword)));
@@ -2103,6 +2142,7 @@ internal partial class RoslynEmitter
             .ToArray();
 
         var delegateDecl = DelegateDeclaration(returnType, EscapedIdentifier(delegateName))
+            .WithAttributeLists(WithPythonNameAttribute(default, DeclaredTypeSymbol(delegateDef.Name)))
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)));
 
