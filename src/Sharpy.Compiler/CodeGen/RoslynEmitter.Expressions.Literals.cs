@@ -416,7 +416,8 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Renders one replacement field to a string expression, reading the TypeChecker's
     /// <c>InterpolationLowering</c> (Critical Rule 2 pattern (b)): a plain hole is
-    /// <c>Builtins.Str/Repr/Ascii(v)</c>; a spec'd hole is <c>Sharpy.PyFormat.Apply(base, spec)</c>
+    /// <c>Builtins.Str/Repr/Ascii(v)</c>, or <c>Sharpy.PyFormat.Apply(v, "")</c> when the recorded
+    /// kind says so (<see cref="InterpolationLowering.PlainHoleAppliesEmptySpec"/>); a spec'd hole is <c>Sharpy.PyFormat.Apply(base, spec)</c>
     /// where <c>base</c> is the converted string (<c>!s/!r/!a</c>) or the raw value, and <c>spec</c>
     /// is a string literal (static) or an interpolated string over the nested spec fields (dynamic).
     /// </summary>
@@ -437,11 +438,14 @@ internal partial class RoslynEmitter
 
         if (part.Spec == null)
         {
-            // No spec: str/repr/ascii of the value. Format (no conversion) is plain str().
+            // No spec: str/repr/ascii of the value. Format (no conversion) is __format__(""): the
+            // type's own rendering when the recorded kind owns its spec or is not static (#2031),
+            // else plain str().
             return kind switch
             {
                 InterpolationKind.Repr => BuiltinConversionCall("Repr", value),
                 InterpolationKind.Ascii => BuiltinConversionCall("Ascii", value),
+                InterpolationKind.Format when lowering.PlainHoleAppliesEmptySpec => PyFormatApplyCall(value, MakeStringLiteral("")),
                 _ => BuiltinConversionCall("Str", value),
             };
         }

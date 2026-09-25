@@ -987,6 +987,20 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("formattable.pad", "", "F()", ">10", "F<>10>");
         yield return new("formattable.garbage", "", "F()", "garbage", "F<garbage>");
 
+        // ---- #2031 (R-CC): an EMPTY spec is __format__(""), so a type that owns its spec is asked,
+        //      on every consumer including the plain f-string hole; every other kind is str(value).
+        // python3 -c 'class F:
+        //   def __format__(self, s): return "F<" + s + ">"
+        // u: object = F(); o = 5; n = None
+        // print(format(F(),""), "{}".format(F()), f"{F()}", f"{u}", f"{o}", f"{n}")'
+        //   =>  F<> F<> F<> F<> 5 None
+        yield return new("formattable.empty", "", "F()", "", "F<>");
+        yield return new("unknown_typed.empty", "u: object = F()", "u", "", "F<>");
+        yield return new("nullable.empty", "on: int | None = 5", "on", "", "5");
+        yield return new("none.empty", "nn: int | None = None", "nn", "", "None");
+        // (A bare None literal as the ONLY str.format argument binds params object[] as null — #2078;
+        // an Optional[T] (`int?`) row waits for its one str() spelling — #2005.)
+
         // A float with a non-empty spec but NO type code takes the same str() route.
         // python3 -c 'print(repr(format(100.0,">10")))'  =>  '     100.0'
         yield return new("notype.float_pad", "f: float = 100.0", "f", ">10", "     100.0");

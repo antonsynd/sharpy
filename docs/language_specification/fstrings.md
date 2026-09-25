@@ -34,7 +34,7 @@ rounding, the same padding).
 
 | Hole shape | Renders as | Example → output |
 |------------|-----------|------------------|
-| `{v}` (plain) | `str(v)` | `f"{None}"` → `None` |
+| `{v}` (plain) | `format(v, "")`: `str(v)`, or the type's own rendering of `""` when it owns its spec (`IFormattable`) | `f"{None}"` → `None` |
 | `{v!r}` | `repr(v)` | `f"{'ab'!r}"` → `'ab'` |
 | `{v!s}` | `str(v)` | `f"{None!s}"` → `None` |
 | `{v!a}` | `ascii(v)` | `f"{'café'!a}"` → `'caf\xe9'` |
@@ -364,7 +364,7 @@ def main() -> None:
     print(f"[{Point():>8}]")   # SPY0609: unsupported format string passed to Point.__format__
 ```
 
-The empty spec is never refused (it is `str(value)`), and a conversion turns the operand into a
+The empty spec is never refused (it is `str(value)`, or the type's own `__format__("")`), and a conversion turns the operand into a
 `str` *before* the spec applies, so `!r`/`!s`/`!a` followed by a spec is the way to pad a
 collection's text:
 
@@ -414,13 +414,18 @@ def main() -> None:
     print(f"[{m:short}]")
     print(f"[{m:full}]")
     print(format(m, "short"))
+    print(f"[{m}]")
 ```
 
 ```
 [$12]
 [$12.50]
 $12
+[$12.50]
 ```
+
+An empty spec — a plain hole `f"{m}"`, `"{}".format(m)`, `format(m, "")` — reaches the type too,
+with `fmt` the empty string, as CPython calls `__format__("")`.
 
 This is also how a .NET type's own format strings reach it — **Sharpy-only**, with no Python twin:
 `DateTime` is `IFormattable`, so its .NET format string applies:
@@ -440,12 +445,12 @@ def main() -> None:
 2020-01-02
 ```
 
-Two differences from CPython follow from deciding the kind from the **static** type. A hole typed
+One difference from CPython follows from deciding the kind from the **static** type. A hole typed
 as a base class that holds a subclass implementing `IFormattable` is refused statically, where
 CPython would dispatch to the subclass at runtime; write the spec dynamically (`f"{v:{spec}}"`) or
-type the hole as the subclass. And an empty spec on an `IFormattable` value renders `str(value)`,
-where CPython calls `__format__("")` (#2031). A hole typed `object`, an interface or a union is
-never refused statically — its runtime value decides.
+type the hole as the subclass. A hole typed `object`, an interface or a union is never refused
+statically — its runtime value decides, and a plain hole of such a type renders through the engine
+(`format(v, "")`), so an `IFormattable` value behind it is asked for `""` as well.
 
 A **dynamic** spec (one with a nested field, or a hole whose type is not statically known) is
 validated by the engine at runtime and raises the same `ValueError`/`TypeError` Python would. The
@@ -463,7 +468,8 @@ def main() -> None:
 ## Implicit String Conversion
 
 Non-string expressions in a plain hole are converted to strings via `str()` (which calls `__str__`
-or `.ToString()`), matching both Python's f-string behavior and C#'s string interpolation:
+or `.ToString()`), matching both Python's f-string behavior and C#'s string interpolation — except
+a value whose type owns its spec (`IFormattable`), which renders its own `""` spec, as above:
 
 <!-- spec-sweep: fragment -->
 ```python

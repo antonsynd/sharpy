@@ -14,27 +14,33 @@ namespace Sharpy
     {
         /// <summary>
         /// Format <paramref name="value"/> according to the Python format specification
-        /// <paramref name="spec"/>. An empty spec yields <c>str(value)</c>; otherwise the spec is
-        /// validated for the value's operand kind by <see cref="PyFormatSpec.Validate"/> — the one
+        /// <paramref name="spec"/>. An empty spec yields the value's own rendering of <c>""</c> when
+        /// its type owns its spec (<c>IFormattable</c>, #2031) and <c>str(value)</c> otherwise; a
+        /// non-empty spec is validated for the value's operand kind by
+        /// <see cref="PyFormatSpec.Validate"/> — the one
         /// parser and rule table, shared with the compiler's static twin (#1984, R-BX) — and the
         /// value is rendered from the spec it returns. A refused spec raises CPython's
         /// <see cref="ValueError"/> or <see cref="TypeError"/>.
         /// </summary>
         public static string Apply(object? value, string spec)
         {
-            if (string.IsNullOrEmpty(spec))
-            {
-                // Empty spec == str(value) — literally, by calling the ONE str() authority
-                // (Builtins.Str) rather than object.ToString(). #1883: .NET's ToString() spells a
-                // whole double "100" where Python's str() spells it "100.0", so `format(100.0, "")`
-                // and `"{}".format(100.0)` disagreed with `f"{100.0}"`, whose plain hole already
-                // lowers to Builtins.Str. Builtins.Str also owns None, bool (True/False), exception
-                // messages, tuples and plain CLR sequences, so every kind agrees across consumers.
-                return value == null ? "None" : Builtins.Str(value);
-            }
-
             FormatOperandKind kind = KindOf(value);
             string pyTypeName = value == null ? "NoneType" : FormatOperandTypeName(value.GetType());
+            if (string.IsNullOrEmpty(spec))
+            {
+                // CPython calls type(v).__format__(v, "") — so a type that owns its spec is asked
+                // (format(F(), "") is F's own rendering of "", #2031, R-CC). Every other kind's
+                // __format__("") is str(v): the ONE str() authority (Builtins.Str) rather than
+                // object.ToString(). #1883: .NET's ToString() spells a whole double "100" where
+                // Python's str() spells it "100.0". Builtins.Str also owns None, bool (True/False),
+                // exception messages, tuples and plain CLR sequences, so every kind agrees across
+                // consumers.
+                if (kind == FormatOperandKind.Formattable)
+                {
+                    return FormatOwnSpec((IFormattable)value!, spec ?? "", pyTypeName);
+                }
+                return value == null ? "None" : Builtins.Str(value);
+            }
             if (kind == FormatOperandKind.Str && !(value is string))
             {
                 // An enum formats as its str — python's Enum.__format__ is str.__format__(str(self),
@@ -53,23 +59,32 @@ namespace Sharpy
                 case FormatOperandKind.Formattable:
                     // The type owns its spec: IFormattable is the CLR spelling of __format__
                     // (dunder_methods.md), so format(F(), ">10") is whatever F makes of ">10" (#1988).
-                    try
-                    {
-                        return ((IFormattable)value!).ToString(spec, CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        // A spec the type rejects is CPython's ValueError for a rejected spec — a
-                        // raw System.FormatException is uncatchable by `except ValueError` (Guid
-                        // under '>40', TimeSpan under '>10'). Only FormatException is translated:
-                        // anything else the type throws is its own error.
-                        throw new ValueError(
-                            "Invalid format specifier '" + spec + "' for object of type '" + pyTypeName + "'", e);
-                    }
+                    return FormatOwnSpec((IFormattable)value!, spec, pyTypeName);
                 case FormatOperandKind.Complex:
                     return RenderComplex((Complex)value!, parsed);
                 default:
                     return Render(value!, kind, parsed);
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="value"/>'s own rendering of <paramref name="spec"/> (its
+        /// <c>IFormattable.ToString</c>, the CLR spelling of <c>__format__</c>), invariant culture. A
+        /// spec the type rejects is CPython's ValueError for a rejected spec — a raw
+        /// System.FormatException is uncatchable by <c>except ValueError</c> (Guid under '>40',
+        /// TimeSpan under '>10'). Only FormatException is translated: anything else the type throws
+        /// is its own error.
+        /// </summary>
+        private static string FormatOwnSpec(IFormattable value, string spec, string pyTypeName)
+        {
+            try
+            {
+                return value.ToString(spec, CultureInfo.InvariantCulture);
+            }
+            catch (FormatException e)
+            {
+                throw new ValueError(
+                    "Invalid format specifier '" + spec + "' for object of type '" + pyTypeName + "'", e);
             }
         }
 

@@ -12,9 +12,3 @@
 # divergence therefore surfaces HERE, as a row citing a fresh issue — never the fixed one.
 # (Issue numbers are deliberately absent from this header: the issue-state gate reads a comment
 # paragraph's cites onto the rows beneath it.)
-
-# An EMPTY spec on a type that owns its spec (Sharpy's System.IFormattable, python's __format__):
-# CPython calls __format__('') and prints 'F<>'; Core short-circuits an empty spec to str(value)
-# before it reads the operand kind, so Sharpy prints the CLR type name. see #2031
-formatspec::engine::formattable::  # spec '' — see #2031
-formatspec::static::formattable::  # spec '' — see #2031

@@ -763,8 +763,13 @@ internal partial class TypeChecker
             }
         }
 
+        // A plain hole's kind decides whether it renders through the type's own __format__("")
+        // (#2031, R-CC): recorded here, read by the emitter.
+        var plainHoleKind = kind == InterpolationKind.Format && part.Spec == null
+            ? FormatOperandOf(part.Expression, partType).Kind
+            : (SharpyRT::Sharpy.FormatOperandKind?)null;
         _semanticInfo.SetInterpolationLowering(part.Expression,
-            new InterpolationLowering(kind, specIsStatic, part.Spec == null ? null : staticSpec));
+            new InterpolationLowering(kind, specIsStatic, part.Spec == null ? null : staticSpec, plainHoleKind));
     }
 
     /// <summary>

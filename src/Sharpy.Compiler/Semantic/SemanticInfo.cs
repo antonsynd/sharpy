@@ -1,8 +1,11 @@
+extern alias SharpyRT;
+
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
+using FormatOperandKind = SharpyRT::Sharpy.FormatOperandKind;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -2827,10 +2830,19 @@ public enum InterpolationKind
 /// How an f-string / t-string hole is lowered: its base rendering (<see cref="Kind"/>) and, when
 /// the field carried a <c>:</c> spec, whether that spec is static (all literal text, validated at
 /// compile time) and its text. A dynamic spec (containing nested replacement fields) is rendered by
-/// the emitter from the nested parts and validated by Core at runtime. Recorded by the TypeChecker,
-/// applied verbatim by the emitter (#1814, #1815).
+/// the emitter from the nested parts and validated by Core at runtime. <see cref="PlainHoleKind"/> is
+/// the static operand kind of a PLAIN <see cref="InterpolationKind.Format"/> hole (no conversion, no
+/// spec), null otherwise: a kind that owns its spec (<c>Formattable</c>) or is not static
+/// (<c>Unknown</c>) is rendered by <c>PyFormat.Apply(v, "")</c> — CPython's <c>__format__("")</c> —
+/// and every other kind by <c>Builtins.Str</c> (#2031, R-CC). Recorded by the TypeChecker, applied
+/// verbatim by the emitter (#1814, #1815). Not on the incremental-cache wire (a per-node fact).
 /// </summary>
-public sealed record InterpolationLowering(InterpolationKind Kind, bool SpecIsStatic, string? StaticSpec);
+public sealed record InterpolationLowering(
+    InterpolationKind Kind, bool SpecIsStatic, string? StaticSpec, FormatOperandKind? PlainHoleKind = null)
+{
+    /// <summary>Whether a plain hole renders through <c>PyFormat.Apply(v, "")</c> rather than <c>Builtins.Str(v)</c>.</summary>
+    public bool PlainHoleAppliesEmptySpec => PlainHoleKind is FormatOperandKind.Formattable or FormatOperandKind.Unknown;
+}
 
 public enum ReturnLoweringKind
 {

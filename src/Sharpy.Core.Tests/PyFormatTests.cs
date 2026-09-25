@@ -609,11 +609,11 @@ public class PyFormatTests
     }
 
     [Fact]
-    public void Apply_FormattableOperand_EmptySpec_IsStr()
+    public void Apply_FormattableOperand_EmptySpec_IsItsOwnRendering()
     {
-        // Sharpy's empty spec is str(value) on every route (the f-string plain hole is Builtins.Str);
-        // python would call F.__format__('') and print 'F<>'.
-        PyFormat.Apply(new F(), "").Should().Be("F()");
+        // #2031 (R-CC): an empty spec is __format__(''), so a type that owns its spec is asked —
+        // python3: format(F(), '') == 'F<>' — not str(value) ('F()').
+        PyFormat.Apply(new F(), "").Should().Be("F<>");
     }
 
     [Fact]
