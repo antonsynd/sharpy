@@ -6,14 +6,6 @@ Email message creation and parsing.
 import email
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `data` | `Bytes` |  |
-| `content_type` | `str` |  |
-| `filename` | `str | None` |  |
-
 ## Functions
 
 ### `email.message_from_string(text: str) -> EmailMessage`
@@ -60,6 +52,18 @@ Equivalent to Python's `email.message.EmailMessage`.
 ### `add_header(name: str, value: str)`
 
 ### `replace_header(name: str, value: str)`
+
+## Attachment
+
+An email attachment with binary data.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `data` | `Bytes` |  |
+| `content_type` | `str` |  |
+| `filename` | `str | None` |  |
 
 ## MessageError
 
