@@ -245,6 +245,215 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             + $"(< {StaticTwinAgreementFloor}): the static twin no longer refuses the literal specs CPython refuses.");
     }
 
+    /// <summary>
+    /// The grammar-totality stratum (#2017): cells the seeded generator cannot reach (its alphabet is
+    /// ASCII, it draws one separator and always a precision digit, width at most 12). The four named
+    /// grammar rules (missing precision, both separators, the <c>'\xNN'</c> type-code spelling, too many
+    /// digits) and every Unicode-<c>Nd</c> digit family — Arabic-Indic, fullwidth and the non-BMP
+    /// mathematical digits (a surrogate pair) beside an ASCII control — at every site the one digit
+    /// reader (<c>PyFormatSpec.TryReadDecimal</c>) serves: width and precision on the four spec routes
+    /// (<c>format()</c>, <c>str.format</c>, f-string, t-string), and the field index (plain, with a
+    /// spec the static twin must pair with the right operand, nested in a spec) and item key on
+    /// <c>str.format</c>, the only route with a field name. Every cell runs in both columns against
+    /// python3. Python 3.12 has no t-strings: a rendered <c>Template</c> is Sharpy's f-string
+    /// rendering (template_strings.md), so its python program is the f-string's. No allowlist row may
+    /// name a <c>grammar::</c> key: the stratum is total.
+    /// </summary>
+    [Fact]
+    public void FormatSpec_GrammarTotalityStratum_MatchesCPython()
+    {
+        var oracle = PyOracle.TryLocate();
+        if (oracle is null)
+        {
+            Output.WriteLine("SKIP: python3 >= 3.12 and run_programs.py not both available.");
+            return;
+        }
+
+        var cells = GrammarTotalityStratum().ToList();
+        // Anchor to literals: 22 spec cells x 4 routes + 17 field cells, each in two columns.
+        Assert.Equal(22 * 4 + 17, cells.Count);
+        Assert.Equal(cells.Count, cells.Select(c => c.Label).Distinct(StringComparer.Ordinal).Count());
+
+        var requests = new List<(int Id, string Source)>();
+        var sharpy = new Dictionary<int, ArmOutcome>();
+        for (int i = 0; i < cells.Count; i++)
+        {
+            for (int c = 0; c < Columns.Length; c++)
+            {
+                int id = i * Columns.Length + c;
+                var (sharpySource, pythonSource) = cells[i].Programs(Columns[c]);
+                var r = CompileAndExecute(sharpySource, "format_grammar_stratum.spy", executionTimeoutMs: SharpyExecTimeoutMs);
+                var staticRefusals = r.RawDiagnostics
+                    .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
+                    .Select(d => d.Message)
+                    .ToList();
+                sharpy[id] = new ArmOutcome(r.Success && !r.TimedOut, r.StandardOutput, r.TimedOut, staticRefusals);
+                requests.Add((id, pythonSource + "\nmain()\n"));
+            }
+        }
+        var pythonById = oracle.RunBatch(requests);
+
+        var divergences = new List<string>();
+        int staticAgreements = 0;
+        int ndAgreements = 0;
+        for (int i = 0; i < cells.Count; i++)
+        {
+            for (int c = 0; c < Columns.Length; c++)
+            {
+                int id = i * Columns.Length + c;
+                string key = "grammar::" + ColumnName(Columns[c]) + "::" + cells[i].Label;
+                var s = sharpy[id];
+                if (!pythonById.TryGetValue(id, out var py) || py.SyntaxError || py.TimedOut || s.TimedOut)
+                {
+                    divergences.Add($"{key}: no oracle verdict (python syntax error / timeout)");
+                    continue;
+                }
+
+                string sharpyOut = Normalize(s.Stdout);
+                string pythonOut = Normalize(py.Stdout);
+                bool agrees;
+                if (!s.Ok)
+                    agrees = Columns[c] == Column.Static && IsStaticTwinOf(s, pythonOut);
+                else
+                    agrees = sharpyOut == pythonOut && !(Columns[c] == Column.Static && cells[i].StaticSpec && IsCPythonRefusal(pythonOut));
+                if (!agrees)
+                {
+                    string refusals = s.StaticRefusals.Count > 0 ? " SPY0609='" + string.Join("' / '", s.StaticRefusals) + "'" : "";
+                    divergences.Add($"{key}: sharpy{(s.Ok ? "" : " (failed)")}='{sharpyOut}'{refusals} python='{pythonOut}'");
+                    continue;
+                }
+                if (!s.Ok)
+                    staticAgreements++;
+                if (cells[i].Label.Contains("::nd-", StringComparison.Ordinal))
+                    ndAgreements++;
+            }
+        }
+
+        Output.WriteLine($"Grammar-totality stratum: {cells.Count} cells x {Columns.Length} columns, {divergences.Count} divergent, "
+            + $"{staticAgreements} agreeing by a compile-time SPY0609, {ndAgreements} non-ASCII-digit agreements.");
+        foreach (var d in divergences)
+            Output.WriteLine("  DIVERGENCE " + d);
+
+        var allowlisted = Allowlist.Load().ExactKeys.Where(k => k.StartsWith("grammar::", StringComparison.Ordinal)).ToList();
+        Assert.True(allowlisted.Count == 0, "the grammar-totality stratum takes no allowlist rows: " + string.Join(", ", allowlisted));
+        Assert.True(divergences.Count == 0,
+            $"Grammar-totality stratum: {divergences.Count} divergence(s) from python3:\n  " + string.Join("\n  ", divergences));
+        // Positive controls: the refusal rows really met the static twin, and the Nd rows really ran.
+        Assert.True(staticAgreements >= GrammarStaticAgreementFloor,
+            $"only {staticAgreements} stratum cell(s) agreed by a compile-time SPY0609 (< {GrammarStaticAgreementFloor}).");
+        Assert.True(ndAgreements == NdCellColumns,
+            $"{ndAgreements} of {NdCellColumns} non-ASCII-digit cell-columns agreed with python3.");
+    }
+
+    // The spec routes: label, Sharpy expression for a literal spec, for a spec in the variable `spec`, and
+    // the python spelling of each (the t-string route renders as the f-string does).
+    private static readonly (string Route, Func<string, string> Static, string Engine, Func<string, string> PyStatic, string PyEngine)[] SpecRoutes =
+    {
+        ("format", spec => $"format(v, \"{spec}\")", "format(v, spec)", spec => $"format(v, \"{spec}\")", "format(v, spec)"),
+        ("strformat", spec => $"\"{{:{spec}}}\".format(v)", "\"{:{}}\".format(v, spec)", spec => $"\"{{:{spec}}}\".format(v)", "\"{:{}}\".format(v, spec)"),
+        ("fstring", spec => $"f\"{{v:{spec}}}\"", "f\"{v:{spec}}\"", spec => $"f\"{{v:{spec}}}\"", "f\"{v:{spec}}\""),
+        ("tstring", spec => $"str(t\"{{v:{spec}}}\")", "str(t\"{v:{spec}}\")", spec => $"f\"{{v:{spec}}}\"", "f\"{v:{spec}}\""),
+    };
+
+    // Digit families: label, then the digits 5, 2 and 1. The mathematical bold digits are non-BMP
+    // (U+1D7D3, U+1D7D0, U+1D7CF) — each a surrogate pair in a CLR string.
+    private static readonly (string Family, string Five, string Two, string One)[] DigitFamilies =
+    {
+        ("ascii", "5", "2", "1"),
+        ("nd-arabic", "\u0665", "\u0662", "\u0661"),
+        ("nd-fullwidth", "\uFF15", "\uFF12", "\uFF11"),
+        ("nd-mathbold", "\U0001D7D3", "\U0001D7D0", "\U0001D7CF"),
+    };
+
+    // Static-column agreements the stratum must produce: the 5 named-rule spec cells + the Nd too-many
+    // cell on 4 routes (24), plus the 4 field-with-spec cells (28). Measured 28 at the #2017 commit.
+    private const int GrammarStaticAgreementFloor = 28;
+
+    // Non-ASCII-digit cells: (3 Nd families x 4 spec cells + the too-many and mixed-width cells) x 4
+    // routes + 3 Nd families x 4 field cells, each in two columns.
+    private const int NdCellColumns = ((3 * 4 + 2) * 4 + 3 * 4) * 2;
+
+    private sealed record GrammarCell(string Label, bool StaticSpec, Func<Column, (string Sharpy, string Python)> Programs);
+
+    private static IEnumerable<GrammarCell> GrammarTotalityStratum()
+    {
+        var specCells = new List<(string Label, string Decl, string Spec)>
+        {
+            // The four named rules (#2017, landed with #1984): CPython 3.12's text on every route.
+            ("rule-missing-precision", "v: float = 1.5", ".f"),
+            ("rule-both-separators", "v: int = 1", ",_d"),
+            ("rule-xNN-code", "v: int = 1", "\u00e9"),
+            ("rule-too-many-width", "v: int = 1", "99999999999999999999d"),
+            ("rule-too-many-precision", "v: float = 1.5", ".99999999999999999999f"),
+            ("nd-arabic-too-many", "v: int = 1", string.Concat(Enumerable.Repeat("\u0669", 20)) + "d"),
+            ("nd-arabic-mixed-width", "v: int = 65", "1\u0665d"),
+        };
+        foreach (var (family, five, _, _) in DigitFamilies)
+        {
+            specCells.Add((family + "-width-int", "v: int = 65", five + "d"));
+            specCells.Add((family + "-width-str", "v: str = \"ab\"", five));
+        }
+        foreach (var (family, five, two, _) in DigitFamilies)
+        {
+            if (family == "ascii")
+                continue;
+            specCells.Add((family + "-precision-float", "v: float = 1.23456", "." + two + "f"));
+            specCells.Add((family + "-width-precision", "v: float = 1.23456", five + "." + two + "f"));
+        }
+        specCells.Add(("ascii-precision-float", "v: float = 1.23456", ".2f"));
+
+        foreach (var (label, decl, spec) in specCells)
+        {
+            foreach (var route in SpecRoutes)
+            {
+                yield return new GrammarCell($"spec::{route.Route}::{label}", StaticSpec: true, column =>
+                    column == Column.Static
+                        ? (GrammarProgram(decl, route.Static(spec)), GrammarProgram(decl, route.PyStatic(spec)))
+                        : (GrammarProgram(decl + $"\n    spec: str = \"{spec}\"", route.Engine),
+                           GrammarProgram(decl + $"\n    spec: str = \"{spec}\"", route.PyEngine)));
+            }
+        }
+
+        var fieldCells = new List<(string Label, string Template, string Args, bool StaticSpec)>
+        {
+            ("field-too-many", "{99999999999999999999}", "\"a\"", false),
+        };
+        foreach (var (family, _, _, one) in DigitFamilies)
+        {
+            fieldCells.Add(($"{family}-field-index", "{" + one + "}", "\"a\", \"b\"", false));
+            // The static twin must pair field `1` with the str operand: CPython refuses 'd' for 'str'.
+            fieldCells.Add(($"{family}-field-index-spec", "{" + one + ":d}", "1.5, \"s\"", true));
+            fieldCells.Add(($"{family}-field-index-nested", "{0:{" + one + "}}", "65, \"5\"", false));
+            fieldCells.Add(($"{family}-item-key", "{0[" + one + "]}", "xs", false));
+        }
+
+        foreach (var (label, template, args, staticSpec) in fieldCells)
+        {
+            const string decl = "xs: list[str] = [\"x\", \"y\"]";
+            yield return new GrammarCell($"field::strformat::{label}", staticSpec, column =>
+            {
+                string program = column == Column.Static
+                    ? GrammarProgram(decl, $"\"{template}\".format({args})")
+                    : GrammarProgram(decl + $"\n    tpl: str = \"{template}\"", $"tpl.format({args})");
+                return (program, program);
+            });
+        }
+    }
+
+    private static string GrammarProgram(string decls, string expr) =>
+        "def main() -> None:\n"
+        + $"    {decls}\n"
+        + "    try:\n"
+        + $"        print(\"[\" + {expr} + \"]\")\n"
+        + "    except ValueError as e:\n"
+        + "        print(\"ValueError:\", e)\n"
+        + "    except TypeError as e:\n"
+        + "        print(\"TypeError:\", e)\n"
+        + "    except IndexError as e:\n"
+        + "        print(\"IndexError:\", e)\n"
+        + "    except KeyError as e:\n"
+        + "        print(\"KeyError:\", e)\n";
+
     private static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd('\n');
 
     // CPython's two refusals of a spec: ValueError (the operand's __format__ rejects it) and TypeError

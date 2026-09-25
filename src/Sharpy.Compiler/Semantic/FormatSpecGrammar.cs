@@ -16,10 +16,6 @@ internal readonly record struct FormatOperand(FormatOperandKind Kind, string PyT
     public static FormatOperand Unknown => new(FormatOperandKind.Unknown, "object");
     public static FormatOperand NoneValue => new(FormatOperandKind.NoneValue, "NoneType");
     public static FormatOperand Str => new(FormatOperandKind.Str, "str");
-    public static FormatOperand Bool => new(FormatOperandKind.Bool, "bool");
-    public static FormatOperand Integral => new(FormatOperandKind.Integral, "int");
-    public static FormatOperand Float => new(FormatOperandKind.Float, "float");
-    public static FormatOperand Complex => new(FormatOperandKind.Complex, "complex");
 
     /// <summary>A type that owns its spec (<c>System.IFormattable</c>): any spec is accepted (#1988).</summary>
     public static FormatOperand Formattable => new(FormatOperandKind.Formattable, "object");

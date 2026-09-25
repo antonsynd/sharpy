@@ -401,6 +401,26 @@ deviations:
         len("😀")        # 2  (UTF-16 code units)
         "😀"[0]          # high-surrogate code unit '\uD83D'
 
+  - id: format-spec-non-bmp-code-units
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "The format-spec mini-language reads code points: a non-BMP character is a valid fill (`format('ab', '😀>5')` is `'😀😀😀ab'`) and a non-BMP type code is refused as an unknown code (`Unknown format code '\\x1f600' for object of type 'int'`)."
+    sharpy_behavior: "The spec is read in UTF-16 code units (Axiom 1, as `utf16-string-length`): a non-BMP fill or type code is two code units, so the spec does not parse and both are refused as `Invalid format specifier '<spec>' for object of type '<type>'` — statically (SPY0609) for a literal spec, as a ValueError at runtime otherwise. Non-BMP DIGITS are read as one digit (a surrogate pair, #2017): `format(65, '𝟑d')` is `' 65'` as in Python."
+    spec_ref: docs/language_specification/fstrings.md
+    existing_diagnostic: SPY0609
+    planned_diagnostic: null
+    example:
+      python: |
+        format("ab", "😀>5")   # '😀😀😀ab'
+        format(65, "😀")       # ValueError: Unknown format code '\x1f600' for object of type 'int'
+        format(65, "𝟑d")       # ' 65'
+      sharpy: |
+        format("ab", "😀>5")   # ValueError: Invalid format specifier '😀>5' for object of type 'str'
+        format(65, "😀")       # ValueError: Invalid format specifier '😀' for object of type 'int'
+        format(65, "𝟑d")       # ' 65'
+
   - id: struct-value-semantics
     code: null
     category: semantics

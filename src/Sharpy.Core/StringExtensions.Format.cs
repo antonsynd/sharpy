@@ -277,7 +277,7 @@ namespace Sharpy
                     usedAutoNumbering = true;
                     index = autoIndex++;
                 }
-                else if (int.TryParse(baseField, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed))
+                else if (TryParseDecimalKey(baseField, out int parsed))
                 {
                     if (usedAutoNumbering)
                     {
@@ -516,28 +516,19 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// CPython's field-name integer: every character a decimal digit (Unicode <c>Nd</c>, as
-        /// <c>str.isdecimal</c>) — no sign, no whitespace. Overflow is CPython's ValueError.
+        /// CPython's field-name integer (a field index or an item key): every character a decimal digit
+        /// (Unicode <c>Nd</c>, as <c>str.isdecimal</c>, BMP or surrogate pair) — no sign, no whitespace —
+        /// read by the one format-grammar digit reader, <see cref="PyFormatSpec.TryReadDecimal"/>.
+        /// Overflow is CPython's ValueError.
         /// </summary>
         private static bool TryParseDecimalKey(string key, out int value)
         {
-            value = 0;
-            long accumulator = 0;
-            foreach (char c in key)
+            int pos = 0;
+            if (!PyFormatSpec.TryReadDecimal(key, ref pos, out value))
             {
-                int digit = CharUnicodeInfo.GetDecimalDigitValue(c);
-                if (digit < 0 || CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.DecimalDigitNumber)
-                {
-                    return false;
-                }
-                accumulator = accumulator * 10 + digit;
-                if (accumulator > int.MaxValue)
-                {
-                    throw new ValueError("Too many decimal digits in format string");
-                }
+                throw new ValueError("Too many decimal digits in format string");
             }
-            value = (int)accumulator;
-            return true;
+            return pos == key.Length;
         }
 
         /// <summary>

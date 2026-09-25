@@ -364,7 +364,7 @@ namespace Sharpy
                 pos++;
             }
 
-            if (!TryReadInteger(spec, ref pos, out int width))
+            if (!TryReadDecimal(spec, ref pos, out int width))
             {
                 return TooManyDigits();
             }
@@ -394,7 +394,7 @@ namespace Sharpy
             {
                 pos++;
                 int precisionStart = pos;
-                if (!TryReadInteger(spec, ref pos, out precision))
+                if (!TryReadDecimal(spec, ref pos, out precision))
                 {
                     return TooManyDigits();
                 }
@@ -418,23 +418,30 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// CPython's <c>get_integer</c>: the run of ASCII digits at <paramref name="pos"/>. Returns
-        /// false when the value does not fit (CPython bounds it by <c>Py_ssize_t</c>; a CLR string
-        /// length is an <c>int</c>, so that is the bound here). An empty run is <c>0</c> — the caller
-        /// compares positions to tell absence apart.
+        /// CPython's <c>get_integer</c>: the run of Unicode decimal digits (category <c>Nd</c>, as
+        /// <c>str.isdecimal</c> — ASCII, Arabic-Indic, fullwidth, and the non-BMP digit blocks read as a
+        /// surrogate pair) at <paramref name="pos"/>, advancing past it. Returns false when the value does
+        /// not fit (CPython bounds it by <c>Py_ssize_t</c>; a CLR string length is an <c>int</c>, so that is
+        /// the bound here) — CPython's "Too many decimal digits". An empty run is <c>0</c>, so the caller
+        /// compares positions to tell absence apart. The ONE digit reader of the format mini-language:
+        /// width, precision, a field index and an item key all read through it (#2017).
         /// </summary>
-        private static bool TryReadInteger(string spec, ref int pos, out int value)
+        public static bool TryReadDecimal(string text, ref int pos, out int value)
         {
             long accumulator = 0;
             value = 0;
-            while (pos < spec.Length && spec[pos] >= '0' && spec[pos] <= '9')
+            while (pos < text.Length)
             {
-                accumulator = accumulator * 10 + (spec[pos] - '0');
+                if (CharUnicodeInfo.GetUnicodeCategory(text, pos) != UnicodeCategory.DecimalDigitNumber)
+                {
+                    break;
+                }
+                accumulator = accumulator * 10 + CharUnicodeInfo.GetDecimalDigitValue(text, pos);
                 if (accumulator > int.MaxValue)
                 {
                     return false;
                 }
-                pos++;
+                pos += char.IsSurrogatePair(text, pos) ? 2 : 1;
             }
             value = (int)accumulator;
             return true;

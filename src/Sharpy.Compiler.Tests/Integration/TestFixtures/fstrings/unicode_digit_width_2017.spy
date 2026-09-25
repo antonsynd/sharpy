@@ -1,0 +1,23 @@
+# Unicode decimal digits (category Nd) are digits everywhere the format mini-language reads a
+# number: width, precision, a str.format field index and an item key (#2017). Arabic-Indic,
+# fullwidth and the non-BMP mathematical digits (a surrogate pair) read as their values.
+
+def main() -> None:
+    v: int = 65
+    x: float = 1.23456
+    xs: list[str] = ["x", "y"]
+    print("[" + format(v, "٣d") + "]")
+    print("[" + "{:٣d}".format(v) + "]")
+    print(f"[{v:٣d}]")
+    print("[" + str(t"{v:٣d}") + "]")
+    print("[" + format(v, "５d") + "]")
+    print("[" + format(v, "𝟑d") + "]")
+    print("[" + format(x, ".٢f") + "]")
+    print(f"[{x:𝟔.𝟐f}]")
+    print("[" + format("ab", "٥") + "]")
+    print("[" + format(v, "1٥d") + "]")
+    print("{١}{٠}".format("a", "b"))
+    print("{𝟏}".format("a", "b"))
+    print("{0[١]}".format(xs))
+    print("{0[𝟏]}".format(xs))
+    print("[" + "{0:{１}}".format(v, "٤") + "]")

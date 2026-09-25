@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -176,6 +178,7 @@ internal static class FormatTemplateGrammar
         string baseField = accessStart >= 0 ? fieldExpr.Substring(0, accessStart) : fieldExpr;
 
         int index;
+        int digitsEnd = 0;
         if (baseField.Length == 0)
         {
             if (numbering.UsedManual)
@@ -183,8 +186,12 @@ internal static class FormatTemplateGrammar
             numbering.UsedAuto = true;
             index = numbering.AutoIndex++;
         }
-        else if (int.TryParse(baseField, System.Globalization.NumberStyles.None,
-                     System.Globalization.CultureInfo.InvariantCulture, out int parsed))
+        else if (!SharpyRT::Sharpy.PyFormatSpec.TryReadDecimal(baseField, ref digitsEnd, out int parsed))
+        {
+            // Too many digits: Core's runtime ValueError, read by the same Nd reader (#2017).
+            return false;
+        }
+        else if (digitsEnd == baseField.Length)
         {
             if (numbering.UsedAuto)
                 return false;
