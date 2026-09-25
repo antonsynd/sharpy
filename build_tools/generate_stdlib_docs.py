@@ -155,12 +155,28 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
 }
 
 
-# Literal default value mapping for C# -> Sharpy
+# Literal default value mapping for C# -> Sharpy. `default` is C#'s "zero value of the type": for
+# an unconstrained type parameter that is null-or-zero, which the doc spells as python's `None`
+# (#2034). A trailing null-forgiving `!` (`default!`, `null!`) is stripped before the lookup.
 _LITERAL_DEFAULTS: dict[str, str] = {
     "null": "None",
     "false": "False",
     "true": "True",
+    "default": "None",
 }
+
+
+def _sharpy_param_name(cs_name: str) -> str:
+    """A C# parameter name in Sharpy spelling: the verbatim prefix (`@default`, `@base`) is C#
+    syntax for a keyword-named identifier, not part of the name (#2034)."""
+    return pascal_to_snake(cs_name[1:] if cs_name.startswith("@") else cs_name)
+
+
+def _sharpy_default(cs_default: str) -> str:
+    """A C# default-value expression in Sharpy spelling (#2034)."""
+    if cs_default.endswith("!"):
+        cs_default = cs_default[:-1].rstrip()
+    return _LITERAL_DEFAULTS.get(cs_default, cs_default)
 
 # Known C# namespace aliases used in stdlib source files
 _CS_NAMESPACE_ALIASES: dict[str, str] = {
@@ -696,9 +712,7 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         default = None
         if "=" in part:
             part, default_raw = part.rsplit("=", 1)
-            default = default_raw.strip()
-            # Map C# literal keywords to Sharpy equivalents
-            default = _LITERAL_DEFAULTS.get(default, default)
+            default = _sharpy_default(default_raw.strip())
             part = part.strip()
 
         # Split type and name
@@ -714,7 +728,7 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
                 mapped = "*" + mapped
             params.append(
                 DocParam(
-                    name=pascal_to_snake(pname),
+                    name=_sharpy_param_name(pname),
                     type=mapped,
                     default=default,
                 )
@@ -1203,12 +1217,12 @@ def parse_cs_file(
             params = _parse_params(param_str or "", is_extension=is_extension)
 
             # Merge doc param descriptions. The key is snake-cased on the way in because that is
-            # what `_parse_params` stores (`pascal_to_snake(pname)`), and the XML carries the C#
+            # what `_parse_params` stores (`_sharpy_param_name(pname)`), and the XML carries the C#
             # spelling: keying on the raw `name` meant `doc_params["allowNan"]` was never found
             # under `"allow_nan"` and the description was replaced with "" (#1421). Only
             # multi-word names were affected, so the damage read as "some parameters happen to be
             # undocumented" rather than as a lookup miss.
-            doc_params = {pascal_to_snake(p[0]): p[1] for p in doc.get("params", [])}
+            doc_params = {_sharpy_param_name(p[0]): p[1] for p in doc.get("params", [])}
             for p in params:
                 p.description = doc_params.get(p.name, "")
 

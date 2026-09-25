@@ -1,10 +1,12 @@
 """Tests for generate_stdlib_docs.py — stdlib API reference generator."""
 
+import re
 import textwrap
 from pathlib import Path
 
 import pytest
 
+import build_tools.generate_stdlib_docs as generator
 from build_tools.generate_stdlib_docs import (
     HAND_AUTHORED_MODULES,
     DocMember,
@@ -428,6 +430,18 @@ class TestParseParams:
     def test_false_default_mapped_to_False(self):
         params = _parse_params("bool reverse = false")
         assert params[0].default == "False"
+
+    def test_verbatim_prefix_stripped_from_name(self):
+        # `@default`/`@base` are C# verbatim identifiers; the Sharpy name has no `@` (#2034).
+        params = _parse_params("K key, V @default")
+        assert [p.name for p in params] == ["key", "default"]
+        assert params[1].default is None
+
+    def test_null_forgiving_default_mapped_to_none(self):
+        # `default!` / `default` / `null!` are C# spellings of "no value" (#2034).
+        assert _parse_params("V value = default!")[0].default == "None"
+        assert _parse_params("V value = default")[0].default == "None"
+        assert _parse_params("string s = null!")[0].default == "None"
 
     def test_true_default_mapped_to_True(self):
         params = _parse_params("bool enable = true")
@@ -2135,3 +2149,102 @@ class TestDeclaringTypeAttribution:
         )
         page = next(t for t in discover_core_types(tmp_path) if t.name == "list")
         assert [m.name for m in page.members] == ["append", "clear"]
+
+
+# ---------------------------------------------------------------------------
+# C#-spelling scan over rendered signatures (#2034)
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# A rendered signature is a `### \`...\`` heading line. The scan is anchored to those lines: a
+# bare `@\w+:` over whole pages also matches prose such as urllib's `user:pass@host:8080`.
+_SIGNATURE_HEADING = "### `"
+
+_CSHARP_SPELLINGS = {
+    "verbatim-identifier": re.compile(r"@\w+:"),
+    "default!": re.compile(r"= default!"),
+    "default": re.compile(r"= default\b"),
+    "null-forgiving": re.compile(r"\w!(?=[,)])"),
+}
+
+
+def _csharp_spelling_hits(page_name: str, text: str) -> list[str]:
+    hits = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if not line.startswith(_SIGNATURE_HEADING):
+            continue
+        for label, pattern in _CSHARP_SPELLINGS.items():
+            if pattern.search(line):
+                hits.append(f"{page_name}:{lineno} [{label}] {line}")
+    return hits
+
+
+def _render_real_stdlib(out_dir: Path) -> list[Path]:
+    """Every generator-owned page, rendered from the repository's Core + Stdlib source."""
+    generate(
+        source_dir=_REPO_ROOT / "src" / "Sharpy.Core",
+        output_dir=out_dir,
+        force=True,
+        verbose=False,
+        stdlib_dir=_REPO_ROOT / "src" / "Sharpy.Stdlib",
+        update_nav=False,
+    )
+    return sorted(out_dir.glob("*.md"))
+
+
+def _render_synthetic(tmp_path: Path) -> str:
+    src = tmp_path / "src"
+    mod_dir = src / "Probe"
+    mod_dir.mkdir(parents=True)
+    (mod_dir / "__Init__.cs").write_text(
+        textwrap.dedent(
+            """\
+            namespace Sharpy;
+            /// <summary>Probe.</summary>
+            [SharpyModule("probe")]
+            public static partial class ProbeModule
+            {
+                /// <summary>Lookup.</summary>
+                public static V Lookup<V>(string key, V @default = default!) => @default;
+                /// <summary>Parse.</summary>
+                public static int Parse(string s, int @base = 10, string? tag = default) => 0;
+                /// <summary>Name.</summary>
+                public static string Name(string s = null!) => s;
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "docs"
+    generate(source_dir=src, output_dir=out, force=True, verbose=False, update_nav=False)
+    return (out / "probe.md").read_text(encoding="utf-8")
+
+
+class TestCSharpSpellingScan:
+    """No rendered signature on a generator-owned page carries a C# spelling (#2034)."""
+
+    def test_generator_owned_pages_have_no_csharp_spellings(self, tmp_path: Path):
+        pages = _render_real_stdlib(tmp_path / "stdlib")
+        assert pages, "the generator rendered no pages from the repository source"
+        assert not any(p.stem in HAND_AUTHORED_MODULES for p in pages)
+        hits = [h for p in pages for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))]
+        assert hits == []
+
+    def test_synthetic_csharp_spellings_render_as_sharpy(self, tmp_path: Path):
+        page = _render_synthetic(tmp_path)
+        assert "### `probe.lookup(key: str, default: V = None) -> V`" in page
+        assert "### `probe.parse(s: str, base: int = 10, tag: str | None = None) -> int`" in page
+        assert "### `probe.name(s: str = None) -> str`" in page
+        assert _csharp_spelling_hits("probe.md", page) == []
+
+    def test_positive_control_scan_hits_when_the_mapping_is_disabled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        # The same synthetic source with the Sharpy-spelling rules turned off: every C# spelling
+        # the scan names must be found, or the scan is vacuous.
+        monkeypatch.setattr(generator, "_sharpy_param_name", generator.pascal_to_snake)
+        monkeypatch.setattr(generator, "_sharpy_default", lambda raw: raw)
+        hits = _csharp_spelling_hits("probe.md", _render_synthetic(tmp_path))
+        labels = {h.split("[", 1)[1].split("]", 1)[0] for h in hits}
+        assert labels == set(_CSHARP_SPELLINGS), hits
