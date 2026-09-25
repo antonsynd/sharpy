@@ -83,7 +83,8 @@ Represents a time (hour, minute, second, microsecond).
 
 ### `__str__() -> str`
 
-`repr()` uses the same method. Return the string representation (HH:mm:ss.ffffff).
+`repr()` uses the same method. Python's `str(time)`, its `isoformat()`: `HH:MM:SS`, with `.ffffff` only when
+the microseconds are non-zero (#2043).
 
 ### `isoformat() -> str`
 
@@ -114,7 +115,8 @@ A combination of a date and a time.
 
 ### `__str__() -> str`
 
-`repr()` uses the same method. Return the string representation.
+`repr()` uses the same method. Python's `str(datetime)`, its `isoformat(" ")`: the `.ffffff` part only when the
+microseconds are non-zero (#2043).
 
 ### `now() -> DateTime`
 
@@ -179,7 +181,9 @@ Represents the difference between two dates or times.
 
 ### `__str__() -> str`
 
-`repr()` uses the same method. Return the string representation.
+`repr()` uses the same method. Python's `str(timedelta)`: `[D day[s], ]H:MM:SS[.ffffff]` over the normalized
+(days, seconds, microseconds) triple — days floored, so `-1 day, 23:00:00` is minus an
+hour (#2043).
 
 ### `abs() -> Timedelta`
 
