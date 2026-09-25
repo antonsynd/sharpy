@@ -171,6 +171,13 @@ public class MyModuleTests
 }
 ```
 
+In a project, the test class and any `@test.fixture` classes are declared beside the module class
+in the module's namespace (packages are C# namespaces — see
+[module_system.md](module_system.md#package-structure)). The test class is named after the module
+class: `src/pkg/lib.spy` in root namespace `Merge` emits `Merge.Pkg.Lib`, `Merge.Pkg.LibTests` and,
+for `@test.fixture def greeting`, `Merge.Pkg.GreetingFixture`; a package's `src/pkg/__init__.spy`
+emits `Merge.Pkg.PkgModule` and `Merge.Pkg.PkgModuleTests`.
+
 ## TestCase Base Class
 
 For test classes with shared setup/teardown, inherit from `unittest.TestCase`:

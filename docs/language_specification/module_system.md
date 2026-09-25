@@ -23,18 +23,71 @@ from utils.helpers import format_string, parse_input
 from utils.math.vectors import Vector2, Vector3
 ```
 
-**A package directory may not spell the same identifier as a module file inside it.** Each
-directory above a source file becomes a C# wrapper class, and the file becomes the module class
-nested in it — so `lib/lib.spy` would nest module class `Lib` in wrapper `Lib`, which C# forbids
-(CS0542). The project refuses such a layout by name (`SPY0526`: "Package directory 'lib' and
-module 'lib.spy' both emit the C# identifier 'Lib'... Rename the file or the directory"). The rule
-compares the *emitted* identifiers, so it also catches spellings that mangle alike
-(`my_lib/myLib.spy`) and nested packages (`a/b/b.spy`), and it applies between two ADJACENT
-directories as well (`a/a/x.spy` nests wrapper `A` in wrapper `A`: "Rename one of the
-directories"; a non-adjacent repeat such as `a/b/a/x.spy` is legal); directories are measured from the project's
-common source directory, and a file is checked whether or not anything imports it. A package
-whose directory differs from its modules (`pkg/lib.spy`), or that has only an `__init__.spy`,
-builds normally. (A later change emitting packages as namespaces is expected to relax this.)
+**Packages are C# namespaces.** Each directory between the project's common source directory and a
+source file becomes a segment of that file's C# namespace, and the file's module class is declared
+in it. In a project whose root namespace is `Merge`:
+
+```
+src/
+    main.spy              # namespace Merge     { static partial class Program   }
+    pkg/
+        __init__.spy      # namespace Merge.Pkg { static partial class PkgModule }
+        lib.spy           # namespace Merge.Pkg { static partial class Lib       }
+    lib/
+        lib.spy           # namespace Merge.Lib { static partial class Lib       }
+```
+
+A regular module's class is named after its file (`pkg/lib.spy` → `Merge.Pkg.Lib`). A package's
+`__init__.spy` emits its module class as `<Dir>Module` inside the package's own namespace
+(`pkg/__init__.spy` → `Merge.Pkg.PkgModule`), so `import pkg; pkg.init_fn()` reaches
+`Merge.Pkg.PkgModule.InitFn()`. A directory may share its name with a module inside it (`lib/lib.spy`,
+`from lib.lib import lf` — a namespace and a class of one name nest legally), and directories may
+repeat (`a/a/x.spy`). Directories are measured from the project's common source directory, and every
+file is checked whether or not anything imports it. A library built this way exposes every package
+module to a consumer that references it: `from pkg.lib import f` resolves against the built assembly.
+
+Three package layouts emit one identifier twice in one namespace and are refused with `SPY0526`
+before analysis. Each compares *emitted* identifiers, so spellings that mangle alike collide too
+(`my_pkg.spy` beside `myPkg/`):
+
+```
+src/
+    pkg.spy               # error SPY0526: Module 'pkg.spy' and the package directory 'pkg'
+    pkg/                  # beside it both emit the C# identifier 'Pkg' ... Rename the file or
+        x.spy             # the directory.
+```
+
+A module file beside a same-named package directory, with or without `pkg/__init__.spy`. Python
+imports only one of the two — the package when it has an `__init__`, the module when it does not
+(`from pkg.x import f` is then `ModuleNotFoundError: ... 'pkg' is not a package`) — so the other is
+unreachable; in C# the class `Pkg` and the namespace `Pkg` cannot share `Merge`.
+
+```
+src/
+    pkg/
+        __init__.spy      # def lib() -> int: ...
+        lib.spy           # error SPY0526 (at the `def lib` in __init__.spy): 'lib' in the package's
+                          # __init__.spy emits the C# identifier 'Lib', which its submodule 'lib.spy'
+                          # also emits (python's `pkg.lib` would name both). Rename the declaration
+                          # or the submodule.
+```
+
+A top-level name in a package's `__init__.spy` (function, variable, constant or type) whose emitted
+identifier is one of that package's own submodules or subpackages: after `import pkg.lib`, python's
+`pkg.lib` names the submodule, not the function.
+
+```
+src/
+    pkg/
+        __init__.spy      # error SPY0526: The package's __init__.spy emits its module class
+        pkg_module.spy    # 'PkgModule', which its submodule 'pkg_module.spy' also emits. Rename
+                          # the submodule.
+```
+
+A submodule or subpackage spelled like the package's own module class (`pkg/pkg_module.spy` or
+`pkg/pkg_module/` beside `pkg/__init__.spy`): both would be `Merge.Pkg.PkgModule`. A *function* in
+`pkg/__init__.spy` spelled like it (`def pkg_module`) is `SPY0523`, the module-class collision every
+module has.
 
 ## Name Qualification in Generated C#
 
