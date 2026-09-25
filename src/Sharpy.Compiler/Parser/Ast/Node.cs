@@ -33,6 +33,9 @@ public abstract record Node : ILocatable
     /// </summary>
     public TextSpan? Span { get; init; }
 
+    int? ILocatable.StartLine => LineStart > 0 ? LineStart : null;
+    int? ILocatable.StartColumn => LineStart > 0 ? ColumnStart : null;
+
     /// <summary>
     /// Trivia (comments) preceding this node. Null when trivia preservation is off.
     /// </summary>

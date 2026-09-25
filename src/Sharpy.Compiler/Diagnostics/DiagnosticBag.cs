@@ -432,8 +432,8 @@ public class DiagnosticBag
     public void AddError(string message, ILocatable locatable, string? filePath = null,
         string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, Span: locatable.Span,
-            FilePath: filePath, Code: code, Phase: phase));
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, locatable.StartLine, locatable.StartColumn,
+            Span: locatable.Span, FilePath: filePath, Code: code, Phase: phase));
     }
 
     public void AddWarning(string message, int? line = null, int? column = null, string? filePath = null,
@@ -467,8 +467,8 @@ public class DiagnosticBag
         // Emit at Warning severity; Add() centralizes the -Werror promotion and stamps the
         // original severity so scoped @suppress can still silence a promoted warning.
         var severity = CompilerDiagnosticSeverity.Warning;
-        Add(new CompilerDiagnostic(message, severity, Span: locatable.Span,
-            FilePath: filePath, Code: code, Phase: phase));
+        Add(new CompilerDiagnostic(message, severity, locatable.StartLine, locatable.StartColumn,
+            Span: locatable.Span, FilePath: filePath, Code: code, Phase: phase));
     }
 
     public void AddInfo(string message, int? line = null, int? column = null, string? filePath = null,
@@ -511,8 +511,8 @@ public class DiagnosticBag
     {
         if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
             return;
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Hint, Span: locatable.Span,
-            FilePath: filePath, Code: code, Phase: phase));
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Hint, locatable.StartLine, locatable.StartColumn,
+            Span: locatable.Span, FilePath: filePath, Code: code, Phase: phase));
     }
 
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)

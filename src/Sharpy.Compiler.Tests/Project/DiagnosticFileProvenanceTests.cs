@@ -17,7 +17,8 @@ namespace Sharpy.Compiler.Tests.Project;
 /// </summary>
 /// <remarks>
 /// Cells: the producer {emitter (SPY0520, un-imported module), CodeGenInfoComputer (SPY0523),
-/// validator warning (SPY0453), type check aborted at the error limit (SPY0220 ×101)}. Each cell
+/// validator warning (SPY0453), type check aborted at the error limit (SPY0220 ×101), a warning
+/// anchored to a pattern node through the ILocatable overload (SPY0468, SPY0485 — #2070)}. Each cell
 /// asserts that EVERY non-assembly diagnostic names the offending file, and checks the expected
 /// code is present as its positive control.
 /// </remarks>
@@ -36,6 +37,14 @@ public class DiagnosticFileProvenanceTests
         ["aborted"] = ("bad.spy",
             "def f() -> None:\n" + string.Concat(Enumerable.Range(0, 101).Select(i => $"    x{i}: int = \"s\"\n")),
             DiagnosticCodes.Semantic.TypeMismatch, null, null),
+        // #2070: reported through the ILocatable overload, which carried the pattern's span but no
+        // line/column — rendered at 0:0.
+        ["pattern_constant"] = ("shadow.spy",
+            "const MAX = 100\n\ndef check(x: int) -> str:\n    match x:\n        case MAX:\n            return \"max\"\n        case _:\n            return \"other\"\n",
+            DiagnosticCodes.Validation.ConstantPatternShadow, 5, 14),
+        ["pattern_variant"] = ("variant.spy",
+            "union Status:\n    case Idle\n    case Active\n\nconst Idle = 0\n\ndef check(s: Status) -> str:\n    match s:\n        case Idle:\n            return \"idle\"\n        case Active:\n            return \"active\"\n",
+            DiagnosticCodes.Validation.VariantPatternShadowsConstant, 9, 14),
     };
 
     public static IEnumerable<object[]> Producers() => Cells.Keys.Select(k => new object[] { k });
@@ -101,7 +110,7 @@ public class DiagnosticFileProvenanceTests
     }
 
     [Fact]
-    public void Matrix_IsTotal() => Producers().Should().HaveCount(4);
+    public void Matrix_IsTotal() => Producers().Should().HaveCount(6);
 
     private static string Describe(IEnumerable<CompilerDiagnostic> diagnostics)
         => string.Join("\n", diagnostics.Select(d => $"{d.Code} {d.Phase} '{d.FilePath}' {d.Line}:{d.Column} {d.Message}"));

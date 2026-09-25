@@ -206,6 +206,9 @@ public record Token : ILocatable
     public int Line { get; init; }
     public int Column { get; init; }
 
+    int? ILocatable.StartLine => Line > 0 ? Line : null;
+    int? ILocatable.StartColumn => Line > 0 ? Column : null;
+
     /// <summary>
     /// The zero-based character offset where this token starts in the source text.
     /// This is -1 if position tracking was not enabled during lexing.
