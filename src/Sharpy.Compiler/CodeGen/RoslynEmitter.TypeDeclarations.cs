@@ -41,8 +41,9 @@ internal partial class RoslynEmitter
         // Transform name using NameCasing, which honours the backtick escape — the reference side
         // already did, so resolving the declaration without the flag made `def `str`` declare `Str`
         // and its call site emit `str()` (CS0103, #1241).
-        // Special case: only convert "main" to "Main" if this is the entry point file
-        var mangledName = func.Name == "main" && !_context.IsEntryPoint
+        // Special case: only convert "main" to "Main" if this is the entry point file. An escaped
+        // `main` is not the entry-point main and emits verbatim in every mode (#2013).
+        var mangledName = ModuleIdentifiers.IsEntryMain(func) && !_context.IsEntryPoint
             ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
             : NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 

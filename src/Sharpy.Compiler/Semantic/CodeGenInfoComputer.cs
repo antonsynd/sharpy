@@ -1190,7 +1190,11 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void DetectModuleLevelCollisions(Module module)
     {
-        var moduleClassName = NameMangler.ComputeModuleClassName(_sourceFilePath);
+        // The emitter's own authority with the emitter's own entry bit (#2013): a main.spy without an
+        // entry-point main() emits class Main, not Program.
+        var moduleClassName = string.IsNullOrEmpty(_sourceFilePath)
+            ? null
+            : ModuleIdentifiers.ModuleClassName(_sourceFilePath, ModuleIdentifiers.DeclaresEntryMain(module.Body));
 
         // Check each function/variable against the module class name
         if (moduleClassName != null)

@@ -1,0 +1,4 @@
+# #2013: backticks mean the literal spelling, so an escaped `main` is an ordinary function and
+# this entry file has no entry point (it compiled to class Program { main() }: CS5001 behind SPY0908).
+def `main`() -> None:
+    print("never the entry point")

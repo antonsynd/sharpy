@@ -129,7 +129,10 @@ internal class IncrementalCompilationCache
     // v35: the "template" SemanticType codec tag is retired (#1996). A t-string / `Template`
     //      annotation is now the registry symbol's UserDefinedType ("user:Template"); a v34 entry can
     //      carry "template" payloads the codec no longer decodes.
-    internal const int CurrentSchemaVersion = 35;
+    // v36: FileCacheEntry carries DeclaresEntryMain (#2013). A cache-served unit has no AST, so the
+    //      SPY0526 check assumed it declared main() and spelled its module class "Program": a warm
+    //      build refused a library program/main.spy without main() that the cold build accepted.
+    internal const int CurrentSchemaVersion = 36;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
@@ -322,6 +325,10 @@ internal class IncrementalCompilationCache
     /// <param name="generatedCSharp">The generated C# code.</param>
     /// <param name="dependencies">The file paths this file depends on (imports).</param>
     /// <param name="modulePath">Optional module path for this file.</param>
+    /// <param name="declaresEntryMain">
+    /// <see cref="Shared.ModuleIdentifiers.DeclaresEntryMain"/> of the file's body, for the warm build
+    /// that serves the file without an AST (#2013).
+    /// </param>
     public void SaveFileCache(
         string filePath,
         List<Symbol> symbols,
@@ -329,7 +336,8 @@ internal class IncrementalCompilationCache
         List<string> dependencies,
         string? modulePath = null,
         List<CachedDiagnostic>? diagnostics = null,
-        SemanticBinding? binding = null)
+        SemanticBinding? binding = null,
+        bool declaresEntryMain = false)
     {
         EnsureFileCacheLoaded();
 
@@ -374,7 +382,8 @@ internal class IncrementalCompilationCache
             Dependencies = dependencies.Select(PathNormalizer.Normalize).ToList(),
             ModulePath = modulePath,
             GeneratorOutputs = generatorOutputs,
-            Diagnostics = diagnostics
+            Diagnostics = diagnostics,
+            DeclaresEntryMain = declaresEntryMain
         };
 
         _fileCache[normalizedPath] = entry;

@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Utilities;
@@ -84,7 +85,8 @@ internal partial class ProjectCompiler
                     dependencies,
                     unit.ModulePath,
                     cachedDiagnostics.Count > 0 ? cachedDiagnostics : null,
-                    _projectModel!.SemanticBinding);
+                    _projectModel!.SemanticBinding,
+                    unit.Ast != null && ModuleIdentifiers.DeclaresEntryMain(unit.Ast.Body));
 
                 savedCount++;
             }

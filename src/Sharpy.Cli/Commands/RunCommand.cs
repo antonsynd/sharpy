@@ -268,11 +268,11 @@ internal static class RunCommand
     {
         var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
         // The Main() call must name the class the emitter actually generated, not the raw stem: a
-        // self-contained publish is always an entry-point file, so ComputeModuleClassName (the same
-        // helper CodeGenInfoComputer uses) gives ScProbe for sc_probe.spy and Program for main.spy —
-        // never the sc_probe/main the raw stem would emit, which failed EVERY publish with CS0103
-        // (#1483).
-        var entryTypeName = NameMangler.ComputeModuleClassName(inputFile.FullName) ?? assemblyName;
+        // self-contained publish is always an entry-point file, which declares main() (SPY0403
+        // otherwise), so the emitter's own authority gives ScProbe for sc_probe.spy and Program for
+        // main.spy — never the sc_probe/main the raw stem would emit, which failed EVERY publish with
+        // CS0103 (#1483, #2013).
+        var entryTypeName = ModuleIdentifiers.ModuleClassName(inputFile.FullName, willGenerateMainMethod: true);
         var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
 
         // No cleanup of the compiled executable here: the caller staged it in a directory of its own

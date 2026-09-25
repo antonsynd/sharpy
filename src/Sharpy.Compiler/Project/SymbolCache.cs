@@ -615,6 +615,13 @@ internal record FileCacheEntry
     /// so warm ≡ cold on diagnostics.
     /// </summary>
     public List<CachedDiagnostic>? Diagnostics { get; init; }
+
+    /// <summary>
+    /// Whether the file declares the entry-point <c>main()</c>
+    /// (<see cref="Shared.ModuleIdentifiers.DeclaresEntryMain"/>), which decides its module class
+    /// name. A warm build serves the file without an AST, so the SPY0526 check reads this (#2013).
+    /// </summary>
+    public bool DeclaresEntryMain { get; init; }
 }
 
 /// <summary>

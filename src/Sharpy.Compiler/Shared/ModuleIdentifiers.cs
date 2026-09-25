@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Shared;
@@ -5,9 +6,10 @@ namespace Sharpy.Compiler.Shared;
 /// <summary>
 /// The C# identifiers a source file's position in a project emits (#1932): the directory WRAPPER
 /// classes the module class nests in, and the module class itself. One authority, read by the
-/// emitter (<c>RoslynEmitter.ComputeWrapperClasses</c> / <c>GetModuleClassName</c>) and by the
-/// project's pre-emission check (<c>ProjectCompiler.RefusePackageModuleNameCollisions</c>, SPY0526),
-/// so the refusal and the emission cannot disagree on a spelling.
+/// emitter (<c>RoslynEmitter.ComputeWrapperClasses</c> / <c>GetModuleClassName</c>), by the
+/// project's pre-emission check (<c>ProjectCompiler.ReportPackageModuleNameCollisions</c>, SPY0526),
+/// by the function/module-class collision check (<c>CodeGenInfoComputer</c>, SPY0523) and by the
+/// CLI's self-contained publish entry type, so no two of them can disagree on a spelling (#2013).
 /// </summary>
 internal static class ModuleIdentifiers
 {
@@ -73,7 +75,9 @@ internal static class ModuleIdentifiers
     /// <summary>
     /// The module class name a source file emits: the mangled file stem; the directory name for
     /// <c>__init__.spy</c>; <c>Program</c> for a <c>main.spy</c> that generates the entry point
-    /// (avoids CS0542 <c>Main.Main()</c>).
+    /// (avoids CS0542 <c>Main.Main()</c>). <paramref name="willGenerateMainMethod"/> is
+    /// <see cref="DeclaresEntryMain"/> of the file's body — every caller computes it with that one
+    /// predicate (#2013).
     /// </summary>
     public static string ModuleClassName(string filePath, bool willGenerateMainMethod)
     {
@@ -89,6 +93,23 @@ internal static class ModuleIdentifiers
 
         return NameMangler.ToNamespacePart(fileName);
     }
+
+    /// <summary>
+    /// Whether <paramref name="function"/> is the entry-point <c>main</c>: named <c>main</c> and NOT
+    /// backtick-escaped. The backticks mean "this spelling, literally", so <c>def `main`</c> is an
+    /// ordinary function emitted verbatim as <c>main()</c> in every mode — never the C# entry point,
+    /// never the non-entry <c>MainFunc</c> rename (owner ruling 2026-09-24, #2013).
+    /// </summary>
+    public static bool IsEntryMain(FunctionDef function)
+        => function.Name == "main" && !function.IsNameBacktickEscaped;
+
+    /// <summary>
+    /// Whether a module body declares the entry-point <c>main</c> (<see cref="IsEntryMain"/>) at top
+    /// level. The ONE predicate behind the module class name (<see cref="ModuleClassName"/>), the
+    /// SPY0403 entry-point requirement and the incremental cache's recorded entry bit (#2013).
+    /// </summary>
+    public static bool DeclaresEntryMain(IEnumerable<Statement> body)
+        => body.Any(s => s.UnwrapDecorated() is FunctionDef f && IsEntryMain(f));
 }
 
 /// <summary>

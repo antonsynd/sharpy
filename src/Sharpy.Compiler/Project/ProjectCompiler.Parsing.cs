@@ -45,10 +45,14 @@ internal partial class ProjectCompiler
         var reported = false;
         foreach (var sourceFile in config.SourceFiles)
         {
-            // An entry main.spy emits "Program"; a unit with no AST (served from the incremental
-            // cache) built successfully before, so it is taken to emit its entry point too.
+            // A main.spy declaring main() emits "Program" — the one entry predicate the emitter reads
+            // (#2013). A unit served from the incremental cache has no AST; its cold build recorded
+            // the bit. With neither (a file the lexer could not read) the build fails anyway, and no
+            // module class is assumed to be "Program".
             var ast = _projectModel?.GetUnit(sourceFile)?.Ast;
-            var willGenerateMain = ast?.Body.Any(s => s is FunctionDef { Name: "main" }) ?? true;
+            var willGenerateMain = ast != null
+                ? ModuleIdentifiers.DeclaresEntryMain(ast.Body)
+                : _incrementalCache?.GetFileCache(sourceFile)?.DeclaresEntryMain ?? false;
             var collision = ModuleIdentifiers.FindNestedNameCollision(sourceRoot, sourceFile, willGenerateMain);
             if (collision == null)
                 continue;

@@ -548,7 +548,7 @@ internal partial class TypeChecker
     /// also erased the file's NAME — and SPY0523 is derived entirely from the name. The result was
     /// that a module-level <c>def foo</c> in <c>foo.spy</c> produced no squiggle in the editor and
     /// then failed the build. Naming the file costs nothing to symbol identity: only
-    /// <see cref="NameMangler.ComputeModuleClassName"/> reads this.
+    /// <see cref="ModuleIdentifiers.ModuleClassName"/> reads this.
     /// </remarks>
     public string? ModuleIdentityFilePath { get; set; }
 

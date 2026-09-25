@@ -151,9 +151,10 @@ internal static class CompileCommand
         {
             var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
             // Mangle the entry-type identifier the same way the emitter did (ScProbe for
-            // sc_probe.spy, Program for main.spy); the raw stem emitted sc_probe.Main() against class
-            // ScProbe — CS0103, every publish failed (#1483). assemblyName stays raw (file names).
-            var entryTypeName = NameMangler.ComputeModuleClassName(inputFile.FullName) ?? assemblyName;
+            // sc_probe.spy, Program for main.spy — an entry file always declares main(), SPY0403
+            // otherwise); the raw stem emitted sc_probe.Main() against class ScProbe — CS0103, every
+            // publish failed (#1483, #2013). assemblyName stays raw (file names).
+            var entryTypeName = ModuleIdentifiers.ModuleClassName(inputFile.FullName, willGenerateMainMethod: true);
             var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
             if (publishedExe == null)
             {

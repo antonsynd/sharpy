@@ -10,7 +10,7 @@ namespace Sharpy.Cli.Tests;
 /// mangled module class (<c>ScProbe</c>), so EVERY publish failed to compile with CS0103. This is the
 /// fast, deterministic guard for the wrapper half of the fix — that the reflection entry point uses
 /// the mangled type name — without shelling out to <c>dotnet publish</c>. The caller half (mangling
-/// via NameMangler.ComputeModuleClassName) and the end-to-end publish-and-run are covered by
+/// via ModuleIdentifiers.ModuleClassName, #2013) and the end-to-end publish-and-run are covered by
 /// <c>E2E/SelfContainedDeploymentTests</c>.
 /// </summary>
 public class SelfContainedPublisherTests
@@ -31,7 +31,7 @@ public class SelfContainedPublisherTests
         // A dedicated load context, because the program's identity may equal the wrapper's.
         source.Should().Contain("AssemblyLoadContext(");
         // MUTATION: pass the raw stem to entryTypeName in RunCommand/CompileCommand (revert to
-        // Path.GetFileNameWithoutExtension) → ComputeModuleClassName no longer feeds this, the wrapper
+        // Path.GetFileNameWithoutExtension) → ModuleIdentifiers.ModuleClassName no longer feeds this, the wrapper
         // reflects GetType("sc_probe"), the type is not found, and the E2E publish-and-run goes red.
     }
 }

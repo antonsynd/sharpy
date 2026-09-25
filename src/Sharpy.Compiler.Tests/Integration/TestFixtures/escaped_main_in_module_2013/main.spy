@@ -1,0 +1,10 @@
+# #2013: backticks mean the literal spelling. A module's escaped `main` is an ordinary function
+# emitted verbatim as main() -- not the entry point, and not the non-entry MainFunc rename, so
+# its declaration and every reference agree (it was declared MainFunc and referenced as main:
+# CS0117 behind SPY0908).
+import util
+from util import twice
+
+def main() -> None:
+    print(util.`main`() + 1)
+    print(twice())

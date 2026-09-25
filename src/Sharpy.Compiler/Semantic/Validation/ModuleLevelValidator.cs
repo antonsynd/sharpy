@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -28,6 +29,7 @@ internal class ModuleLevelValidator : SemanticValidatorBase
         _logger.LogDebug("Starting module-level validation");
 
         bool hasMainFunction = false;
+        bool hasEscapedMain = false;
         var executableStatements = new List<Statement>();
         var untypedVariables = new List<VariableDeclaration>();
 
@@ -39,8 +41,13 @@ internal class ModuleLevelValidator : SemanticValidatorBase
             var stmt = topLevel.UnwrapDecorated();
             switch (stmt)
             {
-                case FunctionDef funcDef when funcDef.Name == "main":
+                // The one entry predicate (#2013): an escaped `main` is an ordinary function.
+                case FunctionDef funcDef when ModuleIdentifiers.IsEntryMain(funcDef):
                     hasMainFunction = true;
+                    break;
+
+                case FunctionDef funcDef when funcDef.Name == "main":
+                    hasEscapedMain = true;
                     break;
 
                 case FunctionDef:
@@ -120,8 +127,12 @@ internal class ModuleLevelValidator : SemanticValidatorBase
         // Entry point files must have a main() function
         if (_context.IsEntryPoint && !hasMainFunction)
         {
+            // Backticks mean the literal spelling, so `main` is not the entry point; steer the user
+            // who meant one (owner ruling 2026-09-24, #2013).
             AddError(_context,
-                "Entry point file requires a 'main()' function",
+                hasEscapedMain
+                    ? "Entry point file requires a 'main()' function; did you mean `main()` (without backticks)?"
+                    : "Entry point file requires a 'main()' function",
                 module.LineStart, module.ColumnStart, code: DiagnosticCodes.Validation.MissingMainFunction,
                 span: module.Span);
         }

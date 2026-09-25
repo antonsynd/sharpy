@@ -113,9 +113,12 @@ internal partial class RoslynEmitter
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
 
-        // First pass: check if there's a user-defined main function
-        // This affects how we handle module-level variable declarations with execution order issues
-        bool hasMainFunction = statements.Any(s => s is FunctionDef f && f.Name == "main");
+        // Whether the module declares the entry-point main() — ModuleShape's answer, computed once by
+        // the one predicate every reader shares (#2013). This affects how we handle module-level
+        // variable declarations with execution order issues.
+        System.Diagnostics.Debug.Assert(
+            _moduleShape != null, "ComputeModuleShape must run before GenerateModuleMembers");
+        bool hasMainFunction = _moduleShape!.DeclaresEntryMain;
 
         // Module-level variables with execution order issues should be generated as static fields when:
         // - There's a user-defined main() (entry points always have one now)
@@ -127,8 +130,6 @@ internal partial class RoslynEmitter
         // generated for @test.parametrize(VARIABLE) decorators (emitted both during the statement
         // loop for class-based tests and after this method for module-level tests) can reference the
         // module class via MemberType = typeof(...). The shape is computed before any body emission.
-        System.Diagnostics.Debug.Assert(
-            _moduleShape != null, "ComputeModuleShape must run before GenerateModuleMembers");
         _memberDataVariables.Clear();
 
         // First pre-scan: register @test.fixture functions so that test methods declared later
@@ -499,9 +500,12 @@ internal partial class RoslynEmitter
     /// the module class name, the merged class name (non-null when a same-named ClassDef absorbs
     /// the module's static members, e.g. animal.spy + class Animal), the emitted C# names of the
     /// top-level types extracted to namespace siblings in single-file library mode, and the
-    /// namespace segments the module class is nested under (project namespace + directory wrappers).
+    /// namespace segments the module class is nested under (project namespace + directory wrappers),
+    /// and whether the module declares the entry-point <c>main()</c>
+    /// (<see cref="ModuleIdentifiers.DeclaresEntryMain"/>, #2013).
     /// </summary>
     internal sealed record ModuleShape(
+        bool DeclaresEntryMain,
         string ModuleClassName,
         string? MergedClassName,
         IReadOnlyList<string> ExtractedTypeNames,
@@ -517,8 +521,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private ModuleShape ComputeModuleShape(List<Statement> statements)
     {
-        bool hasMainFunction = statements.Any(s => s is FunctionDef f && f.Name == "main");
-        var moduleClassName = GetModuleClassName(hasMainFunction);
+        bool declaresEntryMain = ModuleIdentifiers.DeclaresEntryMain(statements);
+        var moduleClassName = GetModuleClassName(declaresEntryMain);
 
         // A user class whose emitted identifier equals the module class name merges INTO the module
         // class (animal.spy + class Animal). Only a ClassDef merges; a struct/interface/enum/union
@@ -595,7 +599,7 @@ internal partial class RoslynEmitter
         }
 
         return new ModuleShape(
-            moduleClassName, mergedClassName, extractedTypeNames, namespaceParts, ownTypeNames);
+            declaresEntryMain, moduleClassName, mergedClassName, extractedTypeNames, namespaceParts, ownTypeNames);
     }
 
     /// <summary>

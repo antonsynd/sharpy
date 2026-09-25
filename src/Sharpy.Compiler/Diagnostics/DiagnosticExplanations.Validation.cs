@@ -46,7 +46,9 @@ public static partial class DiagnosticExplanations
             "Use an operator that is supported for the given types, or implement the corresponding dunder method on your class.");
 
         Add(dict, DiagnosticCodes.Validation.MissingMainFunction, "Missing main() function", "Validation",
-            "The program does not define a main() function. Every Sharpy program must have a main() function as its entry point.",
+            "The program does not define a main() function. Every Sharpy program must have a main() function as its entry point. " +
+            "A backtick-escaped def `main`() does not count: the backticks mean \"this spelling, literally\", so it is an ordinary " +
+            "function emitted verbatim as main(), and the diagnostic asks whether you meant main() without backticks.",
             "def helper() -> int:\n    return 42\n# no main function",
             "Add a main function:\ndef main():\n    result: int = helper()\n    print(result)");
 

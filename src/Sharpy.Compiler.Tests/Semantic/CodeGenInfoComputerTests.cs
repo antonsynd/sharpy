@@ -768,4 +768,37 @@ def my_package() -> None:
             d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
             d.Message.Contains("conflicts with the module class name"));
     }
+
+    /// <summary>
+    /// SPY0523 on <c>main.spy</c> asks the emitter's own authority with the emitter's own entry bit
+    /// (#2013): the module class is <c>Program</c> only when the file declares an UNESCAPED
+    /// <c>main()</c>, and <c>Main</c> otherwise. The deleted second helper answered <c>Program</c> for
+    /// every <c>main.spy</c> — a false refusal of <c>def program</c> and a missed <c>def Main</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("def program() -> None:\n    pass\n", null)]
+    [InlineData("def main() -> None:\n    pass\n\ndef program() -> None:\n    pass\n", "Program")]
+    [InlineData("def Main() -> None:\n    pass\n", "Main")]
+    [InlineData("def `Main`() -> None:\n    pass\n", "Main")]
+    [InlineData("def `main`() -> None:\n    pass\n", null)]
+    [InlineData("def `main`() -> None:\n    pass\n\ndef program() -> None:\n    pass\n", null)]
+    public void ComputeForModule_MainSpy_ModuleClassFollowsTheEntryBit(string source, string? collidesWith)
+    {
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module, sourceFilePath: "main.spy");
+
+        var collisions = diagnostics.GetErrors()
+            .Where(d => d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision).ToList();
+        if (collidesWith == null)
+        {
+            collisions.Should().BeEmpty();
+        }
+        else
+        {
+            collisions.Should().ContainSingle().Which.Message.Should().Contain($"compiles to '{collidesWith}'");
+        }
+    }
 }
