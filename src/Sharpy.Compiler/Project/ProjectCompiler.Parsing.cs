@@ -71,7 +71,92 @@ internal partial class ProjectCompiler
             reported = true;
         }
 
+        // Refusal 1 (#1948): a module file beside a same-named package directory. Python imports
+        // only one of them, so the other's modules are unreachable; C# spells both one identifier in
+        // one scope (today they fuse into one partial class, or CS0579 with an __init__).
+        bool WillGenerateMain(string file)
+        {
+            var body = _projectModel?.GetUnit(file)?.Ast?.Body;
+            return body != null
+                ? ModuleIdentifiers.DeclaresEntryMain(body)
+                : _incrementalCache?.GetFileCache(file)?.DeclaresEntryMain ?? false;
+        }
+
+        foreach (var (file, directory, identifier) in
+                 ModuleIdentifiers.FindModuleBesideSameNamedPackage(sourceRoot, config.SourceFiles, WillGenerateMain))
+        {
+            _diagnostics.AddError(
+                $"Module '{Path.GetFileName(file)}' and the package directory '{directory}' beside it both emit " +
+                $"the C# identifier '{identifier}' (python imports only one of them, so the other's modules " +
+                "could never be imported). Rename the file or the directory.",
+                line: 1,
+                column: 1,
+                filePath: file,
+                code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                phase: CompilerPhase.CodeGeneration);
+            reported = true;
+        }
+
+        // Refusal 2 (#1948): a package's __init__ declaring a top-level name whose emitted identifier
+        // is one of its own submodules or subpackages. Python's `pkg.lib` then names two things (the
+        // submodule import rebinds the attribute); in C# the two share the package's scope. Refused
+        // arity-blind by emitted identifier. A cache-served __init__ has no AST: it is re-parsed, so
+        // a warm build refuses exactly what a cold one does when a sibling module is added.
+        foreach (var initFile in config.SourceFiles.Where(f => Path.GetFileNameWithoutExtension(f) == Sharpy.Compiler.Semantic.DunderNames.Init))
+        {
+            var children = ModuleIdentifiers.PackageChildIdentifiers(
+                sourceRoot, Path.GetDirectoryName(initFile)!, config.SourceFiles);
+            if (children.Count == 0)
+                continue;
+
+            var body = _projectModel?.GetUnit(initFile)?.Ast?.Body ?? ParseModuleBodyForCheck(initFile, config);
+            if (body == null)
+                continue;
+
+            foreach (var (name, identifier, declaration) in ModuleIdentifiers.TopLevelMemberIdentifiers(body))
+            {
+                if (!children.TryGetValue(identifier, out var child))
+                    continue;
+
+                var isPackage = child.EndsWith('/');
+                var childName = isPackage ? child.TrimEnd('/') : Path.GetFileNameWithoutExtension(child);
+                var pythonReason = childName == name
+                    ? $" (python's `{Path.GetFileName(Path.GetDirectoryName(initFile))}.{name}` would name both)"
+                    : "";
+                _diagnostics.AddError(
+                    $"'{name}' in the package's __init__.spy emits the C# identifier '{identifier}', which its " +
+                    $"{(isPackage ? "subpackage" : "submodule")} '{child.TrimEnd('/')}' also emits{pythonReason}. " +
+                    $"Rename the declaration or the {(isPackage ? "subpackage" : "submodule")}.",
+                    line: declaration.LineStart,
+                    column: declaration.ColumnStart,
+                    filePath: initFile,
+                    code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+                reported = true;
+            }
+        }
+
         return reported;
+    }
+
+    /// <summary>
+    /// Parses <paramref name="filePath"/> for the SPY0526 pre-emission check when the unit has no AST
+    /// (served from the incremental cache). Null when the file cannot be read; parse errors are not
+    /// reported here (the file parsed cleanly when it was cached).
+    /// </summary>
+    private static System.Collections.Immutable.ImmutableArray<Statement>? ParseModuleBodyForCheck(
+        string filePath, ProjectConfig config)
+    {
+        try
+        {
+            var text = new Sharpy.Compiler.Text.SourceText(ReadSource(filePath, config), filePath);
+            var tokens = new Sharpy.Compiler.Lexer.Lexer(text, NullLogger.Instance).TokenizeAll();
+            return new Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance).ParseModule().Body;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

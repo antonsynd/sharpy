@@ -955,4 +955,86 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     [Fact]
     public void Subdirectory_Axis_IsTotal()
         => SubdirectoryLayouts().Should().HaveCount(10);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // The two SPY0526 refusals that survive module-as-namespace (#1948, Decision 28 (d)). Refusal 1:
+    // a module file beside a same-named package directory — python imports only one of them (the
+    // package with __init__, the module without), so the other is unreachable. Refusal 2: an
+    // __init__ top-level name whose emitted identifier is one of the package's own submodules or
+    // subpackages (`pkg.lib` would name both). Prior commit (direction, measured with sharpyc @
+    // 5a0135370): file_beside_dir and file_beside_dir_mangled built and ran (worked → refused,
+    // python-consistent); file_beside_package was SPY0908 CS0579; the three __init__ cells were
+    // SPY0908 CS0260 / CS0102 (ICE → refused).
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public static IEnumerable<object[]> PackageShadowingLayouts() => new[]
+    {
+        // name, files, refused file, message fragment
+        new object[] { "file_beside_dir",
+            new[] { ("pkg.spy", "def g() -> int:\n    return 8\n"), ("pkg/x.spy", LibF), ("main.spy", "from pkg import g\n\ndef main() -> None:\n    print(g())\n") },
+            "pkg.spy", "Module 'pkg.spy' and the package directory 'pkg' beside it both emit the C# identifier 'Pkg'" },
+        new object[] { "file_beside_package",
+            new[] { ("pkg.spy", "def g() -> int:\n    return 8\n"), ("pkg/__init__.spy", "version: int = 1\n"), ("pkg/x.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") },
+            "pkg.spy", "Module 'pkg.spy' and the package directory 'pkg' beside it both emit the C# identifier 'Pkg'" },
+        new object[] { "file_beside_dir_mangled",
+            new[] { ("my_pkg.spy", "def g() -> int:\n    return 8\n"), ("myPkg/x.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") },
+            "my_pkg.spy", "Module 'my_pkg.spy' and the package directory 'myPkg' beside it both emit the C# identifier 'MyPkg'" },
+        new object[] { "init_def_shadows_submodule",
+            new[] { ("pkg/__init__.spy", "def lib() -> int:\n    return 1\n"), ("pkg/lib.spy", LibF), ("main.spy", "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "'lib' in the package's __init__.spy emits the C# identifier 'Lib', which its submodule 'lib.spy' also emits" },
+        new object[] { "init_class_shadows_submodule",
+            new[] { ("pkg/__init__.spy", "class Lib:\n    pass\n"), ("pkg/lib.spy", LibF), ("main.spy", "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "'Lib' in the package's __init__.spy emits the C# identifier 'Lib', which its submodule 'lib.spy' also emits" },
+        new object[] { "init_variable_shadows_subpackage",
+            new[] { ("pkg/__init__.spy", "sub: int = 1\n"), ("pkg/sub/x.spy", LibF), ("main.spy", "from pkg.sub.x import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "'sub' in the package's __init__.spy emits the C# identifier 'Sub', which its subpackage 'sub' also emits" },
+    };
+
+    [Theory]
+    [MemberData(nameof(PackageShadowingLayouts))]
+    public void PackageShadowing_IsSpy0526(string name, (string, string)[] files, string refusedFile, string message)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        foreach (var (path, content) in files)
+            helper.AddSourceFile(path, content);
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeFalse($"[{name}] must be refused");
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{name}] the refusal is SPY0526, not a C# error behind SPY0908");
+        var refusal = errors.Should().ContainSingle(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+            $"[{name}] {string.Join("\n", exec.CompilationErrors)}").Subject;
+        refusal.Message.Should().StartWith(message, $"[{name}]");
+        Path.GetFileName(refusal.FilePath).Should().Be(refusedFile, $"[{name}]");
+    }
+
+    /// <summary>
+    /// Positive controls for the two refusals: a package with no same-named module beside it, and an
+    /// __init__ whose names differ from its children, both run.
+    /// </summary>
+    [Theory]
+    [InlineData("package_without_twin_module", "pkg/x.spy", "q.spy")]
+    [InlineData("init_names_differ_from_children", "pkg/lib.spy", "pkg/__init__.spy")]
+    public void PackageWithoutShadowing_Runs(string name, string libPath, string otherPath)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile(libPath, LibF);
+        helper.AddSourceFile(otherPath, "def lib_version() -> int:\n    return 2\n");
+        var importPath = libPath[..^4].Replace('/', '.');
+        helper.AddSourceFile("main.spy", $"from {importPath} import f\n\ndef main() -> None:\n    print(f())\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeTrue($"[{name}] {string.Join("\n", exec.CompilationErrors)}");
+        exec.StandardOutput.Trim().Should().Be("7", $"[{name}]");
+    }
+
+    [Fact]
+    public void PackageShadowing_Axis_IsTotal()
+        => PackageShadowingLayouts().Should().HaveCount(6);
 }

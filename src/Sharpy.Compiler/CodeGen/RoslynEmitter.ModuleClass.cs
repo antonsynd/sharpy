@@ -15,21 +15,6 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
-    private string ConvertModuleNameToNamespace(string moduleName)
-    {
-        // Convert Python module naming to C# namespace naming
-        // e.g., "system.io" -> "System.IO"
-        // e.g., "my_module.sub_module" -> "MyModule.SubModule"
-
-        // Note: We don't use NameMangler.Transform here because:
-        // 1. It tracks unique names which causes "system" to become System, System1, System2, etc.
-        // 2. Namespaces should use simple PascalCase without uniqueness tracking
-
-        var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var convertedParts = parts.Select(part => NameMangler.ToNamespacePart(part));
-        return string.Join(".", convertedParts);
-    }
-
     /// <summary>
     /// Generates the module class with all members nested inside it.
     /// Types (classes, structs, interfaces, enums) are nested inside the module class,
@@ -645,45 +630,12 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Computes the Sharpy module name for the [SharpyModule] attribute.
-    /// Returns the Python-style dotted module path (e.g., "mypackage.helpers").
+    /// The Sharpy module name for the [SharpyModule] attribute — the python dotted module path
+    /// (e.g., "mypackage.helpers"), read from the one path authority
+    /// <see cref="ModuleIdentifiers.SharpyModuleName"/> (#1948).
     /// </summary>
     private string GetSharpyModuleName()
-    {
-        if (string.IsNullOrEmpty(_context.SourceFilePath))
-            return "module";
-
-        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
-
-        if (!string.IsNullOrEmpty(_context.ProjectRootPath))
-        {
-            var relativePath = Path.GetRelativePath(_context.ProjectRootPath, _context.SourceFilePath);
-            var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-
-            var parts = new List<string>();
-
-            if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
-            {
-                parts.AddRange(relativeDir.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries));
-            }
-
-            // For __init__.spy, the module name is the directory path (without __init__)
-            // For regular files, append the file name
-            if (fileName != DunderNames.Init)
-            {
-                parts.Add(fileName);
-            }
-
-            if (parts.Count > 0)
-                return string.Join(".", parts);
-        }
-
-        // Single-file: just use the file name
-        if (fileName == DunderNames.Init)
-            return "module";
-
-        return fileName;
-    }
+        => ModuleIdentifiers.SharpyModuleName(_context.ProjectRootPath, _context.SourceFilePath);
 
     /// <summary>
     /// Generates one MemberData wrapper property per module-level variable referenced by a
@@ -835,7 +787,7 @@ internal partial class RoslynEmitter
 
         // Convert the resolved module path to a nested class path
         // e.g., "mypackage.helpers" -> "ProjectNamespace.Mypackage.Helpers"
-        var sourceModuleNamespace = ConvertModuleNameToNamespace(resolvedModulePath);
+        var sourceModuleNamespace = ModuleIdentifiers.DottedModulePath(resolvedModulePath);
         var sourceClassName = !string.IsNullOrEmpty(_context.ProjectNamespace)
             ? $"{_context.ProjectNamespace}.{sourceModuleNamespace}"
             : sourceModuleNamespace;

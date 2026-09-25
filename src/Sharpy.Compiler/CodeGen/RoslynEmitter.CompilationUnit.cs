@@ -301,7 +301,7 @@ internal partial class RoslynEmitter
             var isNetFramework = IsNetFrameworkNamespace(alias.Name);
             var namespaceName = isNetFramework
                 ? ResolveClrNamespace(alias.Name)
-                : ConvertModuleNameToNamespace(alias.Name);
+                : ModuleIdentifiers.DottedModulePath(alias.Name);
 
             if (alias.AsName != null)
             {
@@ -425,7 +425,7 @@ internal partial class RoslynEmitter
             else
             {
                 var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
-                var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
+                var moduleNamespacePath = ModuleIdentifiers.DottedModulePath(moduleName);
                 var segs = new List<string>();
                 if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     segs.AddRange(_context.ProjectNamespace!.Split('.'));

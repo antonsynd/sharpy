@@ -2043,7 +2043,7 @@ internal partial class RoslynEmitter
                     // written segments (which carry the import alias: `import utils as u` -> "u").
                     var userModuleNamespacePath = !string.IsNullOrEmpty(currentModule.FilePath)
                         ? _typeMapper.ModuleNamespaceFromFilePath(currentModule.FilePath)
-                        : ConvertModuleNameToNamespace(resolvedModuleName);
+                        : ModuleIdentifiers.DottedModulePath(resolvedModuleName);
                     var moduleSegs = new List<string>();
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                         moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));

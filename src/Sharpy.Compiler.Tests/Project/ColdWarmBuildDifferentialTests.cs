@@ -1065,6 +1065,47 @@ def main() -> None:
         Diagnostics(warm).Should().Be(Diagnostics(cold), "warm must report what cold reports");
     }
 
+    /// <summary>
+    /// Refusal 2 of SPY0526 (#1948) reads the package's __init__ BODY, which a warm build serves
+    /// from the cache: the check must re-read it so warm reports what cold reports. First build:
+    /// main + pkg/__init__.spy (`sub: int = 1`) + pkg/lib.spy; adding pkg/sub/y.spy makes `sub`
+    /// shadow the new subpackage — the warm rebuild (with __init__ skipped) and a cold build of the
+    /// final layout report the same refusal at the declaration.
+    /// </summary>
+    [Fact]
+    public void InitShadowsSubpackage_IsReportedIdenticallyWarmAndCold()
+    {
+        const string main = "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n";
+        // No warnings in any cached file: a refused build replays a cached file's warnings warm but
+        // stops before analysis cold, so a warning would diverge for a reason this cell does not test
+        // (#2084).
+        const string init = "version: int = 0\nsub: int = 1\n";
+        const string lib = "def f() -> int:\n    return 7\n";
+        const string y = "def g() -> int:\n    return 2\n";
+
+        var warmMain = Write("initwarm", "main.spy", main);
+        var warmInit = Write(Path.Combine("initwarm", "pkg"), "__init__.spy", init);
+        var warmLib = Write(Path.Combine("initwarm", "pkg"), "lib.spy", lib);
+        var first = Build(Config("initwarm", warmMain, warmInit, warmLib));
+        first.Success.Should().BeTrue("the shadow-free layout builds. Diagnostics:\n" + Diagnostics(first));
+
+        var warmY = Write(Path.Combine("initwarm", "pkg", "sub"), "y.spy", y);
+        var warm = Build(Config("initwarm", warmMain, warmInit, warmLib, warmY));
+        warm.Success.Should().BeFalse("`sub` in __init__ shadows the new subpackage pkg/sub");
+        Skipped(warm).Should().Contain("__init__.spy",
+            "the __init__ whose body the check reads comes from the cache — the positive control that this is a WARM build");
+
+        var coldMain = Write("initcold", "main.spy", main);
+        var coldInit = Write(Path.Combine("initcold", "pkg"), "__init__.spy", init);
+        var coldLib = Write(Path.Combine("initcold", "pkg"), "lib.spy", lib);
+        var coldY = Write(Path.Combine("initcold", "pkg", "sub"), "y.spy", y);
+        var cold = Build(Config("initcold", coldMain, coldInit, coldLib, coldY));
+        cold.Success.Should().BeFalse();
+
+        Diagnostics(cold).Should().Contain("SPY0526@__init__.spy:2:1");
+        Diagnostics(warm).Should().Be(Diagnostics(cold), "warm must report what cold reports");
+    }
+
     private const string NestedAliasLibSource = @"class Box:
     type Ids = list[int]
 

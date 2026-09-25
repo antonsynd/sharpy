@@ -740,7 +740,7 @@ internal class TypeSyntaxMapper
         else if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
         {
             // Use DefiningModule (e.g., "animal" from import)
-            moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
+            moduleNamespace = ModuleIdentifiers.DottedModulePath(typeSymbol.DefiningModule);
         }
         else if (position == NamePosition.Reference && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
         {
@@ -841,63 +841,12 @@ internal class TypeSyntaxMapper
     internal string ModuleNamespaceFromFilePath(string filePath) => GetModuleNameFromFilePath(filePath);
 
     /// <summary>
-    /// Derives a module namespace from a file path, computing the full package path
-    /// relative to the project root.
-    /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
+    /// The C# path of the module class <paramref name="filePath"/> emits (relative to the project
+    /// namespace) — read from the one path authority, <see cref="ModuleIdentifiers.ModuleClassPath"/>
+    /// (#1948: this was a second derivation of the same layout).
     /// </summary>
     private string GetModuleNameFromFilePath(string filePath)
-    {
-        // If we have a project root, compute relative path for proper namespace
-        if (!string.IsNullOrEmpty(_context.ProjectRootPath))
-        {
-            var relativePath = Path.GetRelativePath(_context.ProjectRootPath, filePath);
-            var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-            var fileName = Path.GetFileNameWithoutExtension(filePath);
-
-            var namespaceParts = new List<string>();
-
-            // Add directory parts (package hierarchy)
-            if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
-            {
-                var dirParts = relativeDir.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                foreach (var part in dirParts)
-                {
-                    if (!string.IsNullOrEmpty(part) && part != ".")
-                    {
-                        namespaceParts.Add(ToNamespaceSegment(part));
-                    }
-                }
-            }
-
-            // Add file name part (skip __init__ as it represents the package itself)
-            if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
-            {
-                namespaceParts.Add(ToNamespaceSegment(fileName));
-            }
-
-            if (namespaceParts.Count > 0)
-            {
-                return string.Join(".", namespaceParts);
-            }
-        }
-
-        // Fallback: just use file name
-        var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return ToNamespaceSegment(fallbackFileName);
-    }
-
-    /// <summary>
-    /// Casts one path segment to its C# namespace segment, always under the namespace acronym policy
-    /// (a segment that is entirely an acronym upper-cases wholesale: <c>db</c> → <c>DB</c>, <c>api</c> →
-    /// <c>API</c>; compounds like <c>db_models</c> stay <c>DbModels</c>). Position-independent: the two
-    /// positions once applied different policies, so a class in <c>db.spy</c> qualified as
-    /// <c>DB.Record</c> in an annotation but <c>Db.Record</c> in a <c>new</c> expression, and the
-    /// generated C# failed on the mis-cased segment (CS0234 — no namespace <c>Db</c> exists). The
-    /// acronym policy wins in both (Axiom 1: .NET namespaces spell acronyms upper-case); the resulting
-    /// namespace rename for acronym-pathed modules is an accepted breaking change (#1173).
-    /// </summary>
-    private static string ToNamespaceSegment(string segment)
-        => NameMangler.ToNamespacePart(segment);
+        => ModuleIdentifiers.ModuleClassPath(_context.ProjectRootPath, filePath);
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.
@@ -952,15 +901,6 @@ internal class TypeSyntaxMapper
         // resolving by name alone would spell a `len`-declared type as `Len` at every annotation
         // while its declaration emits `len` (#1241).
         return GetMappedTypeName(udt.Name, udt.Symbol?.IsNameBacktickEscaped ?? false);
-    }
-
-    /// <summary>
-    /// Converts a module path (e.g., "animal" or "lib.animal") to a C# namespace segment.
-    /// </summary>
-    private static string ConvertModuleToNamespace(string modulePath)
-    {
-        var parts = modulePath.Split('.');
-        return string.Join(".", parts.Select(p => NameMangler.ToNamespacePart(p)));
     }
 
     /// <summary>

@@ -93,6 +93,10 @@ public class DispatchSiteInventoryTests
         ["Shared/PatternHead.cs::PatternHead.TryGet"] = "guarded-by:ExhaustivenessHelperTotalityTests",
         // DeclarationPosition.Of — a diagnostic's name-token position per declaration kind (#2032)
         ["Shared/DeclarationPosition.cs::DeclarationPosition.Of"] = "guarded-by:DeclarationPositionTotalityTests",
+        // TopLevelMemberIdentifiers — the pre-analysis member spelling SPY0526 refusal 2 compares
+        // (#1948); deliberately partial (a statement that declares no module-class member yields
+        // nothing), pinned against the emitted members by ModulePathAuthorityTests.
+        ["Shared/ModuleIdentifiers.cs::ModuleIdentifiers.TopLevelMemberIdentifiers"] = "documented-by-design:Shared/ModuleIdentifiers.cs:TopLevelMemberIdentifiers",
 
         // ModuleLoader — symbol extraction
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractExportedSymbol"] = "guarded-by:ModuleLoaderTotalityTests",

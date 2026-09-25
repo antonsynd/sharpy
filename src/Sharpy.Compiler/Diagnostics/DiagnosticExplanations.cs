@@ -172,9 +172,14 @@ public static partial class DiagnosticExplanations
             "in a class of the same name, which C# forbids (CS0542). Directories are measured from the project's " +
             "common source directory. Whether the module is imported does not matter: every file is emitted. Two " +
             "ADJACENT directories that mangle alike ('a/a/x.spy') nest wrapper 'A' in wrapper 'A' and are refused the " +
-            "same way; a repeat that is not adjacent ('a/b/a/x.spy') is legal C#.",
+            "same way; a repeat that is not adjacent ('a/b/a/x.spy') is legal C#. Two package layouts are refused " +
+            "for python's reason as well as C#'s: a module file beside a same-named package directory ('pkg.spy' " +
+            "next to 'pkg/'), since python imports only one of the two; and a top-level name in a package's " +
+            "'__init__.spy' whose emitted identifier is one of that package's own submodules or subpackages " +
+            "('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since 'pkg.lib' would name both.",
             "# project layout\nsrc/main.spy\nsrc/lib/lib.spy   # wrapper 'Lib' would hold module class 'Lib'",
-            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy'); for two directories, rename one of them.");
+            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy'); for two directories, " +
+            "rename one of them; for an __init__ name, rename the declaration or the submodule.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +
