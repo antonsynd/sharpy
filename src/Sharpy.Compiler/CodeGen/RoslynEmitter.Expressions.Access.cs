@@ -1701,6 +1701,14 @@ internal partial class RoslynEmitter
                     _typeMapper.MapSemanticType(denotedReceiver), resolvedField, memberAccess.Member);
 
             var classSymbol = res.Owner;
+
+            // A NESTED enum's member reached through its declaring chain (`H.C.x`, #2037): the
+            // receiver keeps the spelling the chain itself generates (global::-rooted in value
+            // position, as before the member was resolved); only the member reads its fact.
+            if (classSymbol.TypeKind == Semantic.TypeKind.Enum && memberAccess.Object is MemberAccess)
+                return GenerateStaticFieldAccessOnType(
+                    GenerateExpression(memberAccess.Object), resolvedField, memberAccess.Member);
+
             return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
         }
 

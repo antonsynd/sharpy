@@ -74,15 +74,15 @@ internal partial class TypeChecker
     /// access that is itself a qualifier is left untyped, and <c>H.C.red</c>'s own type is #2038), so
     /// nothing reached the emitter but the AST: it re-mangled the member name from the USE site and
     /// disagreed with the declaration (an escaped member, or a camelCase int member, was CS0117).
-    /// Record the denoted enum on the qualifier and the member resolution on the access, so the
-    /// emitter spells the receiver from the enum symbol and the member from the member symbol's
-    /// materialized <c>CSharpName</c> — the one spelling every enum reference reads. A chain under a
-    /// generic owner is left alone: the denoted type would spell the OPEN owner (CS0305, #1941).
+    /// Record the member resolution on the access, so the emitter spells the member from the member
+    /// symbol's materialized <c>CSharpName</c> — the one spelling every enum reference reads — while
+    /// the receiver keeps the spelling its own chain generates (a value-position read is
+    /// <c>global::</c>-rooted; recording a denoted type here spelled it as an annotation, short).
+    /// A chain under a generic owner is left alone (the open owner, CS0305, #1941).
     /// </summary>
     private void RecordNestedEnumMemberReference(MemberAccess memberAccess, SemanticType objectType)
     {
         if (memberAccess.Object is not MemberAccess qualifier
-            || _semanticInfo.GetDenotedType(qualifier) != null
             || DenotedTypeSymbolOf(qualifier, objectType) is not ({ TypeKind: TypeKind.Enum } enumSymbol, _)
             || enumSymbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member) is not { } member)
             return;
@@ -93,7 +93,6 @@ internal partial class TypeChecker
                 return;
         }
 
-        _semanticInfo.SetDenotedType(qualifier, new UserDefinedType { Name = enumSymbol.Name, Symbol = enumSymbol });
         _semanticInfo.SetMemberAccessResolution(memberAccess, enumSymbol, member);
     }
 
