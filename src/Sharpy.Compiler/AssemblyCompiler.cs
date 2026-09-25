@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Diagnostics;
 
@@ -61,7 +60,8 @@ internal class AssemblyCompiler
     /// before this assembly compile runs. Disarms the SPY0908 net for <c>CSxxxx</c> errors (#1387):
     /// see <see cref="MapGeneratedCodeDiagnostics"/>. Suppressed diagnostics are logged at debug
     /// level and returned on
-    /// <see cref="AssemblyCompilationResult.SuppressedGeneratedCodeDiagnostics"/>.
+    /// <see cref="AssemblyCompilationResult.SuppressedGeneratedCodeDiagnostics"/>. The compile then
+    /// stays in memory: no assembly, PDB or runtime files are written for a failed build (#2028).
     /// </param>
     public AssemblyCompilationResult CompileToAssembly(
         Dictionary<string, string> csharpSources,
@@ -153,31 +153,16 @@ internal class AssemblyCompiler
                     .WithPlatform(Platform.AnyCpu));
             metrics.EndPhase();
 
-            // Ensure output directory exists
-            var outputPath = projectConfig.OutputAssemblyPath;
-            var outputDir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(outputDir))
-            {
-                Directory.CreateDirectory(outputDir);
-            }
-
-            // Emit assembly to file
+            // Emit to memory first; the image reaches disk only when the build succeeded (#2028).
+            // Opening the output files before Emit left 0-byte .exe/.dll/.pdb behind on every failed
+            // Roslyn compile, and a failed bag with a Roslyn success (a refused unit nobody imports)
+            // wrote a complete assembly for a build that reports failure.
             metrics.StartPhase(CompilerPhaseNames.IlEmission);
-            using var assemblyStream = new FileStream(outputPath, FileMode.Create);
-
-            EmitResult emitResult;
-            if (projectConfig.Configuration == "Debug")
-            {
-                // Emit with PDB for debugging
-                var pdbPath = Path.ChangeExtension(outputPath, ".pdb");
-                using var pdbStream = new FileStream(pdbPath, FileMode.Create);
-                emitResult = compilation.Emit(assemblyStream, pdbStream);
-            }
-            else
-            {
-                // Release build without debug symbols
-                emitResult = compilation.Emit(assemblyStream);
-            }
+            var outputPath = projectConfig.OutputAssemblyPath;
+            var withPdb = projectConfig.Configuration == "Debug";
+            using var assemblyStream = new MemoryStream();
+            using var pdbStream = withPdb ? new MemoryStream() : null;
+            var emitResult = compilation.Emit(assemblyStream, pdbStream);
             metrics.EndPhase();
 
             var mapping = MapGeneratedCodeDiagnostics(emitResult.Diagnostics, compilationAlreadyFailed);
@@ -194,6 +179,30 @@ internal class AssemblyCompiler
                     SuppressedGeneratedCodeDiagnostics = mapping.Suppressed,
                     Metrics = metrics
                 };
+            }
+
+            // Roslyn accepted the C#, but the compilation already failed for a reason the user can
+            // act on: the build is not successful, so nothing is written (#2028).
+            if (compilationAlreadyFailed)
+            {
+                return new AssemblyCompilationResult
+                {
+                    Success = true,
+                    Diagnostics = diagnostics,
+                    SuppressedGeneratedCodeDiagnostics = mapping.Suppressed,
+                    Metrics = metrics
+                };
+            }
+
+            var outputDir = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            File.WriteAllBytes(outputPath, assemblyStream.ToArray());
+            if (pdbStream != null)
+            {
+                File.WriteAllBytes(Path.ChangeExtension(outputPath, ".pdb"), pdbStream.ToArray());
             }
 
             _logger.LogInfo($"Successfully compiled assembly to: {outputPath}");

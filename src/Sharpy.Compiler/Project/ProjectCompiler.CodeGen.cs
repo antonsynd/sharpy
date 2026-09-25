@@ -341,17 +341,22 @@ internal partial class ProjectCompiler
             };
         }
 
+        // The build is successful iff its diagnostic bag has no errors — not iff Roslyn accepted the
+        // C#. A refused unit that nothing imports drops out of the C# cleanly, so Roslyn succeeds
+        // while the bag carries the refusal (#2028).
+        var success = !_diagnostics.HasErrors;
+
         // Save incremental compilation cache on success
-        if (_incrementalCache != null)
+        if (success && _incrementalCache != null)
         {
             SaveIncrementalCaches(config);
         }
 
         return new ProjectCompilationResult
         {
-            Success = true,
+            Success = success,
             Diagnostics = _diagnostics,
-            OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
+            OutputAssemblyPath = success ? assemblyResult.OutputAssemblyPath : null,
             GeneratedCSharpFiles = generatedCSharp,
             SuppressedGeneratedCodeDiagnostics = assemblyResult.SuppressedGeneratedCodeDiagnostics,
             Metrics = ProjectMetrics,

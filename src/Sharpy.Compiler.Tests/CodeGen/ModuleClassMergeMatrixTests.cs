@@ -18,7 +18,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// <para><b>Cells.</b> colliding kind {class, dataclass, generic class, generic dataclass, struct,
 /// union, interface, enum} × mode {<c>run</c> — the colliding file is the entry and has
 /// <c>main</c>; <c>project</c> — the colliding file is an imported library module without
-/// <c>main</c>, whose function <c>main.spy</c> calls}. A non-generic class or dataclass MERGES and runs (the module class IS the user
+/// <c>main</c>, whose function <c>main.spy</c> calls; <c>project_unimported</c> — the same library
+/// module, which nothing imports (#2028: its refusal is still the build's verdict — the build fails
+/// and writes no assembly, although the C# handed to Roslyn compiles without it)}. A non-generic class or dataclass MERGES and runs (the module class IS the user
 /// class). A generic one cannot merge (the module class has arity 0) and cannot coexist either: it
 /// is nested inside the module class, and C# compares a nested type's name without its arity
 /// (CS0542, measured) — so it is refused by name (SPY0520) with the other kinds that cannot merge.
@@ -45,7 +47,7 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
 
     public static IEnumerable<object[]> Cells()
         => from kind in Kinds.Keys
-           from mode in new[] { "run", "project" }
+           from mode in new[] { "run", "project", "project_unimported" }
            select new object[] { kind, mode };
 
     [Theory]
@@ -72,11 +74,13 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
         {
             using var helper = new ProjectCompilationHelper(Output);
             helper.WithRootNamespace("Merge").WithEntryPoint("main.spy");
-            // The library module also declares a function main imports, so the module is reached (an
-            // un-imported module's codegen diagnostics are not surfaced today — #2028).
+            // The library module also declares a function; under `project` main imports and calls it,
+            // under `project_unimported` nothing reaches the module at all.
             helper.AddSourceFile("thing.spy", declaration + "\ndef helper() -> int:\n    return 7\n");
-            helper.AddSourceFile("main.spy", (merges ? "from thing import Thing, helper\n\n" : "from thing import helper\n\n")
-                + "def main() -> None:\n    " + (merges ? use : "print(helper())") + "\n");
+            helper.AddSourceFile("main.spy", mode == "project_unimported"
+                ? "def main() -> None:\n    print(7)\n"
+                : (merges ? "from thing import Thing, helper\n\n" : "from thing import helper\n\n")
+                    + "def main() -> None:\n    " + (merges ? use : "print(helper())") + "\n");
             helper.CreateProjectFile();
             var exec = helper.CompileAndExecute();
             success = exec.Success;
@@ -85,6 +89,16 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
                 ? string.Concat(helper.LastCompilationResult.GeneratedCSharpFiles.Values) : "";
             errors = helper.LastCompilationResult?.Diagnostics.GetErrors()
                 .Select(d => (d.Code ?? "", d.Message)).ToList() ?? new List<(string, string)>();
+            if (!merges)
+            {
+                // The compile result's own verdict, not the execution's: a build that claims success
+                // but names no assembly fails to execute too, which would hide the wrong verdict.
+                helper.LastCompilationResult.Should().NotBeNull();
+                helper.LastCompilationResult!.Success.Should().BeFalse(
+                    $"[{kind}×{mode}] a bag holding an error is a failed build (#2028)");
+                helper.LastCompilationResult.OutputAssemblyPath.Should().BeNull(
+                    $"[{kind}×{mode}] a refused build names no output assembly (#2028)");
+            }
         }
 
         errors.Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
@@ -151,5 +165,5 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
     }
 
     [Fact]
-    public void Matrix_IsTotal() => Cells().Should().HaveCount(16, "8 kinds × 2 modes");
+    public void Matrix_IsTotal() => Cells().Should().HaveCount(24, "8 kinds × 3 modes");
 }
