@@ -182,6 +182,12 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
                 return false;
             if (a[i].IsSelfDocumenting != b[i].IsSelfDocumenting)
                 return false;
+            // Source-captured texts (#2024) are compared when both sides carry them: an AST built
+            // without source has neither, and must still equal its re-parsed unparse.
+            if (a[i].ExpressionText != null && b[i].ExpressionText != null && a[i].ExpressionText != b[i].ExpressionText)
+                return false;
+            if (a[i].RawText != null && b[i].RawText != null && a[i].RawText != b[i].RawText)
+                return false;
             if (!NullableNodeEquals(a[i].Expression, b[i].Expression))
                 return false;
         }

@@ -49,6 +49,8 @@ internal sealed class UnparseWriter
         _sb.Insert(position, text);
     }
 
+    public char CharAt(int position) => _sb[position];
+
     public int IndexOf(string value, int startIndex)
     {
         var str = _sb.ToString(startIndex, _sb.Length - startIndex);

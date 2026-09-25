@@ -97,20 +97,31 @@ internal sealed partial class UnparseVisitor
     }
 
     /// <summary>
-    /// Writes a single replacement field: {expr[=][!conv][:spec]}. For the '=' self-documenting
-    /// form, the verbatim captured source (which already includes the expression text and '=')
-    /// is re-emitted for exact round-trip fidelity instead of re-visiting the parsed expression.
+    /// Writes a single replacement field: {expr[=][!conv][:spec]}. A hole parsed from source is
+    /// written from its raw text verbatim (#2024) — re-spelling it from the AST changes a t-string's
+    /// <c>Interpolation.expression</c> and collapses <c>{ {x, 2} }</c> into the <c>{{</c> escape. An
+    /// AST built without source falls back to the captured '=' text, then to re-visiting the
+    /// expression.
     /// </summary>
     private void WriteFStringReplacementField(FStringPart part)
     {
         _w.Write("{");
-        if (part.IsSelfDocumenting && part.SourceText != null)
+        if (part.RawText != null)
+        {
+            _w.Write(part.RawText);
+        }
+        else if (part.IsSelfDocumenting && part.SourceText != null)
         {
             _w.Write(part.SourceText);
         }
         else
         {
+            // python's ast.unparse rule: a hole whose expression starts with '{' is padded so the
+            // opening pair is not read as the '{{' escape (f"{ {x, 2} }", not f"{{x, 2}}").
+            var start = _w.Length;
             Visit(part.Expression!);
+            if (_w.Length > start && _w.CharAt(start) == '{')
+                _w.InsertAt(start, " ");
         }
         if (part.Conversion != null)
         {

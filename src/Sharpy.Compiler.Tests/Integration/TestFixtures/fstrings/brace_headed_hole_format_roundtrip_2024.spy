@@ -1,0 +1,17 @@
+# A replacement field's source survives formatting byte-for-byte (#2024): a brace-headed hole keeps
+# its padding (`{ {x, 2} }` is a set, `{{x, 2}}` would be the `{{` escape), and a t-string's
+# Interpolation.expression keeps its spelling. UnparserFixtureRoundTripTests re-parses this file's
+# unparse and compares the captured hole texts.
+def main() -> None:
+    x: int = 5
+    w: int = 6
+    d: dict[str, int] = {'k': 7}
+    print(f"{ {'a': 1}['a'] }")
+    print(f"{ {x, 2} }")
+    print(f"{x:{ {'w': 6}['w'] }}|")
+    print(f"{ x !r:>{ w }}|")
+    print(f"{ x = !r:>4}|")
+    print(repr(t"{ x }"))
+    print(repr(t"{d['k']}"))
+    print(repr(t"{ {'a': 1}['a'] }"))
+    print(repr(t"{ x :{ w }}"))

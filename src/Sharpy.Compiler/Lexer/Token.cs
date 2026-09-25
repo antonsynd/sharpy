@@ -249,6 +249,15 @@ public record Token : ILocatable
     public string? FStringExpressionText { get; init; }
 
     /// <summary>
+    /// Rides the same terminator token as <see cref="FStringExpressionText"/>: the hole's RAW source
+    /// from just after <c>{</c> to the conversion <c>!</c>, the spec <c>:</c> or the closing <c>}</c>
+    /// — untrimmed, and for the <c>=</c> form running through the <c>=</c> and its trailing whitespace
+    /// (the raw form of the self-documenting text). The unparser writes it verbatim so formatting never
+    /// re-spells a replacement field (#2024). Never part of <see cref="Value"/> or the span.
+    /// </summary>
+    public string? FStringRawText { get; init; }
+
+    /// <summary>
     /// The length of this token in characters.
     /// Returns SourceLength when available (for tokens where Value differs from
     /// source representation, like string literals), otherwise Value.Length.

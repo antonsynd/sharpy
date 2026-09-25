@@ -336,6 +336,15 @@ public partial class Lexer
             .TrimEnd(' ', '\t', '\f', '\n', '\r');
 
     /// <summary>
+    /// The hole's raw source (#2024): from just after the field's <c>{</c> to
+    /// <paramref name="endPosition"/> — the conversion <c>!</c>, the spec <c>:</c>, the closing
+    /// <c>}</c>, or (for the <c>=</c> form) just past the <c>=</c> and its trailing whitespace —
+    /// untrimmed. The unparser writes it verbatim.
+    /// </summary>
+    private string HoleRawText(FStringField field, int endPosition) =>
+        _source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition);
+
+    /// <summary>
     /// Get the next token while inside an f-string
     /// </summary>
     private Token NextFStringToken()
@@ -372,7 +381,8 @@ public partial class Lexer
                     // End of this field's expression — pop the field.
                     context.Fields.Pop();
                     return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition,
-                        fstringExpressionText: HoleExpressionText(field, startPosition));
+                        fstringExpressionText: HoleExpressionText(field, startPosition),
+                        fstringRawText: HoleRawText(field, startPosition));
                 }
                 else
                 {
@@ -412,7 +422,8 @@ public partial class Lexer
                 {
                     context.Fields.Pop();
                     return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition,
-                        fstringExpressionText: HoleExpressionText(field, startPosition));
+                        fstringExpressionText: HoleExpressionText(field, startPosition),
+                        fstringRawText: HoleRawText(field, startPosition));
                 }
                 else
                 {
@@ -452,7 +463,8 @@ public partial class Lexer
                 // would be Value.Length and the span would overrun the following '}' (#1016,
                 // non-monotonic token positions).
                 return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition,
-                    sourceLength: _position - startPosition, fstringExpressionText: HoleExpressionText(field, startPosition));
+                    sourceLength: _position - startPosition, fstringExpressionText: HoleExpressionText(field, startPosition),
+                    fstringRawText: HoleRawText(field, _position));
             }
 
             // Check for conversion flag (!r / !s / !a) at the top level of a replacement
@@ -472,7 +484,8 @@ public partial class Lexer
                     _position += 2;  // consume '!' and the flag char
                     _column += 2;
                     return CreateToken(TokenType.FStringConversion, conversion.ToString(), startLine, startColumn, startPosition,
-                        fstringExpressionText: HoleExpressionText(field, startPosition));
+                        fstringExpressionText: HoleExpressionText(field, startPosition),
+                        fstringRawText: HoleRawText(field, startPosition));
                 }
 
                 if (validFlag)
@@ -497,11 +510,12 @@ public partial class Lexer
             if (current == ':' && field.InnerBraceDepth == 0 && field.ParenDepth == 0)
             {
                 var expressionText = HoleExpressionText(field, startPosition);
+                var rawText = HoleRawText(field, startPosition);
                 _position++;
                 _column++;
                 field.InFormatSpec = true;
                 var specStart = NextFStringSpecToken(context, field, atSpecStart: true);
-                return specStart with { FStringExpressionText = expressionText };
+                return specStart with { FStringExpressionText = expressionText, FStringRawText = rawText };
             }
 
             // Nested f-string start (e.g., f"outer {f'inner {x}'}")

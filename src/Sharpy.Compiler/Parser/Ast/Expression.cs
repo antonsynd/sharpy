@@ -98,6 +98,16 @@ public record FStringPart
     public string? ExpressionText { get; init; }
 
     /// <summary>
+    /// The hole's raw source, captured by the lexer (#2024): from just after <c>{</c> to the
+    /// conversion <c>!</c>, the spec <c>:</c> or the closing <c>}</c>, untrimmed — for the <c>=</c> form
+    /// it runs through the <c>=</c> and its trailing whitespace. The unparser writes it verbatim, so
+    /// formatting never re-spells a hole (<c>{ {x, 2} }</c> must not collapse to the <c>{{</c> escape,
+    /// and <see cref="ExpressionText"/> must survive). <c>null</c> on text parts and on ASTs built
+    /// without source.
+    /// </summary>
+    public string? RawText { get; init; }
+
+    /// <summary>
     /// Yields every expression this part contributes to the tree — its own hole expression and,
     /// recursively, the expressions inside nested spec replacement fields — so the checker and LSP
     /// see references made only inside a spec (<c>{x:{w}}</c> uses <c>w</c>).

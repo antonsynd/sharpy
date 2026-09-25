@@ -742,9 +742,10 @@ public partial class Parser
         // Parse the expression (tokens are already emitted by lexer)
         var expr = ParseExpression();
 
-        // The lexer attaches the hole's source text to whichever terminator ('=', '!', ':' or '}')
-        // follows the expression (#1991).
+        // The lexer attaches the hole's source text (#1991) and raw text (#2024) to whichever
+        // terminator ('=', '!', ':' or '}') follows the expression.
         var expressionText = Current.FStringExpressionText;
+        var rawText = Current.FStringRawText;
 
         // Optional specifiers, in Python field order: '=' self-doc, '!' conversion, ':' format spec.
         string? sourceText = null;
@@ -774,6 +775,7 @@ public partial class Parser
             SourceText = sourceText,
             IsSelfDocumenting = isSelfDocumenting,
             ExpressionText = expressionText,
+            RawText = rawText,
         };
 
         // Expect FStringExprEnd
