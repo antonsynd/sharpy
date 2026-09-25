@@ -206,6 +206,18 @@ public class FormattingTests : IDisposable
     }
 
     [Fact]
+    public async Task ParseError_Fallback_KeepsWhitespaceOnlyLineInsideAStringAsync()
+    {
+        // #2062: the indent-only fallback blanked a whitespace-only line INSIDE a triple-quoted string
+        // (changing the string's value). Positive control: the over-indented body line IS re-indented.
+        var source = "def foo() -> str:\n        s = \"\"\"a\n   \nb\"\"\"\n        return s\nclass: # missing name";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().NotBeNull();
+        formatted!.Split('\n').Should().StartWith(new[] { "def foo() -> str:", "    s = \"\"\"a", "   ", "b\"\"\"" });
+    }
+
+    [Fact]
     public async Task UnknownDocument_ReturnsNullAsync()
     {
         var request = new DocumentFormattingParams

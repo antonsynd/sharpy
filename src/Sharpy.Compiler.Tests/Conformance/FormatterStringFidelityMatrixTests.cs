@@ -39,6 +39,12 @@ public class FormatterStringFidelityMatrixTests : IntegrationTestBase
     /// <summary>(label, statement lines, python oracle).</summary>
     public static TheoryData<string, string, string> Cells => new()
     {
+        { "str.triple_inner_trailing_spaces", "s = \"\"\"p  \nq\"\"\"\n    print(s.replace(\" \", \"_\"))", "p__\nq" },
+        { "str.raw_triple_inner_trailing_spaces", "r = r\"\"\"c  \nd\"\"\"\n    print(r.replace(\" \", \"_\"))", "c__\nd" },
+        { "str.dedented_inner_trailing_spaces", "t = d\"\"\"\n        a  \n        b\n        \"\"\"\n    print(t.replace(\" \", \"_\"))", "a__\nb" },
+        { "str.whitespace_only_inner_line", "s = \"\"\"a\n   \nb\"\"\"\n    print(s.replace(\" \", \"_\"))", "a\n___\nb" },
+        { "hole.multiline_trailing_spaces", "print(repr(t\"\"\"{x   \n + 1}\"\"\".interpolations[0].expression))", "'x   \\n + 1'" },
+        { "hole.multiline_trailing_tab", "print(repr(t\"\"\"{x\t\n + 1}\"\"\".interpolations[0].expression))", "'x\\t\\n + 1'" },
         { "comment.after_string_in_call", "u = str(\"\"\"e\nf\"\"\")  # note\n    print(u)", "e\nf" },
         { "comment.statement_ends_inside_string", "v = \"\"\"g\nh\"\"\"  # note\n    print(v)", "g\nh" },
         { "comment.statement_ends_inside_raw_string", "w = r\"\"\"i\nj\"\"\"  # note\n    print(w)", "i\nj" },

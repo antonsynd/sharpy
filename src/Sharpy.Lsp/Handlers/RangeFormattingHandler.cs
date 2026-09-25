@@ -96,7 +96,7 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
 
         var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
-        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens);
+        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);
 
         var lines = text.Split('\n');
         endLine = System.Math.Min(endLine, lines.Length - 1);
@@ -107,6 +107,11 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         {
             var line = lines[i].TrimEnd('\r');
             var trimmed = line.TrimStart();
+
+            // A line that starts inside a string literal is its data — never re-indented or blanked,
+            // whitespace-only lines included (#2062).
+            if (multiLineStringLines.Contains(i + 1))
+                continue;
 
             if (trimmed.Length == 0)
             {
@@ -120,10 +125,6 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
                 }
                 continue;
             }
-
-            // 1-based line for indent map and multi-line string check
-            if (multiLineStringLines.Contains(i + 1))
-                continue;
 
             var level = lineIndentLevels.TryGetValue(i + 1, out var l) ? l : 0;
             var formattedLine = string.Concat(Enumerable.Repeat(indentStr, level)) + trimmed;

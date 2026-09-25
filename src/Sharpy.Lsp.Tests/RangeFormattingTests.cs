@@ -141,6 +141,33 @@ public class RangeFormattingTests : IDisposable
     }
 
     [Fact]
+    public async Task TripleQuotedString_InnerTrailingSpacesAreKeptAsync()
+    {
+        // #2062: the formatter stripped trailing spaces on a line that ends INSIDE a triple-quoted
+        // string, changing its value ("p  " -> "p"). Positive control: line 1's trailing spaces,
+        // outside any string, ARE stripped by the same request.
+        var source = "def foo() -> str:\n    t = 1  \n    s = \"\"\"p  \nq\"\"\"\n    return s";
+        var edits = await FormatRangeAsync(source, 0, 0, 4, 12);
+
+        edits.Should().Contain(e => e.Range.Start.Line == 1 && e.NewText == "    t = 1");
+        edits.Should().NotContain(e => e.Range.Start.Line == 2 || e.Range.Start.Line == 3,
+            "a line that ends or starts inside a string literal is its data");
+    }
+
+    [Fact]
+    public async Task ParseErrorFallback_WhitespaceOnlyLineInsideAString_IsNotBlankedAsync()
+    {
+        // #2062 twin on the indent-only fallback's blank-line arm. Positive control: line 1,
+        // over-indented, IS re-indented.
+        var source = "def foo() -> str:\n        s = \"\"\"a\n   \nb\"\"\"\n        return s\nclass: # missing name";
+        var edits = await FormatRangeAsync(source, 0, 0, 4, 20);
+
+        edits.Should().Contain(e => e.Range.Start.Line == 1 && e.NewText == "    s = \"\"\"a");
+        edits.Should().NotContain(e => e.Range.Start.Line == 2 || e.Range.Start.Line == 3,
+            "the string's inner lines are its data");
+    }
+
+    [Fact]
     public async Task FirstLine_FormattedAsync()
     {
         var source = "  x: int = 1\ndef foo():\n    pass";

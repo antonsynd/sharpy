@@ -17,7 +17,7 @@ internal static class FormattingFallback
         var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
 
         var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
-        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens);
+        var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);
 
         var lines = text.Split('\n');
         var formatted = new List<string>(lines.Length);
@@ -27,15 +27,17 @@ internal static class FormattingFallback
             var line = lines[i].TrimEnd('\r');
             var trimmed = line.TrimStart();
 
-            if (trimmed.Length == 0)
-            {
-                formatted.Add("");
-                continue;
-            }
-
+            // A line that starts inside a string literal is its data — kept verbatim, whitespace-only
+            // lines included (#2062).
             if (multiLineStringLines.Contains(i + 1)) // tokens use 1-based lines
             {
                 formatted.Add(line);
+                continue;
+            }
+
+            if (trimmed.Length == 0)
+            {
+                formatted.Add("");
                 continue;
             }
 
