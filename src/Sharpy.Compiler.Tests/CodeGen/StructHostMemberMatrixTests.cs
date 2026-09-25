@@ -29,6 +29,12 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// decorated member. The union-case host (fields hard-code <c>public</c>, no decorators) is one extra
 /// cell; three <c>AccessValidator</c> cells pin that <c>obj._x</c> from outside a class, struct or
 /// dataclass is refused with the same message as before the change (the direction control).</para>
+///
+/// <para><b>Union and interface hosts (#2041).</b> Seven access forms inside a union body or an
+/// interface default method run (SPY0283 before); outside access and a case's private field from a
+/// union method (#2052) stay refused; a nested union/interface still reads its enclosing class's
+/// underscore members; the case field is emitted public and a keyword pattern binds it from outside
+/// (the recorded deviation cell).</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class StructHostMemberMatrixTests : IntegrationTestBase
@@ -173,6 +179,155 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
 
         result.Success.Should().BeTrue($"{string.Join(" | ", result.CompilationErrors)}\n{source}");
         result.StandardOutput.Should().Be("4\n");
+    }
+
+    // ── #2041: the union host and the interface-default-method host ─────────────────────────
+
+    private const string ShapeCases = "union Shape:\n    case Circle(r: int)\n    case Dot()\n\n";
+
+    /// <summary>
+    /// Union/interface host × access form. A union's methods and an interface's default methods are
+    /// inside their own hierarchy, so <c>AccessValidator</c> must enter those bodies the way it enters
+    /// a class's. Prior commit: every cell was SPY0283 (the body was never entered — CurrentClass was
+    /// null, or the ENCLOSING class for a nested union). Each prints <c>1</c>.
+    /// </summary>
+    public static IEnumerable<object[]> UnionHostRunCells() => new[]
+    {
+        new object[] { "self_protected", ShapeCases
+            + "    def _area(self) -> int:\n        return 1\n\n    def area(self) -> int:\n        return self._area()\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Dot()\n    print(s.area())\n" },
+        new object[] { "self_private", ShapeCases
+            + "    def __area(self) -> int:\n        return 1\n\n    def area(self) -> int:\n        return self.__area()\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Dot()\n    print(s.area())\n" },
+        new object[] { "other_instance_protected", ShapeCases
+            + "    def _area(self) -> int:\n        return 1\n\n    def area(self, other: Shape) -> int:\n        return other._area()\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Dot()\n    print(s.area(s))\n" },
+        new object[] { "generic_union",
+            "union Box[T]:\n    case Full(v: T)\n    case Empty()\n\n"
+            + "    def _n(self) -> int:\n        return 1\n\n    def n(self) -> int:\n        return self._n()\n\n"
+            + "def main() -> None:\n    b: Box[int] = Box.Empty()\n    print(b.n())\n" },
+        // Nested: before, CurrentClass inside the union body was the enclosing H — the wrong host.
+        new object[] { "nested_union",
+            "class H:\n    union Shape:\n        case Circle(r: int)\n        case Dot()\n\n"
+            + "        def _area(self) -> int:\n            return 1\n\n        def area(self) -> int:\n            return self._area()\n\n"
+            + "def main() -> None:\n    s: H.Shape = H.Shape.Dot()\n    print(s.area())\n" },
+        // The case type derives from the union, so a union method reading a narrowed case's `_r` is
+        // inside the hierarchy (the case field is emitted public — see UnionCaseField_...).
+        new object[] { "narrowed_case_field",
+            "union Shape:\n    case Circle(_r: int)\n    case Dot()\n\n"
+            + "    def area(self) -> int:\n        match self:\n            case Circle() as c:\n                return c._r\n"
+            + "            case Dot():\n                return 1\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Circle(1)\n    print(s.area())\n" },
+        new object[] { "interface_default_method",
+            "interface I:\n    def _k(self) -> int:\n        return 1\n\n    def k(self) -> int:\n        return self._k()\n\n"
+            + "class C(I):\n    pass\n\n"
+            + "def main() -> None:\n    c: I = C()\n    print(c.k())\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnionHostRunCells))]
+    public void UnionOrInterfaceHost_ReachesItsOwnUnderscoreMembers(string name, string source)
+    {
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.AccessViolation,
+            $"[{name}] a union/interface body is inside its own hierarchy. Diagnostics: "
+            + $"{string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue($"[{name}] {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be("1\n", $"[{name}]\n{source}");
+    }
+
+    /// <summary>
+    /// Controls that stay refused (measured identical on the prior commit): the union's <c>_m</c>
+    /// and a case's <c>_r</c> from OUTSIDE the union, and a case's PRIVATE <c>__r</c> from a union
+    /// method — the last is a known residual (#2052: <c>IsNestedWithin</c> walks the wrong way), pinned
+    /// here so its fix is a visible direction change.
+    /// </summary>
+    public static IEnumerable<object[]> UnionHostRefusedCells() => new[]
+    {
+        new object[] { "outside_method", ShapeCases
+            + "    def _area(self) -> int:\n        return 1\n\n"
+            + "def main() -> None:\n    print(Shape.Dot()._area())\n",
+            "Cannot access protected member '_area' of 'Shape' from outside the class hierarchy" },
+        new object[] { "outside_narrowed_case_field",
+            "union Shape:\n    case Circle(_r: int)\n    case Dot()\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Circle(1)\n    match s:\n        case Circle() as c:\n            print(c._r)\n"
+            + "        case Dot():\n            print(0)\n",
+            "Cannot access protected member '_r' of 'Circle' from outside the class hierarchy" },
+        new object[] { "private_case_field_from_union_method_2052",
+            "union Shape:\n    case Circle(__r: int)\n    case Dot()\n\n"
+            + "    def area(self) -> int:\n        match self:\n            case Circle() as c:\n                return c.__r\n"
+            + "            case Dot():\n                return 1\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Circle(1)\n    print(s.area())\n",
+            "Cannot access private member '__r' of 'Circle' from outside the class" },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnionHostRefusedCells))]
+    public void UnionHost_OutsideAccess_IsStillRefused(string name, string source, string message)
+    {
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse($"[{name}]\n{source}");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.AccessViolation && d.Message == message,
+            $"[{name}] {string.Join(" | ", result.CompilationErrors)}");
+    }
+
+    /// <summary>
+    /// A type nested in a class stays inside the ENCLOSING class's hierarchy after the validator
+    /// enters the nested body (the <c>IsNestedWithin</c> arm now carries it; before, CurrentClass
+    /// simply stayed the enclosing class). Prior commit: all three RUN and print 5.
+    /// </summary>
+    public static IEnumerable<object[]> NestedHostReadsEnclosingCells() => new[]
+    {
+        new object[] { "nested_union_reads_protected",
+            "class H:\n    _x: int = 5\n\n    union Shape:\n        case Circle(r: int)\n        case Dot()\n\n"
+            + "        def area(self, h: H) -> int:\n            return h._x\n\n"
+            + "def main() -> None:\n    s: H.Shape = H.Shape.Dot()\n    print(s.area(H()))\n" },
+        new object[] { "nested_union_reads_private",
+            "class H:\n    __x: int = 5\n\n    union Shape:\n        case Circle(r: int)\n        case Dot()\n\n"
+            + "        def area(self, h: H) -> int:\n            return h.__x\n\n"
+            + "def main() -> None:\n    s: H.Shape = H.Shape.Dot()\n    print(s.area(H()))\n" },
+        new object[] { "nested_interface_reads_protected",
+            "class H:\n    _x: int = 5\n\n    interface I:\n        def k(self, h: H) -> int:\n            return h._x\n\n"
+            + "class C(H.I):\n    pass\n\n"
+            + "def main() -> None:\n    c: H.I = C()\n    print(c.k(H()))\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(NestedHostReadsEnclosingCells))]
+    public void NestedUnionOrInterface_ReadsTheEnclosingClassesMembers(string name, string source)
+    {
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue($"[{name}] {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be("5\n", $"[{name}]\n{source}");
+    }
+
+    [Fact]
+    public void UnionCaseField_Underscore_IsEmittedPublic_AndOutsideKeywordPatternBindsIt()
+    {
+        // Case-field access is three-way BY DESIGN (#2041, Decision 6): the symbol and the emitted
+        // property are public — REQUIRED, because the union base's methods read a narrowed case's
+        // field and C# `protected` on the derived case would forbid that — while AccessValidator
+        // applies the `_name` convention to `c._r` (refused from outside, see
+        // UnionHost_OutsideAccess_IsStillRefused). DEVIATION CELL: a keyword class pattern
+        // `case Shape.Circle(_r=r)` from outside binds the field with no MemberAccess node, so the
+        // convention is not consulted and it RUNS (python has no protection either). Prior commit:
+        // runs and prints 1, unchanged.
+        var source =
+            "union Shape:\n    case Circle(_r: int)\n    case Dot()\n\n"
+            + "def main() -> None:\n    s: Shape = Shape.Circle(1)\n    match s:\n        case Shape.Circle(_r=r):\n            print(r)\n"
+            + "        case Dot():\n            print(0)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue($"{string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be("1\n");
+        var circle = CSharpSyntaxTree.ParseText(result.GeneratedCSharp!).GetRoot()
+            .DescendantNodes().OfType<TypeDeclarationSyntax>().Single(t => t.Identifier.Text == "Circle");
+        AccessOf(circle, "r").Should().Be(SyntaxKind.PublicKeyword,
+            "the union base's methods read the case's field through a narrowed reference");
     }
 
     [Fact]
@@ -343,6 +498,9 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
         SpelledMembers.Should().HaveCount(6);
         OutsideAccessCells().Should().HaveCount(3);
         ConstructorRosterCells().Should().HaveCount(9);
+        UnionHostRunCells().Should().HaveCount(7);
+        UnionHostRefusedCells().Should().HaveCount(3);
+        NestedHostReadsEnclosingCells().Should().HaveCount(3);
     }
 
     // ── C# tree helpers ──────────────────────────────────────────────────────────────────────

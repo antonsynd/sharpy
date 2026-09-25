@@ -352,4 +352,35 @@ def main():
             "Protected access within actual hierarchy should be allowed. Errors: " +
             string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
     }
+
+    // ── #2041: a union body and an interface body are inside their own hierarchy ───────────────
+
+    [Theory]
+    [InlineData("union Shape:\n    case Circle(r: int)\n    case Dot()\n\n    def _area(self) -> int:\n        return 1\n\n    def area(self) -> int:\n        return self._area()\n")]
+    [InlineData("union Shape:\n    case Circle(r: int)\n    case Dot()\n\n    def __area(self) -> int:\n        return 1\n\n    def area(self) -> int:\n        return self.__area()\n")]
+    [InlineData("interface I:\n    def _k(self) -> int:\n        return 1\n\n    def k(self) -> int:\n        return self._k()\n")]
+    public void UnionOrInterfaceBody_ReachesItsOwnUnderscoreMembers(string code)
+    {
+        // Prior commit: SPY0283 — the validator never entered the body, so CurrentClass was null.
+        var (module, context) = Parse(code);
+
+        new AccessValidator().Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors,
+            string.Join("; ", context.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact]
+    public void UnionUnderscoreMember_FromOutside_IsStillRefused()
+    {
+        // Positive control on the same host: entering the body does not open it to the module.
+        var code = "union Shape:\n    case Circle(r: int)\n    case Dot()\n\n    def _area(self) -> int:\n        return 1\n\n"
+            + "def f() -> int:\n    return Shape.Dot()._area()\n";
+        var (module, context) = Parse(code);
+
+        new AccessValidator().Validate(module, context);
+
+        Assert.Contains(context.Diagnostics.GetErrors(), e =>
+            e.Message == "Cannot access protected member '_area' of 'Shape' from outside the class hierarchy");
+    }
 }

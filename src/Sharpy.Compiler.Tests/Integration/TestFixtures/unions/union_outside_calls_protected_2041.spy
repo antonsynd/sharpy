@@ -1,0 +1,10 @@
+# The union's protected `_area` stays refused from outside the union (#2041 control).
+union Shape:
+    case Circle(r: int)
+    case Dot()
+
+    def _area(self) -> int:
+        return 1
+
+def main() -> None:
+    print(Shape.Dot()._area())

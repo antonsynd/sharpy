@@ -53,6 +53,27 @@ internal class AccessValidator : ValidatingAstWalker
         }
     }
 
+    // A union's methods and an interface's default methods are inside their own hierarchy exactly
+    // like a class's (#2041): without these arms `Traversal.CurrentClass` inside the body is null
+    // (or the ENCLOSING class, for a nested union), so `self._m()` was refused as an outside access.
+    public override void VisitUnionDef(UnionDef node)
+    {
+        var unionSymbol = Context.LookupDeclaredType(node, node.Name);
+        using (Context.Traversal.EnterClass(unionSymbol))
+        {
+            base.VisitUnionDef(node);
+        }
+    }
+
+    public override void VisitInterfaceDef(InterfaceDef node)
+    {
+        var interfaceSymbol = Context.LookupDeclaredType(node, node.Name);
+        using (Context.Traversal.EnterClass(interfaceSymbol))
+        {
+            base.VisitInterfaceDef(node);
+        }
+    }
+
     public override void VisitMemberAccess(MemberAccess node)
     {
         ValidateMemberAccess(node);

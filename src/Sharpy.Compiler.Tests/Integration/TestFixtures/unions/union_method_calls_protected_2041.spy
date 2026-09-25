@@ -1,0 +1,14 @@
+# A union's own method calling its protected `_area` is inside the union's hierarchy (#2041).
+union Shape:
+    case Circle(r: int)
+    case Dot()
+
+    def _area(self) -> int:
+        return 1
+
+    def area(self) -> int:
+        return self._area()
+
+def main() -> None:
+    s: Shape = Shape.Dot()
+    print(s.area())
