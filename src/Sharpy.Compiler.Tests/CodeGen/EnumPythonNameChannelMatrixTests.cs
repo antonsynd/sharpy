@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -108,6 +109,39 @@ public class EnumPythonNameChannelMatrixTests : IntegrationTestBase
 
         result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
         result.StandardOutput.Should().Be("h\ns\nhappy\ns\n");
+    }
+
+    // ── Known residuals, pinned to their CURRENT refusal so each fix is a visible direction change ──
+    // Neither pin asserts a value: each asserts the refusal that stands today and goes RED when its
+    // issue is fixed — then delete the pin and move the cell into the matrices above (drain on fix).
+
+    [Fact]
+    public void KnownResidual_2082_UnannotatedNestedEnumMemberChain_IsUntyped()
+    {
+        // #2082: `Outer.Inner.Blue` read through its chain is Unknown in the checker, so no
+        // `.name` lowering is recorded and the emitter spells a C# member `Name` (CS1061 behind
+        // SPY0908). python3 prints 'Blue'. Prior commit: the same CS1061.
+        var source = "class Outer:\n    enum Inner:\n        Blue = 1\n\n"
+            + "def main() -> None:\n    print(Outer.Inner.Blue.name)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse("#2082 still open? delete this pin and add the cell to the matrix");
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
+            && d.Message.Contains("CS1061"), string.Join(" | ", result.CompilationErrors));
+    }
+
+    [Fact]
+    public void KnownResidual_2083_NameOnAClrEnum_IsRefused()
+    {
+        // #2083: `.name`/`.value` on a CLR interop enum are SPY0203 (the checker's enum arm keys on a
+        // source enum). Prior commit: the same SPY0203.
+        var source = "from System import DayOfWeek\n\n"
+            + "def main() -> None:\n    d: DayOfWeek = DayOfWeek.Monday\n    print(d.name)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse("#2083 still open? delete this pin and add the cell to ClrInteropEnum_…");
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedMember
+            && d.Message == "Type 'DayOfWeek' has no member 'name'", string.Join(" | ", result.CompilationErrors));
     }
 
     [Fact]
