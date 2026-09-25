@@ -1691,6 +1691,7 @@ internal partial class RoslynEmitter
         var denotedReceiver = _context.SemanticInfo?.GetDenotedType(memberAccess.Object);
 
         var resolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
+        VariableSymbol? nestedEnumMember = null;
         if (resolution is { } res && res.Member is VariableSymbol resolvedField)
         {
             // The owner is the recorded CLOSED denoted type when the receiver denotes one (`G<int>.K`);
@@ -1704,12 +1705,12 @@ internal partial class RoslynEmitter
 
             // A NESTED enum's member reached through its declaring chain (`H.C.x`, #2037): the
             // receiver keeps the spelling the chain itself generates (global::-rooted in value
-            // position, as before the member was resolved); only the member reads its fact.
+            // position, as before the member was resolved); only the member reads its fact. The
+            // receiver is generated once, below, with every other generated receiver.
             if (classSymbol.TypeKind == Semantic.TypeKind.Enum && memberAccess.Object is MemberAccess)
-                return GenerateStaticFieldAccessOnType(
-                    GenerateExpression(memberAccess.Object), resolvedField, memberAccess.Member);
-
-            return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
+                nestedEnumMember = resolvedField;
+            else
+                return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
         }
 
         // A denoted receiver is spelled from its recorded type, never generated from the AST shape:
@@ -1718,6 +1719,9 @@ internal partial class RoslynEmitter
         var obj = denotedReceiver != null
             ? _typeMapper.MapSemanticType(denotedReceiver)
             : GenerateExpression(memberAccess.Object);
+
+        if (nestedEnumMember != null)
+            return GenerateStaticFieldAccessOnType(obj, nestedEnumMember, memberAccess.Member);
 
         // Handle special .value and .name properties for enum instances.
         if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))

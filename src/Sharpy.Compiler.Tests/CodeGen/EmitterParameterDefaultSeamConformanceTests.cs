@@ -43,8 +43,14 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// evaluated in the constructor body's <c>name ?? &lt;default&gt;</c> (<c>RoslynEmitter.
 /// ClassMembers.Dataclass.cs</c> and <c>RoslynEmitter.ClassMembers.Constructors.cs</c>, 1 site
 /// each — 2 total).</description></item>
+/// <item><description>A <c>def __format__(self, spec: str) -&gt; str</c> synthesizes
+/// <c>System.IFormattable</c> (#2009, R-CB): the body becomes <c>ToString(string? format,
+/// IFormatProvider? provider = null)</c>. The provider parameter has no Sharpy counterpart at all —
+/// the user wrote one parameter — and its <c>null</c> default is what lets the existing
+/// <c>super().__format__(s)</c> route's <c>base.ToString(s)</c> bind the base's IFormattable member
+/// (<c>RoslynEmitter.ClassMembers.Methods.cs</c>, 1 site).</description></item>
 /// </list>
-/// The two families happen to share one C# shape (a bare <c>null</c> default) but are unrelated
+/// The three families happen to share one C# shape (a bare <c>null</c> default) but are unrelated
 /// lowerings for unrelated reasons; the shape-only admission does not need to (and does not) tell
 /// them apart to decide "not a violation" — that decision is legitimately shape-only. The count
 /// below is what tells them apart for the vacuity control.
@@ -82,9 +88,11 @@ public class EmitterParameterDefaultSeamConformanceTests
     /// (`RoslynEmitter.TypeDeclarations.cs`, 1) plus the R-A per-instance mutable-collection field
     /// default's sentinel parameter (#1684) — one in `RoslynEmitter.ClassMembers.Dataclass.cs`
     /// (`GenerateDataclassConstructor`) and one in `RoslynEmitter.ClassMembers.Constructors.cs`
-    /// (`GenerateStructAutoConstructors`), 2 more. Total 3.
+    /// (`GenerateStructAutoConstructors`), 2 more; plus the synthesized IFormattable
+    /// `ToString(format, provider = null)` provider parameter (#2009,
+    /// `RoslynEmitter.ClassMembers.Methods.cs` `GenerateFormatMethod`), 1 more. Total 4.
     /// </summary>
-    private const int NullSentinelCount = 3;
+    private const int NullSentinelCount = 4;
 
     private enum SiteKind { Seam, NullSentinel, Violation }
 
