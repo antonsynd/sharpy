@@ -106,6 +106,7 @@ def main() -> None:
     print(c.name)              # RED  — the member name
     print(c.value)             # red  — the backing string
     print(str(c))              # red  — str() gives the value
+    print(repr(c))             # <Color.RED: 'red'>  — repr() is StrEnum's
     print(c == Color.RED)      # True — member identity
     print(c == "red")          # True — and its backing string
     print(describe(Color.GREEN))   # <green> — passes as a str
@@ -148,7 +149,8 @@ def main() -> None:
 *Implementation*
 - *Integer enums: ✅ Native - C# `enum`*
 - *String enums: 🔄 Lowered - sealed class of singleton instances carrying `Name`/`Value`, with
-  `ToString()` returning the value, an implicit conversion to `string`, and a static `Values` list*
+  `ToString()` returning the value, an explicit `Sharpy.IRepr.Repr()` giving StrEnum's
+  `<Color.RED: 'red'>`, an implicit conversion to `string`, and a static `Values` list*
 - *`.name` property: 🔄 Lowered - `Sharpy.Builtins.EnumName` (integer enums: the python name
   the field records in `[SharpyFieldName]` when its C# name differs, else the field name — the same
   channel `str`/`repr` read); the instance's `Name` (string enums)*

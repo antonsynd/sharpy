@@ -111,6 +111,63 @@ public class EnumPythonNameChannelMatrixTests : IntegrationTestBase
         result.StandardOutput.Should().Be("h\ns\nhappy\ns\n");
     }
 
+    [Fact]
+    public void StringEnum_Repr_IsStrEnums_ThroughIRepr()
+    {
+        // python3 (class Mood(StrEnum): happy = 'h'; SAD = 's'; QUOTE = "it's"):
+        // repr(Mood.happy) -> "<Mood.happy: 'h'>", [Mood.SAD] -> "[<Mood.SAD: 's'>]",
+        // f"{Mood.happy!r}" -> "<Mood.happy: 'h'>", repr(Mood.QUOTE) -> '<Mood.QUOTE: "it\'s">',
+        // {Mood.SAD: 1} -> "{<Mood.SAD: 's'>: 1}"; str/format/.name/.value unchanged:
+        // str(Mood.happy) -> 'h', format(Mood.SAD, '>3') -> '  s', .name -> 'happy', .value -> 'h'.
+        // The generated class implements Sharpy.IRepr (#2007). Prior commit: repr printed the value.
+        var source = "enum Mood:\n    happy = \"h\"\n    SAD = \"s\"\n    QUOTE = \"it's\"\n\n"
+            + "def main() -> None:\n"
+            + "    print(repr(Mood.happy))\n    print([Mood.SAD])\n    print(f\"{Mood.happy!r}\")\n"
+            + "    print(repr(Mood.QUOTE))\n    d: dict[Mood, int] = {Mood.SAD: 1}\n    print(d)\n"
+            + "    print(str(Mood.happy))\n    print(format(Mood.SAD, \">3\"))\n"
+            + "    print(Mood.happy.name)\n    print(Mood.happy.value)\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(
+            "<Mood.happy: 'h'>\n[<Mood.SAD: 's'>]\n<Mood.happy: 'h'>\n<Mood.QUOTE: \"it's\">\n{<Mood.SAD: 's'>: 1}\n"
+            + "h\n  s\nhappy\nh\n");
+    }
+
+    // IRepr.Repr() is implemented EXPLICITLY, so it adds no member named `Repr`: a member spelled
+    // `repr` (field `Repr`, else CS0102) and an enum named `Repr` (else CS0542) both stay legal, as in
+    // python3. At be8ffbc62 (before #2007's repr) both RAN and repr printed the value.
+    [Fact]
+    public void StringEnum_MemberSpelledRepr_RunsWithPythonsRepr()
+    {
+        // python3: class Mood(StrEnum): repr = 'r' -> repr(Mood.repr) "<Mood.repr: 'r'>",
+        // .name 'repr', .value 'r', str 'r'.
+        var source = "enum Mood:\n    repr = \"r\"\n    happy = \"h\"\n\n"
+            + "def main() -> None:\n"
+            + "    print(repr(Mood.repr))\n    print(Mood.repr.name)\n    print(Mood.repr.value)\n    print(str(Mood.repr))\n";
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "no CS0102: the Repr member is an explicit interface implementation");
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("<Mood.repr: 'r'>\nrepr\nr\nr\n");
+    }
+
+    [Fact]
+    public void StringEnum_NamedRepr_RunsWithPythonsRepr()
+    {
+        // python3: class Repr(StrEnum): a = 'a' -> repr "<Repr.a: 'a'>", str 'a', [Repr.a] "[<Repr.a: 'a'>]".
+        var source = "enum Repr:\n    a = \"a\"\n\n"
+            + "def main() -> None:\n"
+            + "    print(repr(Repr.a))\n    print(str(Repr.a))\n    print([Repr.a])\n";
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "no CS0542: the Repr member is an explicit interface implementation");
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("<Repr.a: 'a'>\na\n[<Repr.a: 'a'>]\n");
+    }
+
     // ── Known residuals, pinned to their CURRENT refusal so each fix is a visible direction change ──
     // Neither pin asserts a value: each asserts the refusal that stands today and goes RED when its
     // issue is fixed — then delete the pin and move the cell into the matrices above (drain on fix).

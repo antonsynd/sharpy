@@ -1335,11 +1335,17 @@ internal partial class RoslynEmitter
         // its str (`f"{c:>5}"` → `  red`). The ToString(format, provider) member below delegates to
         // the str rules on Value, so a literal and a dynamic spec agree with the static twin, which
         // already projects every Sharpy enum to the str kind (#1988 regression, audit R1).
+        //
+        // : global::Sharpy.IRepr — the CLR spelling of __repr__ (#2007): python's StrEnum repr is
+        // `<Mood.HAPPY: 'h'>` while its str stays the value, so the two need separate members.
         var classDecl = ClassDeclaration(EscapedIdentifier(className))
             .WithAttributeLists(WithPythonNameAttribute(default, DeclaredEnumSymbol(enumDef)))
             .WithModifiers(modifiers)
-            .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
-                SimpleBaseType(MakeGlobalQualifiedName("System", "IFormattable")))));
+            .WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(new[]
+            {
+                SimpleBaseType(MakeGlobalQualifiedName("System", "IFormattable")),
+                SimpleBaseType(MakeGlobalQualifiedName("Sharpy", "IRepr"))
+            })));
 
         var stringType = PredefinedType(Token(SyntaxKind.StringKeyword));
         var members = new List<MemberDeclarationSyntax>();
@@ -1426,6 +1432,30 @@ internal partial class RoslynEmitter
                         IdentifierName("format"),
                         LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(""))))
                 })))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // string global::Sharpy.IRepr.Repr() => "<" + global::Sharpy.PyFormat.PyTypeName(GetType())
+        //     + "." + Name + ": " + global::Sharpy.Builtins.Repr(Value) + ">";   — <Mood.HAPPY: 'h'>
+        // EXPLICIT, as Core's own IRepr implementers are: no member named `Repr` joins the class, so a
+        // member or an enum spelled `repr`/`Repr` cannot collide (CS0102/CS0542).
+        ExpressionSyntax Concat(ExpressionSyntax left, ExpressionSyntax right)
+            => BinaryExpression(SyntaxKind.AddExpression, left, right);
+        ExpressionSyntax Str(string text) => LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(text));
+        var pyTypeName = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "PyFormat"), IdentifierName("PyTypeName")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(
+                InvocationExpression(IdentifierName("GetType"))))));
+        var valueRepr = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "Builtins"), IdentifierName("Repr")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName(StringEnumShape.ValueProperty)))));
+        members.Add(MethodDeclaration(stringType, Identifier(StringEnumShape.ReprMethod))
+            .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(MakeGlobalQualifiedName("Sharpy", "IRepr")))
+            .WithParameterList(ParameterList())
+            .WithExpressionBody(ArrowExpressionClause(
+                Concat(Concat(Concat(Concat(Concat(Concat(Str("<"), pyTypeName), Str(".")),
+                    IdentifierName(StringEnumShape.NameProperty)), Str(": ")), valueRepr), Str(">"))))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
         // public static implicit operator string(LogLevel value) => value.Value;

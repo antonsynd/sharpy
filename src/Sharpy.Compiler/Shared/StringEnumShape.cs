@@ -23,6 +23,14 @@ internal static class StringEnumShape
     /// <summary>The <c>ToString()</c> override and the <c>IFormattable.ToString(format, provider)</c> member.</summary>
     public const string ToStringMethod = "ToString";
 
+    /// <summary>
+    /// The <c>Sharpy.IRepr.Repr()</c> member — python's <c>repr</c>, <c>&lt;Mood.HAPPY: 'h'&gt;</c> (#2007).
+    /// Implemented EXPLICITLY, so it adds no member named <c>Repr</c> to the class: a member or an enum
+    /// spelled <c>repr</c>/<c>Repr</c> stays legal (python accepts both), and it is deliberately NOT in
+    /// <see cref="SynthesizedMembers"/>.
+    /// </summary>
+    public const string ReprMethod = "Repr";
+
     /// <summary>Every member the lowering synthesizes whatever the enum declares.</summary>
     public static readonly string[] SynthesizedMembers = { NameProperty, ValueProperty, ValuesList, ToStringMethod };
 
