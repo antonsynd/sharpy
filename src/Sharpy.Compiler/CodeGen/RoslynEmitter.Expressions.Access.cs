@@ -726,7 +726,15 @@ internal partial class RoslynEmitter
             var receiverType = GetExpressionSemanticType(memberAccess.Object);
             var isBuiltinCollectionReceiver =
                 receiverType is GenericType { Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set };
-            var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
+            // A module-level function called through its module (`util.main()`) is spelled by its
+            // one materialized name — the name its declaration reads (#2065: a non-entry `main` is
+            // MainFunc).
+            var moduleFunctionName = resolvedMethodSymbol is FunctionSymbol
+                && GetCodeGenInfo(resolvedMethodSymbol) is { IsModuleLevel: true, CSharpName: { } declaredName }
+                    ? declaredName
+                    : null;
+            var methodName = moduleFunctionName
+                ?? DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? (isBuiltinCollectionReceiver ? NameMangler.GetCollectionMethodMapping(memberAccess.Member) : null)
                 ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, resolvedClrMethodName);
 
@@ -2039,6 +2047,13 @@ internal partial class RoslynEmitter
                 if (currentModule.IsNetModule && exportSymbol is VariableSymbol vs)
                 {
                     mangledMemberName = vs.ClrFieldName ?? memberPart;
+                }
+                else if (!currentModule.IsNetModule && exportSymbol is FunctionSymbol
+                         && GetCodeGenInfo(exportSymbol)?.CSharpName is { } declaredName)
+                {
+                    // A user module's function is spelled by its one materialized name, the name its
+                    // declaration reads: `util.main()` names the non-entry MainFunc (#2065).
+                    mangledMemberName = declaredName;
                 }
                 else if (NameFormDetector.IsConstantCaseName(memberPart))
                 {

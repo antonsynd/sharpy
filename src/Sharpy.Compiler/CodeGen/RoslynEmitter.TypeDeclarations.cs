@@ -38,14 +38,14 @@ internal partial class RoslynEmitter
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
 
-        // Transform name using NameCasing, which honours the backtick escape — the reference side
-        // already did, so resolving the declaration without the flag made `def `str`` declare `Str`
-        // and its call site emit `str()` (CS0103, #1241).
-        // Special case: only convert "main" to "Main" if this is the entry point file. An escaped
-        // `main` is not the entry-point main and emits verbatim in every mode (#2013).
-        var mangledName = ModuleIdentifiers.IsEntryMain(func) && !_context.IsEntryPoint
-            ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
-            : NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
+        // The declaration reads the one materialized name every reference reads (#2065): a
+        // non-entry module's `main` is MainFunc there, decided once by CodeGenInfoComputer. A
+        // definition with no recorded symbol (the @lru_cache inner rename) spells its own name
+        // through NameCasing, which honours the backtick escape (#1241).
+        var mangledName = (_context.SemanticInfo?.GetFunctionDeclarationSymbol(func) is { } declared
+                ? GetCodeGenInfo(declared)?.CSharpName
+                : null)
+            ?? NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Check if this function is a generator and/or async
         using var _ = SetGeneratorScope(_context.Ir.IsGenerator(func));

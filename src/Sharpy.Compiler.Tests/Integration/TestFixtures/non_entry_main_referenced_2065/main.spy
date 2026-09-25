@@ -1,0 +1,9 @@
+# #2065: a non-entry module's main() is MainFunc in C# (a static Main there would be a second
+# entry-point candidate). The declaration and every reference read that one materialized name;
+# the rename used to happen at the declaration only (CS0117 behind SPY0908).
+import util
+from util import twice
+
+def main() -> None:
+    print(util.main() + 1)
+    print(twice())

@@ -714,7 +714,7 @@ internal partial class TypeChecker
             var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics, _semanticInfo);
             // The file's NAME, not its symbol identity (#1433): module-class derivation must keep
             // working for an entry file whose symbol paths are nulled for the #1087 contract.
-            codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath);
+            codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath, _isEntryPoint);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");

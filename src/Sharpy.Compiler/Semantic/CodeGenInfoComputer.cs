@@ -21,6 +21,7 @@ internal class CodeGenInfoComputer
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
     private string? _sourceFilePath;
+    private bool _isEntryPoint;
 
     // Module-level const analysis is now in ConstEligibility (#1791); this class reads the fact
     // from SemanticBinding.GetCompileTimeConstant in ProcessModuleLevelConstant.
@@ -62,9 +63,15 @@ internal class CodeGenInfoComputer
     /// <summary>
     /// Compute CodeGenInfo for all symbols in the module.
     /// </summary>
-    public void ComputeForModule(Module module, string? sourceFilePath = null)
+    /// <param name="isEntryPoint">
+    /// Whether the module is the program's entry file. A non-entry module's top-level <c>main</c>
+    /// cannot be named <c>Main</c> (a second C# entry-point candidate), so its materialized name is
+    /// <c>MainFunc</c> — read by the declaration and every reference alike (#2065).
+    /// </param>
+    public void ComputeForModule(Module module, string? sourceFilePath = null, bool isEntryPoint = false)
     {
         _sourceFilePath = sourceFilePath;
+        _isEntryPoint = isEntryPoint;
 
         // Run execution order analysis first to detect variables that need special handling
         var analyzer = new ExecutionOrderAnalyzer(_symbolTable);
@@ -657,6 +664,19 @@ internal class CodeGenInfoComputer
     }
 
 
+    /// <summary>
+    /// The one C# name of a function. A non-entry module's top-level entry-shaped <c>main</c>
+    /// (<see cref="ModuleIdentifiers.IsEntryMain"/> — an escaped <c>`main`</c> is verbatim) is
+    /// <c>MainFunc</c>: a static <c>Main</c> there would be a second entry-point candidate. The
+    /// emitter used to apply this rename at the declaration only, while every reference read
+    /// <c>Main</c> from here (CS0117 behind SPY0908, #2065).
+    /// </summary>
+    private string ModuleLevelFunctionCSharpName(FunctionDef funcDef, bool isModuleLevel)
+        => isModuleLevel && !_isEntryPoint && ModuleIdentifiers.IsEntryMain(funcDef)
+            ? "MainFunc"
+            : DunderNameMapping.ResolveCSharpName(funcDef.Name)
+                ?? NameCasing.ResolveMethod(funcDef.Name, funcDef.IsNameBacktickEscaped);
+
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)
     {
         // For overloaded module-level functions, the symbol table only holds the
@@ -669,8 +689,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(funcSymbol, new CodeGenInfo
             {
-                CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
-                    ?? NameCasing.ResolveMethod(funcDef.Name, funcDef.IsNameBacktickEscaped),
+                CSharpName = ModuleLevelFunctionCSharpName(funcDef, isModuleLevel),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
             });

@@ -30,7 +30,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <b>Cells.</b> project kind {<c>exe_main</c>: exe whose entry is <c>main.spy</c>; <c>exe_app</c>:
 /// exe whose <c>&lt;EntryPoint&gt;</c> is <c>app.spy</c>, beside <c>main.spy</c>; <c>lib</c>: a
 /// library holding <c>main.spy</c>} × content {<c>def main</c>, <c>def program</c>, <c>def Main</c>,
-/// <c>def `Main`</c>, <c>def `main`</c>, a package <c>main/__init__.spy</c>} × build {cold at the
+/// <c>def `Main`</c>, <c>def `main`</c>, a package <c>main/__init__.spy</c>, a <c>main</c> another
+/// function calls, a package <c>main/__init__.spy</c> declaring and calling <c>main</c> (#2065: the
+/// non-entry <c>main</c> is <c>MainFunc</c> at its declaration and at every reference, and does not
+/// collide with the package's class <c>Main</c>)} × build {cold at the
 /// source root; warm under a <c>program/</c> directory, where the module class spelling decides
 /// SPY0526 against the <c>Program</c> wrapper and a cache-served unit has no AST to recompute the
 /// entry bit from}.
@@ -53,6 +56,9 @@ public class ModuleClassNameAuthorityMatrixTests
         ["def_escaped_Main"] = "def `Main`() -> int:\n    return 1\n",
         ["def_escaped_main"] = "def `main`() -> int:\n    return 1\n",
         ["init"] = "def program() -> int:\n    return 1\n",
+        // #2065: the non-entry main is named MainFunc at its declaration AND at a reference.
+        ["calls_main"] = "def main() -> None:\n    print(\"main\")\n\ndef again() -> None:\n    main()\n",
+        ["init_main"] = "def main() -> None:\n    print(\"main\")\n\ndef again() -> None:\n    main()\n",
     };
 
     /// <summary>
@@ -77,6 +83,12 @@ public class ModuleClassNameAuthorityMatrixTests
             "init" => entry
                 ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
                 : (Array.Empty<string>(), "Main", "Program"),
+            "calls_main" => (Array.Empty<string>(), "Program", entry ? "Main" : "MainFunc"),
+            // A package main/__init__.spy is class Main whatever it declares: its entry main() would
+            // be Main.Main() (CS0542, a true SPY0523); a non-entry one is MainFunc and does not collide.
+            "init_main" => entry
+                ? (new[] { DiagnosticCodes.CodeGen.FunctionModuleClassCollision }, null, null)
+                : (Array.Empty<string>(), "Main", "MainFunc"),
             _ => throw new ArgumentOutOfRangeException(nameof(content), content, null)
         };
     }
@@ -145,7 +157,7 @@ public class ModuleClassNameAuthorityMatrixTests
         var coldCodes = ErrorCodes(cold);
 
         // At cold the bit is read off the AST: only a module declaring main() spells Program.
-        coldCodes.Contains(DiagnosticCodes.CodeGen.PackageModuleNameCollision).Should().Be(content == "def_main",
+        coldCodes.Contains(DiagnosticCodes.CodeGen.PackageModuleNameCollision).Should().Be(content is "def_main" or "calls_main",
             $"[{kind}×{content}] cold\n{Describe(cold)}");
 
         // An edit to a DIFFERENT file (content, not mtime) makes the unit under test cache-served.
@@ -158,20 +170,20 @@ public class ModuleClassNameAuthorityMatrixTests
         if (cold.Success)
         {
             // The proof the warm verdict was measured on the cache-served unit, not a full rebuild.
-            var unit = content == "init" ? "__init__.spy" : "main.spy";
+            var unit = content is "init" or "init_main" ? "__init__.spy" : "main.spy";
             helper.AssertWarmBuildSkipped(warm, kind == "exe_app" ? new[] { unit, "app.spy" } : new[] { unit });
         }
     }
 
     [Fact]
-    public void Matrix_IsTotal() => Cells().Should().HaveCount(18, "3 kinds × 6 contents");
+    public void Matrix_IsTotal() => Cells().Should().HaveCount(24, "3 kinds × 8 contents");
 
     private ProjectCompilationHelper CreateProject(string kind, string content, bool underProgramDirectory)
     {
         var helper = new ProjectCompilationHelper(_output);
         helper.WithRootNamespace("Authority");
         var directory = underProgramDirectory ? "program/" : "";
-        var unitPath = content == "init" ? directory + "main/__init__.spy" : directory + "main.spy";
+        var unitPath = content is "init" or "init_main" ? directory + "main/__init__.spy" : directory + "main.spy";
         switch (kind)
         {
             case "exe_main":
