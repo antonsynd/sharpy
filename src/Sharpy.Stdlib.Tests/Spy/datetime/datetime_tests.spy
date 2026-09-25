@@ -103,7 +103,7 @@ def test_time_default_parameters_are_zero():
 @test
 def test_time_to_string_returns_formatted_string():
     time = datetime.time(14, 30, 0, 0)
-    assert str(time) == "14:30:00.000000"
+    assert str(time) == "14:30:00"
 
 # --- DateTime ---
 

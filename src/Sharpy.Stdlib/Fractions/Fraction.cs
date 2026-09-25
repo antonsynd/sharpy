@@ -5,7 +5,7 @@ using System.Numerics;
 namespace Sharpy
 {
     [SharpyModuleType("fractions", "Fraction")]
-    public sealed class Fraction : IEquatable<Fraction>, IComparable<Fraction>, IComparable
+    public sealed partial class Fraction : IEquatable<Fraction>, IComparable<Fraction>, IComparable, IFormattable
     {
         public BigInteger Numerator { get; }
         public BigInteger Denominator { get; }

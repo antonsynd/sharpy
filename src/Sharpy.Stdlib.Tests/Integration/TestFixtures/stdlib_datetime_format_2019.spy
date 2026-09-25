@@ -1,0 +1,35 @@
+# date/time/datetime format through strftime (IFormattable, #2019); python's str for datetime,
+# time and timedelta (#2043); Fraction.__format__ ported exactly from CPython. Every cell prints the
+# same under python3 3.12 and 3.14 (the no-type Fraction rows, 3.13+, live in StdlibFormattableMatrixTests).
+
+import datetime
+from fractions import Fraction
+
+
+def main() -> None:
+    d = datetime.date(2020, 1, 2)
+    dt = datetime.datetime(2020, 1, 2, 3, 4, 5)
+    t = datetime.time(3, 4, 5)
+    print(format(d, "%Y"))
+    print(f"{d:%Y-%m}")
+    print("{:%d/%m/%Y}".format(d))
+    print(f"{dt:%H:%M}")
+    print(format(t, "%H"))
+    print(f"[{d}]")
+    print(f"[{dt}]")
+    print(str(dt))
+    print(str(datetime.datetime(2020, 1, 2, 3, 4, 5, 6)))
+    print(str(t))
+    print(str(datetime.time(3, 4, 5, 7)))
+    print(str(datetime.timedelta(days=1)))
+    print(str(datetime.timedelta(hours=-1)))
+    print(str(datetime.timedelta(days=2, microseconds=5)))
+    print(format(Fraction(1, 3), ".3f"))
+    print(f"{Fraction(1, 3):.20f}")
+    print(format(Fraction(-7, 2), "e"))
+    print(format(Fraction(1, 8), ".2%"))
+    print("{:>10.2f}|".format(Fraction(22, 7)))
+    print(format(Fraction(5, 2), ".0f"))
+    print(format(Fraction(7, 2), ".0f"))
+    print(format(Fraction(1234567, 1), ",.1f"))
+    print(format(Fraction(1, 3), "g"))

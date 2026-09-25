@@ -6,7 +6,7 @@ namespace Sharpy
     /// Represents a date (year, month, day).
     /// </summary>
     [SharpyModuleType("datetime", "date")]
-    public class Date : IEquatable<Date>, IComparable<Date>
+    public class Date : IEquatable<Date>, IComparable<Date>, IFormattable
     {
         private readonly System.DateTime _date;
 
@@ -33,8 +33,15 @@ namespace Sharpy
         /// <summary>Return the ISO 8601 string representation (yyyy-MM-dd).</summary>
         public override string ToString()
         {
-            return _date.ToString("yyyy-MM-dd");
+            return _date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
+
+        /// <summary>
+        /// <c>date.__format__</c> (IFormattable is its CLR spelling): an empty spec is <c>str(self)</c>,
+        /// any other spec is a <c>strftime</c> format (#2019).
+        /// </summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
+            => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
 
         /// <summary>Return the current local date.</summary>
         public static Date Today()
@@ -57,7 +64,7 @@ namespace Sharpy
         /// <summary>Return the ISO 8601 formatted string.</summary>
         public string Isoformat()
         {
-            return _date.ToString("yyyy-MM-dd");
+            return _date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
 
         /// <summary>Return a new Date with replaced components.</summary>
@@ -184,7 +191,7 @@ namespace Sharpy
     /// Represents a time (hour, minute, second, microsecond).
     /// </summary>
     [SharpyModuleType("datetime", "time")]
-    public class Time : IEquatable<Time>, IComparable<Time>
+    public class Time : IEquatable<Time>, IComparable<Time>, IFormattable
     {
         private readonly TimeSpan _time;
 
@@ -210,11 +217,18 @@ namespace Sharpy
         /// <summary>The microsecond component (0-999999).</summary>
         public int Microsecond => (int)((_time.Ticks % TimeSpan.TicksPerSecond) / 10);
 
-        /// <summary>Return the string representation (HH:mm:ss.ffffff).</summary>
-        public override string ToString()
-        {
-            return $"{Hour:D2}:{Minute:D2}:{Second:D2}.{Microsecond:D6}";
-        }
+        /// <summary>
+        /// Python's <c>str(time)</c>, its <c>isoformat()</c>: <c>HH:MM:SS</c>, with <c>.ffffff</c> only when
+        /// the microseconds are non-zero (#2043).
+        /// </summary>
+        public override string ToString() => Isoformat();
+
+        /// <summary>
+        /// <c>time.__format__</c> (IFormattable is its CLR spelling): an empty spec is <c>str(self)</c>,
+        /// any other spec is a <c>strftime</c> format (#2019).
+        /// </summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
+            => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
         public string Isoformat()
@@ -304,7 +318,7 @@ namespace Sharpy
     /// A combination of a date and a time.
     /// </summary>
     [SharpyModuleType("datetime", "datetime")]
-    public class DateTime : IEquatable<DateTime>, IComparable<DateTime>
+    public class DateTime : IEquatable<DateTime>, IComparable<DateTime>, IFormattable
     {
         private readonly System.DateTime _dateTime;
         private readonly ITzinfo? _tzinfo;
@@ -346,19 +360,18 @@ namespace Sharpy
         /// <summary>The time component of this datetime.</summary>
         public Time TimeComponent => new Time(_dateTime.TimeOfDay);
 
-        /// <summary>Return the string representation.</summary>
-        public override string ToString()
-        {
-            var result = _dateTime.ToString("yyyy-MM-dd HH:mm:ss.ffffff");
-            if (_tzinfo is not null)
-            {
-                var offset = _tzinfo.Utcoffset(this);
-                var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
-                var absOffset = offset.InternalTimeSpan.Duration();
-                result += $"{sign}{absOffset.Hours:D2}:{absOffset.Minutes:D2}";
-            }
-            return result;
-        }
+        /// <summary>
+        /// Python's <c>str(datetime)</c>, its <c>isoformat(" ")</c>: the <c>.ffffff</c> part only when the
+        /// microseconds are non-zero (#2043).
+        /// </summary>
+        public override string ToString() => Isoformat(" ");
+
+        /// <summary>
+        /// <c>datetime.__format__</c> (IFormattable is its CLR spelling): an empty spec is
+        /// <c>str(self)</c>, any other spec is a <c>strftime</c> format (#2019).
+        /// </summary>
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
+            => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
 
         /// <summary>Return the current local datetime.</summary>
         public static DateTime Now()
@@ -396,7 +409,8 @@ namespace Sharpy
         public string Isoformat(string? sep = null)
         {
             string s = sep ?? "T";
-            var result = _dateTime.ToString("yyyy-MM-dd") + s + _dateTime.ToString("HH:mm:ss");
+            var result = _dateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + s
+                + _dateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
             if (Microsecond != 0)
             {
                 result += "." + Microsecond.ToString("D6");
@@ -610,11 +624,36 @@ namespace Sharpy
         /// <summary>The total number of seconds represented by this timedelta.</summary>
         public double TotalSeconds => _timeSpan.TotalSeconds;
 
-        /// <summary>Return the string representation.</summary>
+        /// <summary>
+        /// Python's <c>str(timedelta)</c>: <c>[D day[s], ]H:MM:SS[.ffffff]</c> over the normalized
+        /// (days, seconds, microseconds) triple — days floored, so <c>-1 day, 23:00:00</c> is minus an
+        /// hour (#2043).
+        /// </summary>
         public override string ToString()
         {
-            return _timeSpan.ToString();
+            long totalMicroseconds = FloorDiv(_timeSpan.Ticks, 10);
+            long days = FloorDiv(totalMicroseconds, 86_400_000_000L);
+            long rem = totalMicroseconds - days * 86_400_000_000L;
+            long seconds = rem / 1_000_000L;
+            long microseconds = rem % 1_000_000L;
+            long hh = seconds / 3600, mm = seconds / 60 % 60, ss = seconds % 60;
+            var sb = new System.Text.StringBuilder();
+            if (days != 0)
+            {
+                sb.Append(days.ToString(CultureInfo.InvariantCulture))
+                    .Append(Math.Abs(days) != 1 ? " days, " : " day, ");
+            }
+            sb.Append(hh.ToString(CultureInfo.InvariantCulture)).Append(':')
+                .Append(mm.ToString("D2", CultureInfo.InvariantCulture)).Append(':')
+                .Append(ss.ToString("D2", CultureInfo.InvariantCulture));
+            if (microseconds != 0)
+            {
+                sb.Append('.').Append(microseconds.ToString("D6", CultureInfo.InvariantCulture));
+            }
+            return sb.ToString();
         }
+
+        private static long FloorDiv(long a, long b) => (a / b) - ((a % b != 0 && (a < 0) != (b < 0)) ? 1 : 0);
 
         /// <summary>Return the absolute value of the timedelta.</summary>
         public Timedelta Abs()
