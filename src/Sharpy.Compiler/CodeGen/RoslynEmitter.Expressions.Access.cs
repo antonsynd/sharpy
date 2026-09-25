@@ -1723,34 +1723,34 @@ internal partial class RoslynEmitter
         if (nestedEnumMember != null)
             return GenerateStaticFieldAccessOnType(obj, nestedEnumMember, memberAccess.Member);
 
-        // Handle special .value and .name properties for enum instances.
-        if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))
+        // .value / .name on an enum instance: the lowering the checker recorded (#2007).
+        if (_context.SemanticInfo?.GetEnumMemberAccessLowering(memberAccess) is { } enumAccess)
         {
-            // A string-backed enum is a class of singletons carrying both halves as properties,
-            // so both reads are plain member accesses — `(int)` would not even compile (#1284).
-            if (GetExpressionSemanticType(memberAccess.Object) is Semantic.UserDefinedType
-                { Symbol: { } strEnumSymbol } && IsStringEnumSymbol(strEnumSymbol))
+            switch (enumAccess.Kind)
             {
-                return MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    obj,
-                    IdentifierName(memberAccess.Member == "value" ? "Value" : "Name"));
-            }
+                // A string-backed enum is a class of singletons carrying both halves as properties,
+                // so both reads are plain member accesses — `(int)` would not even compile (#1284).
+                case EnumMemberAccessKind.StringName:
+                case EnumMemberAccessKind.StringValue:
+                    return MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        obj,
+                        IdentifierName(enumAccess.Kind == EnumMemberAccessKind.StringValue ? "Value" : "Name"));
 
-            if (memberAccess.Member == "value")
-            {
                 // enum_instance.value -> (int)enum_instance
-                return Cast(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    obj);
-            }
+                case EnumMemberAccessKind.IntValue:
+                    return Cast(PredefinedType(Token(SyntaxKind.IntKeyword)), obj);
 
-            // enum_instance.name -> enum_instance.ToString()
-            return InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    obj,
-                    IdentifierName("ToString")));
+                // enum_instance.name -> global::Sharpy.Builtins.EnumName(enum_instance): the python
+                // name channel str()/repr() read too, not the CLR member name (#2069).
+                default:
+                    return InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                                IdentifierName("EnumName")))
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(obj))));
+            }
         }
 
         // Named tuple element access: keep element names as-is (no PascalCase)

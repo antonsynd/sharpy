@@ -556,13 +556,21 @@ internal partial class TypeChecker
 
             var effectiveMember = memberAccess.Member;
 
-            // Handle enum .name and .value properties
-            if (udt.Symbol.TypeKind == TypeKind.Enum)
+            // Handle enum .name and .value properties. The lowering is decided here, where the
+            // receiver is known to be an enum instance, and recorded for the emitter (#2007): an int
+            // enum's .name reads the python-name channel, not the CLR member name (#2069).
+            if (udt.Symbol.TypeKind == TypeKind.Enum && effectiveMember is "name" or "value")
             {
-                if (effectiveMember == "name")
-                    return SemanticType.Str;
-                if (effectiveMember == "value")
-                    return udt.Symbol.IsStringEnum ? SemanticType.Str : SemanticType.Int;
+                var isStringEnum = udt.Symbol.IsStringEnum;
+                _semanticInfo.SetEnumMemberAccessLowering(memberAccess, new EnumMemberAccessLowering(
+                    (effectiveMember, isStringEnum) switch
+                    {
+                        ("name", true) => EnumMemberAccessKind.StringName,
+                        ("name", false) => EnumMemberAccessKind.IntName,
+                        (_, true) => EnumMemberAccessKind.StringValue,
+                        _ => EnumMemberAccessKind.IntValue,
+                    }));
+                return effectiveMember == "name" || isStringEnum ? SemanticType.Str : SemanticType.Int;
             }
 
             // Look for field or property (including inherited fields)

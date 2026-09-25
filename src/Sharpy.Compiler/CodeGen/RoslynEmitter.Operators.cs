@@ -1282,59 +1282,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if an expression's type is an enum instance type.
-    /// Uses both SemanticInfo (for type-checked expressions) and symbol table
-    /// (for variables after reassignment where SemanticInfo may not have the type).
-    /// </summary>
-    private bool IsEnumInstance(Expression expr)
-    {
-        // First try SemanticInfo (most reliable for type-checked expressions)
-        var semType = GetExpressionSemanticType(expr);
-        if (semType is Semantic.UserDefinedType udt &&
-            udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
-        {
-            return true;
-        }
-
-        // Fallback: symbol table lookup for identifiers (handles post-reassignment cases)
-        if (expr is Identifier id)
-        {
-            var symbol = _context.LookupSymbol(id.Name);
-            if (symbol is VariableSymbol varSymbol &&
-                GetVariableType(varSymbol) is Semantic.UserDefinedType varUdt &&
-                varUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
-            {
-                return true;
-            }
-        }
-
-        // Fallback: resolve MemberAccess by looking up the member's type on the object's type symbol
-        if (expr is MemberAccess memberAccess)
-        {
-            var objectType = GetExpressionSemanticType(memberAccess.Object);
-            if (objectType is Semantic.UserDefinedType objUdt && objUdt.Symbol is TypeSymbol typeSymbol)
-            {
-                var field = typeSymbol.Fields.Find(f => f.Name == memberAccess.Member);
-                if (field != null &&
-                    GetVariableType(field) is Semantic.UserDefinedType fieldUdt &&
-                    fieldUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
-                {
-                    return true;
-                }
-
-                var prop = typeSymbol.Properties.Find(p => p.Name == memberAccess.Member);
-                if (prop?.Type is Semantic.UserDefinedType propUdt &&
-                    propUdt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// Collects all identifier names referenced in an expression.
     /// Used for dependency analysis to determine if a variable declaration
     /// should be a module-level field or a local variable in Main.

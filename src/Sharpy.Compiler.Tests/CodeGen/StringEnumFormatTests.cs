@@ -106,14 +106,15 @@ public class StringEnumFormatTests : IntegrationTestBase
     }
 
     [Fact]
-    public void IntEnum_Control_IsUnchanged()
+    public void IntEnum_FormatsAsItsPythonStr()
     {
-        // An int enum is a C# enum (System.Enum): the runtime already routed it as a str. Its output
-        // must not move (measured at 829b39998). str(Color.RED) → "RED" is the separate deviation #2007.
-        var source = "enum Level:\n    LOW = 1\n    HIGH = 2\n\ndef main() -> None:\n    print(f\"[{Level.LOW:>5}]\")\n    print(format(Level.HIGH, \"<6\") + \"|\")\n";
+        // An int enum is a C# enum (System.Enum), routed as a str: the spec applies to python's
+        // str(member), `Level.LOW` (#2007). python3: f"[{Level.LOW:>12}]" -> '[   Level.LOW]',
+        // format(Level.HIGH, "<12") + "|" -> 'Level.HIGH  |'. (Before #2007: '[         LOW]'.)
+        var source = "enum Level:\n    LOW = 1\n    HIGH = 2\n\ndef main() -> None:\n    print(f\"[{Level.LOW:>12}]\")\n    print(format(Level.HIGH, \"<12\") + \"|\")\n";
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
-        result.StandardOutput.Should().Be("[  LOW]\nHIGH  |\n");
+        result.StandardOutput.Should().Be("[   Level.LOW]\nLevel.HIGH  |\n");
     }
 }

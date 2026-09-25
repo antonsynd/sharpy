@@ -62,6 +62,28 @@ def main() -> None:
     print(len(all_colors), names, values)         # 3 ['RED', 'GREEN', 'BLUE'] [1, 2, 3]
 ```
 
+**`str` and `repr` of an integer enum** are Python's: `str(Color.RED)` is `Color.RED`, `repr` is
+`<Color.RED: 1>`, and `.name` is the member name exactly as declared — the same spelling on every
+route (`print`, f-strings and `format()` pad the `str`, a list or dict element is the `repr`). The
+rule covers every .NET enum reached through interop too: `str(DayOfWeek.Monday)` is
+`DayOfWeek.Monday` (Sharpy-only; Python has no such type).
+
+```python
+enum Color:
+    RED = 1
+    dark_blue = 2
+
+
+def main() -> None:
+    print(Color.RED)                 # Color.RED
+    print(repr(Color.dark_blue))     # <Color.dark_blue: 2>
+    print(Color.dark_blue.name)      # dark_blue
+    print(f"[{Color.RED:>12}]")      # [   Color.RED]
+    print([Color.RED])               # [<Color.RED: 1>]
+```
+
+A string-backed enum keeps `StrEnum`'s `str` (the value, below).
+
 **Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions, see [tagged_unions.md](tagged_unions.md).
 
 ## String-Backed Enums
@@ -127,5 +149,6 @@ def main() -> None:
 - *Integer enums: ✅ Native - C# `enum`*
 - *String enums: 🔄 Lowered - sealed class of singleton instances carrying `Name`/`Value`, with
   `ToString()` returning the value, an implicit conversion to `string`, and a static `Values` list*
-- *`.name` property: 🔄 Lowered - `Enum.GetName()` or lookup (integer enums); the instance's
-  `Name` (string enums)*
+- *`.name` property: 🔄 Lowered - `Sharpy.Builtins.EnumName` (integer enums: the python name
+  the field records in `[SharpyFieldName]` when its C# name differs, else the field name — the same
+  channel `str`/`repr` read); the instance's `Name` (string enums)*

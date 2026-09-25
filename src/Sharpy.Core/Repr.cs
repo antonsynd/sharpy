@@ -63,6 +63,10 @@ namespace Sharpy
             if (obj is float f)
                 return FormatFloat(f);
 
+            // An enum member is python's `<Color.RED: 1>` — every System.Enum (#2007).
+            if (obj is System.Enum en)
+                return EnumRepr(en);
+
             // Handle ValueTuples (System.ValueTuple<...>)
             var type = obj.GetType();
             if (type.IsValueType && type.FullName != null

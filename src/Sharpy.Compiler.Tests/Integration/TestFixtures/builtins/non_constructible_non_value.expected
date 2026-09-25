@@ -2,12 +2,12 @@
 3.0
 True
 True
-RED
-GREEN
+Color.RED
+Color.GREEN
 RED
 GREEN
 ['RED', 'GREEN']
 1
-RED
+Color.RED
 5
 2.0

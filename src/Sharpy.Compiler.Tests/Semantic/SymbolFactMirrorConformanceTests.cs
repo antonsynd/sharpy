@@ -1006,6 +1006,7 @@ def main() -> None:
         // --- Same-file-only: read by the emitter for the file that declares the symbol ---
         ["IsCompileTimeConstant"] = "same-file-only — read at RoslynEmitter.Statements.Assignments.cs module-level const path (#1460)",
         ["OverridesClrBaseMember"] = "same-file-only — read at RoslynEmitter.ClassMembers.Methods.cs:155",
+        ["EnumMemberPythonName"] = "same-file-only — an int-enum member's [SharpyFieldName] stamp (#2007), computed by CodeGenInfoComputer.MaterializeEnumMemberNames for the file being emitted and read only by the member's own declaration (RoslynEmitter.TypeDeclarations.cs DeclaredEnumMemberPythonName); a reference never needs it — Core reads the attribute at runtime",
         ["ForwardingConstructors"] = "same-file-only — read at RoslynEmitter.ClassMembers.Constructors.cs:391",
         ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",
         ["SynthesizedInterfaces"] = "derived — restored from InterfaceReference.SynthesizedVia on warm restore (#1746)",

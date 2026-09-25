@@ -87,9 +87,10 @@ public class EnumMemberSpellingMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// The <c>.name</c> route reads the declared (python) name. For a string enum it is the singleton's
-    /// constructor argument in every escape cell; for an int enum it is the C# member's name, which is
-    /// the declared name exactly when the member is escaped — the unescaped int cell (<c>red</c> →
-    /// <c>Red</c>) is #2069, not this contract.
+    /// constructor argument in every escape cell; for an int enum it is the python-name channel
+    /// (<c>Builtins.EnumName</c>: the field's <c>[SharpyFieldName]</c>, stamped when the emitted member
+    /// name differs, else the field name) — so the unescaped int cells (<c>red</c> → field <c>Red</c>)
+    /// print <c>red</c> too (#2069, #2007; prior commit: <c>Red</c>).
     /// </summary>
     [Theory]
     [InlineData("string", "EP")]
@@ -97,7 +98,9 @@ public class EnumMemberSpellingMatrixTests : IntegrationTestBase
     [InlineData("string", "EE")]
     [InlineData("string", "PP")]
     [InlineData("int", "EP")]
+    [InlineData("int", "PE")]
     [InlineData("int", "EE")]
+    [InlineData("int", "PP")]
     public void TheNameRoute_IsTheDeclaredName(string kind, string escape)
     {
         var source = "enum Color:\n    " + Members(kind, escape[0] == 'E')

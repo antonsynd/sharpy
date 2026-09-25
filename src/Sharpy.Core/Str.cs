@@ -66,6 +66,13 @@ namespace Sharpy
                 return FormatFloat(f);
             }
 
+            // An enum member is python's `Color.RED` — every System.Enum, a Sharpy int enum and a
+            // CLR interop enum alike, not .NET's bare member name (#2007).
+            if (x is Enum en)
+            {
+                return EnumStr(en);
+            }
+
             // ValueTuples (System.ValueTuple<...>): format with Python-style
             // parentheses. Like list/set/dict, str() of a tuple formats its
             // elements with repr() semantics (e.g. str(('x', 'y')) == "('x', 'y')"),

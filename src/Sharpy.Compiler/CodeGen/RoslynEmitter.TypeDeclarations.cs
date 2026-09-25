@@ -1286,7 +1286,8 @@ internal partial class RoslynEmitter
         // Generate enum members
         var enumSymbol = DeclaredEnumSymbol(enumDef);
         var members = enumDef.Members
-            .Select(member => GenerateEnumMember(member, DeclaredEnumMemberName(enumSymbol, member, isStringEnum: false)))
+            .Select(member => GenerateEnumMember(member, DeclaredEnumMemberName(enumSymbol, member, isStringEnum: false),
+                DeclaredEnumMemberPythonName(enumSymbol, member)))
             .ToArray();
 
         var enumDecl = EnumDeclaration(EscapedIdentifier(enumName))
@@ -1473,9 +1474,28 @@ internal partial class RoslynEmitter
         return classDecl;
     }
 
-    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member, string memberName)
+    /// <summary>
+    /// The python name an int-enum member's field records, materialized on its member symbol
+    /// (#2007): non-null only when the emitted identifier differs from the declared name.
+    /// </summary>
+    private string? DeclaredEnumMemberPythonName(TypeSymbol? enumSymbol, EnumMember member)
+        => enumSymbol?.Fields.FirstOrDefault(f => f.Name == member.Name) is { } memberSymbol
+            ? GetCodeGenInfo(memberSymbol)?.EnumMemberPythonName
+            : null;
+
+    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member, string memberName, string? pythonName = null)
     {
         var enumMember = EnumMemberDeclaration(EscapedIdentifier(memberName));
+
+        // [global::Sharpy.SharpyFieldName("red")] — the python-name channel, only when the emitted
+        // identifier differs (#2007).
+        if (pythonName != null)
+        {
+            enumMember = enumMember.WithAttributeLists(SingletonList(AttributeList(SingletonSeparatedList(
+                Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
+                    .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
+                        LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(pythonName))))))))));
+        }
 
         // Add explicit value if present
         if (member.Value != null)

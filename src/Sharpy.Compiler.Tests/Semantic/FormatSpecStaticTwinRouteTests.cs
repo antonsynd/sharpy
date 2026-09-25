@@ -70,9 +70,8 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         // python3: format(Color.RED, 'd') -> ValueError: Unknown format code 'd' for object of type 'str'
         yield return new("enum_d", "", "Color.RED", "d",
             StaticMessage: "Unknown format code 'd' for object of type 'str'");
-        // python3: format(Color.RED, '>12') -> '   Color.RED'. Sharpy's str(Color.RED) is 'RED' (#2007);
-        // what this cell pins is that the str kind accepts the spec and pads to the width.
-        yield return new("enum_pad", "", "Color.RED", ">12", Output: "         RED");
+        // python3: format(Color.RED, '>12') -> '   Color.RED' — the str kind pads python's str(member) (#2007).
+        yield return new("enum_pad", "", "Color.RED", ">12", Output: "   Color.RED");
         // complex has its own __format__ (Core's Complex kind, #2018).
         // python3: format(1+2j, 'd') -> ValueError: Unknown format code 'd' for object of type 'complex'
         yield return new("complex_d", "", "complex(1, 2)", "d",

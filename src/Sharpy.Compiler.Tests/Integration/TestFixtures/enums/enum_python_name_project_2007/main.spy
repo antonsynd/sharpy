@@ -1,0 +1,12 @@
+# python3 (class Color(Enum): RED = 1; dark_blue = 2): str / repr / .name / .value of each member.
+from lib import Color
+
+
+def main() -> None:
+    print(Color.dark_blue)
+    print(repr(Color.RED))
+    print(Color.dark_blue.name)
+    print(Color.dark_blue.value)
+    c: Color = Color.RED
+    print(c.name)
+    print([c, Color.dark_blue])

@@ -593,16 +593,22 @@ struct Vector2:
             Operator = AssignmentOperator.Assign
         };
 
+        var valueAccess = new MemberAccess
+        {
+            Object = new Identifier { Name = "favorite" },
+            Member = "value"
+        };
         var assignment2 = new Assignment
         {
             Target = new Identifier { Name = "value" },
-            Value = new MemberAccess
-            {
-                Object = new Identifier { Name = "favorite" },
-                Member = "value"
-            },
+            Value = valueAccess,
             Operator = AssignmentOperator.Assign
         };
+
+        // The checker records the enum-member-access lowering the emitter applies (#2007, Rule 2).
+        context.SemanticInfo ??= new SemanticInfo();
+        context.SemanticInfo.SetEnumMemberAccessLowering(
+            valueAccess, new EnumMemberAccessLowering(EnumMemberAccessKind.IntValue));
 
         // Wrap assignments in main() (entry points require main())
         var mainFunc = new FunctionDef

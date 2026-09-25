@@ -446,10 +446,14 @@ internal class CodeGenInfoComputer
             if (enumSymbol.Fields.FirstOrDefault(f => f.Name == member.Name) is not { } memberSymbol)
                 continue;
 
+            var csharpName = NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped);
             SetCodeGenInfo(memberSymbol, new CodeGenInfo
             {
-                CSharpName = NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped),
-                OriginalName = member.Name
+                CSharpName = csharpName,
+                OriginalName = member.Name,
+                // The python-name channel (#2007): an int-enum field whose emitted identifier is not
+                // the declared name records the declared one, so str/repr/.name read it at runtime.
+                EnumMemberPythonName = !isStringEnum && csharpName != member.Name ? member.Name : null
             });
         }
     }

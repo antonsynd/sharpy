@@ -57,6 +57,17 @@ public sealed record CodeGenInfo
     public bool IsCompileTimeConstant { get; init; }
 
     /// <summary>
+    /// An int-enum member's python name when its emitted C# identifier differs from it
+    /// (<c>red</c> → <c>Red</c>), else null (#2007, #2069). The emitter stamps it as
+    /// <c>[global::Sharpy.SharpyFieldName("red")]</c> on the enum field — attribute-when-different
+    /// (#1607) — and Core's <c>Builtins.EnumName</c> reads it for <c>str</c>, <c>repr</c> and
+    /// <c>.name</c>. A string-enum member carries its name as a constructor argument and never
+    /// sets it. SAME-FILE-ONLY (it drives the member's own declaration emission; same invariant as
+    /// <see cref="IsCompileTimeConstant"/>).
+    /// </summary>
+    public string? EnumMemberPythonName { get; init; }
+
+    /// <summary>
     /// If true, this variable should not become a module-level field due to execution order issues.
     /// Example: Variables that depend on runtime values in their initializers.
     /// </summary>

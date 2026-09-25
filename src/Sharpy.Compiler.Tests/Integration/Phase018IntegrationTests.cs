@@ -564,7 +564,7 @@ def main():
     [Fact]
     public void BasicIntEnum_CompilesAndRuns()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Status:
     PENDING = 0
@@ -578,7 +578,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("ACTIVE\n", result.StandardOutput);
+        Assert.Equal("Status.ACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -603,7 +603,7 @@ def main():
     [Fact]
     public void EnumUsage_MultipleMembers()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         // Use .value to get the underlying integer
         var source = @"
 enum Status:
@@ -619,13 +619,13 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("PENDING\nACTIVE\nINACTIVE\n", result.StandardOutput);
+        Assert.Equal("Status.PENDING\nStatus.ACTIVE\nStatus.INACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
     public void EnumAssignment_WorksCorrectly()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         // Use .value to get the underlying integer
         var source = @"
 enum Status:
@@ -644,7 +644,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("PENDING\nACTIVE\nINACTIVE\n", result.StandardOutput);
+        Assert.Equal("Status.PENDING\nStatus.ACTIVE\nStatus.INACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -672,7 +672,7 @@ def main():
     [Fact]
     public void EnumWithNegativeValues_Works()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Direction:
     UP = -1
@@ -687,13 +687,13 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("UP\nNEUTRAL\nDOWN\n", result.StandardOutput);
+        Assert.Equal("Direction.UP\nDirection.NEUTRAL\nDirection.DOWN\n", result.StandardOutput);
     }
 
     [Fact]
     public void EnumWithLargeValues_Works()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Flags:
     FLAG_A = 1000000
@@ -708,7 +708,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("FLAG_A\nFLAG_B\nFLAG_C\n", result.StandardOutput);
+        Assert.Equal("Flags.FLAG_A\nFlags.FLAG_B\nFlags.FLAG_C\n", result.StandardOutput);
     }
 
     #endregion
@@ -769,7 +769,7 @@ def main():
     public void StructWithEnumField_CompilesAndRuns()
     {
         // Struct fields should use the enum type, not int
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Status:
     PENDING = 0
@@ -792,14 +792,14 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Task\nACTIVE\n", result.StandardOutput);
+        Assert.Equal("My Task\nStatus.ACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
     public void StructMethod_UsingEnum()
     {
         // Struct fields should use the enum type, not int
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Status:
     PENDING = 0
@@ -829,14 +829,14 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("PENDING\nACTIVE\nCOMPLETE\n", result.StandardOutput);
+        Assert.Equal("Status.PENDING\nStatus.ACTIVE\nStatus.COMPLETE\n", result.StandardOutput);
     }
 
     [Fact]
     public void MultipleStructs_WithEnum()
     {
         // Struct fields should use the enum type, not int
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Priority:
     LOW = 1
@@ -870,7 +870,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Project\nMEDIUM\nImportant Task\nHIGH\n", result.StandardOutput);
+        Assert.Equal("My Project\nPriority.MEDIUM\nImportant Task\nPriority.HIGH\n", result.StandardOutput);
     }
 
     #endregion
@@ -964,7 +964,7 @@ def main():
     [Fact]
     public void MultipleEnums_IndependentUsage()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Status:
     PENDING = 0
@@ -983,13 +983,13 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("ACTIVE\nHIGH\n", result.StandardOutput);
+        Assert.Equal("Status.ACTIVE\nPriority.HIGH\n", result.StandardOutput);
     }
 
     [Fact]
     public void MixedEnumTypes_IntAndString()
     {
-        // Integer enums print their name, string enums print their value
+        // Integer enums print python's Type.MEMBER (#2007), string enums print their value
         var source = @"
 enum IntEnum:
     A = 1
@@ -1008,7 +1008,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("A\nx\n", result.StandardOutput);
+        Assert.Equal("IntEnum.A\nx\n", result.StandardOutput);
     }
 
     #endregion
@@ -1108,7 +1108,7 @@ def main():
     [Fact]
     public void EdgeCase_SingleMemberEnum()
     {
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Single:
     ONLY = 42
@@ -1120,7 +1120,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("ONLY\n", result.StandardOutput);
+        Assert.Equal("Single.ONLY\n", result.StandardOutput);
     }
 
     [Fact]
@@ -1157,7 +1157,7 @@ def main():
     public void ComprehensiveTest_StructsAndEnums_Together()
     {
         // Struct fields should use the enum type, not int
-        // Integer enums print their name when printed directly (C# enum behavior)
+        // Integer enums print python's Type.MEMBER when printed directly (#2007; python3 oracle)
         var source = @"
 enum Priority:
     LOW = 1
@@ -1208,7 +1208,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Build feature\nMEDIUM\nTODO\nIN_PROGRESS\nHIGH\nDONE\n5\n", result.StandardOutput);
+        Assert.Equal("Build feature\nPriority.MEDIUM\nStatus.TODO\nStatus.IN_PROGRESS\nPriority.HIGH\nStatus.DONE\n5\n", result.StandardOutput);
     }
 
     [Fact]

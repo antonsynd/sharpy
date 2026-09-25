@@ -626,9 +626,10 @@ public class PyFormatTests
     [Fact]
     public void Apply_Enum_FormatsAsItsStr()
     {
-        // python3: format(Color.RED, '>10') => ' Color.RED' (str.__format__ of str(self)); Sharpy's
-        // str(enum) is the member name (a separate deviation), and the spec applies to that text.
-        PyFormat.Apply(System.DayOfWeek.Monday, ">8").Should().Be("  Monday");
+        // python3: format(Color.RED, '>10') => ' Color.RED' (str.__format__ of str(self)). Every
+        // System.Enum takes python's enum spelling, a CLR interop enum included (#2007, owner ruling
+        // "all"): str(DayOfWeek.Monday) is 'DayOfWeek.Monday', and the spec applies to that text.
+        PyFormat.Apply(System.DayOfWeek.Monday, ">18").Should().Be("  DayOfWeek.Monday");
         // python3: format(Color.RED, 'd') => ValueError: Unknown format code 'd' for object of type 'str'
         var ex = Assert.Throws<ValueError>(() => PyFormat.Apply(System.DayOfWeek.Monday, "d"));
         ex.Message.Should().Be("Unknown format code 'd' for object of type 'str'");

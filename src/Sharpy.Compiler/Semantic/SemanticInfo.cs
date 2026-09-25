@@ -290,6 +290,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, InterpolationLowering> _interpolationLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Per `.name`/`.value` read on an enum INSTANCE: which half of which enum shape it reads (#2007,
+    // #2069). Decided by the TypeChecker where it types the access (it knows the receiver is an enum
+    // instance, and whether the enum is string- or int-backed), applied verbatim by the emitter —
+    // Critical Rule 2 pattern (b). Replaces the emitter's own `Member is "name" or "value"` compare
+    // plus its IsEnumInstance re-derivation.
+    private readonly ConcurrentDictionary<MemberAccess, EnumMemberAccessLowering> _enumMemberAccessLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbol AND the scrutinee union's substituted
     // type-argument vector. Used when a PositionalPattern/TypePattern/PropertyPattern/MemberAccessPattern
     // matches a union case. The vector is what the emitter needs to spell the closed case type
@@ -1478,6 +1486,17 @@ public class SemanticInfo : ISemanticQuery
     public InterpolationLowering? GetInterpolationLowering(Expression expr) =>
         _interpolationLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
 
+    /// <summary>Records how a <c>.name</c>/<c>.value</c> read on an enum instance lowers (#2007).</summary>
+    public void SetEnumMemberAccessLowering(MemberAccess access, EnumMemberAccessLowering lowering) =>
+        _enumMemberAccessLowerings[access] = lowering;
+
+    /// <summary>
+    /// How a <c>.name</c>/<c>.value</c> read on an enum instance lowers, or null when the member
+    /// access is not one.
+    /// </summary>
+    public EnumMemberAccessLowering? GetEnumMemberAccessLowering(MemberAccess access) =>
+        _enumMemberAccessLowerings.TryGetValue(access, out var lowering) ? lowering : null;
+
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
         _returnLowerings[ret] = lowering;
 
@@ -2111,6 +2130,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._interpolationLowerings)
             _interpolationLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._enumMemberAccessLowerings)
+            _enumMemberAccessLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
@@ -2869,6 +2891,25 @@ public sealed record InterpolationLowering(
     /// <summary>Whether a plain hole renders through <c>PyFormat.Apply(v, "")</c> rather than <c>Builtins.Str(v)</c>.</summary>
     public bool PlainHoleAppliesEmptySpec => PlainHoleKind is FormatOperandKind.Formattable or FormatOperandKind.Unknown;
 }
+
+/// <summary>Which half of which enum shape a <c>.name</c>/<c>.value</c> instance read takes (#2007).</summary>
+public enum EnumMemberAccessKind
+{
+    /// <summary>An int enum's <c>.name</c>: the python name channel, <c>Sharpy.Builtins.EnumName(e)</c>.</summary>
+    IntName,
+    /// <summary>An int enum's <c>.value</c>: the underlying integer, <c>(int)e</c>.</summary>
+    IntValue,
+    /// <summary>A string enum's <c>.name</c>: the singleton's <c>Name</c> property.</summary>
+    StringName,
+    /// <summary>A string enum's <c>.value</c>: the singleton's <c>Value</c> property.</summary>
+    StringValue
+}
+
+/// <summary>
+/// The lowering of a <c>.name</c>/<c>.value</c> read on an enum instance, recorded by the TypeChecker
+/// where it types the access (#2007, #2069). Not on the incremental-cache wire (a per-node fact).
+/// </summary>
+public sealed record EnumMemberAccessLowering(EnumMemberAccessKind Kind);
 
 public enum ReturnLoweringKind
 {

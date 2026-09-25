@@ -1,0 +1,5 @@
+# The enum is declared in another file of the project (#2007): the stamp rides its own
+# declaration, and the .name fact is recorded per-file then merged for codegen (SemanticInfo.MergeFrom).
+enum Color:
+    RED = 1
+    dark_blue = 2
