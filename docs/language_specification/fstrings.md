@@ -133,6 +133,29 @@ def main() -> None:
 [     1]
 ```
 
+The width, the precision and a `str.format` field index accept any Unicode decimal digit (category
+Nd), as in Python — including a non-BMP digit such as MATHEMATICAL BOLD DIGIT THREE, which is one
+digit although it is two UTF-16 code units:
+
+```python
+def main() -> None:
+    print(f"[{5:٣}]")
+    print(f"[{3.14159:.٢f}]")
+    print(f"[{65:𝟑d}]")
+    print("{٠}|{١}".format("a", "b"))
+```
+
+```
+[  5]
+[3.14]
+[ 65]
+a|b
+```
+
+Every other part of the spec is read in UTF-16 code units (Axiom 1): a non-BMP **fill** or **type
+code** does not parse, so `format("ab", "😀>5")` is refused as `Invalid format specifier` where Python
+pads with the emoji — the `format-spec-non-bmp-code-units` deviation in `docs/deviations.yaml`.
+
 ### The Alternate Form and `=` Padding Are One Rule Each
 
 `#` means the same thing on every float presentation type (`e E f F g G n %` and no type): the
@@ -314,11 +337,49 @@ engine at runtime. So are a `format` method-group value called later (`f = forma
 partial (`format(_, "=5")`, whose placeholder is typed `object?`). `str.format` takes positional fields only — a keyword argument is refused with
 SPY0234 and a steer to an f-string or `format_map`.
 
-The fields of a literal `str.format` template are checked **in order**, and the check stops at the
-first field it cannot decide — an index past the arguments, an attribute or index field, or a
-keyword field no argument names — because CPython raises the *first* field's error. So
-`"{5}{0:=5}".format("ab")` compiles and raises `IndexError: Replacement index 5 out of range for
-positional args tuple` at runtime (CPython's error), while `"{0:=5}{5}".format("ab")` is SPY0609.
+The fields of a literal `str.format` template are checked **in order**, because CPython raises the
+*first* field's error. A field that can never be bound is refused as **SPY0613** — a positional
+index past the arguments (an automatic `{}` field counts by the index it claims), or a keyword field,
+since `str.format` binds positional arguments only — where CPython raises `IndexError`/`KeyError`
+at runtime; the check then stops:
+
+<!-- spec-sweep: error SPY0613 -->
+```python
+def main() -> None:
+    s: str = "ab"
+    print("{5}{0:=5}".format(s))   # SPY0613: format field '{5}' cannot be bound: only 1 positional argument
+    print("{name}".format(s))      # SPY0613: ... str.format takes positional arguments only; use an f-string or format_map({...})
+```
+
+The check also stops — silently, leaving every later field to the runtime — at the first field it
+cannot decide: a nested spec (`{:{}}`), an attribute or index field (`{0.real}`, `{0[1]}`), an
+operand whose type is not known statically, and, under a non-empty spec, a type that owns its spec
+(`__format__`/`IFormattable`), whose own formatting may raise first. So
+`"{:{}}{:=5}".format(1, ">3", "ab")` compiles and raises CPython's `ValueError` for the second field
+at runtime, while `"{0:=5}{5}".format("ab")` is SPY0609 on the first field. A template held in a
+variable, and `format_map`, bind at runtime and raise CPython's `KeyError` (the key's `repr`):
+
+```python
+def main() -> None:
+    t: str = "{name}"
+    try:
+        print(t.format("ab"))
+    except KeyError as e:
+        print("KeyError:", e)
+    try:
+        print("{x}".format_map({"a": 1}))
+    except KeyError as e:
+        print("KeyError:", e)
+```
+
+```
+KeyError: 'name'
+KeyError: 'x'
+```
+
+An f-string or t-string, by contrast, checks **each hole on its own**: every hole is its own
+expression, so two bad literal specs in one f-string are two SPY0609s where CPython reports only the
+first. That is a difference in how many diagnostics are shown, not in which programs run.
 
 ### Refusal Precedence
 

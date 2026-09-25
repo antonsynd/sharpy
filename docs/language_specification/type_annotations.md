@@ -45,10 +45,19 @@ def main() -> None:
 
 Output: `count is None`.
 
+A property is a value, so a property getter's `-> None` is a value position and is refused too, while a setter's `-> None` is a true return. The refusal is the annotation's only diagnostic: `x: None = None` reports SPY0614 alone, with no SPY0227 "cannot infer a type" for its initializer (an annotation that failed to resolve is error recovery, not a missing annotation).
+
 <!-- spec-sweep: error SPY0614 -->
 ```python
 def describe(x: None) -> str:   # SPY0614: 'None' is not a type; annotate ... as `T | None`, or use `object`
     return "nothing"
+```
+
+<!-- spec-sweep: error SPY0614 -->
+```python
+class Box:
+    property get p(self) -> None:   # SPY0614: 'None' is not a type (a getter's return is the property's type)
+        pass
 ```
 
 *Implementation*

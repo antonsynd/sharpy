@@ -57,6 +57,31 @@ def main() -> None:
     print("{0:>6}|{1:^5}".format("ab", 3)) #     ab|  3
 ```
 
+An empty spec is `str(x)`, except for a type that owns its spec (`def __format__`, or the CLR
+`IFormattable`): that type is asked for `""`, as Python calls `type(x).__format__(x, "")`:
+
+```python
+class Money:
+    cents: int
+
+    def __init__(self, cents: int):
+        self.cents = cents
+
+    def __format__(self, spec: str) -> str:
+        return "$" + str(self.cents // 100) + ("" if spec == "" else "|" + spec)
+
+    def __str__(self) -> str:
+        return "Money(" + str(self.cents) + ")"
+
+
+def main() -> None:
+    m = Money(1250)
+    print(format(m, ""))      # $12
+    print(format(m, "x"))     # $12|x
+    print(str(m))             # Money(1250)
+    print(format(3.5, ""))    # 3.5
+```
+
 A literal spec that cannot apply to its operand is refused at compile time with SPY0609, naming
 the operand's type as Sharpy spells it — `decimal`, not Python's `decimal.Decimal` (see
 `docs/deviations.yaml`, entry `decimal-format-grammar`); a spec known only at runtime raises
