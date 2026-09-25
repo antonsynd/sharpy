@@ -16,6 +16,7 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 | `float(x)` | Convert to float (64-bit) | `(double)x` |
 | `str(x)` | Convert to string | Calls `__str__` if defined, else `.ToString()` |
 | `bool(x)` | Convert to boolean | Truthiness check |
+| `format(x, spec)` | Format with the format-spec mini-language | `Sharpy.PyFormat` (Python's grammar) |
 
 ### Result-Returning Variants
 
@@ -42,6 +43,41 @@ f: Result[float, ValueError] = float.parse("3.14")
 **`str(x)`** returns a C# `string`:
 - For all types, calls `.ToString()`
 - Primitive overloads (`str(int)`, `str(double)`, etc.) avoid boxing
+
+**`format(x, spec)`** formats `x` with Python's format-spec mini-language — the grammar of an
+f-string hole's `:spec` and of `str.format` fields (see [F-Strings](fstrings.md)). Width, precision
+and field indexes accept any Unicode decimal digit (category Nd), as in Python:
+
+```python
+def main() -> None:
+    print(format(3.14159, ".2f"))          # 3.14
+    print(format(42, "08b"))               # 00101010
+    print(format(1234567, ","))            # 1,234,567
+    print("[" + format(7, "٥") + "]")      # [    7] — ARABIC-INDIC DIGIT FIVE is a width
+    print("{0:>6}|{1:^5}".format("ab", 3)) #     ab|  3
+```
+
+A literal spec that cannot apply to its operand is refused at compile time with SPY0609, naming
+the operand's type as Sharpy spells it — `decimal`, not Python's `decimal.Decimal` (see
+`docs/deviations.yaml`, entry `decimal-format-grammar`); a spec known only at runtime raises
+`ValueError` with the same message:
+
+<!-- spec-sweep: error SPY0609 -->
+```python
+def main() -> None:
+    d: decimal = decimal(1.5)
+    print(format(d, "d"))    # SPY0609: Unknown format code 'd' for object of type 'decimal'
+```
+
+A literal `str.format` template whose field can never be bound — a positional index past the
+arguments, or a keyword field (`str.format` binds positional arguments only) — is refused with
+SPY0613, where Python raises `IndexError`/`KeyError` at runtime:
+
+<!-- spec-sweep: error SPY0613 -->
+```python
+def main() -> None:
+    print("{0} {1}".format("a"))   # SPY0613: format field '{1}' cannot be bound: only 1 positional argument
+```
 
 ## Type Checking
 
@@ -88,9 +124,12 @@ t2 = type(3.14)      # System.Double
 t3 = type("hello")   # System.String
 t4 = type(True)      # System.Boolean
 t5 = type([1, 2, 3]) # Sharpy.Core.List`1[System.Int32]
+```
 
+<!-- spec-sweep: error SPY0386 -->
+```python
 # Only type(None) is an error
-t6 = type(None)      # ERROR: type(None) is not valid
+t6 = type(None)      # SPY0386: type(None) is not supported; NoneType has no Sharpy equivalent
 ```
 
 This is because primitive literals are values with concrete runtime types, whereas `None` represents the absence of a value.
@@ -100,20 +139,34 @@ This is because primitive literals are values with concrete runtime types, where
 Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`. The second argument is a **type position**: it must name a type, and a successful check narrows the variable to that type in the branch.
 
 ```python
-value: object = get_value()
+interface IDrawable:
+    def draw(self) -> None: ...
 
-if isinstance(value, str):
-    # value is narrowed to str in this block
-    print(value.upper())
+class MyClass(IDrawable):
+    def my_method(self) -> None:
+        print("my_method")
 
-if isinstance(value, MyClass):
-    # value is narrowed to MyClass
-    value.my_method()
+    def draw(self) -> None:
+        print("draw")
 
-# Works with interfaces too
-if isinstance(value, IDrawable):
-    # value is narrowed to IDrawable
-    value.draw()
+def get_value() -> object:
+    return MyClass()
+
+def main() -> None:
+    value: object = get_value()
+
+    if isinstance(value, str):
+        # value is narrowed to str in this block
+        print(value.upper())
+
+    if isinstance(value, MyClass):
+        # value is narrowed to MyClass
+        value.my_method()      # my_method
+
+    # Works with interfaces too
+    if isinstance(value, IDrawable):
+        # value is narrowed to IDrawable
+        value.draw()           # draw
 ```
 
 **Tuple Types:**
@@ -127,25 +180,28 @@ checks whether `x` is an `int` or a `str`. In Sharpy, `isinstance(x, (int, str))
 `x` is a `tuple[int, str]`. See `docs/deviations.yaml`, entry `isinstance-tuple-is-a-tuple-type`.
 
 ```python
-x: object = (1, "hello")
+import builtins
 
-# Structural tuple type test — (int, str) means tuple[int, str]
-if isinstance(x, (int, str)):
-    # x is narrowed to tuple[int, str]
-    print(x[0])   # int
-    print(x[1])   # str
+def main() -> None:
+    x: object = (1, "hello")
 
-# Equivalent explicit spelling
-if isinstance(x, tuple[int, str]):
-    print(x[0])
+    # Structural tuple type test — (int, str) means tuple[int, str]
+    if isinstance(x, (int, str)):
+        # x is narrowed to tuple[int, str]
+        print(x[0])   # 1 — an int
+        print(x[1])   # hello — a str
 
-# Single-element tuple: (int) means tuple[int]
-if isinstance(x, (int)):
-    print(x[0])
+    # Equivalent explicit spelling
+    if isinstance(x, tuple[int, str]):
+        print(x[0])   # 1
 
-# The qualified spelling works identically (import builtins first)
-if builtins.isinstance(x, (int, str)):
-    print(x[1])   # str — narrows exactly like the bare spelling
+    # Single-element tuple: (int) means tuple[int] — x is not one, so this prints nothing
+    if isinstance(x, (int)):
+        print(x[0])
+
+    # The qualified spelling works identically
+    if builtins.isinstance(x, (int, str)):
+        print(x[1])   # hello — narrows exactly like the bare spelling
 ```
 
 **Checking Multiple Types:**
@@ -153,19 +209,28 @@ if builtins.isinstance(x, (int, str)):
 To check whether a value is one of several types, use explicit `or`:
 
 ```python
-if isinstance(x, int) or isinstance(x, str):
-    # x could be int or str here
-    # Note: no automatic type narrowing in this case
-    pass
+def describe(x: object) -> str:
+    if isinstance(x, int) or isinstance(x, str):
+        # x could be int or str here
+        # Note: no automatic type narrowing in this case
+        return "int or str"
+    return "something else"
+
+def main() -> None:
+    print(describe(5))     # int or str
+    print(describe(2.5))   # something else
 ```
 
-Non-type expressions in the second argument — including `int or str` — are refused with SPY0344:
+Non-type expressions in the second argument — including `int or str` — are refused with SPY0344
+(`int or str` currently also reports SPY0342 on each bare type name first, #2079):
 
+<!-- spec-sweep: error SPY0344 -->
 ```python
 # SPY0344 — the second argument must be a type expression
-if isinstance(x, int or str):      # SPY0344: not a type; for an any-of check
-    pass                            # write isinstance(x, int) or isinstance(x, str);
-                                    # (A, B) denotes the tuple type tuple[A, B]
+def check(x: object) -> None:
+    if isinstance(x, 5):     # SPY0344: not a type; for an any-of check write
+        pass                 # isinstance(x, int) or isinstance(x, str);
+                             # (A, B) denotes the tuple type tuple[A, B]
 ```
 
 **Generic Types:**
@@ -176,22 +241,40 @@ where generics are erased: CPython accepts the open form `isinstance(x, Box)` an
 `isinstance(x, Box[int])`, and Sharpy does the opposite.
 
 ```python
-# Valid — the closed spelling names a runtime type, and narrows to it
-if isinstance(x, Box[int]):
-    pass
+class Box[T]:
+    value: T
 
-if isinstance(x, dict[str, int]):
-    pass
+    def __init__(self, value: T) -> None:
+        self.value = value
 
-# Valid — the bare name is accepted when the value's own static type fills the vector
-b: Box[int] = Box[int](5)
-if isinstance(b, Box):             # tests Box[int]
-    pass
+def main() -> None:
+    x: object = Box[int](5)
+
+    # Valid — the closed spelling names a runtime type, and narrows to it
+    if isinstance(x, Box[int]):
+        print(x.value)                 # 5
+
+    if isinstance(x, dict[str, int]):
+        print("dict")                  # not printed
+
+    # Valid — the bare name is accepted when the value's own static type fills the vector
+    b: Box[int] = Box[int](7)
+    if isinstance(b, Box):             # tests Box[int]
+        print(b.value)                 # 7
+```
+
+<!-- spec-sweep: error SPY0345 -->
+```python
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
 
 # SPY0345 — nothing here determines Box's type arguments
-y: object = make_box()
-if isinstance(y, Box):
-    pass
+def check(y: object) -> None:
+    if isinstance(y, Box):
+        pass
 ```
 
 Builtin collections are **no exception** — `list`, `set` and `dict` are generic and reified the same
@@ -393,6 +476,7 @@ Cast one argument to the type you want the comparison to happen in (`int64(c)` o
 
 The `enumerate()` function takes the iterable and an optional positional `start` argument:
 
+<!-- spec-sweep: fragment -->
 ```python
 enumerate(iterable, start=0)
 ```

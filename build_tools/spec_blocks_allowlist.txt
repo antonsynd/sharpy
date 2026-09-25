@@ -15,13 +15,6 @@ async_programming.md::fe2c0bd2ad  # SPY0200 first #1952
 bitwise_operators.md::517ec87b73  # SPY0348 first #1952
 bitwise_operators.md::df21b6848b  # SPY0213 first #1952
 break_continue.md::8632da4e03  # SPY0200 first #1952
-builtin_functions.md::71b483621c  # SPY0200 first #1952
-builtin_functions.md::74ef4fd26c  # SPY0200 first #1952
-builtin_functions.md::78307bf257  # SPY0200 first #1952
-builtin_functions.md::94d9b4c5c0  # SPY0200 first #1952
-builtin_functions.md::aa1ad1a1e0  # SPY0386 first #1952
-builtin_functions.md::b6779a7c12  # SPY0200 first #1952
-builtin_functions.md::e9b3164322  # SPY0200 first #1952
 classes.md::574baff3a5  # SPY0203 first #1952
 classes.md::6319e581ce  # SPY0701 first #1952
 collection_types.md::2fe1bd64e8  # SPY0200 first #1952
