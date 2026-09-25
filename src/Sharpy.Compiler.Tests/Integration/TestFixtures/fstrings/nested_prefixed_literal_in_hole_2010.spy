@@ -1,0 +1,15 @@
+# One string-literal prefix dispatch (#2010): a literal of every prefix lexes inside a replacement
+# field exactly as at statement level, whether or not it reuses the enclosing quote. Every line is
+# python3.14's output for the same program, with the PEP 822 prefixes d/dr/df read as ''/r/f.
+def main() -> None:
+    s: str = "ab"
+    print(f"{t'{s}'!r}")
+    print(f"{t"{s}"!r}")
+    print(f"{r'\d'}")
+    print(f"{r"\d" + 'x'}")
+    print(f"{b'ab'}")
+    print(f"{d'ab'}")
+    print(f"{dr'a\d'}")
+    print(f"{df'{s}!'}")
+    print(f"{f'{s}'}")
+    print(f"{'ab'} {"ab"}")

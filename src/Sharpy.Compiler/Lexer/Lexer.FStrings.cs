@@ -670,14 +670,10 @@ public partial class Lexer
                 return specStart with { FStringExpressionText = expressionText, FStringRawText = rawText };
             }
 
-            // Nested f-string start (e.g., f"outer {f'inner {x}'}")
-            if (current == 'f' && (_position + 1 < _source.Length) &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return ReadFStringStart();
-
-            // String literals inside expressions
-            if (current == '"' || current == '\'')
-                return ReadString();
+            // String literals of every prefix — nested f-/t-strings included — through the main loop's
+            // one dispatch (#2010): f"{t'{s}'!r}", f"{r'\d'}", f"{b'ab'}", f"{df'{s}'}".
+            if (TryReadStringLiteralStart(out var literal))
+                return literal;
 
             // Numbers
             if (char.IsDigit(current))

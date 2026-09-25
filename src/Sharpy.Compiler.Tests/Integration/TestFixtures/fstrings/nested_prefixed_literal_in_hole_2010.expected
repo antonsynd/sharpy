@@ -1,0 +1,10 @@
+Template(strings=('', ''), interpolations=(Interpolation('ab', 's', None, ''),))
+Template(strings=('', ''), interpolations=(Interpolation('ab', 's', None, ''),))
+\d
+\dx
+b'ab'
+ab
+a\d
+ab!
+ab
+ab ab

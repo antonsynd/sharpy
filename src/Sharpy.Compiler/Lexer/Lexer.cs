@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -534,44 +536,9 @@ public partial class Lexer
                 return LogAndReturn(CreateToken(TokenType.Newline, "\n", startLine, startColumn, startPosition));
             }
 
-            // String literals
-            if (current == '"' || current == '\'')
-                return LogAndReturn(ReadString());
-
-            // F-strings
-            if (current == 'f' && (_position + 1 < _source.Length) &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return LogAndReturn(ReadFStringStart());
-
-            // T-strings (PEP 750 template strings)
-            if (current == 't' && (_position + 1 < _source.Length) &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return LogAndReturn(ReadTStringStart());
-
-            // Raw strings
-            if (current == 'r' && (_position + 1 < _source.Length) &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return LogAndReturn(ReadRawString());
-
-            // Byte strings
-            if (current == 'b' && (_position + 1 < _source.Length) &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return LogAndReturn(ReadByteString());
-
-            // Dedented raw strings (dr"""...""") — check before plain d to disambiguate
-            if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'r' &&
-                _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
-                return LogAndReturn(ReadDedentedRawString());
-
-            // Dedented f-strings (df"""...""") — check before plain d to disambiguate
-            if (current == 'd' && _position + 1 < _source.Length && _source[_position + 1] == 'f' &&
-                _position + 2 < _source.Length && (_source[_position + 2] == '"' || _source[_position + 2] == '\''))
-                return LogAndReturn(ReadDedentedFStringStart());
-
-            // D-strings (dedented multiline, PEP 822)
-            if (current == 'd' && _position + 1 < _source.Length &&
-                (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-                return LogAndReturn(ReadDedentedString());
+            // String literals of every prefix (f/t-strings enter f-string mode)
+            if (TryReadStringLiteralStart(out var literal))
+                return LogAndReturn(literal);
 
             // Backtick-delimited literal names
             if (current == '`')
@@ -588,6 +555,47 @@ public partial class Lexer
             // Operators and delimiters
             return LogAndReturn(ReadOperatorOrDelimiter());
         } // while (true)
+    }
+
+    /// <summary>
+    /// The string-literal prefix table (#2010), longest prefix first so <c>dr</c>/<c>df</c> win over
+    /// <c>d</c>: bare quotes, <c>f</c>, <c>t</c> (PEP 750), <c>r</c>, <c>b</c>, <c>d</c>/<c>dr</c>/<c>df</c>
+    /// (PEP 822). <c>rf</c>/<c>fr</c> and uppercase prefixes are unsupported everywhere (#2045).
+    /// </summary>
+    private static readonly ImmutableArray<(string Prefix, Func<Lexer, Token> Read)> StringLiteralStarts =
+        ImmutableArray.Create<(string, Func<Lexer, Token>)>(
+            ("dr", lexer => lexer.ReadDedentedRawString()),
+            ("df", lexer => lexer.ReadDedentedFStringStart()),
+            ("f", lexer => lexer.ReadFStringStart()),
+            ("t", lexer => lexer.ReadTStringStart()),
+            ("r", lexer => lexer.ReadRawString()),
+            ("b", lexer => lexer.ReadByteString()),
+            ("d", lexer => lexer.ReadDedentedString()),
+            ("", lexer => lexer.ReadString()));
+
+    /// <summary>The prefixes <see cref="TryReadStringLiteralStart"/> recognises (for the hole × prefix matrix).</summary>
+    internal static IEnumerable<string> StringLiteralPrefixes => StringLiteralStarts.Select(s => s.Prefix);
+
+    /// <summary>
+    /// The ONE string-literal prefix dispatch (#2010), shared by the main loop and the replacement-field
+    /// tokenizer: at a quote, or at a known prefix immediately followed by a quote, reads the literal
+    /// (a nested f-/t-string enters f-string mode) and returns true.
+    /// </summary>
+    private bool TryReadStringLiteralStart([NotNullWhen(true)] out Token? token)
+    {
+        foreach (var (prefix, read) in StringLiteralStarts)
+        {
+            var quoteAt = _position + prefix.Length;
+            if (quoteAt < _source.Length && (_source[quoteAt] == '"' || _source[quoteAt] == '\'')
+                && string.CompareOrdinal(_source, _position, prefix, 0, prefix.Length) == 0)
+            {
+                token = read(this);
+                return true;
+            }
+        }
+
+        token = null;
+        return false;
     }
 
     private Token LogAndReturn(Token token)
