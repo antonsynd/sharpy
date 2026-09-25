@@ -430,8 +430,12 @@ internal class CodeGenInfoComputer
                     }
                     else if (stmt is EnumDef nestedEnum)
                     {
+                        var nestedIsStringEnum = NameResolver.IsStringEnum(nestedEnum);
                         if (typeSymbol.NestedTypes.FirstOrDefault(t => t.Name == nestedEnum.Name) is { } nestedEnumSymbol)
-                            MaterializeEnumMemberNames(nestedEnumSymbol, nestedEnum, NameResolver.IsStringEnum(nestedEnum));
+                            MaterializeEnumMemberNames(nestedEnumSymbol, nestedEnum, nestedIsStringEnum);
+                        // The member walk runs for a nested enum too — it only ever ran from the
+                        // module-level ProcessEnumDef, so a nested pair was CS0102 behind SPY0908 (#2036).
+                        DetectEnumMemberCollisions(nestedEnum, nestedIsStringEnum);
                         DetectEnumEnclosingTypeCollisions(nestedEnum);
                     }
                     break;
@@ -1138,7 +1142,9 @@ internal class CodeGenInfoComputer
     /// <summary>
     /// Detects name collisions among an enum's members after mangling. Enums have their own walk
     /// because their members are not symbols and their naming rule is neither a field's nor a
-    /// method's (#1385).
+    /// method's (#1385). Called for top-level and nested enums alike (#2036). A STRING enum's
+    /// class also declares the members its lowering synthesizes (<see cref="StringEnumShape.SynthesizedMembers"/>),
+    /// so a member that compiles to one of those names collides with it (CS0102 before #2036).
     /// </summary>
     private void DetectEnumMemberCollisions(EnumDef enumDef, bool isStringEnum)
     {
@@ -1149,6 +1155,22 @@ internal class CodeGenInfoComputer
         {
             var csharpName = NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped);
             var position = DeclarationPosition.From(member.LineStart, member.ColumnStart);
+
+            if (isStringEnum && StringEnumShape.SynthesizedMembers.Contains(csharpName, StringComparer.Ordinal))
+            {
+                var escapeHelps = NameCasing.ResolveEnumMember(member.Name, isStringEnum: true, isBacktickEscaped: true) != csharpName;
+                _diagnostics.AddError(
+                    $"Name collision: enum member '{member.Name}' compiles to '{csharpName}', which conflicts " +
+                    $"with the member its string enum's class synthesizes. " +
+                    (escapeHelps
+                        ? $"Rename the member, or backtick-escape its declaration (`{member.Name}`) to keep the Python spelling."
+                        : "Rename the member."),
+                    line: position?.Line,
+                    column: position?.Column,
+                    code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+                continue;
+            }
 
             if (seen.TryGetValue(csharpName, out var existing))
             {

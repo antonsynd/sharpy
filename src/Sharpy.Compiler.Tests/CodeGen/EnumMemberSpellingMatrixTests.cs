@@ -21,7 +21,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// <c>.name</c> route, the SPY0522 collision route (an escaped member no longer collides; the plain
 /// pair still does — the positive control), the nested camelCase int member with no escape, and a
 /// WARM cell (a cache-served escaped member consumed by a recompiled file: the fact rides the
-/// cache).</para>
+/// cache). The #2036 cells: the SPY0522 walk over a nested enum, and a string-enum member named
+/// like a member the lowering synthesizes.</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class EnumMemberSpellingMatrixTests : IntegrationTestBase
@@ -180,6 +181,76 @@ public class EnumMemberSpellingMatrixTests : IntegrationTestBase
         coldRun.StandardOutput.Should().Be("r\nTrue\nred\n");
         warmRun.Success.Should().BeTrue(string.Join(" | ", warmRun.CompilationErrors));
         warmRun.StandardOutput.Should().Be(coldRun.StandardOutput);
+    }
+
+    /// <summary>
+    /// #2036, hole 1: the SPY0522 member walk runs for a NESTED enum too — it only ever ran from the
+    /// module-level declaration, so a nested pair compiling to one identifier was CS0102 behind
+    /// SPY0908 while its top-level twin was SPY0522. The escaped twin is the positive control that
+    /// the walk keys on the emitted name.
+    /// </summary>
+    [Theory]
+    // int: ToEnumMemberName spells both `darkBlue` and `Darkblue` as `Darkblue`; string: the
+    // constant speller spells both `dark_blue` and `DarkBlue` as `DarkBlue`.
+    [InlineData("int", "darkBlue", "Darkblue", "1", "2")]
+    [InlineData("string", "dark_blue", "DarkBlue", "\"a\"", "\"b\"")]
+    public void ANestedEnumsMembers_AreWalkedForCollisions(
+        string kind, string mangled, string twin, string first, string second)
+    {
+        string Source(string decl)
+            => $"class O:\n    enum C:\n        {decl} = {first}\n        {twin} = {second}\n\n\n"
+               + $"def main() -> None:\n    print(O.C.{twin} == O.C.{twin})\n";
+
+        var plain = CompileAndExecute(Source(mangled));
+        plain.Success.Should().BeFalse($"[{kind}] '{mangled}' and '{twin}' compile to one identifier");
+        plain.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{kind}] the refusal is SPY0522, not CS0102 behind SPY0908");
+        plain.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.CodeGen.MemberNameCollision
+            && d.Message.Contains($"'{twin}' and '{mangled}'"));
+
+        var escaped = CompileAndExecute(Source($"`{mangled}`"));
+        escaped.Success.Should().BeTrue($"[{kind}] {string.Join(" | ", escaped.CompilationErrors)}");
+        escaped.StandardOutput.Should().Be("True\n");
+    }
+
+    /// <summary>
+    /// #2036, hole 2: a string enum lowers to a class that synthesizes Name, Value, Values and
+    /// ToString, so a member compiling to one of those names (spelled so, or mangled into it) is a
+    /// member collision — SPY0522, not CS0102 behind SPY0908. An escaped lowercase spelling compiles
+    /// verbatim and runs (the positive control, with the escape steer's premise).
+    /// </summary>
+    [Theory]
+    [InlineData("Name", false)]
+    [InlineData("Value", false)]
+    [InlineData("Values", false)]
+    [InlineData("ToString", false)]
+    [InlineData("name", true)]
+    [InlineData("value", true)]
+    [InlineData("to_string", true)]
+    public void AStringEnumMember_NamedLikeASynthesizedMember_IsSpy0522(string member, bool escapeHelps)
+    {
+        var source = $"enum Level:\n    {member} = \"n\"\n    B = \"b\"\n\n\n"
+            + "def main() -> None:\n    print(Level.B.value)\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(source);
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "the refusal is SPY0522, not CS0102 behind SPY0908");
+        var refusal = result.RawDiagnostics.Should().ContainSingle(d => d.Code == DiagnosticCodes.CodeGen.MemberNameCollision).Subject;
+        refusal.Message.Should().Contain($"enum member '{member}' compiles to");
+        refusal.Line.Should().Be(2);
+        if (escapeHelps)
+        {
+            refusal.Message.Should().EndWith($"backtick-escape its declaration (`{member}`) to keep the Python spelling.");
+            var escaped = CompileAndExecute(source.Replace($"    {member} = ", $"    `{member}` = "));
+            escaped.Success.Should().BeTrue(string.Join(" | ", escaped.CompilationErrors));
+            escaped.StandardOutput.Should().Be("b\n");
+        }
+        else
+        {
+            refusal.Message.Should().EndWith("Rename the member.");
+        }
     }
 
     [Fact]
