@@ -27,7 +27,8 @@ internal static class MemberClassification
     /// </summary>
     public static Result Classify(FunctionDef def, TypeKind ownerKind, bool ownerIsAbstract)
     {
-        var (access, explicitAccess) = ClassifyAccess(def.Name, def.Decorators, ownerKind);
+        var (access, explicitAccess) = ClassifyAccess(
+            def.Name, def.Decorators, ownerKind, def.IsNameBacktickEscaped);
 
         bool hasSelf = def.Parameters.Any(p =>
             string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
@@ -61,7 +62,8 @@ internal static class MemberClassification
     /// </summary>
     public static FieldResult ClassifyField(VariableDeclaration def, TypeKind ownerKind)
     {
-        var (access, explicitAccess) = ClassifyAccess(def.Name, def.Decorators, ownerKind);
+        var (access, explicitAccess) = ClassifyAccess(
+            def.Name, def.Decorators, ownerKind, def.IsNameBacktickEscaped);
 
         return new FieldResult(
             access,
@@ -172,16 +174,51 @@ internal static class MemberClassification
     /// <c>@protected</c> on a struct member is refused by <c>DecoratorValidator</c> (SPY0415, beside
     /// <c>@virtual</c>), and <c>AccessValidator</c> reads the written level for its message. Mapping
     /// the effective level anyway keeps the symbol emit-legal for error recovery.</para>
+    ///
+    /// <para>A backtick-escaped name carries no convention (#2033, R-CA): <c>`_m`</c> is public on
+    /// every host unless a decorator says otherwise.</para>
     /// </summary>
     public static (AccessLevel Access, AccessLevel? ExplicitAccess) ClassifyAccess(
-        string name, IEnumerable<Decorator> decorators, TypeKind ownerKind)
+        string name, IEnumerable<Decorator> decorators, TypeKind ownerKind, bool isBacktickEscaped)
     {
         var explicitAccess = GetExplicitAccessLevel(decorators);
-        var access = explicitAccess ?? AccessLevelConventions.FromName(name);
+        var access = explicitAccess ?? AccessLevelConventions.FromName(name, isBacktickEscaped);
         if (ownerKind == TypeKind.Struct && access == AccessLevel.Protected)
             access = AccessLevel.Private;
         return (access, explicitAccess);
     }
+
+    /// <summary>
+    /// Whether an implementation or override spells a method's name differently from the member it
+    /// implements — one side backtick-escaped, the other not — so the two emit DIFFERENT C# names
+    /// (an escaped name is verbatim, a bare one is PascalCased): the implementation silently misses
+    /// its target, which C# reports as CS0535/CS0115 behind SPY0908 (#2033). A pair whose spellings
+    /// happen to emit the same C# name (<c>`Run`</c> and <c>Run</c>) is not a mismatch.
+    /// </summary>
+    public static bool MethodSpellingsDiffer(string name, bool declaredEscaped, bool implementedEscaped)
+        => declaredEscaped != implementedEscaped
+            && NameCasing.ResolveMethod(name, declaredEscaped) != NameCasing.ResolveMethod(name, implementedEscaped);
+
+    /// <summary>The Sharpy spelling of a member name for a message: <c>`m`</c> when escaped.</summary>
+    public static string Spelling(string name, bool isBacktickEscaped)
+        => isBacktickEscaped ? $"`{name}`" : name;
+
+    /// <summary>
+    /// Whether a type DECLARATION's name is backtick-escaped — the <see cref="ClassifyAccess"/>
+    /// escape input for a nested type (#2033). The seven type-declaring kinds; anything else is not
+    /// a type declaration and has no escaped name to report.
+    /// </summary>
+    public static bool IsTypeDeclarationNameBacktickEscaped(Statement declaration) => declaration switch
+    {
+        ClassDef c => c.IsNameBacktickEscaped,
+        StructDef s => s.IsNameBacktickEscaped,
+        InterfaceDef i => i.IsNameBacktickEscaped,
+        EnumDef e => e.IsNameBacktickEscaped,
+        UnionDef u => u.IsNameBacktickEscaped,
+        DelegateDef d => d.IsNameBacktickEscaped,
+        TypeAlias a => a.IsNameBacktickEscaped,
+        _ => false
+    };
 
     /// <summary>
     /// Extracts the explicit access level from access modifier decorators, if any. The last one

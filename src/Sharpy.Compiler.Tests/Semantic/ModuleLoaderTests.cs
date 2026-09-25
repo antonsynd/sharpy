@@ -221,19 +221,27 @@ interface Drawable:
     [Fact]
     public void GetAccessLevel_PublicName()
     {
-        Assert.Equal(AccessLevel.Public, _loader.GetAccessLevel("foo"));
+        Assert.Equal(AccessLevel.Public, _loader.GetAccessLevel("foo", isBacktickEscaped: false));
     }
 
     [Fact]
     public void GetAccessLevel_ProtectedName()
     {
-        Assert.Equal(AccessLevel.Protected, _loader.GetAccessLevel("_bar"));
+        Assert.Equal(AccessLevel.Protected, _loader.GetAccessLevel("_bar", isBacktickEscaped: false));
     }
 
     [Fact]
     public void GetAccessLevel_PrivateName()
     {
-        Assert.Equal(AccessLevel.Private, _loader.GetAccessLevel("__baz"));
+        Assert.Equal(AccessLevel.Private, _loader.GetAccessLevel("__baz", isBacktickEscaped: false));
+    }
+
+    [Fact]
+    public void GetAccessLevel_BacktickEscapedName_IsPublic()
+    {
+        // #2033 (R-CA): an escaped name is a literal and carries no underscore convention.
+        Assert.Equal(AccessLevel.Public, _loader.GetAccessLevel("_bar", isBacktickEscaped: true));
+        Assert.Equal(AccessLevel.Public, _loader.GetAccessLevel("__baz", isBacktickEscaped: true));
     }
 
     [Fact]

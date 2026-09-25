@@ -252,7 +252,7 @@ internal class ModuleLoader
         switch (statement)
         {
             case FunctionDef functionDef:
-                var accessLevel = GetAccessLevel(functionDef.Name);
+                var accessLevel = GetAccessLevel(functionDef.Name, functionDef.IsNameBacktickEscaped);
                 // Names of this function's own type parameters (T, U in identity[T]/pair[T, U]) so
                 // annotations naming them convert to TypeParameterType, enabling cross-module
                 // generic inference to unify them like a bare same-file call (#1142).
@@ -356,7 +356,7 @@ internal class ModuleLoader
                 break;
 
             case VariableDeclaration varDecl:
-                var varAccessLevel = GetAccessLevel(varDecl.Name);
+                var varAccessLevel = GetAccessLevel(varDecl.Name, varDecl.IsNameBacktickEscaped);
                 var varType = ConvertTypeAnnotationToSemanticType(varDecl.Type);
                 var varConstValue = varDecl.IsConst
                     ? IntegerConstantEvaluator.TryFoldConstDeclaration(varType, varDecl.InitialValue)
@@ -415,7 +415,7 @@ internal class ModuleLoader
     /// </summary>
     internal TypeSymbol ExtractFullClassSymbol(ClassDef classDef, string definingModulePath)
     {
-        var accessLevel = GetAccessLevel(classDef.Name);
+        var accessLevel = GetAccessLevel(classDef.Name, classDef.IsNameBacktickEscaped);
         bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(classDef.Decorators);
 
         string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
@@ -523,7 +523,7 @@ internal class ModuleLoader
     /// </summary>
     internal TypeSymbol ExtractFullStructSymbol(StructDef structDef, string definingModulePath)
     {
-        var accessLevel = GetAccessLevel(structDef.Name);
+        var accessLevel = GetAccessLevel(structDef.Name, structDef.IsNameBacktickEscaped);
 
         var fields = ExtractFields(structDef.Body, TypeKind.Struct);
 
@@ -586,7 +586,7 @@ internal class ModuleLoader
     /// </summary>
     internal TypeSymbol ExtractFullInterfaceSymbol(InterfaceDef interfaceDef, string definingModulePath)
     {
-        var accessLevel = GetAccessLevel(interfaceDef.Name);
+        var accessLevel = GetAccessLevel(interfaceDef.Name, interfaceDef.IsNameBacktickEscaped);
 
         var methods = new List<FunctionSymbol>();
         foreach (var stmt in interfaceDef.Body)
@@ -765,7 +765,7 @@ internal class ModuleLoader
             Name = enumDef.Name,
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Enum,
-            AccessLevel = GetAccessLevel(enumDef.Name),
+            AccessLevel = GetAccessLevel(enumDef.Name, enumDef.IsNameBacktickEscaped),
             IsNameBacktickEscaped = enumDef.IsNameBacktickEscaped,
             DeclarationLine = enumDef.LineStart,
             DeclarationColumn = enumDef.ColumnStart,
@@ -826,7 +826,7 @@ internal class ModuleLoader
             Name = unionDef.Name,
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Union,
-            AccessLevel = GetAccessLevel(unionDef.Name),
+            AccessLevel = GetAccessLevel(unionDef.Name, unionDef.IsNameBacktickEscaped),
             IsAbstract = true,
             IsNameBacktickEscaped = unionDef.IsNameBacktickEscaped,
             TypeParameters = unionDef.TypeParameters.ToList(),
@@ -917,7 +917,7 @@ internal class ModuleLoader
             Name = delegateDef.Name,
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Delegate,
-            AccessLevel = GetAccessLevel(delegateDef.Name),
+            AccessLevel = GetAccessLevel(delegateDef.Name, delegateDef.IsNameBacktickEscaped),
             IsNameBacktickEscaped = delegateDef.IsNameBacktickEscaped,
             TypeParameters = delegateDef.TypeParameters.ToList(),
             DeclarationLine = delegateDef.LineStart,
@@ -1246,10 +1246,11 @@ internal class ModuleLoader
     }
 
     /// <summary>
-    /// Determine access level based on naming convention.
+    /// Determine access level based on naming convention; a backtick-escaped name is a literal and
+    /// public (#2033).
     /// </summary>
-    internal AccessLevel GetAccessLevel(string name)
-        => Shared.AccessLevelConventions.FromName(name);
+    internal AccessLevel GetAccessLevel(string name, bool isBacktickEscaped)
+        => Shared.AccessLevelConventions.FromName(name, isBacktickEscaped);
 
     /// <summary>
     /// Extracts <see cref="PropertySymbol"/>s from a type body so imported types carry them (#1267).
@@ -1266,7 +1267,7 @@ internal class ModuleLoader
 
             // The one access rule with the host axis, as NameResolver.ResolvePropertyDeclaration (#1937).
             var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
-                propDef.Name, propDef.Decorators, ownerKind);
+                propDef.Name, propDef.Decorators, ownerKind, propDef.IsNameBacktickEscaped);
 
             // The SAME authority NameResolver consumes, not a mirror of it (#1374). This site and
             // NameResolver.ResolvePropertyDeclaration used to hold copies of one rule, which is how
@@ -1328,7 +1329,7 @@ internal class ModuleLoader
 
             // The one access rule with the host axis, as NameResolver.ResolveEventDeclaration (#1937).
             var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
-                eventDef.Name, eventDef.Decorators, ownerKind);
+                eventDef.Name, eventDef.Decorators, ownerKind, eventDef.IsNameBacktickEscaped);
 
             // Same authority as NameResolver.ResolveEventDeclaration (#1374) — see the property
             // extractor above for why this is a call and not a copy.

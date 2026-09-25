@@ -1075,5 +1075,18 @@ public static partial class DiagnosticExplanations
             "Remove `frozen=True` if the field must change after construction, or compute the " +
             "value before construction and pass it to the constructor instead of assigning it in " +
             "__post_init__.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.InterfaceMemberUnderscoreName,
+            "Interface member named like a protected or private member", "Validation",
+            "Interface members are public in .NET, so the underscore convention cannot apply to " +
+            "them: a `_m` member would be protected and a `__m` member private on the implementing " +
+            "class or struct, which C# refuses (CS0737/CS0621). The name is refused at the interface " +
+            "declaration, for methods, properties and events alike. A backtick-escaped name is a " +
+            "literal: `` `_m` `` declares a PUBLIC member spelled `_m` on every host, and the " +
+            "implementer must use the same escaped spelling.",
+            "interface Shape:\n    def _area(self) -> float: ...  # SPY0707",
+            "Drop the underscore (`def area(self) -> float: ...`), or backtick-escape the name to keep " +
+            "the spelling as a public member (`def `_area`(self) -> float: ...`, implemented as " +
+            "`def `_area`(self) -> float:` in the class).");
     }
 }

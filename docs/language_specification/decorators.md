@@ -46,6 +46,13 @@ convention means `private` (C# has no protected struct member), and an explicit 
 struct member is refused (`SPY0415`, like `@virtual` on a struct method) -- see
 [structs.md](structs.md#visibility). At module level (no host type) `_name` means `internal`.
 
+**Backtick escape:** the convention reads the name as written. A backtick-escaped name
+(`` `_m` ``, `` `__m` ``) is a literal and carries **no** convention: it is `public` on every
+host -- class, struct, interface and module -- unless an access decorator says otherwise. This is
+how an interface member keeps an underscore spelling: interface members are public in .NET, so a
+bare `_m`/`__m` in an interface is refused (`SPY0707`) -- see
+[interfaces.md](interfaces.md#member-names-and-access).
+
 **Assembly Boundaries for `@internal`:**
 
 In Sharpy, an assembly corresponds to a compiled project. Assembly boundaries are defined by:

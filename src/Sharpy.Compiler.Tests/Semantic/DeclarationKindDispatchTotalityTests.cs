@@ -230,6 +230,25 @@ public class DeclarationKindDispatchTotalityTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // IsTypeDeclarationNameBacktickEscaped — MemberClassification (the escape input ClassifyAccess
+    // reads for a nested type, #2033). Same nested-type universe as the decorator reader beside it.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void IsTypeDeclarationNameBacktickEscaped_Arms_MatchNestedTypeUniverse()
+    {
+        var arms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Shared/MemberClassification.cs",
+            "IsTypeDeclarationNameBacktickEscaped");
+        Assert.NotEmpty(arms);
+        _output.WriteLine($"IsTypeDeclarationNameBacktickEscaped arms: {string.Join(", ", arms)}");
+        Assert.True(arms.SetEquals(NestedTypeUniverse),
+            $"Arms differ from nested-type universe.\n" +
+            $"  Extra: {string.Join(", ", arms.Except(NestedTypeUniverse))}\n" +
+            $"  Missing: {string.Join(", ", NestedTypeUniverse.Except(arms))}");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // RefuseBuiltinTypeNameShadowing — NameResolver
     // Type-name universe: all kinds that introduce a named type (SPY0212 check).
     // ═══════════════════════════════════════════════════════════════════════

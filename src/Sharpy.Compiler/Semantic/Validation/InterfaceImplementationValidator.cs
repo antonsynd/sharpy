@@ -75,6 +75,24 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
                     continue;
                 }
 
+                // A mixed-escape implementation emits a different C# name than the interface member
+                // it is meant to implement (#2033) — refused here, by name, not as CS0535.
+                if (iface.ClrType == null
+                    && MemberClassification.MethodSpellingsDiffer(
+                        interfaceMethod.Name, interfaceMethod.IsNameBacktickEscaped, classMethod.IsNameBacktickEscaped))
+                {
+                    AddError(
+                        $"Class '{typeSymbol.Name}' does not implement interface method '{iface.Name}.{interfaceMethod.Name}': "
+                        + $"it is declared as {MemberClassification.Spelling(interfaceMethod.Name, interfaceMethod.IsNameBacktickEscaped)} "
+                        + $"but implemented as {MemberClassification.Spelling(classMethod.Name, classMethod.IsNameBacktickEscaped)}; "
+                        + "implement it with the same spelling",
+                        declarationLine,
+                        declarationColumn,
+                        code: DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+                        span: declarationSpan);
+                    continue;
+                }
+
                 var interfaceParams = interfaceMethod.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
                 var classParams = classMethod.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
 

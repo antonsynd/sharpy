@@ -12,9 +12,17 @@ internal static class AccessLevelConventions
     /// <summary>
     /// Determines access level from Python underscore naming convention.
     /// __name__ (dunder) → Public, __name → Private, _name → Protected, name → Public.
+    ///
+    /// <para>A backtick-escaped name is a LITERAL and carries no convention: <c>`_m`</c> is a public
+    /// member spelled <c>_m</c>, on every host (#2033, R-CA — how an interface member keeps an
+    /// underscore spelling, since interface members are public in .NET). The flag is required so no
+    /// caller can apply the convention to an escaped name by forgetting it.</para>
     /// </summary>
-    public static AccessLevel FromName(string name)
+    public static AccessLevel FromName(string name, bool isBacktickEscaped)
     {
+        if (isBacktickEscaped)
+            return AccessLevel.Public;
+
         // Python naming conventions:
         // __name__ (dunder methods) = public (special methods)
         // __name (but not __name__) = private (name mangling)

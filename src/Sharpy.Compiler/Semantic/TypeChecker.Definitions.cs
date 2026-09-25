@@ -525,6 +525,23 @@ internal partial class TypeChecker
                         span: functionDef.Span);
                 }
             }
+
+            // A mixed-escape override emits a different C# name than the member it overrides
+            // (#2033): refused by name here rather than as CS0115 behind SPY0908.
+            if (baseMethod != null && baseOwner?.ClrType == null
+                && Shared.MemberClassification.MethodSpellingsDiffer(
+                    functionDef.Name, baseMethod.IsNameBacktickEscaped, functionDef.IsNameBacktickEscaped))
+            {
+                AddError(
+                    $"Method {Shared.MemberClassification.Spelling(functionDef.Name, functionDef.IsNameBacktickEscaped)} "
+                    + $"overrides '{baseOwner?.Name}.{functionDef.Name}', which is declared as "
+                    + $"{Shared.MemberClassification.Spelling(baseMethod.Name, baseMethod.IsNameBacktickEscaped)}; "
+                    + "implement it with the same spelling",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidOverride,
+                    span: functionDef.Span);
+            }
         }
 
         // Determine if method is abstract:

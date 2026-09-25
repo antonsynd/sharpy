@@ -29,33 +29,49 @@ internal class SignatureValidator : SemanticValidatorBase
 
         foreach (var stmt in module.Body)
         {
-            ValidateTopLevelStatement(stmt);
+            ValidateTypeDeclaration(stmt);
         }
     }
 
-    private void ValidateTopLevelStatement(Statement stmt)
+    /// <summary>
+    /// One type declaration, then every type declared in its body — a nested class, struct or
+    /// interface is held to the same signature rules as a top-level one (#1461: the walk used to stop
+    /// at module level, so a nested interface declaring <c>__len__</c> or <c>_m</c> ran while its
+    /// top-level twin was refused; #2033).
+    /// </summary>
+    private void ValidateTypeDeclaration(Statement stmt)
     {
         switch (stmt)
         {
             case ClassDef classDef:
                 ValidateClassSignatures(classDef);
+                ValidateNestedTypeDeclarations(classDef.Body);
                 break;
             case StructDef structDef:
                 ValidateStructSignatures(structDef);
+                ValidateNestedTypeDeclarations(structDef.Body);
                 break;
             case InterfaceDef interfaceDef:
-                ValidateInterfaceDunders(interfaceDef);
+                ValidateInterfaceMembers(interfaceDef);
+                ValidateNestedTypeDeclarations(interfaceDef.Body);
                 break;
             default:
                 // walker-default-contract: any kind not listed above is deliberately ignored by
-                // this walker (rostered in DispatchSiteInventoryTests).
+                // this walker (rostered in DispatchSiteInventoryTests). An enum, union or delegate
+                // body declares no method this validator checks, and none can nest a type.
                 break;
         }
     }
 
+    private void ValidateNestedTypeDeclarations(IEnumerable<Statement> body)
+    {
+        foreach (var member in body)
+            ValidateTypeDeclaration(member);
+    }
+
     private void ValidateClassSignatures(ClassDef classDef)
     {
-        var typeSymbol = _context.SymbolTable.Lookup(classDef.Name) as TypeSymbol;
+        var typeSymbol = _context.LookupDeclaredType(classDef, classDef.Name);
         if (typeSymbol == null)
         {
             _logger.LogDebug($"Type symbol not found for class: {classDef.Name}");
@@ -73,7 +89,7 @@ internal class SignatureValidator : SemanticValidatorBase
 
     private void ValidateStructSignatures(StructDef structDef)
     {
-        var typeSymbol = _context.SymbolTable.Lookup(structDef.Name) as TypeSymbol;
+        var typeSymbol = _context.LookupDeclaredType(structDef, structDef.Name);
         if (typeSymbol == null)
         {
             _logger.LogDebug($"Type symbol not found for struct: {structDef.Name}");
@@ -89,10 +105,15 @@ internal class SignatureValidator : SemanticValidatorBase
         }
     }
 
-    private void ValidateInterfaceDunders(InterfaceDef interfaceDef)
+    private void ValidateInterfaceMembers(InterfaceDef interfaceDef)
     {
+        // A property's get/set and an event's add/remove are separate declarations of ONE member:
+        // its name is refused once, at the first.
+        var refusedNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in interfaceDef.Body)
         {
+            ValidateInterfaceMemberName(interfaceDef, member, refusedNames);
+
             if (member is not FunctionDef funcDef)
                 continue;
 
@@ -108,6 +129,42 @@ internal class SignatureValidator : SemanticValidatorBase
 
             ValidateSelfPositions(funcDef);
         }
+    }
+
+    /// <summary>
+    /// An interface member named <c>_m</c>/<c>__m</c> is refused at the declaration (SPY0707, #2033,
+    /// R-CA): interface members are public in .NET, so the underscore convention's protected/private
+    /// cannot hold — the implementer's <c>_m</c> was <c>protected</c> (CS0737) and a class's
+    /// <c>__m</c> <c>private virtual</c> (CS0621), behind SPY0908. A backtick-escaped name is a
+    /// literal with no convention and is allowed. The predicate is the access rule itself
+    /// (<see cref="AccessLevelConventions.FromName"/>), so the refusal and the classification cannot
+    /// disagree about which names carry a convention: a dunder is public and is SPY0413's business.
+    /// </summary>
+    private void ValidateInterfaceMemberName(InterfaceDef interfaceDef, Statement member, HashSet<string> refusedNames)
+    {
+        (string Name, bool Escaped, string Kind, int Line, int Column, Text.TextSpan? Span)? named = member switch
+        {
+            FunctionDef f => (f.Name, f.IsNameBacktickEscaped, "method", f.NameLineStart, f.NameColumnStart, f.Span),
+            PropertyDef p => (p.Name, p.IsNameBacktickEscaped, "property", p.NameLineStart, p.NameColumnStart, p.Span),
+            EventDef e => (e.Name, e.IsNameBacktickEscaped, "event", e.NameLineStart, e.NameColumnStart, e.Span),
+            // walker-default-contract: every other interface-body statement has no member name.
+            _ => null,
+        };
+        if (named is not { } m
+            || AccessLevelConventions.FromName(m.Name, m.Escaped) == AccessLevel.Public
+            || !refusedNames.Add(m.Name))
+            return;
+
+        var level = AccessLevelConventions.FromName(m.Name, isBacktickEscaped: false) == AccessLevel.Private
+            ? "private"
+            : "protected";
+        AddError(_context,
+            $"Interface {m.Kind} '{m.Name}' in '{interfaceDef.Name}' is named like a {level} member, but " +
+            "interface members are public in .NET. Drop the underscore, or backtick-escape the name " +
+            $"(`{m.Name}`) to keep the spelling as a public member.",
+            m.Line, m.Column,
+            code: DiagnosticCodes.ValidationOverflow.InterfaceMemberUnderscoreName,
+            span: m.Span);
     }
 
     /// <summary>

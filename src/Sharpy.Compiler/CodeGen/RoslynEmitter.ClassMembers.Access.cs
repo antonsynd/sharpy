@@ -38,7 +38,7 @@ internal partial class RoslynEmitter
     private SyntaxKind MemberAccessKeyword(FunctionDef func)
     {
         if (_currentTypeSymbol == null)
-            return HostlessAccessKeyword(func.Name, func.Decorators);
+            return HostlessAccessKeyword(func.Name, func.Decorators, func.IsNameBacktickEscaped);
 
         var symbol = _context.SemanticInfo?.GetFunctionDeclarationSymbol(func)
             ?? _currentTypeSymbol.Methods.Concat(_currentTypeSymbol.Constructors)
@@ -56,7 +56,7 @@ internal partial class RoslynEmitter
     private SyntaxKind MemberAccessKeyword(PropertyDef def)
     {
         if (_currentTypeSymbol == null)
-            return HostlessAccessKeyword(def.Name, def.Decorators);
+            return HostlessAccessKeyword(def.Name, def.Decorators, def.IsNameBacktickEscaped);
 
         var symbol = _currentTypeSymbol.Properties.FirstOrDefault(p => p.Name == def.Name);
         if (symbol == null)
@@ -74,7 +74,7 @@ internal partial class RoslynEmitter
     private SyntaxKind MemberAccessKeyword(EventDef def, bool accessorLevel)
     {
         if (_currentTypeSymbol == null)
-            return HostlessAccessKeyword(def.Name, def.Decorators);
+            return HostlessAccessKeyword(def.Name, def.Decorators, def.IsNameBacktickEscaped);
 
         var symbol = _currentTypeSymbol.Events.FirstOrDefault(e => e.Name == def.Name);
         if (symbol == null)
@@ -92,7 +92,7 @@ internal partial class RoslynEmitter
     private SyntaxKind MemberAccessKeyword(VariableDeclaration field)
     {
         if (_currentTypeSymbol == null)
-            return HostlessAccessKeyword(field.Name, field.Decorators);
+            return HostlessAccessKeyword(field.Name, field.Decorators, field.IsNameBacktickEscaped);
 
         var symbol = _currentTypeSymbol.Fields.FirstOrDefault(f => f.Name == field.Name);
         return symbol != null
@@ -104,7 +104,8 @@ internal partial class RoslynEmitter
     private SyntaxKind NestedTypeAccessKeyword(string name, Statement declaration)
     {
         if (_currentTypeSymbol == null)
-            return HostlessAccessKeyword(name, System.Collections.Immutable.ImmutableArray<Decorator>.Empty);
+            return HostlessAccessKeyword(name, System.Collections.Immutable.ImmutableArray<Decorator>.Empty,
+                MemberClassification.IsTypeDeclarationNameBacktickEscaped(declaration));
 
         var symbol = _currentTypeSymbol.NestedTypes.FirstOrDefault(n => n.Name == name);
         return symbol != null
@@ -115,12 +116,16 @@ internal partial class RoslynEmitter
     /// <summary>
     /// The host-less (module-level) rule: an explicit access decorator, else the module-level
     /// underscore convention (<c>_name</c> → <c>internal</c> — a module class is static, and a static
-    /// class cannot hold a protected member, CS1057).
+    /// class cannot hold a protected member, CS1057). A backtick-escaped name carries no convention
+    /// (#2033).
     /// </summary>
-    private static SyntaxKind HostlessAccessKeyword(string name, IEnumerable<Decorator> decorators)
+    private static SyntaxKind HostlessAccessKeyword(
+        string name, IEnumerable<Decorator> decorators, bool isBacktickEscaped)
     {
         var explicitAccess = MemberClassification.GetExplicitAccessLevel(decorators);
-        return explicitAccess is { } level ? MemberAccessKeyword(level) : GetModuleLevelAccessModifier(name);
+        return explicitAccess is { } level
+            ? MemberAccessKeyword(level)
+            : GetModuleLevelAccessModifier(name, isBacktickEscaped);
     }
 
     private SyntaxKind MissingMemberAccessSymbol(string kind, string name, int? line, int? column)

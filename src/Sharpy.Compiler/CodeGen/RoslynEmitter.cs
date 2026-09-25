@@ -1329,11 +1329,12 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// <summary>
     /// Maps underscore naming convention to access modifiers for module-level functions.
     /// Unlike class members where _name → protected, module-level _name → internal
-    /// (assembly-private, matching Python's "module-private" convention).
+    /// (assembly-private, matching Python's "module-private" convention). A backtick-escaped name is
+    /// a literal and public (#2033).
     /// </summary>
-    private static SyntaxKind GetModuleLevelAccessModifier(string functionName)
+    private static SyntaxKind GetModuleLevelAccessModifier(string functionName, bool isBacktickEscaped)
     {
-        var level = AccessLevelConventions.FromName(functionName);
+        var level = AccessLevelConventions.FromName(functionName, isBacktickEscaped);
         return level switch
         {
             AccessLevel.Private => SyntaxKind.PrivateKeyword,

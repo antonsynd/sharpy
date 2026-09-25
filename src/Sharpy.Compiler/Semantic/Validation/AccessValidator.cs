@@ -108,7 +108,8 @@ internal class AccessValidator : ValidatingAstWalker
     {
         // Try to find the member symbol for explicit access level override
         var memberSymbol = FindMemberSymbol(memberName, owningType);
-        var accessLevel = DetermineAccessLevel(memberName, memberSymbol);
+        var accessLevel = DetermineAccessLevel(
+            memberName, memberSymbol, IsMemberNameBacktickEscaped(memberName, owningType, memberSymbol));
 
         switch (accessLevel)
         {
@@ -141,15 +142,25 @@ internal class AccessValidator : ValidatingAstWalker
         }
     }
 
-    private AccessLevel DetermineAccessLevel(string name, Symbol? symbol = null)
+    private AccessLevel DetermineAccessLevel(string name, Symbol? symbol, bool isBacktickEscaped)
     {
         // If the symbol has an explicit access level from a decorator, use it
         if (symbol?.ExplicitAccessLevel != null)
             return symbol.ExplicitAccessLevel.Value;
 
-        // Fall back to name-based convention
-        return AccessLevelConventions.FromName(name);
+        // Fall back to name-based convention — which an escaped declaration does not carry (#2033)
+        return AccessLevelConventions.FromName(name, isBacktickEscaped);
     }
+
+    /// <summary>
+    /// Whether the member's DECLARATION spelled its name with backticks (a literal, public). Properties
+    /// and events are not <see cref="Symbol"/>s, so they are consulted by name beside the symbol.
+    /// </summary>
+    private static bool IsMemberNameBacktickEscaped(string memberName, TypeSymbol owningType, Symbol? symbol)
+        => symbol?.IsNameBacktickEscaped
+            ?? owningType.Properties.FirstOrDefault(p => p.Name == memberName)?.IsNameBacktickEscaped
+            ?? owningType.Events.FirstOrDefault(e => e.Name == memberName)?.IsNameBacktickEscaped
+            ?? false;
 
     /// <summary>
     /// Finds the symbol for a member in the owning type (method, field, property, or event).

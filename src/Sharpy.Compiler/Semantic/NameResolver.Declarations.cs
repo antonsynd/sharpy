@@ -681,7 +681,8 @@ internal partial class NameResolver
             // private, not protected (CS0666), and the explicit decorator is read by the same
             // last-wins helper every other member kind uses.
             var (access, explicitAccess) = Shared.MemberClassification.ClassifyAccess(
-                declaration.Name, NestedTypeDecorators(statement), enclosingType.TypeKind);
+                declaration.Name, NestedTypeDecorators(statement), enclosingType.TypeKind,
+                Shared.MemberClassification.IsTypeDeclarationNameBacktickEscaped(statement));
             nestedSymbol.AccessLevel = access;
             if (explicitAccess != null)
                 nestedSymbol.ExplicitAccessLevel = explicitAccess;

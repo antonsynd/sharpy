@@ -67,6 +67,7 @@ interface ISomeInterface:
 
 For non-void methods in interfaces (or anywhere), using `pass` alone is a compile error because the method must return a value:
 
+<!-- spec-sweep: error SPY0266 -->
 ```python
 interface IFoo:
     # ✅ OK - abstract method (no implementation required)
@@ -104,6 +105,7 @@ interface IContainer[T]:
 
 A type may implement a generic interface at most once — at exactly one set of type arguments. If a type reaches the same generic interface at two distinct instantiations (through explicit declarations, base classes, or synthesized interfaces from dunder methods), the compiler refuses with SPY0607:
 
+<!-- spec-sweep: error SPY0607 -->
 ```python
 interface IA[T]:
     def get(self) -> T: ...
@@ -120,6 +122,9 @@ class D(B, IA[str]):  # SPY0607: IA[int] via B and IA[str] explicit
 The same instantiation via multiple paths is accepted (the diamond is harmless):
 
 ```python
+interface IA[T]:
+    def get(self) -> T: ...
+
 interface IB(IA[int]):
     pass
 
@@ -133,6 +138,7 @@ class D(IB, IC):  # OK — IA[int] via both paths
 
 Conflicts from dunder-synthesized interfaces follow the same rule:
 
+<!-- spec-sweep: error SPY0607 -->
 ```python
 class Base:
     def __eq__(self, other: str) -> bool:
@@ -193,10 +199,6 @@ class ConsoleLogger(ILogger):
         print(message)
 
     # Inherits log_info default
-```
-
-*Implementation*
-- *✅ Native - Direct mapping to C# default interface methods (C# 8.0+).*
 ```
 
 *Implementation*
@@ -267,6 +269,7 @@ def main():
     print(total(b))    # 2 — Box[int]'s synthesized ISized flows into the non-generic slot
 ```
 
+<!-- spec-sweep: error SPY0413 -->
 ```python
 # ❌ ERROR: User-defined interface cannot declare dunders
 interface IMyProtocol:
@@ -290,6 +293,12 @@ interface IMyProtocol:
 User code can implement the context manager protocol by defining `__enter__` and `__exit__` dunder methods directly on a class (no interface import needed):
 
 ```python
+def acquire_resource() -> int:
+    return 7
+
+def release_resource(handle: int) -> None:
+    print(f"released {handle}")
+
 class ManagedResource:
     _handle: int
 
@@ -302,9 +311,12 @@ class ManagedResource:
     def __exit__(self):
         release_resource(self._handle)
 
-# Usage
-with ManagedResource() as resource:
-    use(resource)
+def use(resource: ManagedResource) -> None:
+    print("using")
+
+def main():
+    with ManagedResource() as resource:
+        use(resource)    # using, then: released 7
 ```
 
 See [Context Managers](context_managers.md) for the full protocol, including the 3-arg exception-aware `__exit__` form.
@@ -312,6 +324,52 @@ See [Context Managers](context_managers.md) for the full protocol, including the
 *Implementation*
 - *Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
 - *Protocol interfaces (`ISized`, `IBoolConvertible`, `IReverseEnumerable<T>`) are implicitly synthesized by the emitter.*
+
+## Member Names and Access
+
+Interface members are public in .NET, so the underscore access convention (`_name` protected,
+`__name` private — see [decorators.md](decorators.md#access-modifiers)) cannot apply to them. A
+method, property or event named `_m` or `__m` in an interface — top-level or nested — is a
+compile-time error (SPY0707):
+
+<!-- spec-sweep: error SPY0707 -->
+```python
+interface IShape:
+    def _area(self) -> float: ...    # SPY0707 — interface members are public
+```
+
+To keep an underscore spelling, backtick-escape the name. An escaped name is a literal: it carries
+no access convention, so `` `_area` `` is a PUBLIC member spelled `_area`. The implementing class or
+struct declares it with the same escaped spelling, and every use is spelled the same way:
+
+```python
+interface IShape:
+    def `_area`(self) -> float: ...
+
+class Square(IShape):
+    side: float
+
+    def __init__(self, side: float):
+        self.side = side
+
+    def `_area`(self) -> float:
+        return self.side * self.side
+
+def main():
+    s: IShape = Square(3.0)
+    print(s.`_area`())            # 9.0
+    print(Square(2.0).`_area`())  # 4.0
+```
+
+The escape means "no convention" on every host, not only in interfaces: a class or struct member
+declared `` `_m` `` is public too. Implementing (or overriding) an escaped member with the bare
+spelling — or the reverse — names a different member, and is refused by name: SPY0325 for an
+interface method, SPY0248 for an override ("declared as `` `_area` ``; implement it with the same
+spelling").
+
+*Implementation*
+- *✅ Native — the escaped name is emitted verbatim and `public` on the interface and on every
+  implementer ([#2033](https://github.com/antonsynd/sharpy/issues/2033)).*
 
 ## Constants
 

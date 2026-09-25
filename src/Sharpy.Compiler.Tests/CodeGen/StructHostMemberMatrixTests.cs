@@ -30,8 +30,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// cell; three <c>AccessValidator</c> cells pin that <c>obj._x</c> from outside a class, struct or
 /// dataclass is refused with the same message as before the change (the direction control).</para>
 ///
-/// <para><b>Union and interface hosts (#2041).</b> Seven access forms inside a union body or an
-/// interface default method run (SPY0283 before); outside access and a case's private field from a
+/// <para><b>Union and interface hosts (#2041).</b> Six access forms inside a union body run (SPY0283
+/// before); inside an interface default method the use is not an access violation, though the
+/// underscore declaration itself is SPY0707 since #2033; outside access and a case's private field from a
 /// union method (#2052) stay refused; a nested union/interface still reads its enclosing class's
 /// underscore members; the case field is emitted public and a keyword pattern binds it from outside
 /// (the recorded deviation cell).</para>
@@ -218,11 +219,27 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
             + "    def area(self) -> int:\n        match self:\n            case Circle() as c:\n                return c._r\n"
             + "            case Dot():\n                return 1\n\n"
             + "def main() -> None:\n    s: Shape = Shape.Circle(1)\n    print(s.area())\n" },
-        new object[] { "interface_default_method",
-            "interface I:\n    def _k(self) -> int:\n        return 1\n\n    def k(self) -> int:\n        return self._k()\n\n"
-            + "class C(I):\n    pass\n\n"
-            + "def main() -> None:\n    c: I = C()\n    print(c.k())\n" },
     };
+
+    [Fact]
+    public void InterfaceDefaultMethod_CallingItsOwnUnderscoreMember_IsOnlyTheDeclarationRefusal()
+    {
+        // #2041 made this program RUN (prior: SPY0283 at `self._k()`); #2033 (R-CA) then refuses the
+        // DECLARATION — an interface member cannot be protected (SPY0707). What VisitInterfaceDef
+        // still decides is that the use inside the interface body is not ALSO an access violation:
+        // exactly one diagnostic, at the declaration. (The escaped `_k` twin runs — see
+        // InterfaceMemberNameMatrixTests.)
+        var source = "interface I:\n    def _k(self) -> int:\n        return 1\n\n    def k(self) -> int:\n        return self._k()\n\n"
+            + "class C(I):\n    pass\n\n"
+            + "def main() -> None:\n    c: I = C()\n    print(c.k())\n";
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().ContainSingle(
+            d => d.Code == DiagnosticCodes.ValidationOverflow.InterfaceMemberUnderscoreName,
+            string.Join(" | ", result.CompilationErrors));
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.AccessViolation,
+            "inside the interface body the use is inside the hierarchy (#2041)");
+    }
 
     [Theory]
     [MemberData(nameof(UnionHostRunCells))]
@@ -498,7 +515,7 @@ public class StructHostMemberMatrixTests : IntegrationTestBase
         SpelledMembers.Should().HaveCount(6);
         OutsideAccessCells().Should().HaveCount(3);
         ConstructorRosterCells().Should().HaveCount(9);
-        UnionHostRunCells().Should().HaveCount(7);
+        UnionHostRunCells().Should().HaveCount(6);
         UnionHostRefusedCells().Should().HaveCount(3);
         NestedHostReadsEnclosingCells().Should().HaveCount(3);
     }

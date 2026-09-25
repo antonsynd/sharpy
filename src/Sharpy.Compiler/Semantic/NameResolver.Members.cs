@@ -329,7 +329,7 @@ internal partial class NameResolver
 
         // The one access rule with the host axis (#1937) — a struct's `_p` is private, not protected.
         var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
-            propDef.Name, propDef.Decorators, owningType.TypeKind);
+            propDef.Name, propDef.Decorators, owningType.TypeKind, propDef.IsNameBacktickEscaped);
 
         if (existingProp != null)
         {
@@ -400,7 +400,7 @@ internal partial class NameResolver
 
         // The one access rule with the host axis (#1937) — a struct's `_e` is private, not protected.
         var (accessLevel, _) = Shared.MemberClassification.ClassifyAccess(
-            eventDef.Name, eventDef.Decorators, owningType.TypeKind);
+            eventDef.Name, eventDef.Decorators, owningType.TypeKind, eventDef.IsNameBacktickEscaped);
 
         if (existingEvent != null)
         {

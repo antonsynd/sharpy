@@ -988,6 +988,11 @@ public static class DiagnosticCodes
         // FrozenInstanceError. Refused by name instead of reaching Roslyn's CS8852 on the emitted
         // init-only property (#1902, R-AV).
         public const string FrozenFieldReassignment = "SPY0706"; // Active (#1902)
-        // SPY0707-SPY0799: Available for new validation diagnostics
+        // An interface member spelled `_m`/`__m`: interface members are public in .NET, so the
+        // underscore convention's protected/private cannot hold (CS0737/CS0621 on the implementer).
+        // Refused at the interface declaration; a backtick-escaped spelling is a literal public
+        // name (#2033, R-CA).
+        public const string InterfaceMemberUnderscoreName = "SPY0707"; // Active (#2033)
+        // SPY0708-SPY0799: Available for new validation diagnostics
     }
 }

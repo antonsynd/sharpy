@@ -223,12 +223,6 @@ interface_default_methods.md::3a5144298f  # SPY0202 first #1952
 interface_default_methods.md::5637229cf8  # SPY0240 first #1952
 interface_default_methods.md::c0bd2f17df  # SPY0248 first #1952
 interface_default_methods.md::f4bc136131  # SPY0248 first #1952
-interfaces.md::087c3ff87e  # SPY0202 first #1952
-interfaces.md::221dd2ac25  # SPY0200 first #1952
-interfaces.md::5c2643009c  # SPY0266 first #1952
-interfaces.md::8f8298089e  # SPY0413 first #1952
-interfaces.md::b73e7d5a4e  # SPY0607 first #1952
-interfaces.md::c8cc8e7fb4  # SPY0607 first #1952
 lambdas.md::0726bdc749  # SPY0203 first #1952
 lambdas.md::0911d9a784  # SPY0200 first #1952
 lambdas.md::24cf8c73c2  # SPY0343 first #1952
