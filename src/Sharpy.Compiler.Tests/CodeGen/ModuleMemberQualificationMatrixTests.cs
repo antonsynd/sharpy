@@ -1060,7 +1060,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // The SPY0526 refusals of module-as-namespace (#1948, Decision 28 (d)). Refusal 1:
+    // The two SPY0526 refusals of module-as-namespace (#1948, Decision 28 (d)). Refusal 1:
     // a module file beside a same-named package directory — python imports only one of them (the
     // package with __init__, the module without), so the other is unreachable. Refusal 2: an
     // __init__ top-level name whose emitted identifier is one of the package's own submodules or
@@ -1091,14 +1091,12 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         new object[] { "init_variable_shadows_subpackage",
             new[] { ("pkg/__init__.spy", "sub: int = 1\n"), ("pkg/sub/x.spy", LibF), ("main.spy", "from pkg.sub.x import f\n\ndef main() -> None:\n    print(f())\n") },
             "__init__.spy", "'sub' in the package's __init__.spy emits the C# identifier 'Sub', which its subpackage 'sub' also emits" },
-        // Refusal 3 (#1948): a child spelled like the package's own module class <X> — both in the
-        // package namespace (CS0101). Prior commit: the __init__ class was `Pkg`, so these ran.
-        new object[] { "submodule_spelled_like_init_class",
-            new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/pkg_module.spy", LibF), ("main.spy", "from pkg.pkg_module import f\n\ndef main() -> None:\n    print(f())\n") },
-            "__init__.spy", "The package's __init__.spy emits its module class 'PkgModule', which its submodule 'pkg_module.spy' also emits" },
-        new object[] { "subpackage_spelled_like_init_class",
-            new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/pkg_module/x.spy", LibF), ("main.spy", "from pkg.pkg_module.x import f\n\ndef main() -> None:\n    print(f())\n") },
-            "__init__.spy", "The package's __init__.spy emits its module class 'PkgModule', which its subpackage 'pkg_module' also emits" },
+        // Emitted-identifier rule (plan Decision 28 (d)): `X` beside x.spy is refused although python
+        // tells pkg.X from pkg.x — no python reason is printed. TODO(#2086): drains when refusal 2 is
+        // narrowed to real C# clashes (P14c) — this row then runs.
+        new object[] { "init_constant_spelled_like_submodule_2086",
+            new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/x.spy", LibF), ("main.spy", "from pkg.x import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "'X' in the package's __init__.spy emits the C# identifier 'X', which its submodule 'x.spy' also emits. Rename" },
     };
 
     [Theory]
@@ -1147,5 +1145,37 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
 
     [Fact]
     public void PackageShadowing_Axis_IsTotal()
-        => PackageShadowingLayouts().Should().HaveCount(8);
+        => PackageShadowingLayouts().Should().HaveCount(7);
+
+    /// <summary>
+    /// A child spelled like the package's module class <c>&lt;X&gt;</c> (<c>pkg/pkg_module.spy</c> or
+    /// <c>pkg/pkg_module/</c> beside <c>pkg/__init__.spy</c>'s <c>PkgModule</c>) would be a second
+    /// <c>PkgModule</c> in <c>namespace Simple.Pkg</c> (CS0101): the <c>&lt;X&gt;</c> collision of owner
+    /// ruling 15, SPY0523 — the code a <c>def pkg_module</c> in the __init__ gets. Prior commit: while the
+    /// __init__ class was <c>Pkg</c> these ran (worked → refused, a consequence of X3).
+    /// </summary>
+    [Theory]
+    [InlineData("pkg/pkg_module.spy", "from pkg.pkg_module import f", "The submodule 'pkg_module.spy' compiles to 'PkgModule'")]
+    [InlineData("pkg/pkg_module/x.spy", "from pkg.pkg_module.x import f", "The subpackage 'pkg_module' compiles to 'PkgModule'")]
+    public void ChildSpelledLikeTheMembersClass_IsSpy0523(string childPath, string import, string message)
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile("pkg/__init__.spy", "VERSION: int = 1\n");
+        helper.AddSourceFile(childPath, LibF);
+        helper.AddSourceFile("main.spy", $"{import}\n\ndef main() -> None:\n    print(f())\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeFalse(childPath);
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision);
+        var refusal = errors.Should().ContainSingle(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
+            string.Join("\n", exec.CompilationErrors)).Subject;
+        refusal.Message.Should().StartWith(message);
+        refusal.Message.Should().Contain("module class of the package's __init__.spy");
+        Path.GetFileName(refusal.FilePath).Should().Be("__init__.spy");
+    }
 }

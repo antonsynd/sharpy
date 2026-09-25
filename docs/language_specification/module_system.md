@@ -46,9 +46,9 @@ repeat (`a/a/x.spy`). Directories are measured from the project's common source 
 file is checked whether or not anything imports it. A library built this way exposes every package
 module to a consumer that references it: `from pkg.lib import f` resolves against the built assembly.
 
-Three package layouts emit one identifier twice in one namespace and are refused with `SPY0526`
-before analysis. Each compares *emitted* identifiers, so spellings that mangle alike collide too
-(`my_pkg.spy` beside `myPkg/`):
+Three package layouts emit one identifier twice in one namespace and are refused before analysis —
+the first two with `SPY0526`, the third with `SPY0523`. Each compares *emitted* identifiers, so
+spellings that mangle alike collide too (`my_pkg.spy` beside `myPkg/`):
 
 ```
 src/
@@ -74,20 +74,22 @@ src/
 
 A top-level name in a package's `__init__.spy` (function, variable, constant or type) whose emitted
 identifier is one of that package's own submodules or subpackages: after `import pkg.lib`, python's
-`pkg.lib` names the submodule, not the function.
+`pkg.lib` names the submodule, not the function. The rule compares emitted identifiers, so it also
+refuses `X: int` in `pkg/__init__.spy` beside `pkg/x.spy`, which python tells apart; it is expected
+to narrow to real C# clashes once module types sit beside the module class (#2086).
 
 ```
 src/
     pkg/
-        __init__.spy      # error SPY0526: The package's __init__.spy emits its module class
-        pkg_module.spy    # 'PkgModule', which its submodule 'pkg_module.spy' also emits. Rename
-                          # the submodule.
+        __init__.spy      # error SPY0523: The submodule 'pkg_module.spy' compiles to 'PkgModule',
+        pkg_module.spy    # which conflicts with the module class of the package's __init__.spy.
+                          # Rename the submodule.
 ```
 
 A submodule or subpackage spelled like the package's own module class (`pkg/pkg_module.spy` or
-`pkg/pkg_module/` beside `pkg/__init__.spy`): both would be `Merge.Pkg.PkgModule`. A *function* in
-`pkg/__init__.spy` spelled like it (`def pkg_module`) is `SPY0523`, the module-class collision every
-module has.
+`pkg/pkg_module/` beside `pkg/__init__.spy`): both would be `Merge.Pkg.PkgModule`. It is the same
+module-class collision (`SPY0523`) a *function* spelled like the module class gets — `def pkg_module`
+in `pkg/__init__.spy`, or `def thing` in `thing.spy`.
 
 ## Name Qualification in Generated C#
 

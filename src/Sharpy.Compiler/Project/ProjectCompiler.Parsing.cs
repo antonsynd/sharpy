@@ -32,9 +32,9 @@ internal partial class ProjectCompiler
     /// are C# namespaces, so a directory and a module class nested in one another never collide
     /// (<c>lib/lib.spy</c> is <c>namespace …Lib { class Lib }</c>). What survives: (1) a module file beside
     /// a same-named package directory, (2) a package's <c>__init__</c> top-level name that is one of its
-    /// own submodules or subpackages, and (3) a submodule or subpackage spelled like the package's
-    /// <c>__init__</c> module class (<c>pkg/pkg_module.spy</c> beside <c>pkg/__init__.spy</c>'s
-    /// <c>PkgModule</c>). Refused by name after parsing, before any analysis, for EVERY source file (an
+    /// own submodules or subpackages; and — SPY0523, the <c>&lt;X&gt;</c> collision of owner ruling 15 —
+    /// a submodule or subpackage spelled like the package's <c>__init__</c> module class
+    /// (<c>pkg/pkg_module.spy</c> beside <c>pkg/__init__.spy</c>'s <c>PkgModule</c>). Refused by name after parsing, before any analysis, for EVERY source file (an
     /// un-imported file is still emitted). Rung 4 by necessity: no CLR surface spells "these two paths
     /// emit one identifier". Every name comes from <see cref="ModuleIdentifiers"/>, the authority the
     /// emitter spells them with, relative to the same common source root
@@ -79,6 +79,8 @@ internal partial class ProjectCompiler
         // submodule import rebinds the attribute); in C# the two share the package's scope. Refused
         // arity-blind by emitted identifier. A cache-served __init__ has no AST: it is re-parsed, so
         // a warm build refuses exactly what a cold one does when a sibling module is added.
+        // TODO(#2086): narrow to real C# clashes once P14c's sibling layout exists — the emitted-
+        // identifier rule also refuses `X: int` beside `x.spy`, which python tells apart.
         foreach (var initFile in config.SourceFiles.Where(f => Path.GetFileNameWithoutExtension(f) == Sharpy.Compiler.Semantic.DunderNames.Init))
         {
             var children = ModuleIdentifiers.PackageChildIdentifiers(
@@ -86,20 +88,21 @@ internal partial class ProjectCompiler
             if (children.Count == 0)
                 continue;
 
-            // Refusal 3: a child spelled like the package's own module class — both are members of the
-            // package namespace (CS0101). Python has no such conflict; the name is Sharpy's <X>.
+            // A child spelled like the package's own module class <X> — both are members of the package
+            // namespace (CS0101). Python has no such conflict; the name is Sharpy's <X>, so this is the
+            // <X> collision of owner ruling 15: SPY0523, like a `def pkg_module` in the __init__ itself.
             var membersClass = ModuleIdentifiers.ModuleClassName(initFile, willGenerateMainMethod: false);
             if (children.TryGetValue(membersClass, out var twin))
             {
                 var twinIsPackage = twin.EndsWith('/');
                 _diagnostics.AddError(
-                    $"The package's __init__.spy emits its module class '{membersClass}', which its " +
-                    $"{(twinIsPackage ? "subpackage" : "submodule")} '{twin.TrimEnd('/')}' also emits. Rename " +
-                    $"the {(twinIsPackage ? "subpackage" : "submodule")}.",
+                    $"The {(twinIsPackage ? "subpackage" : "submodule")} '{twin.TrimEnd('/')}' compiles to " +
+                    $"'{membersClass}', which conflicts with the module class of the package's __init__.spy. " +
+                    $"Rename the {(twinIsPackage ? "subpackage" : "submodule")}.",
                     line: 1,
                     column: 1,
                     filePath: initFile,
-                    code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                    code: DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
                     phase: CompilerPhase.CodeGeneration);
                 reported = true;
             }

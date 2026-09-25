@@ -142,9 +142,14 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.CodeGen.FunctionModuleClassCollision, "Function name collides with module class name", "CodeGen",
             "A module-level function's mangled name matches the module class name derived from the source filename. " +
-            "In C#, a member cannot have the same name as its enclosing type (CS0542).",
+            "In C#, a member cannot have the same name as its enclosing type (CS0542). A package's '__init__.spy' " +
+            "emits its module class as '<Dir>Module' inside the package's namespace ('pkg/__init__.spy' -> " +
+            "'PkgModule'), so the same rule applies to a function spelled like it ('def pkg_module') and to a " +
+            "submodule or subpackage spelled like it ('pkg/pkg_module.spy' or 'pkg/pkg_module/'), which would be " +
+            "a second 'PkgModule' in that namespace (CS0101).",
             "# File: bubble_sort.spy\ndef bubble_sort(arr: list[int]) -> list[int]:\n    ...\n# 'bubble_sort' compiles to 'BubbleSort', same as class 'BubbleSort' from filename",
-            "Rename the function or the source file so the function's PascalCase name does not match the filename's PascalCase name.");
+            "Rename the function or the source file so the function's PascalCase name does not match the filename's " +
+            "PascalCase name; for a package, rename the function, submodule or subpackage spelled like '<Dir>Module'.");
 
         Add(dict, DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision, "Member name equals its enclosing type's", "CodeGen",
             "A member's emitted C# name equals the emitted name of the type that declares it — for example a " +
@@ -170,17 +175,16 @@ public static partial class DiagnosticExplanations
             "class is declared in it; a package's '__init__.spy' emits its module class '<Dir>Module' inside the " +
             "package's own namespace ('pkg/__init__.spy' → 'PkgModule' in namespace 'Pkg'). Directories are measured " +
             "from the project's common source directory, and every file is emitted whether or not it is imported. " +
-            "Three layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
+            "Two layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
             "'pkg/'): python imports only one of the two, and C# cannot declare a class and a namespace of one name " +
             "in one scope. A top-level name in a package's '__init__.spy' whose emitted identifier is one of that " +
             "package's own submodules or subpackages ('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since " +
-            "'pkg.lib' would name both. And a submodule or subpackage spelled like the package's own module class " +
-            "('pkg/pkg_module.spy' beside 'pkg/__init__.spy', both 'PkgModule' in namespace 'Pkg'). A directory " +
-            "spelled like a module inside it ('lib/lib.spy') is legal.",
+            "'pkg.lib' would name both. (A submodule or subpackage spelled like the package's own module class, " +
+            "'pkg/pkg_module.spy' beside 'pkg/__init__.spy', is SPY0523.) A directory spelled like a module inside " +
+            "it ('lib/lib.spy') is legal.",
             "# project layout\nsrc/main.spy\nsrc/lib.spy       # module 'lib' ...\nsrc/lib/core.spy  # ... beside package 'lib'",
             "Rename the file or the directory (for example 'lib/core.spy' beside 'lib_util.spy'); for an __init__ " +
-            "name, rename the declaration or the submodule; for a child spelled like the package's module class, " +
-            "rename the submodule or subpackage.");
+            "name, rename the declaration or the submodule.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +

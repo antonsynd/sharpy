@@ -880,8 +880,7 @@ public static class DiagnosticCodes
         // semantic time (CodeGenInfoComputer), the SPY0522/SPY0523 phase-tagged precedent (#1871, R-AW).
         public const string MemberEnclosingTypeCollision = "SPY0525"; // Active (#1871)
         // A package layout that emits one identifier twice in one namespace: a module file beside a
-        // same-named package directory, an __init__ name shadowing a submodule/subpackage, or a child
-        // spelled like the package's module class — refused by the project compiler before analysis,
+        // same-named package directory, or an __init__ name shadowing a submodule/subpackage — refused by the project compiler before analysis,
         // phase-tagged like SPY0522/SPY0523 (#1932, re-purposed by #1948 when directories became
         // namespaces).
         public const string PackageModuleNameCollision = "SPY0526"; // Active (#1932, #1948)
