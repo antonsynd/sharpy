@@ -421,6 +421,27 @@ deviations:
         format(65, "😀")       # ValueError: Invalid format specifier '😀' for object of type 'int'
         format(65, "𝟑d")       # ' 65'
 
+  - id: decimal-format-grammar
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`decimal.Decimal.__format__` has its own grammar: `e` keeps the value's significant digits (`format(Decimal('1.5'), 'e')` is `'1.5e+0'`), and a spec it does not take — `d`, `s`, `#c` — is `ValueError: invalid format string`; subscripting names `'decimal.Decimal'`."
+    sharpy_behavior: "Sharpy's `decimal` is `System.Decimal` (Axiom 1) and is formatted by the `float` rules (`format(decimal(1.5), 'e')` is `'1.500000e+00'`); a refusal names the type `decimal` — `Unknown format code 'd' for object of type 'decimal'`, statically (SPY0609) for a literal spec and as a ValueError at runtime — and a subscript is `'decimal' object is not subscriptable` (#2014)."
+    spec_ref: docs/language_specification/fstrings.md
+    existing_diagnostic: SPY0609
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        format(Decimal("1.5"), "e")      # '1.5e+0'
+        format(Decimal("1.5"), "d")      # ValueError: invalid format string
+        format(Decimal("1.5"), ".2f")    # '1.50'
+      sharpy: |
+        format(decimal(1.5), "e")        # '1.500000e+00'
+        format(decimal(1.5), "d")        # SPY0609: Unknown format code 'd' for object of type 'decimal'
+        format(decimal(1.5), ".2f")      # '1.50'
+
   - id: struct-value-semantics
     code: null
     category: semantics

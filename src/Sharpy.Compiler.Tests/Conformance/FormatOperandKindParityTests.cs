@@ -137,4 +137,63 @@ public class FormatOperandKindParityTests : IntegrationTestBase
         Assert.Single(spy0609);
         Assert.Equal("Unknown format code 's' for object of type 'int'", spy0609[0].Message);
     }
+
+    /// <summary>
+    /// #2014: the kind table's name column says <c>decimal</c> for <c>System.Decimal</c> — it is
+    /// formatted by the float rules, but python's twin (<c>decimal.Decimal</c>) has its own grammar
+    /// (the <c>decimal-format-grammar</c> deviation), so naming it <c>float</c> named a type the value
+    /// is not. Every consumer of the one name moves together: the static SPY0609 (literal spec), the
+    /// runtime ValueError (spec in a variable) and the subscript TypeError. <c>float32</c> and the
+    /// integer widths keep <c>float</c>/<c>int</c> — they have python twins under those names — and
+    /// <c>.2f</c> is the accepted control.
+    /// </summary>
+    [Theory]
+    [Trait("Category", "Conformance")]
+    [InlineData("decimal", "decimal(1.5)", "d", "Unknown format code 'd' for object of type 'decimal'")]
+    [InlineData("decimal", "decimal(1.5)", "s", "Unknown format code 's' for object of type 'decimal'")]
+    [InlineData("decimal", "decimal(1.5)", "#c", "Unknown format code 'c' for object of type 'decimal'")]
+    [InlineData("decimal", "decimal(1.5)", ".2f", null)]
+    [InlineData("float32", "float32(1.5)", "d", "Unknown format code 'd' for object of type 'float'")]
+    [InlineData("int8", "int8(1)", "s", "Unknown format code 's' for object of type 'int'")]
+    public void FormatRefusal_NamesTheOperandType_StaticAndRuntime(string type, string init, string spec, string? refusal)
+    {
+        string decl = $"def main() -> None:\n    v: {type} = {init}\n";
+
+        var runtime = CompileAndExecute(decl
+            + $"    spec: str = \"{spec}\"\n"
+            + "    try:\n        print(format(v, spec))\n    except ValueError as e:\n        print(\"ValueError:\", e)\n",
+            executionTimeoutMs: 15_000);
+        Assert.True(runtime.Success, string.Join("; ", runtime.CompilationErrors) + runtime.StandardError);
+        Assert.Equal(refusal is null ? "1.50" : "ValueError: " + refusal, runtime.StandardOutput.TrimEnd());
+
+        var literal = CompileAndExecute(decl + $"    print(format(v, \"{spec}\"))\n", executionTimeoutMs: 15_000);
+        var spy0609 = literal.RawDiagnostics
+            .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
+            .Select(d => d.Message)
+            .ToList();
+        if (refusal is null)
+        {
+            Assert.True(literal.Success, string.Join("; ", literal.CompilationErrors));
+            Assert.Equal("1.50", literal.StandardOutput.TrimEnd());
+        }
+        else
+        {
+            Assert.Equal(new[] { refusal }, spy0609);
+        }
+    }
+
+    /// <summary>#2014: the subscript message reads the same name column.</summary>
+    [Theory]
+    [Trait("Category", "Conformance")]
+    [InlineData("decimal", "decimal(1.5)", "'decimal' object is not subscriptable")]
+    [InlineData("float32", "float32(1.5)", "'float' object is not subscriptable")]
+    [InlineData("int8", "int8(1)", "'int' object is not subscriptable")]
+    public void FieldSubscript_NamesTheOperandType(string type, string init, string message)
+    {
+        var result = CompileAndExecute($"def main() -> None:\n    v: {type} = {init}\n"
+            + "    try:\n        print(\"{0[0]}\".format(v))\n    except TypeError as e:\n        print(\"TypeError:\", e)\n",
+            executionTimeoutMs: 15_000);
+        Assert.True(result.Success, string.Join("; ", result.CompilationErrors) + result.StandardError);
+        Assert.Equal("TypeError: " + message, result.StandardOutput.TrimEnd());
+    }
 }

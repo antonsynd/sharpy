@@ -340,6 +340,11 @@ def main() -> None:
     print(f"[{65:<+z#010c}]")   # SPY0609: Negative zero coercion (z) not allowed in integer format specifier
 ```
 
+A `decimal` operand (`System.Decimal`) is formatted by the `float` rules and named `decimal` in every
+message (`Unknown format code 'd' for object of type 'decimal'`); python's `decimal.Decimal` has its
+own `__format__` grammar (`format(Decimal("1.5"), "e")` is `1.5e+0` where Sharpy prints
+`1.500000e+00`), recorded as the `decimal-format-grammar` deviation.
+
 ### Types Without `__format__`
 
 A non-empty spec on a value whose type has no `__format__` — a `list`, `dict`, `set`, `frozenset`,

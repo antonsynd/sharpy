@@ -242,7 +242,8 @@ namespace Sharpy
 
         /// <summary>
         /// The python type name of a CLR type, as CPython's format and subscript messages spell it:
-        /// <c>bool</c>, <c>float</c> and <c>int</c> (by <see cref="KindOf(Type)"/>: every CLR float and integer),
+        /// <c>bool</c>, <c>float</c> and <c>int</c> (by <see cref="KindOf(Type)"/>: every CLR float and integer —
+        /// except <c>decimal</c>, which is <c>decimal</c>),
         /// <c>str</c> (string/char), <c>complex</c>, <c>bytes</c>, <c>tuple</c> (any
         /// <see cref="System.Runtime.CompilerServices.ITuple"/>), <c>list</c>/<c>dict</c>/<c>set</c>/
         /// <c>frozenset</c> for the Core collections, <c>Optional</c> for <see cref="Optional{T}"/>,
@@ -258,7 +259,12 @@ namespace Sharpy
                 case FormatOperandKind.Bool:
                     return "bool";
                 case FormatOperandKind.Float:
-                    return "float";
+                    // Sharpy's `decimal` is System.Decimal, formatted by the float grammar; python's
+                    // twin, decimal.Decimal, has its own __format__ grammar (the deviation
+                    // `decimal-format-grammar`), so the message names Sharpy's type, not `float`
+                    // (#2014). float32/Half keep `float` and every integer width `int`: they have a
+                    // python twin under that name.
+                    return type == typeof(decimal) ? "decimal" : "float";
                 case FormatOperandKind.Integral:
                     return "int";
                 case FormatOperandKind.Complex:

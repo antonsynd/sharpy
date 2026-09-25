@@ -738,7 +738,7 @@ public class PyFormatTests
         yield return new object[] { typeof(bool), "bool" };
         yield return new object[] { typeof(double), "float" };
         yield return new object[] { typeof(float), "float" };
-        yield return new object[] { typeof(decimal), "float" };
+        yield return new object[] { typeof(decimal), "decimal" };   // Sharpy's own name: python's Decimal has another grammar (#2014)
         foreach (var t in new[] { typeof(int), typeof(long), typeof(short), typeof(byte), typeof(sbyte), typeof(uint), typeof(ulong), typeof(ushort) })
         {
             yield return new object[] { t, "int" };
