@@ -263,7 +263,7 @@ public partial class Lexer
         }
 
         if (_preserveTrivia)
-            ReclassifyTrailingTrivia(tokens);
+            ReclassifyTrailingTrivia(tokens, _source);
 
         _logger.LogInfo($"Lexing completed ({tokens.Count} tokens produced)");
         return tokens;
@@ -273,9 +273,10 @@ public partial class Lexer
     /// Post-processes the token list to reclassify inline comments as trailing trivia.
     /// An inline comment (on the same line as preceding code) is moved from
     /// LeadingTrivia of the current token to TrailingTrivia of the last code token
-    /// on that line.
+    /// on that line — the line the token ENDS on, so a comment after a multi-line string's
+    /// closing quotes trails the string instead of being lost (#2068).
     /// </summary>
-    private static void ReclassifyTrailingTrivia(List<Token> tokens)
+    private static void ReclassifyTrailingTrivia(List<Token> tokens, string source)
     {
         int lastCodeTokenIndex = -1;
 
@@ -289,9 +290,10 @@ public partial class Lexer
                 List<Trivia>? trailing = null;
                 List<Trivia>? remaining = null;
 
+                var prevEndLine = EndLine(prevCodeToken, source);
                 foreach (var trivia in token.LeadingTrivia)
                 {
-                    if (trivia.Line == prevCodeToken.Line)
+                    if (trivia.Line == prevEndLine)
                     {
                         trailing ??= new List<Trivia>();
                         trailing.Add(trivia);
@@ -313,6 +315,24 @@ public partial class Lexer
             if (token.Type is not (TokenType.Newline or TokenType.Indent or TokenType.Dedent or TokenType.Eof))
                 lastCodeTokenIndex = i;
         }
+    }
+
+    /// <summary>
+    /// The line a token's source text ends on: its start line plus the line breaks inside its span
+    /// (a triple-quoted string, a multi-line f-string text or replacement-field token).
+    /// </summary>
+    private static int EndLine(Token token, string source)
+    {
+        var line = token.Line;
+        if (token.Position < 0)
+            return line;
+        var end = Math.Min(source.Length, token.Position + token.Length);
+        for (int i = token.Position; i < end; i++)
+        {
+            if (source[i] == '\n' || (source[i] == '\r' && (i + 1 >= end || source[i + 1] != '\n')))
+                line++;
+        }
+        return line;
     }
 
     /// <summary>

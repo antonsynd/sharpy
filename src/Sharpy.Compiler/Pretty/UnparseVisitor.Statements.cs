@@ -291,7 +291,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();
@@ -322,7 +322,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();
@@ -353,7 +353,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();
@@ -384,7 +384,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();
@@ -403,7 +403,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();
@@ -627,7 +627,7 @@ internal sealed partial class UnparseVisitor
         {
             _w.Indent();
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.DocString));
+            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
             _w.Write("\"\"\"");
             _w.WriteLine();
             _w.Dedent();

@@ -27,7 +27,9 @@ internal sealed partial class UnparseVisitor
             if (needsTripleQuote || node.Value.Contains('"', System.StringComparison.Ordinal))
             {
                 _w.Write("r\"\"\"");
-                _w.Write(node.Value);
+                // A multi-line literal's text is opaque: a statement's trailing comment is never
+                // inserted at one of its line breaks (#2068).
+                _w.WriteOpaque(node.Value);
                 _w.Write("\"\"\"");
             }
             else
@@ -40,7 +42,7 @@ internal sealed partial class UnparseVisitor
         else if (needsTripleQuote)
         {
             _w.Write("\"\"\"");
-            _w.Write(EscapeTripleQuoted(node.Value));
+            _w.WriteOpaque(EscapeTripleQuoted(node.Value));
             _w.Write("\"\"\"");
         }
         else

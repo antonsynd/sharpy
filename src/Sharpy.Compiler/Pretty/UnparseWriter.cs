@@ -11,7 +11,8 @@ internal sealed class UnparseWriter
     private bool _atLineStart = true;
 
     // Output spans written verbatim that contain a line break (a multi-line replacement field,
-    // #2022); a trailing-comment insertion must never land inside one.
+    // #2022; a triple-quoted string or docstring, #2068); a trailing-comment insertion must never
+    // land inside one.
     private readonly List<(int Start, int End)> _opaqueMultiLineSpans = new();
 
     public UnparseWriter(UnparseOptions options)
@@ -35,8 +36,9 @@ internal sealed class UnparseWriter
     }
 
     /// <summary>
-    /// Writes source text that must reach the output byte-for-byte (a replacement field's raw text,
-    /// #2024) and may span lines (#2022): its line breaks are skipped by
+    /// Writes text that must reach the output byte-for-byte and may span lines — a replacement
+    /// field's raw text (#2024, #2022), a triple-quoted string's body (#2068): its line breaks are
+    /// skipped by
     /// <see cref="IndexOfLineEndingOutsideOpaque"/>.
     /// </summary>
     public void WriteOpaque(string text)
