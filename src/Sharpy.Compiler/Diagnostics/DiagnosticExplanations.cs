@@ -341,6 +341,21 @@ public static partial class DiagnosticExplanations
             "Use a type code valid for the operand (e.g. drop 'd' for a str, or convert the value " +
             "first, as in f\"{xs!r:>10}\" for a list), or fix the malformed spec.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.FormatFieldCannotBeBound,
+            "format field cannot be bound", "Semantic",
+            "A replacement field of a string-literal str.format template names an operand the call " +
+            "does not pass: a positional index at or past the number of positional arguments (an " +
+            "auto-numbered '{}' counts as the next index), or a keyword field ('{name}') — str.format " +
+            "takes positional arguments only, so a keyword field never binds. CPython raises IndexError " +
+            "or KeyError when the template is formatted. Fields are checked in order and the check stops " +
+            "at the first field whose outcome is decided only at runtime (an attribute or index access, " +
+            "a nested spec, an operand of no static kind, a System.IFormattable operand under a spec), " +
+            "because CPython raises the first field's error. A template held in a variable, and " +
+            "format_map, are checked at runtime instead.",
+            "print(\"{0}{1}\".format(\"a\"))  # format field '{1}' cannot be bound: only 1 positional argument",
+            "Pass an argument for every field, renumber the fields, or use an f-string " +
+            "(f\"{name}\") or format_map({...}) for named fields.");
+
         Add(dict, DiagnosticCodes.SemanticOverflow.ImpossibleCoercion,
             "impossible coercion", "Semantic",
             "An `as?`/`as!` coercion is statically impossible — the source and target have no " +

@@ -22,6 +22,15 @@ internal readonly record struct FormatOperand(FormatOperandKind Kind, string PyT
 
     /// <summary>A type with no <c>__format__</c>: a non-empty spec is CPython's TypeError naming <paramref name="pyTypeName"/>.</summary>
     public static FormatOperand NoFormat(string pyTypeName) => new(FormatOperandKind.NoFormat, pyTypeName);
+
+    /// <summary>
+    /// Whether formatting this operand with <paramref name="spec"/> is decided only at runtime: its
+    /// kind is not static (<see cref="Unknown"/>), or it owns a non-empty spec
+    /// (<see cref="Formattable"/>: its <c>ToString(spec, provider)</c> may raise). The in-order
+    /// <c>str.format</c> walk stops at such a field (#2029, R-CD).
+    /// </summary>
+    public bool DecidesAtRuntime(string spec)
+        => Kind == FormatOperandKind.Unknown || (Kind == FormatOperandKind.Formattable && spec.Length > 0);
 }
 
 /// <summary>

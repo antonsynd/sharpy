@@ -968,6 +968,13 @@ public static class DiagnosticCodes
         public const string QualifiedTaggedUnionConstructor = "SPY0608"; // Active (#1758, R-S)
         public const string InvalidFormatSpecification = "SPY0609"; // Active (#1815)
         public const string ImpossibleCoercion = "SPY0610"; // Active (#1713) — statically-impossible as?/as!; folds retired SPY0228
+        // SPY0611: RESERVED (R-BL) — the `let`/`const` binding redesign's new refusal (#1974, P21).
+        // SPY0612: RESERVED (R-BV) — a void call in value position.
+        // A replacement field of a literal str.format template that decidably cannot be bound: a
+        // positional index past the arguments, or a keyword field (str.format takes positional
+        // arguments only). CPython raises IndexError/KeyError at runtime (#2029 R-CD, #2008 R-CE).
+        public const string FormatFieldCannotBeBound = "SPY0613"; // Active (#2029, #2008)
+        // SPY0614: RESERVED — `None` as a value-position annotation (#2004).
     }
 
     /// <summary>

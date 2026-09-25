@@ -252,29 +252,22 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
             ("manual_second", "\"{1:=5}\".format(1, s)", eq, null, null),
             ("auto_second", "\"{}{:=5}\".format(1, s)", eq, null, null),
             ("conversion", "\"{!r:=8}\".format(5)", eq, null, null),
-            ("after_nested", "\"{:{}}{:=5}\".format(1, \">3\", s)", eq, null, null),
+            // #2029 (R-CD): a nested spec is known only at runtime, so the walk stops there and a later
+            // field's refusal is the runtime's. python3: '{:{}}{:=5}'.format(1, '>3', 'ab') -> ValueError: '=' ...
+            ("after_nested", "\"{:{}}{:=5}\".format(1, \">3\", s)", null, eq, null),
             ("nested_dynamic", "\"{:{}}\".format(s, \"=5\")", null, eq, null),
             ("index_field", "\"{0[0]:=5}\".format(xs)", null, eq, null),
             ("str_variable_template", "t.format(s)", null, eq, null),
             ("mixed_numbering", "\"{}{0:=5}\".format(s)", null,
                 "cannot switch from automatic field numbering to manual field specification", null),
             // #1984 (Decision 7): fields are walked in order and the walk stops at the first field the
-            // checker cannot decide, because CPython raises the FIRST field's error.
-            // python3: '{5}{0:=5}'.format('ab') -> IndexError: Replacement index 5 out of range for positional args tuple
-            ("order_out_of_range_first", "\"{5}{0:=5}\".format(s)", null,
-                "Replacement index 5 out of range for positional args tuple", null),
+            // checker cannot decide, because CPython raises the FIRST field's error. The decidably
+            // unbound fields (out of range, keyword) are SPY0613 — StopCondition_EarlierFieldWins_2029.
             // python3: '{0:=5}{5}'.format('ab') -> ValueError: '=' alignment ... (field 0 fails first)
             ("order_refused_first", "\"{0:=5}{5}\".format(s)", eq, null, null),
             // Only the FIRST refused field is reported: python3 '{0:=5}{1:+5}'.format('ab', 'ab') raises
             // on field 0 and never reaches field 1's sign refusal.
             ("order_first_refusal_only", "\"{0:=5}{1:+5}\".format(s, s)", eq, null, null),
-            // A keyword field the call names is decided, so the walk continues to field 1 (SPY0234 is
-            // reported for the keyword itself). python3: '{name}{0:=5}'.format('ab', name=1) -> ValueError: '=' ...
-            ("order_keyword_matched", "\"{name}{0:=5}\".format(s, name=1)", eq, null, null),
-            // A keyword field no argument names ends the walk (python3: KeyError: 'name'); Core's runtime
-            // message differs from python's (#2008).
-            ("order_keyword_unmatched", "\"{name}{0:=5}\".format(s)", null,
-                "cannot use keyword arguments with format(), use format_map()", null),
             ("ok_manual", "\"{0:>5}\".format(s)", null, null, "   ab"),
             ("ok_conversion", "\"{!r:>6}\".format(s)", null, null, "  'ab'"),
             ("ok_nested", "\"{:{}}{:>3}\".format(1, \">3\", 2)", null, null, "  1  2"),
@@ -314,6 +307,84 @@ public class FormatSpecStaticTwinRouteTests : IntegrationTestBase
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// #2029 (R-CD) + #2008 (R-CE): the in-order <c>str.format</c> walk has a TOTAL stop set. Each row
+    /// puts a stop-condition field FIRST and a statically refusable field after it; CPython raises the
+    /// first field's error, so the later field's SPY0609 must never pre-empt it. A decidably unbound
+    /// field (a positional index past the arguments — an auto field spelled by its claimed index — or
+    /// a keyword field) is SPY0613 and nothing else; an undecidable one (<c>.attr</c>, <c>[key]</c>, a
+    /// nested spec, an <c>object</c> operand, an <c>IFormattable</c> operand under a spec) compiles
+    /// and the runtime raises python's error. The empty-spec <c>IFormattable</c> row is decided (its
+    /// <c>ToString("")</c> is never a refusal), so the walk continues to the later field's SPY0609.
+    /// Oracle: python3 3.12, with <c>class F</c> spelled <c>__format__</c> (returns <c>F&lt;spec&gt;</c>).
+    /// </summary>
+    [Theory]
+    [Trait("Category", "Conformance")]
+    // python3: IndexError: Replacement index 5 out of range for positional args tuple
+    [InlineData("out_of_range", "\"{5}{0:=5}\".format(s)", "format field '{5}' cannot be bound: only 1 positional argument", null, null)]
+    // python3: IndexError: Replacement index 1 out of range for positional args tuple
+    [InlineData("auto_out_of_range", "\"{:>3}{:=5}\".format(s)", "format field '{} (positional index 1)' cannot be bound: only 1 positional argument", null, null)]
+    // python3: KeyError: 'name'
+    [InlineData("keyword", "\"{name}{0:=5}\".format(s)", "format field '{name}' cannot be bound: str.format takes positional arguments only; use an f-string or format_map({...})", null, null)]
+    // python3: AttributeError: 'str' object has no attribute 'nope'
+    [InlineData("attr", "\"{0.nope}{1:=5}\".format(s, s)", null, "has no attribute 'nope'", null)]
+    // python3: IndexError: list index out of range
+    [InlineData("key", "\"{0[5]}{1:=5}\".format(xs, s)", null, "list index out of range", null)]
+    // python3: ValueError: Unknown format code 'z' for object of type 'int'
+    [InlineData("nested", "\"{:{}}{:=5}\".format(1, \"zz\", s)", null, "Unknown format code 'z' for object of type 'int'", null)]
+    // python3: ValueError: '=' alignment not allowed in string format specifier (field 0, o = 'ab')
+    [InlineData("unknown_operand", "\"{0:=5}{1:+5}\".format(o, s)", null, "'=' alignment not allowed in string format specifier", null)]
+    // python3: ValueError: '=' alignment ... (F.__format__('>40') renders; field 1 raises)
+    [InlineData("formattable", "\"{0:>40}{1:=5}\".format(F(), s)", null, "'=' alignment not allowed in string format specifier", null)]
+    // No python twin (a CLR type): Guid's own ToString('>40') raises first, as the walk must allow.
+    [InlineData("formattable_guid", "\"{0:>40}{1:=5}\".format(g, s)", null, "Invalid format specifier '>40' for object of type 'Guid'", null)]
+    // python3: ValueError: '=' alignment ... — an empty spec on F is decided, so field 1 is SPY0609.
+    [InlineData("formattable_empty_spec", "\"{0}{1:=5}\".format(g, s)", null, null, "'=' alignment not allowed in string format specifier")]
+    public void StopCondition_EarlierFieldWins_2029(string label, string expr, string? spy0613, string? runtime, string? spy0609)
+    {
+        var source = "from System import Guid, IFormattable, IFormatProvider\n\n\n"
+            + "class F(IFormattable):\n"
+            + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
+            + "        return \"F<\" + fmt + \">\"\n\n\n"
+            + "def main() -> None:\n    s: str = \"ab\"\n    o: object = \"ab\"\n    xs: list[str] = [\"ab\"]\n"
+            + "    g: Guid = Guid.Empty\n"
+            + "    print(" + expr + ")\n";
+        var result = CompileAndExecute(source, executionTimeoutMs: 15_000);
+        var errors = result.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code + ": " + d.Message).ToList();
+        var got = $"{label}: got success={result.Success} diagnostics: [{string.Join("; ", errors)}] stderr: {result.StandardError.Trim()}";
+        var templateOffset = source.IndexOf(expr[..(expr.IndexOf("\".", StringComparison.Ordinal) + 1)], StringComparison.Ordinal);
+
+        if (spy0613 != null)
+        {
+            var d = Assert.Single(result.RawDiagnostics, x => x.IsError);
+            Assert.True(d.Code == DiagnosticCodes.SemanticOverflow.FormatFieldCannotBeBound && d.Message == spy0613
+                && d.Span?.Start == templateOffset, got);
+        }
+        else if (spy0609 != null)
+        {
+            var d = Assert.Single(result.RawDiagnostics, x => x.IsError);
+            Assert.True(d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification && d.Message == spy0609, got);
+        }
+        else
+        {
+            Assert.True(IsRuntimeRefusal(result, runtime!), got);
+        }
+    }
+
+    /// <summary>
+    /// A keyword field in a call that passes keyword arguments is already SPY0234 (with the steer):
+    /// the walk stops at it without a cascading SPY0613 or a later field's SPY0609.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void KeywordField_WithKeywordArguments_IsSpy0234Only()
+    {
+        var result = CompileAndExecute(
+            "def main() -> None:\n    s: str = \"ab\"\n    print(\"{name}{0:=5}\".format(s, name=1))\n", executionTimeoutMs: 15_000);
+        var codes = result.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code).ToList();
+        Assert.Equal(new[] { DiagnosticCodes.Semantic.UnknownKeywordArgument }, codes);
     }
 
     /// <summary>

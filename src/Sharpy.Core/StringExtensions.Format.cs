@@ -260,7 +260,8 @@ namespace Sharpy
                 }
                 catch (KeyError)
                 {
-                    throw new KeyError(baseField);
+                    // CPython's KeyError carries the key, so it prints as its repr: KeyError: 'x' (#2008).
+                    throw new KeyError(Builtins.Repr(baseField));
                 }
             }
             else
@@ -289,7 +290,9 @@ namespace Sharpy
                 }
                 else
                 {
-                    throw new ValueError("cannot use keyword arguments with format(), use format_map()");
+                    // str.format takes positional arguments only, so a keyword field never binds:
+                    // CPython's KeyError naming the field (#2008, R-CE).
+                    throw new KeyError(Builtins.Repr(baseField));
                 }
 
                 if (args == null || index < 0 || index >= args.Length)

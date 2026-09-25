@@ -8,9 +8,11 @@ namespace Sharpy.Compiler.Semantic;
 /// field is not a bare positional reference — a keyword name, or a <c>.attr</c>/<c>[key]</c> access
 /// whose value is not the operand itself); <see cref="KeywordName"/> is the name of a bare keyword
 /// field (<c>{name}</c>, no access path), null otherwise; <see cref="Spec"/> is the static spec text
-/// (null when the spec holds nested replacement fields, so its text is only known at runtime).
+/// (null when the spec holds nested replacement fields, so its text is only known at runtime);
+/// <see cref="Field"/> is the field name as written (<c>""</c> for an auto-numbered field), for
+/// diagnostics.
 /// </summary>
-internal readonly record struct FormatTemplateHole(int? ArgumentIndex, char? Conversion, string? Spec, string? KeywordName = null);
+internal readonly record struct FormatTemplateHole(int? ArgumentIndex, char? Conversion, string? Spec, string? KeywordName = null, string Field = "");
 
 /// <summary>
 /// Splits a LITERAL <c>str.format</c> template into its replacement fields at compile time, by name,
@@ -114,7 +116,7 @@ internal static class FormatTemplateGrammar
                 }
 
                 if (!nested)
-                    holes.Add(new FormatTemplateHole(argumentIndex, conversion, spec, keywordName));
+                    holes.Add(new FormatTemplateHole(argumentIndex, conversion, spec, keywordName, fieldExpr));
             }
             else if (c == '}')
             {

@@ -6471,15 +6471,17 @@ internal partial class TypeChecker
     /// split by <see cref="FormatTemplateGrammar"/>, each field is paired with the operand it reads,
     /// and its static spec is validated against that operand (<see cref="FormatOperand.Str"/> under a
     /// conversion) through the one <see cref="FormatSpecGrammar"/>. A refusal is SPY0609 at the
-    /// template literal with CPython's wording. Fields are walked IN ORDER and the walk stops at the
-    /// first field it cannot decide, because CPython raises the first field's error (#1984): an index
-    /// past the positional arguments (IndexError), an attribute/index access, or a keyword field no
-    /// keyword argument of the call names (KeyError). A keyword field the call does name is decided
-    /// and its spec is checked against that argument. The first refused spec is reported and ends
-    /// the walk. A nested (dynamic) spec is skipped, any spread argument and a template Core would
-    /// reject outright leave the whole template to the runtime. Operands are read from
-    /// <paramref name="positionalArguments"/>, the route's effective positional list (see
-    /// <see cref="RecordResolvedCallTarget"/>).
+    /// template literal with CPython's wording. Fields are walked IN ORDER because CPython raises the
+    /// FIRST field's error (#1984), so the walk stops at the first field whose outcome it cannot
+    /// decide (#2029, R-CD): an attribute/index access (<c>.attr</c>/<c>[key]</c>, runtime), a nested
+    /// spec (known only at runtime), an operand whose kind is not static (<c>Unknown</c>), and a
+    /// <c>System.IFormattable</c> operand under a non-empty spec (its own <c>ToString</c> may raise).
+    /// A field that is decidably unbound — a positional index past the arguments, or any keyword field
+    /// (<c>str.format</c> takes positional arguments only; a keyword ARGUMENT is SPY0234) — is
+    /// SPY0613 and ends the walk (#2008, R-CE). The first refused spec is reported and ends the walk.
+    /// Any spread argument and a template Core would reject outright leave the whole template to the
+    /// runtime. Operands are read from <paramref name="positionalArguments"/>, the route's effective
+    /// positional list (see <see cref="RecordResolvedCallTarget"/>).
     /// </summary>
     private void CheckStaticFormatTemplateArguments(
         FunctionSymbol symbol, FunctionCall call, IReadOnlyList<Expression> positionalArguments)
@@ -6493,23 +6495,44 @@ internal partial class TypeChecker
 
         foreach (var hole in holes)
         {
-            Expression operand;
-            if (hole.ArgumentIndex is { } index && index < positionalArguments.Count)
-                operand = positionalArguments[index];
-            else if (hole.KeywordName is { } name
-                     && call.KeywordArguments.FirstOrDefault(k => k.Name == name) is { } keyword)
-                operand = keyword.Value;
-            else
+            if (hole.ArgumentIndex is not { } index)
+            {
+                // A bare keyword field can never bind: CPython raises KeyError (a call that passes
+                // keyword arguments is already SPY0234, which says so). An access path is resolved by
+                // the runtime (its base may still raise first), so the walk just stops.
+                if (hole.KeywordName is { } name && call.KeywordArguments.IsEmpty)
+                    ReportUnboundFormatField(template, "{" + name + "}",
+                        "str.format takes positional arguments only; use an f-string or format_map({...})");
+                break;
+            }
+            if (index >= positionalArguments.Count)
+            {
+                var field = hole.Field.Length == 0 ? $"{{}} (positional index {index})" : "{" + hole.Field + "}";
+                var only = positionalArguments.Count switch
+                {
+                    0 => "there are no positional arguments",
+                    1 => "only 1 positional argument",
+                    var n => $"only {n} positional arguments",
+                };
+                ReportUnboundFormatField(template, field, only);
+                break;
+            }
+
+            // A nested spec is known only at runtime: the field's outcome is undecidable.
+            if (hole.Spec is not { } spec)
                 break;
 
-            if (hole.Spec is not { Length: > 0 } spec)
-                continue;
-
+            var operand = positionalArguments[index];
             var formatOperand = hole.Conversion != null
                 ? FormatOperand.Str
                 : FormatOperandOf(
                     UnwrapParenthesized(operand),
                     _semanticInfo.GetExpressionType(operand) ?? SemanticType.Unknown);
+            if (formatOperand.DecidesAtRuntime(spec))
+                break;
+            if (spec.Length == 0)
+                continue;
+
             var message = FormatSpecGrammar.Validate(spec, formatOperand);
             if (message != null)
             {
@@ -6519,6 +6542,11 @@ internal partial class TypeChecker
             }
         }
     }
+
+    /// <summary>SPY0613 at the template literal: <paramref name="field"/> cannot be bound because <paramref name="reason"/>.</summary>
+    private void ReportUnboundFormatField(StringLiteral template, string field, string reason)
+        => AddError($"format field '{field}' cannot be bound: {reason}", template.LineStart, template.ColumnStart,
+            code: DiagnosticCodes.SemanticOverflow.FormatFieldCannotBeBound, span: template.Span);
 
     /// <summary>
     /// The argument bound to <paramref name="parameters"/>[<paramref name="index"/>]: the
