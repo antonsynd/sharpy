@@ -16,6 +16,7 @@ internal static class DunderNames
     public const string Call = "__call__";
     public const string Repr = "__repr__";
     public const string Str = "__str__";
+    public const string Format = "__format__";
     public const string Hash = "__hash__";
     public const string PostInit = "__post_init__";
     public const string Bool = "__bool__";

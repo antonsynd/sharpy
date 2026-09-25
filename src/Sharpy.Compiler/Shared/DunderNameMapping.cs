@@ -18,6 +18,7 @@ internal static class DunderNameMapping
         { DunderNames.Call, "Invoke" },           // For callable objects via __call__
         { DunderNames.Str, "ToString" },
         { DunderNames.Repr, "ToString" },
+        { DunderNames.Format, "ToString" },       // IFormattable.ToString(format, provider) (#2009)
         { DunderNames.PostInit, "PostInit" },  // For @dataclass post-initialization
         { DunderNames.Eq, "Equals" },
         { DunderNames.Hash, "GetHashCode" },

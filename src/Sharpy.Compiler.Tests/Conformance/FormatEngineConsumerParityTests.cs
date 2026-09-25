@@ -46,7 +46,12 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         "from System import IFormattable, IFormatProvider\n\n\n"
         + "class F(IFormattable):\n"
         + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
-        + "        return \"F<\" + fmt + \">\"\n\n\n";
+        + "        return \"F<\" + fmt + \">\"\n\n\n"
+        // DF owns its spec through Sharpy's own __format__ (#2009, R-CB), which synthesizes the
+        // same interface.
+        + "class DF:\n"
+        + "    def __format__(self, s: str) -> str:\n"
+        + "        return \"DF<\" + s + \">\"\n\n\n";
 
     [Fact]
     [Trait("Category", "Conformance")]
@@ -1143,5 +1148,15 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("eqfill.nohash_hex", "q: int = 255", "q", "*=+8x", "+*****ff");
         yield return new("eqfill.d", "i42: int = 42", "i42", "*=+6d", "+***42");
         yield return new("eqfill.f", "g: float = 3.5", "g", "*=+8.1f", "+****3.5");
+
+        // ---- #2009 (R-CB): `def __format__` is the same protocol as the IFormattable spelling above —
+        //      every consumer hands it the spec, the empty one included (#2031).
+        // python3 -c 'class DF:
+        //   def __format__(self, s): return "DF<" + s + ">"
+        // print(format(DF(),""), "{:>10}".format(DF()), f"{DF():garbage}")'
+        //   =>  DF<> DF<>10> DF<garbage>
+        yield return new("dunder_format.empty", "", "DF()", "", "DF<>");
+        yield return new("dunder_format.pad", "", "DF()", ">10", "DF<>10>");
+        yield return new("dunder_format.garbage", "", "DF()", "garbage", "DF<garbage>");
     }
 }

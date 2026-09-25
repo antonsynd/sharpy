@@ -866,6 +866,12 @@ internal class CodeGenInfoComputer
 
         foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
         {
+            // __format__ compiles to IFormattable's TWO-argument ToString, a C# overload beside the
+            // parameterless ToString of __str__/__repr__ — not a same-name collision. Its own
+            // signature-aware check is DetectFormatMemberCollisions (#2009).
+            if (originalName == DunderNames.Format)
+                continue;
+
             var position = FindMemberPosition(body, originalName);
 
             // Checked BEFORE the same-name dedupe below: a member spelled exactly like its type
@@ -907,6 +913,9 @@ internal class CodeGenInfoComputer
         var declaredDunders = new HashSet<string>(
             typeSymbol.Methods.Select(m => m.Name), StringComparer.Ordinal);
 
+        if (declaredDunders.Contains(DunderNames.Format))
+            DetectFormatMemberCollisions(typeSymbol, body);
+
         foreach (var surface in SynthesizedProtocolSurfaces)
         {
             if (!surface.Triggers.Any(declaredDunders.Contains))
@@ -934,6 +943,46 @@ internal class CodeGenInfoComputer
                         phase: CompilerPhase.CodeGeneration);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// <c>__format__</c> emits <c>ToString(string?, IFormatProvider?)</c> (#2009). Another member that
+    /// compiles to that same C# member is SPY0522, not CS0111/CS0102 behind SPY0908: a method named
+    /// like <c>ToString</c> taking two arguments — the explicit <c>class F(IFormattable)</c>
+    /// <c>to_string(fmt, provider)</c> spelling of the same protocol — or any non-method member
+    /// named <c>ToString</c>. A <c>ToString</c> of another arity (<c>__str__</c>) is an overload.
+    /// </summary>
+    private void DetectFormatMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
+    {
+        const string csharpName = "ToString";
+        var methodArity = typeSymbol.Methods
+            .Where(m => m.Name != DunderNames.Format)
+            .GroupBy(m => m.Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key,
+                g => g.Select(m => m.Parameters.Count(p => p.Name != PythonNames.Self)).ToHashSet(),
+                StringComparer.Ordinal);
+
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (originalName, memberCSharpName) in EnumerateMemberNames(typeSymbol, body))
+        {
+            if (originalName == DunderNames.Format || memberCSharpName != csharpName)
+                continue;
+
+            var collides = !methodArity.TryGetValue(originalName, out var arities) || arities.Contains(2);
+            if (!collides || !reported.Add(originalName))
+                continue;
+
+            var position = FindMemberPosition(body, originalName);
+            _diagnostics.AddError(
+                $"Name collision: '{originalName}' compiles to '{csharpName}', which conflicts with the " +
+                $"System.IFormattable member '{DunderNames.Format}' synthesizes " +
+                "(ToString(string? format, IFormatProvider? formatProvider)). Keep one spelling of the " +
+                "format protocol: remove the member, or remove __format__.",
+                line: position?.Line,
+                column: position?.Column,
+                code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                phase: CompilerPhase.CodeGeneration);
         }
     }
 

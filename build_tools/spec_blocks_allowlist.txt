@@ -61,7 +61,6 @@ dunder_invocation_rules.md::c9cbb2c790  # SPY0200 first #1952
 dunder_invocation_rules.md::d1394b32be  # SPY0455 first #1952
 dunder_invocation_rules.md::e4dbd8682d  # SPY0202 first #1952
 dunder_invocation_rules.md::ed3984ba43  # SPY0203 first #1952
-dunder_methods.md::5609ded7d6  # SPY0340 first #1952
 dunder_methods_recommendations.md::03019bd2f9  # SPY0522 first #1952
 dunder_methods_recommendations.md::0e6ad4d1f1  # SPY0200 first #1952
 dunder_methods_recommendations.md::0ef79b20e2  # SPY0456 first #1952

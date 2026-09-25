@@ -1,0 +1,40 @@
+# def __format__(self, spec: str) -> str synthesizes System.IFormattable (#2009, R-CB): the body
+# becomes ToString(spec, formatProvider), and every format route hands it python's spec.
+# python3 prints the same lines (the struct written as a class).
+class Money:
+    cents: int
+
+    def __init__(self, cents: int) -> None:
+        self.cents = cents
+
+    def __str__(self) -> str:
+        return "Money"
+
+    def __format__(self, spec: str) -> str:
+        if spec == "":
+            return str(self.cents / 100)
+        return "$" + format(self.cents / 100, spec)
+
+
+class Loud(Money):
+    @override
+    def __format__(self, spec: str) -> str:
+        return super().__format__(spec).upper() + "!"
+
+
+struct Tag:
+    name: str
+
+    def __format__(self, spec: str) -> str:
+        return "<" + self.name + ":" + spec + ">"
+
+
+def main() -> None:
+    m = Money(1250)
+    print(str(m))
+    print(f"{m}")
+    print(f"{m:.2f}")
+    print(format(m, ">10.1f"))
+    print("{:,.3f}".format(m))
+    print(f"{Loud(5):.2f}")
+    print(f"{Tag('x'):spec}")

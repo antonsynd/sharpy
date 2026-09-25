@@ -503,9 +503,14 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             "set" => ("set[int]", "{1}"),
             "tuple" => ("tuple[int, int]", "(1, 2)"),
             "formattable" => ("F", "F()"),
+            "dunder_format" => ("D", "D()"),
             _ => throw new ArgumentOutOfRangeException(nameof(cell), cell.Kind, "no declaration for this operand kind"),
         };
-        string prelude = cell.Kind != "formattable" ? ""
+        // dunder_format (#2009, R-CB): Sharpy's own __format__ — the SAME program text in both
+        // languages, the synthesized System.IFormattable carrying the spec.
+        string prelude = cell.Kind == "dunder_format"
+            ? "class D:\n    def __format__(self, s: str) -> str:\n        return \"D<\" + s + \">\"\n\n\n"
+            : cell.Kind != "formattable" ? ""
             : forPython
                 ? "class F:\n    def __format__(self, s):\n        return \"F<\" + s + \">\"\n\n\n"
                 : "from System import IFormattable, IFormatProvider\n\n\n"
@@ -533,7 +538,10 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     private static readonly string[] UniformKinds = { "int", "float", "float_whole", "bool", "str" };
     private static readonly string[] KindAxisKinds =
         { "float_negzero", "float_tiny", "list", "dict", "set", "tuple", "formattable" };
-    private static readonly string[] AllKinds = UniformKinds.Append("int_neg").Concat(KindAxisKinds).ToArray();
+    // dunder_format rides only in the explicit OperandKindStratum, so the seeded kind-axis draw is
+    // unchanged.
+    private static readonly string[] AllKinds = UniformKinds.Append("int_neg").Concat(KindAxisKinds)
+        .Append("dunder_format").ToArray();
 
     /// <summary>
     /// #1978: '#' with the 'c' presentation type, alone and beside the other int rules it competes
@@ -557,11 +565,11 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
 
     /// <summary>
     /// #1988: the operand kinds with no __format__ (list, dict, set, tuple) and one that owns its spec
-    /// (formattable) under the empty spec (str(value), never refused — the positive control), a
+    /// (formattable; and dunder_format, the same protocol spelled <c>def __format__</c>, #2009) under the empty spec (str(value), never refused — the positive control), a
     /// padding spec, a numeric code and a spec no builtin kind parses.
     /// </summary>
     private static IEnumerable<(string Kind, string Spec)> OperandKindStratum() =>
-        from kind in new[] { "list", "dict", "set", "tuple", "formattable" }
+        from kind in new[] { "list", "dict", "set", "tuple", "formattable", "dunder_format" }
         from spec in new[] { "", ">10", "d", "abc", "*^9" }
         select (kind, spec);
 

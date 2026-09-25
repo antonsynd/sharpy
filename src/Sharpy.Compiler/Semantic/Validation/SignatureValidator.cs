@@ -378,6 +378,31 @@ internal class SignatureValidator : SemanticValidatorBase
         ValidateProtocolReturnType(funcDef, protocol, owningType);
         ValidateProtocolSelfParameter(funcDef, protocol, owningType);
         ValidateExitParameterTypes(funcDef, protocol, owningType);
+        ValidateFormatParameterType(funcDef, protocol, owningType);
+    }
+
+    /// <summary>
+    /// <c>__format__(self, spec: str) -> str</c> (#2009): the spec parameter becomes the
+    /// <c>format</c> argument of <c>IFormattable.ToString</c>, a string, so an annotation other than
+    /// <c>str</c> is refused here rather than as a C# type error in the emitted body. The count and
+    /// the return type are the generic protocol checks'.
+    /// </summary>
+    private void ValidateFormatParameterType(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
+    {
+        if (protocol.DunderName != DunderNames.Format || funcDef.Parameters.Length != 2)
+            return;
+
+        var specParam = funcDef.Parameters[1];
+        if (specParam.Type is { } annotation
+            && !(annotation.Name == BuiltinNames.Str && annotation.TypeArguments.Length == 0
+                 && !annotation.IsOptional && !annotation.IsCSharpNullable))
+        {
+            AddError(_context,
+                $"Parameter '{specParam.Name}' of '{DunderNames.Format}' on '{owningType.Name}' must be 'str', got '{TypeAnnotationHelper.GetName(annotation)}'.",
+                specParam.LineStart, specParam.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: specParam.Span ?? funcDef.Span);
+        }
     }
 
     /// <summary>

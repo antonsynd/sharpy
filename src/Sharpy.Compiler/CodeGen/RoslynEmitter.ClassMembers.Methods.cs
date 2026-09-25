@@ -136,7 +136,10 @@ internal partial class RoslynEmitter
 
         // Add override keyword for methods that override Object methods
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
-        var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
+        // __format__'s ToString is IFormattable's two-argument overload, not object.ToString():
+        // it overrides only where the user wrote @override (GenerateFormatMethod).
+        var shouldAddOverride = (protocol?.ClrMethodName is "ToString" or "GetHashCode"
+                && func.Name != DunderNames.Format)
             // __eq__ only generates override when parameter type is object
             || (func.Name == DunderNames.Eq && IsEqualsObjectOverload(func));
 
@@ -415,6 +418,55 @@ internal partial class RoslynEmitter
     /// Generates a read-only Count property for __len__ to satisfy ISized.
     /// The user's __len__ body becomes the getter body.
     /// </summary>
+    /// <summary>
+    /// <c>def __format__(self, spec: str) -> str</c> → the <c>System.IFormattable</c> member the
+    /// synthesized base-list entry requires (#2009, R-CB), by MOVE like <c>__len__</c> →
+    /// <c>Count</c>: <c>public virtual string ToString(string? spec, global::System.IFormatProvider?
+    /// formatProvider = null)</c> whose body opens with <c>spec ??= "";</c> — a null format is
+    /// python's empty spec. The spec keeps the user's parameter name, so the moved body reads it
+    /// unchanged. The provider defaults to null so <c>super().__format__(s)</c>, emitted as
+    /// <c>base.ToString(s)</c>, binds the base's IFormattable member. <c>virtual</c> in a class
+    /// (a subclass's <c>@override</c> becomes <c>override</c>), neither in a struct.
+    /// </summary>
+    private MethodDeclarationSyntax GenerateFormatMethod(FunctionDef func)
+    {
+        var method = GenerateClassMethod(func);
+        if (method.ParameterList.Parameters.Count != 1)
+            return method; // SignatureValidator refused the shape; nothing reaches here in a clean build
+
+        var spec = method.ParameterList.Parameters[0];
+        var specName = spec.Identifier.ValueText;
+        var providerName = specName == "formatProvider" ? "formatProvider_" : "formatProvider";
+        var stringType = PredefinedType(Token(SyntaxKind.StringKeyword));
+
+        method = method.WithParameterList(ParameterList(SeparatedList(new[]
+        {
+            spec.WithType(NullableType(stringType)),
+            Parameter(Identifier(providerName))
+                .WithType(NullableType(MakeGlobalQualifiedName("System", "IFormatProvider")))
+                .WithDefault(EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression)))
+        })));
+
+        var modifiers = method.Modifiers;
+        if (_currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword) || m.IsKind(SyntaxKind.VirtualKeyword)
+                || m.IsKind(SyntaxKind.AbstractKeyword) || m.IsKind(SyntaxKind.SealedKeyword)))
+        {
+            method = method.WithModifiers(ResolveModifierConflicts(modifiers.Add(Token(SyntaxKind.VirtualKeyword))));
+        }
+
+        if (method.Body is { } body)
+        {
+            var prologue = ExpressionStatement(AssignmentExpression(
+                SyntaxKind.CoalesceAssignmentExpression,
+                IdentifierName(spec.Identifier),
+                LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(""))));
+            method = method.WithBody(body.WithStatements(body.Statements.Insert(0, prologue)));
+        }
+
+        return method;
+    }
+
     private PropertyDeclarationSyntax GenerateLenProperty(FunctionDef func)
     {
         // Clear declared variables for new scope

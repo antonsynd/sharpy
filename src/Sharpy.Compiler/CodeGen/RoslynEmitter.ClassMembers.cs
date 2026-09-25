@@ -586,6 +586,10 @@ internal partial class RoslynEmitter
                 GenerateBoolOperatorTrue(ctx.ClassName)
             });
 
+        // __format__ → IFormattable.ToString(format, formatProvider) (#2009): the body MOVES
+        registry.Register(DunderNames.Format, (funcDef, _) =>
+            new[] { GenerateFormatMethod(funcDef) });
+
         // __next__ → IEnumerator<T> protocol members (MoveNext, Current, etc.)
         registry.Register(DunderNames.Next, (funcDef, _) =>
             GenerateIteratorProtocolMembers(funcDef));

@@ -388,8 +388,46 @@ TypeError: unsupported format string passed to list.__format__
 `str.__format__(str(self), spec)`), so `f"{Color.RED:>5}"` pads the member's text and
 `f"{Color.RED:d}"` is SPY0609 `Unknown format code 'd' for object of type 'str'`.
 
-**A type that owns its spec.** Sharpy spells `__format__` as the CLR interface
-`System.IFormattable` (see [Dunder Methods](dunder_methods.md)): a class that implements it
+**A type that owns its spec.** A class or struct that declares
+`def __format__(self, spec: str) -> str` owns its spec, as in Python: the compiler synthesizes
+`System.IFormattable` for it (announced by SPY1001; see [Dunder Methods](dunder_methods.md#special-methods)),
+every route — the f-string hole, `format()`, `str.format`, a t-string — hands the body the spec
+verbatim, the empty spec included, and no spec is refused statically:
+
+```python
+class Money:
+    cents: int
+
+    def __init__(self, cents: int):
+        self.cents = cents
+
+    def __format__(self, spec: str) -> str:
+        if spec == "short":
+            return "$" + str(self.cents // 100)
+        return "$" + str(self.cents // 100) + "." + str(self.cents % 100)
+
+
+def main() -> None:
+    m = Money(1250)
+    print(f"[{m:short}]")
+    print(format(m, "short"))
+    print("{:full}".format(m))
+    print(f"[{m}]")
+```
+
+```
+[$12]
+$12
+$12.50
+[$12.50]
+```
+
+A subclass overrides it with `@override def __format__`, and `super().__format__(spec)` reaches the
+base's. `__format__` beside `__str__` is two different members (`f"{m}"` asks `__format__("")`,
+`str(m)` asks `__str__`).
+
+**The CLR spelling.** `System.IFormattable` is also implementable directly (declaring it beside
+`__format__` is SPY0522 — two spellings of one member): a class that implements it
 receives any non-empty spec verbatim in `to_string(fmt, provider)` on every route, and no spec is
 refused statically — the spec is the type's own business:
 

@@ -179,6 +179,21 @@ public static class ProtocolRegistry
             ExpectedReturnType: "str"
         ));
 
+        // __format__(self, spec: str) -> str synthesizes System.IFormattable (#2009, R-CB): the body
+        // becomes ToString(string? format, IFormatProvider? formatProvider), the CLR spelling of
+        // __format__ every format route (f-string hole, format(), str.format, t-string) reaches.
+        // The interface name is SIMPLE; its namespace comes from the CLR definition
+        // (SynthesisAnalyzer.ClrDefinitionFor).
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Format,
+            Kind: ProtocolKind.Representation,
+            SharpyCoreInterface: "IFormattable",
+            InterfaceMethodName: "ToString",
+            ClrMethodName: "ToString",
+            ExpectedParamCount: 2,  // self, spec
+            ExpectedReturnType: "str"
+        ));
+
         // 2.2.5 Hashing protocols
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Hash,

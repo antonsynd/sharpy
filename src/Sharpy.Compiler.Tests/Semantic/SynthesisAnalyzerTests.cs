@@ -17,8 +17,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class SynthesisAnalyzerTests
 {
-    /// <summary>The seven dunder → interface rows the classifier knows; a new row must be placed here.</summary>
-    private const int RowCount = 7;
+    /// <summary>The eight dunder → interface rows the classifier knows (__format__ → IFormattable is the
+    /// eighth, #2009); a new row must be placed here.</summary>
+    private const int RowCount = 8;
 
     private static List<(string InterfaceName, string Namespace, string[] TypeArgs, string TriggeringDunder)> Classify(string body)
     {
@@ -60,6 +61,7 @@ public class SynthesisAnalyzerTests
         yield return new object[] { "def __eq__(self, other: int) -> bool:\n    return True", "IEquatable", "System", new[] { "int" }, DunderNames.Eq };
         yield return new object[] { "def __eq__(self, other: int?) -> bool:\n    return True", "IEquatable", "System", new[] { "int?" }, DunderNames.Eq };
         yield return new object[] { "def __iter__(self) -> int:\n    yield 1", "IEnumerable", "System.Collections.Generic", new[] { "int" }, DunderNames.Iter };
+        yield return new object[] { "def __format__(self, spec: str) -> str:\n    return spec", "IFormattable", "System", Array.Empty<string>(), DunderNames.Format };
     }
 
     [Theory]
@@ -111,7 +113,7 @@ public class SynthesisAnalyzerTests
     }
 
     [Fact]
-    public void AllSevenRows_ClassifyInBaseListOrder()
+    public void AllRows_ClassifyInBaseListOrder()
     {
         var body = string.Join("\n",
             "def __eq__(self, other: int) -> bool:",
@@ -125,14 +127,16 @@ public class SynthesisAnalyzerTests
             "def __bool__(self) -> bool:",
             "    return True",
             "def __len__(self) -> int:",
-            "    return 0");
+            "    return 0",
+            "def __format__(self, spec: str) -> str:",
+            "    return spec");
         var rows = Classify(body);
 
         // Declaration order does not matter; the roster order does (the emitted base list is
         // snapshot-pinned on it).
         rows.Select(r => r.InterfaceName).Should().Equal(
-            "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IEquatable");
-        rows.Should().HaveCount(6, "the generator-__iter__ row is mutually exclusive with __next__, so six of the seven rows fit in one class");
+            "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IFormattable", "IEquatable");
+        rows.Should().HaveCount(7, "the generator-__iter__ row is mutually exclusive with __next__, so seven of the eight rows fit in one class");
     }
 
     [Fact]
@@ -155,7 +159,7 @@ public class SynthesisAnalyzerTests
     [Fact]
     public void ClrDefinitionFor_CoversEveryRow_AndNothingElse()
     {
-        var names = new[] { "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IEquatable" };
+        var names = new[] { "ISized", "IBoolConvertible", "IReverseEnumerable", "IEnumerator", "IEnumerable", "IEquatable", "IFormattable" };
         names.Length.Should().Be(RowCount - 1, "IEnumerable is one interface reached by two dunder rows");
         foreach (var name in names)
         {

@@ -22,13 +22,15 @@ C# constructor methods, the `__init__` dunder method is overloadable. Unlike
 Python, `__init__` cannot be called by the user directly, it must be invoked
 via the constructor syntax:
 
+<!-- spec-sweep: error SPY0427 -->
 ```python
 class Foobar:
     def __init__(self):
         pass
 
-a = Foobar()  # OK: Allowed in both Sharpy and Python, both implicitly invoke `__init__`
-a.__init__()  # ERROR: Not allowed in Sharpy, but allowed in Python
+def main() -> None:
+    a = Foobar()  # OK: Allowed in both Sharpy and Python, both implicitly invoke `__init__`
+    a.__init__()  # ERROR (SPY0427): Not allowed in Sharpy, but allowed in Python
 ```
 
 There is one exception to this rule and that is within the `__init__` dunder
@@ -229,6 +231,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | C# Output | Notes |
 |--------|------------|-------|
 | `__contains__(self, item: T) -> bool` | `bool Contains(T item)` method | Membership test (`in` operator) |
+| `__format__(self, spec: str) -> str` | `public virtual string ToString(string? spec, IFormatProvider? formatProvider = null)`, and the type implements `System.IFormattable` | The body moves into IFormattable's `ToString`, opening with `spec ??= ""`; every format route (f-string hole, `format()`, `str.format`, t-string) hands it the spec, the empty one included. `super().__format__(s)` calls the base's. Synthesis is announced by SPY1001. Declaring the explicit `IFormattable` spelling (`to_string(fmt, provider)`) beside it is SPY0522. See [Types Without `__format__`](fstrings.md#types-without-__format__) |
 | `__hash__(self) -> int` | `int GetHashCode()` override | Hash code. `@override` is optional (implicit override of `System.Object.GetHashCode`). |
 | `__getitem__(self, key: K) -> V` | `this[K key] { get; }` indexer | Index access |
 | `__iter__(self) -> T` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration. Generator body: annotate with element type T. Non-generator body: annotate with the producer (`Iterator[T]`/`IEnumerator[T]`/`IEnumerable[T]`), unpeeled to T. See [Producer Annotations](#producer-annotations-for-__iter__-and-__reversed__) |
@@ -381,7 +384,6 @@ not a producer name.
 | `__float__(self) -> float` | Not supported | Not yet designed |
 | `__floor__(self) -> float` | Not supported | `Math.Floor()` doesn't dispatch to this |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
-| `__format__(self, spec: str)` | Not supported (SPY0414) | The CLR spelling is `IFormattable.ToString(format, provider)`: declare `class C(IFormattable)` with `def to_string(self, fmt: str, provider: IFormatProvider) -> str` (`from System import IFormattable, IFormatProvider`), and every format route hands it the spec. See [Types Without `__format__`](fstrings.md#types-without-__format__). A dunder spelling that synthesizes the interface is #2009 |
 | `__index__(self) -> int` | Not supported | Not yet designed, but should be used for integer conversion in slice contexts | |
 | `__int__(self) -> int` | Not supported | Not yet designed |
 | `__matmul__(self, other: T) -> U` | Experimental (behind `matmul` feature) | `@` matrix multiplication (PEP 465). C# has no `@` operator, so it lowers to a `MatMul(other)` instance method rather than a C# operator overload. Enable with `--enable-feature=matmul` or `<Features>matmul</Features>`; ungated use is rejected with SPY0331. `@=` augmented assignment is also supported. |

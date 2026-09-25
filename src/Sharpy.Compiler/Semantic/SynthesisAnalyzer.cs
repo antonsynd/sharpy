@@ -85,6 +85,7 @@ internal static class SynthesisAnalyzer
         "IEnumerator" => typeof(System.Collections.Generic.IEnumerator<>),
         "IEnumerable" => typeof(System.Collections.Generic.IEnumerable<>),
         "IEquatable" => typeof(IEquatable<>),
+        "IFormattable" => typeof(IFormattable),
         _ => null
     };
 
@@ -209,6 +210,15 @@ internal static class SynthesisAnalyzer
                 result.Add(("IEnumerable", "System.Collections.Generic",
                     ImmutableArray.Create(typeArg), DunderNames.Iter, iterFunc.LineStart, iterFunc.ColumnStart));
             }
+        }
+
+        // __format__ → System.IFormattable (#2009, R-CB). Not a _coreProtocolDunders row: that loop
+        // names the Sharpy namespace, and this interface is the BCL's. Its CLR identity is the
+        // ClrDefinitionFor arm — without it the hoist drops the row silently.
+        if (dunders.TryGetValue(DunderNames.Format, out var formatFunc))
+        {
+            result.Add(("IFormattable", "System", ImmutableArray<TypeAnnotation>.Empty,
+                DunderNames.Format, formatFunc.LineStart, formatFunc.ColumnStart));
         }
 
         // __eq__ → IEquatable<T>

@@ -125,13 +125,15 @@ public class NameManglingPropertyTests
                 string.Join(", ", collision.Value));
         }
 
-        // __str__ and __repr__ both map to ToString — this is intentional.
-        // Filter those out and assert no other collisions.
+        // __str__ and __repr__ both map to ToString — this is intentional. __format__ maps to
+        // IFormattable's TWO-argument ToString (#2009), an overload of the other two, not the same
+        // member. Filter exactly that set out and assert no other collisions.
         var unexpectedCollisions = collisions
             .Where(c => !(c.Key == "ToString" &&
-                c.Value.Count == 2 &&
+                c.Value.Count == 3 &&
                 c.Value.Contains("__str__") &&
-                c.Value.Contains("__repr__")))
+                c.Value.Contains("__repr__") &&
+                c.Value.Contains("__format__")))
             .ToList();
 
         Assert.Empty(unexpectedCollisions);

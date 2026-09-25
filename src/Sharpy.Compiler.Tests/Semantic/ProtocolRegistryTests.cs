@@ -53,6 +53,7 @@ public class ProtocolRegistryTests
     [InlineData("__len__", "ISized")]
     [InlineData("__bool__", "IBoolConvertible")]
     [InlineData("__reversed__", "IReverseEnumerable")]
+    [InlineData("__format__", "IFormattable")]  // System.IFormattable, synthesized (#2009)
     public void GetProtocol_ReturnsCorrectInterface(string dunderName, string expectedInterface)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -226,8 +227,8 @@ public class ProtocolRegistryTests
         // Protocols (dunders) registered:
         // __init__, __call__, __len__, __contains__, __getitem__, __setitem__,
         // __iter__, __next__, __str__, __hash__, __bool__, __reversed__,
-        // __enter__, __exit__, __aenter__, __aexit__, __repr__, __post_init__
-        protocols.Should().HaveCount(18, "exactly 18 protocols are registered");
+        // __enter__, __exit__, __aenter__, __aexit__, __repr__, __post_init__, __format__
+        protocols.Should().HaveCount(19, "exactly 19 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -305,7 +306,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(18, "exactly 18 protocols are registered");
+        ProtocolRegistry.Count.Should().Be(19, "exactly 19 protocols are registered (__format__, #2009)");
     }
 
     // ==================== Test Consistency with OperatorRegistry ====================
@@ -378,6 +379,7 @@ public class ProtocolRegistryTests
     [InlineData("__str__", 1, "str")]
     [InlineData("__hash__", 1, "int")]
     [InlineData("__bool__", 1, "bool")]
+    [InlineData("__format__", 2, "str")]  // self, spec (#2009)
     public void GetExpectedSignature_ReturnsCorrectValues(string dunder, int paramCount, string returnType)
     {
         var result = ProtocolRegistry.GetExpectedSignature(dunder);
