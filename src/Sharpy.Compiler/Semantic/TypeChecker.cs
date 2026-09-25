@@ -136,6 +136,13 @@ internal partial class TypeChecker
     // in CheckMemberAccessCore via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
     private Expression? _currentMemberAccessQualifier;
 
+    /// <summary>
+    /// True while checking the initializer of a declaration whose annotation failed to resolve and
+    /// was already reported (#2075). Every "cannot infer a type" (SPY0227) raised there flows from
+    /// the missing target type — the annotation's own diagnostic is the one report.
+    /// </summary>
+    private bool _inErrorRecoveredAnnotationSlot;
+
     // The direct argument expressions (positional and keyword, unwrapped through parentheses) of the
     // FunctionCall currently having its arguments checked. A builtin type NAME in one of these
     // positions is established, working behavior — map(int, xs), sorted(xs, key=int),

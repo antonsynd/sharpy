@@ -15,7 +15,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <remarks>
 /// Cells: value slots {local, parameter, field, module variable, <c>list[None]</c>,
 /// <c>dict[str, None]</c>, a function type's parameter <c>(None) -&gt; int</c>, <c>None?</c>, an alias
-/// whose body is <c>None</c> used as a value} × SPY0614; controls {function return, method return,
+/// whose body is <c>None</c> used as a value, a property getter's type, an auto-property, a union case
+/// field} × exactly one SPY0614; controls {function return, method return, a setter's <c>-&gt; None</c>,
 /// a function type's return <c>() -&gt; None</c>, an alias of <c>None</c> used as a return, a
 /// delegate's return, <c>int | None</c>} × run.
 /// </remarks>
@@ -34,6 +35,11 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         ["function_type_parameter"] = ("def main() -> None:\n    f: (None) -> int = lambda x: 1\n    print(1)\n", 2, 9),
         ["optional_none"] = ("def f(x: None?) -> int:\n    return 1\n\ndef main() -> None:\n    print(1)\n", 1, 10),
         ["alias_as_value"] = ("type Unit = None\n\ndef main() -> None:\n    x: Unit = None\n    print(1)\n", 4, 8),
+        // A getter's return annotation IS the property's type — a value position (#2004 follow-up;
+        // 5a0135370 resolved it as a return, and the cell stayed SPY0908 CS0547).
+        ["property_getter"] = ("class C:\n    property get p(self) -> None:\n        return None\n\ndef main() -> None:\n    print(1)\n", 2, 29),
+        ["auto_property"] = ("class C:\n    property p: None = None\n\ndef main() -> None:\n    print(1)\n", 2, 17),
+        ["union_case_field"] = ("union U:\n    case A(x: None)\n    case B()\n\ndef main() -> None:\n    print(1)\n", 2, 15),
     };
 
     private static readonly Dictionary<string, (string Source, string Output)> ControlCells = new()
@@ -44,6 +50,10 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         ["alias_as_return"] = ("type Unit = None\n\ndef f() -> Unit:\n    print(4)\n\ndef main() -> None:\n    f()\n", "4"),
         ["delegate_return"] = ("delegate D() -> None\n\ndef main() -> None:\n    print(5)\n", "5"),
         ["union_with_none"] = ("def main() -> None:\n    x: int | None = None\n    print(x is None)\n", "True"),
+        // A setter's `-> None` is a true return (#2004 follow-up).
+        ["setter_return"] = ("class C:\n    _v: int = 0\n\n    property get v(self) -> int:\n        return self._v\n\n"
+            + "    property set v(self, value: int) -> None:\n        self._v = value\n\ndef main() -> None:\n"
+            + "    c = C()\n    c.v = 6\n    print(c.v)\n", "6"),
     };
 
     public static IEnumerable<object[]> Refused() => RefusedCells.Keys.Select(k => new object[] { k });
@@ -62,6 +72,9 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
         codes.Should().NotContain(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, $"[{cell}] never SPY0908");
         var hit = result.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.SemanticOverflow.NoneAnnotationInValuePosition).ToList();
         hit.Should().ContainSingle($"[{cell}] {string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message))}");
+        // One mistake, one diagnostic (#2075): no cascade such as SPY0227 beside the SPY0614.
+        result.RawDiagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).Should().ContainSingle(
+            $"[{cell}] {string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message))}");
         hit[0].Message.Should().Be("'None' is not a type; annotate a local, parameter, field or type argument as `T | None`, or use `object`");
         (hit[0].Line, hit[0].Column).Should().Be((line, column), $"[{cell}] the None annotation's position");
     }
@@ -80,7 +93,7 @@ public class NoneAnnotationPositionMatrixTests : IntegrationTestBase
     [Fact]
     public void Matrix_IsTotal()
     {
-        RefusedCells.Should().HaveCount(9);
-        ControlCells.Should().HaveCount(6);
+        RefusedCells.Should().HaveCount(12);
+        ControlCells.Should().HaveCount(7);
     }
 }

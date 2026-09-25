@@ -2850,6 +2850,11 @@ internal partial class TypeChecker
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         Text.TextSpan? span = null, IReadOnlyDictionary<string, string>? data = null)
     {
+        // One mistake, one diagnostic (#2075): an annotated slot whose annotation already failed is
+        // not an unannotated one, so "cannot infer a type" is a cascade there.
+        if (_inErrorRecoveredAnnotationSlot && code == DiagnosticCodes.Semantic.CannotInferType)
+            return;
+
         if (_diagnostics.ErrorCount >= MaxErrors)
         {
             if (!_maxErrorsReported)

@@ -2151,7 +2151,8 @@ internal partial class TypeChecker
             if (propDef.ReturnType != null && !isSetter)
             {
                 // Getter: type comes from the return annotation
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
+                // A getter's return annotation IS the property's type — a value position (#2004).
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Value);
             }
             else if (isSetter && propDef.Parameters.Length > 0)
             {
@@ -2324,7 +2325,10 @@ internal partial class TypeChecker
         {
             if (propDef.IsFunctionStyle && propDef.ReturnType != null)
             {
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
+                // A getter's return annotation is the property's type (a value position); a setter's
+                // or init accessor's `-> None` is a true return (#2004).
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType,
+                    isSetter ? AnnotationPosition.Return : AnnotationPosition.Value);
             }
             else if (!propDef.IsFunctionStyle && propDef.Type != null)
             {
@@ -2561,7 +2565,12 @@ internal partial class TypeChecker
                         // For function-style properties, type comes from ReturnType (getter) or parameter type (setter)
                         if (propDef.ReturnType != null)
                         {
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
+                            // A getter's return annotation is the property's type (a value position);
+                            // a setter's or init accessor's `-> None` is a true return (#2004).
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType,
+                                propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init
+                                    ? AnnotationPosition.Return
+                                    : AnnotationPosition.Value);
                         }
                         else if (propDef.Parameters.Length > 1)
                         {

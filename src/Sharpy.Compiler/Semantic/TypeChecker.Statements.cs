@@ -976,6 +976,13 @@ internal partial class TypeChecker
 
         var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type, AnnotationPosition.Value);
 
+        // An annotation that failed to resolve was already reported (#2075): the slot is annotated,
+        // so neither its initializer (as uninferable) nor its absence (as an initializer-less `auto`)
+        // may be diagnosed a second time.
+        var annotationErrored = varDecl.Type != null && _semanticInfo.IsAnnotationErrorRecovery(varDecl.Type);
+        using var annotationRecovery = ScopedValue.Push(ref _inErrorRecoveredAnnotationSlot,
+            _inErrorRecoveredAnnotationSlot || annotationErrored);
+
         if (varDecl.InitialValue != null)
         {
             // A class field, @static field or module-variable initializer is checked directly in
@@ -1042,7 +1049,7 @@ internal partial class TypeChecker
                     CompilerPhase.TypeChecking);
             }
         }
-        else if (declaredType is UnknownType)
+        else if (declaredType is UnknownType && !annotationErrored)
         {
             AddError($"Variable '{varDecl.Name}' declared with 'auto' must have an initializer",
                 varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAutoVariable,

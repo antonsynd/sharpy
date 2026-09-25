@@ -341,6 +341,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, byte> _errorRecoveryNodes =
         new(ReferenceEqualityComparer.Instance);
 
+    // Type annotations that resolved to UnknownType because the resolver already reported them
+    // (#2075): the slot is annotated-but-unknown (error recovery), not unannotated, so nothing
+    // downstream may diagnose it again as "cannot infer a type".
+    private readonly ConcurrentDictionary<TypeAnnotation, byte> _errorRecoveryAnnotations =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map with-item context expressions to their context manager kind
     // (Disposable, DunderProtocol, or AsyncDisposable/AsyncDunderProtocol)
     //
@@ -1310,6 +1316,23 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Marks a type annotation whose resolution reported an error and produced UnknownType (#2075).
+    /// </summary>
+    public void MarkAnnotationErrorRecovery(TypeAnnotation annotation)
+    {
+        _errorRecoveryAnnotations.TryAdd(annotation, 0);
+    }
+
+    /// <summary>
+    /// Whether the annotation resolved to UnknownType as error recovery — already reported, so its
+    /// slot must not be treated as unannotated (#2075).
+    /// </summary>
+    public bool IsAnnotationErrorRecovery(TypeAnnotation annotation)
+    {
+        return _errorRecoveryAnnotations.ContainsKey(annotation);
+    }
+
+    /// <summary>
     /// Returns true if the given expression was marked as error recovery,
     /// meaning its UnknownType is expected (a diagnostic was emitted).
     /// </summary>
@@ -2109,6 +2132,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._errorRecoveryNodes)
             _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._errorRecoveryAnnotations)
+            _errorRecoveryAnnotations.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._contextManagerLowerings)
             _contextManagerLowerings.TryAdd(kvp.Key, kvp.Value);

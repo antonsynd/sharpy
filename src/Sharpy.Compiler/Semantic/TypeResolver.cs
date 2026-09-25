@@ -92,6 +92,18 @@ internal class TypeResolver
     public SemanticType ResolveTypeAnnotation(
         TypeAnnotation? annotation, AnnotationPosition position, bool bareGenericFillsFromContext = false)
     {
+        // An annotation that resolved to Unknown WITH a diagnostic is error recovery (#2075): its slot
+        // is annotated, so a declaration must not re-diagnose it as uninferable (SPY0227).
+        var errorsBefore = _diagnostics.ErrorCount;
+        var result = ResolveTypeAnnotationCore(annotation, position, bareGenericFillsFromContext);
+        if (annotation != null && result is UnknownType && _diagnostics.ErrorCount > errorsBefore)
+            _semanticInfo.MarkAnnotationErrorRecovery(annotation);
+        return result;
+    }
+
+    private SemanticType ResolveTypeAnnotationCore(
+        TypeAnnotation? annotation, AnnotationPosition position, bool bareGenericFillsFromContext)
+    {
         if (annotation == null)
             return SemanticType.Unknown;
 

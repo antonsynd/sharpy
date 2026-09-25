@@ -57,7 +57,7 @@ public class TypeResolverModifierTailScanTests
     }
 
     /// <summary>
-    /// The source text of <c>ResolveTypeAnnotation</c>, from its signature to the closing brace of
+    /// The source text of <c>ResolveTypeAnnotationCore</c>, from its signature to the closing brace of
     /// its body, located by brace depth so a nested block cannot end the scan early.
     /// </summary>
     private static string ResolveTypeAnnotationBody()
@@ -65,8 +65,10 @@ public class TypeResolverModifierTailScanTests
         var path = FindTypeResolverPath();
         var text = File.ReadAllText(path);
 
-        var signature = text.IndexOf("public SemanticType ResolveTypeAnnotation(", StringComparison.Ordinal);
-        signature.Should().BeGreaterThan(-1, $"positive control: ResolveTypeAnnotation must exist in {path}");
+        // The public entry is a thin wrapper that marks error-recovery annotations (#2075); every
+        // resolving arm lives in the Core body.
+        var signature = text.IndexOf("private SemanticType ResolveTypeAnnotationCore(", StringComparison.Ordinal);
+        signature.Should().BeGreaterThan(-1, $"positive control: ResolveTypeAnnotationCore must exist in {path}");
 
         var open = text.IndexOf('{', signature);
         var depth = 0;
