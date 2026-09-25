@@ -8,6 +8,7 @@ The `Optional[T]` type is a special tagged union provided by the Sharpy standard
 
 ## Definition
 
+<!-- spec-sweep: fragment -->
 ```python
 union Optional[T]:
     case Some(value: T)
@@ -115,39 +116,64 @@ one. A bare `return None` here is **SPY0604** — `None` belongs to `User | None
 
 ### Matching the payload by type
 
-A bare **type pattern** naming the payload type is an equivalent spelling of the `Some` case, so a
-`T?` can be matched the way Python matches `T | None`:
+A bare **type pattern** naming the payload (`case str():` over a `str?`) is **refused** with
+SPY0498: `Optional` is a tagged union and matches through its constructor cases, exactly as
+`Result` does, so the payload pattern would be a second spelling of `case Some(v):` (ruled on
+#1510). The diagnostic steers to the constructor cases:
 
+<!-- spec-sweep: error SPY0498 -->
 ```python
 def describe(x: str?) -> str:
     match x:
-        case str():
+        case str():          # SPY0498 — match through 'case Some(v):' / 'case None():'
             return "a string"
-        case None:
+        case None():
             return "nothing"
 ```
 
-`case str():` matches only when the Optional holds a value, and a `None` value falls through to the
-next arm — `case None:` here, or a wildcard. The two spellings are interchangeable: `case str():` is
-`case Some(str())`, and `case str() as s:` binds `s` at the **payload** type, not at `str?`.
-
-The pattern may name a subtype of the payload, in which case it still discriminates:
+Write the cases instead. A check on the payload's type — a subtype of the declared payload —
+goes *inside* `Some(...)`, and `case None():` (or a wildcard) takes absence:
 
 ```python
+class Animal:
+    pass
+
+
+class Dog(Animal):
+    def bark(self) -> str:
+        return "woof"
+
+
+def describe(x: str?) -> str:
+    match x:
+        case Some(s):
+            return "a string: " + s
+        case None():
+            return "nothing"
+
+
 def speak(a: Animal?) -> str:
     match a:
-        case Dog() as d:
+        case Some(Dog() as d):
             return d.bark()
         case _:
             return "not a dog"
+
+
+def main() -> None:
+    print(describe(Some("ab")), describe(None()))
+    print(speak(Some(Dog())), speak(Some(Animal())), speak(None()))
 ```
 
-Exhaustiveness counts a payload type pattern as the `Some` case, so `case str():` paired with
-`case None:` is exhaustive and needs no wildcard. `case str():` alone reports `None` as the missing
-case — a warning for a match statement, an error for a match expression.
+```
+a string: ab nothing
+woof not a dog not a dog
+```
 
 The scrutinee is **not** unwrapped to make this work: `unwrap()` throws on an empty Optional, so an
-unwrapped subject could never reach a `None` arm. Both spellings destructure the Optional in place.
+unwrapped subject could never reach a `None()` arm. The constructor cases destructure the Optional in
+place. (After `if x is not None:` the name is the payload type itself, so a plain type pattern on it
+is an ordinary type pattern.)
 
 ## Common Methods
 
@@ -174,6 +200,29 @@ empty: int? = None()
 print(empty.is_some)        # False
 print(empty.is_none)        # True
 print(empty.unwrap_or(99))  # 99
+```
+
+## `str` and `repr`
+
+`str()` of an Optional is **transparent** — the value's own `str`, or `None` for an empty one — so
+`print`, a plain f-string hole and `str.format` show the value. `repr()` is the **constructor
+spelling** — `Some(<repr of the value>)` or `None()` — so `!r`, `repr()` and every container element
+say which case they hold (#2005):
+
+```python
+def main() -> None:
+    a: int? = Some(1)
+    b: str? = Some("ab")
+    c: int? = None()
+    print(a, b, c)
+    print(repr(a), repr(b), repr(c))
+    print([a, c], {"k": b})
+```
+
+```
+1 ab None
+Some(1) Some('ab') None()
+[Some(1), None()] {'k': Some('ab')}
 ```
 
 ## Constructor Shorthand
@@ -209,35 +258,40 @@ type, so the underlying value is never reached implicitly. Protocol operations
 `for v in x`) and direct member/method access on the underlying type are
 **compile errors** on a `T?` receiver:
 
+<!-- spec-sweep: error SPY0326 -->
 ```python
-s: str? = get_name()
-print(len(s))    # error: Optional type 'str?' does not support len() directly
-print(s[0])      # error: Optional type 'str?' does not support indexing directly
-print(s.upper()) # error: 'str?' has no member 'upper'
+def main() -> None:
+    s: str? = Some("hello")
+    print(len(s))    # SPY0326: Optional type 'str?' does not support len() directly
+    print(s[0])      # SPY0326: ... does not support indexing directly
+    print(s.upper()) # SPY0326: ... does not support member access ('upper') directly
 ```
 
 Reach the underlying value explicitly — narrow it, use `?.`, pattern-match, or
 unwrap it:
 
 ```python
-# Narrow with `is not None` (refines T? to T in the branch)
-if s is not None:
-    print(len(s))
-    print(s.upper())
+def main() -> None:
+    s: str? = Some("hello")
 
-# Null-conditional access (?.)
-upper: str? = s?.upper()
+    # Narrow with `is not None` (refines T? to T in the branch)
+    if s is not None:
+        print(len(s))
+        print(s.upper())
 
-# Pattern matching (`case str():` is the equivalent bare-payload spelling of `case Some(v):`)
-match s:
-    case Some(v):
-        print(len(v))
-    case None:
-        print("empty")
+    # Null-conditional access (?.)
+    upper: str? = s?.upper()
 
-# Unwrap (throws on None)
-print(len(s.unwrap()))
-print(s.unwrap_or("default"))
+    # Pattern matching through the constructor cases
+    match s:
+        case Some(v):
+            print(len(v))
+        case None():
+            print("empty")
+
+    # Unwrap (throws on None)
+    print(len(s.unwrap()))
+    print(s.unwrap_or("default"))
 ```
 
 The only members callable directly on a `T?` are `Optional`'s own API
@@ -267,27 +321,32 @@ Against a user type, `x == None()` selects the `__eq__` overload whose parameter
 Handing a `T?` to something that expects a `T` is a use of the underlying value,
 so it is refused for the same reason `len(s)` is — at argument binding, at an
 operator's operand, and at any other position typed `T`. The reverse direction
-is free: `Optional[T]` has an implicit conversion **from** `T`, so a plain value
-goes into a `T?` parameter unchanged.
+takes the constructor: a plain value goes into a `T?` parameter as `Some(value)` (a
+bare `T` is SPY0604, as for any store — see [Creating Optional Values](#creating-optional-values)).
 
+<!-- spec-sweep: error SPY0220 -->
 ```python
 def total(xs: list[int]) -> int:
     return len(xs)
 
-ys: list[int]? = get_items()
 
-total(ys)          # error: Cannot pass argument of type 'list[int]?' to parameter
-                   # of type 'list[int]' — the argument is Optional[list[int]];
-                   # narrow it ('if x is not None:') or unwrap it first
-[1, 2] + ys        # error: Type 'list[int]' does not support operator '+' with
-                   # operand of type 'list[int]?'
+def describe(v: int?) -> str:
+    return "ok"
 
-if ys is not None: # narrowed to list[int] in the branch
-    total(ys)      # OK
-total(ys.unwrap_or([]))  # OK
 
-def describe(v: int?) -> str: ...
-describe(7)        # OK — T into T? is the conversion Optional[T] declares
+def main() -> None:
+    ys: list[int]? = Some([1, 2])
+
+    total(ys)          # error: Cannot pass argument of type 'list[int]?' to parameter
+                       # of type 'list[int]' — the argument is Optional[list[int]];
+                       # narrow it ('if x is not None:') or unwrap it first
+    [1, 2] + ys        # error: Type 'list[int]' does not support operator '+' with
+                       # operand of type 'list[int]?'
+
+    if ys is not None: # narrowed to list[int] in the branch
+        total(ys)      # OK
+    total(ys.unwrap_or([]))  # OK
+    describe(Some(7))  # OK — the constructor makes the T?
 ```
 
 A `T?` is not a `T | None` either, even though both spell as `T?` at a use site:
@@ -304,37 +363,42 @@ receiver fails at runtime (a `NullReferenceException`, mirroring Python's
 where nullable references flow into ordinary member access:
 
 ```python
-s: str | None = dotnet_api()
-print(len(s))      # works; throws at runtime if s is None
-print(s.upper())   # works; throws at runtime if s is None
-print(s[0])        # works — indexing is a protocol route like any other
-print(s[0:1])     # works — so is slicing
-for ch in s:       # works — and iteration
-    print(ch)
-print([ch for ch in s])   # works — including the comprehension spelling
+def main() -> None:
+    s: str | None = "hello"
+    print(len(s))      # works; throws at runtime if s is None
+    print(s.upper())   # works; throws at runtime if s is None
+    print(s[0])        # works — indexing is a protocol route like any other
+    print(s[0:1])      # works — so is slicing
+    for ch in s:       # works — and iteration
+        print(ch)
+    print([ch for ch in s])   # works — including the comprehension spelling
 ```
 
 "Every protocol route" means every one, for every payload — including payloads that emit as .NET
 value types, where the loose wrapper is a `Nullable<T>`:
 
 ```python
-b: bytes | None = read_bytes()
-print(b[0])        # works
-print(b[0:1])      # works
-print(b.decode())  # works
+def main() -> None:
+    b: bytes | None = b"ab"
+    print(b[0])        # works
+    print(b[0:1])      # works
+    print(b.decode())  # works
 
-t: tuple[int, int] | None = pair()
-print(t[0])        # works
-print(2 in t)      # works
-for x in t:        # works
-    print(x)
+    t: tuple[int, int] | None = (1, 2)
+    print(t[0])        # works
+    print(2 in t)      # works
+    for x in t:        # works
+        print(x)
 ```
 
 By contrast the strict `T?` refuses all of them with SPY0326 and tells you to narrow or unwrap:
 
 ```python
-o: str? = maybe(dotnet_api())
-# print(o[0])      # SPY0326 — narrow it first (if o is not None:) or unwrap it (o.unwrap())
+def main() -> None:
+    raw: str | None = "hello"
+    o: str? = maybe raw
+    # print(o[0])      # SPY0326 — narrow it first (if o is not None:) or unwrap it (o.unwrap())
+    print(o.unwrap()[0])
 ```
 
 Choose `T?` when you want the compiler to force you to handle absence; choose
@@ -347,7 +411,8 @@ acceptable.
 |---------|----------------------|---------------------------|
 | Meaning | Safe tagged union | C# nullable reference/value |
 | Has value | `Some(value)` | `value` |
-| No value | `None` or `None()` | `None` |
+| No value | `None()` | `None` |
+| `str(x)` / `repr(x)` | the value's `str` / `Some(<repr>)`; `None` / `None()` | the value's `str` / `repr`; `None` / `None` |
 | Type safety | Works with any `T` | Only reference types and `Nullable<T>` |
 | Pattern matching | `case Some(v):` | `if x is not None:` |
 | Protocol ops (`len`, `in`, `[i]`, iteration) | Compile error — narrow or `unwrap()` first | Allowed — throws at runtime on `None` |
@@ -380,30 +445,61 @@ See [Nullable Types](nullable_types.md) for details on `T | None`.
 def get_config_value(config: dict[str, str], key: str) -> str?:
     if key in config:
         return Some(config[key])
-    return None
+    return None()
 
-# Using the result
-value = get_config_value(config, "timeout")
-match value:
-    case Some(v):
-        timeout = int(v)
-    case None:
-        timeout = 30  # default
+
+def main() -> None:
+    config: dict[str, str] = {"timeout": "5"}
+    value = get_config_value(config, "timeout")
+    timeout: int = 30  # default
+    match value:
+        case Some(v):
+            timeout = int(v)
+        case None():
+            pass
+    print(timeout)
 ```
 
 ### Chaining Optional Operations
 
 ```python
+class Address:
+    city: str
+
+    def __init__(self, city: str):
+        self.city = city
+
+
+class User:
+    address: Address?
+
+    def __init__(self, address: Address?):
+        self.address = address
+
+    def get_address(self) -> Address?:
+        return self.address
+
+
+def find_user(user_id: int) -> User?:
+    if user_id == 1:
+        return Some(User(Some(Address("Paris"))))
+    return None()
+
+
 def get_user_city(user_id: int) -> str?:
     user = find_user(user_id)
     if user.is_none:
-        return None
+        return None()
 
     address = user.unwrap().get_address()
     if address.is_none:
-        return None
+        return None()
 
     return Some(address.unwrap().city)
+
+
+def main() -> None:
+    print(get_user_city(1), get_user_city(2))
 ```
 
 ### Transforming Optional Values
@@ -424,17 +520,20 @@ opt_result = opt_nothing.map(lambda x: x * 2)
 Use `maybe` to convert from `T | None` (C# nullable) to `T?` (Optional):
 
 ```python
-# C# nullable to Optional (use maybe)
-raw: str | None = dotnet_api()
-safe: str? = maybe raw              # Convert to Optional[str]
-
-# Optional to C# nullable
-def optional_to_nullable(opt: T?) -> T | None:
+def optional_to_nullable(opt: str?) -> str | None:
     match opt:
         case Some(value):
             return value
-        case None:
+        case None():
             return None
+
+
+def main() -> None:
+    # C# nullable to Optional (use maybe)
+    raw: str | None = "hello"
+    safe: str? = maybe raw              # Convert to Optional[str]
+    # Optional to C# nullable
+    print(optional_to_nullable(safe), optional_to_nullable(None()))
 ```
 
 See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword.

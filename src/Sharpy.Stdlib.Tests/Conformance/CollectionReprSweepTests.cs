@@ -83,6 +83,44 @@ public class CollectionReprSweepTests
         Assert.False(RendersItself(typeof(NoRepr)));
     }
 
+    /// <summary>
+    /// The <c>IRepr</c> roster (#2005, #2043): every public Sharpy.Core / Sharpy.Stdlib type that says
+    /// its python repr differs from its str. The roster is a literal, so a new implementer is a
+    /// deliberate addition with an executing repr cell (<c>OptionalReprMatrixTests</c>,
+    /// <c>DatetimeStrReprMatrixTests</c>, <c>TemplateSurfaceMatrixTests</c>) — and a type dropped
+    /// from the channel is red here, not a quietly different repr.
+    /// </summary>
+    private static readonly string[] ReprRoster =
+    {
+        "Sharpy.Date", "Sharpy.DateTime", "Sharpy.Interpolation", "Sharpy.Optional`1",
+        "Sharpy.Template", "Sharpy.Time", "Sharpy.Timedelta", "Sharpy.Timezone",
+    };
+
+    [Fact]
+    public void EveryIReprImplementer_IsOnTheRoster()
+    {
+        var implementers = SizedProtocolSweepTests.SweptAssemblies
+            .SelectMany(a => a.GetExportedTypes())
+            .Where(t => !t.IsInterface && typeof(Sharpy.IRepr).IsAssignableFrom(
+                t.IsGenericTypeDefinition ? t.MakeGenericType(t.GetGenericArguments().Select(_ => typeof(int)).ToArray()) : t))
+            .Select(t => t.FullName!)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+        Assert.Equal(ReprRoster, implementers);
+    }
+
+    [Fact]
+    public void IRepr_ReachesRepr_BeforeTheSequenceFallback_PositiveControl()
+    {
+        // A Template is enumerable: without the IRepr arm ahead of the sequence arm its repr would
+        // be the bare list of its parts. Its str renders; its repr is PEP 750's spelling.
+        var template = new Sharpy.Template(new[] { "a", "" }, new[] { new Sharpy.Interpolation(5, "x", "") });
+        Assert.Equal("a5", Sharpy.Builtins.Str(template));
+        Assert.Equal("Template(strings=('a', ''), interpolations=(Interpolation(5, 'x', None, ''),))",
+            Sharpy.Builtins.Repr(template));
+        Assert.Equal("Some(1)", Sharpy.Builtins.Repr(Sharpy.Optional<int>.Some(1)));
+    }
+
     private sealed class NoRepr : System.Collections.Generic.IReadOnlyCollection<int>
     {
         public int Count => 0;

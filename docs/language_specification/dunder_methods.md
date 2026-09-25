@@ -390,7 +390,7 @@ not a producer name.
 | `__round__(self, ndigits: int?) -> T` | Not supported | `Math.Round()` doesn't dispatch to this |
 | `__trunc__(self) -> T` | Not supported | `Math.Truncate()` doesn't dispatch to this |
 | `__pow__(self, exponent: int) -> float` | Not supported | `Math.Pow()` doesn't dispatch to this |
-| `__repr__(self) -> str` | Supported | Maps to `ToString()` (same as `__str__`). Used by `@dataclass` synthesis for auto-generated string representation |
+| `__repr__(self) -> str` | Supported | Maps to `ToString()` (same as `__str__`) on a user class, so a user class's `repr` is its `str`. Used by `@dataclass` synthesis for auto-generated string representation. A Core/Stdlib type whose python `repr` differs from its `str` spells `__repr__` as the interface `Sharpy.IRepr` (`string Repr()`), which `repr()`, `!r`, `ascii()` and every container element ask before `ToString()`: `Optional` (`Some(1)` / `None()`), `Template`/`Interpolation`, and the `datetime` types (`datetime.date(2020, 1, 2)`) |
 
 ## Dunder Method Invocation Rules
 

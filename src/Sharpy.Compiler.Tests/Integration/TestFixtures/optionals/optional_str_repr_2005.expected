@@ -1,0 +1,7 @@
+1 ab None
+1 ab None
+Some(1) Some('ab') None()
+1 ab None
+Some(1) Some('ab') None()
+[Some(1), None()]
+{'k': Some('ab')}

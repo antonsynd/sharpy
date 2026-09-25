@@ -5,7 +5,7 @@ namespace Sharpy
     /// Contains the evaluated value, the original expression text, the optional conversion
     /// (<c>!r</c>/<c>!s</c>/<c>!a</c>) and an optional format spec.
     /// </summary>
-    public class Interpolation
+    public class Interpolation : IRepr
     {
         /// <summary>The evaluated interpolation result.</summary>
         public object Value { get; }

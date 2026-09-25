@@ -1,0 +1,13 @@
+# An Optional's str is transparent and its repr is the constructor spelling (#2005, R-CH):
+# str(Some(1)) is 1, repr(Some(1)) is Some(1), repr(None()) is None() — on every repr route.
+def main() -> None:
+    a: int? = Some(1)
+    b: str? = Some("ab")
+    c: int? = None()
+    print(a, b, c)
+    print(str(a), str(b), str(c))
+    print(repr(a), repr(b), repr(c))
+    print(f"{a} {b} {c}")
+    print(f"{a!r} {b!r} {c!r}")
+    print([a, c])
+    print({"k": b})

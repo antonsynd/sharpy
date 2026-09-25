@@ -10,7 +10,7 @@ namespace Sharpy
     /// but produce a Template object instead of a formatted string, allowing inspection
     /// and transformation of the interpolation parts.
     /// </summary>
-    public class Template : IEnumerable<object>
+    public class Template : IEnumerable<object>, IRepr
     {
         /// <summary>The literal string parts (N+1 parts for N interpolations).</summary>
         public string[] Strings { get; }
@@ -70,7 +70,8 @@ namespace Sharpy
         /// Python's <c>repr</c> of this Template (PEP 750, python3.14):
         /// <c>Template(strings=('a', 'b'), interpolations=(Interpolation(1, 'x', None, ''),))</c> — both
         /// fields spelled as Python tuples. <see cref="ToString"/> stays the renderer; <c>repr()</c>,
-        /// <c>!r</c> and <c>ascii()</c> reach this through <see cref="Builtins.Repr"/>.
+        /// <c>!r</c> and <c>ascii()</c> reach this through <see cref="Builtins.Repr"/> (the
+        /// <see cref="IRepr"/> channel).
         /// </summary>
         public string Repr()
         {

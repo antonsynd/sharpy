@@ -35,6 +35,13 @@ namespace Sharpy
             if (obj is bool b)
                 return b ? "True" : "False";
 
+            // A type whose python repr differs from its str says so (IRepr, the CLR spelling of
+            // __repr__ for Core/Stdlib types): Optional's Some(1)/None(), a Template's PEP 750
+            // spelling, datetime's constructor spelling. Before the plain-sequence arm (a Template
+            // is enumerable) and before the ToString fallback (ToString is their str).
+            if (obj is IRepr repr)
+                return repr.Repr();
+
             // Python: repr(ValueError('boom')) is "ValueError('boom')" — the type name and the
             // args, where str() gives the message alone (#1415). Handled here as well as in Str so
             // the two do not disagree: fixing only str() would leave repr(e), and every container
@@ -45,15 +52,6 @@ namespace Sharpy
             // (`ValueError()`, `ValueError('a','b')`) has no equivalent here.
             if (obj is System.Exception ex)
                 return ex.GetType().Name + "(" + ReprString(ex.Message) + ")";
-
-            // PEP 750: a Template/Interpolation's ToString() RENDERS (template_strings.md), so its
-            // repr is a separate spelling, reached here so repr(), !r, ascii() and every container
-            // element agree (#1983). Before the plain-sequence arm: a Template is enumerable.
-            if (obj is Template template)
-                return template.Repr();
-
-            if (obj is Interpolation interpolation)
-                return interpolation.Repr();
 
             // Boxed floats must route through the Python float formatter, otherwise
             // .NET's default ToString() drops the trailing ".0" on whole values and

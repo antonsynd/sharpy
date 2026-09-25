@@ -29,7 +29,7 @@ namespace Sharpy
     /// print(find_user(99))     # None
     /// </code>
     /// </example>
-    public readonly struct Optional<T> : System.IEquatable<Optional<T>>
+    public readonly struct Optional<T> : System.IEquatable<Optional<T>>, IRepr
     {
         private readonly T _value;
         private readonly bool _hasValue;
@@ -85,6 +85,13 @@ namespace Sharpy
         /// <summary>Returns a string representation of the optional.</summary>
         public override string ToString() =>
             _hasValue ? $"Some({_value})" : "None";
+
+        /// <summary>
+        /// <c>repr()</c> is the constructor spelling — <c>Some(&lt;repr of the value&gt;)</c> or
+        /// <c>None()</c> — while <c>str()</c> stays transparent (the value's str, or <c>None</c>)
+        /// (#2005, R-CH).
+        /// </summary>
+        string IRepr.Repr() => _hasValue ? "Some(" + Builtins.Repr(_value) + ")" : "None()";
 
         /// <summary>Determines whether this optional is equal to the specified object.</summary>
         public override bool Equals(object? obj) =>

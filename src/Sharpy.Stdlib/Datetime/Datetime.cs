@@ -6,7 +6,7 @@ namespace Sharpy
     /// Represents a date (year, month, day).
     /// </summary>
     [SharpyModuleType("datetime", "date")]
-    public class Date : IEquatable<Date>, IComparable<Date>, IFormattable
+    public class Date : IEquatable<Date>, IComparable<Date>, IFormattable, IRepr
     {
         private readonly System.DateTime _date;
 
@@ -42,6 +42,10 @@ namespace Sharpy
         /// </summary>
         string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
             => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
+
+        /// <summary>Python's <c>repr(date)</c>: <c>datetime.date(2020, 1, 2)</c> (#2043).</summary>
+        string IRepr.Repr() => "datetime.date(" + Year.ToString(CultureInfo.InvariantCulture) + ", "
+            + Month.ToString(CultureInfo.InvariantCulture) + ", " + Day.ToString(CultureInfo.InvariantCulture) + ")";
 
         /// <summary>Return the current local date.</summary>
         public static Date Today()
@@ -191,7 +195,7 @@ namespace Sharpy
     /// Represents a time (hour, minute, second, microsecond).
     /// </summary>
     [SharpyModuleType("datetime", "time")]
-    public class Time : IEquatable<Time>, IComparable<Time>, IFormattable
+    public class Time : IEquatable<Time>, IComparable<Time>, IFormattable, IRepr
     {
         private readonly TimeSpan _time;
 
@@ -229,6 +233,20 @@ namespace Sharpy
         /// </summary>
         string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
             => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
+
+        /// <summary>
+        /// Python's <c>repr(time)</c>: <c>datetime.time(3, 4)</c>, with the seconds only when they or the
+        /// microseconds are non-zero, and the microseconds only when non-zero (#2043).
+        /// </summary>
+        string IRepr.Repr()
+        {
+            var args = Hour.ToString(CultureInfo.InvariantCulture) + ", " + Minute.ToString(CultureInfo.InvariantCulture);
+            if (Microsecond != 0)
+                args += ", " + Second.ToString(CultureInfo.InvariantCulture) + ", " + Microsecond.ToString(CultureInfo.InvariantCulture);
+            else if (Second != 0)
+                args += ", " + Second.ToString(CultureInfo.InvariantCulture);
+            return "datetime.time(" + args + ")";
+        }
 
         /// <summary>Return the ISO 8601 formatted string.</summary>
         public string Isoformat()
@@ -318,7 +336,7 @@ namespace Sharpy
     /// A combination of a date and a time.
     /// </summary>
     [SharpyModuleType("datetime", "datetime")]
-    public class DateTime : IEquatable<DateTime>, IComparable<DateTime>, IFormattable
+    public class DateTime : IEquatable<DateTime>, IComparable<DateTime>, IFormattable, IRepr
     {
         private readonly System.DateTime _dateTime;
         private readonly ITzinfo? _tzinfo;
@@ -372,6 +390,28 @@ namespace Sharpy
         /// </summary>
         string IFormattable.ToString(string? format, IFormatProvider? formatProvider)
             => string.IsNullOrEmpty(format) ? ToString() : Strftime(format!);
+
+        /// <summary>
+        /// Python's <c>repr(datetime)</c>: <c>datetime.datetime(2020, 1, 2, 3, 4, 5)</c> — every field,
+        /// dropping a zero microsecond and then a zero second — and <c>, tzinfo=&lt;repr&gt;</c> when aware
+        /// (#2043).
+        /// </summary>
+        string IRepr.Repr()
+        {
+            var fields = new System.Collections.Generic.List<int> { Year, Month, Day, Hour, Minute, Second, Microsecond };
+            for (int i = 0; i < 2 && fields[fields.Count - 1] == 0; i++)
+                fields.RemoveAt(fields.Count - 1);
+            var args = new System.Text.StringBuilder();
+            for (int i = 0; i < fields.Count; i++)
+            {
+                if (i > 0)
+                    args.Append(", ");
+                args.Append(fields[i].ToString(CultureInfo.InvariantCulture));
+            }
+            if (_tzinfo is not null)
+                args.Append(", tzinfo=").Append(Builtins.Repr(_tzinfo));
+            return "datetime.datetime(" + args + ")";
+        }
 
         /// <summary>Return the current local datetime.</summary>
         public static DateTime Now()
@@ -582,7 +622,7 @@ namespace Sharpy
     /// Represents the difference between two dates or times.
     /// </summary>
     [SharpyModuleType("datetime", "timedelta")]
-    public class Timedelta : IEquatable<Timedelta>, IComparable<Timedelta>
+    public class Timedelta : IEquatable<Timedelta>, IComparable<Timedelta>, IRepr
     {
         private readonly TimeSpan _timeSpan;
 
@@ -631,11 +671,7 @@ namespace Sharpy
         /// </summary>
         public override string ToString()
         {
-            long totalMicroseconds = FloorDiv(_timeSpan.Ticks, 10);
-            long days = FloorDiv(totalMicroseconds, 86_400_000_000L);
-            long rem = totalMicroseconds - days * 86_400_000_000L;
-            long seconds = rem / 1_000_000L;
-            long microseconds = rem % 1_000_000L;
+            Normalize(out long days, out long seconds, out long microseconds);
             long hh = seconds / 3600, mm = seconds / 60 % 60, ss = seconds % 60;
             var sb = new System.Text.StringBuilder();
             if (days != 0)
@@ -651,6 +687,35 @@ namespace Sharpy
                 sb.Append('.').Append(microseconds.ToString("D6", CultureInfo.InvariantCulture));
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Python's <c>repr(timedelta)</c>: <c>datetime.timedelta(days=1, seconds=5, microseconds=3)</c>
+        /// naming only the non-zero fields of the normalized triple, or <c>datetime.timedelta(0)</c> (#2043).
+        /// </summary>
+        string IRepr.Repr()
+        {
+            Normalize(out long days, out long seconds, out long microseconds);
+            var args = new System.Collections.Generic.List<string>();
+            if (days != 0)
+                args.Add("days=" + days.ToString(CultureInfo.InvariantCulture));
+            if (seconds != 0)
+                args.Add("seconds=" + seconds.ToString(CultureInfo.InvariantCulture));
+            if (microseconds != 0)
+                args.Add("microseconds=" + microseconds.ToString(CultureInfo.InvariantCulture));
+            if (args.Count == 0)
+                args.Add("0");
+            return "datetime.timedelta(" + string.Join(", ", args) + ")";
+        }
+
+        /// <summary>python's normalized (days, seconds, microseconds): days floored, 0 &lt;= seconds &lt; 86400, 0 &lt;= microseconds &lt; 10**6.</summary>
+        private void Normalize(out long days, out long seconds, out long microseconds)
+        {
+            long totalMicroseconds = FloorDiv(_timeSpan.Ticks, 10);
+            days = FloorDiv(totalMicroseconds, 86_400_000_000L);
+            long rem = totalMicroseconds - days * 86_400_000_000L;
+            seconds = rem / 1_000_000L;
+            microseconds = rem % 1_000_000L;
         }
 
         private static long FloorDiv(long a, long b) => (a / b) - ((a % b != 0 && (a < 0) != (b < 0)) ? 1 : 0);
@@ -772,7 +837,7 @@ namespace Sharpy
     /// Represents a fixed-offset timezone.
     /// </summary>
     [SharpyModuleType("datetime", "timezone")]
-    public class Timezone : ITzinfo
+    public class Timezone : ITzinfo, IRepr
     {
         private readonly Timedelta _offset;
         private readonly string _name;
@@ -813,6 +878,20 @@ namespace Sharpy
             var sign = _offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
             var abs = _offset.InternalTimeSpan.Duration();
             return $"UTC{sign}{abs.Hours:D2}:{abs.Minutes:D2}";
+        }
+
+        /// <summary>
+        /// Python's <c>repr(timezone)</c>: <c>datetime.timezone.utc</c> for the UTC singleton, else
+        /// <c>datetime.timezone(&lt;repr of the offset&gt;[, 'name'])</c> (#2043).
+        /// </summary>
+        string IRepr.Repr()
+        {
+            if (ReferenceEquals(this, Utc))
+                return "datetime.timezone.utc";
+            var offset = Builtins.Repr(_offset);
+            return _name.Length == 0
+                ? "datetime.timezone(" + offset + ")"
+                : "datetime.timezone(" + offset + ", " + Builtins.Repr(_name) + ")";
         }
     }
 
