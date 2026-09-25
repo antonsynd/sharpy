@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -36,11 +37,11 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         [DecoratorNames.StaticMethod] = "The '@staticmethod' decorator is not supported in Sharpy: " +
                            "a method without a 'self' parameter is already static, so the decorator " +
                            "has nothing to add. Remove it (and the 'self' parameter, if the method " +
-                           "has one). '@static' is for static FIELDS, not methods.",
+                           "has one). ('@static' may mark a method without 'self', but is optional.)",
         [DecoratorNames.ClassMethod] = "The '@classmethod' decorator is not supported in Sharpy: " +
                           "a method without a 'self' parameter is already static, so the decorator " +
                           "has nothing to add. Remove it (and the 'self' parameter, if the method " +
-                          "has one). '@static' is for static FIELDS, not methods.",
+                          "has one). ('@static' may mark a method without 'self', but is optional.)",
     };
 
     public override void Validate(Module module, SemanticContext context)
@@ -70,6 +71,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
 
         if (_containingType != null)
         {
+            ValidateStaticWithoutSelf(node.Decorators, node.Parameters);
             ValidateFinalRequiresOverride(node, _containingType.Name);
 
             if (_containingType.Kind == ContainingTypeKind.Class)
@@ -163,6 +165,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateReadonlyOnProperty(node, definitionName);
+        if (_containingType != null)
+            ValidateStaticWithoutSelf(node.Decorators, node.Parameters);
         ValidateTestDecoratorNotOnType(node.Decorators, definitionName, "property");
         ValidateMustUseNotOnTarget(node.Decorators, definitionName, "property");
         base.VisitPropertyDef(node);
@@ -180,6 +184,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
 
         if (_containingType != null)
         {
+            ValidateStaticWithoutSelf(node.Decorators, node.Parameters);
             ValidateEventFinalRequiresOverride(node, _containingType.Name);
         }
 
@@ -205,6 +210,35 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         }
 
         base.VisitVariableDeclaration(node);
+    }
+
+    /// <summary>
+    /// '@static' on a type member whose FIRST parameter is <c>self</c> is refused (#2026,
+    /// decorators.md / static_methods.md): <c>self</c> makes it an instance member, so the two
+    /// contradict. One arm for every member kind that carries parameters — method, property
+    /// accessor, event accessor — in every host (class, struct, interface). The predicate is the
+    /// TypeChecker's (<c>TypeChecker.Definitions.cs</c> "first parameter named self"); other
+    /// "has self" spellings diverge from it (#2051). Reported regardless of whether the checker
+    /// already refused a call to the member.
+    /// </summary>
+    private void ValidateStaticWithoutSelf(IEnumerable<Decorator> decorators, ImmutableArray<Parameter> parameters)
+    {
+        if (parameters.Length == 0 || parameters[0].Name != PythonNames.Self)
+            return;
+
+        foreach (var decorator in decorators)
+        {
+            if (decorator.IsBracketAttribute || decorator.Name != DecoratorNames.Static)
+                continue;
+
+            AddError(
+                "'@static' cannot be applied to a member whose first parameter is 'self' — "
+                + "remove '@static' or drop 'self'",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.Span);
+        }
     }
 
     /// <summary>

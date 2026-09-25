@@ -200,6 +200,23 @@ def test_block_error_marker_but_compiles():
     assert any("compiles" in r for r in reds)
 
 
+def test_block_error_marker_matching_code_is_asserted():
+    block = _make_block("a.md", "bad code", marker="error", expected_error="SPY0322")
+    with patch("spec_blocks.compile_one", _stub_compiler_fail("SPY0322")):
+        results, reds = run_sweep("sharpyc", [block], {}, 1)
+    assert results[0].classification == "error_asserted"
+    assert reds == []
+
+
+def test_block_error_marker_wrong_code_is_red():
+    # #2026: the marker names a code; a block failing with a DIFFERENT first error is red.
+    block = _make_block("a.md", "bad code", marker="error", expected_error="SPY0322")
+    with patch("spec_blocks.compile_one", _stub_compiler_fail("SPY0200")):
+        results, reds = run_sweep("sharpyc", [block], {}, 1)
+    assert results[0].red
+    assert any("error marker SPY0322 but first error is SPY0200" in r for r in reds)
+
+
 def test_allowlisted_still_failing():
     block = _make_block("a.md", "bad code")
     allowlist = {block.key: "SPY0200 first"}

@@ -146,10 +146,10 @@ def main() -> None:
 ```
 
 It is WRONG to use `@static` on a method that has `self` as the first parameter, as that makes
-it an instance method. (The checker does not refuse this yet — it surfaces as a C# error at the
-call site, tracked by #2026.)
+it an instance method. The compiler refuses it (SPY0322) — on methods, property accessors and
+event accessors alike, in classes, structs and interfaces.
 
-<!-- spec-sweep: fragment -->
+<!-- spec-sweep: error SPY0322 -->
 ```python
 class Calculator:
     # WRONG: `self` makes this an instance method

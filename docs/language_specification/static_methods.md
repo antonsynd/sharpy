@@ -4,8 +4,9 @@ Unlike Python's `@staticmethod` and C# `static`, Sharpy does not require an anno
 
 It is however, purely optional to use Sharpy's decorator on static methods, `@static`. Using `@static`
 on a method with `self` as the first parameter is a compile-time error as only instance methods
-have `self` as the first parameter.
+have `self` as the first parameter (SPY0322).
 
+<!-- spec-sweep: error SPY0322 -->
 ```python
 struct Foo:
     x: int

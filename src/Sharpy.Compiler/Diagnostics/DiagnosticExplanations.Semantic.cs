@@ -715,9 +715,10 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.Semantic.InvalidDecoratorUsage, "Invalid decorator usage", "Semantic",
             "A decorator was used in an invalid context or with invalid arguments. Check that the decorator is appropriate for the target (function, method, or class). "
-            + "The most common instance is @staticmethod or @classmethod: Sharpy has no such decorators, because a method without a 'self' parameter is already static (#821).",
+            + "The most common instance is @staticmethod or @classmethod: Sharpy has no such decorators, because a method without a 'self' parameter is already static (#821). "
+            + "'@static' is the optional marker for such a member, and it is refused on a method, property accessor or event accessor whose first parameter is 'self' — 'self' makes it an instance member (#2026).",
             "class Counter:\n    @staticmethod  # not supported: dropping 'self' is what makes it static\n    def zero() -> int:\n        return 0",
-            "Remove the decorator (and the 'self' parameter, if the method has one):\nclass Counter:\n    def zero() -> int:\n        return 0\n\n'@static' declares static FIELDS, not methods.");
+            "Remove the decorator (and the 'self' parameter, if the method has one):\nclass Counter:\n    def zero() -> int:\n        return 0\n\n'@static' may mark a member without 'self' but is optional; never combine it with 'self'.");
 
         // SPY0323 RETIRED (#1717): superseded by SPY0607 (InterfaceInstantiationGate).
         Add(dict, DiagnosticCodes.Semantic.ConflictingSynthesizedInterface,

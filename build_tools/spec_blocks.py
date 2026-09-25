@@ -245,6 +245,15 @@ def _classify_result(
             br.red_reason = f"error marker {block.expected_error} but block compiles"
             br.classification = "failing"
             reds.append(f"RED: {block.relpath}:{block.line} — {br.red_reason}")
+            return
+        # The marker names a code, and the block must fail WITH it (#2026): an error marker
+        # naming the wrong code used to pass as long as the block failed at all.
+        actual = br.compile_result.first_error_code if br.compile_result else None
+        if actual != block.expected_error:
+            br.red = True
+            br.red_reason = f"error marker {block.expected_error} but first error is {actual}"
+            br.classification = "failing"
+            reds.append(f"RED: {block.relpath}:{block.line} — {br.red_reason}")
         else:
             br.classification = "error_asserted"
         return

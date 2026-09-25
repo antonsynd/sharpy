@@ -345,8 +345,15 @@ print(f().speak())                   # woof — the branch runs, as in Python
 
 <!-- spec-sweep: error SPY0346 -->
 ```python
-s = IShape                           # SPY0346 — an interface has no constructor
-e = Color                            # SPY0346 — a member is the value you want: Color.RED
+interface IShape:
+    def area(self) -> float: ...
+
+enum Color:
+    RED = 1
+
+def main() -> None:
+    s = IShape                       # SPY0346 — an interface has no constructor
+    e = Color                        # SPY0346 — a member is the value you want: Color.RED
 ```
 
 This is a different failure from SPY0342, which means *this position* supplies no signature to select among the ones the type offers — and that presumes it offers some. Constructing one directly is refused for the same reason (SPY0280).
