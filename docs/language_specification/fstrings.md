@@ -487,18 +487,29 @@ inside a spec is a genuine use — an unused-variable warning is not raised for 
 
 ## F-String Nesting Rules
 
-Sharpy supports nested f-strings, matching Python 3.12+ behavior. The lexer uses a mode stack to
-track nested interpolation contexts. Use alternating quote styles for each level:
+Sharpy supports nested f-strings, matching Python 3.12+ (PEP 701): a replacement field holds an
+ordinary expression, so a string literal inside it may reuse the enclosing quote character and may
+carry any string prefix — `f`, `t`, `r`, `b`, `d`, `dr` or `df` — exactly as at statement level
+(one prefix dispatch serves both). The lexer uses a mode stack to track nested interpolation
+contexts.
 
 ```python
 def main() -> None:
     name: str = "Alice"
-    print(f"Hello, {f'dear {name}'}!")
+    print(f"Hello, {f"dear {name}"}!")
+    print(f"{"quoted"} {f'{name!r}'}")
+    print(f"{r'\d'} {b'ab'} {d'plain'}")
+    print(f"{t'{name}'!r}")
 ```
 
 ```
 Hello, dear Alice!
+quoted 'Alice'
+\d b'ab' plain
+Template(strings=('', ''), interpolations=(Interpolation('Alice', 'name', None, ''),))
 ```
+
+`rf`/`fr` and uppercase prefixes are not supported anywhere (#2045).
 
 **Literal braces:** double a brace to include a literal `{` or `}`:
 
@@ -513,8 +524,9 @@ Set: {1, 2, 3}
 Empty dict: {}
 ```
 
-**Dictionary literals in f-strings:** wrap a dict literal in parentheses so its `{` is not read as a
-replacement field, or bind it to a variable first:
+**Dictionary literals in f-strings:** a `{` right after the hole's `{` would read as the `{{`
+escape, so pad it with a space (`{ {'key': value}['key'] }`, which `format` preserves), wrap the dict
+literal in parentheses, or bind it to a variable first:
 
 <!-- spec-sweep: fragment -->
 ```python
@@ -555,6 +567,43 @@ Without parentheses, `{s := f()}` would parse `:` as the format-spec start. The 
 `{lambda: 42}` (parsed as `lambda` with format spec `42}`) and bare slices. A bare `{x:=10}` (no
 parentheses) is intentionally a **format specifier** — it formats `x` with the spec `=10`, matching
 Python; only the parenthesized form is a walrus.
+
+**Newlines and comments.** Inside a hole, whitespace is insignificant and may span lines — in
+single- and triple-quoted f-strings alike (PEP 701). A `#` comment runs to the end of its line; a
+`}` inside the comment does not close the hole, and a `#` inside a string literal is not a comment.
+Whitespace, newlines and comments may also follow a `!r`/`!s`/`!a` conversion, and a backslash
+continues a hole's line:
+
+```python
+def main() -> None:
+    x: int = 5
+    items: list[str] = ["a", "b"]
+    print(f"total: {
+        x * 2  # doubled; a } here closes nothing
+    }")
+    print(f"{', '.join(
+        items
+    )}")
+    print(f"{x!r # the conversion, then the spec
+    :>4}|")
+```
+
+```
+total: 10
+a, b
+   5|
+```
+
+Because a hole may span lines, a `)` or `]` that closes nothing inside a hole is refused where it
+stands, as in Python (`f-string: unmatched ')'`), rather than letting the unclosed hole swallow the
+lines that follow:
+
+<!-- spec-sweep: error SPY0021 -->
+```python
+def main() -> None:
+    x: int = 5
+    print(f"a {x)
+```
 
 *Implementation*
 - *Every hole lowers to `Builtins.Str`/`Repr`/`Ascii(v)` or `Sharpy.PyFormat.Apply(v, spec)` — one Python-format engine, no emitter-side translator.*

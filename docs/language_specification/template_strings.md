@@ -102,7 +102,7 @@ and each `Interpolation`:
 | Member | Type | Meaning |
 |--------|------|---------|
 | `value` | `object` | The hole's evaluated value |
-| `expression` | `str` | The hole's source text, from just after `{` to the `}`, `=`, `!` or `:` that ends it — leading whitespace kept, trailing whitespace stripped (`t"{ x }"` → `' x'`, `t"{d['k']}"` → `"d['k']"`) |
+| `expression` | `str` | The hole's source text, from just after `{` to the `}`, `=`, `!` or `:` that ends it — leading whitespace kept, `#` comments removed, then trailing whitespace stripped (`t"{ x }"` → `' x'`, `t"{d['k']}"` → `"d['k']"`) |
 | `conversion` | `str \| None` | `"r"`, `"s"`, `"a"`, or `None` |
 | `format_spec` | `str` | The spec, with nested fields already evaluated (`t"{x:{w}}"` with `w = 5` → `'5'`); `''` when there is none |
 
@@ -129,8 +129,26 @@ The three arrays are .NET arrays: index them, take `len()`, or iterate them. Pri
 does not yet match Python: `print(tp.strings)` spreads the array into `print`'s arguments and prints
 the segments space-separated, where Python prints the tuple `('a', 'b', '')` (#2011).
 
-A hole's expression cannot yet span lines: a newline inside a replacement field is refused
-(SPY0015, #2022), although Python accepts it.
+A hole's expression may span lines and carry `#` comments (PEP 701). `expression` is the hole's
+source with its comments removed, then trailing whitespace stripped; the `=` form's text keeps its
+newlines:
+
+```python
+def main() -> None:
+    x: int = 1
+    tp = t"""{x # the count
+ + 1 # plus one
+}"""
+    print(repr(tp.interpolations[0].expression), tp.interpolations[0].value)
+    doc = t"""{x # c
+=}"""
+    print(repr(doc.strings[0]))
+```
+
+```
+'x \n + 1' 2
+'x \n='
+```
 
 ## Iteration
 
