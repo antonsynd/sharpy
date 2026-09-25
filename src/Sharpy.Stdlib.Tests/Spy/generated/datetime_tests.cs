@@ -181,8 +181,8 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (105, 5) - (105, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
                 var time = new global::Sharpy.Time(14, 30, 0, 0);
-#line (106, 5) - (106, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
-                Xunit.Assert.Equal("14:30:00.000000", global::Sharpy.Builtins.Str(time));
+#line (106, 5) - (106, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
+                Xunit.Assert.Equal("14:30:00", global::Sharpy.Builtins.Str(time));
 #line hidden
             }
 
