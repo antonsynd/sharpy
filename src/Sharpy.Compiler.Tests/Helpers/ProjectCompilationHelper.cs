@@ -157,6 +157,21 @@ public class ProjectCompilationHelper : IDisposable
         return WithRuntimeReferences();
     }
 
+    /// <summary>
+    /// Assemblies referenced by path — a Sharpy LIBRARY built by another helper, consumed the way the
+    /// CLI's <c>-r</c> does: a module reference (discovery) AND a project <c>&lt;Reference&gt;</c> (the
+    /// emitted assembly's compilation). Execution resolves them from their own directory.
+    /// </summary>
+    private readonly List<string> _assemblyReferences = new();
+
+    /// <summary>References the assembly at <paramref name="dllPath"/> (see <see cref="_assemblyReferences"/>).</summary>
+    public ProjectCompilationHelper WithAssemblyReference(string dllPath)
+    {
+        _assemblyReferences.Add(dllPath);
+        ModuleReferences.Add(dllPath);
+        return this;
+    }
+
     private static string BuildRuntimeReferenceItems()
     {
         // DLL list and resolution shared with the compiler's own scaffold so the two
@@ -344,6 +359,14 @@ public class ProjectCompilationHelper : IDisposable
         projectContent.AppendLine($"    <SourceFile Include=\"{sourceFilePattern}\" />");
         projectContent.AppendLine("  </ItemGroup>");
 
+        if (_assemblyReferences.Count > 0)
+        {
+            projectContent.AppendLine("  <ItemGroup>");
+            foreach (var path in _assemblyReferences)
+                projectContent.AppendLine($"    <Reference Include=\"{path}\" />");
+            projectContent.AppendLine("  </ItemGroup>");
+        }
+
         if (_includeRuntimeReferences)
         {
             var runtimeReferences = BuildRuntimeReferenceItems();
@@ -471,8 +494,11 @@ public class ProjectCompilationHelper : IDisposable
             var assemblyDir = Path.GetDirectoryName(assemblyPath)!;
             alc.Resolving += (ctx, name) =>
             {
-                var candidate = Path.Combine(assemblyDir, name.Name + ".dll");
-                if (!File.Exists(candidate))
+                var candidate = new[] { assemblyDir }
+                    .Concat(_assemblyReferences.Select(r => Path.GetDirectoryName(r)!))
+                    .Select(dir => Path.Combine(dir, name.Name + ".dll"))
+                    .FirstOrDefault(File.Exists);
+                if (candidate == null)
                     return null;
                 if (AssemblyLoadContext.Default.Assemblies.Any(a => a.GetName().Name == name.Name))
                     return null;

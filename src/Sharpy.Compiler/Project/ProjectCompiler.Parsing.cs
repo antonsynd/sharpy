@@ -28,52 +28,29 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// SPY0526 (#1932, R-AX phase a): a package directory whose wrapper class spells the same C#
-    /// identifier as the module class of a file inside it — <c>lib/lib.spy</c> nests module class
-    /// <c>Lib</c> in wrapper <c>Lib</c>, CS0542 behind SPY0908. Refused by name after parsing, before
-    /// any analysis, for EVERY source file (an un-imported file is still emitted) — and two ADJACENT
-    /// directories that mangle alike (<c>a/a/x.spy</c>, audit R3) likewise. Rung 4 by
-    /// necessity: no CLR surface spells "these two paths mangle to one identifier". Both names come
-    /// from <see cref="ModuleIdentifiers"/>, the authority the emitter spells them with, relative to
-    /// the same common source root (<see cref="ComputeSourceRootPath"/>), so the refusal and the
-    /// emission cannot disagree. Path-only, so a warm build reports exactly what a cold one does.
+    /// SPY0526 (#1948, Decision 28 (d)): the package layouts module-as-namespace cannot emit. Directories
+    /// are C# namespaces, so a directory and a module class nested in one another never collide
+    /// (<c>lib/lib.spy</c> is <c>namespace …Lib { class Lib }</c>). What survives: (1) a module file beside
+    /// a same-named package directory, (2) a package's <c>__init__</c> top-level name that is one of its
+    /// own submodules or subpackages, and (3) a submodule or subpackage spelled like the package's
+    /// <c>__init__</c> module class (<c>pkg/pkg_module.spy</c> beside <c>pkg/__init__.spy</c>'s
+    /// <c>PkgModule</c>). Refused by name after parsing, before any analysis, for EVERY source file (an
+    /// un-imported file is still emitted). Rung 4 by necessity: no CLR surface spells "these two paths
+    /// emit one identifier". Every name comes from <see cref="ModuleIdentifiers"/>, the authority the
+    /// emitter spells them with, relative to the same common source root
+    /// (<see cref="ComputeSourceRootPath"/>), so the refusal and the emission cannot disagree.
     /// </summary>
     /// <returns><c>true</c> when at least one collision was reported.</returns>
     private bool ReportPackageModuleNameCollisions(ProjectConfig config)
     {
         var sourceRoot = ComputeSourceRootPath(config);
         var reported = false;
-        foreach (var sourceFile in config.SourceFiles)
-        {
-            // A main.spy declaring main() emits "Program" — the one entry predicate the emitter reads
-            // (#2013). A unit served from the incremental cache has no AST; its cold build recorded
-            // the bit. With neither (a file the lexer could not read) the build fails anyway, and no
-            // module class is assumed to be "Program".
-            var ast = _projectModel?.GetUnit(sourceFile)?.Ast;
-            var willGenerateMain = ast != null
-                ? ModuleIdentifiers.DeclaresEntryMain(ast.Body)
-                : _incrementalCache?.GetFileCache(sourceFile)?.DeclaresEntryMain ?? false;
-            var collision = ModuleIdentifiers.FindNestedNameCollision(sourceRoot, sourceFile, willGenerateMain);
-            if (collision == null)
-                continue;
-
-            var (inner, steer) = collision.InnerIsModule
-                ? ($"module '{collision.Inner}'", "Rename the file or the directory.")
-                : ($"its subdirectory '{collision.Inner}'", "Rename one of the directories.");
-            _diagnostics.AddError(
-                $"Package directory '{collision.Outer}' and {inner} both emit the C# identifier " +
-                $"'{collision.Identifier}' (a class cannot be nested in a class of the same name, CS0542). {steer}",
-                line: 1,
-                column: 1,
-                filePath: sourceFile,
-                code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
-                phase: CompilerPhase.CodeGeneration);
-            reported = true;
-        }
 
         // Refusal 1 (#1948): a module file beside a same-named package directory. Python imports
-        // only one of them, so the other's modules are unreachable; C# spells both one identifier in
-        // one scope (today they fuse into one partial class, or CS0579 with an __init__).
+        // only one of them, so the other's modules are unreachable; C# spells a class and a namespace
+        // of one name in one scope (CS0101). A main.spy declaring main() emits "Program" — the one
+        // entry predicate the emitter reads (#2013); a unit served from the incremental cache has no
+        // AST, and its cold build recorded the bit.
         bool WillGenerateMain(string file)
         {
             var body = _projectModel?.GetUnit(file)?.Ast?.Body;
@@ -108,6 +85,24 @@ internal partial class ProjectCompiler
                 sourceRoot, Path.GetDirectoryName(initFile)!, config.SourceFiles);
             if (children.Count == 0)
                 continue;
+
+            // Refusal 3: a child spelled like the package's own module class — both are members of the
+            // package namespace (CS0101). Python has no such conflict; the name is Sharpy's <X>.
+            var membersClass = ModuleIdentifiers.ModuleClassName(initFile, willGenerateMainMethod: false);
+            if (children.TryGetValue(membersClass, out var twin))
+            {
+                var twinIsPackage = twin.EndsWith('/');
+                _diagnostics.AddError(
+                    $"The package's __init__.spy emits its module class '{membersClass}', which its " +
+                    $"{(twinIsPackage ? "subpackage" : "submodule")} '{twin.TrimEnd('/')}' also emits. Rename " +
+                    $"the {(twinIsPackage ? "subpackage" : "submodule")}.",
+                    line: 1,
+                    column: 1,
+                    filePath: initFile,
+                    code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+                reported = true;
+            }
 
             var body = _projectModel?.GetUnit(initFile)?.Ast?.Body ?? ParseModuleBodyForCheck(initFile, config);
             if (body == null)

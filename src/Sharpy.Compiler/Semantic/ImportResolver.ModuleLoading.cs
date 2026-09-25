@@ -682,6 +682,7 @@ internal partial class ImportResolver
             // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
             var resolvedPath = resolution.CanonicalModuleName ?? resolution.ModuleName;
             _semanticBinding.SetResolvedModulePath(fromImport, resolvedPath);
+            _semanticBinding.SetResolvedModuleFilePath(fromImport, resolution.FullPath);
 
             // Track the dependency (current module depends on imported module)
             // Note: .NET modules are not tracked in the file dependency graph

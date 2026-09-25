@@ -496,7 +496,7 @@ internal partial class RoslynEmitter
     /// the module class name, the merged class name (non-null when a same-named ClassDef absorbs
     /// the module's static members, e.g. animal.spy + class Animal), the emitted C# names of the
     /// top-level types extracted to namespace siblings in single-file library mode, and the
-    /// namespace segments the module class is nested under (project namespace + directory wrappers),
+    /// namespace the module class is declared in (project namespace + directory segments, #1948),
     /// and whether the module declares the entry-point <c>main()</c>
     /// (<see cref="ModuleIdentifiers.DeclaresEntryMain"/>, #2013).
     /// </summary>
@@ -510,7 +510,7 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Computes the <see cref="ModuleShape"/> ONCE, before any declaration is emitted, from the
-    /// module's statements. Mirrors the class-name / merge / extraction / wrapper decisions that
+    /// module's statements. Mirrors the class-name / merge / extraction / namespace decisions that
     /// <see cref="GenerateModuleMembers"/> and <see cref="GenerateCompilationUnit"/> make locally so
     /// the module-member qualifier can read one authority instead of re-deriving the module class at
     /// each reference (#1683, #1802). No emission — pure computation stored in <c>_moduleShape</c>.
@@ -565,13 +565,13 @@ internal partial class RoslynEmitter
             }
         }
 
-        // The namespace segments the module class is nested under: the project namespace (if any)
-        // followed by the directory wrapper class names. Empty for single-file compilation, which
-        // emits the module class directly into the global namespace.
+        // The namespace the module class is declared in: the project namespace (if any) followed by
+        // the module's directory segments (#1948). Empty for single-file compilation, which emits the
+        // module class directly into the global namespace.
         var namespaceParts = new List<string>();
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             namespaceParts.AddRange(_context.ProjectNamespace!.Split('.'));
-        namespaceParts.AddRange(ComputeWrapperClasses());
+        namespaceParts.AddRange(ModuleIdentifiers.ModuleNamespaceSegments(_context.ProjectRootPath, _context.SourceFilePath));
 
         // The emitted C# names of every top-level TYPE this module declares. A same-file type
         // reference is qualified through the module shape ONLY for these names, so a builtin or a
@@ -785,9 +785,9 @@ internal partial class RoslynEmitter
         if (reExportedSymbols == null || resolvedModulePath == null)
             yield break;
 
-        // Convert the resolved module path to a nested class path
-        // e.g., "mypackage.helpers" -> "ProjectNamespace.Mypackage.Helpers"
-        var sourceModuleNamespace = ModuleIdentifiers.DottedModulePath(resolvedModulePath);
+        // The source module's class: "mypackage.helpers" -> "ProjectNamespace.Mypackage.Helpers", a
+        // subpackage's __init__ -> "ProjectNamespace.Mypackage.Sub.SubModule" (#1948).
+        var sourceModuleNamespace = FromImportModuleClassPath(fromImport);
         var sourceClassName = !string.IsNullOrEmpty(_context.ProjectNamespace)
             ? $"{_context.ProjectNamespace}.{sourceModuleNamespace}"
             : sourceModuleNamespace;

@@ -31,18 +31,36 @@ public class ModulePathAuthorityTests
     [InlineData("lib.spy", "Lib")]
     [InlineData("main.spy", "Main")]
     [InlineData("pkg/lib.spy", "Pkg.Lib")]
-    [InlineData("pkg/__init__.spy", "Pkg")]
-    [InlineData("pkg/sub/__init__.spy", "Pkg.Sub")]
+    [InlineData("pkg/__init__.spy", "Pkg.PkgModule")]
+    [InlineData("pkg/sub/__init__.spy", "Pkg.Sub.SubModule")]
     [InlineData("pkg/sub/leaf.spy", "Pkg.Sub.Leaf")]
     [InlineData("my_pkg/sub_mod.spy", "MyPkg.SubMod")]
     [InlineData("db/models.spy", "DB.Models")]
     [InlineData("a/b/c/d.spy", "A.B.C.D")]
     [InlineData("lib/lib.spy", "Lib.Lib")]
     [InlineData("a/a/x.spy", "A.A.X")]
-    [InlineData("__init__.spy", "Src")]
-    [InlineData("api/v2/__init__.spy", "API.V2")]
+    [InlineData("__init__.spy", "SrcModule")]
+    [InlineData("api/v2/__init__.spy", "API.V2.V2Module")]
     public void ModuleClassPath_IsTheLiteralLayout(string relativePath, string expected)
         => ModuleIdentifiers.ModuleClassPath(Root, Path.Combine(Root, relativePath)).Should().Be(expected);
+
+    [Theory]
+    [InlineData("lib.spy", "")]
+    [InlineData("pkg/lib.spy", "Pkg")]
+    [InlineData("pkg/__init__.spy", "Pkg")]
+    [InlineData("pkg/sub/__init__.spy", "Pkg.Sub")]
+    [InlineData("db/api/x.spy", "DB.API")]
+    [InlineData("lib/lib.spy", "Lib")]
+    public void ModuleNamespaceSegments_AreEveryDirectory(string relativePath, string expected)
+        => string.Join(".", ModuleIdentifiers.ModuleNamespaceSegments(Root, Path.Combine(Root, relativePath)))
+            .Should().Be(expected);
+
+    [Theory]
+    [InlineData("pkg", "PkgModule")]
+    [InlineData("my_pkg", "MyPkgModule")]
+    [InlineData("thing", "ThingModule")]
+    public void MembersClassName_IsTheStemTypeNamePlusModule(string stem, string expected)
+        => ModuleIdentifiers.MembersClassName(stem).Should().Be(expected);
 
     [Theory]
     [InlineData("lib", "Lib")]

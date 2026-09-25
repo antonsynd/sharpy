@@ -109,6 +109,9 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to their resolved module paths
     private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModulePaths = new();
 
+    // Maps FromImportStatement nodes to the source FILE their module resolved to (#1948)
+    private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModuleFilePaths = new();
+
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
@@ -635,6 +638,9 @@ public class SemanticBinding
         foreach (var (stmt, path) in other._resolvedModulePaths)
             _resolvedModulePaths.TryAdd(stmt, path);
 
+        foreach (var (stmt, path) in other._resolvedModuleFilePaths)
+            _resolvedModuleFilePaths.TryAdd(stmt, path);
+
         foreach (var (stmt, symbols) in other._reExportedSymbols)
             _reExportedSymbols.TryAdd(stmt, symbols);
     }
@@ -652,6 +658,21 @@ public class SemanticBinding
     /// </summary>
     public string? GetResolvedModulePath(FromImportStatement stmt)
         => _resolvedModulePaths.TryGetValue(stmt, out var path) ? path : null;
+
+    /// <summary>
+    /// Sets the source file a FromImportStatement's module resolved to (a user <c>.spy</c> module or
+    /// package <c>__init__.spy</c>). The emitter spells the module's C# class path from it — a package's
+    /// members live in its <c>__init__</c> module class INSIDE the package namespace, which the dotted
+    /// name alone cannot tell from a module (#1948).
+    /// </summary>
+    public void SetResolvedModuleFilePath(FromImportStatement stmt, string filePath)
+        => _resolvedModuleFilePaths[stmt] = filePath;
+
+    /// <summary>
+    /// Gets the source file a FromImportStatement's module resolved to, or null if not set.
+    /// </summary>
+    public string? GetResolvedModuleFilePath(FromImportStatement stmt)
+        => _resolvedModuleFilePaths.TryGetValue(stmt, out var path) ? path : null;
 
     /// <summary>
     /// Sets the re-exported symbols for a FromImportStatement.

@@ -1031,11 +1031,12 @@ def main() -> None:
     }
 
     /// <summary>
-    /// SPY0526 (#1932) is a path-only project-phase refusal, so it must be reported identically by a
-    /// warm build whose other files come from the cache and by a cold build of the same layout: the
-    /// first build (main.spy + lib/core.spy) succeeds and writes the cache; adding lib/lib.spy makes
-    /// the wrapper `Lib` hold module class `Lib`; the warm rebuild (main/core skipped) and a cold
-    /// build of the final layout in a fresh area report the same diagnostics.
+    /// SPY0526 refusal 1 (#1948) is a path-only project-phase refusal, so it must be reported
+    /// identically by a warm build whose other files come from the cache and by a cold build of the
+    /// same layout: the first build (main.spy + lib/core.spy) succeeds and writes the cache; adding a
+    /// root-level lib.spy puts module class <c>Lib</c> beside namespace <c>Lib</c> (python imports the
+    /// module, so lib.core becomes unreachable); the warm rebuild (main/core skipped) and a cold build
+    /// of the final layout in a fresh area report the same diagnostics.
     /// </summary>
     [Fact]
     public void PackageModuleCollision_IsReportedIdenticallyWarmAndCold()
@@ -1049,15 +1050,15 @@ def main() -> None:
         var first = Build(Config("pkgwarm", warmMain, warmCore));
         first.Success.Should().BeTrue("the collision-free layout builds. Diagnostics:\n" + Diagnostics(first));
 
-        var warmLib = Write(Path.Combine("pkgwarm", "lib"), "lib.spy", lib);
+        var warmLib = Write("pkgwarm", "lib.spy", lib);
         var warm = Build(Config("pkgwarm", warmMain, warmCore, warmLib));
-        warm.Success.Should().BeFalse("lib/lib.spy nests module class Lib in wrapper Lib");
+        warm.Success.Should().BeFalse("lib.spy sits beside the package directory lib/");
         Skipped(warm).Should().Contain(new[] { "main.spy", "core.spy" },
             "the unchanged files come from the cache — the positive control that this is a WARM build");
 
         var coldMain = Write("pkgcold", "main.spy", main);
         var coldCore = Write(Path.Combine("pkgcold", "lib"), "core.spy", core);
-        var coldLib = Write(Path.Combine("pkgcold", "lib"), "lib.spy", lib);
+        var coldLib = Write("pkgcold", "lib.spy", lib);
         var cold = Build(Config("pkgcold", coldMain, coldCore, coldLib));
         cold.Success.Should().BeFalse();
 

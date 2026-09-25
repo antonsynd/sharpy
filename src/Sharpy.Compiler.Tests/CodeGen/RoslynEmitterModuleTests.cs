@@ -315,13 +315,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - project-level namespace only; directory parts become wrapper classes
-        Assert.Contains("namespace MyProject", code);
-        Assert.DoesNotContain("namespace MyProject.", code);
-        // Directory parts should appear as class names
-        Assert.Contains("class Myapp", code);
-        Assert.Contains("class Services", code);
-        Assert.Contains("class Auth", code);
+        // Assert - directory parts are namespace segments (#1948); the module class is the only class
+        Assert.Equal("MyProject.Myapp.Services", NamespaceOf(code));
+        Assert.Equal(new[] { "Auth" }, ClassesOf(code));
     }
 
     [Fact]
@@ -366,9 +362,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Project-level namespace only
-        Assert.Contains("namespace MyApp", code);
-        Assert.DoesNotContain("namespace MyApp.", code);
+        // Assert - the directory is a namespace segment (#1948)
+        Assert.Equal("MyApp.Lib", NamespaceOf(code));
+        Assert.Equal(new[] { "Mymodule" }, ClassesOf(code));
     }
 
     [Fact]
@@ -445,6 +441,22 @@ public class RoslynEmitterModuleTests
         Assert.Contains("class Module", code2);
     }
 
+    /// <summary>The single namespace a generated unit declares; fails on a parse error.</summary>
+    private static string NamespaceOf(string code)
+    {
+        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code);
+        Assert.Empty(tree.GetDiagnostics());
+        return Assert.Single(tree.GetRoot().DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax>()).Name.ToString();
+    }
+
+    /// <summary>Every class a generated unit declares, outermost first.</summary>
+    private static string[] ClassesOf(string code)
+        => Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code).GetRoot().DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
+            .Select(c => c.Identifier.Text)
+            .ToArray();
+
     #region Namespace Edge Cases
 
     [Fact]
@@ -467,9 +479,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - project-level namespace only
-        Assert.Contains("namespace TestApp", code);
-        Assert.DoesNotContain("namespace TestApp.", code);
+        // Assert - the numeric directory is a valid namespace segment (NamespaceOf rejects a parse error)
+        Assert.StartsWith("TestApp.", NamespaceOf(code));
     }
 
     [Fact]
@@ -509,9 +520,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - project-level namespace only
-        Assert.Contains("namespace TestApp", code);
-        Assert.DoesNotContain("namespace TestApp.", code);
+        // Assert - the dashed/dotted directory is ONE valid namespace segment
+        var ns = NamespaceOf(code);
+        Assert.StartsWith("TestApp.", ns);
+        Assert.Equal(2, ns.Split('.').Length);
     }
 
     [Fact]
@@ -534,9 +546,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - project-level namespace only
-        Assert.Contains("namespace Dogfood", code);
-        Assert.DoesNotContain("namespace Dogfood.", code);
+        // Assert - the numeric directory is a valid namespace segment
+        Assert.StartsWith("Dogfood.", NamespaceOf(code));
+        Assert.Equal(new[] { "Source" }, ClassesOf(code));
     }
 
     [Fact]
@@ -839,13 +851,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - __init__.spy uses parent directory name as module class
-        Assert.Contains("namespace TestProject", code);
-        Assert.DoesNotContain("namespace TestProject.", code);
-        // Module class is named after parent directory (Mypackage), not "Exports" or "Init"
-        Assert.Contains("class Mypackage", code);
-        Assert.DoesNotContain("class Exports", code);
-        Assert.DoesNotContain("class Init", code);
+        // Assert - __init__.spy's module class is <Dir>Module inside the package's namespace (#1948)
+        Assert.Equal("TestProject.Mypackage", NamespaceOf(code));
+        Assert.Equal(new[] { "MypackageModule" }, ClassesOf(code));
         Assert.Contains("PackageFunc", code); // Verify function is in the class
     }
 
@@ -881,14 +889,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Verify correct namespace and module class for nested __init__.spy
-        Assert.Contains("namespace TestProject", code);
-        Assert.DoesNotContain("namespace TestProject.", code);
-        // Directory parts become wrapper classes; __init__.spy uses parent dir name
-        Assert.Contains("class Level1", code);
-        Assert.Contains("class Level2", code);
-        Assert.DoesNotContain("class Exports", code);
-        Assert.DoesNotContain("class Init", code);
+        // Assert - every directory is a namespace segment; __init__.spy's class is <Dir>Module (#1948)
+        Assert.Equal("TestProject.Level1.Level2", NamespaceOf(code));
+        Assert.Equal(new[] { "Level2Module" }, ClassesOf(code));
     }
 
 
@@ -1361,7 +1364,7 @@ public class RoslynEmitterModuleTests
         // Should NOT generate a delegating member for the type
         Assert.DoesNotContain("class User", code);
         // Module class should still exist (just without the type re-export)
-        Assert.Contains("class Mypackage", code);
+        Assert.Contains("class MypackageModule", code);
     }
 
     [Fact]

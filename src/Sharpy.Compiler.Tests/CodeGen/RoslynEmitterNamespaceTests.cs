@@ -9,9 +9,8 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// Tests for namespace and wrapper class generation in RoslynEmitter.
-/// Verifies that the project-level namespace is emitted correctly and that
-/// directory hierarchy is expressed as nested static partial wrapper classes.
+/// Tests for namespace generation in RoslynEmitter: the project-level namespace and the directory
+/// hierarchy are one C# namespace (#1948).
 /// </summary>
 public class RoslynEmitterNamespaceTests
 {
@@ -39,118 +38,37 @@ public class RoslynEmitterNamespaceTests
         return result.ToFullString();
     }
 
-    [Fact]
-    public void GenerateProjectNamespace_RootInit_UsesOnlyProjectNamespace()
+    /// <summary>
+    /// #1948: the project namespace followed by every directory above the file is the C# namespace,
+    /// and the module class is its ONLY class — no directory is a wrapper class. A package's
+    /// <c>__init__.spy</c> emits <c>&lt;Dir&gt;Module</c> inside its own directory's namespace.
+    /// </summary>
+    [Theory]
+    [InlineData("/project/src/__init__.spy", "TestProject", "SrcModule")]
+    [InlineData("/project/src/level1/__init__.spy", "TestProject.Level1", "Level1Module")]
+    [InlineData("/project/src/level1/level2/__init__.spy", "TestProject.Level1.Level2", "Level2Module")]
+    [InlineData("/project/src/level1/level2/level3/__init__.spy", "TestProject.Level1.Level2.Level3", "Level3Module")]
+    [InlineData("/project/src/level1/level2/module.spy", "TestProject.Level1.Level2", "Module")]
+    [InlineData("/project/src/mymodule.spy", "TestProject", "Mymodule")]
+    public void GenerateProjectNamespace_DirectoriesAreNamespaceSegments(
+        string sourceFilePath, string expectedNamespace, string expectedClass)
     {
-        // Arrange
         var emitter = CreateEmitterWithProjectContext(
             projectNamespace: "TestProject",
             projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/__init__.spy"
-        );
+            sourceFilePath: sourceFilePath);
 
-        // Act
-        var code = GenerateCode(emitter);
+        var root = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(GenerateCode(emitter)).GetRoot();
+        var namespaces = root.DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax>()
+            .Select(n => n.Name.ToString())
+            .ToList();
+        var classes = root.DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
+            .Select(c => c.Identifier.Text)
+            .ToList();
 
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        // Root __init__.spy: module class derives from project root dir name "Src"
-        // No wrapper classes needed since the file is at the root
-    }
-
-    [Fact]
-    public void GenerateProjectNamespace_SingleLevelInit_IncludesDirectoryName()
-    {
-        // Arrange
-        var emitter = CreateEmitterWithProjectContext(
-            projectNamespace: "TestProject",
-            projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/level1/__init__.spy"
-        );
-
-        // Act
-        var code = GenerateCode(emitter);
-
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        Assert.Contains("class Level1", code);
-    }
-
-    [Fact]
-    public void GenerateProjectNamespace_TwoLevelInit_IncludesBothDirectories()
-    {
-        // Arrange
-        var emitter = CreateEmitterWithProjectContext(
-            projectNamespace: "TestProject",
-            projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/level1/level2/__init__.spy"
-        );
-
-        // Act
-        var code = GenerateCode(emitter);
-
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        Assert.Contains("class Level1", code);
-        Assert.Contains("class Level2", code);
-    }
-
-    [Fact]
-    public void GenerateProjectNamespace_ThreeLevelInit_NoDuplication()
-    {
-        // Arrange
-        var emitter = CreateEmitterWithProjectContext(
-            projectNamespace: "TestProject",
-            projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/level1/level2/level3/__init__.spy"
-        );
-
-        // Act
-        var code = GenerateCode(emitter);
-
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        Assert.Contains("class Level1", code);
-        Assert.Contains("class Level2", code);
-        Assert.Contains("class Level3", code);
-        Assert.DoesNotContain("Level3.Level3", code);
-    }
-
-    [Fact]
-    public void GenerateProjectNamespace_RegularModuleInNestedPackage_IncludesFileName()
-    {
-        // Arrange
-        var emitter = CreateEmitterWithProjectContext(
-            projectNamespace: "TestProject",
-            projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/level1/level2/module.spy"
-        );
-
-        // Act
-        var code = GenerateCode(emitter);
-
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        Assert.Contains("class Level1", code);
-        Assert.Contains("class Level2", code);
-        Assert.Contains("class Module", code);
-    }
-
-    [Fact]
-    public void GenerateProjectNamespace_RootLevelModule_IncludesFileName()
-    {
-        // Arrange
-        var emitter = CreateEmitterWithProjectContext(
-            projectNamespace: "TestProject",
-            projectRootPath: "/project/src",
-            sourceFilePath: "/project/src/mymodule.spy"
-        );
-
-        // Act
-        var code = GenerateCode(emitter);
-
-        // Assert
-        Assert.Contains("namespace TestProject", code);
-        Assert.Contains("class Mymodule", code);
+        Assert.Equal(new[] { expectedNamespace }, namespaces);
+        Assert.Equal(new[] { expectedClass }, classes);
     }
 }

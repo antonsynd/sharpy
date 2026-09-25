@@ -165,21 +165,22 @@ public static partial class DiagnosticExplanations
             "A union case and a union case field have no escape hatch — rename them; a string enum named like a " +
             "synthesized member — rename the enum.");
 
-        Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package directory and module file emit the same identifier", "CodeGen",
-            "In a project, each directory above a source file becomes a C# wrapper class and the file itself " +
-            "becomes the module class nested inside it. When the innermost directory and the file mangle to the " +
-            "same identifier — 'lib/lib.spy', 'a/b/b.spy', 'my_lib/myLib.spy' — the module class would be nested " +
-            "in a class of the same name, which C# forbids (CS0542). Directories are measured from the project's " +
-            "common source directory. Whether the module is imported does not matter: every file is emitted. Two " +
-            "ADJACENT directories that mangle alike ('a/a/x.spy') nest wrapper 'A' in wrapper 'A' and are refused the " +
-            "same way; a repeat that is not adjacent ('a/b/a/x.spy') is legal C#. Two package layouts are refused " +
-            "for python's reason as well as C#'s: a module file beside a same-named package directory ('pkg.spy' " +
-            "next to 'pkg/'), since python imports only one of the two; and a top-level name in a package's " +
-            "'__init__.spy' whose emitted identifier is one of that package's own submodules or subpackages " +
-            "('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since 'pkg.lib' would name both.",
-            "# project layout\nsrc/main.spy\nsrc/lib/lib.spy   # wrapper 'Lib' would hold module class 'Lib'",
-            "Rename the file or the directory (for example 'lib/core.spy', or 'mylib/lib.spy'); for two directories, " +
-            "rename one of them; for an __init__ name, rename the declaration or the submodule.");
+        Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package layout emits one identifier twice", "CodeGen",
+            "In a project, each directory above a source file becomes a C# namespace segment and the file's module " +
+            "class is declared in it; a package's '__init__.spy' emits its module class '<Dir>Module' inside the " +
+            "package's own namespace ('pkg/__init__.spy' → 'PkgModule' in namespace 'Pkg'). Directories are measured " +
+            "from the project's common source directory, and every file is emitted whether or not it is imported. " +
+            "Three layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
+            "'pkg/'): python imports only one of the two, and C# cannot declare a class and a namespace of one name " +
+            "in one scope. A top-level name in a package's '__init__.spy' whose emitted identifier is one of that " +
+            "package's own submodules or subpackages ('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since " +
+            "'pkg.lib' would name both. And a submodule or subpackage spelled like the package's own module class " +
+            "('pkg/pkg_module.spy' beside 'pkg/__init__.spy', both 'PkgModule' in namespace 'Pkg'). A directory " +
+            "spelled like a module inside it ('lib/lib.spy') is legal.",
+            "# project layout\nsrc/main.spy\nsrc/lib.spy       # module 'lib' ...\nsrc/lib/core.spy  # ... beside package 'lib'",
+            "Rename the file or the directory (for example 'lib/core.spy' beside 'lib_util.spy'); for an __init__ " +
+            "name, rename the declaration or the submodule; for a child spelled like the package's module class, " +
+            "rename the submodule or subpackage.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
             "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +

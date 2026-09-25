@@ -1,5 +1,6 @@
-# A package directory whose wrapper class spells the same C# identifier as a module file inside it
-# (#1932): util/util.spy would nest module class `Util` in wrapper `Util` (C# CS0542). Refused by name.
+# A package directory spelled like a module file inside it (#1932, #1948): util/util.spy emits
+# `namespace …Util { class Util }` — legal C#, so it runs (it was refused while directories were
+# wrapper classes: module class `Util` nested in wrapper `Util`, CS0542).
 from util.util import f
 
 def main() -> None:

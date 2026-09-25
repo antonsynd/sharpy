@@ -4,77 +4,43 @@ using Sharpy.Compiler.Semantic;
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
-/// The C# identifiers a source file's position in a project emits (#1932): the directory WRAPPER
-/// classes the module class nests in, and the module class itself. One authority, read by the
-/// emitter (<c>RoslynEmitter.ComputeWrapperClasses</c> / <c>GetModuleClassName</c>), by the
-/// project's pre-emission check (<c>ProjectCompiler.ReportPackageModuleNameCollisions</c>, SPY0526),
-/// by the function/module-class collision check (<c>CodeGenInfoComputer</c>, SPY0523) and by the
-/// CLI's self-contained publish entry type, so no two of them can disagree on a spelling (#2013).
+/// The C# identifiers a source file's position in a project emits (#1932, #1948): the namespace
+/// segments its directories become, and the module class itself. One authority, read by the
+/// emitter (<c>RoslynEmitter.ComputeModuleShape</c> / <c>GetModuleClassName</c>, the type-naming
+/// seam and the module-access emitter), by the project's pre-emission check
+/// (<c>ProjectCompiler.ReportPackageModuleNameCollisions</c>, SPY0526), by the function/module-class
+/// collision check (<c>CodeGenInfoComputer</c>, SPY0523) and by the CLI's self-contained publish
+/// entry type, so no two of them can disagree on a spelling (#2013).
 /// </summary>
 internal static class ModuleIdentifiers
 {
     /// <summary>
-    /// The wrapper class names for <paramref name="filePath"/>, relative to
+    /// The namespace segments <paramref name="filePath"/>'s directories emit, relative to
     /// <paramref name="sourceRoot"/> (the project's common source directory — NOT the project
-    /// directory: sources under <c>src/</c> put the root at <c>src/</c>). Every directory segment
-    /// mangled through <see cref="NameMangler.ToNamespacePart"/>; for <c>__init__.spy</c> the last
-    /// directory is the module class itself, not a wrapper (<c>pkg/sub/__init__.spy</c> → [Pkg]).
-    /// Empty for a root-level file or when either path is unknown (single-file compilation).
+    /// directory: sources under <c>src/</c> put the root at <c>src/</c>), each mangled through
+    /// <see cref="NameMangler.ToNamespacePart"/> (#1948): <c>pkg/sub/lib.spy</c> → [Pkg, Sub], and a
+    /// package's <c>pkg/sub/__init__.spy</c> → [Pkg, Sub] too — the package's module class lives
+    /// INSIDE its own namespace. Empty for a root-level file or when either path is unknown
+    /// (single-file compilation).
     /// </summary>
-    public static List<string> WrapperSegments(string? sourceRoot, string? filePath)
-        => WrapperDirectories(sourceRoot, filePath).Select(NameMangler.ToNamespacePart).ToList();
-
-    /// <summary>The source spellings of the directories <see cref="WrapperSegments"/> mangles, in order.</summary>
-    private static List<string> WrapperDirectories(string? sourceRoot, string? filePath)
-    {
-        if (string.IsNullOrEmpty(sourceRoot) || string.IsNullOrEmpty(filePath))
-            return new List<string>();
-
-        var relativePath = Path.GetRelativePath(sourceRoot, filePath);
-        var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-        if (string.IsNullOrEmpty(relativeDir) || relativeDir == ".")
-            return new List<string>();
-
-        var directories = relativeDir
-            .Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .ToList();
-
-        if (Path.GetFileNameWithoutExtension(filePath) == DunderNames.Init && directories.Count > 0)
-            directories.RemoveAt(directories.Count - 1);
-
-        return directories;
-    }
+    public static List<string> ModuleNamespaceSegments(string? sourceRoot, string? filePath)
+        => string.IsNullOrEmpty(sourceRoot) || string.IsNullOrEmpty(filePath)
+            ? new List<string>()
+            : SourceDirectories(sourceRoot, filePath).Select(NameMangler.ToNamespacePart).ToList();
 
     /// <summary>
-    /// A class nested in a class of the same emitted name along <paramref name="filePath"/>'s
-    /// wrapper chain (#1932): two ADJACENT directories that mangle alike (<c>a/a/x.spy</c> → wrapper
-    /// <c>A</c> in wrapper <c>A</c>), or the innermost directory and the module class
-    /// (<c>lib/lib.spy</c>). Either is CS0542. Non-adjacent repeats (<c>a/b/a/x.spy</c>) are legal C#
-    /// — a nested type may share a name with a non-enclosing ancestor. Null when there is none.
+    /// <c>&lt;X&gt;</c>, the module-members class a stem names (Decision 28 (b), ruling X3):
+    /// <c>NameMangler.Transform(stem, Type) + "Module"</c> — <c>pkg</c> → <c>PkgModule</c>. In P14b
+    /// only a package's <c>__init__.spy</c> is spelled through it (inside <c>namespace …Pkg</c>);
+    /// regular modules keep their stem class until P14c.
     /// </summary>
-    public static NestedNameCollision? FindNestedNameCollision(
-        string? sourceRoot, string filePath, bool willGenerateMainMethod)
-    {
-        var directories = WrapperDirectories(sourceRoot, filePath);
-        if (directories.Count == 0)
-            return null;
-
-        var wrappers = directories.Select(NameMangler.ToNamespacePart).ToList();
-        for (var i = 0; i + 1 < wrappers.Count; i++)
-        {
-            if (wrappers[i] == wrappers[i + 1])
-                return new NestedNameCollision(directories[i], directories[i + 1], wrappers[i], InnerIsModule: false);
-        }
-
-        var moduleClass = ModuleClassName(filePath, willGenerateMainMethod);
-        return wrappers[^1] == moduleClass
-            ? new NestedNameCollision(directories[^1], Path.GetFileName(filePath), moduleClass, InnerIsModule: true)
-            : null;
-    }
+    public static string MembersClassName(string stem)
+        => NameMangler.Transform(stem, NameContext.Type) + "Module";
 
     /// <summary>
-    /// The module class name a source file emits: the mangled file stem; the directory name for
-    /// <c>__init__.spy</c>; <c>Program</c> for a <c>main.spy</c> that generates the entry point
+    /// The module class name a source file emits: the mangled file stem;
+    /// <see cref="MembersClassName"/> of the directory for <c>__init__.spy</c> (<c>pkg/__init__.spy</c>
+    /// → <c>PkgModule</c>, in namespace <c>…Pkg</c>, #1948); <c>Program</c> for a <c>main.spy</c> that generates the entry point
     /// (avoids CS0542 <c>Main.Main()</c>). <paramref name="willGenerateMainMethod"/> is
     /// <see cref="DeclaresEntryMain"/> of the file's body — every caller computes it with that one
     /// predicate (#2013).
@@ -85,7 +51,7 @@ internal static class ModuleIdentifiers
         if (fileName == DunderNames.Init)
         {
             var dirName = Path.GetFileName(Path.GetDirectoryName(filePath));
-            return NameMangler.ToNamespacePart(dirName ?? "Module");
+            return string.IsNullOrEmpty(dirName) ? "Module" : MembersClassName(dirName);
         }
 
         if (willGenerateMainMethod && fileName.Equals("main", StringComparison.OrdinalIgnoreCase))
@@ -96,24 +62,40 @@ internal static class ModuleIdentifiers
 
     /// <summary>
     /// The C# path of the class a source file's module-level members live in, relative to the project
-    /// namespace: its wrapper segments followed by its module class (<c>pkg/lib.spy</c> →
-    /// <c>Pkg.Lib</c>, <c>pkg/__init__.spy</c> → <c>Pkg</c>). THE path authority every cross-file
+    /// namespace: its namespace segments followed by its module class (<c>pkg/lib.spy</c> →
+    /// <c>Pkg.Lib</c>, <c>pkg/__init__.spy</c> → <c>Pkg.PkgModule</c>). THE path authority every cross-file
     /// reference reads (#1948): the type-naming seam, the module-access emitter and the from-import
     /// member qualifier all spell a module's container through this one function, so they cannot drift
-    /// from what <see cref="WrapperSegments"/> and <see cref="ModuleClassName"/> declare. A non-entry
+    /// from what <see cref="ModuleNamespaceSegments"/> and <see cref="ModuleClassName"/> declare. A non-entry
     /// spelling: an entry <c>main.spy</c>'s members are never referenced from another file.
     /// </summary>
     public static string ModuleClassPath(string? sourceRoot, string filePath)
     {
-        var segments = WrapperSegments(sourceRoot, filePath);
+        var segments = ModuleNamespaceSegments(sourceRoot, filePath);
         segments.Add(ModuleClassName(filePath, willGenerateMainMethod: false));
         return string.Join(".", segments);
     }
 
     /// <summary>
+    /// <see cref="ModuleClassPath"/> for a file inside <paramref name="sourceRoot"/>, or null when there
+    /// is no root (single-file compilation) or the file lies outside it — the caller then spells the
+    /// module from its dotted name (<see cref="DottedModulePath"/>).
+    /// </summary>
+    public static string? ModuleClassPathWithinRoot(string? sourceRoot, string? filePath)
+    {
+        if (string.IsNullOrEmpty(sourceRoot) || string.IsNullOrEmpty(filePath))
+            return null;
+        var relative = Path.GetRelativePath(sourceRoot, filePath);
+        return relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                || Path.IsPathRooted(relative)
+            ? null
+            : ModuleClassPath(sourceRoot, filePath);
+    }
+
+    /// <summary>
     /// The C# path a DOTTED module name spells (<c>my_pkg.sub_mod</c> → <c>MyPkg.SubMod</c>), each
     /// segment through <see cref="NameMangler.ToNamespacePart"/> — the spelling
-    /// <see cref="WrapperSegments"/> gives a directory. For a module known only by its dotted name (an
+    /// <see cref="ModuleNamespaceSegments"/> gives a directory. For a module known only by its dotted name (an
     /// import with no resolved file, a stdlib module, a CLR namespace).
     /// </summary>
     public static string DottedModulePath(string dottedModuleName)
@@ -287,10 +269,3 @@ internal static class ModuleIdentifiers
     public static bool DeclaresEntryMain(IEnumerable<Statement> body)
         => body.Any(s => s.UnwrapDecorated() is FunctionDef f && IsEntryMain(f));
 }
-
-/// <summary>
-/// Two emitted classes of one name, one directly inside the other: <paramref name="Outer"/> is the
-/// outer directory's source spelling, <paramref name="Inner"/> the inner directory's or the module
-/// file's name (<paramref name="InnerIsModule"/>).
-/// </summary>
-internal sealed record NestedNameCollision(string Outer, string Inner, string Identifier, bool InnerIsModule);

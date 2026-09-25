@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Tests.Helpers;
 using Sharpy.Compiler.Tests.Integration;
 using Sharpy.TestInfrastructure.Integration;
@@ -864,40 +866,37 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Subdirectory axis (#1932, R-AX phase a): each directory above a file is a wrapper class and
-    // the file is the module class nested in it. When the innermost wrapper and the module class
-    // mangle to one identifier (`lib/lib.spy` → wrapper `Lib` holding module class `Lib`) C# refuses
-    // it (CS0542); the project refuses it by name first (SPY0526), from the SAME helper the emitter
-    // spells both names with (ModuleIdentifiers). The helper lays sources out under `src/`, so the
-    // wrapper segments are measured from `src/` (the common source root), not the project dir.
-    // Prior commit: every refused layout was CS0542 behind SPY0908; the running layouts ran.
+    // Subdirectory axis (#1932 → #1948, R-AX phase c): each directory above a file is a C# NAMESPACE
+    // segment and the file's module class is declared in it, so a directory and a module (or a
+    // directory and a directory) spelled alike never nest a class in a same-named class. The helper
+    // lays sources out under `src/`, so the segments are measured from `src/` (the common source
+    // root), not the project dir. Prior commit (direction): 6 rows + both adjacent-directory cells
+    // were SPY0526 (CS0542 behind SPY0908 before #1932) — refused → runs.
     // ═══════════════════════════════════════════════════════════════════════
 
     private const string LibF = "def f() -> int:\n    return 7\n";
+    private const string M7Main = "def main() -> None:\n    print(7)\n";
 
     public static IEnumerable<object[]> SubdirectoryLayouts() => new[]
     {
-        // name, files (path → content), refused file (null = runs and prints 7), expected identifier
-        new object[] { "dir_differs_from_file", new[] { ("pkg/lib.spy", LibF), ("main.spy", "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
-        new object[] { "dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") }, "lib.spy", "Lib" },
-        new object[] { "dir_equals_file_with_init", new[] { ("lib/__init__.spy", "X: int = 1\n"), ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") }, "lib.spy", "Lib" },
-        new object[] { "nested_dir_equals_file", new[] { ("a/b/b.spy", LibF), ("main.spy", "from a.b.b import f\n\ndef main() -> None:\n    print(f())\n") }, "b.spy", "B" },
-        new object[] { "unimported_dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") }, "lib.spy", "Lib" },
-        new object[] { "init_only", new[] { ("lib/__init__.spy", LibF), ("main.spy", "from lib import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
+        // name, files (path → content); every layout runs and prints 7
+        new object[] { "dir_differs_from_file", new[] { ("pkg/lib.spy", LibF), ("main.spy", "from pkg.lib import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "dir_equals_file_with_init", new[] { ("lib/__init__.spy", "X: int = 1\n"), ("lib/lib.spy", LibF), ("main.spy", "from lib.lib import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "nested_dir_equals_file", new[] { ("a/b/b.spy", LibF), ("main.spy", "from a.b.b import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "unimported_dir_equals_file", new[] { ("lib/lib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") } },
+        new object[] { "init_only", new[] { ("lib/__init__.spy", LibF), ("main.spy", "from lib import f\n\ndef main() -> None:\n    print(f())\n") } },
         // Discriminates the ROOT the segments are measured from: under the common source root
-        // (`src/`) a root-level src.spy has no wrapper; measured from the project dir it would get
-        // wrapper `Src` and collide with its own module class `Src`.
-        new object[] { "file_named_like_source_root", new[] { ("src.spy", LibF), ("main.spy", "from src import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
-        // a/b/a is legal C#: a nested type may share a name with a NON-enclosing ancestor (audit R3).
-        new object[] { "non_adjacent_equal_dirs", new[] { ("a/b/a/x.spy", LibF), ("main.spy", "from a.b.a.x import f\n\ndef main() -> None:\n    print(f())\n") }, null!, null! },
-        new object[] { "init_in_equal_dirs", new[] { ("a/a/__init__.spy", LibF), ("main.spy", "from a.a import f\n\ndef main() -> None:\n    print(f())\n") }, "__init__.spy", "A" },
-        new object[] { "mangling_equal", new[] { ("my_lib/myLib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") }, "myLib.spy", "MyLib" },
+        // (`src/`) a root-level src.spy has no namespace segment.
+        new object[] { "file_named_like_source_root", new[] { ("src.spy", LibF), ("main.spy", "from src import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "non_adjacent_equal_dirs", new[] { ("a/b/a/x.spy", LibF), ("main.spy", "from a.b.a.x import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "init_in_equal_dirs", new[] { ("a/a/__init__.spy", LibF), ("main.spy", "from a.a import f\n\ndef main() -> None:\n    print(f())\n") } },
+        new object[] { "mangling_equal", new[] { ("my_lib/myLib.spy", LibF), ("main.spy", "def main() -> None:\n    print(7)\n") } },
     };
 
     [Theory]
     [MemberData(nameof(SubdirectoryLayouts))]
-    public void Subdirectory_DirEqualsModule_IsSpy0526_ElseRuns(
-        string name, (string, string)[] files, string? refusedFile, string? identifier)
+    public void Subdirectory_EveryLayout_Runs(string name, (string, string)[] files)
     {
         using var helper = new ProjectCompilationHelper(Output);
         helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
@@ -906,58 +905,162 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         helper.CreateProjectFile();
         var exec = helper.CompileAndExecute();
 
-        if (refusedFile == null)
-        {
-            exec.Success.Should().BeTrue($"[{name}] {string.Join("\n", exec.CompilationErrors)}");
-            exec.StandardOutput.Trim().Should().Be("7", $"[{name}]");
-            return;
-        }
-
-        exec.Success.Should().BeFalse($"[{name}] must be refused");
-        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
-        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            $"[{name}] the refusal is SPY0526, not CS0542 behind SPY0908");
-        var refusal = errors.Should().ContainSingle(
-            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision,
-            $"[{name}] {string.Join("\n", exec.CompilationErrors)}").Subject;
-        refusal.Message.Should().Contain($"module '{refusedFile}' both emit the C# identifier '{identifier}'");
-        refusal.Message.Should().EndWith("Rename the file or the directory.");
-        Path.GetFileName(refusal.FilePath).Should().Be(refusedFile);
+        exec.Success.Should().BeTrue($"[{name}] {string.Join("\n", exec.CompilationErrors)}");
+        exec.StandardOutput.Trim().Should().Be("7", $"[{name}]");
     }
 
     /// <summary>
-    /// Adjacent directories that mangle alike (audit R3): `a/a/x.spy` nests wrapper `A` in wrapper `A`
-    /// (CS0542 behind SPY0908 before). Same helper, same code, a directory-rename steer naming both.
+    /// Adjacent directories that mangle alike (audit R3): `a/a/x.spy` is namespace `A.A` — legal C#
+    /// (SPY0526 while directories were wrapper classes, CS0542 behind SPY0908 before that).
     /// </summary>
     [Theory]
-    [InlineData("a/a/x.spy", "a", "a", "A")]
-    [InlineData("my_pkg/myPkg/x.spy", "my_pkg", "myPkg", "MyPkg")]
-    public void Subdirectory_AdjacentEqualDirectories_AreSpy0526(string path, string outer, string inner, string identifier)
+    [InlineData("a/a/x.spy", "a.a.x")]
+    [InlineData("my_pkg/myPkg/x.spy", "my_pkg.myPkg.x")]
+    public void Subdirectory_AdjacentEqualDirectories_Run(string path, string module)
     {
         using var helper = new ProjectCompilationHelper(Output);
         helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
         helper.AddSourceFile(path, LibF);
-        helper.AddSourceFile("main.spy", "def main() -> None:\n    print(7)\n");
+        helper.AddSourceFile("main.spy", $"from {module} import f\n\ndef main() -> None:\n    print(f())\n");
         helper.CreateProjectFile();
         var exec = helper.CompileAndExecute();
 
-        exec.Success.Should().BeFalse(path);
-        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
-        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
-        var refusal = errors.Should().ContainSingle(
-            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision,
-            string.Join("\n", exec.CompilationErrors)).Subject;
-        refusal.Message.Should().StartWith(
-            $"Package directory '{outer}' and its subdirectory '{inner}' both emit the C# identifier '{identifier}'");
-        refusal.Message.Should().EndWith("Rename one of the directories.");
+        exec.Success.Should().BeTrue($"[{path}] {string.Join("\n", exec.CompilationErrors)}");
+        exec.StandardOutput.Trim().Should().Be("7", path);
     }
 
     [Fact]
     public void Subdirectory_Axis_IsTotal()
         => SubdirectoryLayouts().Should().HaveCount(10);
 
+    /// <summary>
+    /// The `__init__` member FQN cell (Decision 28 (a)(b), ruling X3): a package's module class is
+    /// <c>&lt;X&gt;</c> = <c>PkgModule</c> declared INSIDE <c>namespace Simple.Pkg</c> — its members'
+    /// FQN moves once, here — and a submodule of the package stays <c>Simple.Pkg.Lib</c>
+    /// byte-identical. Literals, not the helper: the spelling is the contract.
+    /// </summary>
+    [Fact]
+    public void InitMembers_LiveInPkgModuleInsideThePackageNamespace()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile("pkg/__init__.spy", "def init_fn() -> int:\n    return 5\n");
+        helper.AddSourceFile("pkg/lib.spy", LibF);
+        helper.AddSourceFile("main.spy", "import pkg\nfrom pkg import init_fn\nfrom pkg.lib import f\n\n"
+            + "def main() -> None:\n    print(init_fn())\n    print(pkg.init_fn())\n    print(f())\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeTrue(string.Join("\n", exec.CompilationErrors));
+        exec.StandardOutput.Trim().Should().Be("5\n5\n7");
+
+        var files = helper.LastCompilationResult!.GeneratedCSharpFiles;
+        var classes = files.Values
+            .SelectMany(cs => CSharpSyntaxTree.ParseText(cs).GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>())
+            .Select(c => ((c.Parent as BaseNamespaceDeclarationSyntax)?.Name.ToString(), c.Identifier.Text))
+            .ToList();
+        classes.Should().Contain(("Simple.Pkg", "PkgModule"), "the __init__ module class is <X> in its package namespace");
+        classes.Should().Contain(("Simple.Pkg", "Lib"), "a submodule's FQN is unchanged");
+        classes.Should().NotContain(c => c.Item2 == "Pkg", "no directory is a class any more");
+        var main = files.Single(kv => Path.GetFileName(kv.Key) == "main.cs").Value;
+        main.Should().Contain("global::Simple.Pkg.PkgModule.InitFn()",
+            "both the from-imported and the module-qualified reference reach <X>");
+        main.Should().NotContain("global::Simple.Pkg.InitFn");
+    }
+
+    /// <summary>
+    /// Every reader of a package's container spells <c>&lt;X&gt;</c> (#1948): the from-import member
+    /// qualifier (F6), the __init__ re-export forwarder of a SUBPACKAGE's member (F13: <c>from .sub
+    /// import g</c> reaches <c>Pkg.Sub.SubModule</c>), and __init__ types — the package's own and a
+    /// subpackage's re-exported by the parent (<c>Crate</c>) — in an annotation and a construction (the
+    /// type-naming seam spells both from the defining file). F6/F13 spelled the package from its dotted
+    /// name — the directory, now a namespace — before; the recorded import file is what finds the
+    /// members class. python3: 7 / 3 / 4 / 5.
+    /// </summary>
+    [Fact]
+    public void PackageReExportsAndTypes_ReachTheMembersClass()
+    {
+        var run = RunProject("Simple",
+            ("pkg/__init__.spy", "from .lib import f\nfrom .sub import g, Crate\n\nclass Box:\n    v: int\n\n"
+                + "    def __init__(self, v: int) -> None:\n        self.v = v\n"),
+            ("pkg/lib.spy", LibF),
+            ("pkg/sub/__init__.spy", "def g() -> int:\n    return 3\n\nclass Crate:\n    n: int\n\n"
+                + "    def __init__(self, n: int) -> None:\n        self.n = n\n"),
+            ("main.spy", "from pkg import f, g, Box, Crate\n\ndef main() -> None:\n    b: Box = Box(4)\n"
+                + "    c: Crate = Crate(5)\n    print(f())\n    print(g())\n    print(b.v)\n    print(c.n)\n"));
+
+        run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Trim().Should().Be("7\n3\n4\n5");
+        run.GeneratedCSharp.Should().Contain("Simple.Pkg.Sub.SubModule.G()",
+            "the __init__ forwarder of a subpackage member names the subpackage's members class");
+    }
+
+    /// <summary>
+    /// Ruling 15 in its P14b cell: a package's <c>__init__</c> function spelled like its members class
+    /// (<c>def pkg_module</c> → <c>PkgModule</c> inside class <c>PkgModule</c>, CS0542) is SPY0523 — the
+    /// module-class collision rule reading the same authority. Prior commit: the class was <c>Pkg</c>,
+    /// so this ran (worked → refused, a consequence of X3). The positive control is the FQN cell above.
+    /// </summary>
+    [Fact]
+    public void InitFunctionSpelledLikeTheMembersClass_IsSpy0523()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile("pkg/__init__.spy", "def pkg_module() -> int:\n    return 1\n");
+        helper.AddSourceFile("main.spy", "def main() -> None:\n    print(7)\n");
+        helper.CreateProjectFile();
+        var exec = helper.CompileAndExecute();
+
+        exec.Success.Should().BeFalse();
+        var errors = helper.LastCompilationResult!.Diagnostics.GetErrors().ToList();
+        errors.Should().NotContain(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+        errors.Should().ContainSingle(d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
+            string.Join("\n", exec.CompilationErrors)).Which.Message.Should().Contain("'PkgModule'");
+    }
+
+    /// <summary>
+    /// Fixture classes of a package module join the module's namespace as siblings of its module
+    /// class (F14, #1948): <c>namespace Simple.Pkg { Lib; GreetingFixture }</c> — they were siblings
+    /// inside the wrapper class <c>Pkg</c>. The test class is emitted only for the test host
+    /// (<c>ProjectConfig.TestHost</c>) and lands in the same member list; the Stdlib spy-test corpus
+    /// (119 package test classes, regenerated with this layout) compiles and runs it.
+    /// </summary>
+    [Fact]
+    public void PackageFixtureClasses_JoinTheModuleNamespace()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Simple").WithEntryPoint("main.spy");
+        helper.AddSourceFile("pkg/lib.spy", LibF + "\n@test.fixture\ndef greeting() -> str:\n    return \"hi\"\n\n"
+            + "@test\ndef test_f(greeting: str):\n    assert f() == 7\n");
+        helper.AddSourceFile("main.spy", M7Main);
+        helper.CreateProjectFile();
+        var result = helper.Compile();
+
+        var lib = result.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "lib.cs").Value;
+        var ns = CSharpSyntaxTree.ParseText(lib).GetRoot().DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().Single();
+        ns.Name.ToString().Should().Be("Simple.Pkg");
+        ns.Members.OfType<ClassDeclarationSyntax>().Select(c => c.Identifier.Text)
+            .Should().BeEquivalentTo(new[] { "Lib", "GreetingFixture" });
+    }
+
+    /// <summary>
+    /// Two modules each declaring <c>class Foo</c> stay two types (python: <c>a.Foo is b.Foo</c> is
+    /// False) — the cell a flat "types into the project namespace" layout would break.
+    /// </summary>
+    [Fact]
+    public void SameNamedTypesInTwoModules_StayDistinct()
+    {
+        var run = RunProject("Simple",
+            ("a.spy", "class Foo:\n    def who(self) -> str:\n        return \"a\"\n"),
+            ("b.spy", "class Foo:\n    def who(self) -> str:\n        return \"b\"\n"),
+            ("main.spy", "import a\nimport b\n\ndef main() -> None:\n    print(a.Foo().who())\n    print(b.Foo().who())\n"));
+
+        run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Trim().Should().Be("a\nb");
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
-    // The two SPY0526 refusals that survive module-as-namespace (#1948, Decision 28 (d)). Refusal 1:
+    // The SPY0526 refusals of module-as-namespace (#1948, Decision 28 (d)). Refusal 1:
     // a module file beside a same-named package directory — python imports only one of them (the
     // package with __init__, the module without), so the other is unreachable. Refusal 2: an
     // __init__ top-level name whose emitted identifier is one of the package's own submodules or
@@ -988,6 +1091,14 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         new object[] { "init_variable_shadows_subpackage",
             new[] { ("pkg/__init__.spy", "sub: int = 1\n"), ("pkg/sub/x.spy", LibF), ("main.spy", "from pkg.sub.x import f\n\ndef main() -> None:\n    print(f())\n") },
             "__init__.spy", "'sub' in the package's __init__.spy emits the C# identifier 'Sub', which its subpackage 'sub' also emits" },
+        // Refusal 3 (#1948): a child spelled like the package's own module class <X> — both in the
+        // package namespace (CS0101). Prior commit: the __init__ class was `Pkg`, so these ran.
+        new object[] { "submodule_spelled_like_init_class",
+            new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/pkg_module.spy", LibF), ("main.spy", "from pkg.pkg_module import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "The package's __init__.spy emits its module class 'PkgModule', which its submodule 'pkg_module.spy' also emits" },
+        new object[] { "subpackage_spelled_like_init_class",
+            new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/pkg_module/x.spy", LibF), ("main.spy", "from pkg.pkg_module.x import f\n\ndef main() -> None:\n    print(f())\n") },
+            "__init__.spy", "The package's __init__.spy emits its module class 'PkgModule', which its subpackage 'pkg_module' also emits" },
     };
 
     [Theory]
@@ -1036,5 +1147,5 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
 
     [Fact]
     public void PackageShadowing_Axis_IsTotal()
-        => PackageShadowingLayouts().Should().HaveCount(6);
+        => PackageShadowingLayouts().Should().HaveCount(8);
 }

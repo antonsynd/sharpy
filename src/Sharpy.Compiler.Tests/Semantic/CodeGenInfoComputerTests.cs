@@ -750,23 +750,28 @@ def foo_bar() -> None:
             d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision);
     }
 
-    [Fact]
-    public void ComputeForModule_InitSpy_FunctionMatchesParentDir_EmitsSPY0523()
+    /// <summary>
+    /// A package's <c>__init__.spy</c> module class is <c>&lt;X&gt;</c> = <c>&lt;Dir&gt;Module</c> (#1948,
+    /// ruling X3): a function spelled like it collides (SPY0523, ruling 15); a function named like the
+    /// directory no longer does — it was SPY0523 while the class was the directory's name.
+    /// </summary>
+    [Theory]
+    [InlineData("my_package_module", true)]
+    [InlineData("my_package", false)]
+    public void ComputeForModule_InitSpy_FunctionMatchesMembersClass_EmitsSPY0523(string functionName, bool collides)
     {
-        var source = @"
-def my_package() -> None:
-    pass
-";
+        var source = $"def {functionName}() -> None:\n    pass\n";
         var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
         var diagnostics = new DiagnosticBag();
         var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
 
         computer.ComputeForModule(module, sourceFilePath: "my_package/__init__.spy");
 
-        diagnostics.HasErrors.Should().BeTrue();
-        diagnostics.GetErrors().Should().Contain(d =>
+        diagnostics.GetErrors().Any(d =>
             d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
-            d.Message.Contains("conflicts with the module class name"));
+            d.Message.Contains("conflicts with the module class name")
+            && d.Message.Contains("'MyPackageModule'")).Should().Be(collides, functionName);
+        diagnostics.HasErrors.Should().Be(collides, functionName);
     }
 
     /// <summary>

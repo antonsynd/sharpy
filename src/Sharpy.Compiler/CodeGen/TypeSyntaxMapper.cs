@@ -832,7 +832,7 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
-    /// The emitted namespace/wrapper-class path of a module identified by its FILE PATH — the same
+    /// The emitted C# path (namespace + module class) of a module identified by its FILE PATH — the same
     /// derivation cross-file TYPE references use. Exposed so the module-access emitter can qualify a
     /// module reference from its resolved <see cref="ModuleSymbol.FilePath"/> rather than from the
     /// import alias (which drops to the alias name) or CanonicalModuleName (which drops the directory

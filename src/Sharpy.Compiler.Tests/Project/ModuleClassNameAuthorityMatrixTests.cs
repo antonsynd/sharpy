@@ -33,10 +33,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <c>def `Main`</c>, <c>def `main`</c>, a package <c>main/__init__.spy</c>, a <c>main</c> another
 /// function calls, a package <c>main/__init__.spy</c> declaring and calling <c>main</c> (#2065: the
 /// non-entry <c>main</c> is <c>MainFunc</c> at its declaration and at every reference, and does not
-/// collide with the package's class <c>Main</c>)} × build {cold at the
-/// source root; warm under a <c>program/</c> directory, where the module class spelling decides
-/// SPY0526 against the <c>Program</c> wrapper and a cache-served unit has no AST to recompute the
-/// entry bit from}.
+/// collide with the package's class <c>MainModule</c>, #1948)} × build {cold at the
+/// source root; warm beside a <c>program/</c> package directory, where the module class spelling
+/// decides SPY0526 (a <c>Program</c> module class beside the <c>Program</c> namespace, #1948) and a
+/// cache-served unit has no AST to recompute the entry bit from}.
 /// </para>
 /// </remarks>
 [Collection("HeavyCompilation")]
@@ -82,13 +82,12 @@ public class ModuleClassNameAuthorityMatrixTests
                 : (Array.Empty<string>(), "Main", "main"),
             "init" => entry
                 ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
-                : (Array.Empty<string>(), "Main", "Program"),
+                : (Array.Empty<string>(), "MainModule", "Program"),
             "calls_main" => (Array.Empty<string>(), "Program", entry ? "Main" : "MainFunc"),
-            // A package main/__init__.spy is class Main whatever it declares: its entry main() would
-            // be Main.Main() (CS0542, a true SPY0523); a non-entry one is MainFunc and does not collide.
-            "init_main" => entry
-                ? (new[] { DiagnosticCodes.CodeGen.FunctionModuleClassCollision }, null, null)
-                : (Array.Empty<string>(), "Main", "MainFunc"),
+            // A package main/__init__.spy is class MainModule in namespace …Main whatever it declares
+            // (#1948): its entry main() is MainModule.Main() — no longer the CS0542 Main.Main() that was
+            // a true SPY0523 while the class was Main — and a non-entry one is MainFunc.
+            "init_main" => (Array.Empty<string>(), "MainModule", entry ? "Main" : "MainFunc"),
             _ => throw new ArgumentOutOfRangeException(nameof(content), content, null)
         };
     }
@@ -102,7 +101,7 @@ public class ModuleClassNameAuthorityMatrixTests
     [MemberData(nameof(Cells))]
     public void Cold_ModuleClassAndEntryBit_AgreeAcrossEveryReader(string kind, string content)
     {
-        using var helper = CreateProject(kind, content, underProgramDirectory: false);
+        using var helper = CreateProject(kind, content, besideProgramDirectory: false);
         var result = helper.Compile();
         var codes = ErrorCodes(result);
         var (expectedCodes, moduleClass, member) = Expected(kind, content);
@@ -142,8 +141,9 @@ public class ModuleClassNameAuthorityMatrixTests
     }
 
     /// <summary>
-    /// Warm ≡ cold for the entry bit: under <c>program/</c> the module class spelling decides SPY0526
-    /// (a <c>Program</c> module class nested in the <c>Program</c> wrapper is CS0542), and on a warm
+    /// Warm ≡ cold for the entry bit: beside a <c>program/</c> package directory the module class
+    /// spelling decides SPY0526 (a <c>Program</c> module class beside the <c>Program</c> namespace —
+    /// refusal 1, #1948), and on a warm
     /// build the unit is served from the cache without an AST. Before the fix the cache-served unit
     /// was ASSUMED to declare main(), so every cold-green cell without main() turned SPY0526 warm.
     /// </summary>
@@ -151,7 +151,7 @@ public class ModuleClassNameAuthorityMatrixTests
     [MemberData(nameof(Cells))]
     public void Warm_CacheServedEntryBit_MatchesTheColdBuild(string kind, string content)
     {
-        using var helper = CreateProject(kind, content, underProgramDirectory: true);
+        using var helper = CreateProject(kind, content, besideProgramDirectory: true);
         helper.WithIncremental();
         var cold = helper.Compile();
         var coldCodes = ErrorCodes(cold);
@@ -171,19 +171,18 @@ public class ModuleClassNameAuthorityMatrixTests
         {
             // The proof the warm verdict was measured on the cache-served unit, not a full rebuild.
             var unit = content is "init" or "init_main" ? "__init__.spy" : "main.spy";
-            helper.AssertWarmBuildSkipped(warm, kind == "exe_app" ? new[] { unit, "app.spy" } : new[] { unit });
+            helper.AssertWarmBuildSkipped(warm, kind == "exe_app" ? new[] { unit, "x.spy", "app.spy" } : new[] { unit, "x.spy" });
         }
     }
 
     [Fact]
     public void Matrix_IsTotal() => Cells().Should().HaveCount(24, "3 kinds × 8 contents");
 
-    private ProjectCompilationHelper CreateProject(string kind, string content, bool underProgramDirectory)
+    private ProjectCompilationHelper CreateProject(string kind, string content, bool besideProgramDirectory)
     {
         var helper = new ProjectCompilationHelper(_output);
         helper.WithRootNamespace("Authority");
-        var directory = underProgramDirectory ? "program/" : "";
-        var unitPath = content is "init" or "init_main" ? directory + "main/__init__.spy" : directory + "main.spy";
+        var unitPath = content is "init" or "init_main" ? "main/__init__.spy" : "main.spy";
         switch (kind)
         {
             case "exe_main":
@@ -200,6 +199,8 @@ public class ModuleClassNameAuthorityMatrixTests
 
         helper.AddSourceFile(unitPath, Contents[content]);
         helper.AddSourceFile("other.spy", "def value() -> int:\n    return 1\n");
+        if (besideProgramDirectory)
+            helper.AddSourceFile("program/x.spy", "def x() -> int:\n    return 1\n");
         helper.CreateProjectFile();
         return helper;
     }

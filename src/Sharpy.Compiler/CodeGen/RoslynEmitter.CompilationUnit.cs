@@ -90,17 +90,9 @@ internal partial class RoslynEmitter
 
         // In library mode, top-level types were extracted from the module class
         // (RoslynEmitter.ModuleClass.cs) and are emitted as namespace siblings annotated with
-        // [SharpyModuleType]. Capture and reset the shared field before wrapping.
-        var wrappedExtractedTypes = _extractedTypes.ToList();
+        // [SharpyModuleType]. Capture and reset the shared field before assembling the namespace.
+        var extractedTypes = _extractedTypes.ToList();
         _extractedTypes.Clear();
-
-        // Compute directory wrapper classes and wrap the module class
-        var wrapperNames = ComputeWrapperClasses();
-        MemberDeclarationSyntax current = moduleClass;
-        MemberDeclarationSyntax? wrappedTestClass = testClass;
-        var wrappedFixtureClasses = fixtureClasses
-            .Cast<MemberDeclarationSyntax>()
-            .ToList();
 
         // No `using static <Namespace>.<ModuleClass>` self-import is emitted for the sibling test
         // class or fixture classes (#1683): every reference they make to a module-level member is
@@ -108,70 +100,23 @@ internal partial class RoslynEmitter
         // BuildQualifiedTypeAccess, so the self-import — which resolved a module member/type through a
         // name that can collide with a same-named namespace (CS0118) — is dead.
 
-        // Build wrapper classes from inside out — wrap the module class, test class, and
-        // any fixture classes in the same directory wrapper hierarchy so they appear as
-        // siblings within those wrapper classes.
-        for (int i = wrapperNames.Count - 1; i >= 0; i--)
+        // Top-level members of the module's namespace: the module class, extracted types, fixture
+        // classes and the optional test class — siblings in one namespace.
+        var topLevelMembers = new List<MemberDeclarationSyntax> { moduleClass };
+        topLevelMembers.AddRange(extractedTypes);
+        topLevelMembers.AddRange(fixtureClasses);
+        if (testClass != null)
         {
-            current = ClassDeclaration(wrapperNames[i])
-                .WithModifiers(TokenList(
-                    Token(SyntaxKind.PublicKeyword),
-                    Token(SyntaxKind.StaticKeyword),
-                    Token(SyntaxKind.PartialKeyword)))
-                .WithMembers(SingletonList(current));
-
-            if (wrappedTestClass != null)
-            {
-                wrappedTestClass = ClassDeclaration(wrapperNames[i])
-                    .WithModifiers(TokenList(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.PartialKeyword)))
-                    .WithMembers(SingletonList(wrappedTestClass));
-            }
-
-            for (int j = 0; j < wrappedFixtureClasses.Count; j++)
-            {
-                wrappedFixtureClasses[j] = ClassDeclaration(wrapperNames[i])
-                    .WithModifiers(TokenList(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.PartialKeyword)))
-                    .WithMembers(SingletonList(wrappedFixtureClasses[j]));
-            }
-
-            // Wrap extracted library-mode types in the same directory hierarchy so that
-            // same-named types in sibling modules stay isolated (multi-file projects). For
-            // single-file library modules there are no wrappers, so they land at namespace level.
-            for (int j = 0; j < wrappedExtractedTypes.Count; j++)
-            {
-                wrappedExtractedTypes[j] = ClassDeclaration(wrapperNames[i])
-                    .WithModifiers(TokenList(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.PartialKeyword)))
-                    .WithMembers(SingletonList(wrappedExtractedTypes[j]));
-            }
+            topLevelMembers.Add(testClass);
         }
 
-        // Collect top-level namespace members (module class + extracted types + fixture classes
-        // + optional test class).
-        var topLevelMembers = new List<MemberDeclarationSyntax> { current };
-        topLevelMembers.AddRange(wrappedExtractedTypes);
-        topLevelMembers.AddRange(wrappedFixtureClasses);
-        if (wrappedTestClass != null)
-        {
-            topLevelMembers.Add(wrappedTestClass);
-        }
-
-        // Build compilation unit: use namespace wrapper for multi-file projects,
-        // global namespace (no wrapper) for single-file compilation
+        // The module's namespace: the project namespace followed by its directories (#1948) — one
+        // assembly for every member. None (the global namespace) for single-file compilation.
         CompilationUnitSyntax compilationUnit;
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        var namespaceParts = _moduleShape!.NamespaceParts;
+        if (namespaceParts.Count > 0)
         {
-            // Multi-file project: wrap in namespace
-            var namespaceName = GenerateNamespaceName();
-            var namespaceDecl = NamespaceDeclaration(namespaceName)
+            var namespaceDecl = NamespaceDeclaration(ParseQualifiedName(string.Join(".", namespaceParts)))
                 .WithMembers(List(topLevelMembers));
 
             compilationUnit = CompilationUnit()
@@ -202,31 +147,6 @@ internal partial class RoslynEmitter
         _context.Logger.LogInfo($"Completed code generation ({nonImportStatements.Count} statements emitted)");
         return compilationUnit.WithLeadingTrivia(nullablePragma);
     }
-
-    /// <summary>
-    /// Returns only the project-level namespace. Directory and file hierarchy
-    /// is expressed via nested static classes, not namespace components.
-    /// Only called for multi-file projects (single-file uses global namespace).
-    /// </summary>
-    private NameSyntax GenerateNamespaceName()
-    {
-        // With project namespace, use it directly
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-        {
-            return ParseQualifiedName(_context.ProjectNamespace);
-        }
-
-        return ParseQualifiedName("SharpyGenerated");
-    }
-
-    /// <summary>
-    /// Computes the list of wrapper class names from the directory path — through the one
-    /// authority <see cref="ModuleIdentifiers.WrapperSegments"/>, which the project's SPY0526 check
-    /// also reads (#1932). For regular files: all directory parts are wrappers. For __init__.spy:
-    /// all directory parts EXCEPT the last are wrappers (the last directory is the module class).
-    /// </summary>
-    private List<string> ComputeWrapperClasses()
-        => ModuleIdentifiers.WrapperSegments(_context.ProjectRootPath, _context.SourceFilePath);
 
     private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)
     {
@@ -424,8 +344,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
-                var moduleNamespacePath = ModuleIdentifiers.DottedModulePath(moduleName);
+                var moduleNamespacePath = FromImportModuleClassPath(fromImport);
                 var segs = new List<string>();
                 if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     segs.AddRange(_context.ProjectNamespace!.Split('.'));
@@ -458,6 +377,18 @@ internal partial class RoslynEmitter
             }
         }
     }
+
+    /// <summary>
+    /// The C# path (relative to the project namespace) of the module class a user-module from-import
+    /// names: spelled from the source FILE import resolution recorded, so a package's members are
+    /// reached through its <c>__init__</c> module class inside the package namespace
+    /// (<c>from pkg import f</c> → <c>Pkg.PkgModule</c>, #1948); from the dotted name only when no
+    /// file inside the project was recorded.
+    /// </summary>
+    private string FromImportModuleClassPath(FromImportStatement fromImport)
+        => ModuleIdentifiers.ModuleClassPathWithinRoot(
+               _context.ProjectRootPath, _context.SemanticBinding.GetResolvedModuleFilePath(fromImport))
+           ?? ModuleIdentifiers.DottedModulePath(GetResolvedModulePath(fromImport) ?? fromImport.Module);
 
     /// <summary>
     /// The exported member NAMES a <c>from m import *</c> binds into this scope. Read from the

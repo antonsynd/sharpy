@@ -879,11 +879,12 @@ public static class DiagnosticCodes
         // A member whose emitted C# name equals its enclosing type's (CS0542) — refused by name at
         // semantic time (CodeGenInfoComputer), the SPY0522/SPY0523 phase-tagged precedent (#1871, R-AW).
         public const string MemberEnclosingTypeCollision = "SPY0525"; // Active (#1871)
-        // A package directory whose wrapper class spells the same C# identifier as the module class
-        // of a file inside it (`lib/lib.spy` → wrapper `Lib` holding module class `Lib`, CS0542) —
-        // refused by the project compiler before analysis, phase-tagged like SPY0522/SPY0523 (#1932,
-        // R-AX phase a; P14b relaxes it with namespaces).
-        public const string PackageModuleNameCollision = "SPY0526"; // Active (#1932)
+        // A package layout that emits one identifier twice in one namespace: a module file beside a
+        // same-named package directory, an __init__ name shadowing a submodule/subpackage, or a child
+        // spelled like the package's module class — refused by the project compiler before analysis,
+        // phase-tagged like SPY0522/SPY0523 (#1932, re-purposed by #1948 when directories became
+        // namespaces).
+        public const string PackageModuleNameCollision = "SPY0526"; // Active (#1932, #1948)
         // SPY0527-SPY0549: Reserved for future codegen diagnostics
 
         #endregion

@@ -499,8 +499,9 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The namespace segments of THIS module's C# module class: the project namespace + directory
-    /// wrapper classes (<see cref="ModuleShape.NamespaceParts"/>) followed by the module class name.
+    /// The namespace segments of THIS module's C# module class: its namespace — the project
+    /// namespace + directory segments (<see cref="ModuleShape.NamespaceParts"/>) — followed by the
+    /// module class name.
     /// </summary>
     private string[] OwnModuleContainerSegments()
     {
