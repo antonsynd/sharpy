@@ -96,8 +96,7 @@ dunder_methods_recommendations.md::ee6389ba61  # SPY0240 first #1952
 dunder_methods_recommendations.md::f2680ea33d  # SPY0320 first #1952
 dunder_methods_recommendations.md::f64246a1db  # SPY0202 first #1952
 dunder_methods_recommendations.md::fb9d3eada0  # SPY0202 first #1952
-enums.md::5f744dbce9  # SPY0346 first #1952
-enums.md::a54d497e6b  # SPY0200 first #1952
+enums.md::4fdab687d0  # SPY0346 first #2073
 events.md::06230f5d34  # SPY0200 first #1952
 events.md::11ce2bd1d7  # SPY0200 first #1952
 events.md::296ae3c9c2  # SPY0202 first #1952

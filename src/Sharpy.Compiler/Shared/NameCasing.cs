@@ -88,6 +88,23 @@ internal static class NameCasing
         return NameMangler.ToConstantCase(name);
     }
 
+    /// <summary>
+    /// The C# identifier an enum member compiles to (#2037) — the one speller behind the member
+    /// symbol's materialized <c>CodeGenInfo.CSharpName</c>, which every declaration, reference and
+    /// collision check reads. The DECLARATION's escape flag governs: an escaped member is verbatim
+    /// for both kinds, and every reference follows it whether or not the use is escaped. Otherwise a
+    /// string-backed member is its singleton field (<see cref="StringEnumShape.MemberFieldName"/>) and
+    /// an int-backed one a C# enum member (<see cref="NameMangler.ToEnumMemberName"/>).
+    /// </summary>
+    public static string ResolveEnumMember(string name, bool isStringEnum, bool isBacktickEscaped)
+    {
+        if (isBacktickEscaped)
+            return Verbatim(name);
+        return isStringEnum
+            ? StringEnumShape.MemberFieldName(name)
+            : NameMangler.ToEnumMemberName(name);
+    }
+
     public static string ResolveNamespace(string name, bool isBacktickEscaped)
     {
         if (isBacktickEscaped)

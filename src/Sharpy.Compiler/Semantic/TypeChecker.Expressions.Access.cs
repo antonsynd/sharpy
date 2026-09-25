@@ -149,6 +149,7 @@ internal partial class TypeChecker
         // closed type the emitter spells, and a type-alias receiver `A` (of `type A = G[int]`) is
         // normalized to its target so the member resolves against it (#1817, #1864).
         objectType = ClassifyTypeDenotingReceiver(memberAccess.Object, objectType) ?? objectType;
+        RecordNestedEnumMemberReference(memberAccess, objectType);
 
         // A qualified spelling of a builtin tagged-union case — `Optional.Some`, `Optional[int].Some`,
         // an aliased `O.Some` or a module-qualified `sharpy.Optional.Some`, in call OR value position —

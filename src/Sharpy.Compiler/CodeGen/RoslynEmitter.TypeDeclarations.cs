@@ -1180,18 +1180,11 @@ internal partial class RoslynEmitter
         => enumSymbol.IsStringEnum || GetCodeGenInfo(enumSymbol)?.IsStringEnum == true;
 
     /// <summary>
-    /// The C# identifier that names <paramref name="memberName"/> on <paramref name="enumSymbol"/>.
-    /// Three kinds of enum, three spellings, and the caller must not have to know which:
-    ///
-    /// <list type="bullet">
-    /// <item><description>a string-backed enum is a CLASS of singleton fields, emitted by
-    /// <see cref="GenerateStringEnumClass"/> through <c>NameContext.Constant</c>, so the reference
-    /// has to use that same casing;</description></item>
-    /// <item><description>a CLR enum already carries correct .NET member names, so mangling would
-    /// only corrupt them;</description></item>
-    /// <item><description>a source int-backed enum is a real C# enum whose members go through
-    /// <see cref="NameMangler.ToEnumMemberName"/>.</description></item>
-    /// </list>
+    /// The C# identifier that names <paramref name="memberName"/> on <paramref name="enumSymbol"/>:
+    /// a source enum member's materialized <c>CodeGenInfo.CSharpName</c> (#2037 — computed once by
+    /// <c>NameCasing.ResolveEnumMember</c> from the DECLARATION's escape flag and read by the
+    /// declaration arms too), a CLR enum's .NET member name, and for a Sharpy enum compiled into a
+    /// referenced assembly the speller its own compilation used.
     ///
     /// <para>One helper rather than the rule written out at each reference site, because that is
     /// exactly how it broke: the expression path made this three-way choice and the pattern path
@@ -1201,16 +1194,44 @@ internal partial class RoslynEmitter
     /// Only names already SCREAMING_SNAKE_CASE, single-word, or snake_case survived the divergence,
     /// which is why nothing in the corpus caught it (#1284).</para>
     /// </summary>
-    private SimpleNameSyntax EnumMemberIdentifier(
-        TypeSymbol enumSymbol, string memberName, bool isMemberBacktickEscaped = false)
+    private SimpleNameSyntax EnumMemberIdentifier(TypeSymbol enumSymbol, string memberName)
     {
-        if (IsStringEnumSymbol(enumSymbol))
-            return EscapedIdentifierName(NameCasing.ResolveConstant(memberName, isMemberBacktickEscaped));
+        // A source enum's member carries its materialized spelling (#2037): the DECLARATION's escape
+        // flag governs, so `C.x`, `C.`x`` and `case C.x:` all spell what the declaration emitted.
+        var member = enumSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
+        if (member != null && GetCodeGenInfo(member)?.CSharpName is { } csharpName)
+            return EscapedIdentifierName(csharpName);
 
-        return IdentifierName(enumSymbol.ClrType != null
-            ? memberName
-            : NameMangler.ToEnumMemberName(memberName));
+        // A CLR enum already carries its .NET member names.
+        if (enumSymbol.ClrType != null && !IsStringEnumSymbol(enumSymbol))
+            return IdentifierName(memberName);
+
+        // A symbol with no materialized member (a Sharpy enum compiled into a referenced assembly):
+        // the same speller its own compilation used.
+        return EscapedIdentifierName(NameCasing.ResolveEnumMember(
+            memberName, IsStringEnumSymbol(enumSymbol), member?.IsNameBacktickEscaped == true));
     }
+
+    /// <summary>
+    /// The symbol an enum DECLARATION emits: a nested enum is its enclosing type's child (the global
+    /// lookup cannot see it), a top-level one the module's.
+    /// </summary>
+    private TypeSymbol? DeclaredEnumSymbol(EnumDef enumDef)
+        => (_currentTypeSymbol?.NestedTypes.FirstOrDefault(n => n.Name == enumDef.Name)
+            ?? _context.LookupSymbol(enumDef.Name)) as TypeSymbol is { TypeKind: Semantic.TypeKind.Enum } symbol
+            ? symbol
+            : null;
+
+    /// <summary>
+    /// The C# identifier a declared enum member emits as: its member symbol's materialized
+    /// <c>CSharpName</c> (#2037) — the fact every reference reads — else the one speller over the
+    /// declaration's own flag.
+    /// </summary>
+    private string DeclaredEnumMemberName(TypeSymbol? enumSymbol, EnumMember member, bool isStringEnum)
+        => enumSymbol?.Fields.FirstOrDefault(f => f.Name == member.Name) is { } memberSymbol
+           && GetCodeGenInfo(memberSymbol)?.CSharpName is { } csharpName
+            ? csharpName
+            : NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped);
 
     /// <summary>
     /// Generates a C# enum for integer enums
@@ -1224,8 +1245,9 @@ internal partial class RoslynEmitter
         var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
 
         // Generate enum members
+        var enumSymbol = DeclaredEnumSymbol(enumDef);
         var members = enumDef.Members
-            .Select(GenerateEnumMember)
+            .Select(member => GenerateEnumMember(member, DeclaredEnumMemberName(enumSymbol, member, isStringEnum: false)))
             .ToArray();
 
         var enumDecl = EnumDeclaration(EscapedIdentifier(enumName))
@@ -1306,9 +1328,10 @@ internal partial class RoslynEmitter
 
         // public static readonly LogLevel INFO = new LogLevel("INFO", "INFO");
         var memberFieldNames = new List<string>();
+        var enumSymbol = DeclaredEnumSymbol(enumDef);
         foreach (var member in enumDef.Members)
         {
-            var fieldName = StringEnumShape.MemberFieldName(member.Name);
+            var fieldName = DeclaredEnumMemberName(enumSymbol, member, isStringEnum: true);
             memberFieldNames.Add(fieldName);
 
             // Use the explicit value if provided, otherwise the member name as written.
@@ -1409,13 +1432,9 @@ internal partial class RoslynEmitter
         return classDecl;
     }
 
-    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member)
+    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member, string memberName)
     {
-        // Enum members use PascalCase in C# (RED -> Red, DARK_BLUE -> DarkBlue)
-        // Need custom logic because NameMangler.ToPascalCase preserves all-caps words
-        var memberName = NameMangler.ToEnumMemberName(member.Name);
-
-        var enumMember = EnumMemberDeclaration(Identifier(memberName));
+        var enumMember = EnumMemberDeclaration(EscapedIdentifier(memberName));
 
         // Add explicit value if present
         if (member.Value != null)

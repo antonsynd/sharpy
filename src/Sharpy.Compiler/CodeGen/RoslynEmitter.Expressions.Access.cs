@@ -1662,14 +1662,13 @@ internal partial class RoslynEmitter
                 // GetFullyQualifiedTypeName; same-file types inside a class need module class qualification.
                 ExpressionSyntax enumType = BuildQualifiedTypeAccess(enumSymbol, enumTypeIdentifier.Name);
 
-                // String enum → the singleton field's CONSTANT_CASE name; CLR enum → the .NET name
-                // unmangled; source int enum → NameContext.EnumMember. Shared with the pattern path
-                // so the two cannot spell the same member differently (#1284).
+                // The member's materialized spelling (#2037; a CLR enum's .NET name) — shared with the
+                // pattern path so the two cannot spell the same member differently (#1284). A use-site
+                // escape changes nothing: the declaration's flag governs.
                 return MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     enumType,
-                    EnumMemberIdentifier(
-                        enumSymbol, memberAccess.Member, memberAccess.IsMemberBacktickEscaped));
+                    EnumMemberIdentifier(enumSymbol, memberAccess.Member));
             }
         }
 

@@ -361,11 +361,32 @@ internal class CodeGenInfoComputer
                 IsStringEnum = isStringEnum
             });
 
-            // Enum members keep their exact names - no CodeGenInfo needed
-            // as they are emitted as-is in C#
-
+            MaterializeEnumMemberNames(typeSymbol, enumDef, isStringEnum);
             DetectEnumMemberCollisions(enumDef, isStringEnum);
             DetectEnumEnclosingTypeCollisions(enumDef);
+        }
+    }
+
+    /// <summary>
+    /// Materializes each enum member's C# identifier on its member symbol (#2037, Rule 2 pattern a):
+    /// <see cref="NameCasing.ResolveEnumMember"/> with the DECLARATION's escape flag, which then
+    /// governs every reference — the declaration arms, <c>C.x</c>, <c>case C.x:</c> and a qualified
+    /// <c>H.C.x</c> all read this one fact, so a plain use of an escaped member and an escaped use of
+    /// a plain one spell what the declaration emitted (they were six spellers, and an escaped string
+    /// member or a nested camelCase int member was CS0117). Top-level and nested enums alike.
+    /// </summary>
+    private void MaterializeEnumMemberNames(TypeSymbol enumSymbol, EnumDef enumDef, bool isStringEnum)
+    {
+        foreach (var member in enumDef.Members)
+        {
+            if (enumSymbol.Fields.FirstOrDefault(f => f.Name == member.Name) is not { } memberSymbol)
+                continue;
+
+            SetCodeGenInfo(memberSymbol, new CodeGenInfo
+            {
+                CSharpName = NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped),
+                OriginalName = member.Name
+            });
         }
     }
 
@@ -409,6 +430,8 @@ internal class CodeGenInfoComputer
                     }
                     else if (stmt is EnumDef nestedEnum)
                     {
+                        if (typeSymbol.NestedTypes.FirstOrDefault(t => t.Name == nestedEnum.Name) is { } nestedEnumSymbol)
+                            MaterializeEnumMemberNames(nestedEnumSymbol, nestedEnum, NameResolver.IsStringEnum(nestedEnum));
                         DetectEnumEnclosingTypeCollisions(nestedEnum);
                     }
                     break;
@@ -897,8 +920,11 @@ internal class CodeGenInfoComputer
     /// C# error as SPY0908. Rung 4 by necessity: no CLR surface spells "collides after PascalCasing".
     /// The steer is the corrected R-AW wording: an escaped DECLARATION alone is not enough, because
     /// every unescaped use still spells the PascalCased name (the closed #478 contract — access sites
-    /// read their own escape flag); a union case, a union case field and a string-enum member have no
-    /// escape hatch at all (their declarations are emitted without consulting the escape flag).
+    /// read their own escape flag; #2046 tracks it as the outlier); a union case and a union case field
+    /// have no escape hatch at all (their declarations are emitted without consulting the escape
+    /// flag). A string-enum member's escaped DECLARATION is enough (#2037, ruling 3: the declaration
+    /// governs every reference), so its steer offers the escape — unless the member is already
+    /// spelled like the enum, when only a rename helps.
     /// </summary>
     private void ReportMemberEnclosingTypeCollision(
         string originalName,
@@ -909,7 +935,10 @@ internal class CodeGenInfoComputer
     {
         var (noun, steer) = memberKind switch
         {
-            EnclosingCollisionMemberKind.EnumMember => ("Enum member", "Rename the member (an enum member name cannot be backtick-escaped)."),
+            EnclosingCollisionMemberKind.EnumMember => ("Enum member",
+                NameCasing.ResolveEnumMember(originalName, isStringEnum: true, isBacktickEscaped: true) == csharpName
+                    ? "Rename the member."
+                    : $"Rename the member, or backtick-escape its declaration (`{originalName}`) to keep the Python spelling — every use follows the declaration."),
             EnclosingCollisionMemberKind.Case => ("Union case", "Rename the case (a union case name cannot be backtick-escaped)."),
             EnclosingCollisionMemberKind.CaseField => ("Union case field", "Rename the field (a union case field cannot be backtick-escaped)."),
             _ => ("Member", $"Rename the member, or backtick-escape the declaration AND every use (`{originalName}`, " +
@@ -1038,7 +1067,7 @@ internal class CodeGenInfoComputer
         var reported = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in enumDef.Members)
         {
-            var fieldName = StringEnumShape.MemberFieldName(member.Name);
+            var fieldName = NameCasing.ResolveEnumMember(member.Name, isStringEnum: true, member.IsNameBacktickEscaped);
             if (fieldName == className && reported.Add(member.Name))
             {
                 ReportMemberEnclosingTypeCollision(
@@ -1107,20 +1136,6 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// The C# name an enum member compiles to. Two spellings, because an enum lowers two ways:
-    /// an int-backed enum is a real C# enum whose members go through
-    /// <see cref="NameMangler.ToEnumMemberName"/> (<c>GenerateEnumMember</c>), while a string-backed
-    /// enum is a class of singleton fields written through <c>NameContext.Constant</c>
-    /// (<c>GenerateStringEnumClass</c>, #1284). Keying the collision walk on the wrong one would
-    /// make the check disagree with emission — <c>low</c>/<c>LOW</c> collide under one rule and not
-    /// the other.
-    /// </summary>
-    private static string EnumMemberCSharpName(string memberName, bool isStringEnum)
-        => isStringEnum
-            ? StringEnumShape.MemberFieldName(memberName)
-            : NameMangler.ToEnumMemberName(memberName);
-
-    /// <summary>
     /// Detects name collisions among an enum's members after mangling. Enums have their own walk
     /// because their members are not symbols and their naming rule is neither a field's nor a
     /// method's (#1385).
@@ -1132,7 +1147,7 @@ internal class CodeGenInfoComputer
 
         foreach (var member in enumDef.Members)
         {
-            var csharpName = EnumMemberCSharpName(member.Name, isStringEnum);
+            var csharpName = NameCasing.ResolveEnumMember(member.Name, isStringEnum, member.IsNameBacktickEscaped);
             var position = DeclarationPosition.From(member.LineStart, member.ColumnStart);
 
             if (seen.TryGetValue(csharpName, out var existing))
@@ -1142,9 +1157,8 @@ internal class CodeGenInfoComputer
                 if (string.Equals(member.Name, existing.originalName, StringComparison.Ordinal))
                     continue;
 
-                // EnumMember records IsNameBacktickEscaped since #1604, but the emitter's
-                // member-mangling path deliberately does not consult it (out of #1604's scope),
-                // so renaming remains the only fix offered to the user.
+                // The escape is the other fix: an escaped member compiles verbatim, and every
+                // reference follows the declaration (#2037).
                 _diagnostics.AddErrorWithRelatedLocations(
                     $"Name collision: enum members '{member.Name}' and '{existing.originalName}'" +
                     $"{FirstDeclarationProse(existing.position)} both compile to '{csharpName}'. Rename one.",

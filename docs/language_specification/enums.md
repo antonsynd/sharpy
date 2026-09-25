@@ -14,14 +14,17 @@ enum HttpMethod:
     PUT = "PUT"
     DELETE = "DELETE"
 
-# Usage
-favorite = Color.RED
-if favorite == Color.RED:
-    print("Red is your favorite")
 
-# Access underlying value
-value = favorite.value  # 1
-name = favorite.name    # "RED"
+
+def main() -> None:
+    favorite = Color.RED
+    if favorite == Color.RED:
+        print("Red is your favorite")
+
+    # Access underlying value
+    value = favorite.value  # 1
+    name = favorite.name    # "RED"
+    print(value, name)      # 1 RED
 ```
 
 **Rules:**
@@ -37,22 +40,26 @@ enum Color:
     GREEN = 2
     BLUE = 3
 
-# Iterate over all enum values
-for color in Color:
-    print(f"{color.name} = {color.value}")
-# Output:
-# RED = 1
-# GREEN = 2
-# BLUE = 3
 
-# Get all values as a list
-all_colors: list[Color] = list(Color)
 
-# Get all names
-names: list[str] = [c.name for c in Color]  # ["RED", "GREEN", "BLUE"]
+def main() -> None:
+    # Iterate over all enum values
+    for color in Color:
+        print(f"{color.name} = {color.value}")
+    # Output:
+    # RED = 1
+    # GREEN = 2
+    # BLUE = 3
 
-# Get all values
-values: list[int] = [c.value for c in Color]  # [1, 2, 3]
+    # Get all values as a list
+    all_colors: list[Color] = list(Color)
+
+    # Get all names
+    names: list[str] = [c.name for c in Color]  # ["RED", "GREEN", "BLUE"]
+
+    # Get all values
+    values: list[int] = [c.value for c in Color]  # [1, 2, 3]
+    print(len(all_colors), names, values)         # 3 ['RED', 'GREEN', 'BLUE'] [1, 2, 3]
 ```
 
 **Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions, see [tagged_unions.md](tagged_unions.md).
@@ -88,9 +95,11 @@ def main() -> None:
 Because a string-backed enum lowers to a class, no name the class declares may equal the enum's own
 (C#'s CS0542). A member that compiles to the enum's name, and a string enum named like one of the
 members its class synthesizes (`Name`, `Value`, `Values`, `ToString` — so `enum value` too), are
-refused with `SPY0525`: rename the member or the enum (an enum member's declaration cannot be
-backtick-escaped). An integer-backed enum is a C# `enum`, whose members may share its name, so
-`enum Color: Color = 1` compiles.
+refused with `SPY0525`: rename the member or the enum. When it is the member's *casing* that
+collides (`color` compiles to `Color`), backtick-escaping the member's declaration also works: an
+escaped member compiles verbatim, and every reference to it — `Color.color`, ``Color.`color` ``,
+`case Color.color:` — follows the declaration, escaped or not. An integer-backed enum is a C# `enum`,
+whose members may share its name, so `enum Color: Color = 1` compiles.
 
 <!-- spec-sweep: error SPY0525 -->
 ```python
@@ -101,6 +110,17 @@ enum Color:
 
 def main() -> None:
     print(Color.RED)
+```
+
+```python
+enum Color:
+    `color` = "c"    # escaped: compiles to 'color', no clash with 'Color'
+    RED = "r"
+
+
+def main() -> None:
+    print(Color.color.value)      # c — a plain use follows the escaped declaration
+    print(Color.`color`.value)    # c
 ```
 
 *Implementation*

@@ -26,7 +26,10 @@ internal static class StringEnumShape
     /// <summary>Every member the lowering synthesizes whatever the enum declares.</summary>
     public static readonly string[] SynthesizedMembers = { NameProperty, ValueProperty, ValuesList, ToStringMethod };
 
-    /// <summary>The C# name of the singleton field a declared member compiles to.</summary>
+    /// <summary>
+    /// The C# name of the singleton field an UNESCAPED declared member compiles to — read only through
+    /// <see cref="NameCasing.ResolveEnumMember"/>, which applies the declaration's escape (#2037).
+    /// </summary>
     public static string MemberFieldName(string memberName)
         => NameMangler.Transform(memberName, NameContext.Constant);
 }

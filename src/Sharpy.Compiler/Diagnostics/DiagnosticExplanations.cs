@@ -159,9 +159,11 @@ public static partial class DiagnosticExplanations
             "class Q:\n    q: int   # compiles to 'Q', the same as its class",
             "Rename the member, or backtick-escape the declaration AND every use (`q` in the class, v.`q` at each " +
             "access) to keep the Python spelling: an escaped name is emitted verbatim, so it no longer PascalCases " +
-            "into the type name. Escaping the declaration alone leaves the unescaped uses spelling 'Q'. A union " +
-            "case, a union case field and a string-enum member have no escape hatch — rename them; a string enum " +
-            "named like a synthesized member — rename the enum.");
+            "into the type name. Escaping the declaration alone leaves the unescaped uses spelling 'Q'. A " +
+            "string-enum member is the exception: its escaped declaration alone suffices ('`color` = \"c\"' in " +
+            "'enum Color' is emitted 'color'), because every reference to an enum member follows its declaration. " +
+            "A union case and a union case field have no escape hatch — rename them; a string enum named like a " +
+            "synthesized member — rename the enum.");
 
         Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package directory and module file emit the same identifier", "CodeGen",
             "In a project, each directory above a source file becomes a C# wrapper class and the file itself " +
