@@ -748,10 +748,9 @@ internal partial class RoslynEmitter
         }
         catch (OverflowException)
         {
-            _context.Diagnostics.AddError(
+            _context.ReportAt(literal,
                 $"Integer literal '{literal.Value}' is too large for a 64-bit integer",
-                literal.LineStart, literal.ColumnStart,
-                code: DiagnosticCodes.CodeGen.EmitError);
+                DiagnosticCodes.CodeGen.EmitError);
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
         }
 

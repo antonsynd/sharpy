@@ -214,11 +214,11 @@ public static class CompilerInvariants
     /// <c>ReparseEquivalenceConformanceTests</c> and the executing file-based fixture corpus, and
     /// genuine binding errors still surface downstream when the trees reach <c>CSharpCompilation</c>.
     /// </remarks>
-    public static void AssertPostCodeGen(SyntaxTree generatedTree, DiagnosticBag diagnostics)
+    public static void AssertPostCodeGen(SyntaxTree generatedTree, DiagnosticBag diagnostics, string? sourceFilePath = null)
     {
         ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentNullException.ThrowIfNull(generatedTree);
-        AssertGeneratedCSharpParses(generatedTree, diagnostics);
+        ReportSyntaxErrors(generatedTree, diagnostics, sourceFilePath);
     }
 
     /// <summary>
@@ -447,7 +447,8 @@ public static class CompilerInvariants
     /// <c>HasErrors</c> check then keeps the unit away from the C# compiler, so the class is named
     /// here instead of surfacing as CS0173/CS0019/CS8716 behind SPY0908.
     /// </summary>
-    internal static void AssertEmittedTreePrecedence(CompilationUnitSyntax emitterUnit, DiagnosticBag diagnostics)
+    internal static void AssertEmittedTreePrecedence(
+        CompilationUnitSyntax emitterUnit, DiagnosticBag diagnostics, string? sourceFilePath = null)
     {
         ArgumentNullException.ThrowIfNull(emitterUnit);
         ArgumentNullException.ThrowIfNull(diagnostics);
@@ -460,12 +461,13 @@ public static class CompilerInvariants
                 $"Internal error: emitted C# tree inverts operator precedence -- unparenthesized {violation.ChildKind} " +
                 $"operand of {violation.ParentKind} ({violation.Slot} slot) at generated line {violation.Line}: '{text}'. " +
                 "The tree is correct but its printed text re-associates. This is a compiler bug -- please report it.",
+                filePath: sourceFilePath,
                 code: DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion,
                 phase: CompilerPhase.CodeGeneration);
         }
     }
 
-    private static void ReportSyntaxErrors(SyntaxTree tree, DiagnosticBag diagnostics)
+    private static void ReportSyntaxErrors(SyntaxTree tree, DiagnosticBag diagnostics, string? sourceFilePath = null)
     {
         var parseDiagnostics = tree.GetDiagnostics()
             .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
@@ -475,6 +477,7 @@ public static class CompilerInvariants
             var details = string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)));
             diagnostics.AddError(
                 $"Internal error: generated C# contains {parseDiagnostics.Count} syntax error(s): {details}. This is a compiler bug -- please report it.",
+                filePath: sourceFilePath,
                 code: DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError,
                 phase: CompilerPhase.CodeGeneration);
         }

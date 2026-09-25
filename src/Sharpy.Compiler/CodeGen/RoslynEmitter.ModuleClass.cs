@@ -288,7 +288,9 @@ internal partial class RoslynEmitter
             {
                 // This is an error - when main() is defined, it will be automatically invoked
                 // Users should not have executable statements alongside a main function definition
-                _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.", code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
+                _context.ReportAt(trulyExecutableStatements[0],
+                    "Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.",
+                    DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
             }
             // else: Only VariableDeclaration statements remain, which are legitimate typed declarations
             // These will be handled by generating them as local variables in a synthesized static constructor or similar
@@ -374,20 +376,20 @@ internal partial class RoslynEmitter
                 }
                 else if (stmt is ClassDef generic)
                 {
-                    _context.AddError(
+                    _context.ReportAt(generic,
                         $"Type '{generic.Name}' conflicts with module class name '{moduleClassName}': a generic " +
                         "class cannot merge into the module class, and C# cannot nest it inside a class of the same " +
                         "name (CS0542). Rename the type or the source file to avoid this collision.",
-                        code: DiagnosticCodes.CodeGen.NameCollision);
+                        DiagnosticCodes.CodeGen.NameCollision);
                 }
                 else if (typeName != null && typeName == moduleClassName)
                 {
                     // Collision with struct/interface/enum/delegate/union — error (can't merge)
                     var srcName = stmt switch { StructDef sd => sd.Name, InterfaceDef id => id.Name, EnumDef ed => ed.Name, DelegateDef dd => dd.Name, UnionDef ud => ud.Name, _ => "?" };
-                    _context.AddError(
+                    _context.ReportAt(stmt,
                         $"Type '{srcName}' conflicts with module class name '{moduleClassName}'. " +
                         $"Rename the type or the source file to avoid this collision.",
-                        code: DiagnosticCodes.CodeGen.NameCollision);
+                        DiagnosticCodes.CodeGen.NameCollision);
                 }
             }
         }

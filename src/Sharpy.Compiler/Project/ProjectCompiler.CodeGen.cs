@@ -106,7 +106,7 @@ internal partial class ProjectCompiler
                 // below, so both branches are covered; a violation is an SPY0524 error, and the HasErrors
                 // check further down keeps the unit away from the C# compiler instead of leaking
                 // CS0173/CS0019/CS8716 behind SPY0908.
-                CompilerInvariants.AssertEmittedTreePrecedence(roslynCompilationUnit, codeGenContext.Diagnostics);
+                CompilerInvariants.AssertEmittedTreePrecedence(roslynCompilationUnit, codeGenContext.Diagnostics, sourceFile);
 
                 var emittedCode = roslynCompilationUnit.ToFullString();
 
@@ -159,8 +159,8 @@ internal partial class ProjectCompiler
                 // info notes (e.g. SPY1001 implicit-interface synthesis) must reach the
                 // result bag so the CLI, LSP, and fixture .warning assertions can observe
                 // them; previously they were silently dropped unless codegen also errored.
-                MergeWithPhase(unit.Diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration);
-                MergeWithPhase(_diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration);
+                MergeWithPhase(unit.Diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration, sourceFile);
+                MergeWithPhase(_diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration, sourceFile);
 
                 // Check for code generation errors
                 if (codeGenContext.HasErrors)
@@ -180,7 +180,7 @@ internal partial class ProjectCompiler
                 // Validate the tree that is actually handed to Roslyn (GetDiagnostics on this same
                 // instance): the emitter's node on the zero-parse path (REPL), or the reparse of the
                 // post-processed #line text on the EmitLineDirectives path (#1050/#1077/#1126).
-                CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics);
+                CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics, sourceFile);
 
                 // Log per-file code gen metrics at Debug level
                 if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)

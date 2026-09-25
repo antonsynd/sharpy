@@ -59,31 +59,37 @@ public static partial class DiagnosticExplanations
             "Check the language specification for supported features, or file a feature request.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmptyClassName, "Empty class name in code generation", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator encountered a class with an empty name. This is an internal compiler error.",
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.DuplicateMember, "Duplicate member in generated code", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator detected a duplicate member name in the generated C# class. This can happen when name mangling produces a collision.",
             null,
             "Rename one of the conflicting members to avoid the collision.");
 
         Add(dict, DiagnosticCodes.CodeGen.EmptyMethodName, "Empty method name in code generation", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator encountered a method with an empty name. This is an internal compiler error.",
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.AbstractMethodWithBody, "Abstract method with body in code generation", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator encountered an abstract method that has a body. Abstract methods should not have implementations.",
             null,
             "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.NonAbstractMethodWithoutBody, "Non-abstract method without body", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator encountered a concrete (non-abstract) method that has no body. Only abstract and interface methods can omit the body.",
             null,
             "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.VarWithoutInitializer, "Variable without initializer in code generation", "CodeGen",
+            "RETIRED (#2032): only CodeValidator emitted this code, and it had no production caller; it was deleted and the code is reserved, never reused. " +
             "The code generator encountered a variable declaration without an initializer. All variables should have initializers by this point in the compilation pipeline.",
             null,
             "This is an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues.");

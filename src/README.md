@@ -42,8 +42,7 @@ Sharpy.Compiler/
 │   │                      # .ClassMembers, .CompilationUnit, .ModuleClass, .Operators
 │   ├── TypeMapper.cs    # Maps Sharpy types to C# types
 │   ├── NameMangler.cs   # Name conversion (snake_case → PascalCase)
-│   ├── CodeGenContext.cs # Code generation state
-│   └── CodeValidator.cs # Validates generated code compiles
+│   └── CodeGenContext.cs # Code generation state
 ├── Project/            # Multi-file project compilation
 │   ├── ProjectCompiler.cs # Orchestrates compilation (7 partial files)
 │   ├── DependencyGraph.cs # Build ordering

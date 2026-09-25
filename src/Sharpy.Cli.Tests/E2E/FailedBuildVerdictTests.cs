@@ -68,8 +68,8 @@ public class FailedBuildVerdictTests : IDisposable
         result.StdErr.Should().Contain("Build FAILED.", combined);
         combined.Should().NotContain("Build succeeded.");
         combined.Should().Contain("error[SPY0520]: Type 'Probe' conflicts with module class name 'Probe'.");
-        combined.Should().Contain("--> " + _ws.PathFor("probe.spy"),
-            "the refusal names the file whose type collides");
+        combined.Should().Contain("--> " + _ws.PathFor("probe.spy") + ":1:8",
+            "the refusal names the file whose type collides and the type's name token (#2032)");
 
         var artifacts = Directory.Exists(_ws.PathFor("bin"))
             ? Directory.GetFiles(_ws.PathFor("bin"), "Probe.*", SearchOption.AllDirectories)

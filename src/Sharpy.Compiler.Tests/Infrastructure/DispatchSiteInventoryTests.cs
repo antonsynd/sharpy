@@ -90,6 +90,8 @@ public class DispatchSiteInventoryTests
         ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.IsTotal"] = "guarded-by:ExhaustivenessHelperTotalityTests",
         // PatternHead.TryGet — the ONE switch on the three class-pattern head kinds (P13 DD8).
         ["Shared/PatternHead.cs::PatternHead.TryGet"] = "guarded-by:ExhaustivenessHelperTotalityTests",
+        // DeclarationPosition.Of — a diagnostic's name-token position per declaration kind (#2032)
+        ["Shared/DeclarationPosition.cs::DeclarationPosition.Of"] = "guarded-by:DeclarationPositionTotalityTests",
 
         // ModuleLoader — symbol extraction
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractExportedSymbol"] = "guarded-by:ModuleLoaderTotalityTests",

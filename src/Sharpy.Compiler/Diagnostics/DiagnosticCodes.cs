@@ -852,12 +852,14 @@ public static class DiagnosticCodes
 
         public const string EmitError = "SPY0500";                  // Active
         public const string UnsupportedFeature = "SPY0501";         // Active
-        public const string EmptyClassName = "SPY0502";             // Active
-        public const string DuplicateMember = "SPY0503";            // Active
-        public const string EmptyMethodName = "SPY0504";            // Active
-        public const string AbstractMethodWithBody = "SPY0505";     // Active
-        public const string NonAbstractMethodWithoutBody = "SPY0506"; // Active
-        public const string VarWithoutInitializer = "SPY0507";      // Active
+        // SPY0502-SPY0507 were emitted only by CodeValidator, which had no production caller and was
+        // deleted (#2032); reserved, never reused.
+        public const string EmptyClassName = "SPY0502";             // Retired
+        public const string DuplicateMember = "SPY0503";            // Retired
+        public const string EmptyMethodName = "SPY0504";            // Retired
+        public const string AbstractMethodWithBody = "SPY0505";     // Retired
+        public const string NonAbstractMethodWithoutBody = "SPY0506"; // Retired
+        public const string VarWithoutInitializer = "SPY0507";      // Retired
         public const string PositionalPatternFallback = "SPY0508";  // Active
         // SPY0509: Reserved
         public const string UnrecognizedStatementType = "SPY0510";  // Active

@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
@@ -73,6 +74,19 @@ internal class CodeGenContext
     public void AddError(string message, string? code = null, int? line = null, int? column = null)
     {
         _diagnostics.AddError(message, line, column, SourceFilePath, code, CompilerPhase.CodeGeneration);
+    }
+
+    /// <summary>
+    /// Report an error about <paramref name="node"/>: this file's path and the node's location — a
+    /// declaration's NAME token (<see cref="DeclarationPosition.Of"/>), any other node's start. The
+    /// one emitter reporting helper for a diagnostic that belongs to a source node, so no emitter
+    /// site can report without a path or a position (#2032, guarded by
+    /// <c>EmitterDiagnosticLocationRosterTests</c>).
+    /// </summary>
+    public void ReportAt(Node node, string message, string code)
+    {
+        var position = DeclarationPosition.Of(node);
+        _diagnostics.AddError(message, position?.Line, position?.Column, SourceFilePath, code, CompilerPhase.CodeGeneration);
     }
 
     /// <summary>

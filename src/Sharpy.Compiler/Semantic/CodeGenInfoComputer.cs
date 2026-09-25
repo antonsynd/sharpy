@@ -695,29 +695,6 @@ internal class CodeGenInfoComputer
     };
 
     /// <summary>
-    /// Where a declaration is, for a diagnostic to point at. A collision names two declarations and
-    /// both positions are real source locations; carrying only a line (all these walks tracked
-    /// before #1388) forced every consumer to render column 0.
-    /// </summary>
-    private readonly record struct DeclarationPosition(int Line, int Column)
-    {
-        /// <summary>
-        /// Prefers the NAME token's position over the statement's, so the caret lands on the
-        /// identifier the user has to rename rather than on the <c>def</c>/<c>class</c>/
-        /// <c>property</c> keyword in front of it. Falls back to the statement when the name
-        /// position is not tracked, and to nothing when neither is.
-        /// </summary>
-        public static DeclarationPosition? From(int nameLine, int nameColumn, int stmtLine, int stmtColumn)
-            => nameLine > 0 ? new DeclarationPosition(nameLine, nameColumn)
-                : stmtLine > 0 ? new DeclarationPosition(stmtLine, stmtColumn)
-                : null;
-
-        /// <summary>For nodes that carry a single position (type parameters, enum members).</summary>
-        public static DeclarationPosition? From(int line, int column)
-            => line > 0 ? new DeclarationPosition(line, column) : null;
-    }
-
-    /// <summary>
     /// The <c>(line N)</c> the collision messages append for the FIRST of the two declarations.
     ///
     /// <para>Kept alongside the structured related location rather than replaced by it: an editor

@@ -888,8 +888,10 @@ internal partial class ProjectCompiler
                     unit.Ast, unit.FilePath, fileFeatures, gateDiagnostics);
                 if (gateDiagnostics.GetAll().Count > 0)
                 {
-                    unit.Diagnostics.Merge(gateDiagnostics);
-                    _diagnostics.Merge(gateDiagnostics);
+                    // Every per-file merge seam stamps the unit's path on a path-less diagnostic
+                    // (#2032); the gate checker reports as TypeChecking itself.
+                    MergeWithPhase(unit.Diagnostics, gateDiagnostics, CompilerPhase.TypeChecking, unit.FilePath);
+                    MergeWithPhase(_diagnostics, gateDiagnostics, CompilerPhase.TypeChecking, unit.FilePath);
                 }
                 // Advance the project bag's phase high-water mark to TypeChecking for the whole
                 // type-check window. The ICE handler reads _diagnostics.LastEnteredPhase; before
@@ -931,7 +933,7 @@ internal partial class ProjectCompiler
                     fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
 
                     // Preserve all accumulated diagnostics from the type checker
-                    MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
+                    MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking, unit.FilePath);
                     unit.Phase = CompilationPhase.Failed;
                     continue;
                 }
@@ -944,9 +946,12 @@ internal partial class ProjectCompiler
                     fileMetrics.SetValidatorTimes(validatorDict);
                 }
 
-                // Merge all type checking diagnostics to both unit and project level
-                MergeWithPhase(unit.Diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
-                MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
+                // Merge all type checking diagnostics to both unit and project level, stamping this
+                // file's path on every path-less one (#2032, the #1437 design the parse seams use).
+                // Measured before choosing this seam: no path-less type-checker diagnostic is about
+                // ANOTHER file (import diagnostics ride the ImportResolver's own bag, with paths).
+                MergeWithPhase(unit.Diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking, unit.FilePath);
+                MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking, unit.FilePath);
 
                 // Capture per-file artifact counts
                 fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;

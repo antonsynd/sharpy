@@ -19,7 +19,6 @@ This directory contains the Roslyn-based C# code generator.
 - `CodeGenContext.cs` - Shared context for emission
 - `TypeSyntaxMapper.cs` - Maps Sharpy types to C# types
 - `NameMangler.cs` - Converts snake_case to PascalCase, dunder methods
-- `CodeValidator.cs` - Validates generated code compiles
 
 ## Generated Code Structure
 

@@ -183,13 +183,13 @@ internal partial class ProjectCompiler
             // Same structural precedence net as the main path (#1727, #1712). Defensive here — this
             // handoff is zero-parse, so an inversion would still bind as the tree means — but the unit
             // must name the class uniformly rather than depend on which seam it flows through.
-            CompilerInvariants.AssertEmittedTreePrecedence(roslynUnit, codeGenContext.Diagnostics);
+            CompilerInvariants.AssertEmittedTreePrecedence(roslynUnit, codeGenContext.Diagnostics, filePath);
 
             var csharpCode = roslynUnit.ToFullString();
 
             if (codeGenContext.HasErrors)
             {
-                _diagnostics.Merge(codeGenContext.Diagnostics);
+                MergeWithPhase(_diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration, filePath);
                 return null;
             }
 

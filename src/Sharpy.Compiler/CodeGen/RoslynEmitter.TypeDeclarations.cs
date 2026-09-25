@@ -636,10 +636,9 @@ internal partial class RoslynEmitter
                     }
                     else
                     {
-                        _context.Diagnostics.AddError(
+                        _context.ReportAt(funcDef,
                             $"Cannot resolve interface method '{funcDef.Name}' from interface '{interfaceName}' for abstract stub generation",
-                            funcDef.LineStart, funcDef.ColumnStart,
-                            code: DiagnosticCodes.CodeGen.EmitError);
+                            DiagnosticCodes.CodeGen.EmitError);
                     }
                 }
             }
