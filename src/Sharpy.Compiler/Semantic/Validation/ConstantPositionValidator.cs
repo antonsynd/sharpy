@@ -419,7 +419,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         // legitimately passes None for that field.
         if (isMutableCollectionFamily)
         {
-            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type, AnnotationPosition.Value);
             if (slotType is NullableType or OptionalType)
             {
                 AddMutableDefaultError(slot);
@@ -431,7 +431,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         // Check None assignment to non-nullable types
         if (defaultValue is NoneLiteral)
         {
-            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type, AnnotationPosition.Value);
 
             if (slotType is not NullableType and not OptionalType && slotType is not UnknownType)
             {
@@ -448,7 +448,7 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         if (defaultValue is FunctionCall { Function: NoneLiteral } noneCall
             && noneCall.Arguments.Length == 0 && noneCall.KeywordArguments.Length == 0)
         {
-            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type, AnnotationPosition.Value);
 
             if (slotType is not OptionalType && slotType is not UnknownType)
             {

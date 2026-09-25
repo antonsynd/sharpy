@@ -141,7 +141,7 @@ public class TypeAnnotationModifierMatrixTests
     {
         var (resolver, _, semanticInfo) = CreateResolver();
         var annotation = MakeAnnotation(kind, modifier);
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         switch (modifier)
         {
@@ -292,7 +292,7 @@ public class TypeAnnotationModifierMatrixTests
             _ => throw new ArgumentException(modifier)
         };
 
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().Be(SemanticType.Unknown,
             $"auto x {modifier}: auto resolves to Unknown, modifier tail skips it");
@@ -309,7 +309,7 @@ public class TypeAnnotationModifierMatrixTests
     {
         var (resolver, _, _) = CreateResolver();
         var annotation = new TypeAnnotation { Name = "UserId", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>("alias x ? must produce OptionalType");
         var opt = (OptionalType)type;

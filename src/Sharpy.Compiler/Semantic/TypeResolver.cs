@@ -77,6 +77,10 @@ internal class TypeResolver
     /// </summary>
     public void SetIsStaticContext(bool isStatic) => _isStaticContext = isStatic;
 
+    /// <param name="position">
+    /// Whether the annotation is a return slot, where <c>None</c> means void, or a value slot, where
+    /// it is SPY0614 (#2004). No default: every caller states it.
+    /// </param>
     /// <param name="bareGenericFillsFromContext">
     /// Whether a bare reference to a generic type names something this position can still complete.
     /// False for an annotation — nothing there supplies the arguments, so a deficient reference draws
@@ -86,7 +90,7 @@ internal class TypeResolver
     /// bare symbol back to apply it, and an arity error here would pre-empt a better diagnosis.
     /// </param>
     public SemanticType ResolveTypeAnnotation(
-        TypeAnnotation? annotation, bool bareGenericFillsFromContext = false)
+        TypeAnnotation? annotation, AnnotationPosition position, bool bareGenericFillsFromContext = false)
     {
         if (annotation == null)
             return SemanticType.Unknown;
@@ -178,7 +182,7 @@ internal class TypeResolver
                 IsCSharpNullable = false,
                 ErrorType = null,
             };
-            var bareResult = ApplyAnnotationModifiers(annotation, ResolveTypeAnnotation(bareAnnotation));
+            var bareResult = ApplyAnnotationModifiers(annotation, ResolveTypeAnnotation(bareAnnotation, position));
             // The recursive call recorded the reference on bareAnnotation; pass null to
             // avoid double-recording on the original node at the same span (#1737).
             _semanticInfo.SetTypeAnnotation(annotation, bareResult, boundSymbol: null);
@@ -232,7 +236,7 @@ internal class TypeResolver
                 }
                 else
                 {
-                    var typeArgs = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta)).ToList();
+                    var typeArgs = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value)).ToList();
                     result = ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional);
                 }
             }
@@ -360,6 +364,19 @@ internal class TypeResolver
             }
         }
 
+        // `None` is not a type (#2004, Decision 16, following builtin_functions.md): only a return
+        // slot spells "no value". In a value slot it used to become C# `void` and die as SPY0599 /
+        // SPY0908. Checked on the resolved type, before the modifiers, so an alias whose body is
+        // `None` (resolved as a return slot, where it is legal) is refused at the value-slot USE,
+        // and `None?` is refused too. Rung 4: no CLR identity exists for NoneType.
+        if (position == AnnotationPosition.Value && result is VoidType)
+        {
+            AddError("'None' is not a type; annotate a local, parameter, field or type argument as `T | None`, or use `object`",
+                annotation.LineStart, annotation.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.NoneAnnotationInValuePosition, span: annotation.Span);
+            result = SemanticType.Unknown;
+        }
+
         result = ApplyAnnotationModifiers(annotation, result);
 
         // The seam is reached either way: `_suppressAnnotationCache` suppresses the CACHE, because a
@@ -390,7 +407,7 @@ internal class TypeResolver
         // Handle T !E (Result type) — must come before T? and | None
         if (annotation.ErrorType != null && result != SemanticType.Unknown)
         {
-            var errorType = ResolveTypeAnnotation(annotation.ErrorType);
+            var errorType = ResolveTypeAnnotation(annotation.ErrorType, AnnotationPosition.Value);
             result = new ResultType
             {
                 OkType = result,
@@ -691,15 +708,15 @@ internal class TypeResolver
         // Handle explicit Optional[T] syntax
         if (!escaped && annotation.Name == "Optional" && annotation.TypeArguments.Length == 1)
         {
-            var underlyingType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
+            var underlyingType = ResolveTypeAnnotation(annotation.TypeArguments[0], AnnotationPosition.Value);
             return new OptionalType { UnderlyingType = underlyingType };
         }
 
         // Handle explicit Result[T, E] syntax
         if (!escaped && annotation.Name == "Result" && annotation.TypeArguments.Length == 2)
         {
-            var okType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
-            var errorType = ResolveTypeAnnotation(annotation.TypeArguments[1]);
+            var okType = ResolveTypeAnnotation(annotation.TypeArguments[0], AnnotationPosition.Value);
+            var errorType = ResolveTypeAnnotation(annotation.TypeArguments[1], AnnotationPosition.Value);
             return new ResultType { OkType = okType, ErrorType = errorType };
         }
 
@@ -714,7 +731,7 @@ internal class TypeResolver
                 return SemanticType.Unknown;
             }
 
-            var elementType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
+            var elementType = ResolveTypeAnnotation(annotation.TypeArguments[0], AnnotationPosition.Value);
             return new GenericType
             {
                 Name = BuiltinNames.Array,
@@ -726,7 +743,7 @@ internal class TypeResolver
         if (!escaped && annotation.Name == BuiltinNames.Tuple)
         {
             var elementTypes = annotation.TypeArguments
-                .Select(ta => ResolveTypeAnnotation(ta))
+                .Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value))
                 .ToList();
 
             var tupleType = new TupleType { ElementTypes = elementTypes };
@@ -751,8 +768,12 @@ internal class TypeResolver
                 return SemanticType.Unknown;
             }
 
-            // Last type argument is the return type, rest are parameter types
-            var allTypes = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta)).ToList();
+            // Last type argument is the return type, rest are parameter types — so the last is the
+            // one return slot of `(…) -> None` (#2004).
+            var lastIndex = annotation.TypeArguments.Length - 1;
+            var allTypes = annotation.TypeArguments
+                .Select((ta, i) => ResolveTypeAnnotation(ta, i == lastIndex ? AnnotationPosition.Return : AnnotationPosition.Value))
+                .ToList();
             var returnType = allTypes[^1];
             var paramTypes = allTypes.Take(allTypes.Count - 1).ToList();
 
@@ -833,7 +854,7 @@ internal class TypeResolver
 
         // Resolve type arguments
         var typeArgs = annotation.TypeArguments
-            .Select(ta => ResolveTypeAnnotation(ta))
+            .Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value))
             .ToList();
 
         // Validate type argument count (PEP 696: allow fewer if remaining have defaults)
@@ -894,7 +915,7 @@ internal class TypeResolver
         // Expand type annotation
         if (aliasSymbol.TypeAnnotation != null)
         {
-            result = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+            result = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Return);
         }
         // Expand function type
         else if (aliasSymbol.FunctionType != null)
@@ -954,7 +975,7 @@ internal class TypeResolver
             return ResolveInTypeParameterScope(
                 typeParameters,
                 count: index,
-                resolve: () => ResolveTypeAnnotation(defaultAnnotation),
+                resolve: () => ResolveTypeAnnotation(defaultAnnotation, AnnotationPosition.Value),
                 boundArguments);
         }
         finally
@@ -1056,7 +1077,7 @@ internal class TypeResolver
             {
                 if (aliasSymbol.TypeAnnotation != null)
                 {
-                    expanded = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+                    expanded = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Return);
                 }
                 else if (aliasSymbol.FunctionType != null)
                 {
@@ -1106,10 +1127,10 @@ internal class TypeResolver
     private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)
     {
         var paramTypes = functionType.ParameterTypes
-            .Select(ta => ResolveTypeAnnotation(ta))
+            .Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value))
             .ToList();
 
-        var returnType = ResolveTypeAnnotation(functionType.ReturnType);
+        var returnType = ResolveTypeAnnotation(functionType.ReturnType, AnnotationPosition.Return);
 
         return new Semantic.FunctionType
         {

@@ -974,7 +974,7 @@ internal partial class TypeChecker
         // for a name the class plainly declares (#1795).
         DefineTypeBodyConstFields();
 
-        var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type);
+        var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type, AnnotationPosition.Value);
 
         if (varDecl.InitialValue != null)
         {
@@ -1716,7 +1716,7 @@ internal partial class TypeChecker
                     exceptionType = exceptionGroupSymbol != null
                         ? new UserDefinedType { Name = "ExceptionGroup", Symbol = exceptionGroupSymbol }
                         : _typeResolver.ResolveTypeAnnotation(
-                            new TypeAnnotation { Name = "ExceptionGroup", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+                            new TypeAnnotation { Name = "ExceptionGroup", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart }, AnnotationPosition.Value);
                 }
                 else
                 {
@@ -1729,9 +1729,9 @@ internal partial class TypeChecker
                             // there already has its own diagnosis, so this fallback must not add the
                             // annotation arity error on top (#1331).
                             ? _typeResolver.ResolveTypeAnnotation(
-                                handler.ExceptionType, bareGenericFillsFromContext: true)
+                                handler.ExceptionType, AnnotationPosition.Value, bareGenericFillsFromContext: true)
                             : _typeResolver.ResolveTypeAnnotation(
-                                new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart }));
+                                new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart }, AnnotationPosition.Value));
                 }
 
                 var varSymbol = new VariableSymbol

@@ -1812,7 +1812,7 @@ internal partial class TypeChecker
                 IsCSharpNullable = false,
                 ErrorType = null
             };
-            var baseTargetType = _typeResolver.ResolveTypeAnnotation(baseAnnotation);
+            var baseTargetType = _typeResolver.ResolveTypeAnnotation(baseAnnotation, AnnotationPosition.Value);
             if (baseTargetType is not UnknownType)
             {
                 _semanticInfo.SetTypeTestLowering(
@@ -1832,7 +1832,7 @@ internal partial class TypeChecker
             ? (coercion.Mode == CastFailureMode.Null
                 ? new OptionalType { UnderlyingType = decidedTarget }
                 : decidedTarget)
-            : _typeResolver.ResolveTypeAnnotation(targetAnnotation);
+            : _typeResolver.ResolveTypeAnnotation(targetAnnotation, AnnotationPosition.Value);
 
         // If either type is unknown, skip validation to avoid cascading errors
         if (sourceType is UnknownType || targetType is UnknownType)
@@ -2171,7 +2171,7 @@ internal partial class TypeChecker
             var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
             foreach (var typeAnnotation in tryExpr.ExceptionTypes)
             {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(typeAnnotation);
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(typeAnnotation, AnnotationPosition.Value);
                 if (resolvedType is UnknownType)
                 {
                     resolved.Add(resolvedType);

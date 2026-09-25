@@ -154,6 +154,6 @@ internal class ControlFlowValidator : ValidatingAstWalker
             return cachedType;
 
         // Fall back to resolving
-        return Context.TypeResolver.ResolveTypeAnnotation(func.ReturnType);
+        return Context.TypeResolver.ResolveTypeAnnotation(func.ReturnType, AnnotationPosition.Return);
     }
 }

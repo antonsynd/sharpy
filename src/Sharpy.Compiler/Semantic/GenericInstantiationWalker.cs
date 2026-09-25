@@ -522,7 +522,7 @@ internal static class GenericInstantiationWalker
         }
         else
         {
-            var resolved = typeResolver?.ResolveTypeAnnotation(annotation);
+            var resolved = typeResolver?.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
             if (resolved is null or UnknownType)
                 return null;
             return resolved;

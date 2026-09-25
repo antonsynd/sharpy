@@ -14,7 +14,7 @@ public interface ITypeResolver
     /// Resolves a type annotation to its semantic type.
     /// Results are cached for efficiency.
     /// </summary>
-    SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation);
+    SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation, AnnotationPosition position);
 
     /// <summary>
     /// Gets diagnostics that occurred during type resolution.

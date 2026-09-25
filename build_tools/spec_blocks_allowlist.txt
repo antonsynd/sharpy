@@ -473,7 +473,6 @@ tuple_unpacking.md::5d9a1fb03b  # SPY0356 first #1952
 tuple_unpacking.md::add0af13e5  # SPY0227 first #1952
 tuple_unpacking.md::b9bd0a0661  # SPY0239 first #1952
 tuple_unpacking.md::fa95de4f1b  # SPY0200 first #1952
-type_annotations.md::da11ce41b0  # SPY0103 first #1952
 type_casting.md::1255fc721e  # SPY0200 first #1952
 type_casting.md::3d21645510  # SPY0200 first #1952
 type_casting.md::3f4a94e3a3  # SPY0227 first #1952

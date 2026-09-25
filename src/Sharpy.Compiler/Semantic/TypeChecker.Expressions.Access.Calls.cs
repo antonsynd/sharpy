@@ -329,7 +329,7 @@ internal partial class TypeChecker
             // the target type, so `type bint = int; bint("42")` takes int("42")'s path.
             if (symbol is TypeAliasSymbol calleeAlias && calleeAlias.TypeAnnotation != null)
             {
-                var expanded = _typeResolver.ResolveTypeAnnotation(calleeAlias.TypeAnnotation);
+                var expanded = _typeResolver.ResolveTypeAnnotation(calleeAlias.TypeAnnotation, AnnotationPosition.Value);
                 TypeSymbol? aliasTarget = expanded switch
                 {
                     BuiltinType bt => _symbolTable.BuiltinRegistry.GetType(bt.Name),
@@ -2609,7 +2609,7 @@ internal partial class TypeChecker
             if (exportedSymbol is TypeAliasSymbol aliasSymbol
                 && aliasSymbol.TypeAnnotation != null)
             {
-                var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+                var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
                 if (expanded is UserDefinedType { Symbol: TypeSymbol targetType })
                 {
                     resolvedAlias = aliasSymbol;

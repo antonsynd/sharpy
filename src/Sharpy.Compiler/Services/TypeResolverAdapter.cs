@@ -17,9 +17,9 @@ internal class TypeResolverAdapter : ITypeResolver
         _typeResolver = typeResolver ?? throw new ArgumentNullException(nameof(typeResolver));
     }
 
-    public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation)
+    public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation, AnnotationPosition position)
     {
-        return _typeResolver.ResolveTypeAnnotation(annotation);
+        return _typeResolver.ResolveTypeAnnotation(annotation, position);
     }
 
     public DiagnosticBag Diagnostics => _typeResolver.Diagnostics;

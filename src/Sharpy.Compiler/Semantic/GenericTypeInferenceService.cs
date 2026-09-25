@@ -781,7 +781,7 @@ internal class GenericTypeInferenceService
         var scoped = PushConstraintScope(declaringParameters);
         try
         {
-            var resolved = _typeResolver.ResolveTypeAnnotation(annotation);
+            var resolved = _typeResolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
             return resolved is UnknownType ? null : resolved;
         }
         finally

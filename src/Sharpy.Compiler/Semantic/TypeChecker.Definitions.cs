@@ -92,7 +92,7 @@ internal partial class TypeChecker
         _typeResolver.SetIsStaticContext(isStaticMethod);
 
         // Resolve return type from annotation
-        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType, AnnotationPosition.Return);
         if (functionDef.Name == DunderNames.Init)
         {
             returnType = SemanticType.Void;
@@ -109,7 +109,7 @@ internal partial class TypeChecker
             var param = functionDef.Parameters[i];
             if (param.Name == PythonNames.Self)
                 continue;
-            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value);
             if (param.Type == null)
             {
                 paramType = SemanticType.Unknown;
@@ -404,7 +404,7 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType ResolveReturnType(FunctionDef functionDef)
     {
-        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType, AnnotationPosition.Return);
 
         // Special case: __init__ always returns None/void
         // (signature validation is in SignatureValidator)
@@ -662,7 +662,7 @@ internal partial class TypeChecker
         for (int i = 0; i < functionDef.Parameters.Length; i++)
         {
             var param = functionDef.Parameters[i];
-            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value);
 
             // Special handling for 'self' parameter in methods
             if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
@@ -1076,7 +1076,7 @@ internal partial class TypeChecker
         if (_semanticInfo.GetTypeAnnotation(annotation) != null)
             return;
 
-        _typeResolver.ResolveTypeAnnotation(annotation);
+        _typeResolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
     }
 
     private void RecordCompletedBaseAnnotation(TypeAnnotation? source, ImmutableArray<TypeAnnotation> completed)
@@ -1089,7 +1089,7 @@ internal partial class TypeChecker
         if (_semanticInfo.GetTypeAnnotation(source) != null)
             return;
 
-        var resolved = _typeResolver.ResolveTypeAnnotation(source with { TypeArguments = completed });
+        var resolved = _typeResolver.ResolveTypeAnnotation(source with { TypeArguments = completed }, AnnotationPosition.Value);
         if (resolved is not UnknownType)
             _semanticInfo.SetTypeAnnotation(source, resolved, boundSymbol: null); // cache update — recursive call recorded
     }
@@ -1172,7 +1172,7 @@ internal partial class TypeChecker
 
                 if (fieldDecl != null)
                 {
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
                     classSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
                     SemanticBinding.SetVariableType(classSymbol.Fields[i], resolvedType);
                 }
@@ -1468,7 +1468,7 @@ internal partial class TypeChecker
 
                 if (fieldDecl != null)
                 {
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
                     structSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
                     SemanticBinding.SetVariableType(structSymbol.Fields[i], resolvedType);
                 }
@@ -1615,7 +1615,7 @@ internal partial class TypeChecker
                     _typeResolver.SetIsStaticContext(isStaticMethod);
 
                     // Resolve return type
-                    var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType);
+                    var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType, AnnotationPosition.Return);
                     if (returnType == SemanticType.Unknown && method.ReturnType == null)
                     {
                         returnType = SemanticType.Void;
@@ -1626,7 +1626,7 @@ internal partial class TypeChecker
                     for (int i = 0; i < method.Parameters.Length; i++)
                     {
                         var param = method.Parameters[i];
-                        var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+                        var paramType = _typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value);
 
                         // Special handling for 'self' parameter
                         if (i == 0 && param.Name == PythonNames.Self)
@@ -1801,7 +1801,7 @@ internal partial class TypeChecker
                 // Resolve field types
                 foreach (var field in caseDef.Fields)
                 {
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(field.Type);
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(field.Type, AnnotationPosition.Value);
                     caseSymbol.Fields.Add(new VariableSymbol
                     {
                         Name = field.Name,
@@ -1879,7 +1879,7 @@ internal partial class TypeChecker
             for (int i = 0; i < delegateDef.Parameters.Length; i++)
             {
                 var param = delegateDef.Parameters[i];
-                var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+                var paramType = _typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value);
 
                 if (param.Type == null)
                 {
@@ -1903,7 +1903,7 @@ internal partial class TypeChecker
             }
 
             // Resolve return type
-            var returnType = _typeResolver.ResolveTypeAnnotation(delegateDef.ReturnType);
+            var returnType = _typeResolver.ResolveTypeAnnotation(delegateDef.ReturnType, AnnotationPosition.Return);
             if (returnType == SemanticType.Unknown && delegateDef.ReturnType == null)
             {
                 returnType = SemanticType.Void;
@@ -1954,7 +1954,7 @@ internal partial class TypeChecker
                             .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
                         if (handlerParam?.Type != null)
                         {
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(handlerParam.Type);
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(handlerParam.Type, AnnotationPosition.Value);
                         }
                         else
                         {
@@ -1975,8 +1975,8 @@ internal partial class TypeChecker
 
                                 if (addHandlerParam?.Type != null && removeHandlerParam?.Type != null)
                                 {
-                                    var addType = _typeResolver.ResolveTypeAnnotation(addHandlerParam.Type);
-                                    var removeType = _typeResolver.ResolveTypeAnnotation(removeHandlerParam.Type);
+                                    var addType = _typeResolver.ResolveTypeAnnotation(addHandlerParam.Type, AnnotationPosition.Value);
+                                    var removeType = _typeResolver.ResolveTypeAnnotation(removeHandlerParam.Type, AnnotationPosition.Value);
 
                                     if (!addType.Equals(removeType))
                                     {
@@ -1993,7 +1993,7 @@ internal partial class TypeChecker
                     else
                     {
                         // Auto-event: type comes from type annotation
-                        resolvedType = _typeResolver.ResolveTypeAnnotation(eventDef.Type);
+                        resolvedType = _typeResolver.ResolveTypeAnnotation(eventDef.Type, AnnotationPosition.Value);
                     }
 
                     if (resolvedType != SemanticType.Unknown)
@@ -2051,7 +2051,7 @@ internal partial class TypeChecker
         if (param.IsVariadic)
             return (SemanticType.Unknown, IsErrorRecovery: true);
 
-        return (_typeResolver.ResolveTypeAnnotation(param.Type), IsErrorRecovery: false);
+        return (_typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value), IsErrorRecovery: false);
     }
 
     /// <summary>
@@ -2151,12 +2151,12 @@ internal partial class TypeChecker
             if (propDef.ReturnType != null && !isSetter)
             {
                 // Getter: type comes from the return annotation
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
             }
             else if (isSetter && propDef.Parameters.Length > 0)
             {
                 // Setter: type comes from the value parameter (last parameter)
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type);
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type, AnnotationPosition.Value);
             }
             else
             {
@@ -2166,7 +2166,7 @@ internal partial class TypeChecker
         else
         {
             // Auto-property: type comes from the type annotation
-            propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+            propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
         }
 
         // Auto-property: check the default value against the declared type,
@@ -2324,11 +2324,11 @@ internal partial class TypeChecker
         {
             if (propDef.IsFunctionStyle && propDef.ReturnType != null)
             {
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
             }
             else if (!propDef.IsFunctionStyle && propDef.Type != null)
             {
-                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
             }
         }
 
@@ -2561,12 +2561,12 @@ internal partial class TypeChecker
                         // For function-style properties, type comes from ReturnType (getter) or parameter type (setter)
                         if (propDef.ReturnType != null)
                         {
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType, AnnotationPosition.Return);
                         }
                         else if (propDef.Parameters.Length > 1)
                         {
                             // Setter: second parameter is the value (first is self)
-                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type);
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type, AnnotationPosition.Value);
                         }
                         else
                         {
@@ -2576,7 +2576,7 @@ internal partial class TypeChecker
                     else
                     {
                         // Auto-property: type comes from type annotation
-                        resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+                        resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Type, AnnotationPosition.Value);
                     }
 
                     if (resolvedType != SemanticType.Unknown)
@@ -2604,7 +2604,7 @@ internal partial class TypeChecker
                 if (!typeSymbol.Fields.Any(f => f.Name == backingFieldName))
                 {
                     var propType = autoProp.Type != null
-                        ? _typeResolver.ResolveTypeAnnotation(autoProp.Type)
+                        ? _typeResolver.ResolveTypeAnnotation(autoProp.Type, AnnotationPosition.Value)
                         : SemanticType.Unknown;
 
                     var backingField = new VariableSymbol
@@ -2843,13 +2843,13 @@ internal partial class TypeChecker
                     break;
 
                 case Parser.Ast.TypeConstraint tc:
-                    var constraintType = _typeResolver.ResolveTypeAnnotation(tc.Type);
+                    var constraintType = _typeResolver.ResolveTypeAnnotation(tc.Type, AnnotationPosition.Value);
                     if (constraintType is UnknownType)
                         break;
 
                     var satisfied = defaultType is TypeParameterType
                         ? defaultConstraints.OfType<Parser.Ast.TypeConstraint>().Any(earlierConstraint =>
-                            _typeResolver.ResolveTypeAnnotation(earlierConstraint.Type)
+                            _typeResolver.ResolveTypeAnnotation(earlierConstraint.Type, AnnotationPosition.Value)
                                 is { } earlierType and not UnknownType
                             && IsAssignable(earlierType, constraintType))
                         : IsAssignable(defaultType, constraintType);

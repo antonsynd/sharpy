@@ -27,7 +27,7 @@ public class TypeResolverOptionalResultTests
         var (resolver, _, _) = CreateResolver();
 
         var annotation = new TypeAnnotation { Name = "int", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var opt = (OptionalType)type;
@@ -40,7 +40,7 @@ public class TypeResolverOptionalResultTests
         var (resolver, _, _) = CreateResolver();
 
         var annotation = new TypeAnnotation { Name = "str", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var opt = (OptionalType)type;
@@ -69,7 +69,7 @@ public class TypeResolverOptionalResultTests
                 new TypeAnnotation { Name = "int" }
             }.ToImmutableArray()
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var opt = (OptionalType)type;
@@ -89,7 +89,7 @@ public class TypeResolverOptionalResultTests
                 new TypeAnnotation { Name = "int" }
             }.ToImmutableArray()
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var opt = (OptionalType)type;
@@ -106,7 +106,7 @@ public class TypeResolverOptionalResultTests
         var (resolver, _, _) = CreateResolver();
 
         var annotation = new TypeAnnotation { Name = "str", IsCSharpNullable = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<NullableType>();
         var nullable = (NullableType)type;
@@ -135,7 +135,7 @@ public class TypeResolverOptionalResultTests
                 new TypeAnnotation { Name = "int" }
             }.ToImmutableArray()
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<NullableType>();
     }
@@ -162,7 +162,7 @@ public class TypeResolverOptionalResultTests
             Name = "int",
             ErrorType = new TypeAnnotation { Name = "ValueError" }
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<ResultType>();
         var result = (ResultType)type;
@@ -199,7 +199,7 @@ public class TypeResolverOptionalResultTests
             }.ToImmutableArray(),
             ErrorType = new TypeAnnotation { Name = "ParseError" }
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<ResultType>();
         var result = (ResultType)type;
@@ -227,7 +227,7 @@ public class TypeResolverOptionalResultTests
                 new TypeAnnotation { Name = "ValueError" }
             }.ToImmutableArray()
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<ResultType>();
         var result = (ResultType)type;
@@ -258,7 +258,7 @@ public class TypeResolverOptionalResultTests
             ErrorType = new TypeAnnotation { Name = "ValueError" },
             IsCSharpNullable = true
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<NullableType>();
         var nullable = (NullableType)type;
@@ -273,8 +273,8 @@ public class TypeResolverOptionalResultTests
         var optionalAnnotation = new TypeAnnotation { Name = "int", IsOptional = true };
         var nullableAnnotation = new TypeAnnotation { Name = "int", IsCSharpNullable = true };
 
-        var optional = resolver.ResolveTypeAnnotation(optionalAnnotation);
-        var nullable = resolver.ResolveTypeAnnotation(nullableAnnotation);
+        var optional = resolver.ResolveTypeAnnotation(optionalAnnotation, AnnotationPosition.Value);
+        var nullable = resolver.ResolveTypeAnnotation(nullableAnnotation, AnnotationPosition.Value);
 
         optional.Should().BeOfType<OptionalType>();
         nullable.Should().BeOfType<NullableType>();
@@ -291,7 +291,7 @@ public class TypeResolverOptionalResultTests
         var (resolver, _, _) = CreateResolver();
 
         var annotation = new TypeAnnotation { Name = "int", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.GetDisplayName().Should().Be("int32?");
     }
@@ -313,7 +313,7 @@ public class TypeResolverOptionalResultTests
             Name = "int",
             ErrorType = new TypeAnnotation { Name = "ValueError" }
         };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.GetDisplayName().Should().Be("int32 !ValueError");
     }
@@ -324,7 +324,7 @@ public class TypeResolverOptionalResultTests
         var (resolver, _, _) = CreateResolver();
 
         var annotation = new TypeAnnotation { Name = "int", IsCSharpNullable = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.GetDisplayName().Should().Contain("| None");
     }
@@ -347,7 +347,7 @@ public class TypeResolverOptionalResultTests
         symbolTable.Define(aliasSymbol);
 
         var annotation = new TypeAnnotation { Name = "UserId", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var opt = (OptionalType)type;

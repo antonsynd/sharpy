@@ -23,7 +23,7 @@ internal partial class TypeChecker
             if (param.Type != null)
             {
                 // Explicit type annotation — use it
-                paramTypes.Add(_typeResolver.ResolveTypeAnnotation(param.Type));
+                paramTypes.Add(_typeResolver.ResolveTypeAnnotation(param.Type, AnnotationPosition.Value));
             }
             else if (expectedFunc != null && i < expectedFunc.ParameterTypes.Count
                      && !ContainsTypeParameterType(expectedFunc.ParameterTypes[i]))
@@ -119,7 +119,7 @@ internal partial class TypeChecker
 
             if (lambda.ReturnType != null)
             {
-                var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
+                var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType, AnnotationPosition.Return);
                 using (EnterStore(StorePosition.LambdaBody, declaredReturnType, lambda.Body))
                     bodyType = CheckExpression(lambda.Body);
                 if (declaredReturnType is not UnknownType && bodyType is not UnknownType)

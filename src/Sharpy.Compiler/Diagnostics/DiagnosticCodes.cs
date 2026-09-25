@@ -974,7 +974,9 @@ public static class DiagnosticCodes
         // positional index past the arguments, or a keyword field (str.format takes positional
         // arguments only). CPython raises IndexError/KeyError at runtime (#2029 R-CD, #2008 R-CE).
         public const string FormatFieldCannotBeBound = "SPY0613"; // Active (#2029, #2008)
-        // SPY0614: RESERVED — `None` as a value-position annotation (#2004).
+        // `None` as a value-position annotation (a local, parameter, field, constant or type
+        // argument): `None` is not a type; only a return annotation spells "no value" (#2004).
+        public const string NoneAnnotationInValuePosition = "SPY0614"; // Active (#2004)
     }
 
     /// <summary>

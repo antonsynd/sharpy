@@ -371,6 +371,17 @@ public static partial class DiagnosticExplanations
             "Coerce between related types, or convert instead: str(x), int(s) / try int(s), or write the " +
             "closed collection spelling with matching type arguments.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.NoneAnnotationInValuePosition,
+            "'None' annotation in a value position", "Semantic",
+            "`None` is a value, not a type. Only a return annotation (`-> None`, including the return " +
+            "slot of a function type `(int) -> None`) uses it, to say the function produces no value. " +
+            "In any other annotation position — a local, parameter, field, constant, type argument " +
+            "(`list[None]`), a function type's parameter or `None?` — there is no value it could hold " +
+            "but `None`, so the annotation is refused. Nullable slots are spelled `T | None` (or `T?`).",
+            "def main() -> None:\n    x: None = None  # SPY0614",
+            "Annotate the slot with the type it holds when it is not None: `x: int | None = None`, or " +
+            "`x: object = None` when any value may appear.");
+
         return dict;
     }
 

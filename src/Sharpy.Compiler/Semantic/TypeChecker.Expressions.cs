@@ -247,7 +247,7 @@ internal partial class TypeChecker
         {
             // Resolve the inline type annotation via TypeResolver
             // (TypeResolver returns UnknownType for "auto", which maps to C# var)
-            var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType);
+            var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType, AnnotationPosition.Value);
 
             // Bind the name exactly as a walrus does (#1560 D1 §2, R3): an already-bound name is
             // REBOUND by a chained successor — the emitter then passes the existing C# local as
@@ -790,7 +790,7 @@ internal partial class TypeChecker
         if (aliasSymbol.TypeAnnotation == null)
             return SemanticType.Unknown;
 
-        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
         if (expanded is BuiltinType bt)
         {
             var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
@@ -817,7 +817,7 @@ internal partial class TypeChecker
         if (aliasSymbol.TypeAnnotation == null)
             return SemanticType.Unknown;
 
-        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
         if (expanded is BuiltinType)
         {
             var lookupName = aliasSymbol.TypeAnnotation.Name;

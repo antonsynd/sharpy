@@ -95,9 +95,9 @@ public class CompilerServices
     /// Resolve a type annotation to its semantic type.
     /// Convenience wrapper around TypeResolver.ResolveTypeAnnotation.
     /// </summary>
-    public SemanticType ResolveType(TypeAnnotation? annotation)
+    public SemanticType ResolveType(TypeAnnotation? annotation, AnnotationPosition position)
     {
-        return TypeResolver.ResolveTypeAnnotation(annotation);
+        return TypeResolver.ResolveTypeAnnotation(annotation, position);
     }
 
     /// <summary>

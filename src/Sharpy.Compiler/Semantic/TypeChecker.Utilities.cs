@@ -492,7 +492,7 @@ internal partial class TypeChecker
         if (annotation.TypeArguments.Length > 0
             || annotation.IsOptional || annotation.IsCSharpNullable || annotation.IsResult)
         {
-            var spelled = _typeResolver.ResolveTypeAnnotation(annotation);
+            var spelled = _typeResolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
             if (spelled is UnknownType)
                 return null;
 
@@ -2612,7 +2612,7 @@ internal partial class TypeChecker
 
         var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
             ? baseRef.ResolvedTypeArguments.ToList()
-            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a)).ToList();
+            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a, AnnotationPosition.Value)).ToList();
         if (typeArgs.Count != owner.TypeParameters.Count || typeArgs.Any(t => t is UnknownType))
             return signature;
 

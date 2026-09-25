@@ -3348,7 +3348,7 @@ internal partial class TypeChecker
             // A type-operand position, so a bare generic name is fillable from the subject and the
             // classifier owns its refusal; the annotation arity error (#1331) must not fire here.
             var resolved = _typeResolver.ResolveTypeAnnotation(
-                typeAnnotation, bareGenericFillsFromContext: true);
+                typeAnnotation, AnnotationPosition.Value, bareGenericFillsFromContext: true);
             return resolved != SemanticType.Unknown ? resolved : null;
         }
 

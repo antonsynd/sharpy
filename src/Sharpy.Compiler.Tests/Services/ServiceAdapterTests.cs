@@ -105,7 +105,7 @@ public class ServiceAdapterTests
         var intAnnotation = new TypeAnnotation { Name = "int", IsOptional = false };
 
         // Act
-        var result = adapter.ResolveTypeAnnotation(intAnnotation);
+        var result = adapter.ResolveTypeAnnotation(intAnnotation, AnnotationPosition.Value);
 
         // Assert
         Assert.Equal(SemanticType.Int, result);
@@ -124,7 +124,7 @@ public class ServiceAdapterTests
         var strAnnotation = new TypeAnnotation { Name = "str", IsOptional = false };
 
         // Act
-        var result = adapter.ResolveTypeAnnotation(strAnnotation);
+        var result = adapter.ResolveTypeAnnotation(strAnnotation, AnnotationPosition.Value);
 
         // Assert
         Assert.Equal(SemanticType.Str, result);

@@ -31,7 +31,7 @@ public class TypeResolverTests
             Name = "int"
         };
 
-        var type = resolver.ResolveTypeAnnotation(intAnnotation);
+        var type = resolver.ResolveTypeAnnotation(intAnnotation, AnnotationPosition.Value);
 
         type.Should().Be(SemanticType.Int);
         resolver.Diagnostics.GetErrors().Should().BeEmpty();
@@ -47,7 +47,7 @@ public class TypeResolverTests
             Name = "str"
         };
 
-        var type = resolver.ResolveTypeAnnotation(strAnnotation);
+        var type = resolver.ResolveTypeAnnotation(strAnnotation, AnnotationPosition.Value);
 
         type.Should().Be(SemanticType.Str);
         resolver.Diagnostics.GetErrors().Should().BeEmpty();
@@ -63,7 +63,7 @@ public class TypeResolverTests
             Name = "auto"
         };
 
-        var type = resolver.ResolveTypeAnnotation(autoAnnotation);
+        var type = resolver.ResolveTypeAnnotation(autoAnnotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<UnknownType>();
         resolver.Diagnostics.GetErrors().Should().BeEmpty();
@@ -80,7 +80,7 @@ public class TypeResolverTests
             IsOptional = true
         };
 
-        var type = resolver.ResolveTypeAnnotation(optionalIntAnnotation);
+        var type = resolver.ResolveTypeAnnotation(optionalIntAnnotation, AnnotationPosition.Value);
 
         type.Should().BeOfType<OptionalType>();
         var optionalType = (OptionalType)type;
@@ -98,7 +98,7 @@ public class TypeResolverTests
             Name = "UnknownType"
         };
 
-        var type = resolver.ResolveTypeAnnotation(unknownAnnotation);
+        var type = resolver.ResolveTypeAnnotation(unknownAnnotation, AnnotationPosition.Value);
 
         type.Should().Be(SemanticType.Unknown);
         resolver.Diagnostics.GetErrors().Should().HaveCount(1);
@@ -116,10 +116,10 @@ public class TypeResolverTests
         };
 
         // First resolution
-        var type1 = resolver.ResolveTypeAnnotation(annotation);
+        var type1 = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Second resolution should use cache
-        var type2 = resolver.ResolveTypeAnnotation(annotation);
+        var type2 = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type1.Should().BeSameAs(type2);
         semanticInfo.GetTypeAnnotation(annotation).Should().BeSameAs(type1);
@@ -141,7 +141,7 @@ public class TypeResolverTests
 
         // Use the alias
         var annotation = new TypeAnnotation { Name = "UserId" };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Should expand to int
         type.Should().Be(SemanticType.Int);
@@ -164,7 +164,7 @@ public class TypeResolverTests
 
         // Use the alias with optional modifier: UserId?
         var annotation = new TypeAnnotation { Name = "UserId", IsOptional = true };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Should expand to Optional[int]
         type.Should().BeOfType<OptionalType>();
@@ -205,7 +205,7 @@ public class TypeResolverTests
 
         // Use the alias
         var annotation = new TypeAnnotation { Name = "StringList" };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Should expand to list[str]
         type.Should().BeOfType<GenericType>();
@@ -240,7 +240,7 @@ public class TypeResolverTests
 
         // Use the alias
         var annotation = new TypeAnnotation { Name = "Callback" };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Should expand to (int, str) -> bool
         type.Should().BeOfType<SemanticFunctionType>();
@@ -277,7 +277,7 @@ public class TypeResolverTests
 
         // Use the nested alias
         var annotation = new TypeAnnotation { Name = "MaybeUserId" };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         // Should expand to Optional[int]
         type.Should().BeOfType<OptionalType>();
@@ -303,7 +303,7 @@ public class TypeResolverTests
 
         // Try to use the invalid alias
         var annotation = new TypeAnnotation { Name = "InvalidAlias" };
-        var type = resolver.ResolveTypeAnnotation(annotation);
+        var type = resolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
 
         type.Should().Be(SemanticType.Unknown);
         resolver.Diagnostics.GetErrors().Should().HaveCount(1);

@@ -55,7 +55,7 @@ internal partial class TypeChecker
             && _semanticInfo.GetIdentifierSymbol(aliasIdentifier) is TypeAliasSymbol alias
             && alias.TypeAnnotation != null)
         {
-            var target = _typeResolver.ResolveTypeAnnotation(alias.TypeAnnotation);
+            var target = _typeResolver.ResolveTypeAnnotation(alias.TypeAnnotation, AnnotationPosition.Value);
             if (target is GenericType or UserDefinedType or BuiltinType)
             {
                 _semanticInfo.SetExpressionType(receiver, target);
