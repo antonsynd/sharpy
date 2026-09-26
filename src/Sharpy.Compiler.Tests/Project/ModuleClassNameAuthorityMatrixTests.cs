@@ -183,7 +183,11 @@ public class ModuleClassNameAuthorityMatrixTests
     }
 
     [Fact]
-    public void Matrix_IsTotal() => Cells().Should().HaveCount(24, "3 kinds × 8 contents");
+    public void Matrix_IsTotal()
+    {
+        Cells().Should().HaveCount(24, "3 kinds × 8 contents");
+        MainReferenceCells().Should().HaveCount(13, "7 references × 2 kinds, less the exe's unaliased import");
+    }
 
     /// <summary>
     /// #2094: a non-entry module's top-level function emitted as <c>Main</c> (<c>def Main</c>, or
@@ -222,6 +226,92 @@ public class ModuleClassNameAuthorityMatrixTests
         var exec = helper.CompileAndExecute();
         exec.Success.Should().BeTrue($"{exec.Exception} {string.Join("\n", exec.CompilationErrors)}");
         exec.StandardOutput.Trim().Should().Be("3");
+    }
+
+    /// <summary>
+    /// #2065 residue (cells-a F2): the non-entry <c>main</c> is <c>MainFunc</c>, and EVERY reference
+    /// reads that one materialized name. The aliased from-import bound a clone whose name the importer
+    /// re-derived from the imported spelling (<c>Main</c>) — <c>from util import main as um; um()</c>
+    /// was CS0117 behind SPY0908 at d6a7aef05 (and at acd1d40a2), while the unaliased import and
+    /// <c>util.main</c> ran. Cells: reference {aliased call, unaliased call, module-qualified call, the
+    /// alias assigned to a variable, the qualified function assigned to a variable, the alias passed
+    /// as a callback, the qualified function passed as a callback} × {exe, library}; the unaliased
+    /// import has no exe cell (the exe's entry module declares its own <c>main</c>).
+    /// </summary>
+    private static readonly Dictionary<string, (string Imports, string RunBody, string Output)> MainReferences = new()
+    {
+        ["alias_call"] = ("from util import main as um", "    return um()\n", "41"),
+        ["unaliased_call"] = ("from util import main", "    return main()\n", "41"),
+        ["qualified_call"] = ("import util", "    return util.main()\n", "41"),
+        ["alias_variable"] = ("from util import main as um", "    f = um\n    return f()\n", "41"),
+        ["qualified_variable"] = ("import util", "    f = util.main\n    return f()\n", "41"),
+        ["alias_callback"] = ("from util import main as um, helper", "    return helper(um)\n", "42"),
+        ["qualified_callback"] = ("import util", "    return util.helper(util.main)\n", "42"),
+    };
+
+    public static IEnumerable<object[]> MainReferenceCells()
+        => from reference in MainReferences.Keys
+           from outputType in new[] { "exe", "library" }
+           where !(reference == "unaliased_call" && outputType == "exe")
+           select new object[] { reference, outputType };
+
+    [Theory]
+    [MemberData(nameof(MainReferenceCells))]
+    public void NonEntryMain_EveryReference_ReadsTheMaterializedName(string reference, string outputType)
+    {
+        var (imports, runBody, output) = MainReferences[reference];
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Refs").WithOutputType(outputType);
+        var app = $"{imports}\n\ndef run() -> int:\n{runBody}";
+        if (outputType == "exe")
+        {
+            helper.WithEntryPoint("app.spy");
+            app += "\ndef main() -> None:\n    print(run())\n";
+        }
+        helper.AddSourceFile("app.spy", app);
+        helper.AddSourceFile("util.spy",
+            "def main() -> int:\n    return 41\n\ndef helper(f: () -> int) -> int:\n    return f() + 1\n");
+        helper.CreateProjectFile();
+        var result = helper.Compile();
+
+        ErrorCodes(result).Should().NotContain(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{reference}×{outputType}] never CS0117 behind SPY0908\n{Describe(result)}");
+        result.Success.Should().BeTrue($"[{reference}×{outputType}]\n{Describe(result)}");
+        var util_cs = result.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "util.cs").Value;
+        util_cs.Should().Contain("public static int MainFunc()", $"[{reference}×{outputType}] the declaration's one name");
+        if (outputType == "exe")
+        {
+            var exec = helper.CompileAndExecute();
+            exec.Success.Should().BeTrue($"[{reference}×{outputType}] {exec.Exception} {string.Join("\n", exec.CompilationErrors)}");
+            exec.StandardOutput.Trim().Should().Be(output);
+        }
+    }
+
+    /// <summary>The aliased reference on a warm build, where <c>util</c> is served from the cache.</summary>
+    [Theory]
+    [InlineData("exe")]
+    [InlineData("library")]
+    public void NonEntryMain_AliasedReference_WarmMatchesCold(string outputType)
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Refs").WithOutputType(outputType).WithIncremental();
+        var app = "from util import main as um\n\ndef run() -> int:\n    return um()\n";
+        if (outputType == "exe")
+        {
+            helper.WithEntryPoint("app.spy");
+            app += "\ndef main() -> None:\n    print(run())\n";
+        }
+        helper.AddSourceFile("app.spy", app);
+        helper.AddSourceFile("util.spy", "def main() -> int:\n    return 41\n");
+        helper.CreateProjectFile();
+        var cold = helper.Compile();
+        cold.Success.Should().BeTrue($"cold\n{Describe(cold)}");
+
+        // Edit the importer only (content, not mtime): util.spy is served from the cache.
+        helper.UpdateSourceFile("app.spy", app + "\n# edited\n");
+        var warm = helper.Compile();
+        warm.Success.Should().BeTrue($"warm ≡ cold\n{Describe(warm)}");
+        helper.AssertWarmBuildSkipped(warm, new[] { "util.spy" });
     }
 
     private ProjectCompilationHelper CreateProject(string kind, string content, bool besideProgramDirectory)

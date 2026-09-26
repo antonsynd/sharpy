@@ -418,6 +418,20 @@ internal class CodeGenInfoComputer
 
     private string DetermineCSharpNameForFromImport(string name, Symbol symbol, bool isNetModule)
     {
+        // A from-imported Sharpy function is spelled by its DECLARATION's materialized name — one
+        // identifier authority (#2065). Re-deriving it from the imported spelling missed the
+        // declaration-side renames: a non-entry module's `main` is `MainFunc`, so the aliased
+        // `from util import main as um; um()` referenced `UtilModule.Main` (CS0117 behind SPY0908)
+        // while the unaliased import, which binds the declaration's own symbol, read `MainFunc`. The
+        // alias binds a clone whose origin chain ends at the declaration; its module was checked
+        // first (dependency order), so the declaration's fact is in the import-facts binding.
+        if (symbol is FunctionSymbol function
+            && (_importFacts ?? _semanticBinding).GetCodeGenInfo(DeclarationOf(function)) is
+            { IsModuleLevel: true, CSharpName: { } declaredName })
+        {
+            return declaredName;
+        }
+
         // For .NET module variable fields, SCREAMING_SNAKE_CASE names match C# verbatim
         // (e.g., csv.QUOTE_ALL). Other names need PascalCase conversion to match the
         // generated C# field names (e.g., string.digits → Digits, math.pi → Pi).
@@ -436,6 +450,15 @@ internal class CodeGenInfoComputer
             return NameCasing.ResolveConstant(name, symbol.IsNameBacktickEscaped);
         }
         return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
+    }
+
+    /// <summary>The declaration an import clone was made from: the end of its origin chain.</summary>
+    private static FunctionSymbol DeclarationOf(FunctionSymbol function)
+    {
+        var declaration = function;
+        while (declaration.OriginSymbol is FunctionSymbol origin && !ReferenceEquals(origin, declaration))
+            declaration = origin;
+        return declaration;
     }
 
     /// <summary>
