@@ -364,6 +364,22 @@ namespace Sharpy
                 throw new AttributeError("'NoneType' object has no attribute '" + attr + "'");
             }
 
+            // An integer enum is a CLR enum, which has no instance `Name`/`Value` members: python's
+            // `name` is the channel the static `.name` lowers to (Builtins.EnumName, [SharpyFieldName]
+            // when recorded) and `value` the underlying integer, as the static `.value` reads it.
+            // A string enum is a class carrying `Name`/`Value` and takes the reflection path below.
+            if (value is Enum enumMember)
+            {
+                if (attr == "name")
+                {
+                    return Builtins.EnumName(enumMember);
+                }
+                if (attr == "value")
+                {
+                    return Convert.ChangeType(enumMember, Enum.GetUnderlyingType(enumMember.GetType()), CultureInfo.InvariantCulture);
+                }
+            }
+
             // The member is found by the name the compiler emitted for it — the same forward rule,
             // NameMangling.ToPascalCase (#2040, R-CG): a Sharpy field `n_items` is the CLR property
             // `NItems`. Then the verbatim spelling, which is how a backtick-escaped member (and any

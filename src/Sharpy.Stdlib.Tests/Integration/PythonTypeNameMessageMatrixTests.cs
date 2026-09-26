@@ -82,6 +82,9 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
         // module, elided from the repr; an enum class is EnumType's `<enum 'Color'>`.
         { "type.class_repr_builtin_exception", "print(str(type(ValueError(\"v\"))))\nprint(type(Exception(\"e\")))\nprint(repr(type(KeyError(\"k\"))))\nprint(type(ZeroDivisionError(\"z\")))\nprint(type(my_err(\"m\")))", "<class 'ValueError'>\n<class 'Exception'>\n<class 'KeyError'>\n<class 'ZeroDivisionError'>\n<class '__main__.my_err'>" },
         { "type.class_repr_enum", "print(str(type(Color.RED)))\nprint(repr(type(Color.dark_blue)))", "<enum 'Color'>\n<enum 'Color'>" },
+        // str.format's attribute step on an integer enum reads python's `name` (the recorded
+        // python spelling) and `value` (the underlying integer).
+        { "format.enum_name_value", "print(\"{0.name} {0.value}\".format(Color.dark_blue))\nprint(\"{0.name}={0.value:>3}\".format(Color.RED))", "dark_blue 2\nRED=  1" },
         { "deque.index", "d = Deque[int]([1, 2, 3])\nprint(d[-1])\nprint(d[0])\nd[1] = 20\nprint(d)\ntry:\n    print(d[3])\nexcept IndexError as e:\n    print(e)", "3\n1\ndeque([1, 20, 3])\ndeque index out of range" },
         // C-implemented Stdlib types: tp_name in C-level messages, __name__ elsewhere. python spells
         // the deque `collections.deque` / `deque` (Decision 26: Sharpy's surface name is Deque).
