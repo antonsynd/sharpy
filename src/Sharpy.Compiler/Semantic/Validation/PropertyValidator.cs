@@ -489,7 +489,7 @@ internal class PropertyValidator : SemanticValidatorBase
             return;
         }
 
-        var (baseProp, _) = TypeHierarchyService.FindProperty(baseType, propDef.Name);
+        var (baseProp, baseOwner) = TypeHierarchyService.FindProperty(baseType, propDef.Name);
         if (baseProp == null)
         {
             AddError(_context,
@@ -504,6 +504,24 @@ internal class PropertyValidator : SemanticValidatorBase
         {
             AddError(_context,
                 $"Cannot override property '{propDef.Name}' because the base class property in '{baseType.Name}' is not marked @virtual or @abstract",
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Validation.InvalidPropertyOverride,
+                span: propDef.Span);
+            return;
+        }
+
+        // A property is named by the method rule (NameCasing.ResolveMethod), so a mixed-escape
+        // override emits a different C# name than the property it overrides — refused by name, as the
+        // method twin is (SPY0248), rather than as CS0115 behind SPY0908 (#2033).
+        if (baseOwner?.ClrType == null
+            && Shared.MemberClassification.MethodSpellingsDiffer(
+                propDef.Name, baseProp.IsNameBacktickEscaped, propDef.IsNameBacktickEscaped))
+        {
+            AddError(_context,
+                $"Property {Shared.MemberClassification.Spelling(propDef.Name, propDef.IsNameBacktickEscaped)} "
+                + $"overrides '{baseOwner?.Name}.{propDef.Name}', which is declared as "
+                + $"{Shared.MemberClassification.Spelling(baseProp.Name, baseProp.IsNameBacktickEscaped)}; "
+                + "implement it with the same spelling",
                 propDef.LineStart, propDef.ColumnStart,
                 code: DiagnosticCodes.Validation.InvalidPropertyOverride,
                 span: propDef.Span);

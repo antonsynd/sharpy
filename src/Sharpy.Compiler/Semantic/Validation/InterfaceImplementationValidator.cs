@@ -106,7 +106,63 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
                         span: declarationSpan);
                 }
             }
+
+            if (iface.ClrType != null)
+                continue;
+
+            // Properties and events are named by the method rule too (NameCasing.ResolveMethod), so a
+            // mixed-escape implementation misses its interface member exactly as a method does — the
+            // method arm above refused it by name while the property and event twins reached C# as
+            // CS0535 behind SPY0908 (#2033). Checked whatever the member's abstractness: an auto
+            // property or event on an interface is abstract in C# but not flagged IsAbstract here,
+            // and against a DEFAULT-bodied property the mismatched member silently failed to
+            // implement it (the interface's default answered). The method twin of that cell is
+            // already refused (SPY0248, a default method needs @override).
+            foreach (var interfaceProperty in iface.Properties)
+            {
+                var (classProperty, _) = TypeHierarchyService.FindMember(
+                    typeSymbol, interfaceProperty.Name, t => t.Properties, searchInterfaces: false, Context.SemanticBinding);
+                if (classProperty != null)
+                {
+                    ReportMixedEscapeImplementation(typeSymbol, iface, "property", interfaceProperty.Name,
+                        interfaceProperty.IsNameBacktickEscaped, classProperty.IsNameBacktickEscaped,
+                        declarationLine, declarationColumn, declarationSpan);
+                }
+            }
+
+            foreach (var interfaceEvent in iface.Events)
+            {
+                var classEvent = new[] { typeSymbol }
+                    .Concat(TypeHierarchyService.GetAllBaseTypes(typeSymbol, Context.SemanticBinding))
+                    .SelectMany(t => t.Events)
+                    .FirstOrDefault(e => e.Name == interfaceEvent.Name);
+                if (classEvent != null)
+                {
+                    ReportMixedEscapeImplementation(typeSymbol, iface, "event", interfaceEvent.Name,
+                        interfaceEvent.IsNameBacktickEscaped, classEvent.IsNameBacktickEscaped,
+                        declarationLine, declarationColumn, declarationSpan);
+                }
+            }
         }
+    }
+
+    private void ReportMixedEscapeImplementation(
+        TypeSymbol typeSymbol, TypeSymbol iface, string memberKind, string name,
+        bool declaredEscaped, bool implementedEscaped,
+        int? declarationLine, int? declarationColumn, Text.TextSpan? declarationSpan)
+    {
+        if (!MemberClassification.MethodSpellingsDiffer(name, declaredEscaped, implementedEscaped))
+            return;
+
+        AddError(
+            $"Class '{typeSymbol.Name}' does not implement interface {memberKind} '{iface.Name}.{name}': "
+            + $"it is declared as {MemberClassification.Spelling(name, declaredEscaped)} "
+            + $"but implemented as {MemberClassification.Spelling(name, implementedEscaped)}; "
+            + "implement it with the same spelling",
+            declarationLine,
+            declarationColumn,
+            code: DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            span: declarationSpan);
     }
 
     private TypeSymbolSet CollectAllInterfaces(TypeSymbol type)

@@ -207,6 +207,76 @@ public class InterfaceMemberNameMatrixTests : IntegrationTestBase
             + "def main() -> None:\n    print(D().run())\n",
             DiagnosticCodes.Semantic.InvalidOverride,
             "Method `_m` overrides 'B._m', which is declared as _m; implement it with the same spelling" },
+        // Properties and events are named by the method rule, so they miss their target the same way
+        // (cells-a F7: each was CS0115/CS0535 behind SPY0908 at the prior commit).
+        new object[] { "property_base_escaped_override_bare",
+            "class B:\n    @virtual\n    property get `_p`(self) -> int:\n        return 1\n\n"
+            + "class D(B):\n    @override\n    property get _p(self) -> int:\n        return 7\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Validation.InvalidPropertyOverride,
+            "Property _p overrides 'B._p', which is declared as `_p`; implement it with the same spelling" },
+        new object[] { "property_base_bare_override_escaped",
+            "class B:\n    @virtual\n    property get _p(self) -> int:\n        return 1\n\n"
+            + "class D(B):\n    @override\n    property get `_p`(self) -> int:\n        return 7\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Validation.InvalidPropertyOverride,
+            "Property `_p` overrides 'B._p', which is declared as _p; implement it with the same spelling" },
+        new object[] { "interface_property_escaped_impl_bare",
+            "interface I:\n    property get `_p`(self) -> int: ...\n\n"
+            + "class C(I):\n    property get _p(self) -> int:\n        return 7\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface property 'I._p': it is declared as `_p` but implemented as _p; implement it with the same spelling" },
+        new object[] { "interface_property_bare_impl_escaped",
+            "interface I:\n    property get p(self) -> int: ...\n\n"
+            + "class C(I):\n    property get `p`(self) -> int:\n        return 7\n\n"
+            + "def main() -> None:\n    i: I = C()\n    print(i.p)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface property 'I.p': it is declared as p but implemented as `p`; implement it with the same spelling" },
+        new object[] { "interface_event_escaped_impl_bare",
+            "delegate H() -> None\n\ninterface I:\n    event `_e`: H\n\n"
+            + "class C(I):\n    event _e: H\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface event 'I._e': it is declared as `_e` but implemented as _e; implement it with the same spelling" },
+        new object[] { "interface_event_bare_impl_escaped",
+            "delegate H() -> None\n\ninterface I:\n    event e: H\n\n"
+            + "class C(I):\n    event `e`: H\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface event 'I.e': it is declared as e but implemented as `e`; implement it with the same spelling" },
+        new object[] { "event_base_escaped_override_bare",
+            "delegate H() -> None\n\nclass B:\n    @virtual\n    event `_e`: H\n\n"
+            + "class D(B):\n    @override\n    event _e: H\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InvalidOverride,
+            "Event _e overrides 'B._e', which is declared as `_e`; implement it with the same spelling" },
+        new object[] { "event_base_bare_override_escaped",
+            "delegate H() -> None\n\nclass B:\n    @virtual\n    event e: H\n\n"
+            + "class D(B):\n    @override\n    event `e`: H\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InvalidOverride,
+            "Event `e` overrides 'B.e', which is declared as e; implement it with the same spelling" },
+        new object[] { "auto_property_base_bare_override_escaped",
+            "class B:\n    @virtual\n    property p: int = 1\n\n"
+            + "class D(B):\n    @override\n    property `p`: int = 2\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Validation.InvalidPropertyOverride,
+            "Property `p` overrides 'B.p', which is declared as p; implement it with the same spelling" },
+        // Against a DEFAULT-bodied interface property the mismatched member silently failed to
+        // implement it: the prior commit ran and printed the interface default, 1.
+        new object[] { "interface_default_property_escaped_impl_bare",
+            "interface I:\n    property get `p`(self) -> int:\n        return 1\n\n"
+            + "class C(I):\n    property get p(self) -> int:\n        return 7\n\n"
+            + "def main() -> None:\n    i: I = C()\n    print(i.`p`)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface property 'I.p': it is declared as `p` but implemented as p; implement it with the same spelling" },
+        new object[] { "interface_auto_property_escaped_impl_bare",
+            "interface I:\n    property `p`: int\n\n"
+            + "class C(I):\n    property p: int = 7\n\n"
+            + "def main() -> None:\n    print(1)\n",
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "Class 'C' does not implement interface property 'I.p': it is declared as `p` but implemented as p; implement it with the same spelling" },
     };
 
     [Theory]
@@ -299,7 +369,7 @@ public class InterfaceMemberNameMatrixTests : IntegrationTestBase
     public void Matrix_IsTotal()
     {
         Cells().Should().HaveCount(4 * 3 * 2 * 5 * 2);
-        MixedEscapeCells().Should().HaveCount(4);
+        MixedEscapeCells().Should().HaveCount(15);
         PlainHostEscapeCells().Should().HaveCount(3);
     }
 

@@ -208,6 +208,7 @@ internal class EventValidator : SemanticValidatorBase
             ValidateEventAgainstMethods(typeName, eventDef, methodNames);
             ValidateAbstractEventBody(typeName, eventDef);
             ValidateFinalNotWithAbstractOrVirtual(typeName, eventDef);
+            ValidateMixedEscapeOverride(eventDef, ownerSymbol);
         }
 
         // Check for unpaired function-style accessors and abstractness agreement
@@ -215,6 +216,39 @@ internal class EventValidator : SemanticValidatorBase
         {
             ValidateUnpairedAccessors(typeName, eventName, group);
             ValidateAccessorAbstractnessAgreement(typeName, eventName, group, ownerSymbol);
+        }
+    }
+
+    /// <summary>
+    /// An event is named by the method rule (<c>NameCasing.ResolveMethod</c>), so a mixed-escape
+    /// <c>@override</c> emits a different C# name than the event it overrides: refused by name, as the
+    /// method twin is (SPY0248), rather than as CS0115 behind SPY0908 (#2033).
+    /// </summary>
+    private void ValidateMixedEscapeOverride(EventDef eventDef, TypeSymbol? ownerSymbol)
+    {
+        if (ownerSymbol == null || !eventDef.Decorators.Any(d => d.Name == DecoratorNames.Override))
+            return;
+
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(ownerSymbol, _context.SemanticBinding))
+        {
+            var baseEvent = baseType.Events.FirstOrDefault(e => e.Name == eventDef.Name);
+            if (baseEvent == null)
+                continue;
+
+            if (baseType.ClrType == null
+                && MemberClassification.MethodSpellingsDiffer(
+                    eventDef.Name, baseEvent.IsNameBacktickEscaped, eventDef.IsNameBacktickEscaped))
+            {
+                AddError(_context,
+                    $"Event {MemberClassification.Spelling(eventDef.Name, eventDef.IsNameBacktickEscaped)} "
+                    + $"overrides '{baseType.Name}.{eventDef.Name}', which is declared as "
+                    + $"{MemberClassification.Spelling(baseEvent.Name, baseEvent.IsNameBacktickEscaped)}; "
+                    + "implement it with the same spelling",
+                    eventDef.LineStart, eventDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidOverride,
+                    span: eventDef.Span);
+            }
+            return;
         }
     }
 
