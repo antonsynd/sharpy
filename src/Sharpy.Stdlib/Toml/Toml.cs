@@ -178,7 +178,8 @@ namespace Sharpy
             var type = target.GetType();
             foreach (var kv in table)
             {
-                string pascalName = SnakeToPascalCase(kv.Key);
+                // The member the compiler emitted for this key: the one forward rule (R-CG, #2040).
+                string pascalName = NameMangling.ToPascalCase(kv.Key);
 
                 var field = type.GetField(pascalName, BindingFlags.Public | BindingFlags.Instance)
                     ?? type.GetField(pascalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
@@ -264,37 +265,6 @@ namespace Sharpy
                 throw new InvalidOperationException(
                     $"Cannot convert TOML value of type '{PyFormat.PyTypeName(value.GetType())}' to field type '{PyFormat.PyTypeName(targetType)}'");
             }
-        }
-
-        private static string SnakeToPascalCase(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                return name;
-            }
-
-            var sb = new System.Text.StringBuilder(name.Length);
-            bool capitalizeNext = true;
-            for (int i = 0; i < name.Length; i++)
-            {
-                char c = name[i];
-                if (c == '_')
-                {
-                    capitalizeNext = true;
-                    continue;
-                }
-
-                if (capitalizeNext)
-                {
-                    sb.Append(char.ToUpperInvariant(c));
-                    capitalizeNext = false;
-                }
-                else
-                {
-                    sb.Append(c);
-                }
-            }
-            return sb.ToString();
         }
 
         /// <summary>Parse TOML content from a text file into a typed model.</summary>
