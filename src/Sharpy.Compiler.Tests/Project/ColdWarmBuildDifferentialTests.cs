@@ -851,6 +851,28 @@ def main() -> None:
             "Res.Good(5)", "", "Res.Good(5)", "{v}.value_or(0) / 2", null, false, "{v}.value_or(0)",
             Prelude: "from lib import Res\n\n\n",
             StatementUse: "local: Res[int] = Res.Bad(\"no\")\n    print(local.value_or(9) / 2)"),
+        // Interface rows: a cached class implementing an interface was restored with its interface list
+        // doubled (the import binds the declaring file's own symbol in main's scope, so the symbol was
+        // written — and restored — once per scope), and the warm build failed the inheritance
+        // consistency check (SPY0909) where cold compiled. The Prelude import is that shape.
+        ["ifaceclass"] = new("Src",
+            "interface ISource:\n    def get(self) -> int: ...\n\n\n"
+            + "class Src(ISource):\n    def __init__(self) -> None:\n        pass\n\n    def get(self) -> int:\n        return 7\n\n\n",
+            "Src()", "", "Src()", "{v}.get()", null, false, "{v}.get()",
+            Prelude: "from lib import ISource, Src\n\n\n",
+            StatementUse: "s: ISource = {v}\n    print(s.get())"),
+        ["genericifaceclass"] = new("IntSrc",
+            "interface ISrc[T]:\n    def get(self) -> T: ...\n\n\n"
+            + "class IntSrc(ISrc[int]):\n    def __init__(self) -> None:\n        pass\n\n    def get(self) -> int:\n        return 7\n\n\n",
+            "IntSrc()", "", "IntSrc()", "{v}.get() / 2", null, false, "{v}.get()",
+            Prelude: "from lib import ISrc, IntSrc\n\n\n",
+            StatementUse: "s: ISrc[int] = {v}\n    print(s.get() / 2)"),
+        // A dunder-synthesized protocol interface (`__len__` → ISized) rides the synthesized-interface
+        // channel on the wire (#1746); imported, it must not double either.
+        ["sizedclass"] = new("Bag",
+            "class Bag:\n    def __init__(self) -> None:\n        pass\n\n    def __len__(self) -> int:\n        return 3\n\n\n",
+            "Bag()", "", "Bag()", "len({v}) / 2", null, false, "len({v})",
+            Prelude: "from lib import Bag\n\n\n"),
     };
 
     private const string UpcastDef = "def upcast(e: Exception) -> str:\n    return str(e)\n\n\n";

@@ -103,11 +103,19 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Extract all symbols declared in a specific file.
+    /// Extract all symbols declared in a specific file, each once.
     /// </summary>
+    /// <remarks>
+    /// A project import binds the declaring file's own symbol in the importing module's scope
+    /// (<c>ResolveOwnExportedSymbol</c>), so the scopes enumerate a symbol once per module that
+    /// names it. Written twice, it was restored twice: the restore resolves each entry's references
+    /// onto the one registered symbol, so a class's interface list doubled and the warm build failed
+    /// the inheritance consistency check where the cold build compiled (#2027).
+    /// </remarks>
     private List<Symbol> ExtractFileSymbols(string filePath)
     {
         var symbols = new List<Symbol>();
+        var seen = new HashSet<Symbol>(ReferenceEqualityComparer.Instance);
         var normalizedPath = PathNormalizer.Normalize(filePath);
 
         // Search both module scopes (where project symbols live) and the global scope
@@ -118,7 +126,8 @@ internal partial class ProjectCompiler
         {
             var symbolFilePath = GetSymbolFilePath(symbol);
             if (symbolFilePath != null &&
-                string.Equals(PathNormalizer.Normalize(symbolFilePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
+                string.Equals(PathNormalizer.Normalize(symbolFilePath), normalizedPath, StringComparison.OrdinalIgnoreCase)
+                && seen.Add(symbol))
             {
                 symbols.Add(symbol);
             }

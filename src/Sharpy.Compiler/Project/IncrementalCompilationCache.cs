@@ -146,9 +146,11 @@ internal class IncrementalCompilationCache
     //      entry carries none, so a module added in a warm build would not see that a served file
     //      uses the type its namespace shadows (SPY0908 where the cold build refuses).
     // v41: the "generic" SemanticType codec carries a Sharpy-declared definition's origin,
-    //      `Name@file:<path>[args]` (#2027), and a Result held directly in ok position is
-    //      parenthesized. A v40 entry restores a constructed user generic with no definition (members
-    //      Unknown warm) and writes a nested ok Result the depth-aware decoder cannot split.
+    //      `Name@file:<path>[args]` (#2027), a file entry lists each symbol once, and a Result held
+    //      directly in ok position is parenthesized. A v40 entry restores a constructed user generic
+    //      with no definition (members Unknown warm), lists an imported class once per importing
+    //      scope (its interfaces doubled on restore → SPY0909), and writes a nested ok Result the
+    //      depth-aware decoder cannot split.
     internal const int CurrentSchemaVersion = 41;
 
     private readonly string _cacheFilePath;
