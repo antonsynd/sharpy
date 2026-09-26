@@ -52,6 +52,10 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
         class my_err(Exception):
             pass
 
+        enum Color:
+            RED = 1
+            dark_blue = 2
+
         def main() -> None:
 
         """;
@@ -74,6 +78,10 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
         { "format.dynamic_snake_struct", "sp: str = \"x\"\ntry:\n    print(format(my_pt(1), sp))\nexcept TypeError as e:\n    print(e)", "unsupported format string passed to my_pt.__format__" },
         { "type.dunder_name", "print(type(5).__name__)\nprint(type(\"a\").__name__)\nprint(type([1]).__name__)\nprint(type(A()).__name__)\nprint(type(my_thing()).__name__)\nprint(type(Outer.in_ner()).__name__)\nprint(type(my_pt(1)).__name__)", "int\nstr\nlist\nA\nmy_thing\nin_ner\nmy_pt" },
         { "type.class_repr", "print(str(type(5)))\nprint(type(\"a\"))\nprint(repr(type([1])))\nprint(str(type(A())))\nprint(type(my_thing()))\nprint(repr(type(Outer.in_ner())))\nprint(type(my_pt(1)))", "<class 'int'>\n<class 'str'>\n<class 'list'>\n<class '__main__.A'>\n<class '__main__.my_thing'>\n<class '__main__.Outer.in_ner'>\n<class '__main__.my_pt'>" },
+        // A builtin that is not a primitive or collection (an exception) is in python's `builtins`
+        // module, elided from the repr; an enum class is EnumType's `<enum 'Color'>`.
+        { "type.class_repr_builtin_exception", "print(str(type(ValueError(\"v\"))))\nprint(type(Exception(\"e\")))\nprint(repr(type(KeyError(\"k\"))))\nprint(type(ZeroDivisionError(\"z\")))\nprint(type(my_err(\"m\")))", "<class 'ValueError'>\n<class 'Exception'>\n<class 'KeyError'>\n<class 'ZeroDivisionError'>\n<class '__main__.my_err'>" },
+        { "type.class_repr_enum", "print(str(type(Color.RED)))\nprint(repr(type(Color.dark_blue)))", "<enum 'Color'>\n<enum 'Color'>" },
         { "deque.index", "d = Deque[int]([1, 2, 3])\nprint(d[-1])\nprint(d[0])\nd[1] = 20\nprint(d)\ntry:\n    print(d[3])\nexcept IndexError as e:\n    print(e)", "3\n1\ndeque([1, 20, 3])\ndeque index out of range" },
         // C-implemented Stdlib types: tp_name in C-level messages, __name__ elsewhere. python spells
         // the deque `collections.deque` / `deque` (Decision 26: Sharpy's surface name is Deque).

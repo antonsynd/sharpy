@@ -305,14 +305,45 @@ namespace Sharpy
         /// Stdlib by its dotted python name (<see cref="PyQualifiedName"/>: <c>&lt;class
         /// '__main__.A'&gt;</c>, <c>&lt;class 'datetime.timedelta'&gt;</c>), and a CLR interop type —
         /// which has no python twin — by its CLR spelling (<c>&lt;class 'System.Guid'&gt;</c>,
-        /// <c>&lt;class 'System.Collections.Generic.List`1[System.Int32]'&gt;</c>).
+        /// <c>&lt;class 'System.Collections.Generic.List`1[System.Int32]'&gt;</c>). A python builtin
+        /// that is not a primitive or a collection (an exception: <c>ValueError</c>, <c>KeyError</c>,
+        /// <c>Exception</c>) is in python's <c>builtins</c> module, which the repr elides, so it prints
+        /// its bare name too (<see cref="IsBuiltinsModuleType"/>). An enum class is python's
+        /// <c>EnumType</c> repr, <c>&lt;enum 'Color'&gt;</c>: always the simple name, no module.
         /// </summary>
         internal static string PyClassRepr(Type type)
         {
+            if (type.IsEnum)
+            {
+                return "<enum '" + PyDunderName(type) + "'>";
+            }
+
             string name = TryBuiltinTypeName(type, out string builtinName)
                 ? builtinName
+                : IsBuiltinsModuleType(type) ? PyDunderName(type)
                 : IsSharpyDeclared(type) ? PyQualifiedName(type) : type.ToString();
             return "<class '" + name + "'>";
+        }
+
+        /// <summary>
+        /// Whether <paramref name="type"/> is in python's <c>builtins</c> module by the rule the
+        /// compiler's discovery uses to make it a global name: a Core type in the <c>Sharpy</c>
+        /// namespace that no <see cref="SharpyModuleTypeAttribute"/>/<see cref="SharpyModuleAttribute"/>
+        /// places in a module (<c>Sharpy.ValueError</c>, <c>Sharpy.KeyError</c>), plus
+        /// <see cref="Exception"/>, which the compiler registers as the builtin <c>Exception</c>.
+        /// </summary>
+        private static bool IsBuiltinsModuleType(Type type)
+        {
+            if (type == typeof(Exception))
+            {
+                return true;
+            }
+
+            return type.Assembly == typeof(PyFormat).Assembly
+                && type.Namespace == "Sharpy"
+                && !type.IsNested
+                && !Attribute.IsDefined(type, typeof(SharpyModuleTypeAttribute), inherit: false)
+                && !Attribute.IsDefined(type, typeof(SharpyModuleAttribute), inherit: false);
         }
 
         /// <summary>

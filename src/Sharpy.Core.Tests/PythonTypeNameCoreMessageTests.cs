@@ -62,4 +62,25 @@ public class PythonTypeNameCoreMessageTests
         Builtins.Str(typeof(Guid)).Should().Be("<class 'System.Guid'>");
         PyFormat.PyTypeName(typeof(object)).Should().Be("object");
     }
+
+    // python3: str(type(ValueError('v'))) -> <class 'ValueError'>; str(type(Exception('e'))) ->
+    // <class 'Exception'>: python's builtins module is elided, so a builtin exception has no prefix.
+    [Fact]
+    public void BuiltinExceptionClasses_RenderWithoutAModule()
+    {
+        Builtins.Str(typeof(ValueError)).Should().Be("<class 'ValueError'>");
+        Builtins.Str(typeof(KeyError)).Should().Be("<class 'KeyError'>");
+        Builtins.Repr(typeof(ZeroDivisionError)).Should().Be("<class 'ZeroDivisionError'>");
+        Builtins.Str(typeof(Exception)).Should().Be("<class 'Exception'>");
+    }
+
+    // python3: class Color(Enum): RED = 1; str(type(Color.RED)) -> <enum 'Color'> (EnumType's repr:
+    // the simple name, no module). Every System.Enum takes it, as every System.Enum takes python's
+    // member str (#2007).
+    [Fact]
+    public void EnumClasses_RenderAsEnumType()
+    {
+        Builtins.Str(typeof(DayOfWeek)).Should().Be("<enum 'DayOfWeek'>");
+        Builtins.Repr(typeof(DayOfWeek)).Should().Be("<enum 'DayOfWeek'>");
+    }
 }
