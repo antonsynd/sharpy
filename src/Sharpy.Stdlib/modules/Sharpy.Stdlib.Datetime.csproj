@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <Compile Include="../Datetime/**/*.cs" />
+    <!-- python's strftime is one formatter shared by datetime's strftime/__format__ and
+         time.strftime; in the combined Sharpy.Stdlib assembly it is a sibling file. -->
+    <Compile Include="../Strftime.cs" />
   </ItemGroup>
 
   <ItemGroup>

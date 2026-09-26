@@ -11,22 +11,6 @@ namespace Sharpy
     /// </summary>
     public static partial class TimeModule
     {
-        private static readonly Dictionary<string, string> _formatMap = new Dictionary<string, string>
-        {
-            { "%Y", "yyyy" },
-            { "%m", "MM" },
-            { "%d", "dd" },
-            { "%H", "HH" },
-            { "%M", "mm" },
-            { "%S", "ss" },
-            { "%A", "dddd" },
-            { "%B", "MMMM" },
-            { "%a", "ddd" },
-            { "%b", "MMM" },
-            { "%p", "tt" },
-            { "%I", "hh" },
-        };
-
         /// <summary>
         /// Return the time in seconds since the epoch (1970-01-01T00:00:00Z) as a
         /// floating point number.
@@ -138,7 +122,9 @@ namespace Sharpy
         public static string Strftime(string format)
         {
             var now = System.DateTime.Now;
-            return now.ToString(ConvertFormat(format, now), CultureInfo.InvariantCulture);
+            var local = TimeZoneInfo.Local;
+            var zoneName = local.IsDaylightSavingTime(now) ? local.DaylightName : local.StandardName;
+            return StrftimeFormat.FormatPlatform(now, format, local.GetUtcOffset(now), zoneName);
         }
 
         /// <summary>
@@ -210,93 +196,6 @@ namespace Sharpy
             var utcDt = epoch.AddSeconds(seconds);
             var localDt = TimeZoneInfo.ConvertTimeFromUtc(utcDt, TimeZoneInfo.Local);
             return StructTime.FromDateTime(localDt);
-        }
-
-        /// <summary>
-        /// Convert a Python strftime format string to a .NET DateTime format string.
-        /// Codes that have no .NET equivalent (<c>%j</c>, <c>%w</c>, <c>%Z</c>) are
-        /// evaluated against <paramref name="dt"/> and embedded as literals.
-        /// </summary>
-        internal static string ConvertFormat(string format, System.DateTime? dt = null)
-        {
-            var result = new System.Text.StringBuilder(format.Length * 2);
-            int i = 0;
-
-            while (i < format.Length)
-            {
-                if (format[i] == '%' && i + 1 < format.Length)
-                {
-                    char code = format[i + 1];
-                    string twoChar = format.Substring(i, 2);
-
-                    if (twoChar == "%%")
-                    {
-                        result.Append('%');
-                        i += 2;
-                        continue;
-                    }
-
-                    if (_formatMap.TryGetValue(twoChar, out string? mapped))
-                    {
-                        result.Append(mapped);
-                        i += 2;
-                        continue;
-                    }
-
-                    if (code == 'j')
-                    {
-                        // Day of year (001-366) — no .NET format specifier
-                        int dayOfYear = (dt ?? System.DateTime.Now).DayOfYear;
-                        result.Append(dayOfYear.ToString("D3", CultureInfo.InvariantCulture));
-                        i += 2;
-                        continue;
-                    }
-
-                    if (code == 'w')
-                    {
-                        // Day of week as integer (0=Sunday, 6=Saturday)
-                        int dow = (int)(dt ?? System.DateTime.Now).DayOfWeek;
-                        result.Append(dow.ToString(CultureInfo.InvariantCulture));
-                        i += 2;
-                        continue;
-                    }
-
-                    if (code == 'Z')
-                    {
-                        // Timezone name
-                        result.Append(TimeZoneInfo.Local.StandardName);
-                        i += 2;
-                        continue;
-                    }
-
-                    if (code == 'f')
-                    {
-                        // Microseconds (000000-999999). .NET DateTime only has
-                        // millisecond precision, so we pad with zeros.
-                        int ms = (dt ?? System.DateTime.Now).Millisecond;
-                        result.Append((ms * 1000).ToString("D6", CultureInfo.InvariantCulture));
-                        i += 2;
-                        continue;
-                    }
-
-                    // Unknown format code - pass through as-is
-                    result.Append(twoChar);
-                    i += 2;
-                }
-                else
-                {
-                    // Escape characters that .NET would interpret as format specifiers
-                    char c = format[i];
-                    if (char.IsLetter(c))
-                    {
-                        result.Append('\\');
-                    }
-                    result.Append(c);
-                    i++;
-                }
-            }
-
-            return result.ToString();
         }
     }
 }

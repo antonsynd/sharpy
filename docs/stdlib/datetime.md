@@ -205,7 +205,8 @@ Return the UTC offset (dt parameter ignored for fixed-offset zones).
 
 ### `tzname(dt: DateTime | None = None) -> str`
 
-Return the timezone name (dt parameter ignored for fixed-offset zones).
+Return the timezone name (dt parameter ignored for fixed-offset zones): the given name, else
+python's `UTC` for a zero offset and `UTC±HH:MM[:SS[.ffffff]]` otherwise.
 
 ### `dst(dt: DateTime | None = None) -> Timedelta`
 
@@ -213,4 +214,4 @@ Return DST offset (always zero for fixed-offset zones).
 
 ### `__str__() -> str`
 
-`repr()` uses the same method. Return the string representation.
+`repr()` uses the same method. python's `str(timezone)`: its `tzname(None)`.

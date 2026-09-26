@@ -253,7 +253,7 @@ into a partial class — it cannot produce standalone generic classes.
 
 | Module | Classes | Blockers |
 |--------|---------|----------|
-| `datetime` | `Date`, `Time`, `DateTime`, `Timedelta`, `Timezone` | 5 interrelated classes with `internal` constructors and `InternalTimeSpan`/`InternalDateTime` properties for cross-class access (Sharpy has no `internal` visibility modifier). Complex operator overloading between different types (`DateTime + Timedelta → DateTime`). `internal static class DatetimeFormatHelper` with ~100-line strftime/strptime state machine. Multiple `[SharpyModuleType]` registrations. Per Axiom 1, keeping this in C# is correct. |
+| `datetime` | `Date`, `Time`, `DateTime`, `Timedelta`, `Timezone` | 5 interrelated classes with `internal` constructors and `InternalTimeSpan`/`InternalDateTime` properties for cross-class access (Sharpy has no `internal` visibility modifier). Complex operator overloading between different types (`DateTime + Timedelta → DateTime`). python's two-pass strftime in the shared `internal static class StrftimeFormat` (`Strftime.cs`, also compiled into `time`) and a strptime translator in `DatetimeFormatHelper`. Multiple `[SharpyModuleType]` registrations. Per Axiom 1, keeping this in C# is correct. |
 | `pathlib` | `Path` | `sealed class Path : IEquatable<Path>` with `/` operator overloading for path joining, private helper methods (`GlobMatch`, `GetEncoding`), `IEnumerable<Path>` returns via `yield return` (generators), `[SharpyModuleType("pathlib")]` registration. While technically rewritable, the class wraps `System.IO.Path` 1:1 — the `.spy` version would be identical logic with more verbose .NET import syntax. Diminishing returns. |
 
 ### Modules with complex CLR interop (glob, csv)

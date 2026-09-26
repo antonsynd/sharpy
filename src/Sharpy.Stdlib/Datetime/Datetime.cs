@@ -99,7 +99,7 @@ namespace Sharpy
         /// <summary>Format the date using Python strftime format codes.</summary>
         public string Strftime(string format)
         {
-            return DatetimeFormatHelper.Strftime(_date, format);
+            return StrftimeFormat.Strftime(_date, format);
         }
 
         // --- Arithmetic ---
@@ -260,7 +260,7 @@ namespace Sharpy
         public string Strftime(string format)
         {
             var dt = new System.DateTime(1900, 1, 1, Hour, Minute, Second).AddTicks(Microsecond * 10L);
-            return DatetimeFormatHelper.Strftime(dt, format);
+            return StrftimeFormat.Strftime(dt, format);
         }
 
         // --- Comparison ---
@@ -457,10 +457,9 @@ namespace Sharpy
             }
             if (_tzinfo is not null)
             {
-                var offset = _tzinfo.Utcoffset(this);
-                var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
-                var absOffset = offset.InternalTimeSpan.Duration();
-                result += $"{sign}{absOffset.Hours:D2}:{absOffset.Minutes:D2}";
+                var offset = new System.Text.StringBuilder();
+                StrftimeFormat.AppendUtcOffset(offset, _tzinfo.Utcoffset(this).InternalTimeSpan, ":");
+                result += offset.ToString();
             }
             return result;
         }
@@ -500,13 +499,13 @@ namespace Sharpy
         /// <summary>Format the datetime using Python strftime format codes.</summary>
         public string Strftime(string format)
         {
-            return DatetimeFormatHelper.Strftime(_dateTime, format);
+            return StrftimeFormat.Strftime(_dateTime, format, _tzinfo?.Utcoffset(this).InternalTimeSpan, _tzinfo?.Tzname(this));
         }
 
         /// <summary>Parse a datetime from a string using Python strftime format codes.</summary>
         public static DateTime Strptime(string date_string, string format)
         {
-            var dotnetFormat = DatetimeFormatHelper.TranslateFormat(format);
+            var dotnetFormat = DatetimeFormatHelper.TranslateStrptimeFormat(format);
             var dt = System.DateTime.ParseExact(date_string, dotnetFormat, CultureInfo.InvariantCulture);
             return new DateTime(dt);
         }
@@ -840,7 +839,7 @@ namespace Sharpy
     public class Timezone : ITzinfo, IRepr
     {
         private readonly Timedelta _offset;
-        private readonly string _name;
+        private readonly string? _name;
 
         /// <summary>The UTC timezone.</summary>
         public static readonly Timezone Utc = new Timezone(new Timedelta(), "UTC");
@@ -849,7 +848,7 @@ namespace Sharpy
         public Timezone(Timedelta offset, string? name = null)
         {
             _offset = offset;
-            _name = name ?? "";
+            _name = name;
         }
 
         /// <summary>Return the UTC offset (dt parameter ignored for fixed-offset zones).</summary>
@@ -858,10 +857,19 @@ namespace Sharpy
             return _offset;
         }
 
-        /// <summary>Return the timezone name (dt parameter ignored for fixed-offset zones).</summary>
+        /// <summary>
+        /// Return the timezone name (dt parameter ignored for fixed-offset zones): the given name, else
+        /// python's <c>UTC</c> for a zero offset and <c>UTC±HH:MM[:SS[.ffffff]]</c> otherwise.
+        /// </summary>
         public string Tzname(DateTime? dt = null)
         {
-            return _name;
+            if (_name is not null)
+                return _name;
+            if (_offset.InternalTimeSpan == TimeSpan.Zero)
+                return "UTC";
+            var sb = new System.Text.StringBuilder("UTC");
+            StrftimeFormat.AppendUtcOffset(sb, _offset.InternalTimeSpan, ":");
+            return sb.ToString();
         }
 
         /// <summary>Return DST offset (always zero for fixed-offset zones).</summary>
@@ -870,15 +878,8 @@ namespace Sharpy
             return new Timedelta();
         }
 
-        /// <summary>Return the string representation.</summary>
-        public override string ToString()
-        {
-            if (_name != "")
-                return _name;
-            var sign = _offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
-            var abs = _offset.InternalTimeSpan.Duration();
-            return $"UTC{sign}{abs.Hours:D2}:{abs.Minutes:D2}";
-        }
+        /// <summary>python's <c>str(timezone)</c>: its <c>tzname(None)</c>.</summary>
+        public override string ToString() => Tzname();
 
         /// <summary>
         /// Python's <c>repr(timezone)</c>: <c>datetime.timezone.utc</c> for the UTC singleton, else
@@ -889,19 +890,20 @@ namespace Sharpy
             if (ReferenceEquals(this, Utc))
                 return "datetime.timezone.utc";
             var offset = Builtins.Repr(_offset);
-            return _name.Length == 0
+            return _name is null
                 ? "datetime.timezone(" + offset + ")"
                 : "datetime.timezone(" + offset + ", " + Builtins.Repr(_name) + ")";
         }
     }
 
-    /// <summary>
-    /// Helper for translating Python strftime/strptime format codes to .NET format strings.
-    /// </summary>
+    /// <summary>The <c>strptime</c> side of the datetime formats (<c>strftime</c> is <see cref="StrftimeFormat"/>).</summary>
     internal static class DatetimeFormatHelper
     {
-        /// <summary>Translate a Python strftime format string to a .NET format string.</summary>
-        internal static string TranslateFormat(string pythonFormat)
+        /// <summary>
+        /// Translate a python <c>strptime</c> format to a .NET <c>ParseExact</c> format. Parse side only;
+        /// <c>strftime</c> never goes through a .NET format string.
+        /// </summary>
+        internal static string TranslateStrptimeFormat(string pythonFormat)
         {
             var result = new System.Text.StringBuilder();
             for (int i = 0; i < pythonFormat.Length; i++)
@@ -954,18 +956,6 @@ namespace Sharpy
                         case '%':
                             result.Append("'%'");
                             break;
-                        case 'j':
-                            // Placeholder replaced in Strftime
-                            result.Append("\\j");
-                            break;
-                        case 'w':
-                            // Placeholder replaced in Strftime
-                            result.Append("\\w");
-                            break;
-                        case 'Z':
-                            // Placeholder replaced in Strftime
-                            result.Append("\\Z");
-                            break;
                         default:
                             result.Append('%');
                             result.Append(code);
@@ -984,38 +974,6 @@ namespace Sharpy
                 }
             }
             return result.ToString();
-        }
-
-        /// <summary>Format a System.DateTime using Python strftime format codes.</summary>
-        internal static string Strftime(System.DateTime dt, string pythonFormat)
-        {
-            // Handle %j, %w, %Z with pre-processing
-            bool hasSpecial = pythonFormat.Contains("%j") || pythonFormat.Contains("%w") || pythonFormat.Contains("%Z");
-
-            var dotnetFormat = TranslateFormat(pythonFormat);
-
-            var result = dt.ToString(dotnetFormat, CultureInfo.InvariantCulture);
-
-            if (hasSpecial)
-            {
-                // Replace placeholders for special codes
-                if (result.Contains("j"))
-                {
-                    int dayOfYear = dt.DayOfYear;
-                    result = result.Replace("j", dayOfYear.ToString("D3"));
-                }
-                if (result.Contains("w"))
-                {
-                    int dayOfWeek = (int)dt.DayOfWeek; // Sunday=0
-                    result = result.Replace("w", dayOfWeek.ToString());
-                }
-                if (result.Contains("Z"))
-                {
-                    result = result.Replace("Z", "");
-                }
-            }
-
-            return result;
         }
     }
 
