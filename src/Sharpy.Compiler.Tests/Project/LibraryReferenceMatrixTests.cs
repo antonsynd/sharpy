@@ -22,8 +22,9 @@ namespace Sharpy.Compiler.Tests.Project;
 /// discovery (<c>OverloadIndexBuilder</c>) records the nested class's namespace without the wrapper.
 /// A namespace segment is what discovery reads.</item>
 /// <item><c>c</c> merged module <c>thing.spy</c> + <c>class Thing</c> → <c>from thing import thing_fn</c>
-/// → SPY0300: the merged module class carries no <c>[SharpyModule]</c>. P14c (#2039) lifts the merge;
-/// pinned here so that flip is observed.</item>
+/// → <c>6</c>. It was SPY0300 while the merged module class carried no <c>[SharpyModule]</c>; #2006
+/// (cb5df187f) stamps it, so discovery finds the module. P14c (#2039) lifts the merge and must keep
+/// this cell running.</item>
 /// <item><c>d</c> module with a type → <c>from shapes import Foo, mk</c> → <c>9</c>/<c>9</c> (nested-type
 /// discovery; the positive control that the harness reaches a library's types).</item>
 /// </list>
@@ -45,9 +46,12 @@ public class LibraryReferenceMatrixTests
             // pkg/lib.spy alone roots at src/pkg/ and names it lib).
             new[] { ("pkg/lib.spy", "def lib_fn() -> int:\n    return 5\n"), ("util.spy", "def u() -> int:\n    return 0\n") },
             "from pkg.lib import lib_fn\n\ndef main() -> None:\n    print(lib_fn())\n", "5", null! },
+        // A merged file==class module (thing.spy declaring `class Thing`): its module class now carries
+        // [SharpyModule] (#2006, cb5df187f), so reference discovery finds it and the import resolves.
+        // It was SPY0300 at P5's original base 7bb1511a7; P6's layout keeps it running.
         new object[] { "c_merged_module",
             new[] { ("thing.spy", "class Thing:\n    pass\n\ndef thing_fn() -> int:\n    return 6\n") },
-            "from thing import thing_fn\n\ndef main() -> None:\n    print(thing_fn())\n", null!, DiagnosticCodes.Semantic.ModuleNotFound },
+            "from thing import thing_fn\n\ndef main() -> None:\n    print(thing_fn())\n", "6", null! },
         new object[] { "d_module_with_type",
             new[] { ("shapes.spy", "class Foo:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n\ndef mk() -> Foo:\n    return Foo(9)\n") },
             "from shapes import Foo, mk\n\ndef main() -> None:\n    print(Foo(9).v)\n    print(mk().v)\n", "9\n9", null! },
