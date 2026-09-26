@@ -34,6 +34,19 @@ public class OptionalReprMatrixTests
         Assert.Equal(repr, Builtins.Repr(value));
     }
 
+    /// <summary>
+    /// The <c>format(o, "")</c> site: an empty spec is <c>str</c> (PEP 3101), so it is transparent too;
+    /// and a tuple element is a repr site like a list element.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Cells))]
+    public void EmptySpecFormat_IsTheStr_TupleElement_IsTheRepr(object value, string str, string repr)
+    {
+        Assert.Equal(str, Builtins.Format(value, ""));
+        Assert.Equal("(" + repr + ", 0)", Builtins.Str((value, 0)));
+        Assert.Equal("(" + repr + ",)", Builtins.Repr(System.ValueTuple.Create(value)));
+    }
+
     [Fact]
     public void ContainerElements_UseTheRepr()
     {

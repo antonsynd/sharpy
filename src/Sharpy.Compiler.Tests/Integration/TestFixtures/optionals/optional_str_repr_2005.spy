@@ -1,5 +1,6 @@
 # An Optional's str is transparent and its repr is the constructor spelling (#2005, R-CH):
-# str(Some(1)) is 1, repr(Some(1)) is Some(1), repr(None()) is None() — on every repr route.
+# str(Some(1)) is 1, repr(Some(1)) is Some(1), repr(None()) is None() — on every repr route
+# (a list, dict or tuple element); format(o, "") is the str.
 def main() -> None:
     a: int? = Some(1)
     b: str? = Some("ab")
@@ -11,3 +12,6 @@ def main() -> None:
     print(f"{a!r} {b!r} {c!r}")
     print([a, c])
     print({"k": b})
+    print(format(a, ""), format(b, ""), format(c, ""))
+    print((a, b, c))
+    print((c,))

@@ -5,3 +5,6 @@ Some(1) Some('ab') None()
 Some(1) Some('ab') None()
 [Some(1), None()]
 {'k': Some('ab')}
+1 ab None
+(Some(1), Some('ab'), None())
+(None(),)
