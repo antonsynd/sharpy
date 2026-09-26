@@ -576,6 +576,12 @@ internal partial class TypeChecker
     public SemanticBinding? ImportFactsBinding { get; set; }
 
     /// <summary>
+    /// The project's root namespace (empty or null for none) — the recorded module namespace's full
+    /// name is compared with the .NET types the module uses (#2039).
+    /// </summary>
+    public string? RootNamespace { get; set; }
+
+    /// <summary>
     /// Optional module registry for inline CLR namespace resolution (e.g., `System`.Console).
     /// When set, backtick-escaped identifiers that fail symbol-table lookup are resolved against
     /// the registry's known .NET namespaces lazily, without requiring an explicit import.
@@ -738,7 +744,7 @@ internal partial class TypeChecker
             // The file's NAME, not its symbol identity (#1433): module-class derivation must keep
             // working for an entry file whose symbol paths are nulled for the #1087 contract.
             codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath, _isEntryPoint,
-                SourceRootPath, ImportFactsBinding);
+                SourceRootPath, ImportFactsBinding, RootNamespace);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");

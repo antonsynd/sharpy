@@ -24,6 +24,7 @@ internal class CodeGenInfoComputer
     private string? _sourceFilePath;
     private string? _sourceRootPath;
     private SemanticBinding? _importFacts;
+    private string? _rootNamespace;
     private bool _isEntryPoint;
 
     // Module-level const analysis is now in ConstEligibility (#1791); this class reads the fact
@@ -80,9 +81,14 @@ internal class CodeGenInfoComputer
     /// marks to — the shared project binding when this computer writes a per-file one (#2039). Null:
     /// the computer's own binding.
     /// </param>
+    /// <param name="rootNamespace">
+    /// The project's root namespace (empty or null for none): with the recorded segments, the full
+    /// name of the module's namespace (#2039).
+    /// </param>
     public void ComputeForModule(Module module, string? sourceFilePath = null, bool isEntryPoint = false,
-        string? sourceRootPath = null, SemanticBinding? importFacts = null)
+        string? sourceRootPath = null, SemanticBinding? importFacts = null, string? rootNamespace = null)
     {
+        _rootNamespace = rootNamespace;
         _sourceFilePath = sourceFilePath;
         _sourceRootPath = sourceRootPath;
         _importFacts = importFacts ?? _semanticBinding;
@@ -1470,7 +1476,10 @@ internal class CodeGenInfoComputer
     private void DetectModuleLevelCollisions(Module module, ModuleLayout? layout)
     {
         if (layout != null)
+        {
             DetectLayoutSeedCollisions(module, layout);
+            DetectNamespaceShadowingAnImportedClrType(module, layout);
+        }
 
         // (is a type, CSharpName) → (originalName, where it was first declared): members of <X> and
         // namespace-sibling types are two scopes.
@@ -1561,6 +1570,55 @@ internal class CodeGenInfoComputer
             }
         }
     }
+
+    /// <summary>
+    /// A module whose namespace is also the full name of a .NET type it uses (#2039): C# resolves a
+    /// name declared in the compiled source before a same-named type from a referenced assembly, so
+    /// every reference to the type — <c>global::Sharpy.TimeModule.Time()</c> from
+    /// <c>Sharpy/time_module.spy</c> importing <c>Sharpy.TimeModule</c>, or <c>App.Foo</c> from
+    /// <c>foo.spy</c> in RootNamespace <c>App</c> — binds the namespace (CS0234 behind SPY0908), and no
+    /// C# spelling reaches the type short of an extern alias. Refused by name (SPY0615). The types
+    /// compared are the ones the module names: from-imported, or resolved at an identifier or a
+    /// type-denoting expression. Rung 4 by necessity: this is a C# name-lookup conflict between the
+    /// module's own namespace and a referenced type, which no CLR surface of either can express.
+    /// </summary>
+    private void DetectNamespaceShadowingAnImportedClrType(Module module, ModuleLayout layout)
+    {
+        var namespaceName = string.Join(".", layout.NamespaceParts(_rootNamespace));
+        if (namespaceName.Length == 0)
+            return;
+
+        static string ClrName(Type type) => (type.FullName ?? type.Name).Replace('+', '.');
+
+        // A from-import is reported at its statement; any other use at the module's first line.
+        foreach (var stmt in module.Body)
+        {
+            if (stmt.UnwrapDecorated() is not FromImportStatement fromImport)
+                continue;
+            foreach (var imported in fromImport.Names)
+            {
+                if (_symbolTable.Lookup(imported.AsName ?? imported.Name) is TypeSymbol { ClrType: { } clrType }
+                    && ClrName(clrType) == namespaceName)
+                {
+                    ReportNamespaceShadowsClrType(namespaceName, fromImport.LineStart, fromImport.ColumnStart);
+                    return;
+                }
+            }
+        }
+
+        if (_semanticInfo?.ReferencedClrTypes().Any(t => ClrName(t) == namespaceName) == true)
+            ReportNamespaceShadowsClrType(namespaceName, 1, 1);
+    }
+
+    private void ReportNamespaceShadowsClrType(string namespaceName, int line, int column)
+        => _diagnostics.AddError(
+            $"This module is emitted as the C# namespace '{namespaceName}', which is also the full name of " +
+            $"the .NET type '{namespaceName}' it uses; C# would resolve every reference to the type to the " +
+            "namespace. Rename the source file (the last namespace segment is its stem).",
+            line: line,
+            column: column,
+            code: DiagnosticCodes.SemanticOverflow.ModuleNamespaceShadowsClrType,
+            phase: CompilerPhase.CodeGeneration);
 
     /// <summary>
     /// The layout seeds of the module namespace (#2039, Decision 28 (h)): a top-level function,

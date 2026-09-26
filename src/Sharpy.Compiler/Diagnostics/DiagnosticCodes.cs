@@ -977,6 +977,9 @@ public static class DiagnosticCodes
         // `None` as a value-position annotation (a local, parameter, field, constant or type
         // argument): `None` is not a type; only a return annotation spells "no value" (#2004).
         public const string NoneAnnotationInValuePosition = "SPY0614"; // Active (#2004)
+        // A module whose emitted namespace is the full name of a .NET type it uses: the namespace
+        // declared in the compiled source shadows the referenced type (#2039).
+        public const string ModuleNamespaceShadowsClrType = "SPY0615"; // Active (#2039)
     }
 
     /// <summary>

@@ -916,7 +916,8 @@ internal partial class ProjectCompiler
                     features: fileFeatures,
                     referenceClosure: BuildReferenceClosure(config),
                     moduleIdentityFilePath: unit.FilePath,
-                    sourceRootPath: ComputeSourceRootPath(config));
+                    sourceRootPath: ComputeSourceRootPath(config),
+                    rootNamespace: config.RootNamespace);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

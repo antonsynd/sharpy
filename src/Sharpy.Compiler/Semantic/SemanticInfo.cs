@@ -1482,6 +1482,25 @@ public class SemanticInfo : ISemanticQuery
     public bool IsTypeReference(Expression expr) => _typeReferenceNodes.ContainsKey(expr);
 
     /// <summary>
+    /// The .NET types this file names by an identifier or a type-denoting expression (<c>x.Foo</c>
+    /// as a receiver or callee) — read by the module-namespace/imported-type collision check (#2039).
+    /// </summary>
+    internal IEnumerable<Type> ReferencedClrTypes()
+    {
+        foreach (var symbol in _identifierSymbols.Values)
+        {
+            if (symbol is TypeSymbol { ClrType: { } bare })
+                yield return bare;
+        }
+
+        foreach (var expr in _typeReferenceNodes.Keys)
+        {
+            if (GetExpressionType(expr) is UserDefinedType { Symbol: TypeSymbol { ClrType: { } qualified } })
+                yield return qualified;
+        }
+    }
+
+    /// <summary>
     /// Marks a call argument as naming a type used as a zero-argument factory callable — the
     /// <c>defaultdict(list)</c> convention. Codegen wraps a marked argument in
     /// <c>() =&gt; new TValue()</c> rather than passing the name through (#1175).

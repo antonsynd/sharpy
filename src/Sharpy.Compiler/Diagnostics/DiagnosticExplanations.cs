@@ -395,6 +395,17 @@ public static partial class DiagnosticExplanations
             "Annotate the slot with the type it holds when it is not None: `x: int | None = None`, or " +
             "`x: object = None` when any value may appear.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ModuleNamespaceShadowsClrType,
+            "Module namespace is the name of a .NET type it uses", "Semantic",
+            "Every module is a C# namespace: the project's root namespace, the module's directories, then " +
+            "its file stem ('foo.spy' in RootNamespace 'App' is 'App.Foo'). When that is also the full name " +
+            "of a .NET type the module uses — 'from app import Foo' naming the referenced class 'App.Foo' — C# " +
+            "resolves the name to the namespace declared in the compiled source, so the type cannot be " +
+            "reached from any spelling.",
+            "# RootNamespace App, file foo.spy, referencing an assembly that declares class App.Foo\n" +
+            "from app import Foo   # SPY0615\n\ndef main() -> None:\n    print(Foo())",
+            "Rename the source file so its namespace differs from the type's full name (foo.spy -> foo_main.spy).");
+
         return dict;
     }
 

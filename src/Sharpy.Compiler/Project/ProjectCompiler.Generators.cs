@@ -580,7 +580,8 @@ internal partial class ProjectCompiler
                 existingDiagnostics: _diagnostics,
                 cancellationToken: cancellationToken,
                 moduleRegistry: _moduleRegistry,
-                sourceRootPath: ComputeSourceRootPath(config));
+                sourceRootPath: ComputeSourceRootPath(config),
+                    rootNamespace: config.RootNamespace);
 
             foreach (var error in typeCheckResult.TypeChecker.Diagnostics.GetErrors())
             {

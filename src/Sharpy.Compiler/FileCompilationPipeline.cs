@@ -114,6 +114,10 @@ internal class FileCompilationPipeline
     /// The file's NAME, for module-class derivation (SPY0523). Defaults to <paramref name="filePath"/>;
     /// pass the real path explicitly when <paramref name="filePath"/> is nulled for #1087 (#1433).
     /// </param>
+    /// <param name="rootNamespace">
+    /// The project's root namespace (<c>RootNamespace</c>; empty or null for none): the full name of
+    /// the module's recorded namespace, compared with the .NET types it uses (#2039).
+    /// </param>
     /// <param name="sourceRootPath">
     /// The project's source root, for the recorded module-as-namespace layout (#2039). Null when
     /// unknown: the module is then its own namespace.
@@ -134,7 +138,8 @@ internal class FileCompilationPipeline
         Shared.FeatureFlags? features = null,
         Discovery.ReferenceClosure? referenceClosure = null,
         string? moduleIdentityFilePath = null,
-        string? sourceRootPath = null)
+        string? sourceRootPath = null,
+        string? rootNamespace = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -149,6 +154,8 @@ internal class FileCompilationPipeline
             ModuleIdentityFilePath = moduleIdentityFilePath ?? filePath,
             // The project's source root: the recorded module layout's namespace segments (#2039).
             SourceRootPath = sourceRootPath,
+            // The project's root namespace: the module namespace's full name (#2039).
+            RootNamespace = rootNamespace,
             SemanticBinding = effectiveBinding,
             // Import resolution wrote each from-import's source file and the .NET-module marks to
             // the shared binding, not the per-file one (#2039).
