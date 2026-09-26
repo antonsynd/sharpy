@@ -186,16 +186,50 @@ public class DunderFormatSynthesisMatrixTests : IntegrationTestBase
         result.StandardOutput.Should().Be("dunder<x>\none\n");
     }
 
-    [Fact]
-    public void SpecParameterMustBeStr()
+    /// <summary>
+    /// The spec parameter's RESOLVED type must be <c>str</c> — the check once compared the annotation's
+    /// text, so an alias of <c>str</c> was refused (classcure-b F9) and the rule was a name-keyed arm.
+    /// </summary>
+    [Theory]
+    [InlineData("", "int", "int")]
+    [InlineData("", "str?", "str?")]
+    [InlineData("", "str | None", "str | None")]
+    [InlineData("type Spec = int\n\n", "Spec", "Spec")]
+    public void SpecParameterMustBeStr(string prelude, string annotation, string shown)
     {
-        var source = "class F:\n    def __format__(self, spec: int) -> str:\n        return \"x\"\n\n"
+        var source = prelude + $"class F:\n    def __format__(self, spec: {annotation}) -> str:\n        return \"x\"\n\n"
             + "def main() -> None:\n    print(f\"{F()}\")\n";
         var result = CompileAndExecute(source);
 
         result.RawDiagnostics.Should().ContainSingle(d => d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod
-            && d.Message == "Parameter 'spec' of '__format__' on 'F' must be 'str', got 'int'.",
+            && d.Message == $"Parameter 'spec' of '__format__' on 'F' must be 'str', got '{shown}'.",
             string.Join(" | ", result.CompilationErrors));
+    }
+
+    [Theory]
+    [InlineData("", "str")]
+    [InlineData("type Spec = str\n\n", "Spec")]
+    [InlineData("type Spec = str\ntype Outer = Spec\n\n", "Outer")]
+    public void SpecParameterResolvingToStr_Runs(string prelude, string annotation)
+    {
+        var source = prelude + $"class F:\n    def __format__(self, spec: {annotation}) -> str:\n        return \"F<\" + spec + \">\"\n\n"
+            + "def main() -> None:\n    print(f\"{F():z}\")\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("F<z>\n");
+    }
+
+    [Fact]
+    public void WrongParameterCount_NamesTheDundersOwnSignature()
+    {
+        var source = "class F:\n    def __format__(self) -> str:\n        return \"x\"\n\n"
+            + "def main() -> None:\n    print(1)\n";
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().ContainSingle(d => d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod
+            && d.Message.StartsWith("Protocol method '__format__' on 'F' must have exactly 2 parameters (self, format_spec: str), got 1."),
+            string.Join(" | ", result.RawDiagnostics.Select(d => d.Code + " " + d.Message)));
     }
 
     [Fact]

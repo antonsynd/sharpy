@@ -386,6 +386,11 @@ internal class SignatureValidator : SemanticValidatorBase
     /// <c>format</c> argument of <c>IFormattable.ToString</c>, a string, so an annotation other than
     /// <c>str</c> is refused here rather than as a C# type error in the emitted body. The count and
     /// the return type are the generic protocol checks'.
+    /// <para>
+    /// The check reads the RESOLVED parameter type, the one the emitted body is typed with — not the
+    /// annotation's text, which refused <c>type Spec = str; def __format__(self, spec: Spec)</c> for a
+    /// parameter that is a <c>string</c>. An annotation that failed to resolve was already reported.
+    /// </para>
     /// </summary>
     private void ValidateFormatParameterType(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
     {
@@ -393,9 +398,12 @@ internal class SignatureValidator : SemanticValidatorBase
             return;
 
         var specParam = funcDef.Parameters[1];
-        if (specParam.Type is { } annotation
-            && !(annotation.Name == BuiltinNames.Str && annotation.TypeArguments.Length == 0
-                 && !annotation.IsOptional && !annotation.IsCSharpNullable))
+        if (specParam.Type is not { } annotation)
+            return;
+
+        var resolved = _context.SemanticInfo.GetTypeAnnotation(annotation)
+            ?? _context.TypeResolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
+        if (resolved is not UnknownType && !resolved.Equals(SemanticType.Str))
         {
             AddError(_context,
                 $"Parameter '{specParam.Name}' of '{DunderNames.Format}' on '{owningType.Name}' must be 'str', got '{TypeAnnotationHelper.GetName(annotation)}'.",
@@ -516,6 +524,13 @@ internal class SignatureValidator : SemanticValidatorBase
             span: funcDef.Span);
     }
 
+    /// <summary>
+    /// The parameter list a protocol dunder's count message names — the dunder's OWN signature. The
+    /// binary-operator spelling <c>(self, other)</c> was the two-parameter default, so the one
+    /// two-parameter row without an arm, <c>__format__</c> (#2009), was told it needed an
+    /// <c>other</c>; there is no default for a count that has named rows, only the neutral
+    /// "(N parameters)" for a count no row uses.
+    /// </summary>
     private static string DescribeExpectedParameters(int count, string dunderName)
     {
         return (count, dunderName) switch
@@ -523,9 +538,8 @@ internal class SignatureValidator : SemanticValidatorBase
             (1, _) => "(self)",
             (2, DunderNames.Contains) => "(self, item)",
             (2, DunderNames.GetItem) => "(self, index)",
-            (2, _) => "(self, other)",
+            (2, DunderNames.Format) => "(self, format_spec: str)",
             (3, DunderNames.SetItem) => "(self, index, value)",
-            (3, _) => "(self, key, value)",
             (4, DunderNames.Exit) or (4, DunderNames.Aexit) => "(self, exc_type, exc_val, exc_tb)",
             _ => $"({count} parameters)"
         };
