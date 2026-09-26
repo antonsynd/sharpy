@@ -148,6 +148,14 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Phase 4: Resolving imports and building symbol table");
 
+        // An absolute import names a module by its path below the common source root — the root the
+        // layout spells every namespace from (ModuleIdentifiers, SPY0526) — first: with only the
+        // project directory searched, a module in a subdirectory of src/ could import nothing
+        // absolutely (a false SPY0300) while `sharpyc run` ran the same tree (P14b, one path
+        // authority). The project directory stays a fallback for a module file outside the source set.
+        ImportResolver.AddSearchPath(ComputeSourceRootPath(config));
+        ImportResolver.AddSearchPath(config.ProjectDirectory);
+
         // Resolve imports for each module
         foreach (var (_, unit) in _projectModel!.Units)
         {
@@ -169,7 +177,7 @@ internal partial class ProjectCompiler
                     var scanned = statement.UnwrapDecorated();
                     if (scanned is ImportStatement import)
                     {
-                        var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory,
+                        var modules = ImportResolver.ResolveImport(import,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
 
                         // Match each resolved module with its import alias to get the correct name/alias
@@ -263,7 +271,7 @@ internal partial class ProjectCompiler
                     }
                     else if (scanned is FromImportStatement fromImport)
                     {
-                        var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory,
+                        var moduleInfo = ImportResolver.ResolveFromImport(fromImport,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
                         if (moduleInfo != null)
                         {

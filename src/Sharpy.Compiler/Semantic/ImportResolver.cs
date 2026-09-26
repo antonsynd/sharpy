@@ -206,6 +206,12 @@ internal partial class ImportResolver
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
+    /// <summary>
+    /// Adds a directory absolute imports resolve from: after the importing module's own directory,
+    /// before the working directory; paths added earlier win.
+    /// </summary>
+    internal void AddSearchPath(string path) => _moduleResolver.AddSearchPath(path);
+
     private CancellationToken _cancellationToken;
 
     /// <summary>
