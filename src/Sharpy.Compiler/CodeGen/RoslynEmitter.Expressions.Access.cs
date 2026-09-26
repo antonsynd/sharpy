@@ -1629,13 +1629,6 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess, bool applyNarrowing = true)
     {
-        // `type(x).__name__`: the recorded python `__name__` read (#2035) — `PyFormat.PyDunderName(t)`.
-        if (_context.SemanticInfo?.IsPyDunderNameRead(memberAccess) == true)
-        {
-            return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "PyFormat", "PyDunderName"))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(memberAccess.Object)))));
-        }
-
         // A builtins-qualified constructor reference pinned by semantic analysis (`builtins.dict`,
         // #1382). The recorded lowering is the same fact the bare spelling records, keyed on this
         // node — so this applies it verbatim rather than deciding anything, and the two spellings
@@ -1726,6 +1719,16 @@ internal partial class RoslynEmitter
         var obj = denotedReceiver != null
             ? _typeMapper.MapSemanticType(denotedReceiver)
             : GenerateExpression(memberAccess.Object);
+
+        // `type(x).__name__`: the recorded python `__name__` read (#2035) — `PyFormat.PyDunderName(t)`
+        // over the receiver generated once, above, at the single receiver site (#1739 operand order).
+        // The fact is recorded only for a System.Type-typed receiver, which none of the arms above
+        // (constructor reference, module path, enum type name, resolved static field) matches.
+        if (_context.SemanticInfo?.IsPyDunderNameRead(memberAccess) == true)
+        {
+            return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "PyFormat", "PyDunderName"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(obj))));
+        }
 
         if (nestedEnumMember != null)
             return GenerateStaticFieldAccessOnType(obj, nestedEnumMember, memberAccess.Member);

@@ -848,10 +848,19 @@ public class TypeInferenceServiceTests
     [Fact]
     public void InferClrIndexerReturnType_TypeWithoutIndexer_ReturnsNull()
     {
-        // collections.Deque<T> implements IReadOnlyCollection<T> but exposes no parameterized
-        // indexer, so index-type inference yields null (len() is handled separately).
-        var result = _service.InferClrIndexerReturnType(typeof(SharpyStdlib::Sharpy.Deque<int>));
+        // A BCL HashSet<T> implements IReadOnlyCollection<T> but exposes no parameterized indexer, so
+        // index-type inference yields null (len() is handled separately).
+        var result = _service.InferClrIndexerReturnType(typeof(System.Collections.Generic.HashSet<int>));
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public void InferClrIndexerReturnType_Deque_ReturnsElementType()
+    {
+        // collections.Deque<T> gained `this[int]` (#2035, Decision 26), so index-type inference reads
+        // its element type from the indexer. This was the indexer-less example above until then.
+        var result = _service.InferClrIndexerReturnType(typeof(SharpyStdlib::Sharpy.Deque<int>));
+        result.Should().Be(SemanticType.Int);
     }
 
     #endregion

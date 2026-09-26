@@ -38,7 +38,7 @@ def describe() -> str:
     return str(d) + "|" + str(same) + "|" + first
 """;
 
-    private const string Expected = "Thursday|True|a\n";
+    private const string Expected = "DayOfWeek.Thursday|True|a\n";
 
     [Fact]
     public void ClrMemberTypes_AreTheSameWarmAsCold()

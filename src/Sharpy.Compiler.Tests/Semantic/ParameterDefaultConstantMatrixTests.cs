@@ -78,7 +78,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("NegatedLiteral", "int", "-1", "", "-1\n", null),
         new("ConstReference", "int", "A", "const A: int = 100\n\n", "100\n", null),
         new("EnumMember", "Color", "Color.RED",
-            "enum Color:\n    RED = 1\n    GREEN = 2\n\n", "RED\n", null),
+            "enum Color:\n    RED = 1\n    GREEN = 2\n\n", "Color.RED\n", null),
         new("NoneLiteral", "int | None", "None", "", "None\n", null),
         new("NoneCall", "int?", "None()", "", "None\n", null),
         new("SomeIntoOptional", "int?", "Some(42)", "", null,
@@ -125,7 +125,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         // EnumConstRef: C# admits `const Color C = Color.RED`, so an enum const is a compile-time
         // constant and reads in every constant position (#1782).
         new("EnumConstRef", "Color", "E",
-            "enum Color:\n    RED = 1\n    GREEN = 2\n\nconst E: Color = Color.RED\n\n", "RED\n", null),
+            "enum Color:\n    RED = 1\n    GREEN = 2\n\nconst E: Color = Color.RED\n\n", "Color.RED\n", null),
         // LocalConstRef and ClassConstRef have host-specific preludes; their Kind.Prelude is empty
         // because the host composer provides the scope. Only the listed hosts apply — all others are
         // N/A because the scope that owns the const is absent in those hosts.
@@ -629,7 +629,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         // module class from the fixture's test.spy. Primitives (int/double/string/bool) are never
         // qualified. The CSharpType still feeds the const-vs-static-readonly regex, so the
         // discrimination is unchanged — only the type spelling the regex expects moved.
-        new("Color", "global::Test.Color", "RED", "enum Color:\n    RED = 1\n    GREEN = 2\n\n"),
+        new("Color", "global::Test.Color", "Color.RED", "enum Color:\n    RED = 1\n    GREEN = 2\n\n"),
     };
 
     /// <summary>

@@ -84,7 +84,7 @@ public class TypeDenotingReceiverMatrixTests : IntegrationTestBase
         new("NestedTypeChain", "EnumMember", "Value",
             "from system import Environment\n\ndef main() -> None:\n"
             + "    print(Environment.SpecialFolder.Desktop)\n",
-            ExpectedOutput: "Desktop\n"),
+            ExpectedOutput: "SpecialFolder.Desktop\n"),
 
         // NestedTypeChain × EnumMember × BoolStore — the typed refusal (SPY0220), not SPY0908
         new("NestedTypeChain", "EnumMember", "BoolStore",
@@ -96,7 +96,7 @@ public class TypeDenotingReceiverMatrixTests : IntegrationTestBase
         new("NestedTypeChain", "EnumMember", "Annotation",
             "from system import Environment\n\ndef main() -> None:\n"
             + "    f: Environment.SpecialFolder = Environment.SpecialFolder.Desktop\n    print(f)\n",
-            ExpectedOutput: "Desktop\n"),
+            ExpectedOutput: "SpecialFolder.Desktop\n"),
 
         // NestedTypeChain × EnumMember × Isinstance — o is int, not the enum
         new("NestedTypeChain", "EnumMember", "Isinstance",
