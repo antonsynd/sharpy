@@ -507,7 +507,10 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates override string ToString() for a @dataclass.
-    /// Pattern: return $"ClassName(field1={Field1}, field2={Field2}, ...)";
+    /// Pattern: return $"ClassName(field1={Repr(Field1)}, field2={Repr(Field2)}, ...)"; — python's
+    /// synthesized <c>__repr__</c> is <c>f"{name}={value!r}"</c> for every field, so each value goes
+    /// through <c>global::Sharpy.Builtins.Repr</c> (<c>name='a'</c>, <c>c=&lt;Color.RED: 1&gt;</c>,
+    /// <c>n=None</c>, <c>f=1.0</c>), never its CLR <c>ToString</c>.
     /// </summary>
     private MethodDeclarationSyntax GenerateDataclassToString(
         string originalTypeName, IReadOnlyList<VariableSymbol> fields)
@@ -547,7 +550,11 @@ internal partial class RoslynEmitter
                         prefix,
                         TriviaList())));
 
-                parts.Add(Interpolation(IdentifierName(propName)));
+                // Parenthesized: the `::` of `global::` would otherwise open the hole's format spec.
+                parts.Add(Interpolation(ParenthesizedExpression(InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "Builtins"), IdentifierName("Repr")))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName(propName))))))));
             }
 
             parts.Add(InterpolatedStringText()

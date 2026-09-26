@@ -16,7 +16,7 @@ This generates a class with:
 - A constructor accepting all fields as parameters
 - `__eq__` (value equality via `Equals` and `operator ==`/`!=`)
 - `__hash__` (via `HashCode.Combine`)
-- `__repr__` (via `ToString()`)
+- `__repr__` (via `ToString()`), rendering each field with `repr()` as python does (`Point(x=1.0, y=2.0)`, a `str` field quoted)
 
 **C# output:**
 
@@ -44,7 +44,7 @@ public class Point
     public static bool operator ==(Point? left, Point? right) => Equals(left, right);
     public static bool operator !=(Point? left, Point? right) => !Equals(left, right);
 
-    public override string ToString() => $"Point(x={X}, y={Y})";
+    public override string ToString() => $"Point(x={(global::Sharpy.Builtins.Repr(X))}, y={(global::Sharpy.Builtins.Repr(Y))})";
 }
 ```
 

@@ -72,7 +72,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests
         public static bool operator !=(DataclassConfig? left, DataclassConfig? right) => !Equals(left, right);
         public override string ToString()
         {
-            return $"DataclassConfig(ratio={Ratio})";
+            return $"DataclassConfig(ratio={(global::Sharpy.Builtins.Repr(Ratio))})";
         }
     }
 
@@ -106,7 +106,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests
         public static bool operator !=(DataclassMultiField? left, DataclassMultiField? right) => !Equals(left, right);
         public override string ToString()
         {
-            return $"DataclassMultiField(service_name={ServiceName}, max_connections={MaxConnections}, enabled={Enabled})";
+            return $"DataclassMultiField(service_name={(global::Sharpy.Builtins.Repr(ServiceName))}, max_connections={(global::Sharpy.Builtins.Repr(MaxConnections))}, enabled={(global::Sharpy.Builtins.Repr(Enabled))})";
         }
     }
 

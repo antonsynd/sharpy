@@ -66,7 +66,7 @@ namespace DataclassDefaultListPerInstance1684
         public static bool operator !=(Bag? left, Bag? right) => !Equals(left, right);
         public override string ToString()
         {
-            return $"Bag(xs={Xs})";
+            return $"Bag(xs={(global::Sharpy.Builtins.Repr(Xs))})";
         }
     }
 }

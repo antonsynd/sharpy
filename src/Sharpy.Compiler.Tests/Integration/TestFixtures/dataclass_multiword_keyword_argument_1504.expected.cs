@@ -54,7 +54,7 @@ namespace DataclassMultiwordKeywordArgument1504
         public static bool operator !=(TwoWord? left, TwoWord? right) => !Equals(left, right);
         public override string ToString()
         {
-            return $"TwoWord(name={Name}, max_connections={MaxConnections})";
+            return $"TwoWord(name={(global::Sharpy.Builtins.Repr(Name))}, max_connections={(global::Sharpy.Builtins.Repr(MaxConnections))})";
         }
     }
 }

@@ -1,0 +1,37 @@
+# A synthesized @dataclass repr renders every field with repr(), as python's
+# f"{name}={value!r}" does: quoted strings, enum members, None, whole floats,
+# nested dataclasses, containers, tuples and a generic field.
+enum Color:
+    RED = 1
+
+enum Mood:
+    HAPPY = "h"
+
+@dataclass
+class Inner:
+    k: int
+
+@dataclass
+class Box[T]:
+    v: T
+
+@dataclass
+class Record:
+    c: Color
+    m: Mood
+    name_s: str
+    xs: list[str]
+    n: int | None
+    inner: Inner
+    f: float
+    t: tuple[int, str]
+    dd: dict[str, int]
+    b: bool
+
+def main() -> None:
+    r = Record(Color.RED, Mood.HAPPY, "a", ["a"], None, Inner(2), 1.0, (1, "q"), {"k": 1}, True)
+    print(repr(r))
+    print(r)
+    print(f"{r}")
+    print([Inner(3)])
+    print(Box[str]("it's"), Box[float](2.0), Box[Mood](Mood.HAPPY))

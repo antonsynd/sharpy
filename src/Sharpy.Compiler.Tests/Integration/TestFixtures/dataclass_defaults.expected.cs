@@ -60,7 +60,7 @@ namespace DataclassDefaults
         public static bool operator !=(Config? left, Config? right) => !Equals(left, right);
         public override string ToString()
         {
-            return $"Config(name={Name}, debug={Debug}, retries={Retries})";
+            return $"Config(name={(global::Sharpy.Builtins.Repr(Name))}, debug={(global::Sharpy.Builtins.Repr(Debug))}, retries={(global::Sharpy.Builtins.Repr(Retries))})";
         }
     }
 }

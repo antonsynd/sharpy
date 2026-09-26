@@ -1,0 +1,5 @@
+Record(c=<Color.RED: 1>, m=<Mood.HAPPY: 'h'>, name_s='a', xs=['a'], n=None, inner=Inner(k=2), f=1.0, t=(1, 'q'), dd={'k': 1}, b=True)
+Record(c=<Color.RED: 1>, m=<Mood.HAPPY: 'h'>, name_s='a', xs=['a'], n=None, inner=Inner(k=2), f=1.0, t=(1, 'q'), dd={'k': 1}, b=True)
+Record(c=<Color.RED: 1>, m=<Mood.HAPPY: 'h'>, name_s='a', xs=['a'], n=None, inner=Inner(k=2), f=1.0, t=(1, 'q'), dd={'k': 1}, b=True)
+[Inner(k=3)]
+Box(v="it's") Box(v=2.0) Box(v=<Mood.HAPPY: 'h'>)

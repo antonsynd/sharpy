@@ -86,7 +86,8 @@ def main():
     print(p)
 ");
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
-        Assert.Equal("Point(x=1, y=2)\n", result.StandardOutput);
+        // python3: Point(x=1.0, y=2.0) — each field is rendered with repr().
+        Assert.Equal("Point(x=1.0, y=2.0)\n", result.StandardOutput);
     }
 
     [Fact]
