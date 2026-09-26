@@ -85,6 +85,27 @@ internal class AccessValidator : ValidatingAstWalker
         // Get the type of the object being accessed
         var objectType = Context.SemanticInfo.GetExpressionType(memberAccess.Object);
 
+        // A module FUNCTION reached by qualification has the access level it is emitted with — the
+        // level a from-import of it reads (#2033). A private one (`__g`) was refused as
+        // `from lib import __g` (SPY0283) but reached codegen as `lib.__g()` and failed behind
+        // SPY0908 CS0122. Module variables and types are emitted public whatever their spelling, so
+        // `lib.__w` runs today and is not refused here (its from-import twin still is — reported).
+        var receiverModule = (objectType as ModuleType)?.Symbol
+            ?? (memberAccess.Object is Identifier moduleId
+                ? (Context.SemanticInfo.GetIdentifierSymbol(moduleId) ?? Context.SymbolTable.Lookup(moduleId.Name)) as ModuleSymbol
+                : null);
+        if (receiverModule is { IsNetModule: false } module
+            && module.Exports.TryGetValue(memberAccess.Member, out var moduleMember)
+            && moduleMember is FunctionSymbol
+            && AccessLevelConventions.OfModuleMember(moduleMember) == AccessLevel.Private)
+        {
+            AddError(
+                $"Cannot access private symbol '{memberAccess.Member}' of module '{module.Name}'",
+                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.AccessViolation,
+                span: memberAccess.Span);
+            return;
+        }
+
         // Get the owning type symbol
         TypeSymbol? owningType = null;
         if (objectType is UserDefinedType udt)

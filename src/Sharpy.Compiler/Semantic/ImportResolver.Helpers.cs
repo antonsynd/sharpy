@@ -15,12 +15,14 @@ namespace Sharpy.Compiler.Semantic;
 internal partial class ImportResolver
 {
     /// <summary>
-    /// Check if a symbol name can be directly imported (not double-underscore private)
+    /// Whether a module member can be from-imported: every member but a PRIVATE one. The level is
+    /// the one the declaration is emitted with (<see cref="AccessLevelConventions.OfModuleMember"/>,
+    /// escape included, #2033) — the level qualified access <c>lib.name</c> reads — not the raw
+    /// spelling: a <c>StartsWith("__")</c> test refused <c>from lib import `__f`</c> for a public
+    /// <c>`__f`</c> that <c>lib.`__f`()</c> reached, and the dunder <c>__f__</c> likewise.
     /// </summary>
-    private bool IsDirectlyImportable(string symbolName)
-    {
-        return !symbolName.StartsWith("__");
-    }
+    private static bool IsDirectlyImportable(Symbol symbol)
+        => AccessLevelConventions.OfModuleMember(symbol) != AccessLevel.Private;
 
     /// <summary>
     /// Check if a symbol name is exported by 'import *' (public symbols only)

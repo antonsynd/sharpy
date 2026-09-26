@@ -784,7 +784,8 @@ internal partial class ImportResolver
                     }
 
                     // Check visibility rules for direct imports
-                    if (!IsDirectlyImportable(symbolName))
+                    if (moduleInfo.ExportedSymbols.TryGetValue(symbolName, out var importedSymbol)
+                        && !IsDirectlyImportable(importedSymbol))
                     {
                         AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
                             importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.AccessViolation,

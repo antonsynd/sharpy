@@ -432,6 +432,10 @@ internal class CodeGenInfoComputer
             return declaredName;
         }
 
+        // The spelling below is the DECLARATION's: an alias clone is a bare binding of its own, but
+        // the member it names was declared (and emitted) with the origin's escape.
+        var escaped = DeclarationEscape(symbol);
+
         // For .NET module variable fields, SCREAMING_SNAKE_CASE names match C# verbatim
         // (e.g., csv.QUOTE_ALL). Other names need PascalCase conversion to match the
         // generated C# field names (e.g., string.digits → Digits, math.pi → Pi).
@@ -439,7 +443,7 @@ internal class CodeGenInfoComputer
         {
             if (NameFormDetector.IsConstantCaseName(name))
                 return name;
-            return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
+            return NameCasing.ResolveMethod(name, escaped);
         }
 
         // Use the same logic as RoslynEmitter for from-imports:
@@ -447,9 +451,18 @@ internal class CodeGenInfoComputer
         // - Other names become PascalCase
         if (NameFormDetector.IsConstantCaseName(name))
         {
-            return NameCasing.ResolveConstant(name, symbol.IsNameBacktickEscaped);
+            return NameCasing.ResolveConstant(name, escaped);
         }
-        return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
+        return NameCasing.ResolveMethod(name, escaped);
+    }
+
+    /// <summary>Whether the declaration an import clone was made from spelled its name escaped.</summary>
+    private static bool DeclarationEscape(Symbol symbol)
+    {
+        var declaration = symbol;
+        while (declaration.OriginSymbol is { } origin && !ReferenceEquals(origin, declaration))
+            declaration = origin;
+        return declaration.IsNameBacktickEscaped;
     }
 
     /// <summary>The declaration an import clone was made from: the end of its origin chain.</summary>

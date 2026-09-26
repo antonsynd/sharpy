@@ -110,11 +110,20 @@ internal partial class ImportResolver
             && string.Equals(fromImport.Module, "builtins", StringComparison.Ordinal))
             return originalSymbol;
 
+        // An alias (`import x as y`) is a fresh binding the importer spelled — bare, since an import
+        // alias records no escape — so it does not carry the declaration's backtick escape: with the
+        // flag copied, `from lib import `zed` as z` refused its own bare `z` (SPY0200). The C# name
+        // still follows the declaration (CodeGenInfoComputer reads the origin's). A TYPE alias keeps
+        // the flag for now: its references are spelled by the emitter from the clone's escape.
+        var isNameBacktickEscaped = string.Equals(effectiveName, originalSymbol.Name, StringComparison.Ordinal)
+            && originalSymbol.IsNameBacktickEscaped;
+
         var result = originalSymbol switch
         {
             FunctionSymbol func => func with
             {
                 Name = effectiveName,
+                IsNameBacktickEscaped = isNameBacktickEscaped,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,
@@ -131,6 +140,7 @@ internal partial class ImportResolver
             VariableSymbol var => var with
             {
                 Name = effectiveName,
+                IsNameBacktickEscaped = isNameBacktickEscaped,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,

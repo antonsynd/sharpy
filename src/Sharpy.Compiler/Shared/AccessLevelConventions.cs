@@ -36,4 +36,14 @@ internal static class AccessLevelConventions
             return AccessLevel.Protected;
         return AccessLevel.Public;
     }
+
+    /// <summary>
+    /// The access level a MODULE member (function, variable, type) is emitted with — the explicit
+    /// decorator, else <see cref="FromName"/> with the declaration's escape. The from-import check and
+    /// qualified access (<c>lib.name</c>) both read this, as the emitter's module-level modifier does:
+    /// <c>Symbol.AccessLevel</c> is not that fact for a module function (the name resolver records
+    /// every one as public).
+    /// </summary>
+    public static AccessLevel OfModuleMember(Symbol member)
+        => member.ExplicitAccessLevel ?? FromName(member.Name, member.IsNameBacktickEscaped);
 }
