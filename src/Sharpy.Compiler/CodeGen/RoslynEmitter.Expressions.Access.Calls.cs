@@ -1343,6 +1343,9 @@ internal partial class RoslynEmitter
             // correctly but is a single broken identifier token that fails to bind under direct
             // tree handoff (#1095). The member-access spine matches what ParseText produces for a
             // dotted name in expression position, so the printed text is unchanged.
+            // Every segment through EscapedIdentifierName: a segment may be a verbatim identifier
+            // (`enum `delegate`` is `@delegate`), whose token must carry ValueText `delegate` to bind
+            // under direct tree handoff (#1095) — a same-file type reaches this spine since #2039.
             ExpressionSyntax baseExpr;
             string[] parts;
             if (fqn.StartsWith("global::", StringComparison.Ordinal))
@@ -1350,18 +1353,18 @@ internal partial class RoslynEmitter
                 parts = fqn["global::".Length..].Split('.');
                 baseExpr = AliasQualifiedName(
                     IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                    IdentifierName(parts[0]));
+                    EscapedIdentifierName(parts[0]));
             }
             else
             {
                 parts = fqn.Split('.');
-                baseExpr = IdentifierName(parts[0]);
+                baseExpr = EscapedIdentifierName(parts[0]);
             }
 
             return parts.Skip(1).Aggregate(
                 baseExpr,
                 (left, part) => MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
+                    SyntaxKind.SimpleMemberAccessExpression, left, EscapedIdentifierName(part)));
         }
 
         return EscapedIdentifierName(csharpTypeName);

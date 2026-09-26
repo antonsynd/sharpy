@@ -568,15 +568,42 @@ public class ReparseEquivalenceConformanceTests
 
         // Guard that the scenario is genuinely exercised. Under universal module qualification (#1683)
         // the keyword-named module is no longer referenced verbatim through an @-escaped alias
-        // (`using @base = ...; @base.Member(...)`); those directives are deleted. It is referenced
-        // through its PascalCased C# module class — global::Sharpy.Test.Base / .Lock / .Params — which
-        // is never a C# keyword, so no @-escape is needed and the #1095 verbatim-keyword vector is
-        // eliminated at the source. This asserts that qualified reference is present (non-vacuous)
-        // rather than the retired escaped form.
-        var moduleClass = char.ToUpperInvariant(moduleName[0]) + moduleName.Substring(1);
+        // (`using @base = ...; @base.Member(...)`); those directives are deleted. It is a namespace
+        // with a members class (#2039) — global::Sharpy.Test.Base.BaseModule / Lock.LockModule /
+        // Params.ParamsModule — both PascalCased, never a C# keyword, so no @-escape is needed and the
+        // #1095 verbatim-keyword vector stays eliminated at the source. This asserts that qualified
+        // reference is present (non-vacuous) rather than the retired escaped form.
+        var segment = char.ToUpperInvariant(moduleName[0]) + moduleName.Substring(1);
         string.Join("\n", units.Select(u => u.Unit.ToFullString()))
-            .Should().Contain($"global::Sharpy.Test.{moduleClass}.GetValue()",
-                $"the keyword-named module '{moduleName}' must be referenced through its qualified module class");
+            .Should().Contain($"global::Sharpy.Test.{segment}.{segment}Module.GetValue()",
+                $"the keyword-named module '{moduleName}' must be referenced through its namespace and members class");
+
+        ExtraBindingErrors(units, IntegrationTestBase.GetSharedReferences()).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// #2039: a module's types are namespace siblings, so a reference to a backtick-escaped type
+    /// named like a C# keyword (`enum `delegate`` is <c>@delegate</c>) is spelled from a qualified
+    /// path — <c>global::Sharpy.Test.Lib.@delegate</c> — at a value position (same file, from a
+    /// function) and from another module. Every segment must be a verbatim token whose ValueText drops
+    /// the <c>@</c>, or the direct-handoff tree fails to bind (CS0234) where the reparse binds.
+    /// </summary>
+    [Theory]
+    [InlineData("delegate")]
+    [InlineData("event")]
+    public void KeywordNamedSiblingType_EmitterTrees_BindEquivalentlyUnderDirectHandoff(string typeName)
+    {
+        var (result, units) = CompileProjectFilesCapturing(
+            new[]
+            {
+                ("lib.spy", $"enum `{typeName}`:\n    A = 3\n\ndef get_value() -> int:\n    return `{typeName}`.A.value\n"),
+                ("main.spy", $"from lib import `{typeName}`, get_value\n\ndef main() -> None:\n    print(`{typeName}`.A.value + get_value())\n"),
+            },
+            entryPoint: "main.spy");
+
+        result.Success.Should().BeTrue(string.Join("\n", result.Diagnostics.GetErrors().Select(e => e.Message)));
+        string.Join("\n", units.Select(u => u.Unit.ToFullString()))
+            .Should().Contain($"global::Sharpy.Test.Lib.@{typeName}.A", "the sibling type is reached through its module namespace");
 
         ExtraBindingErrors(units, IntegrationTestBase.GetSharedReferences()).Should().BeEmpty();
     }
