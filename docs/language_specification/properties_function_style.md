@@ -291,11 +291,11 @@ os.debug_mode = True
 - **Split accessors are merged**: a separate `property get name() ...` and `property set name(value: T):` for the same name combine into a single property, following the same rules as class-level split accessors (type must match across accessors; a get-only property is read-only).
 - Access modifiers (`@private`, `@internal`, ...) apply per accessor, as at class level.
 
-**Code generation:** Module-level properties are emitted as `public static` properties on the module's static class (`Exports`/`Program`), alongside module-level functions and variables:
+**Code generation:** Module-level properties are emitted as `public static` properties on the module's members class (`<Stem>Module` inside the module's namespace — `OsModule` for `os.spy`; see `module_system.md`), alongside module-level functions and variables:
 
 *Implementation: ✅ Native*
 ```csharp
-public static partial class Exports
+public static partial class OsModule
 {
     public static Sharpy.Dict<string, string> Environ
     {

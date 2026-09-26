@@ -573,6 +573,14 @@ deviations:
   spec_ref: docs/language_specification/generics.md
   existing_diagnostic: SPY0310
   planned_diagnostic: null
+- id: pathlib-path-type-name
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: pow-returns-float
   category: stdlib
   audience: python

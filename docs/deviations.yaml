@@ -1860,6 +1860,30 @@ deviations:
         "{0.n}".format(H())   # '4'
         "{0.N}".format(H())   # '4' — the emitted CLR member N is found
 
+  - id: pathlib-path-type-name
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`pathlib.Path(...)` constructs the platform's concrete class, so every type spelling names it: `type(p).__name__` is `PosixPath` (Windows: `WindowsPath`), `str(type(p))` is `<class 'pathlib.PosixPath'>`, and messages say `PosixPath.__format__`."
+    sharpy_behavior: "Sharpy has one `Path` type on every platform; its python name is its surface name (plan-0ca7b7 Decision 26 did not adopt `PosixPath`). `type(p).__name__` is `Path`, `str(type(p))` is `<class 'pathlib.Path'>`, and format errors name `Path.__format__` (static SPY0609 for a literal spec, the same text at runtime)."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from pathlib import Path
+        p = Path("a")
+        type(p).__name__      # 'PosixPath'
+        str(type(p))          # "<class 'pathlib.PosixPath'>"
+        format(p, "d")        # TypeError: unsupported format string passed to PosixPath.__format__
+      sharpy: |
+        from pathlib import Path
+        p = Path("a")
+        type(p).__name__      # 'Path'
+        str(type(p))          # "<class 'pathlib.Path'>"
+        format(p, s)          # s = "d": TypeError: unsupported format string passed to Path.__format__
+
   - id: instance-repr-no-address
     code: null
     category: stdlib

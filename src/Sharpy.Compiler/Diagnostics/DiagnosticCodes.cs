@@ -842,7 +842,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Code generation diagnostic codes (SPY0500-SPY0599).
-    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0526, SPY0550-SPY0555, SPY0599 (25 codes)
+    /// Active: SPY0500-SPY0501, SPY0508, SPY0510, SPY0518-SPY0519, SPY0522-SPY0526, SPY0550-SPY0555, SPY0599 (18 codes)
+    /// Retired (never reused): SPY0502-SPY0507 (#2032), SPY0520 (#2039)
     /// Reserved: SPY0521 (TypeReExportNotSupported — for future type re-export support)
     /// Reserved: SPY0509, SPY0511-SPY0517, SPY0527-SPY0549, SPY0556-SPY0569 (source generators), SPY0570-SPY0598 (63 codes)
     /// </summary>

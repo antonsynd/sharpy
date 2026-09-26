@@ -163,7 +163,7 @@ namespace MyModule
         public static int X = 42;
     }
 
-    public class MyModuleModuleTests
+    public partial class MyModuleModuleTests
     {
         [Xunit.FactAttribute]
         public void TestValue()
@@ -489,11 +489,11 @@ public class GreetingFixture
     }
 }
 
-public partial class MyModuleTests : Xunit.IClassFixture<GreetingFixture>
+public partial class MyModuleModuleTests : Xunit.IClassFixture<GreetingFixture>
 {
     private readonly GreetingFixture _greetingFixture;
 
-    public MyModuleTests(GreetingFixture greetingFixture)
+    public MyModuleModuleTests(GreetingFixture greetingFixture)
     {
         _greetingFixture = greetingFixture;
     }
@@ -616,7 +616,7 @@ def test_writes_file(tmp_path: str):
 
 Generated C#:
 ```csharp
-public partial class MyModuleTests : System.IDisposable
+public partial class MyModuleModuleTests : System.IDisposable
 {
     private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
 

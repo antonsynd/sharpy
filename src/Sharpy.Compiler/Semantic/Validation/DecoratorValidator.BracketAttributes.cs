@@ -89,7 +89,9 @@ internal partial class DecoratorValidator
     }
 
     /// <summary>
-    /// Mirrors <c>RoslynEmitter.ConvertModuleNameToNamespace</c>: "system.io" -> "System.IO".
+    /// A dotted CLR import name spelled per part through <see cref="NameMangler.ToNamespacePart"/>,
+    /// the rule the emitter applies to a CLR import: "system.io" -> "System.IO" (the emitter's own
+    /// <c>ConvertModuleNameToNamespace</c> copy was retired onto <c>ModuleIdentifiers</c>, #1948).
     /// Shared with <c>UnusedImportValidator</c> (#1429) so both sides of the bracket-attribute
     /// import-use match agree on the C# spelling of an import.
     /// </summary>
