@@ -34,7 +34,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// (a <c>}</c> inside it closes nothing; a <c>#</c> inside a nested string is not a comment),
 /// excision precedes the trailing-whitespace strip (<c>'x \n + 1'</c>), the <c>=</c> text keeps
 /// newlines, whitespace/newline/comment may follow <c>!r</c>, a backslash continuation is kept
-/// verbatim, and a form feed is whitespace. Oracle: python3.14 (2026-09-25).</para>
+/// verbatim, and a form feed is whitespace; a CRLF or bare-CR line break reads as <c>\n</c> in the
+/// expression text, the <c>=</c> text and a nested string (universal newlines). Oracle: python3.14
+/// (2026-09-25; the CRLF cells 2026-09-26).</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class TemplateSurfaceMatrixTests : IntegrationTestBase
@@ -74,6 +76,12 @@ public class TemplateSurfaceMatrixTests : IntegrationTestBase
         ("comment.hash_in_string", "t\"{ '#' # d\n}\"", "Template(strings=('', ''), interpolations=(Interpolation('#', \" '#'\", None, ''),))"),
         ("continuation", "t\"{x \\\n+ 1}\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x \\\\\\n+ 1', None, ''),))"),
         ("ws.formfeed", "t\"{\fx\f}\"", "Template(strings=('', ''), interpolations=(Interpolation(1, '\\x0cx', None, ''),))"),
+        // Universal newlines (P22): a CRLF / bare-CR line break in a hole, its '=' text and a nested
+        // string reads as '\n' (python3.14 on a CRLF file prints what it prints for the LF file).
+        ("crlf.inside_binary", "t\"\"\"{x +\r\n1}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x +\\n1', None, ''),))"),
+        ("cr.inside_binary", "t\"\"\"{x +\r1}\"\"\"", "Template(strings=('', ''), interpolations=(Interpolation(2, 'x +\\n1', None, ''),))"),
+        ("crlf.selfdoc_comment", "t\"\"\"{x # c\r\n=}\"\"\"", "Template(strings=('x \\n=', ''), interpolations=(Interpolation(1, 'x', 'r', ''),))"),
+        ("crlf.nested_string", "t\"{'''a\r\nb'''}\"", "Template(strings=('', ''), interpolations=(Interpolation('a\\nb', \"'''a\\nb'''\", None, ''),))"),
     };
 
     [Fact]

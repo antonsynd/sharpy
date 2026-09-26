@@ -124,6 +124,56 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         Assert.Equal(text, FormatterService.Format(text).FormattedText);
     }
 
+    /// <summary>(label, statement body lines with <c>\n</c> breaks, python oracle). The program is run
+    /// with every line break CRLF.</summary>
+    public static TheoryData<string, string, string> CrlfCells => new()
+    {
+        { "f.nl_single_quoted", "print(f\"{x +\n        1}\")", "6" },
+        { "f.triple_nl", "print(f\"\"\"{x\n+ 1}\"\"\")", "6" },
+        { "f.comment", "print(f\"{x # c\n    }\")", "5" },
+        { "f.triple_selfdoc", "print(f\"\"\"{x\n= }\"\"\")", "x\n= 5" },
+        { "f.nested_string_nl", "print(f\"{'''a\nb'''}\")", "a\nb" },
+        { "t.triple_nl", "print(repr(t\"\"\"{x\n+ 1}\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(6, 'x\\n+ 1', None, ''),))" },
+        { "t.triple_selfdoc_comment", "print(repr(t\"\"\"{x # c\n=}\"\"\"))", "Template(strings=('x \\n=', ''), interpolations=(Interpolation(5, 'x', 'r', ''),))" },
+        { "t.nested_string_nl", "print(repr(t\"{'''a\nb'''}\"))", "Template(strings=('', ''), interpolations=(Interpolation('a\\nb', \"'''a\\nb'''\", None, ''),))" },
+        { "df.triple_nl", "print(df\"\"\"\n        a{x\n        + 1}b\n        \"\"\")", "a6b" },
+        { "df.nested_string_nl", "print(df\"{'''a\nb'''}\")", "a\nb" },
+        { "str.triple", "print(repr(\"\"\"a\nb\"\"\"))", "'a\\nb'" },
+        { "raw.triple", "print(repr(r\"\"\"a\nb\"\"\"))", "'a\\nb'" },
+        { "d.triple", "print(repr(d\"\"\"\n        a\n        b\n        \"\"\"))", "'a\\nb'" },
+        { "dr.triple", "print(repr(dr\"\"\"\n        a\\d\n        \"\"\"))", "'a\\\\d'" },
+    };
+
+    /// <summary>
+    /// A CRLF source (P22): python reads it with universal newlines, so every string and hole text is
+    /// what the LF file gives (python3.14 prints identical output for the CRLF and LF programs), and
+    /// <c>format</c> writes ONE line-ending convention — <c>\n</c>, as it does for a CRLF file without
+    /// holes — never <c>\r\n</c> inside a hole or a literal and <c>\n</c> elsewhere.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CrlfCells))]
+    [Trait("Category", "Conformance")]
+    public void Format_CrlfSource_ReadsLikeLf_WritesOneLineEnding(string label, string statement, string oracle)
+    {
+        var program = (Prelude + "    " + statement + "\n").Replace("\n", "\r\n", StringComparison.Ordinal);
+
+        var r0 = CompileAndExecute(program, executionTimeoutMs: 15_000);
+        Assert.True(r0.Success, $"{label}: the CRLF original must run: " + string.Join("; ", r0.CompilationErrors) + r0.StandardError);
+        Assert.Equal(oracle, Normalize(r0.StandardOutput));
+
+        var formatted = FormatterService.Format(program);
+        Assert.True(formatted.Diagnostics.Count == 0, $"{label}: format reported diagnostics");
+        var text = formatted.FormattedText;
+        Assert.False(text.Contains('\r', StringComparison.Ordinal), $"{label}: format wrote a CR:\n{text.Replace("\r", "<CR>", StringComparison.Ordinal)}");
+        AssertLexesAndParsesClean(label, text);
+
+        var r1 = CompileAndExecute(text, executionTimeoutMs: 15_000);
+        Assert.True(r1.Success, $"{label}: the formatted program must run:\n{text}\n" + string.Join("; ", r1.CompilationErrors) + r1.StandardError);
+        Assert.Equal(oracle, Normalize(r1.StandardOutput));
+
+        Assert.Equal(text, FormatterService.Format(text).FormattedText);
+    }
+
     /// <summary>
     /// An AST built without source (no <c>RawText</c>/<c>ExpressionText</c>/<c>SourceText</c>) takes the
     /// unparser's re-visit fallback: a brace-headed hole must be padded on the top-level path and on

@@ -717,6 +717,29 @@ public partial class Lexer
         }
     }
 
+    /// <summary>
+    /// At a <c>\n</c> or <c>\r</c>: consumes one source line break — <c>\r\n</c>, <c>\n</c> or a bare
+    /// <c>\r</c>, as the main loop counts lines — and advances the line. Every string-content arm reads a
+    /// line break through here and appends <c>\n</c>: python reads source with universal newlines, so a
+    /// CRLF file's <c>"""a\r\nb"""</c> is <c>'a\nb'</c> in every prefix kind.
+    /// </summary>
+    private void ConsumeLineBreak()
+    {
+        if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
+            _position += 2;
+        else
+            _position++;
+        _line++;
+        _column = 1;
+    }
+
+    /// <summary>
+    /// Source text copied out verbatim (a replacement field's expression, <c>=</c> and raw texts) as
+    /// python sees it: every <c>\r\n</c> and bare <c>\r</c> read as <c>\n</c>.
+    /// </summary>
+    private static string WithUniversalNewlines(string text) =>
+        text.Contains('\r', StringComparison.Ordinal) ? text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n') : text;
+
     private char Peek(int offset = 1)
     {
         var pos = _position + offset;

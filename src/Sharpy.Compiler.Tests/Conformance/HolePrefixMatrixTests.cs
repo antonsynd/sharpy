@@ -80,6 +80,44 @@ public class HolePrefixMatrixTests : IntegrationTestBase
         Assert.Equal(Describe(top), Describe(inHole));
     }
 
+    public static TheoryData<string, string> PrefixLineBreakCells()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var prefix in Prefixes)
+        {
+            foreach (var lineBreak in new[] { "crlf", "cr" })
+                data.Add(prefix, lineBreak);
+        }
+        return data;
+    }
+
+    /// <summary>
+    /// Python reads source with universal newlines (python3.14 on a CRLF or bare-CR file:
+    /// <c>"""a\r\nb"""</c> → <c>'a\nb'</c>, raw and bytes alike): a triple-quoted literal of every prefix
+    /// lexes a <c>\r\n</c> or bare <c>\r</c> line break exactly as <c>\n</c> — the same token values, and
+    /// the same line numbers after it — at statement level and inside a hole (P22).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrefixLineBreakCells))]
+    [Trait("Category", "Conformance")]
+    public void TripleQuotedLiteral_ReadsEveryLineBreakAsNewline(string prefix, string lineBreak)
+    {
+        var body = prefix.Contains('f', StringComparison.Ordinal) || prefix == "t" ? "\n    a{s}\n    b\n    "
+            : prefix.Contains('r', StringComparison.Ordinal) ? "\n    a\\d\n    b\n    "
+            : "\n    a\n    b\n    ";
+        var literal = prefix + "'''" + body + "'''";
+        var eol = lineBreak == "crlf" ? "\r\n" : "\r";
+
+        foreach (var source in new[] { "v = " + literal + "\nw = 1\n", "v = f\"\"\"{" + literal + "}\"\"\"\nw = 1\n" })
+        {
+            var (lfTokens, lfErrors) = Lex(source);
+            var (tokens, errors) = Lex(source.Replace("\n", eol, StringComparison.Ordinal));
+            Assert.Empty(lfErrors);
+            Assert.Equal(lfErrors, errors);
+            Assert.Equal(DescribeWithLines(lfTokens), DescribeWithLines(tokens));
+        }
+    }
+
     /// <summary>(label, statement, python oracle). Each prefix executed inside a hole.</summary>
     public static TheoryData<string, string, string> ExecutedCells => new()
     {
@@ -113,6 +151,9 @@ public class HolePrefixMatrixTests : IntegrationTestBase
         var tokens = lexer.TokenizeAll();
         return (tokens, lexer.Diagnostics.GetErrors().Select(d => d.Code).ToList());
     }
+
+    private static string DescribeWithLines(IEnumerable<SToken> tokens) =>
+        string.Join(" ", tokens.Select(t => $"{t.Type}:{t.Value}:{t.Line}:{t.FStringExpressionText}:{t.FStringRawText}"));
 
     private static string Describe(IEnumerable<SToken> tokens) =>
         string.Join(" ", tokens.Select(t => $"{t.Type}:{t.Value}"));

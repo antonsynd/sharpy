@@ -80,6 +80,10 @@ public class TStringExpressionTextTests
         { "t\"{`x`=}\"", "`x`", TokenType.FStringSelfDoc },
         { "t\"{`x`:>4}\"", "`x`", TokenType.FStringFormatSpec },
         { "t\"{C.`red`}\"", "C.`red`", TokenType.FStringExprEnd },
+        // A CRLF or bare-CR source: python reads it with universal newlines (P22).
+        { "t\"\"\"{x +\r\n1}\"\"\"", "x +\n1", TokenType.FStringExprEnd },
+        { "t\"\"\"{x +\r1}\"\"\"", "x +\n1", TokenType.FStringExprEnd },
+        { "t\"\"\"{x # c1\r\n + 1 # c2\r\n}\"\"\"", "x \n + 1", TokenType.FStringExprEnd },
     };
 
     [Theory]
@@ -107,9 +111,22 @@ public class TStringExpressionTextTests
     [InlineData("t\"{x = # c\n}\"", "x = \n")]
     [InlineData("t\"{x = \n}\"", "x = \n")]
     [InlineData("t\"\"\"{x\n=}\"\"\"", "x\n=")]
+    [InlineData("t\"\"\"{x # c\r\n=}\"\"\"", "x \n=")]
+    [InlineData("t\"{x = \r\n}\"", "x = \n")]
+    [InlineData("t\"\"\"{x\r=}\"\"\"", "x\n=")]
     public void SelfDocText_KeepsNewlines_ExcisesComments(string tstring, string expected)
     {
         FirstHole(tstring).SourceText.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("t\"\"\"{x +\r\n1}\"\"\"", "x +\n1")]
+    [InlineData("t\"\"\"{x +\r1 }\"\"\"", "x +\n1 ")]
+    [InlineData("t\"\"\"{x # c\r\n= }\"\"\"", "x # c\n= ")]
+    public void RawText_ReadsEveryLineBreakAsNewline(string tstring, string expected)
+    {
+        // The unparser writes RawText verbatim, so a CRLF file formats to one line-ending convention.
+        FirstHole(tstring).RawText.Should().Be(expected);
     }
 
     [Fact]

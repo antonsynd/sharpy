@@ -168,22 +168,10 @@ public partial class Lexer
             // dedent whitespace that follows on the next line). This matches the
             // plain d-string behaviour where the first empty/whitespace-only line
             // is removed.
-            if (dedentAmount > 0 && _position < _source.Length)
+            if (dedentAmount > 0 && _position < _source.Length && (_source[_position] == '\n' || _source[_position] == '\r'))
             {
-                if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
-                {
-                    _position += 2;
-                    _line++;
-                    _column = 1;
-                    SkipDedentWhitespace(dedentAmount);
-                }
-                else if (_source[_position] == '\n')
-                {
-                    _position++;
-                    _line++;
-                    _column = 1;
-                    SkipDedentWhitespace(dedentAmount);
-                }
+                ConsumeLineBreak();
+                SkipDedentWhitespace(dedentAmount);
             }
         }
 
@@ -292,7 +280,7 @@ public partial class Lexer
                 }
             }
 
-            if (c == '\n')
+            if (c == '\n' || c == '\r')
                 lastLineStart = i + 1;
 
             i++;
@@ -437,7 +425,7 @@ public partial class Lexer
     private string ExciseHoleComments(FStringField field, int endPosition)
     {
         if (field.CommentSpans is not { Count: > 0 } spans)
-            return _source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition);
+            return WithUniversalNewlines(_source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition));
 
         var sb = new StringBuilder();
         var from = field.ExprStartPosition;
@@ -450,7 +438,7 @@ public partial class Lexer
         }
         if (from < endPosition)
             sb.Append(_source, from, endPosition - from);
-        return sb.ToString();
+        return WithUniversalNewlines(sb.ToString());
     }
 
     /// <summary>
@@ -472,12 +460,12 @@ public partial class Lexer
             }
             else if (c == '\n' || c == '\r')
             {
-                SkipHoleNewline();
+                ConsumeLineBreak();
             }
             else if (c == '\\' && _position + 1 < _source.Length && (_source[_position + 1] == '\n' || _source[_position + 1] == '\r'))
             {
                 _position++;
-                SkipHoleNewline();
+                ConsumeLineBreak();
             }
             else if (c == '#')
             {
@@ -490,16 +478,6 @@ public partial class Lexer
                 break;
             }
         }
-    }
-
-    private void SkipHoleNewline()
-    {
-        if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
-            _position += 2;
-        else
-            _position++;
-        _line++;
-        _column = 1;
     }
 
     /// <summary>
@@ -532,10 +510,11 @@ public partial class Lexer
     /// The hole's raw source (#2024): from just after the field's <c>{</c> to
     /// <paramref name="endPosition"/> — the conversion <c>!</c>, the spec <c>:</c>, the closing
     /// <c>}</c>, or (for the <c>=</c> form) just past the <c>=</c> and its trailing whitespace —
-    /// untrimmed. The unparser writes it verbatim.
+    /// untrimmed, line breaks read as <c>\n</c> (so the unparser, which writes it verbatim, writes one
+    /// line-ending convention).
     /// </summary>
     private string HoleRawText(FStringField field, int endPosition) =>
-        _source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition);
+        WithUniversalNewlines(_source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition));
 
     /// <summary>
     /// A replacement field still open at the end of the source — an unclosed <c>{</c>, or a <c>#</c>
@@ -912,8 +891,8 @@ public partial class Lexer
 
                 sb.Append(ProcessEscapeSequence());
             }
-            // Handle newlines in triple-quoted f-strings
-            else if (c == '\n')
+            // Handle newlines in triple-quoted f-strings (\r\n, \n and a bare \r all read as \n)
+            else if (c == '\n' || c == '\r')
             {
                 if (!context.IsTriple)
                 {
@@ -925,53 +904,14 @@ public partial class Lexer
                 // is part of the closing delimiter and should not be emitted.
                 if (context.DedentAmount > 0 && IsPreCloseNewline(context))
                 {
-                    // Consume the \n and the dedent whitespace; leave position at """.
-                    _position++;
-                    _line++;
-                    _column = 1;
+                    // Consume the line break and the dedent whitespace; leave position at """.
+                    ConsumeLineBreak();
                     SkipDedentWhitespace(context.DedentAmount);
                     continue;
                 }
 
-                sb.Append(c);
-                _position++;
-                _line++;
-                _column = 1;
-
-                if (context.DedentAmount > 0)
-                    SkipDedentWhitespace(context.DedentAmount);
-            }
-            else if (c == '\r')
-            {
-                if (!context.IsTriple)
-                {
-                    throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
-                }
-
-                if (context.DedentAmount > 0 && IsPreCloseNewline(context))
-                {
-                    if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
-                        _position += 2;
-                    else
-                        _position++;
-                    _line++;
-                    _column = 1;
-                    SkipDedentWhitespace(context.DedentAmount);
-                    continue;
-                }
-
-                if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
-                {
-                    sb.Append('\n');
-                    _position += 2;
-                }
-                else
-                {
-                    sb.Append('\n');
-                    _position++;
-                }
-                _line++;
-                _column = 1;
+                ConsumeLineBreak();
+                sb.Append('\n');
 
                 if (context.DedentAmount > 0)
                     SkipDedentWhitespace(context.DedentAmount);
@@ -1064,17 +1004,16 @@ public partial class Lexer
             if (fsc == context.QuoteChar && (!context.IsTriple || IsTripleQuoteAt(_position)))
                 throw ReportFieldEndedByQuote(context, $"{context.Kind}: expecting '}}', or format specs");
 
+            if (fsc == '\n' || fsc == '\r')
+            {
+                ConsumeLineBreak();
+                sb.Append('\n');
+                continue;
+            }
+
             sb.Append(fsc);
             _position++;
-            if (fsc == '\n')
-            {
-                _line++;
-                _column = 1;
-            }
-            else
-            {
-                _column++;
-            }
+            _column++;
         }
 
         if (_position >= _source.Length)

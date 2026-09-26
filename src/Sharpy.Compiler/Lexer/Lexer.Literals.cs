@@ -89,19 +89,10 @@ public partial class Lexer
 
             var c = _source[_position];
 
-            if (c == '\n')
+            if (c == '\n' || c == '\r')
             {
-                sb.Append(c);
-                _position++;
-                _line++;
-                _column = 1;
-            }
-            else if (c == '\r' && Peek() == '\n')
-            {
+                ConsumeLineBreak();
                 sb.Append('\n');
-                _position += 2;
-                _line++;
-                _column = 1;
             }
             else if (c == '\\')
             {
@@ -243,19 +234,10 @@ public partial class Lexer
                 }
 
                 var c = _source[_position];
-                if (c == '\n')
+                if (c == '\n' || c == '\r')
                 {
-                    sb.Append(c);
-                    _position++;
-                    _line++;
-                    _column = 1;
-                }
-                else if (c == '\r' && Peek() == '\n')
-                {
+                    ConsumeLineBreak();
                     sb.Append('\n');
-                    _position += 2;
-                    _line++;
-                    _column = 1;
                 }
                 else
                 {
@@ -431,12 +413,10 @@ public partial class Lexer
                 }
 
                 var c = _source[_position];
-                if (c == '\n')
+                if (c == '\n' || c == '\r')
                 {
-                    sb.Append(c);
-                    _position++;
-                    _line++;
-                    _column = 1;
+                    ConsumeLineBreak();
+                    sb.Append('\n');
                 }
                 else
                 {
@@ -560,19 +540,10 @@ public partial class Lexer
 
             var c = _source[_position];
 
-            if (c == '\n')
+            if (c == '\n' || c == '\r')
             {
-                sb.Append(c);
-                _position++;
-                _line++;
-                _column = 1;
-            }
-            else if (c == '\r' && Peek() == '\n')
-            {
+                ConsumeLineBreak();
                 sb.Append('\n');
-                _position += 2;
-                _line++;
-                _column = 1;
             }
             else if (c == '\\')
             {
