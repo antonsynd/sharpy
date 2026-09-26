@@ -293,6 +293,14 @@ deviations:
   spec_ref: docs/language_specification/dunder_methods.md
   existing_diagnostic: SPY1001
   planned_diagnostic: null
+- id: instance-repr-no-address
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/dunder_methods.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: int-overflow-checked
   category: semantics
   audience: python
@@ -604,6 +612,22 @@ deviations:
   code: SPY0492
   spec_ref: docs/language_specification/imports.md
   existing_diagnostic: SPY0492
+  planned_diagnostic: null
+- id: str-format-attr-clr-spelling-leak
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/name_mangling.md
+  existing_diagnostic: null
+  planned_diagnostic: null
+- id: str-only-class-repr-is-str
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/dunder_methods.md
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: string-indexing-utf16
   category: stdlib
