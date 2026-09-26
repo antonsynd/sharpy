@@ -36,12 +36,21 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// escaped spelling — pinned by <c>TestFixtures/name_collision/grid_delegate_both_escaped</c> and by
 /// the existing <c>errors/delegate_mangling_collision</c> respectively.
 /// </para>
+/// <para>
+/// #2039 (Decision 28 (c)/(h)) moved the grid: a module's types are siblings in its namespace and its
+/// functions, variables and constants are members of <c>&lt;X&gt;</c>, two scopes — so a bare type
+/// <c>H</c> beside a bare binder <c>h</c> no longer shares a C# scope, and all fifteen bare cells that
+/// were SPY0522 compile. Each of them also RUNS, reading <c>h</c> as the member and <c>H</c> as the
+/// type (<see cref="FlippedCell_Runs_AndBindsTypeAndMemberApart"/>). Two members, or two types, of
+/// one C# spelling still share a scope and are still refused (<see cref="SameScopePairs"/>).
+/// </para>
 /// </remarks>
-public class ManglingCollisionGridTests
+[Collection("HeavyCompilation")]
+public class ManglingCollisionGridTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;
 
-    public ManglingCollisionGridTests(ITestOutputHelper output) => _output = output;
+    public ManglingCollisionGridTests(ITestOutputHelper output) : base(output) => _output = output;
 
     /// <summary>What a cell must do. Measured per cell, never derived from the implementation.</summary>
     private enum Outcome
@@ -53,29 +62,56 @@ public class ManglingCollisionGridTests
         Compiles,
     }
 
-    /// <summary>A declaration of the type <c>H</c>, in its bare and backtick-escaped spellings.</summary>
-    private sealed record TypeForm(string Kind, string Bare, string Escaped, Outcome BareOutcome);
+    /// <summary>
+    /// A declaration of the type <c>H</c>, in its bare and backtick-escaped spellings, and — for the
+    /// run cells — the declarations a program needs to use it (<see cref="Support"/>) and a statement
+    /// in <c>main</c> that prints <c>6</c> through the type (<see cref="Use"/>).
+    /// </summary>
+    private sealed record TypeForm(string Kind, string Bare, string Escaped, Outcome BareOutcome, string Support, string Use);
 
-    /// <summary>A module-level binding of <c>h</c>, in its bare and backtick-escaped spellings.</summary>
-    private sealed record BinderForm(string Kind, string Bare, string Escaped);
+    /// <summary>
+    /// A module-level binding of <c>h</c>, in its bare and backtick-escaped spellings, and the
+    /// expression that reads its <c>7</c> (<see cref="Read"/>).
+    /// </summary>
+    private sealed record BinderForm(string Kind, string Bare, string Escaped, string Read);
 
     private static readonly TypeForm[] TypeForms =
     {
-        new("class", "class H:\n    v: int = 6\n", "class `H`:\n    v: int = 6\n", Outcome.Refused),
-        new("struct", "struct H:\n    v: int = 6\n", "struct `H`:\n    v: int = 6\n", Outcome.Refused),
-        new("interface", "interface H:\n    def m(self) -> int\n", "interface `H`:\n    def m(self) -> int\n", Outcome.Refused),
-        new("enum", "enum H:\n    A = 1\n", "enum `H`:\n    A = 1\n", Outcome.Refused),
+        // #2039: the four type kinds and delegate were SPY0522 bare while every top-level declaration
+        // shared the module class; a type is now a namespace sibling of <X>, so each bare cell compiles.
+        new("class", "class H:\n    v: int = 6\n", "class `H`:\n    v: int = 6\n", Outcome.Compiles,
+            "", "print(H().v)"),
+        new("struct", "struct H:\n    v: int = 6\n", "struct `H`:\n    v: int = 6\n", Outcome.Compiles,
+            "", "print(H().v)"),
+        new("interface", "interface H:\n    def m(self) -> int\n", "interface `H`:\n    def m(self) -> int\n", Outcome.Compiles,
+            "class K(H):\n    def m(self) -> int:\n        return 6\n", "k: H = K()\n    print(k.m())"),
+        new("enum", "enum H:\n    A = 1\n", "enum `H`:\n    A = 1\n", Outcome.Compiles,
+            "", "print(H.A.value + 5)"),
         // The cell #1268 was filed for: the only bare form that ICEd before 90c8c7327.
-        new("delegate", "delegate H() -> None\n", "delegate `H`() -> None\n", Outcome.Refused),
+        new("delegate", "delegate H() -> None\n", "delegate `H`() -> None\n", Outcome.Compiles,
+            "def six() -> None:\n    print(6)\n", "d: H = six\n    d()"),
         // Erased at emission — there is no module-class member to collide with.
-        new("alias", "type H = int\n", "type `H` = int\n", Outcome.Compiles),
+        new("alias", "type H = int\n", "type `H` = int\n", Outcome.Compiles,
+            "", "x: H = 6\n    print(x)"),
     };
 
     private static readonly BinderForm[] BinderForms =
     {
-        new("def", "def h() -> int:\n    return 7\n", "def `h`() -> int:\n    return 7\n"),
-        new("modvar", "h: int = 7\n", "`h`: int = 7\n"),
-        new("modconst", "const h: int = 7\n", "const `h`: int = 7\n"),
+        new("def", "def h() -> int:\n    return 7\n", "def `h`() -> int:\n    return 7\n", "h()"),
+        new("modvar", "h: int = 7\n", "`h`: int = 7\n", "h"),
+        new("modconst", "const h: int = 7\n", "const `h`: int = 7\n", "h"),
+    };
+
+    /// <summary>
+    /// Two declarations that still share one C# scope under #2039's layout, and so still collide:
+    /// two members of <c>&lt;X&gt;</c>, or two sibling types, of one C# spelling.
+    /// </summary>
+    private static readonly (string Key, string Source)[] SameScopePairs =
+    {
+        ("members__def_h__def_H", "def h() -> int:\n    return 7\n\ndef H() -> int:\n    return 6\n"),
+        ("members__modvar_h__def_H", "h: int = 7\n\ndef H() -> int:\n    return 6\n"),
+        ("types__class_H__enum_h", "class H:\n    v: int = 6\n\nenum h:\n    A = 1\n"),
+        ("types__delegate_H__struct_h", "delegate H() -> None\n\nstruct h:\n    v: int = 6\n"),
     };
 
     public static IEnumerable<object[]> GridCells()
@@ -100,6 +136,33 @@ public class ManglingCollisionGridTests
                 };
             }
         }
+
+        foreach (var (key, source) in SameScopePairs)
+            yield return new object[] { key, source, Outcome.Refused.ToString() };
+    }
+
+    /// <summary>The bare cells #2039 flipped from SPY0522 to compiling: every type kind but the alias.</summary>
+    public static IEnumerable<object[]> FlippedCells()
+        => from type in TypeForms
+           where type.Kind != "alias"
+           from binder in BinderForms
+           select new object[] { $"{type.Kind}__{binder.Kind}__bare", type.Kind, binder.Kind };
+
+    [Theory]
+    [MemberData(nameof(FlippedCells))]
+    public void FlippedCell_Runs_AndBindsTypeAndMemberApart(string cellKey, string typeKind, string binderKind)
+    {
+        var type = TypeForms.Single(t => t.Kind == typeKind);
+        var binder = BinderForms.Single(b => b.Kind == binderKind);
+        var source = type.Bare + "\n" + type.Support + "\n" + binder.Bare + "\n" +
+                     "def main():\n    " + type.Use + "\n    print(" + binder.Read + ")\n";
+
+        var result = CompileAndExecute(source);
+
+        // `H` reaches the type (6) and `h` the module member (7) — neither shadows the other.
+        Assert.True(result.Success,
+            $"{cellKey}: {string.Join(" ;; ", result.CompilationErrors)} {result.StandardError}\n{source}");
+        Assert.Equal("6\n7\n", result.StandardOutput.Replace("\r\n", "\n"));
     }
 
     [Theory]

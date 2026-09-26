@@ -22,8 +22,10 @@ public class NamespaceOptionTests
     }
 
     [Fact]
-    public void Compile_WithoutNamespace_NoNamespaceWrapper()
+    public void Compile_WithoutNamespace_TheModuleIsItsOwnNamespace_Unprefixed()
     {
+        // #2039 (ruling 12, uniform): every module is a namespace — a single file with no Namespace
+        // option is namespace `Test`, with no prefix, holding its members class TestModule.
         var source = @"def main():
     print(42)
 ";
@@ -31,7 +33,8 @@ public class NamespaceOptionTests
         var result = compiler.Compile(source, "test.spy");
 
         result.Success.Should().BeTrue();
-        result.GeneratedCSharpCode.Should().NotContain("namespace ");
+        NamespacesOf(result.GeneratedCSharpCode!).Should().Equal("Test");
+        result.GeneratedCSharpCode.Should().Contain("public static partial class TestModule");
     }
 
     [Fact]
@@ -90,7 +93,12 @@ public class NamespaceOptionTests
         var result = compiler.Compile(source, "test.spy");
 
         result.Success.Should().BeTrue();
-        result.GeneratedCSharpCode.Should().NotMatchRegex(@"^namespace\s",
-            "empty namespace string should not produce a namespace declaration");
+        // An empty Namespace adds no prefix: the module's own namespace alone (#2039, ruling 12).
+        NamespacesOf(result.GeneratedCSharpCode!).Should().Equal("Test");
     }
+
+    private static IEnumerable<string> NamespacesOf(string code)
+        => Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code).GetRoot().DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax>()
+            .Select(n => n.Name.ToString());
 }

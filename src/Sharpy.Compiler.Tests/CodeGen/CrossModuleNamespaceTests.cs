@@ -67,7 +67,7 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
+        var mainCs = result.GeneratedCSharpFiles!.GetValueOrDefault("main.cs");
 
         _output.WriteLine("Generated C# for main.spy:");
         foreach (var (key, value) in result.GeneratedCSharpFiles!)
@@ -76,9 +76,10 @@ def main() -> None:
             _output.WriteLine(value);
         }
 
-        // Verify: should have using TestProject.Models; (not TestProject.Main.Models)
+        // Verify: the type is a sibling in its module's namespace TestProject.Models (#2039), not
+        // TestProject.Main.Models
         Assert.NotNull(mainCs);
-        Assert.Contains("TestProject.Models", mainCs);
+        Assert.Contains("global::TestProject.Models.Product", mainCs);
     }
 
     [Fact]
@@ -138,11 +139,11 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
+        var mainCs = result.GeneratedCSharpFiles!.GetValueOrDefault("main.cs");
 
-        // Verify: should have using TestProject.Lib.Math;
+        // Verify: the type is a sibling in its module's namespace TestProject.Lib.Math (#2039)
         Assert.NotNull(mainCs);
-        Assert.Contains("TestProject.Lib.Math", mainCs);
+        Assert.Contains("global::TestProject.Lib.Math.Calculator", mainCs);
     }
 
     [Fact]
@@ -203,10 +204,12 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
+        var mainCs = result.GeneratedCSharpFiles!.GetValueOrDefault("main.cs");
 
-        // Verify: should have using TestProject.Mypackage.Impl; (where SomeClass is actually defined)
+        // Verify: the type is spelled from the module that DEFINES it, TestProject.Mypackage.Impl
+        // (#2039), not from the re-exporting package's namespace TestProject.Mypackage
         Assert.NotNull(mainCs);
-        Assert.Contains("TestProject.Mypackage.Impl", mainCs);
+        Assert.Contains("global::TestProject.Mypackage.Impl.SomeClass", mainCs);
+        Assert.DoesNotContain("global::TestProject.Mypackage.SomeClass", mainCs);
     }
 }

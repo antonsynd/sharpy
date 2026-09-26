@@ -53,7 +53,7 @@ public class TestHostGatingCodeGenTests
         // MUTATION: drop the `_context.TargetsTestHost &&` guard on the @test-function collection in
         // RoslynEmitter.ModuleClass.cs → this function is lifted into the sibling test class, a
         // module-level caller can no longer reach it, and this test goes red (the assertions below fail
-        // because PassingAssert lands on GatingTestTests, not the module class).
+        // because PassingAssert lands on GatingTestModuleTests, not the module class).
         var source = @"
 @test
 def passing_assert() -> None:
@@ -67,8 +67,8 @@ def main() -> None:
 
         // The @test function is a static method on the module class, next to Main().
         code.Should().Contain("public static void PassingAssert()");
-        // No sibling test class exists outside a test host.
-        code.Should().NotContain("GatingTestTests");
+        // No sibling test class exists outside a test host (it would be <X>Tests, #2039).
+        code.Should().NotContain("GatingTestModuleTests");
         // The framework the run path cannot satisfy is absent.
         code.Should().NotContain("Xunit");
         code.Should().NotContain("FactAttribute");
@@ -89,7 +89,7 @@ def main() -> None:
     print(""ok"")
 ";
         var code = Compile(source, targetsTestHost: true, fileName: "gating_test.spy");
-        code.Should().Contain("GatingTestTests");
+        code.Should().Contain("public partial class GatingTestModuleTests");
         code.Should().Contain("Xunit.FactAttribute");
     }
 

@@ -12,7 +12,7 @@ using Sharpy.Test;
 namespace Sharpy.Test.API
 {
     [global::Sharpy.SharpyModule("api")]
-    public static partial class ApiModule
+    public static partial class APIModule
     {
     }
 }
@@ -30,7 +30,7 @@ using Sharpy.Test;
 namespace Sharpy.Test.API.UI
 {
     [global::Sharpy.SharpyModule("api.ui")]
-    public static partial class UiModule
+    public static partial class UIModule
     {
     }
 
@@ -71,7 +71,7 @@ using Sharpy.Test;
 namespace Sharpy.Test.DB
 {
     [global::Sharpy.SharpyModule("db")]
-    public static partial class DbModule
+    public static partial class DBModule
     {
     }
 

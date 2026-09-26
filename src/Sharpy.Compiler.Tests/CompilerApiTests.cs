@@ -37,6 +37,25 @@ def main():
     }
 
     [Fact]
+    public void Compile_InMemorySource_MembersClassIsItsNamespaceSegmentPlusModule()
+    {
+        // #2039: the in-memory file `<source>` is namespace `…Source`, and its members class <X> is that
+        // segment + "Module" — not a second sanitizer's `_source_Module`.
+        var result = _api.Compile("def main():\n    print(\"hello\")\n");
+
+        result.Success.Should().BeTrue();
+        var root = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(result.GeneratedCSharp!).GetRoot();
+        var members = root.DescendantNodes()
+            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
+            .Where(c => c.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax)
+            .ToList();
+        members.Should().ContainSingle(result.GeneratedCSharp);
+        var ns = ((Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax)members[0].Parent!).Name.ToString();
+        ns.Split('.')[^1].Should().Be("Source");
+        members[0].Identifier.ValueText.Should().Be("SourceModule");
+    }
+
+    [Fact]
     public void Compile_WithTypeError_ReturnsFailure()
     {
         var source = @"

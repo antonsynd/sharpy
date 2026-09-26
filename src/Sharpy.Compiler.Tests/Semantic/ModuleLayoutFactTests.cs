@@ -78,6 +78,30 @@ public class ModuleLayoutFactTests
         layout.FixtureClassNames.Should().BeNull();
     }
 
+    [Theory]
+    // A stem that is not an identifier: <X> is its namespace segment + "Module" — one spelling, never a
+    // second sanitizer's (`<source>` was namespace Source beside class _source_Module).
+    [InlineData("<source>", false, "Source", "SourceModule")]
+    [InlineData("20260118_x.spy", false, "_20260118X", "_20260118XModule")]
+    [InlineData("my-mod.spy", false, "MyMod", "MyModModule")]
+    [InlineData("a.b.spy", false, "AB", "ABModule")]
+    [InlineData("_private.spy", false, "Private", "PrivateModule")]
+    [InlineData("json.spy", false, "JSON", "JSONModule")]
+    [InlineData("pkg-a/__init__.spy", true, "PkgA", "PkgAModule")]
+    [InlineData("pkg/1st-mod.spy", true, "Pkg._1stMod", "_1stModModule")]
+    public void OwnModule_NonIdentifierStem_MembersClassIsItsNamespaceSegmentPlusModule(
+        string relative, bool withRoot, string segments, string membersClass)
+    {
+        var path = withRoot ? InRoot(relative.Split('/')) : relative;
+        var a = Analyze("def helper() -> int:\n    return 1\n", path, withRoot ? Root : null);
+
+        var layout = a.Info.GetModuleLayout(a.Module);
+        layout.Should().NotBeNull();
+        string.Join(".", layout!.NamespaceSegments).Should().Be(segments);
+        layout.MembersClassName.Should().Be(membersClass);
+        layout.MembersClassName.Should().Be(layout.NamespaceSegments[^1] + "Module");
+    }
+
     [Fact]
     public void OwnModule_WithoutAName_RecordsNoLayout()
     {

@@ -29,19 +29,15 @@ internal static class ModuleIdentifiers
             : SourceDirectories(sourceRoot, filePath).Select(NameMangler.ToNamespacePart).ToList();
 
     /// <summary>
-    /// <c>&lt;X&gt;</c>, the module-members class a stem names (Decision 28 (b), ruling X3):
-    /// <c>NameMangler.Transform(stem, Type) + "Module"</c> — <c>pkg</c> → <c>PkgModule</c>, <c>thing</c>
-    /// → <c>ThingModule</c> (<see cref="LayoutMembersClassName"/>).
+    /// <c>&lt;X&gt;</c>, the module-members class a stem names (Decision 28 (b), ruling X3): the
+    /// stem's namespace segment (<see cref="NameMangler.ToNamespacePart"/>) + <c>Module</c> —
+    /// <c>pkg</c> → <c>PkgModule</c>, <c>thing</c> → <c>ThingModule</c>, <c>20260118_x</c> →
+    /// <c>_20260118XModule</c>, the in-memory <c>&lt;source&gt;</c> → <c>SourceModule</c>
+    /// (<see cref="LayoutMembersClassName"/>). Spelled FROM the segment, not by a second sanitizer, so
+    /// a module's members class is its namespace's name plus <c>Module</c> for every stem (#2039).
     /// </summary>
     public static string MembersClassName(string stem)
-    {
-        // A stem is a file or directory name, not an identifier: a character C# rejects becomes `_`
-        // and a leading digit gets a `_` prefix (`20260118_x` → `_20260118XModule`), as its namespace
-        // segment does (NameMangler.ToNamespacePart).
-        var name = NameMangler.Transform(stem, NameContext.Type) + "Module";
-        var sanitized = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_').ToArray());
-        return char.IsDigit(sanitized[0]) ? "_" + sanitized : sanitized;
-    }
+        => NameMangler.ToNamespacePart(stem) + "Module";
 
     /// <summary>
     /// The namespace a module's members class and its sibling types live in under the

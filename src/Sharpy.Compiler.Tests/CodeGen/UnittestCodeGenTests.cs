@@ -202,7 +202,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Outer.Inner>");
+        // #2039: the type is a namespace sibling, spelled from its module namespace.
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Test.Outer.Inner>");
         code.Should().NotContain("IsAssignableFrom<object>");
         code.Should().NotContain("Builtins.Isinstance");
     }
@@ -935,8 +936,8 @@ def main():
     print(2)
 ";
         var code = CompileToCSharp(source, fileName: "basic_test.spy");
-        // The companion test class lives next to the main module class
-        code.Should().Contain("BasicTestTests");
+        // The companion test class lives next to the main module class: <X>Tests (#2039)
+        code.Should().Contain("public partial class BasicTestModuleTests");
         // The @test function is emitted with [Xunit.FactAttribute] inside it
         code.Should().Contain("Xunit.FactAttribute");
         code.Should().Contain("TestAddition");
@@ -983,7 +984,8 @@ def main():
         var code = CompileToCSharp(source, fileName: "param_var.spy");
         code.Should().Contain("Xunit.TheoryAttribute");
         code.Should().Contain(
-            "Xunit.MemberDataAttribute(nameof(ParamVar.TestDataMemberData), MemberType = typeof(ParamVar))");
+            "Xunit.MemberDataAttribute(nameof(global::ParamVar.ParamVarModule.TestDataMemberData), " +
+            "MemberType = typeof(global::ParamVar.ParamVarModule))");
         // Wrapper property adapts list[tuple[...]] to xUnit's IEnumerable<object[]>
         code.Should().Contain(
             "public static global::System.Collections.Generic.IEnumerable<object[]> TestDataMemberData");
@@ -1008,7 +1010,8 @@ def main():
 ";
         var code = CompileToCSharp(source, fileName: "param_single.spy");
         code.Should().Contain(
-            "Xunit.MemberDataAttribute(nameof(ParamSingle.FLAGSMemberData), MemberType = typeof(ParamSingle))");
+            "Xunit.MemberDataAttribute(nameof(global::ParamSingle.ParamSingleModule.FLAGSMemberData), " +
+            "MemberType = typeof(global::ParamSingle.ParamSingleModule))");
         code.Should().Contain("new object[] { row }");
         code.Should().NotContain("InlineData");
     }

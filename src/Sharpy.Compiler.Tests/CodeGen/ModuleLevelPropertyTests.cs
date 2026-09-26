@@ -53,8 +53,9 @@ def main():
         // Merged: exactly one property declaration for the name
         generated.IndexOf("bool DebugMode", System.StringComparison.Ordinal)
             .Should().Be(generated.LastIndexOf("bool DebugMode", System.StringComparison.Ordinal));
-        // #1683: a same-module backing field is now emitted global::-qualified through its module class.
-        generated.Should().Contain("return global::Source._DebugMode");
+        // #1683: a same-module backing field is now emitted global::-qualified through its module class
+        // (#2039: namespace Source, members class SourceModule).
+        generated.Should().Contain("return global::Source.SourceModule._DebugMode");
         generated.Should().Contain("_DebugMode = value");
     }
 
