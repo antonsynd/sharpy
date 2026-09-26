@@ -113,6 +113,54 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
     }
 
     /// <summary>
+    /// #2031 #2005: the empty spec has more spellings than the four consumers above write — the
+    /// f-string hole with a bare colon <c>f"{v:}"</c>, its t-string twin, and <c>format(v)</c> with no
+    /// spec argument. Every empty-spec cell of <see cref="Cells"/> must print its expected text on
+    /// each of them too. python3: <c>f"{v:}"</c> and <c>format(v)</c> are <c>format(v, "")</c>
+    /// (<c>python3 -c 'o=5; print(f"{o:}", format(o))'</c> =&gt; <c>5 5</c>).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Conformance")]
+    public void FormatEngine_EmptySpecSpellingsAgreeWithCPython()
+    {
+        var cells = Cells().Where(c => c.Spec.Length == 0).ToList();
+        // Anchor: the #1883 str() rows, the #2031 owns-its-spec/Unknown/nullable rows, the #2005
+        // Optional rows and the #2009 __format__ row.
+        Assert.Equal(18, cells.Count);
+
+        var lines = new List<string>();
+        var decls = new List<string>();
+        var expected = new List<string>();
+        foreach (var cell in cells)
+        {
+            if (cell.Decl.Length > 0 && !decls.Contains(cell.Decl))
+                decls.Add(cell.Decl);
+            lines.Add($"    print(\"{cell.Label}|fstring_colon|[\" + f\"{{{cell.Value}:}}\" + \"]\")");
+            lines.Add($"    print(\"{cell.Label}|tstring_colon|[\" + str(t\"{{{cell.Value}:}}\") + \"]\")");
+            lines.Add($"    print(\"{cell.Label}|builtin_nospec|[\" + format({cell.Value}) + \"]\")");
+            expected.Add($"{cell.Label}|fstring_colon|[{cell.Expected}]");
+            expected.Add($"{cell.Label}|tstring_colon|[{cell.Expected}]");
+            expected.Add($"{cell.Label}|builtin_nospec|[{cell.Expected}]");
+        }
+
+        var source = FormattablePrelude + "def main() -> None:\n"
+            + string.Join("", decls.Select(d => "    " + d + "\n"))
+            + string.Join("\n", lines) + "\n";
+        var result = CompileAndExecute(source, executionTimeoutMs: 30_000);
+        Assert.True(result.Success,
+            "the empty-spec program failed to compile or run: " + string.Join("; ", result.CompilationErrors)
+            + " / " + result.StandardError);
+
+        var actual = result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+        Assert.Equal(expected.Count, actual.Length);
+        var failures = expected.Zip(actual).Where(p => p.First != p.Second)
+            .Select(p => $"expected '{p.First}', got '{p.Second}'").ToList();
+        Assert.True(failures.Count == 0,
+            $"{failures.Count} of {expected.Count} empty-spec renderings disagree with python3:\n"
+            + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
+    /// <summary>
     /// One conversion field — <c>{operand FORM}</c> where FORM is a conversion (<c>!r</c>, <c>!s</c>,
     /// <c>!a</c>), the self-documenting <c>=</c> (alone, with a spec, or with a conversion), or a
     /// conversion followed by a spec. <see cref="Observable"/> says whether dropping the conversion
@@ -1003,8 +1051,14 @@ public class FormatEngineConsumerParityTests : IntegrationTestBase
         yield return new("unknown_typed.empty", "u: object = F()", "u", "", "F<>");
         yield return new("nullable.empty", "on: int | None = 5", "on", "", "5");
         yield return new("none.empty", "nn: int | None = None", "nn", "", "None");
-        // (A bare None literal as the ONLY str.format argument binds params object[] as null — #2078;
-        // an Optional[T] (`int?`) row waits for its one str() spelling — #2005.)
+        // (A bare None literal as the ONLY str.format argument binds params object[] as null — #2078.)
+        // #2005 (R-CH): an Optional's str is transparent — the value's str, or None — so its empty
+        // spec is python's for the bare value (Optional has no python twin; the twin is `int | None`).
+        // python3 -c 'o = 5; n = None
+        // print(format(o,""), "{}".format(o), f"{o}", format(n,""), "{}".format(n), f"{n}")'
+        //   =>  5 5 5 None None None
+        yield return new("optional.some.empty", "osome: int? = Some(5)", "osome", "", "5");
+        yield return new("optional.none.empty", "onone: int? = None()", "onone", "", "None");
 
         // A float with a non-empty spec but NO type code takes the same str() route.
         // python3 -c 'print(repr(format(100.0,">10")))'  =>  '     100.0'
