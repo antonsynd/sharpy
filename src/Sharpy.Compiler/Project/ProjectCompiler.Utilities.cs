@@ -84,7 +84,7 @@ internal partial class ProjectCompiler
     /// Compute the source root path from the project configuration.
     /// This is the common directory containing all source files, used for relative path calculation.
     /// </summary>
-    private string ComputeSourceRootPath(ProjectConfig config)
+    internal static string ComputeSourceRootPath(ProjectConfig config)
     {
         if (config.SourceFiles.Count == 0)
         {
@@ -128,7 +128,7 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Get the longest common path prefix between two paths.
     /// </summary>
-    private string GetLongestCommonPath(string path1, string path2)
+    private static string GetLongestCommonPath(string path1, string path2)
     {
         var parts1 = path1.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var parts2 = path2.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

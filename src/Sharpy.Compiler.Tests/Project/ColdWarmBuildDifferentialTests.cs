@@ -1297,4 +1297,75 @@ def main() -> None:
             "two cache-less builds of identical source under identical policy must report "
             + "identically");
     }
+
+    /// <summary>
+    /// #2013 warm axis: a cached unit's entry bit and module layout are computed from project facts
+    /// that live in the .spyproj — the entry point, the output type, the root namespace, the common
+    /// source root — and no source file. Editing only those between two <c>--incremental</c> builds
+    /// served the stale unit: at d6a7aef05 switching the entry point was CS1558 and renaming the root
+    /// namespace CS1555 behind SPY0908, and at acd1d40a2 the entry switch built and ran the OLD entry
+    /// (measured). Each cell edits one fact, then compares the warm build with a cache-less build of
+    /// the same project in the same directory. Positive control: an unchanged third build is served
+    /// from the cache again, so the invalidation is a fact comparison, not a disabled cache.
+    /// </summary>
+    [Theory]
+    [InlineData("entry_point")]
+    [InlineData("entry_point_back")]
+    [InlineData("root_namespace")]
+    [InlineData("output_type")]
+    [InlineData("source_root")]
+    public void EditingOnlyTheProjectFacts_BuildsWhatAColdBuildBuilds(string edit)
+    {
+        var area = "facts_" + edit;
+        var dir = Path.Combine(_tempDir, area);
+        var app = Write(Path.Combine(area, "src"), "app.spy", "def main() -> None:\n    print(\"app\")\n");
+        var other = Write(Path.Combine(area, "src"), "other.spy", "def main() -> None:\n    print(\"other\")\n");
+        var extra = Write(Path.Combine(area, "tools"), "extra.spy", "def helper() -> int:\n    return 1\n");
+
+        ProjectConfig Facts(string entry, string rootNamespace = "Facts", string output = "exe", bool withTools = false)
+            => new()
+            {
+                ProjectFilePath = Path.Combine(dir, "test.spyproj"),
+                ProjectDirectory = dir,
+                RootNamespace = rootNamespace,
+                OutputType = output,
+                EntryPoint = entry,
+                SourceFiles = withTools ? new List<string> { app, other, extra } : new List<string> { app, other },
+                Configuration = "Debug",
+            };
+
+        var (before, after) = edit switch
+        {
+            "entry_point" => (Facts("app.spy"), Facts("other.spy")),
+            "entry_point_back" => (Facts("other.spy"), Facts("app.spy")),
+            "root_namespace" => (Facts("app.spy"), Facts("app.spy", rootNamespace: "Renamed")),
+            "output_type" => (Facts("app.spy"), Facts("app.spy", output: "library")),
+            // tools/extra.spy is on disk from the start; including it moves the source root from src/ up.
+            _ => (Facts("app.spy"), Facts("app.spy", withTools: true)),
+        };
+
+        var first = Build(before);
+        first.Success.Should().BeTrue($"[{edit}] the first project builds. Diagnostics:\n" + Diagnostics(first));
+
+        var warm = Build(after);
+        var cold = BuildCacheless(after);
+        cold.Success.Should().BeTrue($"[{edit}] positive control: the edited project builds cold. Diagnostics:\n"
+            + Diagnostics(cold));
+
+        warm.Success.Should().BeTrue($"[{edit}] the warm build of the edited project succeeds as the cold one does. "
+            + "Diagnostics:\n" + Diagnostics(warm));
+        Diagnostics(warm).Should().Be(Diagnostics(cold), $"[{edit}] warm must report what cold reports");
+        Generated(warm).Should().BeEquivalentTo(Generated(cold), $"[{edit}] warm must emit what cold emits");
+        warm.EntryTypeName.Should().Be(cold.EntryTypeName, $"[{edit}] the entry type is the edited project's");
+
+        var again = Build(after);
+        again.Success.Should().BeTrue();
+        Skipped(again).Should().NotBeEmpty(
+            $"[{edit}] with the facts unchanged the cache serves again — the positive control that the "
+            + "invalidation compares facts rather than disabling the cache");
+    }
+
+    private static ProjectCompilationResult BuildCacheless(ProjectConfig config)
+        => new Compiler(new CompilerOptions { Incremental = false }, NullLogger.Instance)
+            .CompileProject(config);
 }

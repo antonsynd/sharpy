@@ -10,7 +10,12 @@ namespace Sharpy.Compiler.Project;
 /// <summary>
 /// Metadata wrapper for the hash cache, including compiler version for cache invalidation.
 /// </summary>
-internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes);
+/// <param name="ProjectFacts">
+/// The project facts every cached unit's recorded layout and entry bit were computed from
+/// (<see cref="IncrementalCompilationCache.ProjectFactsOf"/>). A cache written before this field
+/// existed deserializes it as null, which never equals a computed value, so it invalidates once.
+/// </param>
+internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes, string? ProjectFacts = null);
 
 /// <summary>
 /// Versioned envelope for the symbol cache to handle schema evolution.
@@ -155,6 +160,7 @@ internal class IncrementalCompilationCache
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
+    private readonly string _projectFacts;
     private readonly ICompilerLogger _logger;
     private Dictionary<string, string> _fileHashes;
     private Dictionary<string, FileCacheEntry>? _fileCache;
@@ -196,9 +202,25 @@ internal class IncrementalCompilationCache
         Directory.CreateDirectory(objDir);
         _cacheFilePath = Path.Combine(objDir, ".sharpy-cache");
         _symbolCachePath = Path.Combine(objDir, ".sharpy-symbols");
+        _projectFacts = ProjectFactsOf(projectConfig);
 
         _fileHashes = LoadHashCache();
     }
+
+    /// <summary>
+    /// The project facts a cached unit's recorded layout depends on (#2013 warm axis): the entry
+    /// point and output type decide which unit carries <c>Main</c> (the entry bit and the exe's entry
+    /// type), the root namespace and the common source root spell every module's namespace. None of
+    /// them is in a source file, so a content hash cannot see them change — editing only the
+    /// <c>.spyproj</c> served the stale entry bit and layout (CS1558/CS1555 behind SPY0908; the base
+    /// commit built and ran the OLD entry point). A change to any of them invalidates the whole cache.
+    /// </summary>
+    internal static string ProjectFactsOf(ProjectConfig config)
+        => string.Join("\n",
+            "entry=" + (config.EntryPoint ?? string.Empty),
+            "output=" + config.OutputType,
+            "root-namespace=" + config.RootNamespace,
+            "source-root=" + PathNormalizer.Normalize(ProjectCompiler.ComputeSourceRootPath(config)));
 
     /// <summary>
     /// Computes the SHA-256 hash of a file's contents.
@@ -300,7 +322,7 @@ internal class IncrementalCompilationCache
     {
         try
         {
-            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes);
+            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts);
             var json = JsonSerializer.Serialize(metadata, s_jsonOptions);
 
             var directory = Path.GetDirectoryName(_cacheFilePath);
@@ -690,6 +712,12 @@ internal class IncrementalCompilationCache
                 if (metadata.CompilerVersion != currentVersion)
                 {
                     _logger.LogInfo($"Compiler version changed ({metadata.CompilerVersion} -> {currentVersion}); invalidating cache");
+                    return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                if (!string.Equals(metadata.ProjectFacts, _projectFacts, StringComparison.Ordinal))
+                {
+                    _logger.LogInfo("Project facts changed (entry point, output type, root namespace or source root); invalidating cache");
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
 
