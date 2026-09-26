@@ -1710,6 +1710,13 @@ internal partial class TypeChecker
                 ? null
                 : ClassifyExceptHandlerType(handler, handler.ExceptionType);
 
+            // An `except*` type is not classified (its binding is an ExceptionGroup and the emitter
+            // maps the written type itself), but it is still a type position: resolved like an
+            // annotation, so `except* NoSuchErr:` is SPY0202 rather than raw text behind SPY0908.
+            if (handler.IsExceptStar && handler.ExceptionType != null)
+                _typeResolver.ResolveTypeAnnotation(
+                    handler.ExceptionType, AnnotationPosition.Value, bareGenericFillsFromContext: true);
+
             // Register the 'as' variable binding (e.g., except ValueError as e:)
             if (handler.Name != null)
             {
@@ -1854,19 +1861,31 @@ internal partial class TypeChecker
         if (annotation.Name == BuiltinNames.Tuple && annotation.TypeArguments.Length > 0)
         {
             var alternatives = new List<SemanticType>(annotation.TypeArguments.Length);
+            var anyUnresolved = false;
             foreach (var element in annotation.TypeArguments)
             {
                 // Each element is classified in its own right, so the unbound form's per-element
                 // catch expansion has a recorded type to read for every clause it emits.
                 var resolvedElement = ClassifyTypeTestAnnotation(
                     element, lodgeOn: element, subjectType: null,
-                    site: TypeTestSite.Except, out _);
+                    site: TypeTestSite.Except, out var elementRefused)
+                    ?? ResolveUnnamedExceptType(element, elementRefused);
                 if (resolvedElement == null)
                     return null;
+
+                // Every element is still resolved, so each misspelled one draws its own SPY0202.
+                if (resolvedElement is UnknownType)
+                {
+                    anyUnresolved = true;
+                    continue;
+                }
 
                 RequireExceptionDerivation(element, resolvedElement, exceptionSymbol);
                 alternatives.Add(resolvedElement);
             }
+
+            if (anyUnresolved)
+                return SemanticType.Unknown;
 
             if (handler.Name == null)
             {
@@ -1885,10 +1904,33 @@ internal partial class TypeChecker
 
         var resolved = ClassifyTypeTestAnnotation(
             annotation, lodgeOn: annotation, subjectType: null,
-            site: TypeTestSite.Except, out _);
+            site: TypeTestSite.Except, out var refused)
+            ?? ResolveUnnamedExceptType(annotation, refused);
         if (resolved != null)
             RequireExceptionDerivation(annotation, resolved, exceptionSymbol);
         return resolved;
+    }
+
+    /// <summary>
+    /// A plain <c>except</c> type name the classifier declined without refusing names no type, and the
+    /// classifier reports nothing for that — so it goes through the annotation resolver here, and the
+    /// clause resolves exactly as an annotation does: same refusal (SPY0202), same symbol. Without it
+    /// the unbound handler had no resolution at all: <c>except NoSuchErr:</c> and <c>except re.Error:</c>
+    /// (python's name is <c>re.error</c>) reached codegen as raw text and failed behind SPY0908, while
+    /// <c>def f(e: re.Error)</c> and the bound <c>except re.Error as e:</c> drew SPY0202. The result is
+    /// what the <c>as</c> binding takes, so the bound form reports once, here, not again in its fallback.
+    /// A refused cell (SPY0345) already has its one diagnostic; a spelling with type arguments or a
+    /// modifier was resolved by the classifier itself.
+    /// </summary>
+    private SemanticType? ResolveUnnamedExceptType(TypeAnnotation annotation, bool refused)
+    {
+        if (refused
+            || annotation.TypeArguments.Length > 0
+            || annotation.IsOptional || annotation.IsCSharpNullable || annotation.IsResult)
+            return null;
+
+        return _typeResolver.ResolveTypeAnnotation(
+            annotation, AnnotationPosition.Value, bareGenericFillsFromContext: true);
     }
 
     /// <summary>

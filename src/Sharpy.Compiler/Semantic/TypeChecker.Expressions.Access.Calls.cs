@@ -758,6 +758,9 @@ internal partial class TypeChecker
         foreach (var element in elements)
         {
             var resolved = TryResolveExpressionAsType(element, TypeOperandShapes.TypeTestOperand);
+            if (resolved == null && UnwrapParenthesized(element) is MemberAccess failedElement
+                && _semanticInfo.IsErrorRecoveryType(failedElement))
+                return;
             if (resolved == null)
             {
                 AddError(
@@ -826,6 +829,12 @@ internal partial class TypeChecker
         // expression-as-type resolver the generic-construction path uses, so the two cannot drift
         // (#1257).
         var resolved = TryResolveExpressionAsType(typeOperand, TypeOperandShapes.TypeTestOperand);
+
+        // A qualified name whose member lookup already failed (`re.Error` → SPY0203) was reported;
+        // "not a type" beside it is the same mistake twice. Only that shape: an operand that is not a
+        // type expression at all (`int or str`) is this refusal's own subject.
+        if (resolved == null && typeOperand is MemberAccess && _semanticInfo.IsErrorRecoveryType(typeOperand))
+            return;
         if (resolved == null)
         {
             AddError(

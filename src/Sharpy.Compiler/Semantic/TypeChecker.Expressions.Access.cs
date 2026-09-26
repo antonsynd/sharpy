@@ -471,6 +471,8 @@ internal partial class TypeChecker
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
                 span: memberAccess.Span,
                 data: SuggestionData(moduleMemberSuggestion));
+            MarkExpressionAsErrorRecovery(memberAccess,
+                ErrorRecoveryReason.AlreadyReported("the module has no such member (SPY0203)"));
             return SemanticType.Unknown;
         }
 
