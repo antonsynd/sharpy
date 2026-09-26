@@ -1083,6 +1083,16 @@ internal static class SymbolSerializer
                 ? definition.FullName
                 : null;
 
+    /// <summary>
+    /// The origin of a Sharpy-declared generic's definition (#2027) — only when it has no CLR type,
+    /// so a CLR-defined generic keeps <see cref="ClrOriginOf"/> as its one channel.
+    /// </summary>
+    private static string? SharpyOriginOf(GenericType generic)
+        => generic.GenericDefinition is { ClrType: not null } ? null : CachedTypeOrigin.Of(generic);
+
+    private static bool IsSharpyOrigin(string? origin)
+        => origin != null && CachedTypeOrigin.IsCacheOrigin(origin);
+
     private static string SplitGenericName(string segment, out string? clrOriginTypeName)
     {
         var at = segment.IndexOf('@', StringComparison.Ordinal);
@@ -1487,8 +1497,14 @@ internal static class SymbolSerializer
             // bridge-mapped case has. Without it the #1533 absence gate — and every other consumer that
             // falls back to ClrOriginTypeName when GenericDefinition is null — was silently off for a
             // cache-served signature: cold refused SPY0203, warm leaked CS1061 behind SPY0908 (#1568).
+            //
+            // A generic DECLARED in Sharpy (`class Box[T]`) has no CLR identity; its definition travels
+            // as a CachedTypeOrigin in the same slot (`Box@file:<path>[int]`, #2027), decoded into
+            // CacheOrigin — the prefixes cannot begin a CLR FullName — and bound by the relink pass.
+            // Without it a cache-served `-> Box[int]` came back definition-less: member reads typed
+            // Unknown warm, so `ret_box().get() / 2` lowered to integer division (cold 3.5, warm 3).
             Register<GenericType>("generic",
-                gt => ClrOriginOf(gt) is { Length: > 0 } origin
+                gt => (ClrOriginOf(gt) ?? SharpyOriginOf(gt)) is { Length: > 0 } origin
                     ? $"{gt.Name}@{origin}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]"
                     : $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
                 value =>
@@ -1496,10 +1512,12 @@ internal static class SymbolSerializer
                     var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
                     if (bracketIndex < 0)
                     {
+                        var bareName = SplitGenericName(value, out var bareOrigin);
                         return new GenericType
                         {
-                            Name = SplitGenericName(value, out var bareOrigin),
-                            ClrOriginTypeName = bareOrigin,
+                            Name = bareName,
+                            ClrOriginTypeName = IsSharpyOrigin(bareOrigin) ? null : bareOrigin,
+                            CacheOrigin = IsSharpyOrigin(bareOrigin) ? bareOrigin : null,
                             TypeArguments = new List<SemanticType>()
                         };
                     }
@@ -1508,7 +1526,8 @@ internal static class SymbolSerializer
                     return new GenericType
                     {
                         Name = name,
-                        ClrOriginTypeName = origin,
+                        ClrOriginTypeName = IsSharpyOrigin(origin) ? null : origin,
+                        CacheOrigin = IsSharpyOrigin(origin) ? origin : null,
                         TypeArguments = ParseTypeArguments(argsStr)
                     };
                 });

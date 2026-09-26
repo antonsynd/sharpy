@@ -74,11 +74,27 @@ public class UdtCodecIdentityTotalityTests
         ["escaped user bytes"] = EscapedUserBytes,
     };
 
+    /// <summary>
+    /// A generic declared in lib.spy (<c>class Box[T]</c>): a constructed <c>Box[…]</c> reads its
+    /// members through <see cref="GenericType.GenericDefinition"/>, the generic twin of a UDT's symbol.
+    /// </summary>
+    private static readonly TypeSymbol UserGeneric = new()
+    {
+        Name = "Box",
+        Kind = SymbolKind.Type,
+        TypeKind = TypeKind.Class,
+        DefiningFilePath = LibPath,
+        DeclaringFilePath = LibPath,
+    };
+
     public static IEnumerable<object[]> Origins() => SymbolsByOrigin.Keys.Select(o => new object[] { o });
 
     private static UserDefinedType Udt(TypeSymbol symbol) => new() { Name = symbol.Name, Symbol = symbol };
 
     private static GenericType ListOf(SemanticType element) => new() { Name = "list", TypeArguments = { element } };
+
+    private static GenericType Box(SemanticType argument)
+        => new() { Name = UserGeneric.Name, GenericDefinition = UserGeneric, TypeArguments = { argument } };
 
     /// <summary>
     /// Every concrete SemanticType, classified. A COMPOSITE entry builds one specimen per type slot
@@ -242,6 +258,70 @@ public class UdtCodecIdentityTotalityTests
     }
 
     /// <summary>
+    /// The generic twin: a Sharpy-declared generic <c>Box[X]</c> in every slot × every origin kind of
+    /// its argument comes back with <see cref="GenericType.GenericDefinition"/> bound to the declared
+    /// <c>Box</c> AND its argument bound to its own symbol. Before, the codec wrote <c>Box[…]</c>
+    /// with no definition identity, so member reads on a cache-served <c>Box[int]</c> typed Unknown.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SlotsTimesSymbols))]
+    public void ACachedSharpyGeneric_InEverySlot_IsRelinkedToItsDefinition(string slot, string origin)
+    {
+        var symbol = SymbolsByOrigin[origin];
+        var restored = RoundTrip(Specimen(slot, Box(Udt(symbol))));
+
+        var relinked = new RestoredTypeRelinker(Resolver).Relink(restored);
+
+        var boxes = TypesIn<GenericType>(relinked).Where(g => g.Name == UserGeneric.Name).ToList();
+        boxes.Should().NotBeEmpty($"the {slot} specimen holds a Box");
+        boxes.Should().OnlyContain(g => ReferenceEquals(g.GenericDefinition, UserGeneric),
+            $"a cached Box in slot '{slot}' must relink to its declared definition");
+        var found = TypesIn<UserDefinedType>(relinked);
+        found.Should().NotBeEmpty();
+        found.Should().OnlyContain(u => ReferenceEquals(u.Symbol, symbol),
+            $"a {origin} argument of a cached Box in slot '{slot}' must relink to its own symbol");
+    }
+
+    /// <summary>Positive control for the generic twin: decode alone binds no definition.</summary>
+    [Theory]
+    [MemberData(nameof(Slots))]
+    public void DecodeAlone_LeavesTheGenericDefinitionUnbound(string slot)
+    {
+        var restored = RoundTrip(Specimen(slot, Box(SemanticType.Int)));
+
+        var boxes = TypesIn<GenericType>(restored).Where(g => g.Name == UserGeneric.Name).ToList();
+        boxes.Should().NotBeEmpty();
+        boxes.Should().OnlyContain(g => g.GenericDefinition == null && g.CacheOrigin == CachedTypeOrigin.FilePrefix + LibPath,
+            "decode is definition-less and keeps the origin for the relink pass");
+    }
+
+    /// <summary>
+    /// A CLR-defined generic keeps its one channel (<see cref="GenericType.ClrOriginTypeName"/>,
+    /// #1260/#1568) and never takes a Sharpy origin; an unresolvable Sharpy origin re-encodes unchanged.
+    /// </summary>
+    [Fact]
+    public void AClrGeneric_KeepsItsClrOrigin_AndAnUnresolvableSharpyGeneric_ReEncodesUnchanged()
+    {
+        var clrDefinition = new TypeSymbol
+        {
+            Name = "Stack",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            ClrType = typeof(Stack<>),
+            DefiningFilePath = LibPath,
+        };
+        var clr = SymbolSerializerProbe.Decode(SymbolSerializerProbe.Encode(
+            new GenericType { Name = "Stack", GenericDefinition = clrDefinition, TypeArguments = { SemanticType.Int } }));
+        clr.Should().BeOfType<GenericType>().Which.ClrOriginTypeName.Should().Be(typeof(Stack<>).FullName);
+        ((GenericType)clr).CacheOrigin.Should().BeNull("a CLR definition is never relinked by a Sharpy origin");
+
+        var payload = SymbolSerializerProbe.Encode(Box(SemanticType.Int));
+        var relinked = new RestoredTypeRelinker((_, _) => null).Relink(SymbolSerializerProbe.Decode(payload));
+        relinked.Should().BeOfType<GenericType>().Which.GenericDefinition.Should().BeNull();
+        SymbolSerializerProbe.Encode(relinked).Should().Be(payload);
+    }
+
+    /// <summary>
     /// Positive control, the pre-#2027 codec: a payload carrying only the name decodes with no
     /// origin, and the relink binds nothing — the cell this suite would miss if origin never travelled.
     /// </summary>
@@ -265,7 +345,7 @@ public class UdtCodecIdentityTotalityTests
         var payload = SymbolSerializerProbe.Encode(Udt(UserClass));
         var decoded = SymbolSerializerProbe.Decode(payload);
 
-        var relinked = new RestoredTypeRelinker(_ => null).Relink(decoded);
+        var relinked = new RestoredTypeRelinker((_, _) => null).Relink(decoded);
 
         relinked.Should().BeOfType<UserDefinedType>().Which.Symbol.Should().BeNull();
         SymbolSerializerProbe.Encode(relinked).Should().Be(payload);
@@ -301,9 +381,9 @@ public class UdtCodecIdentityTotalityTests
     /// symbol writes. The escaped user <c>bytes</c> and the registry <c>bytes</c> share a name and
     /// are told apart ONLY by origin.
     /// </summary>
-    private static TypeSymbol? Resolver(UserDefinedType udt)
-        => SymbolsByOrigin.Values
-            .FirstOrDefault(s => s.Name == udt.Name && CachedTypeOrigin.Of(Udt(s)) == udt.CacheOrigin);
+    private static TypeSymbol? Resolver(string origin, string name)
+        => SymbolsByOrigin.Values.Append(UserGeneric)
+            .FirstOrDefault(s => s.Name == name && CachedTypeOrigin.Of(Udt(s)) == origin);
 
     private static bool IsTypeSlot(Type t)
         => typeof(SemanticType).IsAssignableFrom(t)

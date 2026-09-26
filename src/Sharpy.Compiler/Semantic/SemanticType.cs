@@ -341,6 +341,15 @@ public sealed record GenericType : SemanticType
     /// </summary>
     public string? ClrOriginTypeName { get; init; }
 
+    /// <summary>
+    /// Where a Sharpy-declared <see cref="GenericDefinition"/> lives, as the incremental cache carried
+    /// it — the generic twin of <see cref="UserDefinedType.CacheOrigin"/> (#2027): set only by the
+    /// cache decoder, whose decode is definition-less, and read by the post-restore relink pass that
+    /// binds <see cref="GenericDefinition"/> from it. Null for every type analysis produced. Not part
+    /// of equality, like <see cref="ClrOriginTypeName"/>.
+    /// </summary>
+    public string? CacheOrigin { get; init; }
+
     public override string CanonicalKey
     {
         get

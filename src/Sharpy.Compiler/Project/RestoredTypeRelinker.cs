@@ -29,10 +29,23 @@ internal static class CachedTypeOrigin
 
     /// <summary>The origin to write for <paramref name="udt"/>, or null for a bare name.</summary>
     internal static string? Of(UserDefinedType udt)
-    {
-        if (udt.Symbol is not { } symbol)
-            return udt.CacheOrigin;
+        => udt.Symbol is { } symbol ? Of(symbol) : udt.CacheOrigin;
 
+    /// <summary>
+    /// The origin to write for a Sharpy-declared generic's definition, or null for none — a
+    /// CLR-defined generic carries its CLR identity instead (<c>ClrOriginTypeName</c>, #1260/#1568).
+    /// </summary>
+    internal static string? Of(GenericType generic)
+        => generic.GenericDefinition is { } definition ? Of(definition) : generic.CacheOrigin;
+
+    /// <summary>Whether an <c>@</c> payload is one of the three origins rather than a CLR name.</summary>
+    internal static bool IsCacheOrigin(string payload)
+        => payload.StartsWith(FilePrefix, StringComparison.Ordinal)
+           || payload.StartsWith(ModulePrefix, StringComparison.Ordinal)
+           || payload.StartsWith(ClrPrefix, StringComparison.Ordinal);
+
+    private static string? Of(TypeSymbol symbol)
+    {
         if (DeclaringFileOf(symbol) is { Length: > 0 } path)
             return FilePrefix + PathNormalizer.Normalize(path);
         if (symbol.DefiningModule is { Length: > 0 } module)
@@ -83,20 +96,30 @@ internal static class CachedTypeOrigin
 /// </remarks>
 internal sealed class RestoredTypeRelinker
 {
-    private readonly Func<UserDefinedType, TypeSymbol?> _resolve;
+    private readonly Func<string, string, TypeSymbol?> _resolve;
 
-    /// <param name="resolve">Binds a decoded type (name + origin) to its symbol, or null.</param>
-    internal RestoredTypeRelinker(Func<UserDefinedType, TypeSymbol?> resolve)
+    /// <param name="resolve">Binds a decoded (origin, name) to its symbol, or null.</param>
+    internal RestoredTypeRelinker(Func<string, string, TypeSymbol?> resolve)
     {
         _resolve = resolve;
     }
 
-    /// <summary>Rebinds every symbol-less, origin-carrying type inside <paramref name="type"/>.</summary>
+    /// <summary>
+    /// Rebinds every symbol-less, origin-carrying type inside <paramref name="type"/>: a
+    /// <see cref="UserDefinedType"/>'s symbol, and a Sharpy-declared generic's
+    /// <see cref="GenericType.GenericDefinition"/> — the member table a constructed <c>Box[int]</c>
+    /// is read through, which a cold build attaches at resolution.
+    /// </summary>
     internal SemanticType Relink(SemanticType type)
-        => SemanticTypeWalker.Rewrite(type, node =>
-            node is UserDefinedType { Symbol: null, CacheOrigin: not null } udt && _resolve(udt) is { } symbol
-                ? udt with { Symbol = symbol }
-                : null);
+        => SemanticTypeWalker.Rewrite(type, node => node switch
+        {
+            UserDefinedType { Symbol: null, CacheOrigin: { } origin } udt when _resolve(origin, udt.Name) is { } symbol
+                => udt with { Symbol = symbol },
+            // A replacement stops the walk, so the arguments are relinked here.
+            GenericType { GenericDefinition: null, CacheOrigin: { } origin } generic when _resolve(origin, generic.Name) is { } definition
+                => generic with { GenericDefinition = definition, TypeArguments = generic.TypeArguments.Select(Relink).ToList() },
+            _ => null,
+        });
 
     /// <summary>Relinks every signature type <paramref name="symbol"/> carries, in place.</summary>
     internal void RelinkSymbol(Symbol symbol)

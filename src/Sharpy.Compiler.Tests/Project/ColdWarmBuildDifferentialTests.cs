@@ -830,6 +830,27 @@ def main() -> None:
         ["escapedbytes"] = new("`bytes`",
             "class `bytes`:\n    x: int\n\n    def __init__(self) -> None:\n        self.x = 5\n\n\n",
             "`bytes`()", "from lib import `bytes`\n", "`bytes`()", "{v}.x", null, false, "{v}.x"),
+        // The generic axis: a constructed Sharpy generic reads its members through its definition, which
+        // the codec did not carry — member results typed Unknown warm, so `get() / 2` lowered to integer
+        // division (cold 3.5, warm 3) and `v // 2` had no floor-division lowering (warm SPY0909).
+        ["genericclass"] = new("Crate[int]",
+            "class Crate[T]:\n    v: T\n\n    def __init__(self, v: T) -> None:\n        self.v = v\n\n"
+            + "    def get(self) -> T:\n        return self.v\n\n    def __iter__(self) -> T:\n        yield self.v\n\n\n",
+            "Crate[int](7)", "from lib import Crate\n", "Crate[int](7)", "{v}.get() / 2", "{v}.v // 2", true, "{v}.get()"),
+        ["genericstruct"] = new("Cell[int]",
+            "struct Cell[T]:\n    v: T\n\n    def __init__(self, v: T) -> None:\n        self.v = v\n\n"
+            + "    def get(self) -> T:\n        return self.v\n\n\n",
+            "Cell[int](7)", "from lib import Cell\n", "Cell[int](7)", "{v}.get() / 2", "{v}.v // 2", false, "{v}.get()"),
+        // A generic union's cases and methods ride its definition too (the generic sibling of #2071). The
+        // case PATTERN on an imported generic union is #1971 (cold CS0246 `Res<>`), so the statement use
+        // is the case construction; the pattern is exercised inside the union's own method.
+        ["genericunion"] = new("Res[int]",
+            "union Res[T]:\n    case Good(v: T)\n    case Bad(msg: str)\n\n"
+            + "    def value_or(self, fallback: T) -> T:\n        match self:\n            case Res.Good(v):\n                return v\n"
+            + "            case Res.Bad(m):\n                return fallback\n\n\n",
+            "Res.Good(5)", "", "Res.Good(5)", "{v}.value_or(0) / 2", null, false, "{v}.value_or(0)",
+            Prelude: "from lib import Res\n\n\n",
+            StatementUse: "local: Res[int] = Res.Bad(\"no\")\n    print(local.value_or(9) / 2)"),
     };
 
     private const string UpcastDef = "def upcast(e: Exception) -> str:\n    return str(e)\n\n\n";

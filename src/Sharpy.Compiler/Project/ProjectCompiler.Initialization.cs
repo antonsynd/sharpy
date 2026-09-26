@@ -189,14 +189,14 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Binds a cache-decoded type to the symbol its origin names (#2027, <see cref="CachedTypeOrigin"/>):
+    /// Binds a cache-decoded type (or a Sharpy generic's definition) to the symbol its origin names (#2027, <see cref="CachedTypeOrigin"/>):
     /// a <c>file:</c> origin to the type restored from that file (by its dotted name, so a nested
     /// <c>H.C</c> never binds to a top-level <c>C</c>); <c>module:</c> through the module registry;
     /// <c>clr:</c> to the builtins registry's type of that name when its CLR type is the carried one,
     /// else to the CLR type's own symbol. Null when the origin names nothing — the type stays
     /// symbol-less, exactly as before the origin travelled.
     /// </summary>
-    private Func<UserDefinedType, TypeSymbol?> CreateCacheOriginResolver()
+    private Func<string, string, TypeSymbol?> CreateCacheOriginResolver()
     {
         var restoredTypes = new Dictionary<(string File, string Name), TypeSymbol>();
         void Index(TypeSymbol type, string? declaringFile)
@@ -222,12 +222,12 @@ internal partial class ProjectCompiler
         var resolved = new Dictionary<(string Origin, string Name), TypeSymbol?>();
         var moduleTypes = new Dictionary<string, List<TypeSymbol>>(StringComparer.Ordinal);
 
-        return udt =>
+        return (origin, name) =>
         {
-            var key = (udt.CacheOrigin!, udt.Name);
+            var key = (origin, name);
             if (!resolved.TryGetValue(key, out var symbol))
             {
-                symbol = Resolve(udt.CacheOrigin!, udt.Name);
+                symbol = Resolve(origin, name);
                 resolved[key] = symbol;
             }
             return symbol;
