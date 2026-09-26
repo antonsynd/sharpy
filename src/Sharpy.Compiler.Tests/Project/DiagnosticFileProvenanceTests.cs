@@ -18,9 +18,11 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <remarks>
 /// Cells: the producer {emitter (SPY0500, un-imported module), CodeGenInfoComputer (SPY0523),
 /// validator warning (SPY0453), type check aborted at the error limit (SPY0220 ×101), a warning
-/// anchored to a pattern node through the ILocatable overload (SPY0468, SPY0485 — #2070)}. Each cell
-/// asserts that EVERY non-assembly diagnostic names the offending file, and checks the expected
-/// code is present as its positive control.
+/// anchored to a pattern node through the ILocatable overload (SPY0468, SPY0485 — #2070), lexer
+/// (SPY0001), parser (SPY0101), import resolution (SPY0300 module, SPY0301 symbol, SPY0204 duplicate
+/// from-import), source generator (SPY0554, anchored at the trigger)}, each in a non-entry file. Each
+/// cell asserts that EVERY non-assembly diagnostic names a file of the project and the expected code
+/// names the offending one — the code's presence is its positive control.
 /// </remarks>
 [Collection("HeavyCompilation")]
 public class DiagnosticFileProvenanceTests
@@ -47,7 +49,40 @@ public class DiagnosticFileProvenanceTests
         ["pattern_variant"] = ("variant.spy",
             "union Status:\n    case Idle\n    case Active\n\nconst Idle = 0\n\ndef check(s: Status) -> str:\n    match s:\n        case Idle:\n            return \"idle\"\n        case Active:\n            return \"active\"\n",
             DiagnosticCodes.Validation.VariantPatternShadowsConstant, 9, 14),
+        // The phases before semantic analysis, each in a non-entry file (#2032 residue). The lexer
+        // and parser seams stamped the path already; the import-resolution merge re-added each
+        // resolver diagnostic from message + line + column and dropped the path, so SPY0300/0301/
+        // 0204 rendered `--> <source>:L:C` in project and single-file mode alike.
+        ["lexer"] = ("thing.spy", "def f() -> str:\n    return \"abc\n", DiagnosticCodes.Lexer.UnterminatedString, 2, 16),
+        ["parser"] = ("thing.spy", "def f(:\n    return 1\n", DiagnosticCodes.Parser.ExpectedIdentifier, 1, 7),
+        ["import_module"] = ("thing.spy", "import nosuchmod\n", DiagnosticCodes.Semantic.ModuleNotFound, 1, 8),
+        ["import_symbol"] = ("thing.spy", "from lib import nosuch\n", DiagnosticCodes.Semantic.ImportError, 1, 17),
+        ["import_duplicate"] = ("thing.spy", "from lib import f\nfrom lib2 import f\n", DiagnosticCodes.Semantic.DuplicateDefinition, 2, 18),
+        // A source generator's diagnostics are anchored at the trigger, in the target's file
+        // (gen.spy, below, defines the generator; an empty output is SPY0554).
+        ["generator"] = ("thing.spy",
+            "from gen import MyGen\n\n@[MyGen]\nclass Point:\n    x: int\n",
+            DiagnosticCodes.CodeGen.GeneratorEmptyOutput, 3, 1),
     };
+
+    /// <summary>Other files a cell's project needs; their own diagnostics must name them.</summary>
+    private static readonly Dictionary<string, (string File, string Source)[]> Companions = new()
+    {
+        ["import_symbol"] = new[] { Lib("lib.spy") },
+        ["import_duplicate"] = new[] { Lib("lib.spy"), Lib("lib2.spy") },
+        ["generator"] = new[]
+        {
+            ("gen.spy",
+                "from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput\n\n"
+                + "class MyGen(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput:\n"
+                + "        return GeneratorOutput('')\n"),
+        },
+    };
+
+    private static (string File, string Source) Lib(string file) => (file, "def f() -> int:\n    return 1\n");
+
+    /// <summary>Cells whose project needs the Sharpy runtime assemblies (`sharpy.generators`).</summary>
+    private static readonly HashSet<string> NeedsRuntimeReferences = new() { "generator" };
 
     public static IEnumerable<object[]> Producers() => Cells.Keys.Select(k => new object[] { k });
 
@@ -60,14 +95,26 @@ public class DiagnosticFileProvenanceTests
         helper.WithRootNamespace("Provenance").WithEntryPoint("main.spy");
         helper.AddSourceFile("main.spy", "def main() -> None:\n    print(7)\n");
         helper.AddSourceFile(file, source);
+        var files = new List<string> { file };
+        foreach (var companion in Companions.GetValueOrDefault(producer, Array.Empty<(string File, string Source)>()))
+        {
+            helper.AddSourceFile(companion.File, companion.Source);
+            files.Add(companion.File);
+        }
+        if (NeedsRuntimeReferences.Contains(producer))
+            helper.WithRuntimeReferences();
         helper.CreateProjectFile();
 
         var result = helper.Compile();
         var all = result.Diagnostics.GetAll();
-        var expectedPath = Path.GetFullPath(Path.Combine(helper.ProjectDirectory, "src", file));
+        string PathOf(string name) => Path.GetFullPath(Path.Combine(helper.ProjectDirectory, "src", name));
+        var expectedPath = PathOf(file);
+        var projectFiles = files.Select(PathOf).ToHashSet();
 
         var hit = all.Where(d => d.Code == code).ToList();
         hit.Should().NotBeEmpty($"[{producer}] positive control: {code} is reported\n{Describe(all)}");
+        hit.Should().OnlyContain(d => !string.IsNullOrEmpty(d.FilePath) && Path.GetFullPath(d.FilePath) == expectedPath,
+            $"[{producer}] {code} names {file}\n{Describe(hit)}");
         if (line != null)
         {
             hit[0].Line.Should().Be(line, $"[{producer}] the reporting node's name token");
@@ -76,9 +123,9 @@ public class DiagnosticFileProvenanceTests
 
         var unattributed = all
             .Where(d => d.Phase != CompilerPhase.Assembly)
-            .Where(d => string.IsNullOrEmpty(d.FilePath) || Path.GetFullPath(d.FilePath) != expectedPath)
+            .Where(d => string.IsNullOrEmpty(d.FilePath) || !projectFiles.Contains(Path.GetFullPath(d.FilePath)))
             .ToList();
-        unattributed.Should().BeEmpty($"[{producer}] every diagnostic names {file}\n{Describe(unattributed)}");
+        unattributed.Should().BeEmpty($"[{producer}] every diagnostic names {string.Join(" or ", files)}\n{Describe(unattributed)}");
 
         all.Where(d => d.Phase == CompilerPhase.CodeGeneration)
             .Should().OnlyContain(d => !string.IsNullOrEmpty(d.FilePath), $"[{producer}]");
@@ -116,8 +163,27 @@ public class DiagnosticFileProvenanceTests
             .Should().BeEmpty($"[{arm}] every diagnostic names entry.spy\n{Describe(all)}");
     }
 
+    /// <summary>
+    /// The single-file routes (<c>run</c>, <c>emit</c>, <c>analyze</c>, the LSP) are a synthetic
+    /// project of one file and share the import-resolution merge, so an import error names the entry
+    /// file there too (#2032 residue: it rendered <c>--> &lt;source&gt;:1:8</c> under <c>run</c>).
+    /// </summary>
     [Fact]
-    public void Matrix_IsTotal() => Producers().Should().HaveCount(6);
+    public void Analyze_ImportDiagnostics_NameTheFile()
+    {
+        var result = new Compiler(new CompilerOptions()).Analyze(
+            "import nosuchmod\n\ndef main() -> None:\n    print(7)\n", "entry.spy");
+        var all = result.Diagnostics.GetAll();
+
+        var hit = all.Where(d => d.Code == DiagnosticCodes.Semantic.ModuleNotFound).ToList();
+        hit.Should().ContainSingle($"positive control\n{Describe(all)}");
+        (hit[0].FilePath, hit[0].Line, hit[0].Column).Should().Be(("entry.spy", 1, 8));
+        all.Where(d => d.Phase != CompilerPhase.Assembly && d.FilePath != "entry.spy")
+            .Should().BeEmpty($"every diagnostic names entry.spy\n{Describe(all)}");
+    }
+
+    [Fact]
+    public void Matrix_IsTotal() => Producers().Should().HaveCount(12);
 
     private static string Describe(IEnumerable<CompilerDiagnostic> diagnostics)
         => string.Join("\n", diagnostics.Select(d => $"{d.Code} {d.Phase} '{d.FilePath}' {d.Line}:{d.Column} {d.Message}"));

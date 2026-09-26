@@ -76,6 +76,7 @@ internal partial class ProjectCompiler
                                 $"Duplicate definition '{symbol.Name}' across files",
                                 symbol.DeclarationSpan,
                                 symbol.DeclarationLine, symbol.DeclarationColumn,
+                                unit.FilePath,
                                 code: DiagnosticCodes.Semantic.DuplicateDefinition,
                                 phase: CompilerPhase.NameResolution);
                         }
@@ -472,7 +473,9 @@ internal partial class ProjectCompiler
                 var cycleDescription = string.Join(" → ", cycleFiles);
                 var errorMsg = $"Circular dependency detected: {cycleDescription}";
                 _projectModel!.GlobalDiagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport);
-                _diagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport, phase: CompilerPhase.ImportResolution);
+                // The cycle is reported against its first file, the one the traversal entered it by.
+                _diagnostics.AddError(errorMsg, filePath: cycle.FirstOrDefault(),
+                    code: DiagnosticCodes.Semantic.CircularImport, phase: CompilerPhase.ImportResolution);
             }
             return false;
         }
@@ -487,18 +490,23 @@ internal partial class ProjectCompiler
         // Merge all import diagnostics (errors + warnings) so they appear in the
         // final result. Continue to type checking even if imports failed, so users
         // see the full picture (import errors + type errors) — matching the
-        // single-file Compiler.Compile() behavior.
-        foreach (var diag in ImportResolver.Diagnostics.GetAll())
+        // single-file Compiler.Compile() behavior. Each diagnostic is carried over whole: the
+        // resolver stamped the importing file's path and the span, and a re-add from message +
+        // line + column dropped both, so every import error rendered as `<source>` (#2032).
+        using (_diagnostics.BeginPhaseScope(CompilerPhase.ImportResolution))
         {
-            if (diag.IsError)
+            foreach (var diag in ImportResolver.Diagnostics.GetAll())
             {
-                _projectModel!.GlobalDiagnostics.AddError(diag.Message, code: diag.Code);
-                _diagnostics.AddError(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
-            }
-            else if (diag.IsWarning)
-            {
-                _projectModel!.GlobalDiagnostics.AddWarning(diag.Message, code: diag.Code);
-                _diagnostics.AddWarning(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
+                if (diag.IsError)
+                {
+                    _projectModel!.GlobalDiagnostics.AddError(diag.Message, code: diag.Code);
+                    _diagnostics.Add(diag);
+                }
+                else if (diag.IsWarning)
+                {
+                    _projectModel!.GlobalDiagnostics.AddWarning(diag.Message, code: diag.Code);
+                    _diagnostics.Add(diag);
+                }
             }
         }
 
@@ -536,7 +544,7 @@ internal partial class ProjectCompiler
             var column = importAlias?.ColumnStart ?? fromImport.ColumnStart;
             var message = $"'{registerName}' is already imported from '{existingModule}' (in {Path.GetFileName(filePath)})";
             _projectModel!.GlobalDiagnostics.AddError(message, code: DiagnosticCodes.Semantic.DuplicateDefinition);
-            _diagnostics.AddError(message, line, column,
+            _diagnostics.AddError(message, line, column, filePath,
                 code: DiagnosticCodes.Semantic.DuplicateDefinition, phase: CompilerPhase.ImportResolution);
         }
     }

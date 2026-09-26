@@ -289,6 +289,8 @@ internal partial class ProjectCompiler
                 }
 
                 var targetFilePath = FindFileForDeclaration(declaration);
+                // Every diagnostic below is anchored at the trigger, which lives in the target's file (#2032).
+                using var fileScope = BeginTriggerFileScope(targetFilePath);
                 var generatorFilePath = binding.GeneratorType.DefiningFilePath;
                 var argumentsHash = ComputeDecoratorArgumentsHash(binding.Trigger);
                 var generatorIdentity = generatorTypeName + "@" + GetDeclarationName(declaration);
@@ -469,6 +471,9 @@ internal partial class ProjectCompiler
             var syntheticPath = $"<generated:{genSource.GeneratorName}:{genSource.TargetName}>";
             _logger.LogDebug($"Parsing generated source: {syntheticPath}");
 
+            // Every diagnostic below is anchored at the trigger, in the target's file (#2032).
+            using var fileScope = BeginTriggerFileScope(FindFileForDeclaration(genSource.TargetDeclaration));
+
             // Lex and parse the generated source
             var sourceText = new Text.SourceText(genSource.Source, syntheticPath);
             var lexResult = FileCompilationPipeline.Lex(sourceText, _logger);
@@ -596,6 +601,15 @@ internal partial class ProjectCompiler
 
         return !_diagnostics.HasErrors;
     }
+
+    /// <summary>
+    /// Stamps the unit's own path (as written, not the normalized unit key) on every path-less
+    /// diagnostic reported until disposal. Null when the declaration's file is unknown.
+    /// </summary>
+    private IDisposable? BeginTriggerFileScope(string? unitKey)
+        => unitKey != null && _projectModel!.Units.TryGetValue(unitKey, out var unit)
+            ? _diagnostics.BeginFileScope(unit.FilePath)
+            : null;
 
     private string? FindFileForDeclaration(Statement declaration)
     {
