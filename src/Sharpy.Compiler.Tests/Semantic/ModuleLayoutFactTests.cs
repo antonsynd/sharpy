@@ -180,7 +180,9 @@ public class ModuleLayoutFactTests
         {
             table.TryDefine(new TypeSymbol
             {
-                Name = "Foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+                Name = "Foo",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
                 DefiningFilePath = InRoot("pkg", "lib.spy"),
             });
             binding.SetResolvedModuleFilePath((FromImportStatement)module.Body[0], InRoot("pkg", "__init__.spy"));

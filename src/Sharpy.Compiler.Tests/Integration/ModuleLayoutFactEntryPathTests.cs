@@ -97,36 +97,36 @@ public class ModuleLayoutFactEntryPathTests
         switch (entryPath)
         {
             case "run":
-            {
-                // `sharpyc run main.spy`: Compiler.Compile's synthetic project of the import closure.
-                var entry = Entry(helper);
-                var config = SyntheticProject.BuildConfig(File.ReadAllText(entry), entry, options, NullLogger.Instance);
-                var result = new ProjectCompiler(NullLogger.Instance).Compile(config, CancellationToken.None, emitAssembly: false);
-                result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
-                return result.ProjectModel!;
-            }
+                {
+                    // `sharpyc run main.spy`: Compiler.Compile's synthetic project of the import closure.
+                    var entry = Entry(helper);
+                    var config = SyntheticProject.BuildConfig(File.ReadAllText(entry), entry, options, NullLogger.Instance);
+                    var result = new ProjectCompiler(NullLogger.Instance).Compile(config, CancellationToken.None, emitAssembly: false);
+                    result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+                    return result.ProjectModel!;
+                }
             case "project":
-            {
-                var result = helper.Compile();
-                result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
-                return result.ProjectModel!;
-            }
+                {
+                    var result = helper.Compile();
+                    result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+                    return result.ProjectModel!;
+                }
             case "lsp-project":
-            {
-                var result = new CompilerApi().AnalyzeProject(ProjectFileParser.Load(SpyProj(helper)));
-                result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
-                return result.ProjectModel;
-            }
+                {
+                    var result = new CompilerApi().AnalyzeProject(ProjectFileParser.Load(SpyProj(helper)));
+                    result.Success.Should().BeTrue(string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+                    return result.ProjectModel;
+                }
             case "lsp-document":
-            {
-                // CompilerApi.Analyze(source, options): the entry file has no path identity (#1087).
-                var entry = Entry(helper);
-                var config = SyntheticProject.BuildConfig(File.ReadAllText(entry), entry, options, NullLogger.Instance,
-                    preserveTrivia: true, nullifyEntryFilePath: true);
-                var analysis = SyntheticProject.Analyze(config, options, NullLogger.Instance, null, null, CancellationToken.None).Analysis;
-                analysis.Success.Should().BeTrue(string.Join("; ", analysis.Diagnostics.GetErrors().Select(d => d.Message)));
-                return analysis.ProjectModel;
-            }
+                {
+                    // CompilerApi.Analyze(source, options): the entry file has no path identity (#1087).
+                    var entry = Entry(helper);
+                    var config = SyntheticProject.BuildConfig(File.ReadAllText(entry), entry, options, NullLogger.Instance,
+                        preserveTrivia: true, nullifyEntryFilePath: true);
+                    var analysis = SyntheticProject.Analyze(config, options, NullLogger.Instance, null, null, CancellationToken.None).Analysis;
+                    analysis.Success.Should().BeTrue(string.Join("; ", analysis.Diagnostics.GetErrors().Select(d => d.Message)));
+                    return analysis.ProjectModel;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(entryPath), entryPath, null);
         }

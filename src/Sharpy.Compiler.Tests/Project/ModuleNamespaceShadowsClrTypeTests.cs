@@ -33,7 +33,9 @@ public class ModuleNamespaceShadowsClrTypeTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
+        try
+        { Directory.Delete(_dir, recursive: true); }
+        catch { /* best effort */ }
     }
 
     /// <summary>A referenced assembly declaring the .NET type <c>App.Foo</c>.</summary>

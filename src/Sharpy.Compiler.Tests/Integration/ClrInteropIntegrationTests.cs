@@ -340,13 +340,15 @@ def main():
     [Fact]
     public void ClrLowercaseProperty_SocketType_EmitsVerbatimClrName()
     {
-        // socket.Socket exposes a backtick-escaped, lowercase `type` property (spy/socket_module.spy).
-        // Forward name mangling would produce `.Type` (CS1061); the resolved-CLR-member-name path
-        // (#1093) must emit `.type` verbatim so the access binds to the real CLR member.
+        // socket.socket (CLR Sharpy.SocketModule.Socket) exposes a backtick-escaped, lowercase `type`
+        // property (spy/socket_module.spy). Forward name mangling would produce `.Type` (CS1061); the
+        // resolved-CLR-member-name path (#1093) must emit `.type` verbatim so the access binds to the
+        // real CLR member. The annotation is python's spelling: since #2039 a stdlib sibling type is
+        // reached by its stamped python name, and `socket.Socket` (the CLR name) is SPY0202, as in python.
         var source = @"
 import socket
 
-def read_type(s: socket.Socket) -> int:
+def read_type(s: socket.socket) -> int:
     return s.type
 
 def main():
@@ -367,7 +369,7 @@ def main():
         var source = @"
 import socket
 
-def read_type(s: socket.Socket) -> int:
+def read_type(s: socket.socket) -> int:
     return s.`type`
 
 def main():
