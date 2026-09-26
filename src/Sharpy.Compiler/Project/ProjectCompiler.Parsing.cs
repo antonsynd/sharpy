@@ -32,7 +32,8 @@ internal partial class ProjectCompiler
     /// are C# namespaces, so a directory and a module class nested in one another never collide
     /// (<c>lib/lib.spy</c> is <c>namespace …Lib { class Lib }</c>). What survives: (1) a module file beside
     /// a same-named package directory, (2) a package's <c>__init__</c> top-level name that is one of its
-    /// own submodules or subpackages; and — SPY0523, the <c>&lt;X&gt;</c> collision of owner ruling 15 —
+    /// own submodules or subpackages, (3) two modules whose namespace paths mangle alike
+    /// (<c>my_mod.spy</c> and <c>MyMod.spy</c>); and — SPY0523, the <c>&lt;X&gt;</c> collision of owner ruling 15 —
     /// a submodule or subpackage spelled like the package's <c>__init__</c> module class
     /// (<c>pkg/pkg_module.spy</c> beside <c>pkg/__init__.spy</c>'s <c>PkgModule</c>). Refused by name after parsing, before any analysis, for EVERY source file (an
     /// un-imported file is still emitted). Rung 4 by necessity: no CLR surface spells "these two paths
@@ -45,6 +46,7 @@ internal partial class ProjectCompiler
     {
         var sourceRoot = ComputeSourceRootPath(config);
         var reported = false;
+        var besidePackage = new HashSet<string>(StringComparer.Ordinal);
 
         // Refusal 1 (#1948): a module file beside a same-named package directory. Python imports
         // only one of them, so the other's modules are unreachable. Compared by the module's own
@@ -52,6 +54,7 @@ internal partial class ProjectCompiler
         foreach (var (file, directory, identifier) in
                  ModuleIdentifiers.FindModuleBesideSameNamedPackage(sourceRoot, config.SourceFiles))
         {
+            besidePackage.Add(file);
             _diagnostics.AddError(
                 $"Module '{Path.GetFileName(file)}' and the package directory '{directory}' beside it both emit " +
                 $"the C# identifier '{identifier}' (python imports only one of them, so the other's modules " +
@@ -62,6 +65,35 @@ internal partial class ProjectCompiler
                 code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
                 phase: CompilerPhase.CodeGeneration);
             reported = true;
+        }
+
+        // Refusal 3 (P14b): two modules whose emitted namespaces are one — `my_mod.spy` beside
+        // `MyMod.spy`, `my_pkg/x.spy` beside `MyPkg/x.spy`, two packages' `__init__.spy` whose
+        // directories mangle alike. Python names them apart; C# would declare the namespace twice,
+        // with two [SharpyModule] attributes and two members classes (CS0579/CS0101 behind SPY0908).
+        // Every file after the first (by source-relative path) is refused, naming the first. A group
+        // refusal 1 already covers (a module beside its own package's __init__) is not reported twice.
+        foreach (var group in config.SourceFiles
+                     .GroupBy(f => string.Join(".", ModuleIdentifiers.LayoutNamespaceSegments(sourceRoot, f)),
+                         StringComparer.Ordinal)
+                     .Where(g => g.Count() > 1 && !g.Any(besidePackage.Contains)))
+        {
+            var ordered = group
+                .Select(f => (File: f, Relative: Path.GetRelativePath(sourceRoot, f).Replace('\\', '/')))
+                .OrderBy(f => f.Relative, StringComparer.Ordinal)
+                .ToList();
+            foreach (var (file, relative) in ordered.Skip(1))
+            {
+                _diagnostics.AddError(
+                    $"Module '{relative}' emits the C# namespace '{group.Key}', which '{ordered[0].Relative}' also " +
+                    "emits (python names the two apart, but C# cannot declare one namespace twice). Rename one of them.",
+                    line: 1,
+                    column: 1,
+                    filePath: file,
+                    code: DiagnosticCodes.CodeGen.PackageModuleNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+                reported = true;
+            }
         }
 
         // Refusal 2 (#1948): a package's __init__ declaring a top-level name whose emitted identifier

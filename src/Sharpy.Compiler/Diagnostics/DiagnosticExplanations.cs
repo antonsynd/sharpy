@@ -178,11 +178,13 @@ public static partial class DiagnosticExplanations
             "class is declared in it; a package's '__init__.spy' emits its module class '<Dir>Module' inside the " +
             "package's own namespace ('pkg/__init__.spy' → 'PkgModule' in namespace 'Pkg'). Directories are measured " +
             "from the project's common source directory, and every file is emitted whether or not it is imported. " +
-            "Two layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
+            "Three layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
             "'pkg/'): python imports only one of the two, and C# cannot declare a class and a namespace of one name " +
             "in one scope. A top-level name in a package's '__init__.spy' whose emitted identifier is one of that " +
             "package's own submodules or subpackages ('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since " +
-            "'pkg.lib' would name both. (A submodule or subpackage spelled like the package's own module class, " +
+            "'pkg.lib' would name both. Two modules whose namespace paths are spelled alike once mangled " +
+            "('my_mod.spy' and 'MyMod.spy', or 'my_pkg/x.spy' and 'MyPkg/x.spy'): python names them apart, but both " +
+            "would declare one C# namespace. (A submodule or subpackage spelled like the package's own module class, " +
             "'pkg/pkg_module.spy' beside 'pkg/__init__.spy', is SPY0523.) A directory spelled like a module inside " +
             "it ('lib/lib.spy') is legal.",
             "# project layout\nsrc/main.spy\nsrc/lib.spy       # module 'lib' ...\nsrc/lib/core.spy  # ... beside package 'lib'",

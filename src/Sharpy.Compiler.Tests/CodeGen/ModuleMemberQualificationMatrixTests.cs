@@ -1170,6 +1170,19 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         new object[] { "init_constant_spelled_like_submodule_2086",
             new[] { ("pkg/__init__.spy", "X: int = 1\n"), ("pkg/x.spy", LibF), ("main.spy", "from pkg.x import f\n\ndef main() -> None:\n    print(f())\n") },
             "__init__.spy", "'X' in the package's __init__.spy emits the C# identifier 'X', which its submodule 'x.spy' also emits. Rename" },
+        // Refusal 3 (P14b collision residue): two modules whose namespace paths mangle alike. Python
+        // names them apart; C# declared one namespace twice — SPY0908 CS0579 (duplicate
+        // [SharpyModule]) + CS0101/CS0121 at d6a7aef05 and acd1d40a2 (measured; ICE → refused). The
+        // later file by source-relative path is refused, naming the earlier.
+        new object[] { "modules_mangle_alike",
+            new[] { ("my_mod.spy", LibF), ("MyMod.spy", "def f() -> int:\n    return 2\n"), ("main.spy", "from my_mod import f\n\ndef main() -> None:\n    print(f())\n") },
+            "my_mod.spy", "Module 'my_mod.spy' emits the C# namespace 'MyMod', which 'MyMod.spy' also emits" },
+        new object[] { "package_modules_mangle_alike",
+            new[] { ("my_pkg/x.spy", LibF), ("MyPkg/x.spy", "def f() -> int:\n    return 2\n"), ("main.spy", "from my_pkg.x import f\n\ndef main() -> None:\n    print(f())\n") },
+            "x.spy", "Module 'my_pkg/x.spy' emits the C# namespace 'MyPkg.X', which 'MyPkg/x.spy' also emits" },
+        new object[] { "package_inits_mangle_alike",
+            new[] { ("my_pkg/__init__.spy", "VERSION: int = 1\n"), ("MyPkg/__init__.spy", "VERSION: int = 2\n"), ("main.spy", "def main() -> None:\n    print(7)\n") },
+            "__init__.spy", "Module 'my_pkg/__init__.spy' emits the C# namespace 'MyPkg', which 'MyPkg/__init__.spy' also emits" },
     };
 
     [Theory]
@@ -1201,6 +1214,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     [Theory]
     [InlineData("package_without_twin_module", "pkg/x.spy", "q.spy")]
     [InlineData("init_names_differ_from_children", "pkg/lib.spy", "pkg/__init__.spy")]
+    // Refusal 3 keys on the whole namespace path: two directories that mangle alike are one C#
+    // namespace, and distinct modules inside it are distinct namespaces.
+    [InlineData("packages_mangle_alike_distinct_modules", "my_pkg/x.spy", "MyPkg/y.spy")]
     public void PackageWithoutShadowing_Runs(string name, string libPath, string otherPath)
     {
         using var helper = new ProjectCompilationHelper(Output);
@@ -1216,9 +1232,33 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         exec.StandardOutput.Trim().Should().Be("7", $"[{name}]");
     }
 
+    /// <summary>
+    /// Refusal 3 on the run route: <c>sharpyc run main.spy</c> compiles main's import closure, so when
+    /// main imports both modules whose namespaces mangle alike, the run route refuses them too (it was
+    /// SPY0908 CS0579 + CS0121 at d6a7aef05 and acd1d40a2, measured). A closure holding only one of
+    /// them is a correct program on that route and is not refused.
+    /// </summary>
+    [Fact]
+    public void ModulesMangledAlike_AreRefusedOnTheRunRoute()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.AddSourceFile("my_pkg/x.spy", LibF);
+        helper.AddSourceFile("MyPkg/x.spy", "def f() -> int:\n    return 2\n");
+        helper.AddSourceFile("main.spy", "import my_pkg.x as a\nimport MyPkg.x as b\n\ndef main() -> None:\n    print(a.f(), b.f())\n");
+        var exec = CompileAndExecuteEntryFile(Path.Combine(helper.SourceDirectory, "main.spy"));
+
+        exec.Success.Should().BeFalse();
+        exec.RawDiagnostics.Should().Contain(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.PackageModuleNameCollision
+                && d.Message.StartsWith("Module 'my_pkg/x.spy' emits the C# namespace 'MyPkg.X'", StringComparison.Ordinal),
+            string.Join("\n", exec.CompilationErrors));
+        exec.RawDiagnostics.Should().NotContain(
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+    }
+
     [Fact]
     public void PackageShadowing_Axis_IsTotal()
-        => PackageShadowingLayouts().Should().HaveCount(7);
+        => PackageShadowingLayouts().Should().HaveCount(10);
 
     /// <summary>
     /// A child spelled like the package's module class <c>&lt;X&gt;</c> (<c>pkg/pkg_module.spy</c> or
