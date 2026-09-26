@@ -11,299 +11,293 @@ using Sharpy.Stdlib.Tests.Spy;
 using logging = global::Sharpy.Logging;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Logging
 {
-    public static partial class Logging
+    [global::Sharpy.SharpyModule("logging.logging_module_tests")]
+    public static partial class LoggingModuleTests
     {
-        [global::Sharpy.SharpyModule("logging.logging_module_tests")]
-        public static partial class LoggingModuleTests
-        {
-        }
     }
 
-    public static partial class Logging
+    public partial class LoggingModuleTestsTests
     {
-        public partial class LoggingModuleTestsTests
+        [Xunit.FactAttribute]
+        public void TestConstantsHaveCorrectValues()
         {
-            [Xunit.FactAttribute]
-            public void TestConstantsHaveCorrectValues()
+#line (15, 5) - (15, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            Xunit.Assert.Equal(10, global::Sharpy.Logging.DEBUG);
+#line (16, 5) - (16, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            Xunit.Assert.Equal(20, global::Sharpy.Logging.INFO);
+#line (17, 5) - (17, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            Xunit.Assert.Equal(30, global::Sharpy.Logging.WARNING);
+#line (18, 5) - (18, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            Xunit.Assert.Equal(40, global::Sharpy.Logging.ERROR);
+#line (19, 5) - (19, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            Xunit.Assert.Equal(50, global::Sharpy.Logging.CRITICAL);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestWarningOutputsToStderr()
+        {
+#line (26, 5) - (26, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_output");
+#line (27, 5) - (27, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.WARNING);
+#line (28, 5) - (30, 78) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (15, 5) - (15, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(10, global::Sharpy.Logging.DEBUG);
-#line (16, 5) - (16, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(20, global::Sharpy.Logging.INFO);
-#line (17, 5) - (17, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(30, global::Sharpy.Logging.WARNING);
-#line (18, 5) - (18, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(40, global::Sharpy.Logging.ERROR);
-#line (19, 5) - (19, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Equal(50, global::Sharpy.Logging.CRITICAL);
+#line (29, 9) - (29, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("test message");
+#line (30, 9) - (30, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("WARNING:test_output:test message", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestWarningOutputsToStderr()
+        [Xunit.FactAttribute]
+        public void TestLevelFilteringBelowLevel()
+        {
+#line (35, 5) - (35, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_filter");
+#line (36, 5) - (36, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.ERROR);
+#line (37, 5) - (39, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (26, 5) - (26, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_output");
-#line (27, 5) - (27, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.WARNING);
-#line (28, 5) - (30, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (38, 9) - (38, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("should not appear");
+#line (39, 9) - (39, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("", err.Getvalue());
 #line hidden
-                {
-#line (29, 9) - (29, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("test message");
-#line (30, 9) - (30, 78) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_output:test message", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLevelFilteringBelowLevel()
+        [Xunit.FactAttribute]
+        public void TestLevelFilteringAtLevel()
+        {
+#line (44, 5) - (44, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_at");
+#line (45, 5) - (45, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.WARNING);
+#line (46, 5) - (48, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (35, 5) - (35, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_filter");
-#line (36, 5) - (36, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.ERROR);
-#line (37, 5) - (39, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (47, 9) - (47, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("at level");
+#line (48, 9) - (48, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("WARNING:test_at:at level", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
-                {
-#line (38, 9) - (38, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("should not appear");
-#line (39, 9) - (39, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("", err.Getvalue());
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLevelFilteringAtLevel()
+        [Xunit.FactAttribute]
+        public void TestOutputFormat()
+        {
+#line (53, 5) - (53, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("myapp");
+#line (54, 5) - (54, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.DEBUG);
+#line (55, 5) - (65, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (44, 5) - (44, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_at");
-#line (45, 5) - (45, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.WARNING);
-#line (46, 5) - (48, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (56, 9) - (56, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Debug("debug msg");
+#line (57, 9) - (57, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Info("info msg");
+#line (58, 9) - (58, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Error("error msg");
+#line (59, 9) - (59, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Critical("critical msg");
+#line (61, 9) - (61, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = err.Getvalue();
+#line (62, 9) - (62, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("DEBUG:myapp:debug msg", output);
+#line (63, 9) - (63, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("INFO:myapp:info msg", output);
+#line (64, 9) - (64, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("ERROR:myapp:error msg", output);
+#line (65, 9) - (65, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("CRITICAL:myapp:critical msg", output);
 #line hidden
-                {
-#line (47, 9) - (47, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("at level");
-#line (48, 9) - (48, 70) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_at:at level", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestOutputFormat()
+        [Xunit.FactAttribute]
+        public void TestDefaultLevelIsWarning()
+        {
+#line (70, 5) - (70, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_default");
+#line (71, 5) - (77, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (53, 5) - (53, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("myapp");
-#line (54, 5) - (54, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.DEBUG);
-#line (55, 5) - (65, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (72, 9) - (72, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Info("should not appear");
+#line (73, 9) - (73, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("should appear");
+#line (75, 9) - (75, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = err.Getvalue();
+#line (76, 9) - (76, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.DoesNotContain("INFO", output);
+#line (77, 9) - (77, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("WARNING", output);
 #line hidden
-                {
-#line (56, 9) - (56, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Debug("debug msg");
-#line (57, 9) - (57, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Info("info msg");
-#line (58, 9) - (58, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Error("error msg");
-#line (59, 9) - (59, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Critical("critical msg");
-#line (61, 9) - (61, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue();
-#line (62, 9) - (62, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("DEBUG:myapp:debug msg", output);
-#line (63, 9) - (63, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("INFO:myapp:info msg", output);
-#line (64, 9) - (64, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("ERROR:myapp:error msg", output);
-#line (65, 9) - (65, 56) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("CRITICAL:myapp:critical msg", output);
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDefaultLevelIsWarning()
+        [Xunit.FactAttribute]
+        public void TestHigherSeverityPassesLowerThreshold()
+        {
+#line (83, 5) - (83, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_higher_sev");
+#line (84, 5) - (84, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.WARNING);
+#line (85, 5) - (91, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (70, 5) - (70, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_default");
-#line (71, 5) - (77, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (86, 9) - (86, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Error("err msg");
+#line (87, 9) - (87, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Critical("crit msg");
+#line (89, 9) - (89, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = err.Getvalue();
+#line (90, 9) - (90, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("ERROR:test_higher_sev:err msg", output);
+#line (91, 9) - (91, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("CRITICAL:test_higher_sev:crit msg", output);
 #line hidden
-                {
-#line (72, 9) - (72, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Info("should not appear");
-#line (73, 9) - (73, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("should appear");
-#line (75, 9) - (75, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue();
-#line (76, 9) - (76, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.DoesNotContain("INFO", output);
-#line (77, 9) - (77, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("WARNING", output);
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestHigherSeverityPassesLowerThreshold()
+        [Xunit.FactAttribute]
+        public void TestAllLevelsAtOrAboveInfoEmit()
+        {
+#line (96, 5) - (96, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_all_above_info");
+#line (97, 5) - (97, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.INFO);
+#line (98, 5) - (110, 72) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (83, 5) - (83, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_higher_sev");
-#line (84, 5) - (84, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.WARNING);
-#line (85, 5) - (91, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (99, 9) - (99, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Debug("dbg suppressed");
+#line (100, 9) - (100, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Info("info shown");
+#line (101, 9) - (101, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("warn shown");
+#line (102, 9) - (102, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Error("error shown");
+#line (103, 9) - (103, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Critical("critical shown");
+#line (105, 9) - (105, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = err.Getvalue();
+#line (106, 9) - (106, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.DoesNotContain("DEBUG", output);
+#line (107, 9) - (107, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("INFO:test_all_above_info:info shown", output);
+#line (108, 9) - (108, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("WARNING:test_all_above_info:warn shown", output);
+#line (109, 9) - (109, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("ERROR:test_all_above_info:error shown", output);
+#line (110, 9) - (110, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("CRITICAL:test_all_above_info:critical shown", output);
 #line hidden
-                {
-#line (86, 9) - (86, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Error("err msg");
-#line (87, 9) - (87, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Critical("crit msg");
-#line (89, 9) - (89, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue();
-#line (90, 9) - (90, 58) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("ERROR:test_higher_sev:err msg", output);
-#line (91, 9) - (91, 62) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("CRITICAL:test_higher_sev:crit msg", output);
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAllLevelsAtOrAboveInfoEmit()
+        [Xunit.FactAttribute]
+        public void TestEmptyMessageEmitsPrefixOnly()
+        {
+#line (115, 5) - (115, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_empty_msg");
+#line (116, 5) - (116, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.WARNING);
+#line (117, 5) - (119, 69) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (96, 5) - (96, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_all_above_info");
-#line (97, 5) - (97, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.INFO);
-#line (98, 5) - (110, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (118, 9) - (118, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("");
+#line (119, 9) - (119, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("WARNING:test_empty_msg:", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
-                {
-#line (99, 9) - (99, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Debug("dbg suppressed");
-#line (100, 9) - (100, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Info("info shown");
-#line (101, 9) - (101, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("warn shown");
-#line (102, 9) - (102, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Error("error shown");
-#line (103, 9) - (103, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Critical("critical shown");
-#line (105, 9) - (105, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue();
-#line (106, 9) - (106, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.DoesNotContain("DEBUG", output);
-#line (107, 9) - (107, 64) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("INFO:test_all_above_info:info shown", output);
-#line (108, 9) - (108, 67) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("WARNING:test_all_above_info:warn shown", output);
-#line (109, 9) - (109, 66) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("ERROR:test_all_above_info:error shown", output);
-#line (110, 9) - (110, 72) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("CRITICAL:test_all_above_info:critical shown", output);
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestEmptyMessageEmitsPrefixOnly()
+        [Xunit.FactAttribute]
+        public void TestMessageWithColonsPreservedVerbatim()
+        {
+#line (125, 5) - (125, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_colons");
+#line (126, 5) - (126, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.WARNING);
+#line (127, 5) - (129, 80) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (115, 5) - (115, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_empty_msg");
-#line (116, 5) - (116, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.WARNING);
-#line (117, 5) - (119, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (128, 9) - (128, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("key:value:pair");
+#line (129, 9) - (129, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("WARNING:test_colons:key:value:pair", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
-                {
-#line (118, 9) - (118, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("");
-#line (119, 9) - (119, 69) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_empty_msg:", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestMessageWithColonsPreservedVerbatim()
+        [Xunit.FactAttribute]
+        public void TestMultipleMessagesAppearInOrder()
+        {
+#line (134, 5) - (134, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_order");
+#line (135, 5) - (135, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.DEBUG);
+#line (136, 5) - (144, 101) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (125, 5) - (125, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_colons");
-#line (126, 5) - (126, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.WARNING);
-#line (127, 5) - (129, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (137, 9) - (137, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Debug("first");
+#line (138, 9) - (138, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Info("second");
+#line (139, 9) - (139, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("third");
+#line (143, 9) - (143, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = global::Sharpy.StringExtensions.Rstrip(err.Getvalue());
+#line (144, 9) - (144, 101) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Equal("DEBUG:test_order:first\nINFO:test_order:second\nWARNING:test_order:third", output);
 #line hidden
-                {
-#line (128, 9) - (128, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("key:value:pair");
-#line (129, 9) - (129, 80) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_colons:key:value:pair", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
-#line hidden
-                }
             }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestMultipleMessagesAppearInOrder()
+        [Xunit.FactAttribute]
+        public void TestSetLevelRaiseLevelSuppressesLowerSeverity()
+        {
+#line (150, 5) - (150, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            var logger = new global::Sharpy.Logger("test_raise_level");
+#line (151, 5) - (151, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.DEBUG);
+#line (152, 5) - (152, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            logger.SetLevel(global::Sharpy.Logging.ERROR);
+#line (153, 5) - (159, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+            using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line hidden
             {
-#line (134, 5) - (134, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_order");
-#line (135, 5) - (135, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.DEBUG);
-#line (136, 5) - (144, 101) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
+#line (154, 9) - (154, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Warning("should be suppressed after raise");
+#line (155, 9) - (155, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                logger.Error("should still appear");
+#line (157, 9) - (157, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                var output = err.Getvalue();
+#line (158, 9) - (158, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.DoesNotContain("should be suppressed after raise", output);
+#line (159, 9) - (159, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
+                Xunit.Assert.Contains("should still appear", output);
 #line hidden
-                {
-#line (137, 9) - (137, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Debug("first");
-#line (138, 9) - (138, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Info("second");
-#line (139, 9) - (139, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("third");
-#line (143, 9) - (143, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = global::Sharpy.StringExtensions.Rstrip(err.Getvalue());
-#line (144, 9) - (144, 101) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("DEBUG:test_order:first\nINFO:test_order:second\nWARNING:test_order:third", output);
-#line hidden
-                }
-            }
-
-            [Xunit.FactAttribute]
-            public void TestSetLevelRaiseLevelSuppressesLowerSeverity()
-            {
-#line (150, 5) - (150, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                var logger = new global::Sharpy.Logger("test_raise_level");
-#line (151, 5) - (151, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.DEBUG);
-#line (152, 5) - (152, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                logger.SetLevel(global::Sharpy.Logging.ERROR);
-#line (153, 5) - (159, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                using (var err = global::Sharpy.Unittest.CapturedStderr())
-#line hidden
-                {
-#line (154, 9) - (154, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Warning("should be suppressed after raise");
-#line (155, 9) - (155, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    logger.Error("should still appear");
-#line (157, 9) - (157, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue();
-#line (158, 9) - (158, 65) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.DoesNotContain("should be suppressed after raise", output);
-#line (159, 9) - (159, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Contains("should still appear", output);
-#line hidden
-                }
             }
         }
     }

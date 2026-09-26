@@ -11,621 +11,615 @@ using Sharpy.Stdlib.Tests.Spy;
 using math = global::Sharpy.MathModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Math
 {
-    public static partial class Math
+    [global::Sharpy.SharpyModule("math.math_additional2_tests")]
+    public static partial class MathAdditional2Tests
     {
-        [global::Sharpy.SharpyModule("math.math_additional2_tests")]
-        public static partial class MathAdditional2Tests
-        {
-        }
     }
 
-    public static partial class Math
+    public partial class MathAdditional2TestsTests
     {
-        public partial class MathAdditional2TestsTests
+        [Xunit.FactAttribute]
+        public void TestSinZeroReturnsZero()
         {
-            [Xunit.FactAttribute]
-            public void TestSinZeroReturnsZero()
-            {
-#line (9, 5) - (9, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Sin(0.0d));
+#line (9, 5) - (9, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Sin(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSinPiOver2ReturnsOne()
-            {
-#line (13, 5) - (13, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Sin(global::Sharpy.MathModule.Pi / 2.0d), absTol: 1e-15d));
+        [Xunit.FactAttribute]
+        public void TestSinPiOver2ReturnsOne()
+        {
+#line (13, 5) - (13, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(1.0d, math.Sin(global::Sharpy.MathModule.Pi / 2.0d), absTol: 1e-15d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSinPiIsApproximatelyZero()
-            {
-#line (17, 5) - (17, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(0.0d, math.Sin(global::Sharpy.MathModule.Pi), absTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestSinPiIsApproximatelyZero()
+        {
+#line (17, 5) - (17, 64) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(0.0d, math.Sin(global::Sharpy.MathModule.Pi), absTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCosZeroReturnsOne()
-            {
-#line (21, 5) - (21, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1.0d, math.Cos(0.0d));
+        [Xunit.FactAttribute]
+        public void TestCosZeroReturnsOne()
+        {
+#line (21, 5) - (21, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1.0d, math.Cos(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCosPiReturnsNegativeOne()
-            {
-#line (25, 5) - (25, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(-1.0d, math.Cos(global::Sharpy.MathModule.Pi), absTol: 1e-15d));
+        [Xunit.FactAttribute]
+        public void TestCosPiReturnsNegativeOne()
+        {
+#line (25, 5) - (25, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(-1.0d, math.Cos(global::Sharpy.MathModule.Pi), absTol: 1e-15d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTanZeroReturnsZero()
-            {
-#line (29, 5) - (29, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Tan(0.0d));
+        [Xunit.FactAttribute]
+        public void TestTanZeroReturnsZero()
+        {
+#line (29, 5) - (29, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Tan(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTanPiOver4IsApproximatelyOne()
-            {
-#line (33, 5) - (33, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Tan(global::Sharpy.MathModule.Pi / 4.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestTanPiOver4IsApproximatelyOne()
+        {
+#line (33, 5) - (33, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(1.0d, math.Tan(global::Sharpy.MathModule.Pi / 4.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAsinOneReturnsPiOver2()
-            {
-#line (39, 5) - (39, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Asin(1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestAsinOneReturnsPiOver2()
+        {
+#line (39, 5) - (39, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Asin(1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAsinZeroReturnsZero()
-            {
-#line (43, 5) - (43, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Asin(0.0d));
+        [Xunit.FactAttribute]
+        public void TestAsinZeroReturnsZero()
+        {
+#line (43, 5) - (43, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Asin(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAcosOneReturnsZero()
-            {
-#line (47, 5) - (47, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Acos(1.0d));
+        [Xunit.FactAttribute]
+        public void TestAcosOneReturnsZero()
+        {
+#line (47, 5) - (47, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Acos(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAcosZeroReturnsPiOver2()
-            {
-#line (51, 5) - (51, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Acos(0.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestAcosZeroReturnsPiOver2()
+        {
+#line (51, 5) - (51, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 2.0d, math.Acos(0.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAtanZeroReturnsZero()
-            {
-#line (55, 5) - (55, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Atan(0.0d));
+        [Xunit.FactAttribute]
+        public void TestAtanZeroReturnsZero()
+        {
+#line (55, 5) - (55, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Atan(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAtanOneReturnsPiOver4()
-            {
-#line (59, 5) - (59, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan(1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestAtanOneReturnsPiOver4()
+        {
+#line (59, 5) - (59, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan(1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAtan2OneOneReturnsPiOver4()
-            {
-#line (63, 5) - (63, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan2(1.0d, 1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestAtan2OneOneReturnsPiOver4()
+        {
+#line (63, 5) - (63, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi / 4.0d, math.Atan2(1.0d, 1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAtan2NegativeXReturnsPi()
-            {
-#line (67, 5) - (67, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Atan2(0.0d, -1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestAtan2NegativeXReturnsPi()
+        {
+#line (67, 5) - (67, 72) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Atan2(0.0d, -1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSinhZeroReturnsZero()
-            {
-#line (73, 5) - (73, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Sinh(0.0d));
+        [Xunit.FactAttribute]
+        public void TestSinhZeroReturnsZero()
+        {
+#line (73, 5) - (73, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Sinh(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSinhOneMatchesKnownValue()
-            {
-#line (77, 5) - (77, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.1752011936438014d, math.Sinh(1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestSinhOneMatchesKnownValue()
+        {
+#line (77, 5) - (77, 76) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(1.1752011936438014d, math.Sinh(1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCoshZeroReturnsOne()
-            {
-#line (81, 5) - (81, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1.0d, math.Cosh(0.0d));
+        [Xunit.FactAttribute]
+        public void TestCoshZeroReturnsOne()
+        {
+#line (81, 5) - (81, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1.0d, math.Cosh(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTanhZeroReturnsZero()
-            {
-#line (85, 5) - (85, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Tanh(0.0d));
+        [Xunit.FactAttribute]
+        public void TestTanhZeroReturnsZero()
+        {
+#line (85, 5) - (85, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Tanh(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestExpZeroReturnsOne()
-            {
-#line (91, 5) - (91, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1.0d, math.Exp(0.0d));
+        [Xunit.FactAttribute]
+        public void TestExpZeroReturnsOne()
+        {
+#line (91, 5) - (91, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1.0d, math.Exp(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestExpOneReturnsE()
-            {
-#line (95, 5) - (95, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.E, math.Exp(1.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestExpOneReturnsE()
+        {
+#line (95, 5) - (95, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.E, math.Exp(1.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLogOneReturnsZero()
-            {
-#line (101, 5) - (101, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Log(1.0d));
+        [Xunit.FactAttribute]
+        public void TestLogOneReturnsZero()
+        {
+#line (101, 5) - (101, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Log(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLogEReturnsOne()
-            {
-#line (105, 5) - (105, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(1.0d, math.Log(global::Sharpy.MathModule.E), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestLogEReturnsOne()
+        {
+#line (105, 5) - (105, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(1.0d, math.Log(global::Sharpy.MathModule.E), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLogWithBase10ReturnsCorrectValue()
-            {
-#line (109, 5) - (109, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(2.0d, math.Log(100.0d, 10.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestLogWithBase10ReturnsCorrectValue()
+        {
+#line (109, 5) - (109, 68) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(2.0d, math.Log(100.0d, 10.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLogWithBase1IsSpecialCase()
-            {
-#line (113, 5) - (113, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(0.0d, math.Log(1.0d, 10.0d), absTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestLogWithBase1IsSpecialCase()
+        {
+#line (113, 5) - (113, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(0.0d, math.Log(1.0d, 10.0d), absTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLog10HundredReturnsTwo()
-            {
-#line (117, 5) - (117, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(2.0d, math.Log10(100.0d));
+        [Xunit.FactAttribute]
+        public void TestLog10HundredReturnsTwo()
+        {
+#line (117, 5) - (117, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(2.0d, math.Log10(100.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLog10OneReturnsZero()
-            {
-#line (121, 5) - (121, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Log10(1.0d));
+        [Xunit.FactAttribute]
+        public void TestLog10OneReturnsZero()
+        {
+#line (121, 5) - (121, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Log10(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLog2EightReturnsThree()
-            {
-#line (125, 5) - (125, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(3.0d, math.Log2(8.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestLog2EightReturnsThree()
+        {
+#line (125, 5) - (125, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(3.0d, math.Log2(8.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLog2OneReturnsZero()
-            {
-#line (129, 5) - (129, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Log2(1.0d));
+        [Xunit.FactAttribute]
+        public void TestLog2OneReturnsZero()
+        {
+#line (129, 5) - (129, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Log2(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSqrtFourReturnsTwo()
-            {
-#line (135, 5) - (135, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(2.0d, math.Sqrt(4.0d));
+        [Xunit.FactAttribute]
+        public void TestSqrtFourReturnsTwo()
+        {
+#line (135, 5) - (135, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(2.0d, math.Sqrt(4.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSqrtZeroReturnsZero()
-            {
-#line (139, 5) - (139, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Sqrt(0.0d));
+        [Xunit.FactAttribute]
+        public void TestSqrtZeroReturnsZero()
+        {
+#line (139, 5) - (139, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Sqrt(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSqrtOneReturnsOne()
-            {
-#line (143, 5) - (143, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1.0d, math.Sqrt(1.0d));
+        [Xunit.FactAttribute]
+        public void TestSqrtOneReturnsOne()
+        {
+#line (143, 5) - (143, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1.0d, math.Sqrt(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestSqrtNegativeNumberReturnsNan()
-            {
-#line (147, 5) - (147, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isnan(math.Sqrt(-1.0d)));
+        [Xunit.FactAttribute]
+        public void TestSqrtNegativeNumberReturnsNan()
+        {
+#line (147, 5) - (147, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isnan(math.Sqrt(-1.0d)));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestPowTwoToTenReturns1024()
-            {
-#line (151, 5) - (151, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1024.0d, math.Pow(2.0d, 10.0d));
+        [Xunit.FactAttribute]
+        public void TestPowTwoToTenReturns1024()
+        {
+#line (151, 5) - (151, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1024.0d, math.Pow(2.0d, 10.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestPowAnyNumberToZeroReturnsOne()
-            {
-#line (155, 5) - (155, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1.0d, math.Pow(5.0d, 0.0d));
+        [Xunit.FactAttribute]
+        public void TestPowAnyNumberToZeroReturnsOne()
+        {
+#line (155, 5) - (155, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1.0d, math.Pow(5.0d, 0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestPowZeroToPositiveReturnsZero()
-            {
-#line (159, 5) - (159, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Pow(0.0d, 3.0d));
+        [Xunit.FactAttribute]
+        public void TestPowZeroToPositiveReturnsZero()
+        {
+#line (159, 5) - (159, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Pow(0.0d, 3.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCeilPositiveFractionalRoundsUp()
-            {
-#line (165, 5) - (165, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(4.0d, math.Ceil(3.2d));
+        [Xunit.FactAttribute]
+        public void TestCeilPositiveFractionalRoundsUp()
+        {
+#line (165, 5) - (165, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(4.0d, math.Ceil(3.2d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCeilNegativeFractionalRoundsTowardZero()
-            {
-#line (169, 5) - (169, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Ceil(-0.5d));
+        [Xunit.FactAttribute]
+        public void TestCeilNegativeFractionalRoundsTowardZero()
+        {
+#line (169, 5) - (169, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Ceil(-0.5d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFloorPositiveFractionalRoundsDown()
-            {
-#line (173, 5) - (173, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(3.0d, math.Floor(3.7d));
+        [Xunit.FactAttribute]
+        public void TestFloorPositiveFractionalRoundsDown()
+        {
+#line (173, 5) - (173, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(3.0d, math.Floor(3.7d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFloorNegativeFractionalRoundsAwayFromZero()
-            {
-#line (177, 5) - (177, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-1.0d, math.Floor(-0.5d));
+        [Xunit.FactAttribute]
+        public void TestFloorNegativeFractionalRoundsAwayFromZero()
+        {
+#line (177, 5) - (177, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(-1.0d, math.Floor(-0.5d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTruncPositiveFractionalTruncatesTowardZero()
-            {
-#line (181, 5) - (181, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(3.0d, math.Trunc(3.7d));
+        [Xunit.FactAttribute]
+        public void TestTruncPositiveFractionalTruncatesTowardZero()
+        {
+#line (181, 5) - (181, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(3.0d, math.Trunc(3.7d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTruncNegativeFractionalTruncatesTowardZero()
-            {
-#line (185, 5) - (185, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-3.0d, math.Trunc(-3.7d));
+        [Xunit.FactAttribute]
+        public void TestTruncNegativeFractionalTruncatesTowardZero()
+        {
+#line (185, 5) - (185, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(-3.0d, math.Trunc(-3.7d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFabsNegativeValueReturnsPositive()
-            {
-#line (189, 5) - (189, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(3.7d, math.Fabs(-3.7d));
+        [Xunit.FactAttribute]
+        public void TestFabsNegativeValueReturnsPositive()
+        {
+#line (189, 5) - (189, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(3.7d, math.Fabs(-3.7d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFabsPositiveValueReturnsSame()
-            {
-#line (193, 5) - (193, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(3.7d, math.Fabs(3.7d));
+        [Xunit.FactAttribute]
+        public void TestFabsPositiveValueReturnsSame()
+        {
+#line (193, 5) - (193, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(3.7d, math.Fabs(3.7d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFabsZeroReturnsZero()
-            {
-#line (197, 5) - (197, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Fabs(0.0d));
+        [Xunit.FactAttribute]
+        public void TestFabsZeroReturnsZero()
+        {
+#line (197, 5) - (197, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Fabs(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDegreesPiReturns180()
-            {
-#line (203, 5) - (203, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(180.0d, math.Degrees(global::Sharpy.MathModule.Pi), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestDegreesPiReturns180()
+        {
+#line (203, 5) - (203, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(180.0d, math.Degrees(global::Sharpy.MathModule.Pi), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDegreesZeroReturnsZero()
-            {
-#line (207, 5) - (207, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Degrees(0.0d));
+        [Xunit.FactAttribute]
+        public void TestDegreesZeroReturnsZero()
+        {
+#line (207, 5) - (207, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Degrees(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestRadians180ReturnsPi()
-            {
-#line (211, 5) - (211, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Radians(180.0d), relTol: 1e-14d));
+        [Xunit.FactAttribute]
+        public void TestRadians180ReturnsPi()
+        {
+#line (211, 5) - (211, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(global::Sharpy.MathModule.Pi, math.Radians(180.0d), relTol: 1e-14d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestRadiansZeroReturnsZero()
-            {
-#line (215, 5) - (215, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(0.0d, math.Radians(0.0d));
+        [Xunit.FactAttribute]
+        public void TestRadiansZeroReturnsZero()
+        {
+#line (215, 5) - (215, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(0.0d, math.Radians(0.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsfiniteNormalNumberReturnsTrue()
-            {
-#line (221, 5) - (221, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isfinite(1.0d));
+        [Xunit.FactAttribute]
+        public void TestIsfiniteNormalNumberReturnsTrue()
+        {
+#line (221, 5) - (221, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isfinite(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsfinitePositiveInfinityReturnsFalse()
-            {
-#line (225, 5) - (225, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Inf));
+        [Xunit.FactAttribute]
+        public void TestIsfinitePositiveInfinityReturnsFalse()
+        {
+#line (225, 5) - (225, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Inf));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsfiniteNanReturnsFalse()
-            {
-#line (229, 5) - (229, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Nan));
+        [Xunit.FactAttribute]
+        public void TestIsfiniteNanReturnsFalse()
+        {
+#line (229, 5) - (229, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.False(math.Isfinite(global::Sharpy.MathModule.Nan));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsinfPositiveInfinityReturnsTrue()
-            {
-#line (233, 5) - (233, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isinf(global::Sharpy.MathModule.Inf));
+        [Xunit.FactAttribute]
+        public void TestIsinfPositiveInfinityReturnsTrue()
+        {
+#line (233, 5) - (233, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isinf(global::Sharpy.MathModule.Inf));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsinfNegativeInfinityReturnsTrue()
-            {
-#line (237, 5) - (237, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isinf(-global::Sharpy.MathModule.Inf));
+        [Xunit.FactAttribute]
+        public void TestIsinfNegativeInfinityReturnsTrue()
+        {
+#line (237, 5) - (237, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isinf(-global::Sharpy.MathModule.Inf));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsinfNormalNumberReturnsFalse()
-            {
-#line (241, 5) - (241, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isinf(42.0d));
+        [Xunit.FactAttribute]
+        public void TestIsinfNormalNumberReturnsFalse()
+        {
+#line (241, 5) - (241, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.False(math.Isinf(42.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsnanNanReturnsTrue()
-            {
-#line (245, 5) - (245, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isnan(global::Sharpy.MathModule.Nan));
+        [Xunit.FactAttribute]
+        public void TestIsnanNanReturnsTrue()
+        {
+#line (245, 5) - (245, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isnan(global::Sharpy.MathModule.Nan));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsnanNormalNumberReturnsFalse()
-            {
-#line (249, 5) - (249, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isnan(1.0d));
+        [Xunit.FactAttribute]
+        public void TestIsnanNormalNumberReturnsFalse()
+        {
+#line (249, 5) - (249, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.False(math.Isnan(1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestIsnanInfinityReturnsFalse()
-            {
-#line (253, 5) - (253, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.False(math.Isnan(global::Sharpy.MathModule.Inf));
+        [Xunit.FactAttribute]
+        public void TestIsnanInfinityReturnsFalse()
+        {
+#line (253, 5) - (253, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.False(math.Isnan(global::Sharpy.MathModule.Inf));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCopysignPositiveMagnitudeNegativeSignReturnsNegative()
-            {
-#line (259, 5) - (259, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-1.0d, math.Copysign(1.0d, -2.0d));
+        [Xunit.FactAttribute]
+        public void TestCopysignPositiveMagnitudeNegativeSignReturnsNegative()
+        {
+#line (259, 5) - (259, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(-1.0d, math.Copysign(1.0d, -2.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCopysignPositiveMagnitudePositiveSignReturnsPositive()
-            {
-#line (263, 5) - (263, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(5.0d, math.Copysign(5.0d, 3.0d));
+        [Xunit.FactAttribute]
+        public void TestCopysignPositiveMagnitudePositiveSignReturnsPositive()
+        {
+#line (263, 5) - (263, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(5.0d, math.Copysign(5.0d, 3.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestCopysignNegativeMagnitudePositiveSignReturnsPositive()
-            {
-#line (267, 5) - (267, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(3.0d, math.Copysign(-3.0d, 1.0d));
+        [Xunit.FactAttribute]
+        public void TestCopysignNegativeMagnitudePositiveSignReturnsPositive()
+        {
+#line (267, 5) - (267, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(3.0d, math.Copysign(-3.0d, 1.0d));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestGcdTwelveAndEightReturnsFour()
-            {
-#line (273, 5) - (273, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(4, math.Gcd(12, 8));
+        [Xunit.FactAttribute]
+        public void TestGcdTwelveAndEightReturnsFour()
+        {
+#line (273, 5) - (273, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(4, math.Gcd(12, 8));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestGcdCoprimePairReturnsOne()
-            {
-#line (277, 5) - (277, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1, math.Gcd(7, 11));
+        [Xunit.FactAttribute]
+        public void TestGcdCoprimePairReturnsOne()
+        {
+#line (277, 5) - (277, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1, math.Gcd(7, 11));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestGcdZeroAndNReturnsN()
-            {
-#line (281, 5) - (281, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(5, math.Gcd(0, 5));
+        [Xunit.FactAttribute]
+        public void TestGcdZeroAndNReturnsN()
+        {
+#line (281, 5) - (281, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(5, math.Gcd(0, 5));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestGcdNegativeValuesReturnsPositive()
-            {
-#line (285, 5) - (285, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(4, math.Gcd(-12, 8));
+        [Xunit.FactAttribute]
+        public void TestGcdNegativeValuesReturnsPositive()
+        {
+#line (285, 5) - (285, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(4, math.Gcd(-12, 8));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFactorialZeroReturnsOne()
-            {
-#line (291, 5) - (291, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(1, math.Factorial(0));
+        [Xunit.FactAttribute]
+        public void TestFactorialZeroReturnsOne()
+        {
+#line (291, 5) - (291, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(1, math.Factorial(0));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFactorialFiveReturns120()
-            {
-#line (295, 5) - (295, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(120, math.Factorial(5));
+        [Xunit.FactAttribute]
+        public void TestFactorialFiveReturns120()
+        {
+#line (295, 5) - (295, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(120, math.Factorial(5));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFactorialNegativeThrowsValueError()
+        [Xunit.FactAttribute]
+        public void TestFactorialNegativeThrowsValueError()
+        {
+#line (299, 5) - (300, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            bool __raised_0 = false;
+#line hidden
+            try
             {
-#line (299, 5) - (300, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                bool __raised_0 = false;
-#line hidden
-                try
-                {
-#line (300, 9) - (300, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                    math.Factorial(-1);
-#line hidden
-                }
-                catch (ValueError)
-                {
-                    __raised_0 = true;
-                }
-
-                if (!__raised_0)
-                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+#line (300, 9) - (300, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+                math.Factorial(-1);
+#line hidden
             }
-
-            [Xunit.FactAttribute]
-            public void TestFactorialTooLargeThrowsOverflowError()
+            catch (ValueError)
             {
-#line (304, 5) - (305, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                bool __raised_1 = false;
-#line hidden
-                try
-                {
-#line (305, 9) - (305, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                    math.Factorial(21);
-#line hidden
-                }
-                catch (OverflowError)
-                {
-                    __raised_1 = true;
-                }
-
-                if (!__raised_1)
-                    throw new global::Sharpy.AssertionError("Expected OverflowError to be raised, but no exception was raised");
+                __raised_0 = true;
             }
+
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        }
 
-            [Xunit.FactAttribute]
-            public void TestLogZeroReturnsNegativeInfinity()
+        [Xunit.FactAttribute]
+        public void TestFactorialTooLargeThrowsOverflowError()
+        {
+#line (304, 5) - (305, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            bool __raised_1 = false;
+#line hidden
+            try
             {
-#line (311, 5) - (311, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-global::Sharpy.MathModule.Inf, math.Log(0.0d));
+#line (305, 9) - (305, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+                math.Factorial(21);
 #line hidden
             }
-
-            [Xunit.FactAttribute]
-            public void TestFsumNegativeValuesSumsCorrectly()
+            catch (OverflowError)
             {
-#line (317, 5) - (317, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Equal(-6.0d, math.Fsum(new Sharpy.List<double>() { -1.0d, -2.0d, -3.0d }));
-#line hidden
+                __raised_1 = true;
             }
 
-            [Xunit.FactAttribute]
-            public void TestIscloseFloatingPointApproximationReturnsTrue()
-            {
-#line (323, 5) - (323, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.True(math.Isclose(0.1d + 0.2d, 0.3d));
+            if (!__raised_1)
+                throw new global::Sharpy.AssertionError("Expected OverflowError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestLogZeroReturnsNegativeInfinity()
+        {
+#line (311, 5) - (311, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(-global::Sharpy.MathModule.Inf, math.Log(0.0d));
 #line hidden
-            }
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFsumNegativeValuesSumsCorrectly()
+        {
+#line (317, 5) - (317, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.Equal(-6.0d, math.Fsum(new Sharpy.List<double>() { -1.0d, -2.0d, -3.0d }));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIscloseFloatingPointApproximationReturnsTrue()
+        {
+#line (323, 5) - (323, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+            Xunit.Assert.True(math.Isclose(0.1d + 0.2d, 0.3d));
+#line hidden
         }
     }
 }

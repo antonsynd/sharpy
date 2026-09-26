@@ -12,381 +12,375 @@ using datetime = global::Sharpy.Datetime;
 using zoneinfo = global::Sharpy.Zoneinfo;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo
 {
-    public static partial class Zoneinfo
+    [global::Sharpy.SharpyModule("zoneinfo.zoneinfo_tests")]
+    public static partial class ZoneinfoTests
     {
-        [global::Sharpy.SharpyModule("zoneinfo.zoneinfo_tests")]
-        public static partial class ZoneinfoTests
+        internal static global::Sharpy.DateTime _WinterDt()
         {
-            internal static global::Sharpy.DateTime _WinterDt()
-            {
-#line (8, 5) - (8, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                return new global::Sharpy.DateTime(2026, 1, 15, 12, 0);
+#line (8, 5) - (8, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            return new global::Sharpy.DateTime(2026, 1, 15, 12, 0);
 #line hidden
-            }
+        }
 
-            internal static global::Sharpy.DateTime _SummerDt()
-            {
-#line (11, 5) - (11, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                return new global::Sharpy.DateTime(2026, 7, 15, 12, 0);
+        internal static global::Sharpy.DateTime _SummerDt()
+        {
+#line (11, 5) - (11, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            return new global::Sharpy.DateTime(2026, 7, 15, 12, 0);
 #line hidden
-            }
         }
     }
 
-    public static partial class Zoneinfo
+    public partial class ZoneinfoTestsTests
     {
-        public partial class ZoneinfoTestsTests
+        [Xunit.FactAttribute]
+        public void TestConstructorUtcKeyIsUtc()
         {
-            [Xunit.FactAttribute]
-            public void TestConstructorUtcKeyIsUtc()
+#line (17, 5) - (17, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("UTC");
+#line (18, 5) - (18, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal("UTC", zone.Key);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestConstructorAmericaNewYorkSucceeds()
+        {
+#line (22, 5) - (22, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (23, 5) - (23, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(zone);
+#line (24, 5) - (24, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(zone.Key.Length > 0);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestConstructorEuropeLondonSucceeds()
+        {
+#line (28, 5) - (28, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("Europe/London");
+#line (29, 5) - (29, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(zone);
+#line (30, 5) - (30, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(zone.Key.Length > 0);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestConstructorInvalidZoneThrowsZoneInfoNotFoundError()
+        {
+#line (36, 5) - (37, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            bool __raised_0 = false;
+#line hidden
+            try
             {
-#line (17, 5) - (17, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("UTC");
-#line (18, 5) - (18, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal("UTC", zone.Key);
+#line (37, 9) - (37, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+                new global::Sharpy.ZoneInfo("Invalid/Zone");
+#line hidden
+            }
+            catch (global::Sharpy.ZoneInfoNotFoundError)
+            {
+                __raised_0 = true;
+            }
+
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestConstructorInvalidZoneCaptureExposesException()
+        {
+#line (42, 5) - (43, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            global::Sharpy.ZoneInfoNotFoundError exc = null!;
+#line hidden
+            bool __raised_1 = false;
+            try
+            {
+#line (43, 9) - (43, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+                new global::Sharpy.ZoneInfo("Invalid/Zone");
+#line hidden
+            }
+            catch (global::Sharpy.ZoneInfoNotFoundError __caught_2)
+            {
+                __raised_1 = true;
+                exc = __caught_2;
+            }
+
+            if (!__raised_1)
+                throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
+#line (44, 5) - (44, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(exc);
+#line (45, 5) - (45, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Contains("Invalid/Zone", global::Sharpy.Builtins.Str(exc));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestConstructorEmptyKeyThrowsZoneInfoNotFoundError()
+        {
+#line (49, 5) - (50, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            bool __raised_3 = false;
+#line hidden
+            try
+            {
+#line (50, 9) - (50, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+                new global::Sharpy.ZoneInfo("");
+#line hidden
+            }
+            catch (global::Sharpy.ZoneInfoNotFoundError)
+            {
+                __raised_3 = true;
+            }
+
+            if (!__raised_3)
+                throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestZoneInfoNotFoundErrorIsKeyError()
+        {
+#line (54, 5) - (54, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            bool caught = false;
+#line (55, 5) - (58, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            try
+#line hidden
+            {
+#line (56, 9) - (56, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+                new global::Sharpy.ZoneInfo("Not/AZone");
+#line hidden
+            }
+            catch (global::Sharpy.KeyError)
+            {
+#line (58, 9) - (58, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+                caught = true;
 #line hidden
             }
 
-            [Xunit.FactAttribute]
-            public void TestConstructorAmericaNewYorkSucceeds()
-            {
-#line (22, 5) - (22, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (23, 5) - (23, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(zone);
-#line (24, 5) - (24, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Key.Length > 0);
+#line (59, 5) - (59, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(caught);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestConstructorEuropeLondonSucceeds()
-            {
-#line (28, 5) - (28, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("Europe/London");
-#line (29, 5) - (29, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(zone);
-#line (30, 5) - (30, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Key.Length > 0);
+        [Xunit.FactAttribute]
+        public void TestUtcoffsetUtcIsZero()
+        {
+#line (65, 5) - (65, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("UTC");
+#line (66, 5) - (66, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(0.0d, zone.Utcoffset().TotalSeconds);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestConstructorInvalidZoneThrowsZoneInfoNotFoundError()
-            {
-#line (36, 5) - (37, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                bool __raised_0 = false;
+        [Xunit.FactAttribute]
+        public void TestUtcoffsetAmericaNewYorkBaseOffsetIsMinusFiveHours()
+        {
+#line (70, 5) - (70, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (72, 5) - (72, 59) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset().TotalSeconds);
 #line hidden
-                try
-                {
-#line (37, 9) - (37, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                    new global::Sharpy.ZoneInfo("Invalid/Zone");
-#line hidden
-                }
-                catch (global::Sharpy.ZoneInfoNotFoundError)
-                {
-                    __raised_0 = true;
-                }
+        }
 
-                if (!__raised_0)
-                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
-            }
+        [Xunit.FactAttribute]
+        public void TestUtcoffsetAmericaNewYorkWinterIsMinusFiveHours()
+        {
+#line (78, 5) - (78, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (79, 5) - (79, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
+#line hidden
+        }
 
-            [Xunit.FactAttribute]
-            public void TestConstructorInvalidZoneCaptureExposesException()
-            {
-#line (42, 5) - (43, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                global::Sharpy.ZoneInfoNotFoundError exc = null!;
+        [Xunit.FactAttribute]
+        public void TestUtcoffsetAmericaNewYorkSummerIsMinusFourHours()
+        {
+#line (83, 5) - (83, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (84, 5) - (84, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(-4.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
 #line hidden
-                bool __raised_1 = false;
-                try
-                {
-#line (43, 9) - (43, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                    new global::Sharpy.ZoneInfo("Invalid/Zone");
-#line hidden
-                }
-                catch (global::Sharpy.ZoneInfoNotFoundError __caught_2)
-                {
-                    __raised_1 = true;
-                    exc = __caught_2;
-                }
+        }
 
-                if (!__raised_1)
-                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
-#line (44, 5) - (44, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(exc);
-#line (45, 5) - (45, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Contains("Invalid/Zone", global::Sharpy.Builtins.Str(exc));
+        [Xunit.FactAttribute]
+        public void TestDstNullDtIsZero()
+        {
+#line (90, 5) - (90, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (91, 5) - (91, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(0.0d, zone.Dst().TotalSeconds);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestConstructorEmptyKeyThrowsZoneInfoNotFoundError()
-            {
-#line (49, 5) - (50, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                bool __raised_3 = false;
+        [Xunit.FactAttribute]
+        public void TestDstWinterIsZero()
+        {
+#line (95, 5) - (95, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (96, 5) - (96, 55) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(0.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
 #line hidden
-                try
-                {
-#line (50, 9) - (50, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                    new global::Sharpy.ZoneInfo("");
-#line hidden
-                }
-                catch (global::Sharpy.ZoneInfoNotFoundError)
-                {
-                    __raised_3 = true;
-                }
+        }
 
-                if (!__raised_3)
-                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
-            }
+        [Xunit.FactAttribute]
+        public void TestDstSummerIsOneHour()
+        {
+#line (100, 5) - (100, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (101, 5) - (101, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(3600.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
+#line hidden
+        }
 
-            [Xunit.FactAttribute]
-            public void TestZoneInfoNotFoundErrorIsKeyError()
-            {
-#line (54, 5) - (54, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                bool caught = false;
-#line (55, 5) - (58, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                try
+        [Xunit.FactAttribute]
+        public void TestTznameNullDtReturnsKey()
+        {
+#line (107, 5) - (107, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (108, 5) - (108, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(zone.Key, zone.Tzname());
 #line hidden
-                {
-#line (56, 9) - (56, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                    new global::Sharpy.ZoneInfo("Not/AZone");
-#line hidden
-                }
-                catch (global::Sharpy.KeyError)
-                {
-#line (58, 9) - (58, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                    caught = true;
-#line hidden
-                }
+        }
 
-#line (59, 5) - (59, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(caught);
+        [Xunit.FactAttribute]
+        public void TestTznameWithDtReturnsNonEmptyName()
+        {
+#line (112, 5) - (112, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (113, 5) - (113, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).Length > 0);
+#line (114, 5) - (114, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).Length > 0);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestUtcoffsetUtcIsZero()
-            {
-#line (65, 5) - (65, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("UTC");
-#line (66, 5) - (66, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(0.0d, zone.Utcoffset().TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestDatetimeWithZoneInfoTzinfoConstructs()
+        {
+#line (120, 5) - (120, 93) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var dt = new global::Sharpy.DateTime(2026, 6, 15, 12, 0, tzinfo: new global::Sharpy.ZoneInfo("America/New_York"));
+#line (121, 5) - (121, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(dt.Tzinfo);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestUtcoffsetAmericaNewYorkBaseOffsetIsMinusFiveHours()
-            {
-#line (70, 5) - (70, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (72, 5) - (72, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset().TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestDatetimeWithZoneInfoTzinfoIsZoneInfo()
+        {
+#line (125, 5) - (125, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (126, 5) - (126, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var dt = new global::Sharpy.DateTime(2026, 6, 15, 12, 0, tzinfo: zone);
+#line (127, 5) - (127, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.IsAssignableFrom<global::Sharpy.ZoneInfo>(dt.Tzinfo);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestUtcoffsetAmericaNewYorkWinterIsMinusFiveHours()
-            {
-#line (78, 5) - (78, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (79, 5) - (79, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(-5.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestAstimezoneSummerNewYorkToUtcShiftsHourForward()
+        {
+#line (133, 5) - (133, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (134, 5) - (134, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var dt = new global::Sharpy.DateTime(2026, 7, 15, 12, 0, tzinfo: zone);
+#line (135, 5) - (135, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var utc = dt.Astimezone(global::Sharpy.Timezone.Utc);
+#line (137, 5) - (137, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(16, utc.Hour);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestUtcoffsetAmericaNewYorkSummerIsMinusFourHours()
-            {
-#line (83, 5) - (83, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (84, 5) - (84, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(-4.0d * 3600.0d, zone.Utcoffset(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestAstimezoneWinterNewYorkToUtcShiftsHourForward()
+        {
+#line (141, 5) - (141, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var zone = new global::Sharpy.ZoneInfo("America/New_York");
+#line (142, 5) - (142, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var dt = new global::Sharpy.DateTime(2026, 1, 15, 12, 0, tzinfo: zone);
+#line (143, 5) - (143, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var utc = dt.Astimezone(global::Sharpy.Timezone.Utc);
+#line (145, 5) - (145, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(17, utc.Hour);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDstNullDtIsZero()
-            {
-#line (90, 5) - (90, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (91, 5) - (91, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(0.0d, zone.Dst().TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestDatetimeWithFixedTimezoneUtcStillWorks()
+        {
+#line (151, 5) - (151, 69) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            var dt = new global::Sharpy.DateTime(2026, 1, 1, tzinfo: global::Sharpy.Timezone.Utc);
+#line (152, 5) - (152, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(dt.Tzinfo);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDstWinterIsZero()
-            {
-#line (95, 5) - (95, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (96, 5) - (96, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(0.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestTimezoneUtcUtcoffsetIsZero()
+        {
+#line (156, 5) - (156, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(0.0d, global::Sharpy.Timezone.Utc.Utcoffset().TotalSeconds);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDstSummerIsOneHour()
-            {
-#line (100, 5) - (100, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (101, 5) - (101, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(3600.0d, zone.Dst(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).TotalSeconds);
+        [Xunit.FactAttribute]
+        public void TestAvailableTimezonesIsNonEmpty()
+        {
+#line (162, 5) - (162, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Sharpy.Set<string> zones = zoneinfo.AvailableTimezones();
+#line (163, 5) - (163, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.True(global::Sharpy.Builtins.Len(zones) > 0);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTznameNullDtReturnsKey()
-            {
-#line (107, 5) - (107, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (108, 5) - (108, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(zone.Key, zone.Tzname());
+        [Xunit.FactAttribute]
+        public void TestAvailableTimezonesContainsUtc()
+        {
+#line (167, 5) - (167, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Sharpy.Set<string> zones = zoneinfo.AvailableTimezones();
+#line (168, 5) - (168, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Contains("UTC", zones);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTznameWithDtReturnsNonEmptyName()
-            {
-#line (112, 5) - (112, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (113, 5) - (113, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._WinterDt()).Length > 0);
-#line (114, 5) - (114, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(zone.Tzname(global::Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests._SummerDt()).Length > 0);
+        [Xunit.FactAttribute]
+        public void TestEqualsSameKeyIsTrue()
+        {
+#line (174, 5) - (174, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.ZoneInfo("UTC"), new global::Sharpy.ZoneInfo("UTC"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDatetimeWithZoneInfoTzinfoConstructs()
-            {
-#line (120, 5) - (120, 93) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var dt = new global::Sharpy.DateTime(2026, 6, 15, 12, 0, tzinfo: new global::Sharpy.ZoneInfo("America/New_York"));
-#line (121, 5) - (121, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(dt.Tzinfo);
+        [Xunit.FactAttribute]
+        public void TestEqualsDifferentKeysIsFalse()
+        {
+#line (178, 5) - (178, 88) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotEqual(new global::Sharpy.ZoneInfo("Europe/London"), new global::Sharpy.ZoneInfo("America/New_York"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestDatetimeWithZoneInfoTzinfoIsZoneInfo()
-            {
-#line (125, 5) - (125, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (126, 5) - (126, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var dt = new global::Sharpy.DateTime(2026, 6, 15, 12, 0, tzinfo: zone);
-#line (127, 5) - (127, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.IsAssignableFrom<global::Sharpy.ZoneInfo>(dt.Tzinfo);
+        [Xunit.FactAttribute]
+        public void TestEqualsNoneIsFalse()
+        {
+#line (184, 5) - (184, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.NotNull(new global::Sharpy.ZoneInfo("UTC"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAstimezoneSummerNewYorkToUtcShiftsHourForward()
-            {
-#line (133, 5) - (133, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (134, 5) - (134, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var dt = new global::Sharpy.DateTime(2026, 7, 15, 12, 0, tzinfo: zone);
-#line (135, 5) - (135, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var utc = dt.Astimezone(global::Sharpy.Timezone.Utc);
-#line (137, 5) - (137, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(16, utc.Hour);
+        [Xunit.FactAttribute]
+        public void TestGetHashCodeSameKeyIsEqual()
+        {
+#line (188, 5) - (188, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal(global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")), global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestAstimezoneWinterNewYorkToUtcShiftsHourForward()
-            {
-#line (141, 5) - (141, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var zone = new global::Sharpy.ZoneInfo("America/New_York");
-#line (142, 5) - (142, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var dt = new global::Sharpy.DateTime(2026, 1, 15, 12, 0, tzinfo: zone);
-#line (143, 5) - (143, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var utc = dt.Astimezone(global::Sharpy.Timezone.Utc);
-#line (145, 5) - (145, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(17, utc.Hour);
+        [Xunit.FactAttribute]
+        public void TestToStringUtcReturnsUtc()
+        {
+#line (194, 5) - (194, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+            Xunit.Assert.Equal("UTC", global::Sharpy.Builtins.Str(new global::Sharpy.ZoneInfo("UTC")));
 #line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestDatetimeWithFixedTimezoneUtcStillWorks()
-            {
-#line (151, 5) - (151, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var dt = new global::Sharpy.DateTime(2026, 1, 1, tzinfo: global::Sharpy.Timezone.Utc);
-#line (152, 5) - (152, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(dt.Tzinfo);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestTimezoneUtcUtcoffsetIsZero()
-            {
-#line (156, 5) - (156, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(0.0d, global::Sharpy.Timezone.Utc.Utcoffset().TotalSeconds);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestAvailableTimezonesIsNonEmpty()
-            {
-#line (162, 5) - (162, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Sharpy.Set<string> zones = zoneinfo.AvailableTimezones();
-#line (163, 5) - (163, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Builtins.Len(zones) > 0);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestAvailableTimezonesContainsUtc()
-            {
-#line (167, 5) - (167, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Sharpy.Set<string> zones = zoneinfo.AvailableTimezones();
-#line (168, 5) - (168, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Contains("UTC", zones);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestEqualsSameKeyIsTrue()
-            {
-#line (174, 5) - (174, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.ZoneInfo("UTC"), new global::Sharpy.ZoneInfo("UTC"));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestEqualsDifferentKeysIsFalse()
-            {
-#line (178, 5) - (178, 88) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotEqual(new global::Sharpy.ZoneInfo("Europe/London"), new global::Sharpy.ZoneInfo("America/New_York"));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestEqualsNoneIsFalse()
-            {
-#line (184, 5) - (184, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.NotNull(new global::Sharpy.ZoneInfo("UTC"));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestGetHashCodeSameKeyIsEqual()
-            {
-#line (188, 5) - (188, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal(global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")), global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestToStringUtcReturnsUtc()
-            {
-#line (194, 5) - (194, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Equal("UTC", global::Sharpy.Builtins.Str(new global::Sharpy.ZoneInfo("UTC")));
-#line hidden
-            }
         }
     }
 }

@@ -9,10 +9,10 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.API
 {
     [global::Sharpy.SharpyModule("api")]
-    public static partial class API
+    public static partial class ApiModule
     {
     }
 }
@@ -27,31 +27,28 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.API
 {
-    public static partial class API
+    [global::Sharpy.SharpyModule("api.ui")]
+    public static partial class UI
     {
-        [global::Sharpy.SharpyModule("api.ui")]
-        public static partial class UI
+        public class Widget
         {
-            public class Widget
-            {
-                public string Label;
-                public string Render()
+            public string Label;
+            public string Render()
 #line 7 "ui.spy"
-                {
-#line (8, 9) - (8, 34) 20 "ui.spy"
-                    return FormattableString.Invariant($"[{(global::Sharpy.Builtins.Str(this.Label))}]");
+            {
+#line (8, 9) - (8, 34) 16 "ui.spy"
+                return FormattableString.Invariant($"[{(global::Sharpy.Builtins.Str(this.Label))}]");
 #line hidden
-                }
+            }
 
-                public Widget(string label)
+            public Widget(string label)
 #line 4 "ui.spy"
-                {
-#line (5, 9) - (5, 27) 20 "ui.spy"
-                    this.Label = label;
+            {
+#line (5, 9) - (5, 27) 16 "ui.spy"
+                this.Label = label;
 #line hidden
-                }
             }
         }
     }

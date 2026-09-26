@@ -11,809 +11,803 @@ using Sharpy.Stdlib.Tests.Spy;
 using math = global::Sharpy.MathModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Fractions
 {
-    public static partial class Fractions
+    [global::Sharpy.SharpyModule("fractions.fractions_tests")]
+    public static partial class FractionsTests
     {
-        [global::Sharpy.SharpyModule("fractions.fractions_tests")]
-        public static partial class FractionsTests
-        {
-        }
     }
 
-    public static partial class Fractions
+    public partial class FractionsTestsTests
     {
-        public partial class FractionsTestsTests
+        [Xunit.FactAttribute]
+        public void TestFractionFromIntsReducesToLowestTerms()
         {
-            [Xunit.FactAttribute]
-            public void TestFractionFromIntsReducesToLowestTerms()
-            {
-#line (10, 5) - (10, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(2, 4);
-#line (11, 5) - (11, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Numerator);
-#line (12, 5) - (12, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromIntHasDenominatorOne()
-            {
-#line (16, 5) - (16, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(5);
-#line (17, 5) - (17, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(5, f.Numerator);
-#line (18, 5) - (18, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionNegativeDenominatorNormalizesSign()
-            {
-#line (22, 5) - (22, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(1, -3);
-#line (23, 5) - (23, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-1, f.Numerator);
-#line (24, 5) - (24, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionBothNegativeBecomesPositive()
-            {
-#line (28, 5) - (28, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(-2, -6);
-#line (29, 5) - (29, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Numerator);
-#line (30, 5) - (30, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionZeroDenominatorThrows()
-            {
-#line (34, 5) - (35, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_0 = false;
-#line hidden
-                try
-                {
-#line (35, 9) - (35, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(1, 0);
-#line hidden
-                }
-                catch (ZeroDivisionError)
-                {
-                    __raised_0 = true;
-                }
-
-                if (!__raised_0)
-                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromDoubleExactRepresentationHalf()
-            {
-#line (39, 5) - (39, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(0.5d);
-#line (40, 5) - (40, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Numerator);
-#line (41, 5) - (41, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromDoubleExactRepresentationQuarter()
-            {
-#line (45, 5) - (45, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(0.25d);
-#line (46, 5) - (46, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Numerator);
-#line (47, 5) - (47, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(4, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromDouble01ExactBinaryRepresentation()
-            {
-#line (52, 5) - (52, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(0.1d);
-#line (53, 5) - (53, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3602879701896397L, f.Numerator);
-#line (54, 5) - (54, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(36028797018963968L, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromNanThrows()
-            {
-#line (58, 5) - (59, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_1 = false;
-#line hidden
-                try
-                {
-#line (59, 9) - (59, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(global::Sharpy.MathModule.Nan);
-#line hidden
-                }
-                catch (ValueError)
-                {
-                    __raised_1 = true;
-                }
-
-                if (!__raised_1)
-                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromInfinityThrows()
-            {
-#line (63, 5) - (64, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_2 = false;
-#line hidden
-                try
-                {
-#line (64, 9) - (64, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(global::Sharpy.MathModule.Inf);
-#line hidden
-                }
-                catch (ValueError)
-                {
-                    __raised_2 = true;
-                }
-
-                if (!__raised_2)
-                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionCopyConstructor()
-            {
-#line (68, 5) - (68, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var original = new global::Sharpy.Fraction(3, 7);
-#line (69, 5) - (69, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var copy = new global::Sharpy.Fraction(original);
-#line (70, 5) - (70, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, copy.Numerator);
-#line (71, 5) - (71, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(7, copy.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringSlashFormat()
-            {
-#line (77, 5) - (77, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("3/7");
-#line (78, 5) - (78, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, f.Numerator);
-#line (79, 5) - (79, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(7, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringDecimalFormat()
-            {
-#line (83, 5) - (83, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("3.14");
-#line (84, 5) - (84, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(157, f.Numerator);
-#line (85, 5) - (85, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(50, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringIntegerFormat()
-            {
-#line (89, 5) - (89, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("42");
-#line (90, 5) - (90, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(42, f.Numerator);
-#line (91, 5) - (91, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringNegative()
-            {
-#line (95, 5) - (95, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("-1/3");
-#line (96, 5) - (96, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-1, f.Numerator);
-#line (97, 5) - (97, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringNegativeDecimal()
-            {
-#line (101, 5) - (101, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("-0.5");
-#line (102, 5) - (102, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-1, f.Numerator);
-#line (103, 5) - (103, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringEmptyThrows()
-            {
-#line (107, 5) - (108, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_3 = false;
-#line hidden
-                try
-                {
-#line (108, 9) - (108, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction("");
-#line hidden
-                }
-                catch (ValueError)
-                {
-                    __raised_3 = true;
-                }
-
-                if (!__raised_3)
-                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringScientificNotationNegativeExponent()
-            {
-#line (112, 5) - (112, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("1e-2");
-#line (113, 5) - (113, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Numerator);
-#line (114, 5) - (114, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(100, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFromStringScientificNotationPositiveExponent()
-            {
-#line (118, 5) - (118, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction("1.5e2");
-#line (119, 5) - (119, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(150, f.Numerator);
-#line (120, 5) - (120, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionAddition()
-            {
-#line (126, 5) - (126, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(1, 3) + new global::Sharpy.Fraction(1, 6);
-#line (127, 5) - (127, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, result.Numerator);
-#line (128, 5) - (128, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionSubtraction()
-            {
-#line (132, 5) - (132, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(1, 2) - new global::Sharpy.Fraction(1, 3);
-#line (133, 5) - (133, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, result.Numerator);
-#line (134, 5) - (134, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(6, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionMultiplication()
-            {
-#line (138, 5) - (138, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(2, 3) * new global::Sharpy.Fraction(3, 4);
-#line (139, 5) - (139, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, result.Numerator);
-#line (140, 5) - (140, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionDivision()
-            {
-#line (144, 5) - (144, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(1, 2) / new global::Sharpy.Fraction(1, 4);
-#line (145, 5) - (145, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, result.Numerator);
-#line (146, 5) - (146, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionDivisionByZeroThrows()
-            {
-#line (150, 5) - (151, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_4 = false;
-#line hidden
-                try
-                {
-#line (151, 9) - (151, 57) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    _ = new global::Sharpy.Fraction(1, 2) / new global::Sharpy.Fraction(0);
-#line hidden
-                }
-                catch (ZeroDivisionError)
-                {
-                    __raised_4 = true;
-                }
-
-                if (!__raised_4)
-                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionNegation()
-            {
-#line (155, 5) - (155, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = -new global::Sharpy.Fraction(3, 4);
-#line (156, 5) - (156, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-3, f.Numerator);
-#line (157, 5) - (157, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(4, f.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionModuloOperator()
-            {
-#line (161, 5) - (161, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(7, 2) % new global::Sharpy.Fraction(3, 2);
-#line (162, 5) - (162, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFloorDivReturnsLong()
-            {
-#line (169, 5) - (169, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                long result = new global::Sharpy.Fraction(7, 2).FloorDiv(new global::Sharpy.Fraction(3, 2));
-#line (170, 5) - (170, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFloorDivNegativeReturnsLong()
-            {
-#line (174, 5) - (174, 82) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                long result = new global::Sharpy.Fraction(-7, 2).FloorDiv(new global::Sharpy.Fraction(3, 2));
-#line (175, 5) - (175, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-3, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFloorDivExact()
-            {
-#line (179, 5) - (179, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                long result = new global::Sharpy.Fraction(6, 1).FloorDiv(new global::Sharpy.Fraction(3, 1));
-#line (180, 5) - (180, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionFloorDivByZeroThrows()
-            {
-#line (184, 5) - (185, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_5 = false;
-#line hidden
-                try
-                {
-#line (185, 9) - (185, 66) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    new global::Sharpy.Fraction(1, 2).FloorDiv(new global::Sharpy.Fraction(0));
-#line hidden
-                }
-                catch (ZeroDivisionError)
-                {
-                    __raised_5 = true;
-                }
-
-                if (!__raised_5)
-                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionMod()
-            {
-#line (191, 5) - (191, 88) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = global::Sharpy.Fraction.Mod(new global::Sharpy.Fraction(7, 2), new global::Sharpy.Fraction(3, 2));
-#line (192, 5) - (192, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionModByZeroThrows()
-            {
-#line (196, 5) - (197, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_6 = false;
-#line hidden
-                try
-                {
-#line (197, 9) - (197, 77) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    global::Sharpy.Fraction.Mod(new global::Sharpy.Fraction(1), new global::Sharpy.Fraction(0));
-#line hidden
-                }
-                catch (ZeroDivisionError)
-                {
-                    __raised_6 = true;
-                }
-
-                if (!__raised_6)
-                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionPowPositive()
-            {
-#line (203, 5) - (203, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(2, 3).Pow(3);
-#line (204, 5) - (204, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(8, result.Numerator);
-#line (205, 5) - (205, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(27, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionPowNegative()
-            {
-#line (209, 5) - (209, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(2, 3).Pow(-2);
-#line (210, 5) - (210, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(9, result.Numerator);
-#line (211, 5) - (211, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(4, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionPowZero()
-            {
-#line (215, 5) - (215, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(2, 3).Pow(0);
-#line (216, 5) - (216, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(1), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionAbsNegative()
-            {
-#line (222, 5) - (222, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(-3, 4).Abs();
-#line (223, 5) - (223, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, result.Numerator);
-#line (224, 5) - (224, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(4, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionAbsPositive()
-            {
-#line (228, 5) - (228, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(3, 4).Abs();
-#line (229, 5) - (229, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, result.Numerator);
-#line (230, 5) - (230, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(4, result.Denominator);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionAbsZero()
-            {
-#line (234, 5) - (234, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(0).Abs();
-#line (235, 5) - (235, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(0), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionToLongPositive()
-            {
-#line (242, 5) - (242, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(3, new global::Sharpy.Fraction(7, 2).ToLong());
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionToLongNegative()
-            {
-#line (247, 5) - (247, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(-3, new global::Sharpy.Fraction(-7, 2).ToLong());
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionToLongExact()
-            {
-#line (251, 5) - (251, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(2, new global::Sharpy.Fraction(6, 3).ToLong());
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionAddInt()
-            {
-#line (257, 5) - (257, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(1, 2) + 3;
-#line (258, 5) - (258, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(7, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestIntAddFraction()
-            {
-#line (262, 5) - (262, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = 3 + new global::Sharpy.Fraction(1, 2);
-#line (263, 5) - (263, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(7, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionSubtractInt()
-            {
-#line (267, 5) - (267, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(7, 2) - 1;
-#line (268, 5) - (268, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(5, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestIntSubtractFraction()
-            {
-#line (272, 5) - (272, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = 3 - new global::Sharpy.Fraction(1, 2);
-#line (273, 5) - (273, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(5, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionMultiplyInt()
-            {
-#line (277, 5) - (277, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(1, 3) * 6;
-#line (278, 5) - (278, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(2), result);
+#line (10, 5) - (10, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(2, 4);
+#line (11, 5) - (11, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Numerator);
+#line (12, 5) - (12, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromIntHasDenominatorOne()
+        {
+#line (16, 5) - (16, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(5);
+#line (17, 5) - (17, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(5, f.Numerator);
+#line (18, 5) - (18, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionNegativeDenominatorNormalizesSign()
+        {
+#line (22, 5) - (22, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(1, -3);
+#line (23, 5) - (23, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-1, f.Numerator);
+#line (24, 5) - (24, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionBothNegativeBecomesPositive()
+        {
+#line (28, 5) - (28, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(-2, -6);
+#line (29, 5) - (29, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Numerator);
+#line (30, 5) - (30, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, f.Denominator);
 #line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestIntMultiplyFraction()
-            {
-#line (282, 5) - (282, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = 6 * new global::Sharpy.Fraction(1, 3);
-#line (283, 5) - (283, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionDivideInt()
-            {
-#line (287, 5) - (287, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(3, 2) / 3;
-#line (288, 5) - (288, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestIntDivideFraction()
-            {
-#line (292, 5) - (292, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = 3 / new global::Sharpy.Fraction(2, 1);
-#line (293, 5) - (293, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(3, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionModInt()
-            {
-#line (297, 5) - (297, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = new global::Sharpy.Fraction(7, 2) % 2;
-#line (298, 5) - (298, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(3, 2), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestIntModFraction()
-            {
-#line (303, 5) - (303, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = 7 % new global::Sharpy.Fraction(3, 2);
-#line (304, 5) - (304, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(1), result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionEquality()
-            {
-#line (310, 5) - (310, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var a = new global::Sharpy.Fraction(2, 4);
-#line (311, 5) - (311, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var b = new global::Sharpy.Fraction(1, 2);
-#line (312, 5) - (312, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(b, a);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionInequality()
-            {
-#line (316, 5) - (316, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var a = new global::Sharpy.Fraction(1, 3);
-#line (317, 5) - (317, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var b = new global::Sharpy.Fraction(1, 2);
-#line (318, 5) - (318, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.NotEqual(b, a);
-#line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFractionLessThan()
-            {
-#line (322, 5) - (322, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.True(new global::Sharpy.Fraction(1, 3) < new global::Sharpy.Fraction(1, 2));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionGreaterThan()
-            {
-#line (326, 5) - (326, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.True(new global::Sharpy.Fraction(2, 3) > new global::Sharpy.Fraction(1, 2));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionCompareWithInt()
-            {
-#line (330, 5) - (330, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(3, 1);
-#line (331, 5) - (331, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(new global::Sharpy.Fraction(3), f);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionLimitDenominatorPi()
-            {
-#line (337, 5) - (337, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var pi = new global::Sharpy.Fraction("3.141592653589793");
-#line (338, 5) - (338, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var approxPi = pi.LimitDenominator(1000);
-#line (339, 5) - (339, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(355, approxPi.Numerator);
-#line (340, 5) - (340, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(113, approxPi.Denominator);
+        [Xunit.FactAttribute]
+        public void TestFractionZeroDenominatorThrows()
+        {
+#line (34, 5) - (35, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_0 = false;
 #line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionLimitDenominatorAlreadyBelow()
+            try
             {
-#line (344, 5) - (344, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(1, 3);
-#line (345, 5) - (345, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = f.LimitDenominator(10);
-#line (346, 5) - (346, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(f, result);
-#line hidden
+#line (35, 9) - (35, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                new global::Sharpy.Fraction(1, 0);
+#line hidden
             }
-
-            [Xunit.FactAttribute]
-            public void TestFractionLimitDenominatorInvalidMaxThrows()
+            catch (ZeroDivisionError)
             {
-#line (350, 5) - (350, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(1, 3);
-#line (351, 5) - (352, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                bool __raised_7 = false;
-#line hidden
-                try
-                {
-#line (352, 9) - (352, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                    f.LimitDenominator(0);
-#line hidden
-                }
-                catch (ValueError)
-                {
-                    __raised_7 = true;
-                }
-
-                if (!__raised_7)
-                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+                __raised_0 = true;
             }
-
-            [Xunit.FactAttribute]
-            public void TestFractionLimitDenominator355113MaxDenom100()
-            {
-#line (357, 5) - (357, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(355, 113);
-#line (358, 5) - (358, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = f.LimitDenominator(100);
-#line (359, 5) - (359, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(311, result.Numerator);
-#line (360, 5) - (360, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(99, result.Denominator);
+
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromDoubleExactRepresentationHalf()
+        {
+#line (39, 5) - (39, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(0.5d);
+#line (40, 5) - (40, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Numerator);
+#line (41, 5) - (41, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromDoubleExactRepresentationQuarter()
+        {
+#line (45, 5) - (45, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(0.25d);
+#line (46, 5) - (46, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Numerator);
+#line (47, 5) - (47, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(4, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromDouble01ExactBinaryRepresentation()
+        {
+#line (52, 5) - (52, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(0.1d);
+#line (53, 5) - (53, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3602879701896397L, f.Numerator);
+#line (54, 5) - (54, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(36028797018963968L, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromNanThrows()
+        {
+#line (58, 5) - (59, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_1 = false;
 #line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestFractionLimitDenominator01MaxDenom10()
+            try
+            {
+#line (59, 9) - (59, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                new global::Sharpy.Fraction(global::Sharpy.MathModule.Nan);
+#line hidden
+            }
+            catch (ValueError)
+            {
+                __raised_1 = true;
+            }
+
+            if (!__raised_1)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromInfinityThrows()
+        {
+#line (63, 5) - (64, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_2 = false;
+#line hidden
+            try
             {
-#line (365, 5) - (365, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var f = new global::Sharpy.Fraction(0.1d);
-#line (366, 5) - (366, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                var result = f.LimitDenominator(10);
-#line (367, 5) - (367, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1, result.Numerator);
-#line (368, 5) - (368, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(10, result.Denominator);
+#line (64, 9) - (64, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                new global::Sharpy.Fraction(global::Sharpy.MathModule.Inf);
 #line hidden
             }
-
-            [Xunit.FactAttribute]
-            public void TestFractionToStringFraction()
+            catch (ValueError)
             {
-#line (374, 5) - (374, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal("1/3", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(1, 3)));
-#line hidden
+                __raised_2 = true;
             }
 
-            [Xunit.FactAttribute]
-            public void TestFractionToStringInteger()
-            {
-#line (378, 5) - (378, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal("2", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(4, 2)));
-#line hidden
-            }
+            if (!__raised_2)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFractionToStringZero()
-            {
-#line (382, 5) - (382, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal("0", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(0, 5)));
+        [Xunit.FactAttribute]
+        public void TestFractionCopyConstructor()
+        {
+#line (68, 5) - (68, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var original = new global::Sharpy.Fraction(3, 7);
+#line (69, 5) - (69, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var copy = new global::Sharpy.Fraction(original);
+#line (70, 5) - (70, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, copy.Numerator);
+#line (71, 5) - (71, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(7, copy.Denominator);
 #line hidden
-            }
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringSlashFormat()
+        {
+#line (77, 5) - (77, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("3/7");
+#line (78, 5) - (78, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, f.Numerator);
+#line (79, 5) - (79, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(7, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringDecimalFormat()
+        {
+#line (83, 5) - (83, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("3.14");
+#line (84, 5) - (84, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(157, f.Numerator);
+#line (85, 5) - (85, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(50, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringIntegerFormat()
+        {
+#line (89, 5) - (89, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("42");
+#line (90, 5) - (90, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(42, f.Numerator);
+#line (91, 5) - (91, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringNegative()
+        {
+#line (95, 5) - (95, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("-1/3");
+#line (96, 5) - (96, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-1, f.Numerator);
+#line (97, 5) - (97, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringNegativeDecimal()
+        {
+#line (101, 5) - (101, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("-0.5");
+#line (102, 5) - (102, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-1, f.Numerator);
+#line (103, 5) - (103, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringEmptyThrows()
+        {
+#line (107, 5) - (108, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_3 = false;
+#line hidden
+            try
+            {
+#line (108, 9) - (108, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                new global::Sharpy.Fraction("");
+#line hidden
+            }
+            catch (ValueError)
+            {
+                __raised_3 = true;
+            }
+
+            if (!__raised_3)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringScientificNotationNegativeExponent()
+        {
+#line (112, 5) - (112, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("1e-2");
+#line (113, 5) - (113, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Numerator);
+#line (114, 5) - (114, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(100, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFromStringScientificNotationPositiveExponent()
+        {
+#line (118, 5) - (118, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction("1.5e2");
+#line (119, 5) - (119, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(150, f.Numerator);
+#line (120, 5) - (120, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionAddition()
+        {
+#line (126, 5) - (126, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(1, 3) + new global::Sharpy.Fraction(1, 6);
+#line (127, 5) - (127, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, result.Numerator);
+#line (128, 5) - (128, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionSubtraction()
+        {
+#line (132, 5) - (132, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(1, 2) - new global::Sharpy.Fraction(1, 3);
+#line (133, 5) - (133, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, result.Numerator);
+#line (134, 5) - (134, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(6, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionMultiplication()
+        {
+#line (138, 5) - (138, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(2, 3) * new global::Sharpy.Fraction(3, 4);
+#line (139, 5) - (139, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, result.Numerator);
+#line (140, 5) - (140, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionDivision()
+        {
+#line (144, 5) - (144, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(1, 2) / new global::Sharpy.Fraction(1, 4);
+#line (145, 5) - (145, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, result.Numerator);
+#line (146, 5) - (146, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionDivisionByZeroThrows()
+        {
+#line (150, 5) - (151, 57) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_4 = false;
+#line hidden
+            try
+            {
+#line (151, 9) - (151, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                _ = new global::Sharpy.Fraction(1, 2) / new global::Sharpy.Fraction(0);
+#line hidden
+            }
+            catch (ZeroDivisionError)
+            {
+                __raised_4 = true;
+            }
+
+            if (!__raised_4)
+                throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFractionToDouble()
-            {
-#line (395, 5) - (395, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Equal(1.0d / 3.0d, new global::Sharpy.Fraction(1, 3).ToDouble(), 1e-15d);
+        [Xunit.FactAttribute]
+        public void TestFractionNegation()
+        {
+#line (155, 5) - (155, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = -new global::Sharpy.Fraction(3, 4);
+#line (156, 5) - (156, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-3, f.Numerator);
+#line (157, 5) - (157, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(4, f.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionModuloOperator()
+        {
+#line (161, 5) - (161, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(7, 2) % new global::Sharpy.Fraction(3, 2);
+#line (162, 5) - (162, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFloorDivReturnsLong()
+        {
+#line (169, 5) - (169, 81) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            long result = new global::Sharpy.Fraction(7, 2).FloorDiv(new global::Sharpy.Fraction(3, 2));
+#line (170, 5) - (170, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFloorDivNegativeReturnsLong()
+        {
+#line (174, 5) - (174, 82) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            long result = new global::Sharpy.Fraction(-7, 2).FloorDiv(new global::Sharpy.Fraction(3, 2));
+#line (175, 5) - (175, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-3, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFloorDivExact()
+        {
+#line (179, 5) - (179, 81) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            long result = new global::Sharpy.Fraction(6, 1).FloorDiv(new global::Sharpy.Fraction(3, 1));
+#line (180, 5) - (180, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionFloorDivByZeroThrows()
+        {
+#line (184, 5) - (185, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_5 = false;
+#line hidden
+            try
+            {
+#line (185, 9) - (185, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                new global::Sharpy.Fraction(1, 2).FloorDiv(new global::Sharpy.Fraction(0));
+#line hidden
+            }
+            catch (ZeroDivisionError)
+            {
+                __raised_5 = true;
+            }
+
+            if (!__raised_5)
+                throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionMod()
+        {
+#line (191, 5) - (191, 88) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = global::Sharpy.Fraction.Mod(new global::Sharpy.Fraction(7, 2), new global::Sharpy.Fraction(3, 2));
+#line (192, 5) - (192, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionModByZeroThrows()
+        {
+#line (196, 5) - (197, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_6 = false;
+#line hidden
+            try
+            {
+#line (197, 9) - (197, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                global::Sharpy.Fraction.Mod(new global::Sharpy.Fraction(1), new global::Sharpy.Fraction(0));
+#line hidden
+            }
+            catch (ZeroDivisionError)
+            {
+                __raised_6 = true;
+            }
+
+            if (!__raised_6)
+                throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionPowPositive()
+        {
+#line (203, 5) - (203, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(2, 3).Pow(3);
+#line (204, 5) - (204, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(8, result.Numerator);
+#line (205, 5) - (205, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(27, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionPowNegative()
+        {
+#line (209, 5) - (209, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(2, 3).Pow(-2);
+#line (210, 5) - (210, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(9, result.Numerator);
+#line (211, 5) - (211, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(4, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionPowZero()
+        {
+#line (215, 5) - (215, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(2, 3).Pow(0);
+#line (216, 5) - (216, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(1), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionAbsNegative()
+        {
+#line (222, 5) - (222, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(-3, 4).Abs();
+#line (223, 5) - (223, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, result.Numerator);
+#line (224, 5) - (224, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(4, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionAbsPositive()
+        {
+#line (228, 5) - (228, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(3, 4).Abs();
+#line (229, 5) - (229, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, result.Numerator);
+#line (230, 5) - (230, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(4, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionAbsZero()
+        {
+#line (234, 5) - (234, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(0).Abs();
+#line (235, 5) - (235, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(0), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToLongPositive()
+        {
+#line (242, 5) - (242, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(3, new global::Sharpy.Fraction(7, 2).ToLong());
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToLongNegative()
+        {
+#line (247, 5) - (247, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(-3, new global::Sharpy.Fraction(-7, 2).ToLong());
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToLongExact()
+        {
+#line (251, 5) - (251, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(2, new global::Sharpy.Fraction(6, 3).ToLong());
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionAddInt()
+        {
+#line (257, 5) - (257, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(1, 2) + 3;
+#line (258, 5) - (258, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(7, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIntAddFraction()
+        {
+#line (262, 5) - (262, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = 3 + new global::Sharpy.Fraction(1, 2);
+#line (263, 5) - (263, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(7, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionSubtractInt()
+        {
+#line (267, 5) - (267, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(7, 2) - 1;
+#line (268, 5) - (268, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(5, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIntSubtractFraction()
+        {
+#line (272, 5) - (272, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = 3 - new global::Sharpy.Fraction(1, 2);
+#line (273, 5) - (273, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(5, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionMultiplyInt()
+        {
+#line (277, 5) - (277, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(1, 3) * 6;
+#line (278, 5) - (278, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIntMultiplyFraction()
+        {
+#line (282, 5) - (282, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = 6 * new global::Sharpy.Fraction(1, 3);
+#line (283, 5) - (283, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionDivideInt()
+        {
+#line (287, 5) - (287, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(3, 2) / 3;
+#line (288, 5) - (288, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(1, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIntDivideFraction()
+        {
+#line (292, 5) - (292, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = 3 / new global::Sharpy.Fraction(2, 1);
+#line (293, 5) - (293, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(3, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionModInt()
+        {
+#line (297, 5) - (297, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = new global::Sharpy.Fraction(7, 2) % 2;
+#line (298, 5) - (298, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(3, 2), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestIntModFraction()
+        {
+#line (303, 5) - (303, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = 7 % new global::Sharpy.Fraction(3, 2);
+#line (304, 5) - (304, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(1), result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionEquality()
+        {
+#line (310, 5) - (310, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var a = new global::Sharpy.Fraction(2, 4);
+#line (311, 5) - (311, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var b = new global::Sharpy.Fraction(1, 2);
+#line (312, 5) - (312, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(b, a);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionInequality()
+        {
+#line (316, 5) - (316, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var a = new global::Sharpy.Fraction(1, 3);
+#line (317, 5) - (317, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var b = new global::Sharpy.Fraction(1, 2);
+#line (318, 5) - (318, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.NotEqual(b, a);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLessThan()
+        {
+#line (322, 5) - (322, 64) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.True(new global::Sharpy.Fraction(1, 3) < new global::Sharpy.Fraction(1, 2));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionGreaterThan()
+        {
+#line (326, 5) - (326, 64) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.True(new global::Sharpy.Fraction(2, 3) > new global::Sharpy.Fraction(1, 2));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionCompareWithInt()
+        {
+#line (330, 5) - (330, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(3, 1);
+#line (331, 5) - (331, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(new global::Sharpy.Fraction(3), f);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLimitDenominatorPi()
+        {
+#line (337, 5) - (337, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var pi = new global::Sharpy.Fraction("3.141592653589793");
+#line (338, 5) - (338, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var approxPi = pi.LimitDenominator(1000);
+#line (339, 5) - (339, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(355, approxPi.Numerator);
+#line (340, 5) - (340, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(113, approxPi.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLimitDenominatorAlreadyBelow()
+        {
+#line (344, 5) - (344, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(1, 3);
+#line (345, 5) - (345, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = f.LimitDenominator(10);
+#line (346, 5) - (346, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(f, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLimitDenominatorInvalidMaxThrows()
+        {
+#line (350, 5) - (350, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(1, 3);
+#line (351, 5) - (352, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            bool __raised_7 = false;
+#line hidden
+            try
+            {
+#line (352, 9) - (352, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+                f.LimitDenominator(0);
+#line hidden
+            }
+            catch (ValueError)
+            {
+                __raised_7 = true;
+            }
+
+            if (!__raised_7)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLimitDenominator355113MaxDenom100()
+        {
+#line (357, 5) - (357, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(355, 113);
+#line (358, 5) - (358, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = f.LimitDenominator(100);
+#line (359, 5) - (359, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(311, result.Numerator);
+#line (360, 5) - (360, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(99, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionLimitDenominator01MaxDenom10()
+        {
+#line (365, 5) - (365, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var f = new global::Sharpy.Fraction(0.1d);
+#line (366, 5) - (366, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            var result = f.LimitDenominator(10);
+#line (367, 5) - (367, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1, result.Numerator);
+#line (368, 5) - (368, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(10, result.Denominator);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToStringFraction()
+        {
+#line (374, 5) - (374, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal("1/3", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(1, 3)));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToStringInteger()
+        {
+#line (378, 5) - (378, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal("2", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(4, 2)));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToStringZero()
+        {
+#line (382, 5) - (382, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal("0", global::Sharpy.Builtins.Str(new global::Sharpy.Fraction(0, 5)));
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestFractionToDouble()
+        {
+#line (395, 5) - (395, 81) 12 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+            Xunit.Assert.Equal(1.0d / 3.0d, new global::Sharpy.Fraction(1, 3).ToDouble(), 1e-15d);
 #line hidden
-            }
         }
     }
 }

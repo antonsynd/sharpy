@@ -11,336 +11,330 @@ using Sharpy.Stdlib.Tests.Spy;
 using functools = global::Sharpy.Functools;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Functools
 {
-    public static partial class Functools
+    [global::Sharpy.SharpyModule("functools.functools_tests")]
+    public static partial class FunctoolsTests
     {
-        [global::Sharpy.SharpyModule("functools.functools_tests")]
-        public static partial class FunctoolsTests
-        {
-        }
     }
 
-    public static partial class Functools
+    public partial class FunctoolsTestsTests
     {
-        public partial class FunctoolsTestsTests
+        [Xunit.FactAttribute]
+        public void TestReduceSumWithoutInitial()
         {
-            [Xunit.FactAttribute]
-            public void TestReduceSumWithoutInitial()
+#line (9, 5) - (9, 73) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 1, 2, 3, 4, 5 });
+#line (10, 5) - (10, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(15, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceSumWithInitial()
+        {
+#line (14, 5) - (14, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 1, 2, 3, 4, 5 }, 10);
+#line (15, 5) - (15, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(25, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceSingleElementWithoutInitial()
+        {
+#line (19, 5) - (19, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 42 });
+#line (20, 5) - (20, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(42, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceEmptyIterableWithoutInitialThrowsTypeError()
+        {
+#line (24, 5) - (24, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
             {
-#line (9, 5) - (9, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 1, 2, 3, 4, 5 });
-#line (10, 5) - (10, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(15, result);
+            };
+#line (25, 5) - (26, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            bool __raised_0 = false;
+#line hidden
+            try
+            {
+#line (26, 9) - (26, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+                functools.Reduce((x, y) => x + y, items);
 #line hidden
             }
-
-            [Xunit.FactAttribute]
-            public void TestReduceSumWithInitial()
+            catch (TypeError)
             {
-#line (14, 5) - (14, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 1, 2, 3, 4, 5 }, 10);
-#line (15, 5) - (15, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(25, result);
-#line hidden
+                __raised_0 = true;
             }
 
-            [Xunit.FactAttribute]
-            public void TestReduceSingleElementWithoutInitial()
-            {
-#line (19, 5) - (19, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 42 });
-#line (20, 5) - (20, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(42, result);
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceEmptyIterableWithInitialReturnsInitial()
+        {
+#line (30, 5) - (30, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
 #line hidden
+            {
+            };
+#line (31, 5) - (31, 67) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, items, 42);
+#line (32, 5) - (32, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(42, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceStringConcatenation()
+        {
+#line (36, 5) - (36, 73) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            string result = functools.Reduce((x, y) => x + y, new Sharpy.List<string>() { "a", "b", "c" });
+#line (37, 5) - (37, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal("abc", result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceProduct()
+        {
+#line (41, 5) - (41, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x * y, new Sharpy.List<int>() { 1, 2, 3, 4 });
+#line (42, 5) - (42, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(24, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceWithInitialSingleElement()
+        {
+#line (46, 5) - (46, 65) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 5 }, 10);
+#line (47, 5) - (47, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(15, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyReturnsComparer()
+        {
+#line (54, 5) - (54, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            var comparer = functools.CmpToKey((int a, int b) => a - b);
+#line (55, 5) - (55, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.NotNull(comparer);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyAscendingSort()
+        {
+#line (60, 5) - (60, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
+            {
+                3,
+                1,
+                4,
+                1,
+                5,
+                9,
+                2,
+                6
+            };
+#line (61, 5) - (61, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort();
+#line (62, 5) - (62, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1, 2, 3, 4, 5, 6, 9 }, items);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyDescendingSort()
+        {
+#line (67, 5) - (67, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
+            {
+                3,
+                1,
+                4,
+                1,
+                5,
+                9,
+                2,
+                6
+            };
+#line (68, 5) - (68, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort(reverse: true);
+#line (69, 5) - (69, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(new Sharpy.List<int>() { 9, 6, 5, 4, 3, 2, 1, 1 }, items);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyStringLengthSort()
+        {
+#line (74, 5) - (74, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<string> items = new Sharpy.List<string>()
+#line hidden
+            {
+                "hello",
+                "hi",
+                "hey"
+            };
+#line (75, 5) - (75, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort(key: s => s.Length);
+#line (76, 5) - (76, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(new Sharpy.List<string>() { "hi", "hey", "hello" }, items);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceWithRange()
+        {
+#line (81, 5) - (81, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
+            {
+                1,
+                2,
+                3,
+                4,
+                5
+            };
+#line (82, 5) - (82, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, items);
+#line (83, 5) - (83, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(15, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceLargeListWithoutInitial()
+        {
+            var __src_2 = global::Sharpy.Builtins.Range(1, 1001);
+            var __comp_1 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_2).Count);
+            foreach (var __loopVar_3 in __src_2)
+            {
+                var i = __loopVar_3;
+                __comp_1.Add(i);
             }
 
-            [Xunit.FactAttribute]
-            public void TestReduceEmptyIterableWithoutInitialThrowsTypeError()
+#line (88, 5) - (88, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = __comp_1;
+#line (89, 5) - (89, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, items);
+#line (90, 5) - (90, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(500500, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceLeftFoldSubtractionWithoutInitial()
+        {
+#line (95, 5) - (95, 71) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x - y, new Sharpy.List<int>() { 10, 1, 2, 3 });
+#line (96, 5) - (96, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(4, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceLeftFoldSubtractionWithInitial()
+        {
+#line (101, 5) - (101, 72) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x - y, new Sharpy.List<int>() { 1, 2, 3 }, 100);
+#line (102, 5) - (102, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(94, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceSingleElementDoesNotInvokeFunc()
+        {
+#line (107, 5) - (107, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 99 });
+#line (108, 5) - (108, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(99, result);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestReduceEmptyIterableWithInitialDoesNotInvokeFunc()
+        {
+#line (112, 5) - (112, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
             {
-#line (24, 5) - (24, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
+            };
+#line (113, 5) - (113, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            int result = functools.Reduce((x, y) => x + y, items, 7);
+#line (114, 5) - (114, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(7, result);
 #line hidden
-                {
-                };
-#line (25, 5) - (26, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                bool __raised_0 = false;
-#line hidden
-                try
-                {
-#line (26, 9) - (26, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                    functools.Reduce((x, y) => x + y, items);
-#line hidden
-                }
-                catch (TypeError)
-                {
-                    __raised_0 = true;
-                }
+        }
 
-                if (!__raised_0)
-                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceEmptyIterableWithInitialReturnsInitial()
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyEmptyListSortStaysEmpty()
+        {
+#line (118, 5) - (118, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
             {
-#line (30, 5) - (30, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
+            };
+#line (119, 5) - (119, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort();
+#line (120, 5) - (120, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(items));
 #line hidden
-                {
-                };
-#line (31, 5) - (31, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, items, 42);
-#line (32, 5) - (32, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(42, result);
-#line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestReduceStringConcatenation()
+        [Xunit.FactAttribute]
+        public void TestCmpToKeySingleElementSort()
+        {
+#line (124, 5) - (124, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
             {
-#line (36, 5) - (36, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                string result = functools.Reduce((x, y) => x + y, new Sharpy.List<string>() { "a", "b", "c" });
-#line (37, 5) - (37, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal("abc", result);
+                42
+            };
+#line (125, 5) - (125, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort();
+#line (126, 5) - (126, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(new Sharpy.List<int>() { 42 }, items);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestReduceProduct()
+        [Xunit.FactAttribute]
+        public void TestCmpToKeyAllEqualPreservesAllElements()
+        {
+#line (131, 5) - (131, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
             {
-#line (41, 5) - (41, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x * y, new Sharpy.List<int>() { 1, 2, 3, 4 });
-#line (42, 5) - (42, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(24, result);
+                3,
+                1,
+                2,
+                1,
+                3
+            };
+#line (132, 5) - (132, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            items.Sort();
+#line (133, 5) - (133, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Equal(5, global::Sharpy.Builtins.Len(items));
+#line (134, 5) - (134, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Contains(1, items);
+#line (135, 5) - (135, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Contains(2, items);
+#line (136, 5) - (136, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+            Xunit.Assert.Contains(3, items);
 #line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceWithInitialSingleElement()
-            {
-#line (46, 5) - (46, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 5 }, 10);
-#line (47, 5) - (47, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(15, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyReturnsComparer()
-            {
-#line (54, 5) - (54, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                var comparer = functools.CmpToKey((int a, int b) => a - b);
-#line (55, 5) - (55, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.NotNull(comparer);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyAscendingSort()
-            {
-#line (60, 5) - (60, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                    3,
-                    1,
-                    4,
-                    1,
-                    5,
-                    9,
-                    2,
-                    6
-                };
-#line (61, 5) - (61, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort();
-#line (62, 5) - (62, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1, 2, 3, 4, 5, 6, 9 }, items);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyDescendingSort()
-            {
-#line (67, 5) - (67, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                    3,
-                    1,
-                    4,
-                    1,
-                    5,
-                    9,
-                    2,
-                    6
-                };
-#line (68, 5) - (68, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort(reverse: true);
-#line (69, 5) - (69, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 9, 6, 5, 4, 3, 2, 1, 1 }, items);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyStringLengthSort()
-            {
-#line (74, 5) - (74, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<string> items = new Sharpy.List<string>()
-#line hidden
-                {
-                    "hello",
-                    "hi",
-                    "hey"
-                };
-#line (75, 5) - (75, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort(key: s => s.Length);
-#line (76, 5) - (76, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<string>() { "hi", "hey", "hello" }, items);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceWithRange()
-            {
-#line (81, 5) - (81, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                    1,
-                    2,
-                    3,
-                    4,
-                    5
-                };
-#line (82, 5) - (82, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, items);
-#line (83, 5) - (83, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(15, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceLargeListWithoutInitial()
-            {
-                var __src_2 = global::Sharpy.Builtins.Range(1, 1001);
-                var __comp_1 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_2).Count);
-                foreach (var __loopVar_3 in __src_2)
-                {
-                    var i = __loopVar_3;
-                    __comp_1.Add(i);
-                }
-
-#line (88, 5) - (88, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = __comp_1;
-#line (89, 5) - (89, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, items);
-#line (90, 5) - (90, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(500500, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceLeftFoldSubtractionWithoutInitial()
-            {
-#line (95, 5) - (95, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x - y, new Sharpy.List<int>() { 10, 1, 2, 3 });
-#line (96, 5) - (96, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(4, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceLeftFoldSubtractionWithInitial()
-            {
-#line (101, 5) - (101, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x - y, new Sharpy.List<int>() { 1, 2, 3 }, 100);
-#line (102, 5) - (102, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(94, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceSingleElementDoesNotInvokeFunc()
-            {
-#line (107, 5) - (107, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, new Sharpy.List<int>() { 99 });
-#line (108, 5) - (108, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(99, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestReduceEmptyIterableWithInitialDoesNotInvokeFunc()
-            {
-#line (112, 5) - (112, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                };
-#line (113, 5) - (113, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                int result = functools.Reduce((x, y) => x + y, items, 7);
-#line (114, 5) - (114, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(7, result);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyEmptyListSortStaysEmpty()
-            {
-#line (118, 5) - (118, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                };
-#line (119, 5) - (119, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort();
-#line (120, 5) - (120, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(items));
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeySingleElementSort()
-            {
-#line (124, 5) - (124, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                    42
-                };
-#line (125, 5) - (125, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort();
-#line (126, 5) - (126, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 42 }, items);
-#line hidden
-            }
-
-            [Xunit.FactAttribute]
-            public void TestCmpToKeyAllEqualPreservesAllElements()
-            {
-#line (131, 5) - (131, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>()
-#line hidden
-                {
-                    3,
-                    1,
-                    2,
-                    1,
-                    3
-                };
-#line (132, 5) - (132, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                items.Sort();
-#line (133, 5) - (133, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Equal(5, global::Sharpy.Builtins.Len(items));
-#line (134, 5) - (134, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Contains(1, items);
-#line (135, 5) - (135, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Contains(2, items);
-#line (136, 5) - (136, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Contains(3, items);
-#line hidden
-            }
         }
     }
 }

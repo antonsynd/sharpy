@@ -11,229 +11,223 @@ using Sharpy.Stdlib.Tests.Spy;
 using fnmatch = global::Sharpy.FnmatchModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Fnmatch
 {
-    public static partial class Fnmatch
+    [global::Sharpy.SharpyModule("fnmatch.fnmatch_tests")]
+    public static partial class FnmatchTests
     {
-        [global::Sharpy.SharpyModule("fnmatch.fnmatch_tests")]
-        public static partial class FnmatchTests
-        {
-        }
     }
 
-    public static partial class Fnmatch
+    public partial class FnmatchTestsTests
     {
-        public partial class FnmatchTestsTests
+        [Xunit.TheoryAttribute]
+        [Xunit.InlineDataAttribute("foo.txt", "*.txt", true)]
+        [Xunit.InlineDataAttribute("foo.py", "*.txt", false)]
+        [Xunit.InlineDataAttribute("foo.TXT", "*.txt", false)]
+        [Xunit.InlineDataAttribute("foo", "foo", true)]
+        [Xunit.InlineDataAttribute("foo", "f?o", true)]
+        [Xunit.InlineDataAttribute("fo", "f?o", false)]
+        [Xunit.InlineDataAttribute("fooo", "f?o", false)]
+        public void TestFnmatchcaseBasicPatterns(string name, string pat, bool expected)
         {
-            [Xunit.TheoryAttribute]
-            [Xunit.InlineDataAttribute("foo.txt", "*.txt", true)]
-            [Xunit.InlineDataAttribute("foo.py", "*.txt", false)]
-            [Xunit.InlineDataAttribute("foo.TXT", "*.txt", false)]
-            [Xunit.InlineDataAttribute("foo", "foo", true)]
-            [Xunit.InlineDataAttribute("foo", "f?o", true)]
-            [Xunit.InlineDataAttribute("fo", "f?o", false)]
-            [Xunit.InlineDataAttribute("fooo", "f?o", false)]
-            public void TestFnmatchcaseBasicPatterns(string name, string pat, bool expected)
-            {
-#line (16, 5) - (16, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
+#line (16, 5) - (16, 55) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
 #line hidden
-            }
+        }
 
-            [Xunit.TheoryAttribute]
-            [Xunit.InlineDataAttribute("foo", "f[oa]o", true)]
-            [Xunit.InlineDataAttribute("fbo", "f[oa]o", false)]
-            public void TestFnmatchcaseCharacterClass(string name, string pat, bool expected)
-            {
-#line (24, 5) - (24, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
+        [Xunit.TheoryAttribute]
+        [Xunit.InlineDataAttribute("foo", "f[oa]o", true)]
+        [Xunit.InlineDataAttribute("fbo", "f[oa]o", false)]
+        public void TestFnmatchcaseCharacterClass(string name, string pat, bool expected)
+        {
+#line (24, 5) - (24, 55) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
 #line hidden
-            }
+        }
 
-            [Xunit.TheoryAttribute]
-            [Xunit.InlineDataAttribute("fxo", "f[!ab]o", true)]
-            [Xunit.InlineDataAttribute("fao", "f[!ab]o", false)]
-            [Xunit.InlineDataAttribute("fbo", "f[!ab]o", false)]
-            public void TestFnmatchcaseNegatedCharacterClass(string name, string pat, bool expected)
-            {
-#line (33, 5) - (33, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
+        [Xunit.TheoryAttribute]
+        [Xunit.InlineDataAttribute("fxo", "f[!ab]o", true)]
+        [Xunit.InlineDataAttribute("fao", "f[!ab]o", false)]
+        [Xunit.InlineDataAttribute("fbo", "f[!ab]o", false)]
+        public void TestFnmatchcaseNegatedCharacterClass(string name, string pat, bool expected)
+        {
+#line (33, 5) - (33, 55) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(expected, fnmatch.Fnmatchcase(name, pat));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchcaseWildcardMatchesAnything()
-            {
-#line (37, 5) - (37, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatchcase("anything", "*"));
-#line (38, 5) - (38, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatchcase("", "*"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchcaseWildcardMatchesAnything()
+        {
+#line (37, 5) - (37, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatchcase("anything", "*"));
+#line (38, 5) - (38, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatchcase("", "*"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchcaseQuestionMarkMatchesSingleChar()
-            {
-#line (42, 5) - (42, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatchcase("a", "?"));
-#line (43, 5) - (43, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatchcase("", "?"));
-#line (44, 5) - (44, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatchcase("ab", "?"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchcaseQuestionMarkMatchesSingleChar()
+        {
+#line (42, 5) - (42, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatchcase("a", "?"));
+#line (43, 5) - (43, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatchcase("", "?"));
+#line (44, 5) - (44, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatchcase("ab", "?"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchcaseSpecialCharsEscaped()
-            {
-#line (48, 5) - (48, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatchcase("file.txt", "file.txt"));
-#line (49, 5) - (49, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatchcase("fileatxt", "file.txt"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchcaseSpecialCharsEscaped()
+        {
+#line (48, 5) - (48, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatchcase("file.txt", "file.txt"));
+#line (49, 5) - (49, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatchcase("fileatxt", "file.txt"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchcaseCaseSensitive()
-            {
-#line (53, 5) - (53, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatchcase("FOO.TXT", "*.txt"));
-#line (54, 5) - (54, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatchcase("FOO.TXT", "*.TXT"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchcaseCaseSensitive()
+        {
+#line (53, 5) - (53, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatchcase("FOO.TXT", "*.txt"));
+#line (54, 5) - (54, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatchcase("FOO.TXT", "*.TXT"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchCaseSensitiveOnUnix()
-            {
-#line (61, 5) - (61, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatch("FOO.TXT", "*.txt"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchCaseSensitiveOnUnix()
+        {
+#line (61, 5) - (61, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatch("FOO.TXT", "*.txt"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFnmatchBasicMatch()
-            {
-#line (65, 5) - (65, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.True(fnmatch.Fnmatch("foo.txt", "*.txt"));
-#line (66, 5) - (66, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.False(fnmatch.Fnmatch("foo.py", "*.txt"));
+        [Xunit.FactAttribute]
+        public void TestFnmatchBasicMatch()
+        {
+#line (65, 5) - (65, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.True(fnmatch.Fnmatch("foo.txt", "*.txt"));
+#line (66, 5) - (66, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.False(fnmatch.Fnmatch("foo.py", "*.txt"));
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFilterReturnsMatchingNames()
+        [Xunit.FactAttribute]
+        public void TestFilterReturnsMatchingNames()
+        {
+#line (72, 5) - (72, 57) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> names = new Sharpy.List<string>()
+#line hidden
             {
-#line (72, 5) - (72, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> names = new Sharpy.List<string>()
+                "foo.txt",
+                "bar.py",
+                "baz.txt"
+            };
+#line (73, 5) - (73, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> result = fnmatch.Filter(names, "*.txt");
+#line (74, 5) - (74, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
+#line (75, 5) - (75, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("foo.txt", result.GetItemUnchecked(0));
+#line (76, 5) - (76, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("baz.txt", result.GetItemUnchecked(1));
 #line hidden
-                {
-                    "foo.txt",
-                    "bar.py",
-                    "baz.txt"
-                };
-#line (73, 5) - (73, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> result = fnmatch.Filter(names, "*.txt");
-#line (74, 5) - (74, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
-#line (75, 5) - (75, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("foo.txt", result.GetItemUnchecked(0));
-#line (76, 5) - (76, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("baz.txt", result.GetItemUnchecked(1));
-#line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFilterNoMatchesReturnsEmptyList()
+        [Xunit.FactAttribute]
+        public void TestFilterNoMatchesReturnsEmptyList()
+        {
+#line (80, 5) - (80, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> names = new Sharpy.List<string>()
+#line hidden
             {
-#line (80, 5) - (80, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> names = new Sharpy.List<string>()
+                "foo.py",
+                "bar.py"
+            };
+#line (81, 5) - (81, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> result = fnmatch.Filter(names, "*.txt");
+#line (82, 5) - (82, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
 #line hidden
-                {
-                    "foo.py",
-                    "bar.py"
-                };
-#line (81, 5) - (81, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> result = fnmatch.Filter(names, "*.txt");
-#line (82, 5) - (82, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
-#line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestFilterEmptyListReturnsEmptyList()
+        [Xunit.FactAttribute]
+        public void TestFilterEmptyListReturnsEmptyList()
+        {
+#line (86, 5) - (86, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> names = new Sharpy.List<string>()
+#line hidden
             {
-#line (86, 5) - (86, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> names = new Sharpy.List<string>()
+            };
+#line (87, 5) - (87, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Sharpy.List<string> result = fnmatch.Filter(names, "*");
+#line (88, 5) - (88, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
 #line hidden
-                {
-                };
-#line (87, 5) - (87, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Sharpy.List<string> result = fnmatch.Filter(names, "*");
-#line (88, 5) - (88, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
-#line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateStarToRegex()
-            {
-#line (94, 5) - (94, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("*.txt");
-#line (95, 5) - (95, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("\\A(?s:.*\\.txt)\\Z", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateStarToRegex()
+        {
+#line (94, 5) - (94, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("*.txt");
+#line (95, 5) - (95, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("\\A(?s:.*\\.txt)\\Z", result);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateQuestionMarkToRegex()
-            {
-#line (99, 5) - (99, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("?.txt");
-#line (100, 5) - (100, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("\\A(?s:.\\.txt)\\Z", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateQuestionMarkToRegex()
+        {
+#line (99, 5) - (99, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("?.txt");
+#line (100, 5) - (100, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("\\A(?s:.\\.txt)\\Z", result);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateCharacterClassToRegex()
-            {
-#line (104, 5) - (104, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("[abc]");
-#line (105, 5) - (105, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("\\A(?s:[abc])\\Z", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateCharacterClassToRegex()
+        {
+#line (104, 5) - (104, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("[abc]");
+#line (105, 5) - (105, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("\\A(?s:[abc])\\Z", result);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateNegatedClassToRegex()
-            {
-#line (109, 5) - (109, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("[!abc]");
-#line (110, 5) - (110, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("\\A(?s:[^abc])\\Z", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateNegatedClassToRegex()
+        {
+#line (109, 5) - (109, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("[!abc]");
+#line (110, 5) - (110, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("\\A(?s:[^abc])\\Z", result);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateUnclosedBracketTreatedAsLiteral()
-            {
-#line (114, 5) - (114, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("[abc");
-#line (115, 5) - (115, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Contains("\\[", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateUnclosedBracketTreatedAsLiteral()
+        {
+#line (114, 5) - (114, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("[abc");
+#line (115, 5) - (115, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Contains("\\[", result);
 #line hidden
-            }
+        }
 
-            [Xunit.FactAttribute]
-            public void TestTranslateStarOnly()
-            {
-#line (119, 5) - (119, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                string result = fnmatch.Translate("*");
-#line (120, 5) - (120, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("\\A(?s:.*)\\Z", result);
+        [Xunit.FactAttribute]
+        public void TestTranslateStarOnly()
+        {
+#line (119, 5) - (119, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            string result = fnmatch.Translate("*");
+#line (120, 5) - (120, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
+            Xunit.Assert.Equal("\\A(?s:.*)\\Z", result);
 #line hidden
-            }
         }
     }
 }

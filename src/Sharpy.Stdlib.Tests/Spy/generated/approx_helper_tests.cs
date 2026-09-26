@@ -10,63 +10,57 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy
+namespace Sharpy.Stdlib.Tests.Spy.Unittest
 {
-    public static partial class Unittest
+    [global::Sharpy.SharpyModule("unittest.approx_helper_tests")]
+    public static partial class ApproxHelperTests
     {
-        [global::Sharpy.SharpyModule("unittest.approx_helper_tests")]
-        public static partial class ApproxHelperTests
+        internal static void _AssertClose(double actual, double expected)
         {
-            internal static void _AssertClose(double actual, double expected)
-            {
-#line (13, 5) - (13, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                if (!(global::System.Math.Abs((double)(actual) - (double)(expected)) <= (double)(1e-9d)))
+#line (13, 5) - (13, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            if (!(global::System.Math.Abs((double)(actual) - (double)(expected)) <= (double)(1e-9d)))
 #line hidden
-                {
-                    throw new global::Sharpy.AssertionError();
-                }
+            {
+                throw new global::Sharpy.AssertionError();
             }
         }
     }
 
-    public static partial class Unittest
+    public partial class ApproxHelperTestsTests
     {
-        public partial class ApproxHelperTestsTests
+        [Xunit.FactAttribute]
+        public void TestApproxPassesInNonTestHelper()
         {
-            [Xunit.FactAttribute]
-            public void TestApproxPassesInNonTestHelper()
+#line (18, 5) - (18, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(0.1d + 0.2d, 0.3d);
+#line (19, 5) - (19, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 1.0d);
+#line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestApproxFailureInHelperRaisesAssertionError()
+        {
+#line (24, 5) - (24, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            bool raised = false;
+#line (25, 5) - (28, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            try
+#line hidden
             {
-#line (18, 5) - (18, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(0.1d + 0.2d, 0.3d);
-#line (19, 5) - (19, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 1.0d);
+#line (26, 9) - (26, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 2.0d);
+#line hidden
+            }
+            catch (global::Sharpy.AssertionError)
+            {
+#line (28, 9) - (28, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+                raised = true;
 #line hidden
             }
 
-            [Xunit.FactAttribute]
-            public void TestApproxFailureInHelperRaisesAssertionError()
-            {
-#line (24, 5) - (24, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                bool raised = false;
-#line (25, 5) - (28, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                try
+#line (29, 5) - (29, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+            Xunit.Assert.True(raised);
 #line hidden
-                {
-#line (26, 9) - (26, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                    global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 2.0d);
-#line hidden
-                }
-                catch (global::Sharpy.AssertionError)
-                {
-#line (28, 9) - (28, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                    raised = true;
-#line hidden
-                }
-
-#line (29, 5) - (29, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                Xunit.Assert.True(raised);
-#line hidden
-            }
         }
     }
 }
