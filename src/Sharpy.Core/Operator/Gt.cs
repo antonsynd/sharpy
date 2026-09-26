@@ -7,14 +7,9 @@ namespace Sharpy
         /// <summary>Return true if left &gt; right using IComparable&lt;T&gt;.</summary>
         public static bool Gt<T>(IComparable<T> left, T right)
         {
-            if (ReferenceEquals(left, right))
-            {
-                return false;
-            }
-
             if (left is null || right is null)
             {
-                throw TypeError.OpNotSupported(">", "NoneType");
+                throw TypeError.OpNotSupported(">", left, right);
             }
 
             return left.CompareTo(right) > 0;
@@ -23,14 +18,9 @@ namespace Sharpy
         /// <summary>Return true if left &gt; right using IComparable.</summary>
         public static bool Gt(IComparable left, object right)
         {
-            if (ReferenceEquals(left, right))
-            {
-                return false;
-            }
-
             if (left is null || right is null)
             {
-                throw TypeError.OpNotSupported(">", "NoneType");
+                throw TypeError.OpNotSupported(">", left, right);
             }
 
             return left.CompareTo(right) > 0;
@@ -39,14 +29,11 @@ namespace Sharpy
         /// <summary>Return true if left &gt; right with automatic dispatch.</summary>
         public static bool Gt<T>(T left, T right)
         {
-            if (ReferenceEquals(left, right))
-            {
-                return false;
-            }
-
+            // No same-object shortcut: python compares an object with itself too — `a <= a` is True
+            // for a comparable a and a TypeError otherwise, never a skipped comparison (#2085).
             if (left is null || right is null)
             {
-                throw TypeError.OpNotSupported(">", "NoneType");
+                throw TypeError.OpNotSupported(">", left, right);
             }
 
             if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)))
@@ -59,7 +46,7 @@ namespace Sharpy
                 return Gt((IComparable)left, right);
             }
 
-            throw TypeError.OpNotSupported(">", typeof(T).Name);
+            throw TypeError.OpNotSupported(">", left, right);
         }
     }
 }

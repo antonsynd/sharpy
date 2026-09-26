@@ -52,12 +52,8 @@ namespace Sharpy
 
             foreach (var elem in iterable)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
-                // Exactly once per element, the first included.
+                // Exactly once per element, the first included. A None element is not refused here:
+                // python compares keys, and only when a comparison happens (#2085).
                 TKey elemKey = key(elem);
 
                 if (iterableIsEmpty)
@@ -69,19 +65,20 @@ namespace Sharpy
                     continue;
                 }
 
-                if (Operator.Lt(biggestKey!, elemKey))
+                // python's order: the new key against the incumbent's, with max's `>` (#2085).
+                if (Operator.Gt(elemKey, biggestKey!))
                 {
                     biggest = elem;
                     biggestKey = elemKey;
                 }
             }
 
-            if (biggest is null || iterableIsEmpty)
+            if (iterableIsEmpty)
             {
                 throw new ValueError("max() arg is an empty sequence");
             }
 
-            return biggest;
+            return biggest!;
         }
 
         /// <summary>
@@ -116,11 +113,6 @@ namespace Sharpy
 
             foreach (var elem in iterable)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
                 TKey elemKey = key(elem);
 
                 if (iterableIsEmpty)
@@ -131,19 +123,20 @@ namespace Sharpy
                     continue;
                 }
 
-                if (Operator.Lt(biggestKey!, elemKey))
+                // python's order: the new key against the incumbent's, with max's `>` (#2085).
+                if (Operator.Gt(elemKey, biggestKey!))
                 {
                     biggest = elem;
                     biggestKey = elemKey;
                 }
             }
 
-            if (biggest is null || iterableIsEmpty)
+            if (iterableIsEmpty)
             {
                 return @default;
             }
 
-            return biggest;
+            return biggest!;
         }
 
         /// <summary>
@@ -169,22 +162,14 @@ namespace Sharpy
         /// </example>
         public static T Max<T>(T first, T second, params T[] rest)
         {
-            if (first is null || second is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
             // Tie-break to the first occurrence (matching Python): only replace on strictly-greater.
-            T biggest = Operator.Lt(first, second) ? second : first;
+            // Each value is compared against the incumbent as python does, `value > incumbent`, so
+            // a refusal names the operands in python's order (#2085).
+            T biggest = Operator.Gt(second, first) ? second : first;
 
             foreach (var elem in rest)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
-                if (Operator.Lt(biggest, elem))
+                if (Operator.Gt(elem, biggest))
                 {
                     biggest = elem;
                 }

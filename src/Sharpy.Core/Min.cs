@@ -55,12 +55,8 @@ namespace Sharpy
 
             foreach (var elem in iterable)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
-                // Exactly once per element, the first included.
+                // Exactly once per element, the first included. A None element is not refused here:
+                // python compares keys, and only when a comparison happens (#2085).
                 TKey elemKey = key(elem);
 
                 if (iterableIsEmpty)
@@ -79,12 +75,12 @@ namespace Sharpy
                 }
             }
 
-            if (smallest is null || iterableIsEmpty)
+            if (iterableIsEmpty)
             {
                 throw new ValueError("min() arg is an empty sequence");
             }
 
-            return smallest;
+            return smallest!;
         }
 
         /// <summary>
@@ -119,11 +115,6 @@ namespace Sharpy
 
             foreach (var elem in iterable)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
                 TKey elemKey = key(elem);
 
                 if (iterableIsEmpty)
@@ -141,12 +132,12 @@ namespace Sharpy
                 }
             }
 
-            if (smallest is null || iterableIsEmpty)
+            if (iterableIsEmpty)
             {
                 return @default;
             }
 
-            return smallest;
+            return smallest!;
         }
 
         /// <summary>
@@ -172,21 +163,12 @@ namespace Sharpy
         /// </example>
         public static T Min<T>(T first, T second, params T[] rest)
         {
-            if (first is null || second is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
             // Tie-break to the first occurrence (matching Python): only replace on strictly-less.
+            // `value < incumbent`, python's order, so a refusal names the operands as python does (#2085).
             T smallest = Operator.Lt(second, first) ? second : first;
 
             foreach (var elem in rest)
             {
-                if (elem is null)
-                {
-                    throw TypeError.OpNotSupported("<", "NoneType");
-                }
-
                 if (Operator.Lt(elem, smallest))
                 {
                     smallest = elem;

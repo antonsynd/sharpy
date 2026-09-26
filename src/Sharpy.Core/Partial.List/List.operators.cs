@@ -44,12 +44,12 @@ namespace Sharpy
         {
             if (left is null)
             {
-                throw TypeError.OpNotSupported("<", "NoneType");
+                throw TypeError.OpNotSupported("<", left, right);
             }
 
             if (right is null)
             {
-                throw TypeError.OpNotSupported("<", "NoneType");
+                throw TypeError.OpNotSupported("<", left, right);
             }
 
             var minLen = System.Math.Min(left._list.Count, right._list.Count);
@@ -75,12 +75,12 @@ namespace Sharpy
         {
             if (left is null)
             {
-                throw TypeError.OpNotSupported("<=", "NoneType");
+                throw TypeError.OpNotSupported("<=", left, right);
             }
 
             if (right is null)
             {
-                throw TypeError.OpNotSupported("<=", "NoneType");
+                throw TypeError.OpNotSupported("<=", left, right);
             }
 
             var minLen = System.Math.Min(left._list.Count, right._list.Count);
@@ -106,12 +106,12 @@ namespace Sharpy
         {
             if (left is null)
             {
-                throw TypeError.OpNotSupported(">", "NoneType");
+                throw TypeError.OpNotSupported(">", left, right);
             }
 
             if (right is null)
             {
-                throw TypeError.OpNotSupported(">", "NoneType");
+                throw TypeError.OpNotSupported(">", left, right);
             }
 
             var minLen = System.Math.Min(left._list.Count, right._list.Count);
@@ -137,12 +137,12 @@ namespace Sharpy
         {
             if (left is null)
             {
-                throw TypeError.OpNotSupported(">=", "NoneType");
+                throw TypeError.OpNotSupported(">=", left, right);
             }
 
             if (right is null)
             {
-                throw TypeError.OpNotSupported(">=", "NoneType");
+                throw TypeError.OpNotSupported(">=", left, right);
             }
 
             var minLen = System.Math.Min(left._list.Count, right._list.Count);

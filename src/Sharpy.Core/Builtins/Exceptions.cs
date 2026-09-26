@@ -19,9 +19,15 @@ namespace Sharpy
         {
         }
 
-        internal static TypeError OpNotSupported(string op, string type)
+        /// <summary>
+        /// CPython's rich-comparison refusal, <c>'&lt;' not supported between instances of 'A' and
+        /// 'B'</c>, naming both operands' python types in python's operand order. The only
+        /// spelling: a one-type form cannot name the operands python names (#2035, #2085).
+        /// </summary>
+        internal static TypeError OpNotSupported(string op, object? left, object? right)
         {
-            return new TypeError($"'{op}' not supported for instances of '{type}'");
+            return new TypeError(
+                $"'{op}' not supported between instances of '{PyFormat.PyTypeName(left)}' and '{PyFormat.PyTypeName(right)}'");
         }
 
         internal static TypeError IsNotInterface(string type, string @interface)

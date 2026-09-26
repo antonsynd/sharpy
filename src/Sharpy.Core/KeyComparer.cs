@@ -16,23 +16,13 @@ namespace Sharpy
         }
 
         /// <remarks>
-        /// Unlike in Python, this compares None to non-None values as ordering
-        /// before the non-None value, whereas Python disallows such comparisons
-        /// by raising a TypeError.
+        /// Python compares the KEYS, never the elements: a None element is passed to the key
+        /// (<c>sorted([None, 1], key=lambda v: 0)</c> is <c>[None, 1]</c>), and only a key comparison
+        /// can be refused (#2085).
         /// </remarks>
         public int Compare(T? x, T? y)
         {
-            if (ReferenceEquals(x, y))
-            {
-                return 0;
-            }
-
-            if (x is null || y is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
-            return ComparerAdapter<TKey>.Instance.Compare(_key(x), _key(y));
+            return ComparerAdapter<TKey>.Instance.Compare(_key(x!), _key(y!));
         }
 
     }
