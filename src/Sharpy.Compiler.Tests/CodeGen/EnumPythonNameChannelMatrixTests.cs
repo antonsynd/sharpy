@@ -168,6 +168,45 @@ public class EnumPythonNameChannelMatrixTests : IntegrationTestBase
         result.StandardOutput.Should().Be("<Repr.a: 'a'>\na\n[<Repr.a: 'a'>]\n");
     }
 
+    // A lowercase enum emits a PascalCase CLR type (`mood` -> `Mood`), so its python name reaches
+    // str/repr only through the type's [SharpyName] stamp (#2006), which EnumStr/EnumRepr and the
+    // string enum's IRepr.Repr() read via PyFormat.PyTypeName (#2007) — top-level and nested
+    // (the nested declaration resolves its symbol through the enclosing type).
+    [Fact]
+    public void LowercaseEnum_NamesItselfBySourceSpelling_IntAndString()
+    {
+        // python3: class mood(Enum): a = 1; dark_blue = 2 -> str 'mood.a', repr '<mood.a: 1>',
+        // .name 'a', [mood.a] '[<mood.a: 1>]', f"{mood.dark_blue}" 'mood.dark_blue';
+        // class smood(StrEnum): a = 'a' -> str 'a', repr "<smood.a: 'a'>", .name 'a',
+        // [smood.a] "[<smood.a: 'a'>]".
+        var source = "enum mood:\n    a = 1\n    dark_blue = 2\n\n"
+            + "enum smood:\n    a = \"a\"\n\n"
+            + "def main() -> None:\n"
+            + "    print(str(mood.a))\n    print(repr(mood.a))\n    print(mood.a.name)\n    print([mood.a])\n"
+            + "    print(f\"{mood.dark_blue}\")\n"
+            + "    print(str(smood.a))\n    print(repr(smood.a))\n    print(smood.a.name)\n    print([smood.a])\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(
+            "mood.a\n<mood.a: 1>\na\n[<mood.a: 1>]\nmood.dark_blue\n"
+            + "a\n<smood.a: 'a'>\na\n[<smood.a: 'a'>]\n");
+    }
+
+    [Fact]
+    public void NestedLowercaseEnum_NamesItselfBySourceSpelling_IntAndString()
+    {
+        // python3: class Outer: class mood(Enum): a = 1; class smood(StrEnum): a = 'a'
+        // -> str(Outer.mood.a) 'mood.a', repr '<mood.a: 1>', repr(Outer.smood.a) "<smood.a: 'a'>".
+        var source = "class Outer:\n    enum mood:\n        a = 1\n\n    enum smood:\n        a = \"a\"\n\n"
+            + "def main() -> None:\n"
+            + "    print(str(Outer.mood.a))\n    print(repr(Outer.mood.a))\n    print(repr(Outer.smood.a))\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("mood.a\n<mood.a: 1>\n<smood.a: 'a'>\n");
+    }
+
     // ── Known residuals, pinned to their CURRENT refusal so each fix is a visible direction change ──
     // Neither pin asserts a value: each asserts the refusal that stands today and goes RED when its
     // issue is fixed — then delete the pin and move the cell into the matrices above (drain on fix).
