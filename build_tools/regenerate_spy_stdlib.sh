@@ -14,7 +14,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 STDLIB_DIR="$REPO_ROOT/src/Sharpy.Stdlib"
 SPY_DIR="$STDLIB_DIR/spy"
-SHARPYC="dotnet run --project $REPO_ROOT/src/Sharpy.Cli --"
+SHARPYC="${SHARPYC:-dotnet run --project $REPO_ROOT/src/Sharpy.Cli --}"
 WORK_DIR=""
 
 cleanup() {
@@ -24,28 +24,34 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Mapping: emitted_filename:cs_relative_path
+# Mapping: emitted_filename:python_module_name:cs_relative_path
 # The emitted filename comes from --emit-cs-to (spy filename stem + .cs).
+# The python_module_name is the module users import — the hand-written partial's
+# [SharpyModule("...")] on the module's members class. The compiler stamps each
+# generated namespace-sibling type [SharpyModuleType("<stem>", ...)] with the FILE
+# STEM (socket_module), so the post-process below rewrites it to this name (socket);
+# otherwise the type is discovered under the wrong module (#2039; the stem-vs-name
+# spelling itself is #2047).
 # The cs_relative_path is the target location in Sharpy.Stdlib.
 MODULES=(
-    "textwrap:Textwrap/Textwrap.cs"
-    "bisect_module:Bisect/Bisect.cs"
-    "statistics:Statistics/Statistics.cs"
-    "heapq:Heapq/Heapq.cs"
-    "itertools:Itertools/Itertools.cs"
-    "functools:Functools/Functools.cs"
-    "string_module:String/StringModule.cs"
-    "fnmatch_module:Fnmatch/FnmatchModule.cs"
-    "tempfile_module:Tempfile/Tempfile.cs"
-    "math_module:Math/Math.cs"
-    "os_module:Os/Os.cs"
-    "os_path_module:Os/OsPath.cs"
-    "shutil_module:Shutil/Shutil.cs"
-    "random_module:Random/Random.cs"
-    "hashlib_module:Hashlib/Hashlib.cs"
-    "csv_module:Csv/CsvModule.cs"
-    "re_module:Re/ReModule.cs"
-    "socket_module:Socket/SocketModule.cs"
+    "textwrap:textwrap:Textwrap/Textwrap.cs"
+    "bisect_module:bisect:Bisect/Bisect.cs"
+    "statistics:statistics:Statistics/Statistics.cs"
+    "heapq:heapq:Heapq/Heapq.cs"
+    "itertools:itertools:Itertools/Itertools.cs"
+    "functools:functools:Functools/Functools.cs"
+    "string_module:string:String/StringModule.cs"
+    "fnmatch_module:fnmatch:Fnmatch/FnmatchModule.cs"
+    "tempfile_module:tempfile:Tempfile/Tempfile.cs"
+    "math_module:math:Math/Math.cs"
+    "os_module:os:Os/Os.cs"
+    "os_path_module:os.path:Os/OsPath.cs"
+    "shutil_module:shutil:Shutil/Shutil.cs"
+    "random_module:random:Random/Random.cs"
+    "hashlib_module:hashlib:Hashlib/Hashlib.cs"
+    "csv_module:csv:Csv/CsvModule.cs"
+    "re_module:re:Re/ReModule.cs"
+    "socket_module:socket:Socket/SocketModule.cs"
 )
 
 mode="regenerate"
@@ -58,7 +64,7 @@ fi
 if [[ "$mode" == "dry-run" ]]; then
     echo "Would emit all modules via: sharpyc project stdlib.spyproj --emit-cs-to <tmpdir>"
     for entry in "${MODULES[@]}"; do
-        IFS=':' read -r emitted_name cs_rel <<< "$entry"
+        IFS=':' read -r emitted_name _python_name cs_rel <<< "$entry"
         echo "  ${emitted_name}.cs -> $STDLIB_DIR/${cs_rel}"
     done
     exit 0
@@ -90,7 +96,7 @@ fi
 # drop a module.
 missing_modules=()
 for entry in "${MODULES[@]}"; do
-    IFS=':' read -r emitted_name _cs_rel <<< "$entry"
+    IFS=':' read -r emitted_name _python_name _cs_rel <<< "$entry"
     if [[ ! -f "$EMIT_DIR/${emitted_name}.cs" ]]; then
         missing_modules+=("$emitted_name")
     fi
@@ -121,7 +127,7 @@ echo ""
 errors=0
 
 for entry in "${MODULES[@]}"; do
-    IFS=':' read -r emitted_name cs_rel <<< "$entry"
+    IFS=':' read -r emitted_name python_name cs_rel <<< "$entry"
 
     emitted_file="$EMIT_DIR/${emitted_name}.cs"
     if [[ ! -f "$emitted_file" ]]; then
@@ -135,16 +141,29 @@ for entry in "${MODULES[@]}"; do
     header="// Generated from src/Sharpy.Stdlib/spy/${emitted_name}.spy — do not edit directly.
 // To regenerate: $header_cmd"
 
-    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule],
-    # strip #line directives (project compilation emits these for source mapping).
+    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule]
+    # (the hand-written partial carries the python-named one), rename the module in every
+    # [SharpyModuleType] from the file stem to the python module name, strip #line
+    # directives (project compilation emits these for source mapping).
     final_file="$WORK_DIR/${emitted_name}_final.cs"
     {
         echo "$header"
         tr -d '\r' < "$emitted_file" \
             | sed '/\[global::Sharpy\.SharpyModule(/d' \
+            | sed "s/\[global::Sharpy\.SharpyModuleType(\"${emitted_name}\", /[global::Sharpy.SharpyModuleType(\"${python_name}\", /" \
             | sed '/^#line /d' \
             | sed 's/[[:space:]]*$//'
     } > "$final_file"
+
+    # Gate: every [SharpyModuleType] names the python module (counts, not a pipe: a
+    # `grep | grep -q` under pipefail can read SIGPIPE as "no match").
+    stamped=$(grep -cF '[global::Sharpy.SharpyModuleType("' "$final_file" || true)
+    python_stamped=$(grep -cF "[global::Sharpy.SharpyModuleType(\"${python_name}\", " "$final_file" || true)
+    if [[ "$stamped" -ne "$python_stamped" ]]; then
+        echo "ERROR: ${emitted_name}.cs has $((stamped - python_stamped)) [SharpyModuleType] not naming module '${python_name}'"
+        errors=1
+        continue
+    fi
 
     # Ensure file ends with a newline
     if [ -n "$(tail -c 1 "$final_file")" ]; then

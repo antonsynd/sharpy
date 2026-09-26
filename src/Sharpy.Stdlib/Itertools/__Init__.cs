@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sharpy
+namespace Sharpy.Itertools
 {
     /// <summary>Functions creating iterators for efficient looping.</summary>
     [SharpyModule("itertools")]
-    public static partial class Itertools
+    public static partial class ItertoolsModule
     {
         // ---- Repeat uint adapter ----
 

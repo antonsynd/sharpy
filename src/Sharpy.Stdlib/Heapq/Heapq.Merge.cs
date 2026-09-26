@@ -2,10 +2,10 @@
 using System;
 using System.Collections.Generic;
 
-namespace Sharpy
+namespace Sharpy.Heapq
 {
     /// <summary>Heap queue algorithm (priority queue).</summary>
-    public static partial class Heapq
+    public static partial class HeapqModule
     {
         /// <summary>Merge multiple sorted inputs into a single sorted output.</summary>
         public static IEnumerable<T> Merge<T>(params Sharpy.List<T>[] iterables) where T : IComparable<T>

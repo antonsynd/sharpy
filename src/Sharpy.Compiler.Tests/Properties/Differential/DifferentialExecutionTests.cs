@@ -1355,7 +1355,6 @@ public class DifferentialExecutionTests : IntegrationTestBase
         /// </summary>
         private static readonly HashSet<string> SharpyOnlyMemberSpellings = new(StringComparer.Ordinal)
         {
-            "Error",        // re.Error — CPython spells the module's exception re.error
             "pattern_str",  // re.Pattern.pattern_str — CPython spells it .pattern
             // Raw BCL members reached on a builtin receiver by reverse-mangling (#1291). These are
             // .NET's API, not Python's — CPython has len(s), s.upper(), s.strip() — so a fixture
@@ -1555,9 +1554,11 @@ public class DifferentialExecutionTests : IntegrationTestBase
                     _exceptAliases.Add(handler.Name);
 
                 // An except clause's exception type is a TypeAnnotation, not an expression, so a
-                // Sharpy-only spelling there never reaches VisitMemberAccess. `except re.Error:`
-                // is CPython's `re.error`, and the mismatch surfaces as an AttributeError at the
-                // handler rather than as anything about runtime semantics.
+                // Sharpy-only spelling there never reaches VisitMemberAccess, and the mismatch
+                // would surface as an AttributeError at the handler rather than as anything about
+                // runtime semantics. (`re.Error` used to be the example; since #2039 the stdlib's
+                // generated types are discovered by their python names, so `re.error` is the
+                // only spelling that compiles.)
                 var lastSegment = handler.ExceptionType?.Name.Split('.')[^1];
                 if (lastSegment is not null && SharpyOnlyMemberSpellings.Contains(lastSegment))
                 {

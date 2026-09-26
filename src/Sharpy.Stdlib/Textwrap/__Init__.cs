@@ -1,7 +1,7 @@
-namespace Sharpy
+namespace Sharpy.Textwrap
 {
     /// <summary>Text wrapping and filling.</summary>
     [SharpyModule("textwrap")]
-    public static partial class Textwrap
+    public static partial class TextwrapModule
     { }
 }

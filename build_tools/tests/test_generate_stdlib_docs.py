@@ -984,6 +984,39 @@ class TestDiscoverModulesTypeAnnotations:
         assert len(modules) == 1
         assert modules[0].types[0].name == "ArgumentParser"
 
+    def test_emitted_global_qualified_spelling_is_a_type(self, tmp_path: Path):
+        """A generated spy module's sibling types carry the compiler's `global::Sharpy.`-qualified
+        stamp (#2039): each is a type section, its members are not the module's functions."""
+        body = textwrap.dedent(
+            """\
+            namespace Sharpy.SocketModule
+            {
+                public static partial class SocketModuleModule
+                {
+                    /// <summary>Return the hostname.</summary>
+                    public static string Gethostname() => "";
+                }
+
+                /// <summary>Base exception for socket errors.</summary>
+                [global::Sharpy.SharpyModuleType("socket", "error")]
+                [global::Sharpy.SharpyName("error")]
+                public class Error : global::System.Exception
+                {
+                    /// <summary>The errno.</summary>
+                    public int Errno => 0;
+                }
+            }
+            """
+        )
+        self._write_module(tmp_path, "Socket", "socket", "SocketModule.cs", body)
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        assert [t.name for t in modules[0].types] == ["error"]
+        assert modules[0].types[0].summary == "Base exception for socket errors."
+        member_names = [m.name for m in modules[0].members]
+        assert "Gethostname" in member_names or "gethostname" in member_names
+        assert not any(n.lower() == "errno" for n in member_names)
+
 
 class TestRenderIndexPage:
     """Stdlib index page generation."""

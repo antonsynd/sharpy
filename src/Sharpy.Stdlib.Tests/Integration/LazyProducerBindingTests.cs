@@ -625,7 +625,7 @@ def main() -> None:
             "CombinationsWithReplacement",
         };
 
-        var publicStatic = typeof(Sharpy.Itertools).GetMethods(
+        var publicStatic = typeof(Sharpy.Itertools.ItertoolsModule).GetMethods(
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 
         // Itertools/__Init__.cs (#835) deliberately keeps a handwritten .NET-interop adapter

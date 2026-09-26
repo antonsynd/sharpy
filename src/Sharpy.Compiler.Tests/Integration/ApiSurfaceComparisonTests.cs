@@ -114,7 +114,7 @@ public class ApiSurfaceComparisonTests
         Assert.True(nativeResult.Success, "Native compilation must succeed");
 
         var nativeAssembly = Assembly.LoadFrom(nativeResult.OutputAssemblyPath!);
-        var msbuildAssembly = typeof(SharpyStdlib::Sharpy.Textwrap).Assembly;
+        var msbuildAssembly = typeof(SharpyStdlib::Sharpy.Textwrap.TextwrapModule).Assembly;
 
         var nativeModules = GetSharpyModuleTypes(nativeAssembly);
         var msbuildModules = GetSharpyModuleTypes(msbuildAssembly);
@@ -184,7 +184,7 @@ public class ApiSurfaceComparisonTests
         Assert.True(nativeResult.Success, "Native compilation must succeed");
 
         var nativeAssembly = Assembly.LoadFrom(nativeResult.OutputAssemblyPath!);
-        var msbuildAssembly = typeof(SharpyStdlib::Sharpy.Textwrap).Assembly;
+        var msbuildAssembly = typeof(SharpyStdlib::Sharpy.Textwrap.TextwrapModule).Assembly;
 
         var nativeModules = GetSharpyModuleTypes(nativeAssembly);
         var msbuildModules = GetSharpyModuleTypes(msbuildAssembly);

@@ -1395,10 +1395,13 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             # argument overrides the rendered type name (e.g. Python-lowercase
             # names like `date`, `timedelta`). Trailing named arguments
             # (`MessageName = "datetime.date"`, #2035) are accepted and ignored.
+            # The compiler emits the `global::Sharpy.`-qualified spelling on the
+            # namespace-sibling types of a generated spy module (#2039); a
+            # hand-written file spells it bare.
             file_text = cs_file.read_text(encoding="utf-8")
             type_annotations = list(
                 re.finditer(
-                    r'\[SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?'
+                    r'\[(?:global::Sharpy\.)?SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?'
                     r'(?:\s*,\s*\w+\s*=\s*"[^"]*")*\)\]',
                     file_text,
                 )

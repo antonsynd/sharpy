@@ -1,7 +1,7 @@
-namespace Sharpy
+namespace Sharpy.OsPathModule
 {
     /// <summary>Common operations on pathnames.</summary>
     [SharpyModule("os.path")]
-    public static partial class OsPathModule
+    public static partial class OsPathModuleModule
     { }
 }

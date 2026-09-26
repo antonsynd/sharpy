@@ -1,7 +1,7 @@
-namespace Sharpy
+namespace Sharpy.MathModule
 {
     /// <summary>Mathematical functions.</summary>
     [SharpyModule("math")]
-    public static partial class MathModule
+    public static partial class MathModuleModule
     { }
 }

@@ -1,7 +1,7 @@
-namespace Sharpy
+namespace Sharpy.RandomModule
 {
     /// <summary>Generate pseudo-random numbers with various distributions.</summary>
     [SharpyModule("random")]
-    public static partial class RandomModule
+    public static partial class RandomModuleModule
     { }
 }

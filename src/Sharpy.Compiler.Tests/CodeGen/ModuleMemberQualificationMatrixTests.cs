@@ -32,9 +32,10 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///     <c>from m import f</c>, <c>from m import f as g</c>, <c>import pkg.sub</c>): the member is
 ///     emitted INLINE as <c>global::&lt;RootNs&gt;.&lt;Module&gt;.&lt;Member&gt;</c> — no directive.</item>
 ///   <item><b>Stdlib whole-module import</b> (<c>import os</c>): a <c>using os =
-///     global::Sharpy.OsModule;</c> ALIAS directive (a <c>using X = Y;</c>, NOT a <c>using
-///     static</c>) + <c>os.Getcwd()</c>; a stdlib member/wildcard import inlines the
-///     <c>global::Sharpy.&lt;Module&gt;.&lt;member&gt;</c> reference.</item>
+///     global::Sharpy.OsModule.OsModuleModule;</c> ALIAS directive (a <c>using X = Y;</c>, NOT a
+///     <c>using static</c>) + <c>os.Getcwd()</c>; a stdlib member/wildcard import inlines the
+///     <c>global::Sharpy.&lt;Stem&gt;.&lt;X&gt;.&lt;member&gt;</c> reference — a spy-sourced stdlib
+///     module is a namespace holding its members class <c>&lt;X&gt;</c> (#2039).</item>
 /// </list></para>
 ///
 /// <para>Every cell EXECUTES through the real pipeline (a raw emitter cannot emit a reference at
@@ -289,8 +290,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     }
 
     // ── Stdlib access cells: the 18-fixture regression (plan line 431). Whole-module `import os`
-    //    binds a `using os = global::Sharpy.OsModule;` ALIAS (not `using static`); a member/wildcard
-    //    import inlines the global::Sharpy.<Module>.<member> reference.
+    //    binds a `using os = global::Sharpy.OsModule.OsModuleModule;` ALIAS (not `using static`); a
+    //    member/wildcard import inlines the global::Sharpy.<Stem>.<X>.<member> reference (#2039: a
+    //    spy-sourced stdlib module is a namespace holding its members class <X>).
 
     [Fact]
     public void StdlibWholeModuleImport_BindsAGlobalQualifiedAlias_NotUsingStatic()
@@ -309,9 +311,10 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         result.StandardOutput.Should().Be("True\n");
 
         var cs = result.GeneratedCSharp!;
-        cs.Should().Contain("using os = global::Sharpy.OsModule;",
+        cs.Should().Contain("using os = global::Sharpy.OsModule.OsModuleModule;",
             "a stdlib whole-module import binds a global::-qualified using-ALIAS to the real module "
-            + "class (global::Sharpy.OsModule), not a bare `global::Os` (#1683, fix 4a6f9c4e5)");
+            + "class (global::Sharpy.OsModule.OsModuleModule, #2039), not a bare `global::Os` "
+            + "(#1683, fix 4a6f9c4e5)");
         cs.Should().NotContain(UsingStatic,
             "the alias is a `using X = Y;`, never a `using static` — #1683 close criterion");
     }
@@ -330,7 +333,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "stdlib member import must compile and run. Errors:\n"
             + string.Join("\n", member.CompilationErrors));
         member.StandardOutput.Should().Be("True\n");
-        member.GeneratedCSharp!.Should().Contain("global::Sharpy.OsModule.Getcwd()",
+        member.GeneratedCSharp!.Should().Contain("global::Sharpy.OsModule.OsModuleModule.Getcwd()",
             "a stdlib member import inlines the fully-qualified reference (#1683)");
         member.GeneratedCSharp!.Should().NotContain(UsingStatic, "#1683 close criterion");
 
@@ -345,7 +348,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "stdlib wildcard import must compile and run — #1896 (wildcard member identity). "
             + "Errors:\n" + string.Join("\n", wildcard.CompilationErrors));
         wildcard.StandardOutput.Should().Be("4.0\n");
-        wildcard.GeneratedCSharp!.Should().Contain("global::Sharpy.MathModule.Sqrt(",
+        wildcard.GeneratedCSharp!.Should().Contain("global::Sharpy.MathModule.MathModuleModule.Sqrt(",
             "a wildcard-imported stdlib member inlines the fully-qualified reference (#1683, #1896)");
         wildcard.GeneratedCSharp!.Should().NotContain(UsingStatic, "#1683 close criterion");
     }

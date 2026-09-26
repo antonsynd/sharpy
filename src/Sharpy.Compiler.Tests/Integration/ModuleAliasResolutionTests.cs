@@ -65,7 +65,7 @@ public class ModuleAliasResolutionTests
     [Fact]
     public void EveryDiscoveredModule_ResolvesToItsRealClassName()
     {
-        var stdlibAssembly = typeof(SharpyStdlib::Sharpy.Textwrap).Assembly;
+        var stdlibAssembly = typeof(SharpyStdlib::Sharpy.Textwrap.TextwrapModule).Assembly;
         var moduleTypes = GetSharpyModuleTypes(stdlibAssembly);
         Assert.NotEmpty(moduleTypes);
 
@@ -109,7 +109,7 @@ public class ModuleAliasResolutionTests
         // Regression guard for the specific #891 repro: 'email'/'ipaddress' previously
         // resolved to 'Sharpy.Email'/'Sharpy.Ipaddress' (CS0234) instead of the real
         // 'EmailModule'/'IpaddressModule' classes.
-        var stdlibAssembly = typeof(SharpyStdlib::Sharpy.Textwrap).Assembly;
+        var stdlibAssembly = typeof(SharpyStdlib::Sharpy.Textwrap.TextwrapModule).Assembly;
         var discovery = CreateFreshDiscovery();
         discovery.LoadAssembly(stdlibAssembly);
 

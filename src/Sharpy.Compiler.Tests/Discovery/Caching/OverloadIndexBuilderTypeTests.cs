@@ -169,15 +169,16 @@ public class OverloadIndexBuilderTypeTests
     }
 
     [Fact]
-    public void DiscoverNestedModuleTypes_WithoutAttribute_UsesClrName()
+    public void DiscoverModuleTypes_CsvSiblingTypes_BelongToCsv()
     {
-        // Arrange - CsvModule has nested types (CsvReader, CsvWriter, etc.) without SharpyModuleTypeAttribute
+        // Arrange - csv's generated types (CsvReader, CsvWriter, etc.) are namespace siblings of
+        // CsvModuleModule stamped [SharpyModuleType("csv", ...)] (#2039)
         var assembly = SharpyStdlibReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
 
-        // Assert - nested types without the attribute should use their CLR name
+        // Assert - the stamp's module is the python module, its name the declared one
         Assert.True(index.Modules.ContainsKey("csv"), "Expected 'csv' module to exist");
         var csvModule = index.Modules["csv"];
         Assert.Contains(csvModule.Types, t => t.Name == "CsvReader");
@@ -185,15 +186,10 @@ public class OverloadIndexBuilderTypeTests
     }
 
     [Fact]
-    public void DiscoverNestedModuleTypes_NestedTypes_AreMarkedAsModuleType()
+    public void DiscoverModuleTypes_OsStatResult_IsAModuleType()
     {
-        // Arrange — os.StatResult is a nested type inside OsModule without
-        // SharpyModuleTypeAttribute; it uses the CLR name and is marked
-        // IsModuleType = true (all nested types inside [SharpyModule] containers
-        // are unconditionally treated as module types).
-        // NOTE: No stdlib nested type currently carries [SharpyModuleType] with a
-        // python name alias, so the pythonName ?? nestedType.Name override path
-        // is only tested indirectly via DiscoverPublicTypes attribute tests.
+        // Arrange — os.StatResult is a namespace sibling of OsModuleModule stamped
+        // [SharpyModuleType("os", "StatResult")] (#2039); it is marked IsModuleType = true.
         var assembly = SharpyStdlibReference.Assembly;
 
         // Act

@@ -126,6 +126,9 @@ The script uses **project compilation** (`sharpyc project stdlib.spyproj --emit-
 to emit all modules in a single pass, then post-processes each output file:
 - Prepends the `// Generated from ...` header comment
 - Strips the auto-generated `[SharpyModule]` attribute (since `__Init__.cs` owns it)
+- Renames the module in every `[SharpyModuleType("<stem>", …)]` stamp to the python module name
+  (the compiler stamps the file stem, `socket_module`; discovery needs `socket`, #2039/#2047) and
+  fails if any stamp still names another module
 - Strips `#line` directives (emitted by project compilation for source mapping)
 - Normalizes trailing whitespace
 
@@ -135,12 +138,19 @@ committed C#.
 
 ### Adding a new module to the mapping
 
-1. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh`:
+1. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh` —
+   `<spy stem>:<python module>:<target .cs>`:
    ```bash
-   "mymodule:MyModule/MyModule.cs"
+   "mymodule_module:mymodule:MyModule/MyModule.cs"
    ```
-2. Run `bash build_tools/regenerate_spy_stdlib.sh` to generate the C#.
-3. The CI staleness check picks it up automatically.
+2. The module is the namespace `Sharpy.<Stem>` (the stem PascalCased: `mymodule_module` →
+   `Sharpy.MymoduleModule`) holding the members class `<Stem>Module` (`MymoduleModuleModule`);
+   its classes are siblings of that class in the namespace (#2039). Its hand-written
+   `__Init__.cs` declares `namespace Sharpy.<Stem> { [SharpyModule("<python module>")] public
+   static partial class <Stem>Module { } }` — the same names the generated file uses.
+3. Run `bash build_tools/regenerate_spy_stdlib.sh` to generate the C#.
+4. The CI staleness check picks it up automatically;
+   `Sharpy.Stdlib.Tests` `StdlibModuleNamespaceStampTests` lists the module and its types.
 
 ### Manual single-file emit (for debugging)
 
@@ -155,11 +165,13 @@ sharpyc emit csharp \
 
 - `-t library` is **required**. Without it the emitter produces a `Main`-style
   program, not a library class with `[SharpyModule]`.
-- `-n Sharpy` wraps the output in `namespace Sharpy { }` to match `__Init__.cs`.
+- `-n Sharpy` roots the output's module namespace at `Sharpy` (`namespace Sharpy.<Stem>`), to
+  match `__Init__.cs`.
 - `-o` writes the generated C# directly to the deployment location.
 
-> **Note:** Manual emit skips the header and `[SharpyModule]` stripping that the
-> regeneration script handles. Always use the script for final regeneration.
+> **Note:** Manual emit skips the header, the `[SharpyModule]` stripping and the
+> `[SharpyModuleType]` module rename that the regeneration script handles. Always use the
+> script for final regeneration.
 
 ## Native compilation (`.spy` → `.dll` directly)
 

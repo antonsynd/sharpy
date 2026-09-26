@@ -1,7 +1,7 @@
-namespace Sharpy
+namespace Sharpy.ReModule
 {
     /// <summary>Regular expression operations.</summary>
     [SharpyModule("re")]
-    public static partial class ReModule
+    public static partial class ReModuleModule
     { }
 }

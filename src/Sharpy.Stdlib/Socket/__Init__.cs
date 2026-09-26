@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Sharpy
+namespace Sharpy.SocketModule
 {
     /// <summary>
     /// Low-level networking interface, similar to Python's socket module.
@@ -16,7 +16,7 @@ namespace Sharpy
     /// </para>
     /// </summary>
     [SharpyModule("socket")]
-    public static partial class SocketModule
+    public static partial class SocketModuleModule
     {
         // ---- Byte-order conversions ----
 

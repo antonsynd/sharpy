@@ -4,5 +4,5 @@ import re
 def main() -> None:
     try:
         re.compile(r"(invalid")
-    except re.Error as e:
+    except re.error as e:
         print("caught re.Error")
