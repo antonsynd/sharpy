@@ -1020,9 +1020,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     }
 
     /// <summary>
-    /// Fixture classes of a package module join the module's namespace as siblings of its module
-    /// class (F14, #1948): <c>namespace Simple.Pkg { Lib; GreetingFixture }</c> — they were siblings
-    /// inside the wrapper class <c>Pkg</c>. The test class is emitted only for the test host
+    /// Fixture classes of a package module join the module's namespace as siblings of its members
+    /// class (F14, #1948; module-as-namespace, #2039): <c>namespace Simple.Pkg.Lib { LibModule;
+    /// GreetingFixture }</c> — they were siblings inside the wrapper class <c>Pkg</c>. The test class is emitted only for the test host
     /// (<c>ProjectConfig.TestHost</c>) and lands in the same member list; the Stdlib spy-test corpus
     /// (119 package test classes, regenerated with this layout) compiles and runs it.
     /// </summary>

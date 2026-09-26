@@ -174,19 +174,20 @@ public static partial class DiagnosticExplanations
             "synthesized member — rename the enum.");
 
         Add(dict, DiagnosticCodes.CodeGen.PackageModuleNameCollision, "Package layout emits one identifier twice", "CodeGen",
-            "In a project, each directory above a source file becomes a C# namespace segment and the file's module " +
-            "class is declared in it; a package's '__init__.spy' emits its module class '<Dir>Module' inside the " +
-            "package's own namespace ('pkg/__init__.spy' → 'PkgModule' in namespace 'Pkg'). Directories are measured " +
-            "from the project's common source directory, and every file is emitted whether or not it is imported. " +
-            "Three layouts are refused. A module file beside a same-named package directory ('pkg.spy' next to " +
-            "'pkg/'): python imports only one of the two, and C# cannot declare a class and a namespace of one name " +
-            "in one scope. A top-level name in a package's '__init__.spy' whose emitted identifier is one of that " +
+            "In a project every module is a C# namespace: the directories above a source file and the file's own " +
+            "stem each become a namespace segment ('pkg/lib.spy' → namespace 'Pkg.Lib'), which holds the module's " +
+            "members class '<Stem>Module' and its types; a package's '__init__.spy' is the package's own namespace " +
+            "('pkg/__init__.spy' → 'PkgModule' in namespace 'Pkg'). Directories are measured from the project's " +
+            "common source directory, and every file is emitted whether or not it is imported. Three layouts are " +
+            "refused. A module file beside a same-named package directory ('pkg.spy' next to 'pkg/'): python imports " +
+            "only one of the two, so the other's modules could never be imported (C# itself would merge the two " +
+            "namespaces). A top-level name in a package's '__init__.spy' whose emitted identifier is one of that " +
             "package's own submodules or subpackages ('def lib' in 'pkg/__init__.spy' beside 'pkg/lib.spy'), since " +
             "'pkg.lib' would name both. Two modules whose namespace paths are spelled alike once mangled " +
-            "('my_mod.spy' and 'MyMod.spy', or 'my_pkg/x.spy' and 'MyPkg/x.spy'): python names them apart, but both " +
-            "would declare one C# namespace. (A submodule or subpackage spelled like the package's own module class, " +
-            "'pkg/pkg_module.spy' beside 'pkg/__init__.spy', is SPY0523.) A directory spelled like a module inside " +
-            "it ('lib/lib.spy') is legal.",
+            "('my_mod.spy' and 'MyMod.spy', or 'my_pkg/x.spy' and 'MyPkg/x.spy'): python names them apart, but C# " +
+            "would declare one namespace twice, with two members classes of one name. (A submodule or subpackage " +
+            "spelled like the package's own module class, 'pkg/pkg_module.spy' beside 'pkg/__init__.spy', is " +
+            "SPY0523.) A directory spelled like a module inside it ('lib/lib.spy', namespace 'Lib.Lib') is legal.",
             "# project layout\nsrc/main.spy\nsrc/lib.spy       # module 'lib' ...\nsrc/lib/core.spy  # ... beside package 'lib'",
             "Rename the file or the directory (for example 'lib/core.spy' beside 'lib_util.spy'); for an __init__ " +
             "name, rename the declaration or the submodule.");
