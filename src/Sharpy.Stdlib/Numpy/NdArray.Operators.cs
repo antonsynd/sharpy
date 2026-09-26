@@ -209,7 +209,7 @@ namespace Sharpy
             }
 
             throw new NotSupportedException(
-                $"arithmetic on NdArray<{typeof(T).Name}> is not supported");
+                $"arithmetic on an ndarray of dtype '{MapDtype(typeof(T))}' is not supported");
         }
 
         private static T Negate(T x)
@@ -235,7 +235,7 @@ namespace Sharpy
             }
 
             throw new NotSupportedException(
-                $"negation on NdArray<{typeof(T).Name}> is not supported");
+                $"negation on an ndarray of dtype '{MapDtype(typeof(T))}' is not supported");
         }
     }
 }

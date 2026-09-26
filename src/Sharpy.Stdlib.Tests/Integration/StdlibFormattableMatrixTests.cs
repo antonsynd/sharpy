@@ -125,15 +125,15 @@ public class StdlibFormattableMatrixTests : StdlibIntegrationTestBase
     /// <summary>
     /// python has no <c>timedelta.__format__</c>/<c>timezone.__format__</c>: a non-empty spec is its
     /// TypeError <c>unsupported format string passed to datetime.timedelta.__format__</c>. Sharpy
-    /// refuses the literal spec statically on every route; the type is spelled by its CLR name until
-    /// the python-name channel (P11f) renames it, so the message is matched by its prefix.
+    /// refuses the literal spec statically on every route, naming the type by python's tp_name — the
+    /// <c>[SharpyModuleType]</c> <c>MessageName</c> (#2035).
     /// </summary>
     [Theory]
     // python 3.12 and 3.14: TypeError: unsupported format string passed to datetime.timedelta.__format__
-    [InlineData("timedelta_refused", "datetime.timedelta(days=1)", "x")]
+    [InlineData("timedelta_refused", "datetime.timedelta(days=1)", "x", "unsupported format string passed to datetime.timedelta.__format__")]
     // python 3.12 and 3.14: TypeError: unsupported format string passed to datetime.timezone.__format__
-    [InlineData("timezone_refused", "datetime.timezone.utc", ">5")]
-    public void NoFormat_NonEmptySpec_StaysRefused(string label, string value, string spec)
+    [InlineData("timezone_refused", "datetime.timezone.utc", ">5", "unsupported format string passed to datetime.timezone.__format__")]
+    public void NoFormat_NonEmptySpec_StaysRefused(string label, string value, string spec, string python)
     {
         var body = string.Concat(Routes.Select(r => $"    print({r.Expr(spec)})\n"));
         var result = CompileAndExecute(Prelude + $"    v = {value}\n" + body);
@@ -142,9 +142,8 @@ public class StdlibFormattableMatrixTests : StdlibIntegrationTestBase
             .Where(d => d.Code == DiagnosticCodes.SemanticOverflow.InvalidFormatSpecification)
             .Select(d => d.Message)
             .ToList();
-        Assert.True(refusals.Count == Routes.Length
-                && refusals.All(m => m.StartsWith("unsupported format string passed to ", StringComparison.Ordinal)),
-            $"{label}: expected {Routes.Length} SPY0609 'unsupported format string passed to …', got: "
+        Assert.True(refusals.Count == Routes.Length && refusals.All(m => m == python),
+            $"{label}: expected {Routes.Length} SPY0609 '{python}', got: "
             + string.Join("; ", result.RawDiagnostics.Select(d => d.Code + ": " + d.Message)));
     }
 }

@@ -166,6 +166,17 @@ internal partial class TypeChecker
         if (TryRefuseInstanceMemberViaTypeName(memberAccess, objectType))
             return SemanticType.Unknown;
 
+        // `type(x).__name__` is python's type name (`int`, `list`, `my_thing`), not the CLR
+        // `Type.Name` the dunder alias would reach (`Int32`, `List`1`, `MyThing`) — #2035. Keyed on
+        // the receiver's CLR identity: System.Type is a CLR type, so Core cannot give it a python
+        // member, and the emitter lowers the recorded node to `Sharpy.PyFormat.PyDunderName(t)` —
+        // always the simple name (`timedelta`), where a message says `datetime.timedelta`.
+        if (memberAccess.Member == DunderNames.Name && TryGetClrType(objectType) == typeof(System.Type))
+        {
+            _semanticInfo.MarkPyDunderNameRead(memberAccess);
+            return SemanticType.Str;
+        }
+
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
         RecordResolvedClrMemberName(memberAccess, objectType);

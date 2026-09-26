@@ -248,6 +248,13 @@ public class SemanticInfo : ISemanticQuery
     // into a `LiteralString` slot at every store position.
     private readonly ConcurrentDictionary<Expression, byte> _literalDerivedStrings = new(ReferenceEqualityComparer.Instance);
 
+    // #2035: `type(x).__name__` — a `__name__` read on a class object (a CLR System.Type) — is
+    // python's `__name__`, `Sharpy.PyFormat.PyDunderName(t)`, never the CLR `Type.Name` (`Int32`,
+    // `List`1`). Recorded by the checker on the member access; the emitter lowers the node to
+    // that call. System.Type is a CLR type Core cannot give a python member, so the rule is keyed
+    // on its CLR identity (rung 3).
+    private readonly ConcurrentDictionary<Expression, byte> _pyDunderNameReads = new(ReferenceEqualityComparer.Instance);
+
     // plan-14853b Decision 1 / #1698: a branch of a ConditionalExpression admitted into a narrow
     // integer slot by the §10.2.11 constant arm. C# gives `c ? 7 : 8` the natural type int, so
     // `sbyte b = c ? 7 : 8` is CS0266; the seam records the slot type per admitted branch and the
@@ -1400,6 +1407,12 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.ContainsKey(expr);
 
+    /// <summary>Marks a <c>__name__</c> read on a class object as python's <c>__name__</c> (#2035).</summary>
+    public void MarkPyDunderNameRead(Expression memberAccess) => _pyDunderNameReads.TryAdd(memberAccess, 0);
+
+    /// <summary>Whether the member access is a <c>__name__</c> read on a class object (#2035).</summary>
+    public bool IsPyDunderNameRead(Expression memberAccess) => _pyDunderNameReads.ContainsKey(memberAccess);
+
     /// <summary>
     /// Records that <paramref name="branch"/> (an arm of a conditional expression) was admitted into
     /// the narrow integer slot <paramref name="targetType"/> by the constant-conversion arm of the
@@ -2118,6 +2131,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._literalDerivedStrings)
             _literalDerivedStrings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._pyDunderNameReads)
+            _pyDunderNameReads.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._conditionalBranchNarrowing)
             _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);

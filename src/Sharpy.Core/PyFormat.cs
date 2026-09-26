@@ -262,12 +262,76 @@ namespace Sharpy
         /// <c>str</c> (string/char), <c>complex</c>, <c>bytes</c>, <c>tuple</c> (any
         /// <see cref="System.Runtime.CompilerServices.ITuple"/>), <c>list</c>/<c>dict</c>/<c>set</c>/
         /// <c>frozenset</c> for the Core collections, <c>Optional</c> for <see cref="Optional{T}"/>,
-        /// and otherwise the CLR type name without its generic arity (<c>List`1</c> is never
-        /// printed; a nested type prints its own name, not its outer's). The ONE table: the runtime
-        /// engine names a value by it and the compiler's static twin names a static type by it.
+        /// a Stdlib type by its <see cref="SharpyModuleTypeAttribute"/> — CPython's <c>tp_name</c>,
+        /// <see cref="SharpyModuleTypeAttribute.MessageName"/> where it is module-qualified
+        /// (<c>datetime.timedelta</c>), else its python name (<c>Counter</c>) — and otherwise the CLR
+        /// type name without its generic arity (<c>List`1</c> is never printed; a nested type prints
+        /// its own name, not its outer's). The ONE table: the runtime engine names a value by it and
+        /// the compiler's static twin names a static type by it.
         /// </summary>
-        public static string PyTypeName(Type type)
+        public static string PyTypeName(Type type) => PyTypeNameCore(type, message: true);
+
+        /// <summary>
+        /// Python's <c>type.__name__</c>: <see cref="PyTypeName(Type)"/> except that it is always the
+        /// simple name — <c>timedelta</c> where a message says <c>datetime.timedelta</c> (#2035).
+        /// </summary>
+        public static string PyDunderName(Type type) => PyTypeNameCore(type, message: false);
+
+        private static string PyTypeNameCore(Type type, bool message)
         {
+            if (TryBuiltinTypeName(type, out string builtinName))
+            {
+                return builtinName;
+            }
+
+            // A Stdlib type is named by its Sharpy surface name, the [SharpyModuleType] python name
+            // (`timedelta`, `Deque`), never its CLR name (`Timedelta`) — Decision 26, #2035; a message
+            // spells the type's tp_name where python module-qualifies it. A stamped [SharpyName] still
+            // wins (PythonSimpleName reads it first).
+            if (!Attribute.IsDefined(type, typeof(SharpyNameAttribute), inherit: false)
+                && Attribute.GetCustomAttribute(type, typeof(SharpyModuleTypeAttribute), inherit: false)
+                    is SharpyModuleTypeAttribute moduleType
+                && (message ? moduleType.MessageName ?? moduleType.PythonName : moduleType.PythonName) is { } moduleTypeName)
+            {
+                return moduleTypeName;
+            }
+
+            return PythonSimpleName(type);
+        }
+
+        /// <summary>
+        /// Python's <c>str(type(x))</c>/<c>repr(type(x))</c>, <c>&lt;class 'NAME'&gt;</c> (#2035): a
+        /// builtin by its bare name (<c>&lt;class 'int'&gt;</c>), a type declared in Sharpy source or the
+        /// Stdlib by its dotted python name (<see cref="PyQualifiedName"/>: <c>&lt;class
+        /// '__main__.A'&gt;</c>, <c>&lt;class 'datetime.timedelta'&gt;</c>), and a CLR interop type —
+        /// which has no python twin — by its CLR spelling (<c>&lt;class 'System.Guid'&gt;</c>,
+        /// <c>&lt;class 'System.Collections.Generic.List`1[System.Int32]'&gt;</c>).
+        /// </summary>
+        internal static string PyClassRepr(Type type)
+        {
+            string name = TryBuiltinTypeName(type, out string builtinName)
+                ? builtinName
+                : IsSharpyDeclared(type) ? PyQualifiedName(type) : type.ToString();
+            return "<class '" + name + "'>";
+        }
+
+        /// <summary>
+        /// The python builtin a CLR type IS (<c>int</c>, <c>str</c>, <c>list</c>, …): the part of
+        /// <see cref="PyTypeName(Type)"/> that never depends on how the type was declared.
+        /// </summary>
+        private static bool TryBuiltinTypeName(Type type, out string name)
+        {
+            name = TryBuiltinTypeNameCore(type) ?? string.Empty;
+            return name.Length > 0;
+        }
+
+        private static string? TryBuiltinTypeNameCore(Type type)
+        {
+            if (type == typeof(object))
+            {
+                return "object";
+            }
+
             // The numeric names read the kind table, so a type is "int" exactly when it formats as one.
             switch (KindOf(type))
             {
@@ -322,7 +386,7 @@ namespace Sharpy
                 }
             }
 
-            return PythonSimpleName(type);
+            return null;
         }
 
         /// <summary>

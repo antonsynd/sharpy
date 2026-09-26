@@ -15,7 +15,7 @@ namespace Sharpy
     /// <c>list(od)</c>). This is the ONLY generic <c>IEnumerable</c> the type exposes so that
     /// <c>list(od)</c> binds <c>Builtins.List&lt;K&gt;(IEnumerable&lt;K&gt;)</c> unambiguously (#1933).
     /// </remarks>
-    [SharpyModuleType("collections", "OrderedDict")]
+    [SharpyModuleType("collections", "OrderedDict", MessageName = "collections.OrderedDict")]
     public class OrderedDict<K, V> : ISized, IEnumerable<K>, IEquatable<OrderedDict<K, V>> where K : notnull
     {
         private readonly System.Collections.Generic.List<KeyValuePair<K, V>> _items;

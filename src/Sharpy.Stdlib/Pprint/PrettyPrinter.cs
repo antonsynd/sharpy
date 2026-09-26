@@ -552,7 +552,8 @@ namespace Sharpy
                 return "list";
             if (IsGenericSet(obj))
                 return "set";
-            return obj.GetType().Name;
+            // pprint's `<Recursion on X with id=…>` spells `type(object).__name__` (#2035).
+            return PyFormat.PyDunderName(obj.GetType());
         }
 
         private int GetFormattedLength(object? obj)

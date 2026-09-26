@@ -1629,6 +1629,13 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess, bool applyNarrowing = true)
     {
+        // `type(x).__name__`: the recorded python `__name__` read (#2035) — `PyFormat.PyDunderName(t)`.
+        if (_context.SemanticInfo?.IsPyDunderNameRead(memberAccess) == true)
+        {
+            return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "PyFormat", "PyDunderName"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(memberAccess.Object)))));
+        }
+
         // A builtins-qualified constructor reference pinned by semantic analysis (`builtins.dict`,
         // #1382). The recorded lowering is the same fact the bare spelling records, keyed on this
         // node — so this applies it verbatim rather than deciding anything, and the two spellings

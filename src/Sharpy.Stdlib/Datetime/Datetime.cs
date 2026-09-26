@@ -5,7 +5,7 @@ namespace Sharpy
     /// <summary>
     /// Represents a date (year, month, day).
     /// </summary>
-    [SharpyModuleType("datetime", "date")]
+    [SharpyModuleType("datetime", "date", MessageName = "datetime.date")]
     public class Date : IEquatable<Date>, IComparable<Date>, IFormattable, IRepr
     {
         private readonly System.DateTime _date;
@@ -194,7 +194,7 @@ namespace Sharpy
     /// <summary>
     /// Represents a time (hour, minute, second, microsecond).
     /// </summary>
-    [SharpyModuleType("datetime", "time")]
+    [SharpyModuleType("datetime", "time", MessageName = "datetime.time")]
     public class Time : IEquatable<Time>, IComparable<Time>, IFormattable, IRepr
     {
         private readonly TimeSpan _time;
@@ -335,7 +335,7 @@ namespace Sharpy
     /// <summary>
     /// A combination of a date and a time.
     /// </summary>
-    [SharpyModuleType("datetime", "datetime")]
+    [SharpyModuleType("datetime", "datetime", MessageName = "datetime.datetime")]
     public class DateTime : IEquatable<DateTime>, IComparable<DateTime>, IFormattable, IRepr
     {
         private readonly System.DateTime _dateTime;
@@ -621,7 +621,7 @@ namespace Sharpy
     /// <summary>
     /// Represents the difference between two dates or times.
     /// </summary>
-    [SharpyModuleType("datetime", "timedelta")]
+    [SharpyModuleType("datetime", "timedelta", MessageName = "datetime.timedelta")]
     public class Timedelta : IEquatable<Timedelta>, IComparable<Timedelta>, IRepr
     {
         private readonly TimeSpan _timeSpan;
@@ -836,7 +836,7 @@ namespace Sharpy
     /// <summary>
     /// Represents a fixed-offset timezone.
     /// </summary>
-    [SharpyModuleType("datetime", "timezone")]
+    [SharpyModuleType("datetime", "timezone", MessageName = "datetime.timezone")]
     public class Timezone : ITzinfo, IRepr
     {
         private readonly Timedelta _offset;

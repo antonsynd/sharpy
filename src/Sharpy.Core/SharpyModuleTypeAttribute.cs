@@ -23,6 +23,14 @@ namespace Sharpy
         /// </summary>
         public string? PythonName { get; }
 
+        /// <summary>
+        /// The name runtime messages spell for the type — CPython's <c>tp_name</c> — set only where
+        /// it differs from <see cref="PythonName"/>: a C-implemented python type is module-qualified
+        /// in its messages (<c>'datetime.timedelta'</c>, <c>'collections.OrderedDict'</c>) while its
+        /// <c>__name__</c> stays simple (#2035). Read by <c>PyFormat.PyTypeName</c> only.
+        /// </summary>
+        public string? MessageName { get; set; }
+
         /// <summary>Create a SharpyModuleTypeAttribute with the specified module name.</summary>
         public SharpyModuleTypeAttribute(string moduleName)
         {

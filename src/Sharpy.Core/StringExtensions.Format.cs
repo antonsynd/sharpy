@@ -377,8 +377,7 @@ namespace Sharpy
             }
 
             // Python-style error message
-            string typeName = type.Name;
-            throw new AttributeError("'" + typeName + "' object has no attribute '" + attr + "'");
+            throw new AttributeError("'" + PyFormat.PyTypeName(type) + "' object has no attribute '" + attr + "'");
         }
 
         /// <summary>A public instance property, then field, of <paramref name="type"/> named exactly <paramref name="name"/>.</summary>

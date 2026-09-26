@@ -1393,11 +1393,13 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             # Supports both 1-arg form `[SharpyModuleType("mod")]` and 2-arg
             # form `[SharpyModuleType("mod", "DisplayName")]` where the second
             # argument overrides the rendered type name (e.g. Python-lowercase
-            # names like `date`, `timedelta`).
+            # names like `date`, `timedelta`). Trailing named arguments
+            # (`MessageName = "datetime.date"`, #2035) are accepted and ignored.
             file_text = cs_file.read_text(encoding="utf-8")
             type_annotations = list(
                 re.finditer(
-                    r'\[SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?\)\]',
+                    r'\[SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?'
+                    r'(?:\s*,\s*\w+\s*=\s*"[^"]*")*\)\]',
                     file_text,
                 )
             )

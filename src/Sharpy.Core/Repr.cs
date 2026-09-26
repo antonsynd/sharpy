@@ -50,8 +50,14 @@ namespace Sharpy
             // Sharpy exceptions carry ONE message rather than Python's args tuple, so this renders
             // the single-arg form. A Python exception built with zero or several args
             // (`ValueError()`, `ValueError('a','b')`) has no equivalent here.
+            // CPython names the class by its simple name here (`_PyType_Name`: `gaierror('d')`, never
+            // `socket.gaierror('d')`), so this is __name__, not the message tp_name (#2035).
             if (obj is System.Exception ex)
-                return ex.GetType().Name + "(" + ReprString(ex.Message) + ")";
+                return PyFormat.PyDunderName(ex.GetType()) + "(" + ReprString(ex.Message) + ")";
+
+            // repr of a class object is its str: `<class 'int'>` (#2035).
+            if (obj is System.Type classObject)
+                return PyFormat.PyClassRepr(classObject);
 
             // Boxed floats must route through the Python float formatter, otherwise
             // .NET's default ToString() drops the trailing ".0" on whole values and

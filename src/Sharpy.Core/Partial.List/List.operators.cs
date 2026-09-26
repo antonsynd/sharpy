@@ -170,14 +170,16 @@ namespace Sharpy
         /// </summary>
         public static List<T> operator +(List<T>? left, List<T>? right)
         {
+            // CPython's texts, through the python type names (#2035): `None + [1]` is the binary
+            // operator's refusal, `[1] + None` list's own.
             if (left is null)
             {
-                throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
+                throw TypeError.UnsupportedOperand("+", left, right);
             }
 
             if (right is null)
             {
-                throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
+                throw TypeError.CanOnlyNot("concatenate", PyFormat.PyTypeName(left), PyFormat.PyTypeName(right), "to", PyFormat.PyTypeName(left));
             }
 
             // Presize to the combined length so neither AddRange reallocates.
@@ -200,7 +202,7 @@ namespace Sharpy
         {
             if (left is null)
             {
-                throw TypeError.CanOnlyNot("multiply", $"List<{typeof(T).Name}>", "NoneType", "with", "int");
+                throw TypeError.UnsupportedOperand("*", left, count);
             }
 
             var res = new List<T>();
@@ -223,6 +225,11 @@ namespace Sharpy
         /// </summary>
         public static List<T> operator *(int count, List<T>? right)
         {
+            if (right is null)
+            {
+                throw TypeError.UnsupportedOperand("*", count, right);
+            }
+
             return right * count;
         }
 

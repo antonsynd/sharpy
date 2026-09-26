@@ -109,7 +109,7 @@ namespace Sharpy
                 if (!first)
                     sb.Append(", ");
                 first = false;
-                sb.Append(ex.GetType().Name);
+                sb.Append(PyFormat.PyDunderName(ex.GetType()));
                 sb.Append("('");
                 sb.Append(ex.Message);
                 sb.Append("')");

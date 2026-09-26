@@ -51,7 +51,7 @@ namespace Sharpy
                 }
             }
 
-            throw new TypeError($"object of type '{obj.GetType().Name}' has no len()");
+            throw new TypeError($"object of type '{PyFormat.PyTypeName(obj)}' has no len()");
         }
     }
 }

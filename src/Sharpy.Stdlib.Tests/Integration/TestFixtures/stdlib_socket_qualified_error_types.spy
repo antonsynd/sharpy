@@ -1,13 +1,13 @@
 # Regression for #945: socket.error / socket.timeout (and gaierror/herror) must
-# resolve to SocketModule's nested exception types, not an identically-named type
-# from another module (e.g. re.error). type() exposes the resolved CLR type, and
-# `except socket.error:` must catch a raised socket.timeout (Timeout : Error).
+# resolve to the socket module's exception types, not an identically-named type
+# from another module (e.g. re.error). `except socket.error:` must catch a raised
+# socket.timeout and socket.gaierror, and isinstance agrees.
+# type(socket.error(...)) / type(socket.timeout(...)) are not printed: python's are
+# OSError / TimeoutError, and Sharpy's are distinct classes (#2087).
 import socket
 
 
 def main() -> None:
-    print(type(socket.error("boom")))
-    print(type(socket.timeout("slow")))
     print(type(socket.gaierror("dns")))
     print(type(socket.herror("legacy")))
 
@@ -24,3 +24,6 @@ def main() -> None:
     except socket.error:
         gai_caught = True
     print(gai_caught)
+
+    print(isinstance(socket.timeout("slow"), socket.error))
+    print(isinstance(socket.gaierror("dns"), socket.error))

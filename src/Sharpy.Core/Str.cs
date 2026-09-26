@@ -56,6 +56,13 @@ namespace Sharpy
                 return ex.Message;
             }
 
+            // A class object prints as python's `<class 'int'>` / `<class '__main__.A'>`, never the
+            // CLR's `System.Int32` / `Module+A` (#2035).
+            if (x is Type classObject)
+            {
+                return PyFormat.PyClassRepr(classObject);
+            }
+
             if (x is double d)
             {
                 return FormatFloat(d);

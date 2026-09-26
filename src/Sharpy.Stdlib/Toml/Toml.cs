@@ -262,7 +262,7 @@ namespace Sharpy
             catch (Exception)
             {
                 throw new InvalidOperationException(
-                    $"Cannot convert TOML value of type '{value.GetType().Name}' to field type '{targetType.Name}'");
+                    $"Cannot convert TOML value of type '{PyFormat.PyTypeName(value.GetType())}' to field type '{PyFormat.PyTypeName(targetType)}'");
             }
         }
 

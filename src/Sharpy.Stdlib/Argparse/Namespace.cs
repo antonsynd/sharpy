@@ -53,7 +53,7 @@ namespace Sharpy
             }
 
             throw new TypeError(
-                "argument '" + name + "' is type " + val.GetType().Name + ", expected " + typeof(T).Name);
+                "argument '" + name + "' is type " + PyFormat.PyTypeName(val.GetType()) + ", expected " + PyFormat.PyTypeName(typeof(T)));
         }
 
         /// <summary>

@@ -132,7 +132,7 @@ namespace Sharpy
                 if (ReferenceEquals(replacement, value))
                 {
                     throw new TypeError(
-                        "Object of type " + value.GetType().Name + " is not JSON serializable");
+                        "Object of type " + PyFormat.PyDunderName(value.GetType()) + " is not JSON serializable");
                 }
 
                 // Pass null as defaultFunc to prevent unbounded recursion on
@@ -141,9 +141,10 @@ namespace Sharpy
                 return;
             }
 
-            // Fallback: not serializable and no callback provided.
+            // Fallback: not serializable and no callback provided. Python's json module spells
+            // `o.__class__.__name__` (`timedelta`, not the tp_name `datetime.timedelta`, #2035).
             throw new TypeError(
-                "Object of type " + value.GetType().Name + " is not JSON serializable");
+                "Object of type " + PyFormat.PyDunderName(value.GetType()) + " is not JSON serializable");
         }
 
         private static void SerializeString(StringBuilder sb, string s, bool ensureAscii)

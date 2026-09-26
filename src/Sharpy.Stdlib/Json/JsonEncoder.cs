@@ -34,7 +34,7 @@ namespace Sharpy
         public virtual object? Default(object obj)
         {
             throw new TypeError(
-                "Object of type " + obj.GetType().Name + " is not JSON serializable");
+                "Object of type " + PyFormat.PyDunderName(obj.GetType()) + " is not JSON serializable");
         }
 
         /// <summary>Serialize an object to a JSON formatted string.</summary>

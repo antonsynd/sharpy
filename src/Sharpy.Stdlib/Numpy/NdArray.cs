@@ -214,7 +214,9 @@ namespace Sharpy
                 return "complex128";
             }
 
-            return type.Name;
+            // Any other element type is numpy's `object` dtype (np.array([object()]).dtype), never
+            // the CLR type name (#2035).
+            return "object";
         }
     }
 }

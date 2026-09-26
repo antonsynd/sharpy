@@ -102,7 +102,7 @@ namespace Sharpy
                 return DictToTable(dict);
             }
 
-            throw new TypeError("toml.dumps() requires a dict, not " + (obj == null ? "NoneType" : obj.GetType().Name));
+            throw new TypeError("toml.dumps() requires a dict, not " + (obj == null ? "NoneType" : PyFormat.PyTypeName(obj.GetType())));
         }
 
         private static TomlTable DictToTable(Dict<string, object?> dict)

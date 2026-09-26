@@ -38,7 +38,9 @@ internal static class DunderNameMapping
         { DunderNames.Exit, ProtocolConstants.Exit },                  // For context manager __exit__
         { DunderNames.Aenter, ProtocolConstants.AenterAsync },         // For async context manager __aenter__
         { DunderNames.Aexit, ProtocolConstants.AexitAsync },           // For async context manager __aexit__
-        { DunderNames.Name, "Name" },                                    // For type(x).__name__ → .Name
+        // No `__name__` row: `type(x).__name__` is a recorded read lowering to
+        // `PyFormat.PyDunderName` (#2035), and an alias to the CLR `Name` member read any receiver's
+        // `Name` (`Path("a/b.txt").__name__` was `b.txt`, where python raises AttributeError).
     };
 
 #if DEBUG

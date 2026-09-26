@@ -1,6 +1,6 @@
-Sharpy.SocketModule+Error
-Sharpy.SocketModule+Timeout
-Sharpy.SocketModule+Gaierror
-Sharpy.SocketModule+Herror
+<class 'socket.gaierror'>
+<class 'socket.herror'>
+True
+True
 True
 True

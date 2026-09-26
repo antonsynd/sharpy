@@ -936,6 +936,34 @@ class TestDiscoverModulesTypeAnnotations:
         type_names = sorted(t.name for t in modules[0].types)
         assert type_names == ["date", "timedelta"]
 
+    def test_named_message_name_argument_is_accepted(self, tmp_path: Path):
+        """A trailing `MessageName = "..."` (#2035) keeps the type discovered under its display name."""
+        body = textwrap.dedent(
+            """\
+            using Sharpy.Core.Shared;
+            namespace Sharpy.Core.Datetime;
+
+            [SharpyModuleType("datetime", "timedelta", MessageName = "datetime.timedelta")]
+            public sealed class Timedelta
+            {
+                /// <summary>Days.</summary>
+                public int Days => 0;
+            }
+
+            [SharpyModuleType("datetime", "timezone")]
+            public sealed class Timezone
+            {
+                /// <summary>Utc.</summary>
+                public static Timezone Utc => default!;
+            }
+            """
+        )
+        self._write_module(tmp_path, "Datetime", "datetime", "Datetime.cs", body)
+        modules = discover_modules(tmp_path)
+        assert len(modules) == 1
+        type_names = sorted(t.name for t in modules[0].types)
+        assert type_names == ["timedelta", "timezone"]
+
     def test_one_arg_form_still_works(self, tmp_path: Path):
         """`[SharpyModuleType("mod")]` should use the C# class name as display name."""
         body = textwrap.dedent(

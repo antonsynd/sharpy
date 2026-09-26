@@ -30,6 +30,16 @@ namespace Sharpy
                 $"'{op}' not supported between instances of '{PyFormat.PyTypeName(left)}' and '{PyFormat.PyTypeName(right)}'");
         }
 
+        /// <summary>
+        /// CPython's binary-operator refusal, <c>unsupported operand type(s) for +: 'NoneType' and
+        /// 'list'</c> (#2035).
+        /// </summary>
+        internal static TypeError UnsupportedOperand(string op, object? left, object? right)
+        {
+            return new TypeError(
+                $"unsupported operand type(s) for {op}: '{PyFormat.PyTypeName(left)}' and '{PyFormat.PyTypeName(right)}'");
+        }
+
         internal static TypeError IsNotInterface(string type, string @interface)
         {
             return new TypeError($"'{type}' object is not {@interface}");

@@ -25,7 +25,7 @@ namespace Sharpy
     /// <c>len()</c> a count but left every truth position refused (SPY0220), because the truth
     /// classifier reads the dunder table's spelling, <see cref="ISized"/> (#1972).
     /// </remarks>
-    [SharpyModuleType("collections", "Deque")]
+    [SharpyModuleType("collections", "Deque", MessageName = "collections.Deque")]
     public class Deque<T> : IReadOnlyCollection<T>, ISized
     {
         private readonly System.Collections.Generic.LinkedList<T> _list;
@@ -124,6 +124,51 @@ namespace Sharpy
         /// Gets the number of elements in the deque.
         /// </summary>
         public int Count => _list.Count;
+
+        /// <summary>
+        /// <c>d[i]</c> and <c>d[i] = x</c>, as python indexes a deque (#2035): a negative index counts
+        /// from the right, and an index outside the deque raises <c>IndexError: deque index out of
+        /// range</c>. The store is a linked list, so a middle index walks from the nearer end — O(n),
+        /// as python's own middle indexing is.
+        /// </summary>
+        public T this[int index]
+        {
+            get => NodeAt(index).Value;
+            set => NodeAt(index).Value = value;
+        }
+
+        private System.Collections.Generic.LinkedListNode<T> NodeAt(int index)
+        {
+            int count = _list.Count;
+            if (index < 0)
+            {
+                index += count;
+            }
+
+            if (index < 0 || index >= count)
+            {
+                throw new IndexError("deque index out of range");
+            }
+
+            if (index <= count / 2)
+            {
+                var node = _list.First!;
+                for (int i = 0; i < index; i++)
+                {
+                    node = node.Next!;
+                }
+
+                return node;
+            }
+
+            var fromEnd = _list.Last!;
+            for (int i = count - 1; i > index; i--)
+            {
+                fromEnd = fromEnd.Previous!;
+            }
+
+            return fromEnd;
+        }
 
         /// <summary>Return an enumerator over the deque elements.</summary>
         public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
