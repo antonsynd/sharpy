@@ -381,9 +381,19 @@ internal class TypeResolver
         // SPY0908. Checked on the resolved type, before the modifiers, so an alias whose body is
         // `None` (resolved as a return slot, where it is legal) is refused at the value-slot USE,
         // and `None?` is refused too. Rung 4: no CLR identity exists for NoneType.
-        if (position == AnnotationPosition.Value && result is VoidType)
+        //
+        // A modifier over `None` (`None?`, `None | None`, `None !E`) wraps nothing in EVERY position,
+        // a return slot included: the void it names cannot be an Optional/nullable/Result payload,
+        // and `-> None?` / `-> None | None` / `-> None !str` died as SPY0599. A return spells "no
+        // value" as bare `None`. An alias use carries its `?` inside the expansion, so an alias of
+        // `None` used as `Unit?` arrives here already wrapped.
+        var denotesOnlyNone = result is VoidType or OptionalType { UnderlyingType: VoidType };
+        var wrapsNone = annotation.IsOptional || annotation.IsCSharpNullable || annotation.ErrorType != null;
+        if (denotesOnlyNone && (position == AnnotationPosition.Value || wrapsNone))
         {
-            AddError("'None' is not a type; annotate a local, parameter, field or type argument as `T | None`, or use `object`",
+            AddError(position == AnnotationPosition.Value
+                    ? "'None' is not a type; annotate a local, parameter, field or type argument as `T | None`, or use `object`"
+                    : "'None' is not a type, so `None?`, `None | None` and `None !E` wrap nothing; a return type spells no value as bare `None`",
                 annotation.LineStart, annotation.ColumnStart,
                 code: DiagnosticCodes.SemanticOverflow.NoneAnnotationInValuePosition, span: annotation.Span);
             result = SemanticType.Unknown;

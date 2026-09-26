@@ -1174,6 +1174,11 @@ internal partial class TypeChecker
 
         if (returnStmt.Value != null)
         {
+            // A return slot is Unknown only when its annotation failed and was reported (an
+            // unannotated function returns void), so, as for a declaration (#2075), the returned
+            // value is not "uninferable" — `-> None?` with `return None()` reports SPY0614 alone.
+            using var returnSlotRecovery = ScopedValue.Push(ref _inErrorRecoveredAnnotationSlot,
+                _inErrorRecoveredAnnotationSlot || _currentFunctionReturnType is UnknownType);
             SemanticType returnType;
             using (EnterStore(StorePosition.Return, _currentFunctionReturnType!, returnStmt.Value))
                 returnType = CheckExpression(returnStmt.Value);

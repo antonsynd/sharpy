@@ -156,6 +156,18 @@ internal partial class TypeChecker
                     returnType = bodyType;
                 }
             }
+            else if (expectedFunc is { ReturnType: UnknownType } recoveredTarget)
+            {
+                // The target's return annotation failed and was reported (`g: () -> None? = lambda:
+                // None()`), so the body's slot is error recovery: the outer function type is not the
+                // body's expected type — left in place it drew "'None()' can only construct Optional
+                // types, not '() -> <?>'" beside the SPY0614 — and "cannot infer" is a cascade there,
+                // as for a declaration. One mistake, one diagnostic (#2075).
+                using var bodyRecovery = ScopedValue.Push(ref _inErrorRecoveredAnnotationSlot, true);
+                using (EnterStore(StorePosition.LambdaBody, recoveredTarget.ReturnType, lambda.Body))
+                    bodyType = CheckExpression(lambda.Body);
+                returnType = bodyType;
+            }
             else
             {
                 bodyType = CheckExpression(lambda.Body);

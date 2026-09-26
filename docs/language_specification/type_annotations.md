@@ -45,12 +45,20 @@ def main() -> None:
 
 Output: `count is None`.
 
+A modifier over `None` wraps nothing, so `None?`, `None | None` and `None !E` are refused in every position, a return type included: `-> None?` is SPY0614, and a function that returns no value says `-> None`. `int | None` is unaffected — its non-None side is a type.
+
 A property is a value, so a property getter's `-> None` is a value position and is refused too, while a setter's `-> None` is a true return. The refusal is the annotation's only diagnostic: `x: None = None` reports SPY0614 alone, with no SPY0227 "cannot infer a type" for its initializer (an annotation that failed to resolve is error recovery, not a missing annotation).
 
 <!-- spec-sweep: error SPY0614 -->
 ```python
 def describe(x: None) -> str:   # SPY0614: 'None' is not a type; annotate ... as `T | None`, or use `object`
     return "nothing"
+```
+
+<!-- spec-sweep: error SPY0614 -->
+```python
+def nothing() -> None?:   # SPY0614: 'None' is not a type, so `None?` ... wraps nothing
+    return None()
 ```
 
 <!-- spec-sweep: error SPY0614 -->

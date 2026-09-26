@@ -393,7 +393,9 @@ public static partial class DiagnosticExplanations
             "slot of a function type `(int) -> None`) uses it, to say the function produces no value. " +
             "In any other annotation position — a local, parameter, field, constant, type argument " +
             "(`list[None]`), a function type's parameter or `None?` — there is no value it could hold " +
-            "but `None`, so the annotation is refused. Nullable slots are spelled `T | None` (or `T?`).",
+            "but `None`, so the annotation is refused. A modifier over `None` (`None?`, `None | None`, " +
+            "`None !E`) wraps nothing and is refused in a return type too. Nullable slots are spelled " +
+            "`T | None` (or `T?`).",
             "def main() -> None:\n    x: None = None  # SPY0614",
             "Annotate the slot with the type it holds when it is not None: `x: int | None = None`, or " +
             "`x: object = None` when any value may appear.");
