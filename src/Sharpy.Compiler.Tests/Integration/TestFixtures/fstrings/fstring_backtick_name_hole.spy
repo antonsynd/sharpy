@@ -1,0 +1,14 @@
+# One hole grammar (P22): a backtick-escaped name in an f/t-string hole lexes through the main
+# loop's arm (it was SPY0015) — a plain name, a keyword-named enum member (#2037) and a value
+# reached through the member.
+enum Kind:
+    `class` = 1
+    `def` = 2
+
+def main() -> None:
+    `if`: int = 5
+    print(f"{`if`}")
+    print(f"{Kind.`class`}")
+    print(f"{Kind.`def`.value!r:>3}|")
+    print(f"""{`if` * 2}""")
+    print(repr(t"{`if`}"))

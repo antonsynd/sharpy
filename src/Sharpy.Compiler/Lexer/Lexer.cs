@@ -560,17 +560,9 @@ public partial class Lexer
             if (TryReadStringLiteralStart(out var literal))
                 return LogAndReturn(literal);
 
-            // Backtick-delimited literal names
-            if (current == '`')
-                return LogAndReturn(ReadLiteralName());
-
-            // Numbers
-            if (char.IsDigit(current))
-                return LogAndReturn(ReadNumber());
-
-            // Identifiers and keywords
-            if (char.IsLetter(current) || current == '_')
-                return LogAndReturn(ReadIdentifierOrKeyword());
+            // Backtick-delimited literal names, numbers, identifiers and keywords
+            if (TryReadWordToken(out var word))
+                return LogAndReturn(word);
 
             // Operators and delimiters
             return LogAndReturn(ReadOperatorOrDelimiter());
@@ -616,6 +608,21 @@ public partial class Lexer
 
         token = null;
         return false;
+    }
+
+    /// <summary>
+    /// The ONE name/number dispatch, shared by the main loop and the replacement-field tokenizer (the
+    /// hole grammar is the main loop's, P22): a backtick-delimited literal name, a number, or an
+    /// identifier/keyword. Returns false (consuming nothing) at any other character.
+    /// </summary>
+    private bool TryReadWordToken([NotNullWhen(true)] out Token? token)
+    {
+        var current = _source[_position];
+        token = current == '`' ? ReadLiteralName()
+            : char.IsDigit(current) ? ReadNumber()
+            : char.IsLetter(current) || current == '_' ? ReadIdentifierOrKeyword()
+            : null;
+        return token != null;
     }
 
     private Token LogAndReturn(Token token)

@@ -29,7 +29,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>!r</c>/before <c>=</c>, <c>#</c> comment (single- and triple-quoted), <c>}</c> and <c>{</c> inside a
 /// comment, <c>#</c> inside a nested string, backslash continuation, df dedent with a brace inside an
 /// in-hole string or comment (the prescan follows the hole grammar), a statement's trailing comment
-/// after a multi-line hole (#2022)}. The generated-AST cell covers the fallback path (an AST built
+/// after a multi-line hole (#2022), a backtick-escaped name {plain, <c>!r</c>, <c>=</c>, nested spec}
+/// (one hole grammar, P22)}. The generated-AST cell covers the fallback path (an AST built
 /// without source re-visits the expression and must pad a brace-headed hole on both the top-level and
 /// nested-spec paths — python's <c>ast.unparse</c> rule).</para>
 /// </summary>
@@ -83,6 +84,18 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         { "df.dedent_brace_in_string", "print(df\"\"\"\n        a{'{'}b\n        \"\"\")", "a{b" },
         { "df.dedent_brace_in_comment", "print(df\"\"\"\n        a{x # {\n        }b\n        \"\"\")", "a5b" },
         { "f.hash_in_string", "print(f\"{ '#' # d\n    }\")", "#" },
+        // One hole grammar (P22): a backtick-escaped name lexes in a hole through the main loop's arm
+        // (it was SPY0015). Oracle: python's output for the backtick-free twin; the '=' text and the
+        // expression text are the source as written, backticks included (byte-for-byte).
+        { "f.backtick", "print(f\"{`x`}\")", "5" },
+        { "f.backtick_conv", "print(f\"{`x`!r}\")", "5" },
+        { "f.backtick_selfdoc", "print(f\"{`x`=}\")", "`x`=5" },
+        { "f.backtick_spec_nested", "print(f\"{`x`:>{`w`}}|\")", "     5|" },
+        { "f.triple_backtick", "print(f\"\"\"{`x` + 1}\"\"\")", "6" },
+        { "df.backtick", "print(df\"{`x`:03}\")", "005" },
+        { "df.triple_backtick", "print(df\"\"\"\n        a{`x`}b\n        \"\"\")", "a5b" },
+        { "t.backtick_conv_spec", "print(repr(t\"{`x`!r:>2}\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, '`x`', 'r', '>2'),))" },
+        { "t.backtick_selfdoc", "print(repr(t\"{ `x` = }\"))", "Template(strings=(' `x` = ', ''), interpolations=(Interpolation(5, ' `x`', 'r', ''),))" },
     };
 
     [Theory]

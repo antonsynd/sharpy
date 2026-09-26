@@ -190,8 +190,9 @@ public partial class Lexer
     /// Scan forward from the current position to find the closing """ of a triple-quoted
     /// f-string, and return the number of whitespace characters on its line (the dedent amount).
     /// Tracks brace depth so that """ sequences inside interpolated expressions are ignored, and
-    /// follows the hole grammar (#2022): a string literal or a <c>#</c> comment inside a hole is opaque
-    /// to the brace count (<c>{'{'}</c> opens nothing, <c>{x # }</c> closes nothing).
+    /// follows the hole grammar (#2022): a string literal, a backtick-delimited name or a <c>#</c> comment
+    /// inside a hole is opaque to the brace count (<c>{'{'}</c> and <c>{`a{b`}</c> open nothing,
+    /// <c>{x # }</c> closes nothing).
     /// Returns 0 if no valid whitespace-only line before the close could be determined.
     /// Does not mutate lexer state.
     /// </summary>
@@ -260,6 +261,11 @@ public partial class Lexer
                     i = SkipStringLiteralInPrescan(i);
                     continue;
                 }
+                if (c == '`')
+                {
+                    i = SkipLiteralNameInPrescan(i);
+                    continue;
+                }
                 if (c == '{')
                 {
                     braceDepth++;
@@ -314,6 +320,19 @@ public partial class Lexer
             i++;
         }
         return i;
+    }
+
+    /// <summary>
+    /// Returns the position just past the backtick-delimited literal name whose opening backtick is at
+    /// <paramref name="start"/> — opaque like a string (<c>{`a{b`}</c> opens nothing), and like
+    /// <see cref="ReadLiteralName"/> it ends at a newline or the end of the source.
+    /// </summary>
+    private int SkipLiteralNameInPrescan(int start)
+    {
+        var i = start + 1;
+        while (i < _source.Length && _source[i] != '`' && _source[i] != '\n' && _source[i] != '\r')
+            i++;
+        return i < _source.Length && _source[i] == '`' ? i + 1 : i;
     }
 
     /// <summary>
@@ -675,13 +694,10 @@ public partial class Lexer
             if (TryReadStringLiteralStart(out var literal))
                 return literal;
 
-            // Numbers
-            if (char.IsDigit(current))
-                return ReadNumber();
-
-            // Identifiers and keywords
-            if (char.IsLetter(current) || current == '_')
-                return ReadIdentifierOrKeyword();
+            // Backtick-delimited literal names, numbers, identifiers and keywords — the main loop's
+            // one dispatch: f"{`x`}", f"{Color.`red`}".
+            if (TryReadWordToken(out var word))
+                return word;
 
             // Track ()/[] nesting so '='/'!' specifiers are only recognised at the top level
             // of the replacement field (e.g. keyword args in dict(a=1) must not trigger '=').

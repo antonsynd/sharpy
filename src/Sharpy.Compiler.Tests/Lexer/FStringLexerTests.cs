@@ -740,6 +740,43 @@ line2""""""";
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y" && t.Line == 2);
     }
 
+    [Theory]
+    [InlineData("`x`")]
+    [InlineData("Color.`red`")]
+    [InlineData("`x` + `y`")]
+    [InlineData("`System.Int32`")]
+    public void Hole_BacktickName_LexesAsTheMainLoop(string expression)
+    {
+        // One hole grammar (P22): the hole tokenizer's name arm IS the main loop's, so a backtick-escaped
+        // name inside a hole is the same token sequence as at statement level (it was SPY0015).
+        static string Describe(IEnumerable<LexerNs.Token> tokens) =>
+            string.Join(" ", tokens.Select(t => $"{t.Type}:{t.Value}:{t.IsBacktickEscaped}:{t.Length}"));
+
+        var topLexer = new LexerNs.Lexer("v = " + expression + "\n");
+        var top = topLexer.TokenizeAll().Skip(2).TakeWhile(t => t.Type is not (TokenType.Newline or TokenType.Eof));
+        foreach (var prefix in new[] { "f\"", "t\"", "df\"", "f\"\"\"" })
+        {
+            var close = prefix.Length == 4 ? "\"\"\"" : "\"";
+            var lexer = new LexerNs.Lexer("v = " + prefix + "{" + expression + "}" + close + "\n");
+            var tokens = lexer.TokenizeAll();
+            lexer.Diagnostics.HasErrors.Should().BeFalse(prefix + ": " + string.Join("; ", lexer.Diagnostics.GetErrors().Select(d => d.Code + " " + d.Message)));
+            var inHole = tokens.SkipWhile(t => t.Type != TokenType.FStringExprStart).Skip(1).TakeWhile(t => t.Type != TokenType.FStringExprEnd);
+            Describe(inHole).Should().Be(Describe(top), prefix);
+        }
+    }
+
+    [Theory]
+    [InlineData("{`a{b`}")]
+    [InlineData("{`a#b`}")]
+    [InlineData("{`a'b`}")]
+    public void DedentPrescan_TreatsABacktickNameAsOpaque(string hole)
+    {
+        // The df dedent prescan follows the hole grammar: a '{', '#' or quote inside a backtick-escaped
+        // name opens, comments or quotes nothing, so the closing line's indent is still found.
+        var tokens = Tokenize("v = df\"\"\"\n    a" + hole + "b\n    \"\"\"\n");
+        tokens.Where(t => t.Type == TokenType.FStringText).Select(t => t.Value).Should().Equal("a", "b");
+    }
+
     [Fact]
     public void Hole_Comment_IsCommentTrivia_WhenTriviaIsPreserved()
     {

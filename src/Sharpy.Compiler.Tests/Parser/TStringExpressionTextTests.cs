@@ -73,6 +73,13 @@ public class TStringExpressionTextTests
         { "t\"{ '#' # d\n}\"", " '#'", TokenType.FStringExprEnd },            // '#' inside a string is not a comment
         { "t\"{x \\\n+ 1}\"", "x \\\n+ 1", TokenType.FStringExprEnd },       // continuation kept verbatim
         { "t\"{\fx\f}\"", "\fx", TokenType.FStringExprEnd },                 // form feed is whitespace
+        // One hole grammar (P22): a backtick-escaped name is lexed by the main loop's arm; the text is
+        // the source as written, backticks included.
+        { "t\"{`x`}\"", "`x`", TokenType.FStringExprEnd },
+        { "t\"{ `x` !r}\"", " `x`", TokenType.FStringConversion },
+        { "t\"{`x`=}\"", "`x`", TokenType.FStringSelfDoc },
+        { "t\"{`x`:>4}\"", "`x`", TokenType.FStringFormatSpec },
+        { "t\"{C.`red`}\"", "C.`red`", TokenType.FStringExprEnd },
     };
 
     [Theory]
