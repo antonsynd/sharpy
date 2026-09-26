@@ -330,8 +330,7 @@ internal partial class RoslynEmitter
         // [SharpyModuleType] stamps).
         if (!_context.IsEntryPoint)
         {
-            membersClassDecl = membersClassDecl
-                .WithAttributeLists(SingletonList(SharpyModuleAttributeList(sharpyModuleName)));
+            membersClassDecl = PrependAttributeList(membersClassDecl, SharpyModuleAttributeList(sharpyModuleName));
         }
 
         // The members class is partial (a hand-written partial of a spy-sourced stdlib module
@@ -371,11 +370,24 @@ internal partial class RoslynEmitter
                     SyntaxKind.StringLiteralExpression, Literal(pythonName)))
             })));
 
-        var attributeList = AttributeList(SingletonSeparatedList(attribute));
-
         // Prepend so [SharpyModuleType] appears first, ahead of any existing attribute lists.
-        var existing = typeDecl.AttributeLists;
-        return typeDecl.WithAttributeLists(existing.Insert(0, attributeList));
+        return PrependAttributeList(typeDecl, AttributeList(SingletonSeparatedList(attribute)));
+    }
+
+    /// <summary>
+    /// Prepends <paramref name="attributeList"/> to a declaration, moving the declaration's leading
+    /// trivia — its <c>///</c> doc comment — onto the new first list. The one way the emitter adds an
+    /// attribute list to a declaration that may already carry that trivia: prepended in front of it,
+    /// the doc comment would follow the attribute and document nothing (CS1587, an error in a
+    /// TreatWarningsAsErrors documentation build such as Sharpy.Stdlib; #2039).
+    /// </summary>
+    private static TDeclaration PrependAttributeList<TDeclaration>(
+        TDeclaration declaration, AttributeListSyntax attributeList)
+        where TDeclaration : MemberDeclarationSyntax
+    {
+        var bare = declaration.WithoutLeadingTrivia();
+        return (TDeclaration)bare.WithAttributeLists(bare.AttributeLists.Insert(
+            0, attributeList.WithLeadingTrivia(declaration.GetLeadingTrivia())));
     }
 
     /// <summary>

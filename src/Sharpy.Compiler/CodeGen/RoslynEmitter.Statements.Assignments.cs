@@ -1405,7 +1405,7 @@ internal partial class RoslynEmitter
         // wrong, record the authoritative Python name for discovery to read (#1607).
         if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
         {
-            fieldDeclaration = fieldDeclaration.AddAttributeLists(
+            fieldDeclaration = PrependAttributeList(fieldDeclaration,
                 AttributeList(SingletonSeparatedList(
                     Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
                         .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(

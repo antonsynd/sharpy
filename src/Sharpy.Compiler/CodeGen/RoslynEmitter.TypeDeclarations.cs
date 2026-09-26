@@ -1521,10 +1521,10 @@ internal partial class RoslynEmitter
         // identifier differs (#2007).
         if (pythonName != null)
         {
-            enumMember = enumMember.WithAttributeLists(SingletonList(AttributeList(SingletonSeparatedList(
+            enumMember = PrependAttributeList(enumMember, AttributeList(SingletonSeparatedList(
                 Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
                     .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
-                        LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(pythonName))))))))));
+                        LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(pythonName)))))))));
         }
 
         // Add explicit value if present
