@@ -105,7 +105,7 @@ public static partial class DiagnosticExplanations
             "Use a valid float format:\n  x: float = 1.0\n  x: float = 1.0e10");
 
         Add(dict, DiagnosticCodes.Lexer.UnterminatedFStringExpression, "Unterminated f-string expression", "Lexer",
-            "An expression inside an f-string (within { }) was not properly closed. The lexer reached the end of the string without finding the closing brace.",
+            "A replacement field ({ ... }) in an f-string or t-string was never closed: its '}' is missing, or a # comment inside it swallowed the '}' and the closing quote. It is reported where python reports it — at the innermost unclosed bracket (\"'{' was never closed\"), or at a literal that opens with the string's own quote and never closes (\"f-string: expecting '}'\") — never at the end of the file.",
             "msg: str = f\"Value: {x + 1\"",
             "Close the expression brace:\n  msg: str = f\"Value: {x + 1}\"");
 
@@ -115,7 +115,7 @@ public static partial class DiagnosticExplanations
             "Escape literal braces by doubling them:\n  msg: str = f\"100%}}\"");
 
         Add(dict, DiagnosticCodes.Lexer.UnterminatedFormatSpec, "Unterminated format specifier", "Lexer",
-            "A format specifier in an f-string expression (after the colon) was not properly terminated.",
+            "A replacement field's format specifier (after the colon) was not closed by a '}': the string's closing quote came first (\"f-string: expecting '}', or format specs\", reported at the quote), or the source ended (\"'{' was never closed\", reported at the field's '{').",
             "msg: str = f\"{value:.2f\"",
             "Close the expression brace:\n  msg: str = f\"{value:.2f}\"");
 

@@ -59,6 +59,7 @@ public partial class Lexer
     private readonly bool _preserveTrivia;
     private List<Trivia>? _pendingTrivia;
     private int _pendingBlankLineCount;
+    private int? _resumeAfterUnclosedField;  // see ReportUnclosedField
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -238,6 +239,14 @@ public partial class Lexer
             catch (LexerAbortException)
             {
                 // Error already recorded in _diagnostics by ReportError()
+                if (_resumeAfterUnclosedField is { } bracket)
+                {
+                    // An unclosed replacement field swallowed the rest of the source: drop what was
+                    // lexed past its bracket; recovery resumes on the line after it.
+                    tokens.RemoveAll(t => t.Position > bracket);
+                    _pendingTrivia?.RemoveAll(t => t.Position > bracket);
+                    _resumeAfterUnclosedField = null;
+                }
                 if (_diagnostics.ErrorCount >= MaxErrors || _position >= _source.Length)
                 {
                     if (_diagnostics.ErrorCount >= MaxErrors)
@@ -597,9 +606,7 @@ public partial class Lexer
     {
         foreach (var (prefix, read) in StringLiteralStarts)
         {
-            var quoteAt = _position + prefix.Length;
-            if (quoteAt < _source.Length && (_source[quoteAt] == '"' || _source[quoteAt] == '\'')
-                && string.CompareOrdinal(_source, _position, prefix, 0, prefix.Length) == 0)
+            if (IsStringLiteralStart(prefix))
             {
                 token = read(this);
                 return true;
@@ -608,6 +615,24 @@ public partial class Lexer
 
         token = null;
         return false;
+    }
+
+    /// <summary>The position of the opening quote when a string literal of a known prefix starts here, else -1.</summary>
+    private int StringLiteralQuoteAt()
+    {
+        foreach (var (prefix, _) in StringLiteralStarts)
+        {
+            if (IsStringLiteralStart(prefix))
+                return _position + prefix.Length;
+        }
+        return -1;
+    }
+
+    private bool IsStringLiteralStart(string prefix)
+    {
+        var quoteAt = _position + prefix.Length;
+        return quoteAt < _source.Length && (_source[quoteAt] == '"' || _source[quoteAt] == '\'')
+            && string.CompareOrdinal(_source, _position, prefix, 0, prefix.Length) == 0;
     }
 
     /// <summary>

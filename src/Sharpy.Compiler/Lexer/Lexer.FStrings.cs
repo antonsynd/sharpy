@@ -36,6 +36,15 @@ public partial class Lexer
         public int ParenDepth { get; set; }        // ()/[] nesting within the field's expression
         public int InnerBraceDepth { get; set; }   // dict/set {} nesting within the field's expression
         public int ExprStartPosition { get; set; } // source position of the first char after '{'
+        public int OpenLine { get; set; }          // line of the field's '{'
+        public int OpenColumn { get; set; }        // column of the field's '{'
+
+        /// <summary>
+        /// The ( [ { brackets open inside this field's expression, innermost on top, with their
+        /// positions — an unclosed field reports its innermost unclosed bracket (python:
+        /// <c>f"{(x</c> → <c>'(' was never closed</c> at the <c>(</c>).
+        /// </summary>
+        public Stack<(char Opener, int Line, int Column, int Position)> Openers { get; } = new();
 
         /// <summary>
         /// The <c>#</c> comments inside this field's expression, as [start, end) source spans (the
@@ -296,11 +305,17 @@ public partial class Lexer
     /// <paramref name="start"/> (single or triple quoted; a backslash skips the next character, as
     /// it does for termination in every prefix kind). Stops at the end of the source.
     /// </summary>
-    private int SkipStringLiteralInPrescan(int start)
+    private int SkipStringLiteralInPrescan(int start) => SkipStringLiteralInPrescan(start, out _);
+
+    /// <inheritdoc cref="SkipStringLiteralInPrescan(int)"/>
+    /// <param name="start">The opening quote's position.</param>
+    /// <param name="terminated">False when the literal runs into a newline (single-quoted) or the end of the source.</param>
+    private int SkipStringLiteralInPrescan(int start, out bool terminated)
     {
         var quote = _source[start];
-        var triple = start + 2 < _source.Length && _source[start + 1] == quote && _source[start + 2] == quote;
+        var triple = IsTripleQuoteAt(start);
         var i = start + (triple ? 3 : 1);
+        terminated = true;
         while (i < _source.Length)
         {
             var c = _source[i];
@@ -318,12 +333,17 @@ public partial class Lexer
             }
             else if (!triple && (c == '\n' || c == '\r'))
             {
+                terminated = false;
                 return i;
             }
             i++;
         }
-        return i;
+        terminated = false;
+        return Math.Min(i, _source.Length);
     }
+
+    private bool IsTripleQuoteAt(int position) =>
+        position + 2 < _source.Length && _source[position + 1] == _source[position] && _source[position + 2] == _source[position];
 
     /// <summary>
     /// Returns the position just past the backtick-delimited literal name whose opening backtick is at
@@ -518,6 +538,50 @@ public partial class Lexer
         _source.Substring(field.ExprStartPosition, endPosition - field.ExprStartPosition);
 
     /// <summary>
+    /// A replacement field still open at the end of the source — an unclosed <c>{</c>, or a <c>#</c>
+    /// comment that swallowed the field's <c>}</c> and the string's closing quote (P22 Decision 13). It
+    /// is reported where python reports it: at the innermost unclosed bracket, the field's own
+    /// <c>{</c> unless a <c>(</c>/<c>[</c>/<c>{</c> inside its expression is open (<c>'{' was never
+    /// closed</c>), never at the end of the file. When every enclosing string is single-quoted (its
+    /// text cannot span lines) the tokens lexed past the bracket are dropped and lexing resumes on
+    /// the line after it (<see cref="TokenizeAll"/>), so later errors still surface; a triple-quoted
+    /// string's text spans lines, so nothing after the bracket is known to be code.
+    /// </summary>
+    private LexerAbortException ReportUnclosedField(FStringContext context)
+    {
+        var field = context.Fields.Peek();
+        var (opener, line, column, position) = field.Openers.Count > 0
+            ? field.Openers.Peek()
+            : ('{', field.OpenLine, field.OpenColumn, field.ExprStartPosition - 1);
+        var code = field.InFormatSpec ? DiagnosticCodes.Lexer.UnterminatedFormatSpec : DiagnosticCodes.Lexer.UnterminatedFStringExpression;
+
+        var (endPosition, endLine, endColumn) = (_position, _line, _column);
+        (_position, _line, _column) = (position, line, column);   // the diagnostic's span is the bracket
+        var error = ReportError($"'{opener}' was never closed", line, column, code);
+
+        if (_fstringStack.Any(c => c.IsTriple))
+            (_position, _line, _column) = (endPosition, endLine, endColumn);
+        else
+            _resumeAfterUnclosedField = position;
+        return error;
+    }
+
+    /// <summary>
+    /// The enclosing string's closing quote ended the string while a field is open (CPython:
+    /// <c>f"{x"</c> → <c>f-string: expecting '}'</c>, at the quote). On the field's own line the quote is
+    /// the cause; on a later line the field swallowed the lines between (a comment ate its <c>}</c>), so it
+    /// is reported as unclosed at its bracket instead (<see cref="ReportUnclosedField"/>).
+    /// </summary>
+    private LexerAbortException ReportFieldEndedByQuote(FStringContext context, string message)
+    {
+        var field = context.Fields.Peek();
+        if (_line != field.OpenLine)
+            return ReportUnclosedField(context);
+        var code = field.InFormatSpec ? DiagnosticCodes.Lexer.UnterminatedFormatSpec : DiagnosticCodes.Lexer.UnterminatedFStringExpression;
+        return ReportError(message, _line, _column, code);
+    }
+
+    /// <summary>
     /// Get the next token while inside an f-string
     /// </summary>
     private Token NextFStringToken()
@@ -525,6 +589,8 @@ public partial class Lexer
         var context = _fstringStack.Peek();
         if (_position >= _source.Length)
         {
+            if (context.Fields.Count > 0)
+                throw ReportUnclosedField(context);
             throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
         }
 
@@ -561,6 +627,7 @@ public partial class Lexer
                 {
                     // Nested (dict/set) closing brace within the expression
                     field.InnerBraceDepth--;
+                    field.Openers.TryPop(out _);
                     return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
@@ -569,6 +636,7 @@ public partial class Lexer
             if (current == '{')
             {
                 field.InnerBraceDepth++;
+                field.Openers.Push(('{', startLine, startColumn, startPosition));
                 _position++;
                 _column++;
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
@@ -579,7 +647,7 @@ public partial class Lexer
             SkipHoleTrivia(field);
 
             if (_position >= _source.Length)
-                throw ReportError($"Unterminated {context.Kind} expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
+                throw ReportUnclosedField(context);
 
             current = _source[_position];
             startLine = _line;
@@ -602,6 +670,7 @@ public partial class Lexer
                 else
                 {
                     field.InnerBraceDepth--;
+                    field.Openers.TryPop(out _);
                     return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
@@ -609,6 +678,7 @@ public partial class Lexer
             if (current == '{')
             {
                 field.InnerBraceDepth++;
+                field.Openers.Push(('{', startLine, startColumn, startPosition));
                 _position++;
                 _column++;
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
@@ -662,6 +732,9 @@ public partial class Lexer
                         fstringRawText: HoleRawText(field, startPosition));
                 }
 
+                if (validFlag && afterFlag >= _source.Length)
+                    throw ReportUnclosedField(context);
+
                 if (validFlag)
                 {
                     // The flag itself is valid (!r/!s/!a); the replacement field is just missing its
@@ -692,6 +765,16 @@ public partial class Lexer
                 return specStart with { FStringExpressionText = expressionText, FStringRawText = rawText };
             }
 
+            // A literal opening with the enclosing string's own quote that never closes is the field's
+            // missing '}' (CPython: f"{x" → "f-string: expecting '}'"), not an unterminated literal.
+            var quoteAt = StringLiteralQuoteAt();
+            if (quoteAt >= 0 && _source[quoteAt] == context.QuoteChar && IsTripleQuoteAt(quoteAt) == context.IsTriple)
+            {
+                SkipStringLiteralInPrescan(quoteAt, out var terminated);
+                if (!terminated)
+                    throw ReportFieldEndedByQuote(context, $"{context.Kind}: expecting '}}'");
+            }
+
             // String literals of every prefix — nested f-/t-strings included — through the main loop's
             // one dispatch (#2010): f"{t'{s}'!r}", f"{r'\d'}", f"{b'ab'}", f"{df'{s}'}".
             if (TryReadStringLiteralStart(out var literal))
@@ -708,12 +791,16 @@ public partial class Lexer
             // ')'"), so an unclosed hole cannot swallow the lines after it now that a hole may span
             // lines (#2022).
             if (current == '(' || current == '[')
+            {
                 field.ParenDepth++;
+                field.Openers.Push((current, startLine, startColumn, startPosition));
+            }
             else if (current == ')' || current == ']')
             {
                 if (field.ParenDepth == 0)
                     throw ReportError($"{context.Kind}: unmatched '{current}'", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
                 field.ParenDepth--;
+                field.Openers.TryPop(out _);
             }
 
             // Operators and delimiters
@@ -796,7 +883,7 @@ public partial class Lexer
                     // Start expression - consume the { and push a new replacement field.
                     _position++;
                     _column++;
-                    context.Fields.Push(new FStringField { ExprStartPosition = _position });
+                    context.Fields.Push(new FStringField { ExprStartPosition = _position, OpenLine = startLine, OpenColumn = startColumn });
                     return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
                 }
             }
@@ -912,7 +999,7 @@ public partial class Lexer
     private Token NextFStringSpecToken(FStringContext context, FStringField field, bool atSpecStart)
     {
         if (_position >= _source.Length)
-            throw ReportError($"Unterminated format specification in {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+            throw ReportUnclosedField(context);
 
         var startLine = _line;
         var startColumn = _column;
@@ -930,7 +1017,7 @@ public partial class Lexer
             {
                 _position++;
                 _column++;
-                context.Fields.Push(new FStringField { ExprStartPosition = _position });
+                context.Fields.Push(new FStringField { ExprStartPosition = _position, OpenLine = startLine, OpenColumn = startColumn });
                 return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
             }
 
@@ -964,6 +1051,19 @@ public partial class Lexer
             if (fsc == '{' || fsc == '}')
                 break;
 
+            // The enclosing string's closing quote ends the string, so the field never closed (CPython:
+            // f"{x:>4" → "f-string: expecting '}', or format specs"); spec text cannot run past it. A
+            // backslash-escaped quote is spec text (f"{x:\">4}" fills with '"').
+            if (fsc == '\\' && _position + 1 < _source.Length && _source[_position + 1] == context.QuoteChar)
+            {
+                sb.Append(fsc).Append(context.QuoteChar);
+                _position += 2;
+                _column += 2;
+                continue;
+            }
+            if (fsc == context.QuoteChar && (!context.IsTriple || IsTripleQuoteAt(_position)))
+                throw ReportFieldEndedByQuote(context, $"{context.Kind}: expecting '}}', or format specs");
+
             sb.Append(fsc);
             _position++;
             if (fsc == '\n')
@@ -978,7 +1078,7 @@ public partial class Lexer
         }
 
         if (_position >= _source.Length)
-            throw ReportError($"Unterminated format specification in {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+            throw ReportUnclosedField(context);
 
         return CreateToken(TokenType.FStringFormatSpec, sb.ToString(), startLine, startColumn, startPosition);
     }

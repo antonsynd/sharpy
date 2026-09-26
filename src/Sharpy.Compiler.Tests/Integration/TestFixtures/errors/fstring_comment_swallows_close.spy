@@ -1,0 +1,31 @@
+# P22 Decision 13: a comment that swallows a hole's } and the closing quote leaves the hole unclosed;
+# it is reported at the hole's { (python: '{' was never closed), not at the end of the file.
+def f(x: int) -> str:
+    return f"{x # the value}"
+
+def g1(y: int) -> int:
+    return y + 1
+
+def g2(y: int) -> int:
+    return y + 2
+
+def g3(y: int) -> int:
+    return y + 3
+
+def g4(y: int) -> int:
+    return y + 4
+
+def g5(y: int) -> int:
+    return y + 5
+
+def g6(y: int) -> int:
+    return y + 6
+
+def g7(y: int) -> int:
+    return y + 7
+
+def g8(y: int) -> int:
+    return y + 8
+
+def main() -> None:
+    print(f(1))

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
 using Xunit;
@@ -277,9 +278,10 @@ line2""""""";
     [Fact]
     public void FString_UnterminatedExpression_ThrowsError()
     {
-        // When the expression has an unterminated string inside it, we get "Unterminated string literal"
+        // A literal opening with the f-string's own quote that never closes is the field's missing '}'
+        // (python3.12: f"hello {x" → "f-string: expecting '}'"), not an unterminated literal.
         var errors = TokenizeExpectingError("f\"hello {x\"");
-        errors.Should().Contain("Unterminated string");
+        errors.Should().Be("f-string: expecting '}'");
     }
 
     [Fact]
@@ -773,6 +775,104 @@ line2""""""";
         lexer.TokenizeAll();
         var error = lexer.Diagnostics.GetErrors().Should().ContainSingle().Subject;
         error.Message.Should().Be(message.Replace("K", kind, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// An unclosed replacement field is reported where python reports it — never at the end of the
+    /// file (P22 Decision 13: an unclosed hole cannot swallow the following lines). Cells: (label, hole
+    /// source after the opening quote, the character marking the expected column on line 2 — the first
+    /// one after the opening quote, or <c>Q</c> for the second quote — message, code). Axes: prefix {f,
+    /// t, df} × quoting {single, triple}. python3.12/3.14: <c>f"{x</c> → <c>'{' was never closed</c> at the
+    /// <c>{</c>; <c>f"{x"</c> → <c>f-string: expecting '}'</c> at the second quote; <c>f"{(x</c> →
+    /// <c>'(' was never closed</c> at the <c>(</c>; <c>f"{x:{w</c> → the inner <c>{</c>; <c>f"{x:>4"</c> →
+    /// <c>f-string: expecting '}', or format specs</c> at the second quote.
+    /// </summary>
+    public static TheoryData<string, string, string, string, string, char, string, string> UnclosedFieldCells()
+    {
+        const string swallowedTail = "\n\ndef g(y: int) -> int:\n    return y\n";
+        var cells = new (string Label, string Hole, string Tail, char Marker, string Message, string Code)[]
+        {
+            ("comment_swallows_close", "{x # the value}Q", swallowedTail, '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFormatSpec),
+            ("comment_swallows_close_no_spec", "{x # the value}Q", "\ny = 1\n", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("missing_close_at_eol", "{xQ", "\n", 'Q', "K: expecting '}'", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("missing_close_at_eof", "{x", "", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("paren_open_at_eof", "{(x + 1", "", '(', "'(' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("nested_spec_field_at_eof", "{x:{w", "", '}', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("conversion_at_eof", "{x!r", "", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+            ("spec_at_eof", "{x:>4", "", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFormatSpec),
+            ("spec_ended_by_quote", "{x:>4Q", "\nz = {1: 2}\n", 'Q', "K: expecting '}', or format specs", DiagnosticCodes.Lexer.UnterminatedFormatSpec),
+            // The quote that ends the string sits lines after the swallowing comment: the field is
+            // reported at its '{', not at that later quote.
+            ("comment_swallows_close_spec_ended_by_later_quote", "{x # the value}Q", "\n\ndef g(y: int) -> str:\n    return QhiQ\n", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFormatSpec),
+            ("comment_swallows_close_unterminated_later_literal", "{x # the value}Q", "\ns = Qabc\n", '{', "'{' was never closed", DiagnosticCodes.Lexer.UnterminatedFStringExpression),
+        };
+        var data = new TheoryData<string, string, string, string, string, char, string, string>();
+        foreach (var (prefix, kind) in new[] { ("f", "f-string"), ("t", "t-string"), ("df", "f-string") })
+        {
+            foreach (var quote in new[] { "\"", "\"\"\"" })
+            {
+                foreach (var (label, hole, tail, marker, message, code) in cells)
+                    data.Add(label, prefix, quote, hole, tail, marker, message.Replace("K", kind, StringComparison.Ordinal), code);
+            }
+        }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(UnclosedFieldCells))]
+    public void UnclosedField_IsReportedAtItsBracket_NotAtEof(string label, string prefix, string quote, string hole, string tail, char marker, string message, string code)
+    {
+        var line2 = "    return " + prefix + quote + hole.Replace("Q", quote, StringComparison.Ordinal);
+        var source = "def f(x: int) -> str:\n" + line2 + tail.Replace("Q", quote, StringComparison.Ordinal);
+        var afterQuote = 11 + prefix.Length + quote.Length;
+        // The expected column: the marker character on line 2 (the '}' marker means the second '{').
+        var column = marker switch
+        {
+            'Q' => line2.IndexOf(quote, afterQuote, StringComparison.Ordinal),
+            '}' => line2.IndexOf('{', line2.IndexOf('{', afterQuote) + 1),
+            _ => line2.IndexOf(marker, afterQuote),
+        } + 1;
+
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        var errors = lexer.Diagnostics.GetErrors().ToList();
+        // A single-quoted string resumes on the line after the bracket, where the unterminated later
+        // literal is a genuine second error; every other tail is clean code.
+        var expectedCount = label.EndsWith("_later_literal", StringComparison.Ordinal) && quote.Length == 1 ? 2 : 1;
+        errors.Should().HaveCount(expectedCount, label + ": " + source);
+        var error = errors[0];
+        error.Message.Should().Be(message, label);
+        error.Code.Should().Be(code, label);
+        error.Line.Should().Be(2, label);
+        error.Column.Should().Be(column, label);
+    }
+
+    [Theory]
+    [InlineData("f")]
+    [InlineData("t")]
+    [InlineData("df")]
+    public void UnclosedField_InASingleQuotedString_ResumesOnTheNextLine(string prefix)
+    {
+        // The single-quoted string's text cannot span lines, so what the swallowing hole lexed past its
+        // '{' is dropped and lexing resumes after that line: a later lexer error still surfaces.
+        var lexer = new LexerNs.Lexer("def f(x: int) -> str:\n    return " + prefix + "\"{x # the value}\"\n\ndef g() -> None:\n    y = 1 $ 2\n");
+        var tokens = lexer.TokenizeAll();
+        lexer.Diagnostics.GetErrors().Select(d => (d.Message, d.Line))
+            .Should().Equal(("'{' was never closed", 2), ("Unexpected character: '$'", 5));
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "g" && t.Line == 4);
+        tokens.Should().NotContain(t => t.Line > 2 && t.Line < 4, "nothing the swallowing hole lexed survives");
+        tokens.Select(t => t.Position).Should().BeInAscendingOrder("the dropped tokens leave the stream monotonic");
+    }
+
+    [Fact]
+    public void UnclosedField_InATripleQuotedString_DoesNotResume()
+    {
+        // A triple-quoted string's text spans lines: nothing after the '{' is known to be code, so the
+        // one diagnostic at the '{' is the whole report (no cascade from re-lexing string text as code).
+        var lexer = new LexerNs.Lexer("def f(x: int) -> str:\n    return f\"\"\"{x # c}\"\"\"\n\ndef g() -> None:\n    y = 1 $ 2\n");
+        lexer.TokenizeAll();
+        var error = lexer.Diagnostics.GetErrors().Should().ContainSingle().Subject;
+        (error.Message, error.Line, error.Column).Should().Be(("'{' was never closed", 2, 16));
     }
 
     [Theory]
