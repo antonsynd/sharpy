@@ -74,7 +74,9 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     // strata). The fixed seeds and explicit strata make the count deterministic, so a drop means the
     // static twin (FormatSpecGrammar through CheckStaticFormatSpecArguments, #1956) stopped firing on
     // literal specs — or stopped projecting an operand kind (#1988) — not that the corpus moved.
-    private const int StaticTwinAgreementFloor = 219;
+    // Measured 240 @ d6a7aef05 with the python-name stratum (its 21 refusals: 3 int-enum, 9
+    // user-class, 9 snake-class).
+    private const int StaticTwinAgreementFloor = 240;
 
     private sealed record Cell(string Kind, string Spec)
     {
@@ -131,7 +133,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         // not a quietly smaller sweep.
         var missingKinds = AllKinds.Where(k => !cells.Any(c => c.Kind == k)).ToList();
         Assert.True(missingKinds.Count == 0, "operand kinds with no cell: " + string.Join(", ", missingKinds));
-        foreach (var (kind, spec) in AltFormCStratum().Concat(NegativeZeroStratum()).Concat(OperandKindStratum()))
+        foreach (var (kind, spec) in ExplicitStrata())
             Assert.Contains(new Cell(kind, spec), cells);
 
         // --- Sharpy arm: production compile + execute, sequential, one program per cell x column. ---
@@ -504,19 +506,38 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
             "tuple" => ("tuple[int, int]", "(1, 2)"),
             "formattable" => ("F", "F()"),
             "dunder_format" => ("D", "D()"),
+            "enum" => ("Color", "Color.RED"),
+            "str_enum" => ("Mood", "Mood.HAPPY"),
+            "user_class" => ("UserC", "UserC()"),
+            "snake_class" => ("my_thing", "my_thing()"),
             _ => throw new ArgumentOutOfRangeException(nameof(cell), cell.Kind, "no declaration for this operand kind"),
         };
         // dunder_format (#2009, R-CB): Sharpy's own __format__ — the SAME program text in both
-        // languages, the synthesized System.IFormattable carrying the spec.
-        string prelude = cell.Kind == "dunder_format"
-            ? "class D:\n    def __format__(self, s: str) -> str:\n        return \"D<\" + s + \">\"\n\n\n"
-            : cell.Kind != "formattable" ? ""
-            : forPython
+        // languages, the synthesized System.IFormattable carrying the spec. user_class and
+        // snake_class (#2006 #2030) are the same text in both languages too: a class with only
+        // __str__, so python's object.__format__ formats the empty spec as str() and refuses every
+        // other spec naming the class by its python name (the snake name for the SPY0453 class).
+        // The enums spell their declaration per language (Sharpy's `enum`; python's Enum and
+        // StrEnum, which enums.md names as the semantics); main() is shared.
+        string prelude = cell.Kind switch
+        {
+            "dunder_format" => "class D:\n    def __format__(self, s: str) -> str:\n        return \"D<\" + s + \">\"\n\n\n",
+            "formattable" => forPython
                 ? "class F:\n    def __format__(self, s):\n        return \"F<\" + s + \">\"\n\n\n"
                 : "from System import IFormattable, IFormatProvider\n\n\n"
                     + "class F(IFormattable):\n"
                     + "    def to_string(self, fmt: str, provider: IFormatProvider) -> str:\n"
-                    + "        return \"F<\" + fmt + \">\"\n\n\n";
+                    + "        return \"F<\" + fmt + \">\"\n\n\n",
+            "enum" => forPython
+                ? "from enum import Enum\n\n\nclass Color(Enum):\n    RED = 1\n\n\n"
+                : "enum Color:\n    RED = 1\n\n\n",
+            "str_enum" => forPython
+                ? "from enum import StrEnum\n\n\nclass Mood(StrEnum):\n    HAPPY = \"h\"\n\n\n"
+                : "enum Mood:\n    HAPPY = \"h\"\n\n\n",
+            "user_class" => "class UserC:\n    def __str__(self) -> str:\n        return \"U!\"\n\n\n",
+            "snake_class" => "class my_thing:\n    def __str__(self) -> str:\n        return \"m!\"\n\n\n",
+            _ => "",
+        };
         // The spec grammar never generates '"', '\\', '{' or '}', so it embeds directly in a literal.
         // Engine column: the spec travels through a str variable, so no static check can see it.
         string specDecl = column == Column.Engine ? $"    spec: str = \"{cell.Spec}\"\n" : "";
@@ -534,14 +555,19 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
     }
 
     // The literal roster of operand kinds (the anchor): the uniform draw's five, the '='-prefix
-    // stratum's int_neg, and the kind-axis stratum's seven (#1988 #1989).
+    // stratum's int_neg, the kind-axis stratum's seven (#1988 #1989), dunder_format (#2009) and the
+    // python-name stratum's four (#2006 #2007 #2030).
     private static readonly string[] UniformKinds = { "int", "float", "float_whole", "bool", "str" };
     private static readonly string[] KindAxisKinds =
         { "float_negzero", "float_tiny", "list", "dict", "set", "tuple", "formattable" };
-    // dunder_format rides only in the explicit OperandKindStratum, so the seeded kind-axis draw is
-    // unchanged.
+    // dunder_format rides only in the explicit OperandKindStratum and the python-name kinds only in
+    // the explicit PythonNameKindStratum, so the seeded kind-axis draw is unchanged.
+    private static readonly string[] PythonNameKinds = { "enum", "str_enum", "user_class", "snake_class" };
     private static readonly string[] AllKinds = UniformKinds.Append("int_neg").Concat(KindAxisKinds)
-        .Append("dunder_format").ToArray();
+        .Append("dunder_format").Concat(PythonNameKinds).ToArray();
+
+    private static IEnumerable<(string Kind, string Spec)> ExplicitStrata() =>
+        AltFormCStratum().Concat(NegativeZeroStratum()).Concat(OperandKindStratum()).Concat(PythonNameKindStratum());
 
     /// <summary>
     /// #1978: '#' with the 'c' presentation type, alone and beside the other int rules it competes
@@ -572,6 +598,28 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         from kind in new[] { "list", "dict", "set", "tuple", "formattable", "dunder_format" }
         from spec in new[] { "", ">10", "d", "abc", "*^9" }
         select (kind, spec);
+
+    /// <summary>
+    /// #2006 #2007 #2030 (P11f): the operand kinds whose format route spells a PYTHON name — an int
+    /// enum (python's Enum: <c>str()</c> is <c>Color.RED</c>, then str's grammar, so a refusal names
+    /// <c>'str'</c>), a string enum (StrEnum: the value), a PascalCase class with only <c>__str__</c>
+    /// (object.__format__: the empty spec is <c>str()</c>, any other spec is the TypeError naming
+    /// <c>UserC.__format__</c>) and the SPY0453-named class, whose refusal names the snake name
+    /// <c>my_thing.__format__</c>, never the emitted <c>MyThing</c>. The seeded generator's kind roster
+    /// reaches none of them.
+    /// </summary>
+    private static IEnumerable<(string Kind, string Spec)> PythonNameKindStratum()
+    {
+        string[] specs = { "", ">14", "*^16", "s", "d", "abc", ".3", "10", "<12", "x" };
+        foreach (var kind in new[] { "enum", "user_class", "snake_class" })
+        {
+            foreach (var spec in specs)
+                yield return (kind, spec);
+        }
+        // The string enum carries only the specs python accepts: its refusals are not yet python's.
+        foreach (var spec in new[] { "", ">14", "*^16", "s", ".3", "10", "<12" })
+            yield return ("str_enum", spec);
+    }
 
     private static List<Cell> GenerateCells(int target)
     {
@@ -683,7 +731,7 @@ public class FormatSpecDifferentialTests : IntegrationTestBase
         }
 
         // The explicit strata: every listed (kind, spec) is drawn, whatever the seeds produced.
-        foreach (var (kind, spec) in AltFormCStratum().Concat(NegativeZeroStratum()).Concat(OperandKindStratum()))
+        foreach (var (kind, spec) in ExplicitStrata())
         {
             var cell = new Cell(kind, spec);
             if (seen.Add(cell.Key(Column.Engine)))
