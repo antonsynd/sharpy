@@ -17,7 +17,7 @@ namespace Sharpy
                 {
                     if (_hasNullKey)
                         return _nullValue;
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
                 if (key is K typedKey)
@@ -27,10 +27,10 @@ namespace Sharpy
                         return value;
                     }
 
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
             set
             {
@@ -156,7 +156,7 @@ namespace Sharpy
                     return val;
                 }
 
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
 
             if (key is K typedKey)
@@ -167,10 +167,10 @@ namespace Sharpy
                     return value;
                 }
 
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
 
-            throw new KeyError(Repr(key));
+            throw new KeyError(key);
         }
 
         object? IDict.Pop(object key, object? defaultValue)
@@ -281,7 +281,7 @@ namespace Sharpy
             {
                 if (!_hasNullKey)
                 {
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
                 _hasNullKey = false;
@@ -293,13 +293,13 @@ namespace Sharpy
             {
                 if (!_dict.Remove(typedKey))
                 {
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
                 return;
             }
 
-            throw new KeyError(Repr(key));
+            throw new KeyError(key);
         }
     }
 }

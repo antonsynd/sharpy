@@ -97,7 +97,7 @@ namespace Sharpy
         {
             if (!_set.Remove(x))
             {
-                throw new KeyError($"{x}");
+                throw new KeyError(x);
             }
         }
 

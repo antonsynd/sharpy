@@ -1,0 +1,76 @@
+# KeyError carries the RAW key: str(e) is the key's repr, repr(e) is KeyError(<repr>).
+# One rule in Core's KeyError; every raiser (dict, set, str.format, format_map) passes the raw key.
+# Expected output is python3 3.12's for the same program.
+def show(e: KeyError) -> None:
+    print(str(e))
+    print(repr(e))
+    print(e)
+    print(f"[{e}]")
+
+def main() -> None:
+    t1: str = "{name}"
+    try:
+        t1.format_map({})
+    except KeyError as e:
+        show(e)
+    try:
+        e0: dict[str, int] = {}
+        "{0[zz]}".format(e0)
+    except KeyError as e:
+        show(e)
+    d: dict[str, int] = {}
+    try:
+        print(d["k"])
+    except KeyError as e:
+        show(e)
+    di: dict[int, int] = {}
+    try:
+        print(di[3])
+    except KeyError as e:
+        show(e)
+    dt: dict[tuple[int, int], int] = {}
+    try:
+        print(dt[(1, 2)])
+    except KeyError as e:
+        show(e)
+    try:
+        raise KeyError("k")
+    except KeyError as e:
+        show(e)
+    try:
+        raise KeyError()
+    except KeyError as e:
+        show(e)
+    s: set[int] = set()
+    try:
+        s.remove(5)
+    except KeyError as e:
+        show(e)
+    try:
+        s.pop()
+    except KeyError as e:
+        show(e)
+    try:
+        d.popitem()
+    except KeyError as e:
+        show(e)
+    try:
+        d.pop("zz")
+    except KeyError as e:
+        show(e)
+    ds: dict[str, int] = {"it's": 1}
+    try:
+        print(ds["it's"+"x"])
+    except KeyError as e:
+        show(e)
+
+    try:
+        raise KeyError(1)
+    except KeyError as e:
+        show(e)
+    try:
+        print(f"{d['k']}")
+    except KeyError as e:
+        show(e)
+    ks: list[KeyError] = [KeyError("x"), KeyError(2)]
+    print(ks)

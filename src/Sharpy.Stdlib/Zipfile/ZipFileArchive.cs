@@ -89,7 +89,7 @@ namespace Sharpy
             var entry = _archive!.GetEntry(name);
             if (entry == null)
             {
-                throw new KeyError("There is no item named '" + name + "' in the archive");
+                throw new KeyError("There is no item named " + Builtins.Repr(name) + " in the archive");
             }
             return ZipInfo.FromEntry(entry);
         }
@@ -106,7 +106,7 @@ namespace Sharpy
             var entry = _archive!.GetEntry(name);
             if (entry == null)
             {
-                throw new KeyError("There is no item named '" + name + "' in the archive");
+                throw new KeyError("There is no item named " + Builtins.Repr(name) + " in the archive");
             }
 
             using (var stream = entry.Open())
@@ -124,7 +124,7 @@ namespace Sharpy
             var entry = _archive!.GetEntry(name);
             if (entry == null)
             {
-                throw new KeyError("There is no item named '" + name + "' in the archive");
+                throw new KeyError("There is no item named " + Builtins.Repr(name) + " in the archive");
             }
             return entry.Open();
         }

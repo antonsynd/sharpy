@@ -95,7 +95,7 @@ namespace Sharpy
                         return map[key];
                     }
                 }
-                throw new KeyError(key?.ToString() ?? "None");
+                throw new KeyError(key);
             }
             set
             {

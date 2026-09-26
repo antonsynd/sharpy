@@ -260,8 +260,8 @@ namespace Sharpy
                 }
                 catch (KeyError)
                 {
-                    // CPython's KeyError carries the key, so it prints as its repr: KeyError: 'x' (#2008).
-                    throw new KeyError(Builtins.Repr(baseField));
+                    // CPython's KeyError carries the raw key; KeyError renders it (str 'x', repr KeyError('x'), #2008).
+                    throw new KeyError(baseField);
                 }
             }
             else
@@ -292,7 +292,7 @@ namespace Sharpy
                 {
                     // str.format takes positional arguments only, so a keyword field never binds:
                     // CPython's KeyError naming the field (#2008, R-CE).
-                    throw new KeyError(Builtins.Repr(baseField));
+                    throw new KeyError(baseField);
                 }
 
                 if (args == null || index < 0 || index >= args.Length)
@@ -480,7 +480,7 @@ namespace Sharpy
                 if (!TryAdaptKey(typedKey, dictInterface.GetGenericArguments()[0], out object? clrKey)
                     || !(bool)dictInterface.GetMethod("ContainsKey")!.Invoke(value, new[] { clrKey })!)
                 {
-                    throw new KeyError(Builtins.Repr(typedKey));
+                    throw new KeyError(typedKey);
                 }
                 return dictInterface.GetProperty("Item")!.GetValue(value, new[] { clrKey })!;
             }
@@ -488,7 +488,7 @@ namespace Sharpy
             {
                 if (!nonGenericDict.Contains(typedKey))
                 {
-                    throw new KeyError(Builtins.Repr(typedKey));
+                    throw new KeyError(typedKey);
                 }
                 return nonGenericDict[typedKey]!;
             }
@@ -532,7 +532,7 @@ namespace Sharpy
             }
             if (hasIndexer)
             {
-                throw new KeyError(Builtins.Repr(typedKey));
+                throw new KeyError(typedKey);
             }
             throw new TypeError("'" + pyName + "' object is not subscriptable");
         }

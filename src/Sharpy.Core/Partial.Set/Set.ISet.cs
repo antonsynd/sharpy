@@ -25,13 +25,13 @@ namespace Sharpy
             {
                 if (!_set.Remove(typedItem))
                 {
-                    throw new KeyError(Repr(item));
+                    throw new KeyError(item);
                 }
 
                 return;
             }
 
-            throw new KeyError(Repr(item));
+            throw new KeyError(item);
         }
 
         object? ISet.Pop()

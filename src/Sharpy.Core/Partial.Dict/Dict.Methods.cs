@@ -215,7 +215,7 @@ namespace Sharpy
                     return val;
                 }
 
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
 
             if (_dict.TryGetValue(key, out V? value))
@@ -224,7 +224,7 @@ namespace Sharpy
                 return value;
             }
 
-            throw new KeyError(Repr(key));
+            throw new KeyError(key);
         }
 
         /// <summary>
@@ -401,7 +401,7 @@ namespace Sharpy
             {
                 if (!_hasNullKey)
                 {
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
                 _hasNullKey = false;
@@ -411,7 +411,7 @@ namespace Sharpy
 
             if (!_dict.Remove(key))
             {
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
         }
 

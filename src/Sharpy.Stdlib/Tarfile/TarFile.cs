@@ -96,7 +96,7 @@ namespace Sharpy
                     return info;
                 }
             }
-            throw new KeyError("'" + name + "'");
+            throw new KeyError("filename " + Builtins.Repr(name) + " not found");
         }
 
         public Bytes? Extractfile(string name)
@@ -124,7 +124,7 @@ namespace Sharpy
                     return new Bytes(Array.Empty<byte>());
                 }
             }
-            throw new KeyError("'" + name + "'");
+            throw new KeyError("filename " + Builtins.Repr(name) + " not found");
         }
 
         public void Extractall(string? path = null, List<TarInfo>? members = null)
@@ -184,7 +184,7 @@ namespace Sharpy
                     return;
                 }
             }
-            throw new KeyError("'" + name + "'");
+            throw new KeyError("filename " + Builtins.Repr(name) + " not found");
         }
 
         public void Add(string name, string? arcname = null, bool recursive = true)

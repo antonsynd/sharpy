@@ -61,13 +61,13 @@ namespace Sharpy
                 if (IsNullKey(key))
                 {
                     if (!_hasNullKey)
-                        throw new KeyError("None");
+                        throw new KeyError(null);
                     return _items[_nullIndex].Value;
                 }
 
                 if (!_index.TryGetValue(key, out int idx))
                 {
-                    throw new KeyError(key?.ToString() ?? "None");
+                    throw new KeyError(key);
                 }
                 return _items[idx].Value;
             }
@@ -126,7 +126,7 @@ namespace Sharpy
             if (IsNullKey(key))
             {
                 if (!_hasNullKey)
-                    throw new KeyError("None");
+                    throw new KeyError(null);
                 V val = _items[_nullIndex].Value;
                 RemoveAtIndex(_nullIndex);
                 return val;
@@ -134,7 +134,7 @@ namespace Sharpy
 
             if (!_index.TryGetValue(key, out int idx))
             {
-                throw new KeyError(key?.ToString() ?? "None");
+                throw new KeyError(key);
             }
 
             V value = _items[idx].Value;
@@ -193,14 +193,14 @@ namespace Sharpy
             if (IsNullKey(key))
             {
                 if (!_hasNullKey)
-                    throw new KeyError("None");
+                    throw new KeyError(null);
                 idx = _nullIndex;
             }
             else
             {
                 if (!_index.TryGetValue(key, out idx))
                 {
-                    throw new KeyError(key?.ToString() ?? "None");
+                    throw new KeyError(key);
                 }
             }
 

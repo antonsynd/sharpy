@@ -87,13 +87,14 @@ public class CollectionReprSweepTests
     /// The <c>IRepr</c> roster (#2005, #2043): every public Sharpy.Core / Sharpy.Stdlib type that says
     /// its python repr differs from its str. The roster is a literal, so a new implementer is a
     /// deliberate addition with an executing repr cell (<c>OptionalReprMatrixTests</c>,
-    /// <c>DatetimeStrReprMatrixTests</c>, <c>TemplateSurfaceMatrixTests</c>) — and a type dropped
+    /// <c>DatetimeStrReprMatrixTests</c>, <c>TemplateSurfaceMatrixTests</c>, <c>KeyErrorTextTests</c> for
+    /// KeyError and, through inheritance, zoneinfo's ZoneInfoNotFoundError) — and a type dropped
     /// from the channel is red here, not a quietly different repr.
     /// </summary>
     private static readonly string[] ReprRoster =
     {
-        "Sharpy.Date", "Sharpy.DateTime", "Sharpy.Interpolation", "Sharpy.Optional`1",
-        "Sharpy.Template", "Sharpy.Time", "Sharpy.Timedelta", "Sharpy.Timezone",
+        "Sharpy.Date", "Sharpy.DateTime", "Sharpy.Interpolation", "Sharpy.KeyError", "Sharpy.Optional`1",
+        "Sharpy.Template", "Sharpy.Time", "Sharpy.Timedelta", "Sharpy.Timezone", "Sharpy.ZoneInfoNotFoundError",
     };
 
     [Fact]

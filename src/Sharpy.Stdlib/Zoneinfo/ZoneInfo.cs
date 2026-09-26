@@ -17,7 +17,7 @@ namespace Sharpy
             }
             catch (TimeZoneNotFoundException)
             {
-                throw new ZoneInfoNotFoundError($"'No time zone found with key {key}'");
+                throw new ZoneInfoNotFoundError($"No time zone found with key {key}");
             }
         }
 

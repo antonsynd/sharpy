@@ -63,7 +63,7 @@ namespace Sharpy
             var entry = _archive!.GetEntry(member);
             if (entry == null)
             {
-                throw new KeyError("There is no item named '" + member + "' in the archive");
+                throw new KeyError("There is no item named " + Builtins.Repr(member) + " in the archive");
             }
 
             string destDir = path ?? Directory.GetCurrentDirectory();
@@ -84,7 +84,7 @@ namespace Sharpy
                     var entry = _archive!.GetEntry(name);
                     if (entry == null)
                     {
-                        throw new KeyError("There is no item named '" + name + "' in the archive");
+                        throw new KeyError("There is no item named " + Builtins.Repr(name) + " in the archive");
                     }
                     ExtractEntry(entry, destDir);
                 }

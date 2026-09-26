@@ -158,7 +158,7 @@ namespace Sharpy
                 {
                     if (_hasNullKey)
                         return _nullValue;
-                    throw new KeyError(Repr(key));
+                    throw new KeyError(key);
                 }
 
                 if (_dict.TryGetValue(key, out TValue? value))
@@ -166,7 +166,7 @@ namespace Sharpy
                     return value;
                 }
 
-                throw new KeyError(Repr(key));
+                throw new KeyError(key);
             }
         }
 
