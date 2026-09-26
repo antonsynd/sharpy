@@ -31,7 +31,8 @@ Some modules are written in Sharpy itself (`spy/<name>_module.spy`) and their C#
   bash build_tools/regenerate_spy_stdlib.sh           # regenerate all in-place
   bash build_tools/regenerate_spy_stdlib.sh --check   # CI staleness check
   ```
-- Check the `MODULES` array first to know which kind a module is.
+- Check the `MODULES` array first to know which kind a module is. Each entry is three fields, `<stem>:<python module name>:<target>`. The python name is what the regen writes into the generated `[SharpyModuleType]` stamps.
+- A spy-sourced module is `namespace Sharpy.<Stem> { [SharpyModule] static partial class <Stem>Module {…} <sibling types> }` (module-as-namespace layout, #2039). Its hand-written `__Init__.cs` partial lives in the same namespace and class; the ~40 hand-written-only modules keep their static-class shape.
 - In `.spy` stubs use `T | None`, not `T?`, for nullable params (#804).
 
 ## Error Conventions (mandatory)

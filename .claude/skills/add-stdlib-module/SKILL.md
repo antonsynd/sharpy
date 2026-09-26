@@ -28,11 +28,12 @@ No compiler registration needed — `ModuleRegistry.LoadReference()` discovers m
 ### spy-sourced only
 
 1. Create `src/Sharpy.Stdlib/spy/<name>_module.spy` (auto-included by `spy/stdlib.spyproj` glob)
-2. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh`:
+2. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh` — three fields, `<stem>:<python module name>:<target>`:
    ```
-   "<name>_module:<Module>/<Module>.cs"
+   "<name>_module:<name>:<Module>/<Module>.cs"
    ```
-3. Generate the C#: `bash build_tools/regenerate_spy_stdlib.sh`
+   The middle field is the module's python name. The regen rewrites every generated `[SharpyModuleType("<stem>", …)]` stamp to it (the emitter stamps the file stem, #2047) and fails if a stem-named stamp survives. The module is emitted as `namespace Sharpy.<Stem> { [SharpyModule] static partial class <Stem>Module { … } <sibling types> }` (Decision 28 S-a), so its hand-written `__Init__.cs` partial must use that same namespace and members-class name.
+3. Generate the C#: `bash build_tools/regenerate_spy_stdlib.sh` (set `SHARPYC=<repo>/src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` to use a built apphost instead of `dotnet run`, e.g. when other agents hold the serialized dotnet lock)
 4. Never hand-edit the generated C# — CI fails via `check_spy_staleness.sh` if it drifts from the `.spy` source
 
 ## Step 2: API conventions (mandatory)
