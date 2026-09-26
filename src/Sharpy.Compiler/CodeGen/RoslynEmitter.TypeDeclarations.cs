@@ -1338,8 +1338,12 @@ internal partial class RoslynEmitter
         //
         // : global::Sharpy.IRepr — the CLR spelling of __repr__ (#2007): python's StrEnum repr is
         // `<Mood.HAPPY: 'h'>` while its str stays the value, so the two need separate members.
+        //
+        // [global::Sharpy.SharpyStrEnum] — the CLR fact that this class is an enum (StrEnum):
+        // `<enum 'Mood'>`, and the str format kind with the enum's own name in a refused spec.
         var classDecl = ClassDeclaration(EscapedIdentifier(className))
-            .WithAttributeLists(WithPythonNameAttribute(default, DeclaredEnumSymbol(enumDef)))
+            .WithAttributeLists(WithPythonNameAttribute(default, DeclaredEnumSymbol(enumDef))
+                .Add(AttributeList(SingletonSeparatedList(Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyStrEnum"))))))
             .WithModifiers(modifiers)
             .WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(new[]
             {

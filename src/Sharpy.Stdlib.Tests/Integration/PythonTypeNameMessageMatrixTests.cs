@@ -56,6 +56,9 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
             RED = 1
             dark_blue = 2
 
+        enum Mood:
+            HAPPY = "h"
+
         def main() -> None:
 
         """;
@@ -85,6 +88,13 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
         // str.format's attribute step on an integer enum reads python's `name` (the recorded
         // python spelling) and `value` (the underlying integer).
         { "format.enum_name_value", "print(\"{0.name} {0.value}\".format(Color.dark_blue))\nprint(\"{0.name}={0.value:>3}\".format(Color.RED))", "dark_blue 2\nRED=  1" },
+        // A string enum is python's StrEnum (a str subclass): its class is `<enum 'Mood'>`, it formats
+        // as its str, and a refused spec names the enum; the integer enum (plain Enum) names 'str'.
+        // Each route: format() / f-string / str.format with a dynamic spec or template.
+        { "type.class_repr_str_enum", "print(str(type(Mood.HAPPY)))\nprint(repr(type(Mood.HAPPY)))", "<enum 'Mood'>\n<enum 'Mood'>" },
+        { "format.str_enum_accepted", "print(format(Mood.HAPPY, \">3\"))\nprint(f\"[{Mood.HAPPY:>3}]\")\nprint(\"[{0:>3}]\".format(Mood.HAPPY))\ns: str = Mood.HAPPY\nprint(s, Mood.HAPPY == \"h\", str(Mood.HAPPY), repr(Mood.HAPPY))", "  h\n[  h]\n[  h]\nh True h <Mood.HAPPY: 'h'>" },
+        { "format.enum_refusal_names", "sp: str = \"d\"\ntp: str = \"{0:d}\"\ntry:\n    print(format(Mood.HAPPY, sp))\nexcept ValueError as e:\n    print(e)\ntry:\n    print(format(Color.RED, sp))\nexcept ValueError as e:\n    print(e)\ntry:\n    print(f\"{Mood.HAPPY:{sp}}\")\nexcept ValueError as e:\n    print(e)\ntry:\n    print(f\"{Color.RED:{sp}}\")\nexcept ValueError as e:\n    print(e)\ntry:\n    print(tp.format(Mood.HAPPY))\nexcept ValueError as e:\n    print(e)\ntry:\n    print(tp.format(Color.RED))\nexcept ValueError as e:\n    print(e)",
+            "Unknown format code 'd' for object of type 'Mood'\nUnknown format code 'd' for object of type 'str'\nUnknown format code 'd' for object of type 'Mood'\nUnknown format code 'd' for object of type 'str'\nUnknown format code 'd' for object of type 'Mood'\nUnknown format code 'd' for object of type 'str'" },
         { "deque.index", "d = Deque[int]([1, 2, 3])\nprint(d[-1])\nprint(d[0])\nd[1] = 20\nprint(d)\ntry:\n    print(d[3])\nexcept IndexError as e:\n    print(e)", "3\n1\ndeque([1, 20, 3])\ndeque index out of range" },
         // C-implemented Stdlib types: tp_name in C-level messages, __name__ elsewhere. python spells
         // the deque `collections.deque` / `deque` (Decision 26: Sharpy's surface name is Deque).
@@ -116,6 +126,14 @@ public class PythonTypeNameMessageMatrixTests : StdlibIntegrationTestBase
     [InlineData("static.snake", "print(format(my_thing(), \"x\"))", "unsupported format string passed to my_thing.__format__")]
     [InlineData("static.nested_snake", "print(format(Outer.in_ner(), \"x\"))", "unsupported format string passed to in_ner.__format__")]
     [InlineData("static.snake_struct", "print(format(my_pt(1), \"x\"))", "unsupported format string passed to my_pt.__format__")]
+    // A string enum (StrEnum) names itself; an integer enum (plain Enum) names 'str' — python3 3.12,
+    // the same text the runtime column prints.
+    [InlineData("static.str_enum_format", "print(format(Mood.HAPPY, \"d\"))", "Unknown format code 'd' for object of type 'Mood'")]
+    [InlineData("static.str_enum_fstring", "print(f\"{Mood.HAPPY:d}\")", "Unknown format code 'd' for object of type 'Mood'")]
+    [InlineData("static.str_enum_str_format", "print(\"{0:d}\".format(Mood.HAPPY))", "Unknown format code 'd' for object of type 'Mood'")]
+    [InlineData("static.int_enum_format", "print(format(Color.RED, \"d\"))", "Unknown format code 'd' for object of type 'str'")]
+    [InlineData("static.int_enum_fstring", "print(f\"{Color.RED:d}\")", "Unknown format code 'd' for object of type 'str'")]
+    [InlineData("static.int_enum_str_format", "print(\"{0:d}\".format(Color.RED))", "Unknown format code 'd' for object of type 'str'")]
     [Trait("Category", "Conformance")]
     public void Static_NamesTheSourceSpelling(string label, string body, string message)
     {

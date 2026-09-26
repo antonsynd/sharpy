@@ -18,10 +18,11 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// The cure is at the CLR-identity rung: the lowering implements <c>System.IFormattable</c>, the CLR
 /// spelling of <c>__format__</c>, delegating to the str rules on <c>Value</c>.
 ///
-/// <para>Oracle: python3.14 <c>class Color(StrEnum): RED = "red"; GREEN = "green"</c>. One recorded
-/// divergence: for the refused <c>d</c> code python names the type <c>'Color'</c> (StrEnum is a str
-/// subclass), while Sharpy's two twins both say <c>'str'</c>. That is Decision 6's projection for a
-/// Sharpy enum, and it is python's own message for a plain <c>Enum</c>.</para>
+/// <para>Oracle: python3.14 <c>class Color(StrEnum): RED = "red"; GREEN = "green"</c>. For the refused
+/// <c>d</c> code both twins name the type <c>'Color'</c>, as python does (StrEnum is a str subclass):
+/// the runtime through the class's <c>[SharpyStrEnum]</c> stamp, the static twin through the enum's
+/// recorded <c>IsStringEnum</c>. (They said <c>'str'</c>, a plain <c>Enum</c>'s message, until
+/// cells-b F12.)</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class StringEnumFormatTests : IntegrationTestBase
@@ -67,15 +68,15 @@ public class StringEnumFormatTests : IntegrationTestBase
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeTrue(string.Join(" | ", result.CompilationErrors) + "\n" + result.StandardError);
-        // python3.14 StrEnum, line for line (the three ValueError lines say 'str', see the class remarks).
+        // python3.14 StrEnum, line for line.
         result.StandardOutput.Should().Be(
             "[  red]\n[red   ]\n[  red  ]\n"
             + "[  red]\n[red   ]\n[  red  ]\n"
             + "[  red]\n[red   ]\n[  red  ]\n"
             + "[  red]\n[  red]\n[red   ]\n[red   ]\n[  red  ]\n[  red  ]\n"
-            + "ValueError: Unknown format code 'd' for object of type 'str'\n"
-            + "ValueError: Unknown format code 'd' for object of type 'str'\n"
-            + "ValueError: Unknown format code 'd' for object of type 'str'\n"
+            + "ValueError: Unknown format code 'd' for object of type 'Color'\n"
+            + "ValueError: Unknown format code 'd' for object of type 'Color'\n"
+            + "ValueError: Unknown format code 'd' for object of type 'Color'\n"
             + "[   red]\n[ green]\n[red]\n");
 
         var color = CSharpSyntaxTree.ParseText(result.GeneratedCSharp!).GetRoot().DescendantNodes()
@@ -100,7 +101,7 @@ public class StringEnumFormatTests : IntegrationTestBase
         var result = CompileAndExecute(source);
 
         result.Success.Should().BeFalse($"[{route}] {source}");
-        result.RawDiagnostics.Should().Contain(d => d.Message.Contains("Unknown format code 'd' for object of type 'str'"),
+        result.RawDiagnostics.Should().Contain(d => d.Message.Contains("Unknown format code 'd' for object of type 'Color'"),
             $"[{route}] {string.Join(" | ", result.CompilationErrors)}");
         result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
     }

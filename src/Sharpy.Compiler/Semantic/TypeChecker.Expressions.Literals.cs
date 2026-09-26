@@ -793,6 +793,11 @@ internal partial class TypeChecker
 
         switch (type)
         {
+            case UserDefinedType { Symbol: { TypeKind: TypeKind.Enum, IsStringEnum: true } stringEnum }:
+                // A string-backed enum is python's StrEnum, a str subclass: it formats as a str and a
+                // refused spec names the enum class, as Core names the runtime class it stamps
+                // SharpyStrEnum (PyFormat.FormatOperandTypeName).
+                return new FormatOperand(SharpyRT::Sharpy.FormatOperandKind.Str, stringEnum.Name);
             case UserDefinedType { Symbol.TypeKind: TypeKind.Enum }:
                 // A Sharpy-declared enum has no CLR type at compile time, so the arm keys on the
                 // symbol's kind: python's Enum.__format__ is str.__format__(str(self), spec).

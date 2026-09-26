@@ -447,7 +447,10 @@ TypeError: unsupported format string passed to list.__format__
 
 `Optional` has no Python twin; it is refused like the collections — unwrap it first. An `enum` member formats as its `str`, as in Python (`Enum.__format__` is
 `str.__format__(str(self), spec)`), so `f"{Color.RED:>5}"` pads the member's text and
-`f"{Color.RED:d}"` is SPY0609 `Unknown format code 'd' for object of type 'str'`.
+`f"{Color.RED:d}"` is SPY0609 `Unknown format code 'd' for object of type 'str'`. A string-backed
+enum is Python's `StrEnum`, a `str` subclass: it pads its value (`f"{Mood.HAPPY:>3}"` is `  h`),
+and a refused spec names the enum, `Unknown format code 'd' for object of type 'Mood'`. That holds
+both statically and at runtime.
 
 **A type that owns its spec.** A class or struct that declares
 `def __format__(self, spec: str) -> str` owns its spec, as in Python: the compiler synthesizes

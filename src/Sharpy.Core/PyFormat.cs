@@ -129,6 +129,12 @@ namespace Sharpy
             {
                 return FormatOperandKind.Complex;
             }
+            // A string enum is a str subclass (StrEnum): str.__format__ of its value. Before
+            // IFormattable, which its emitted class also implements.
+            if (IsStrEnum(type))
+            {
+                return FormatOperandKind.Str;
+            }
             if (typeof(IFormattable).IsAssignableFrom(type))
             {
                 return FormatOperandKind.Formattable;
@@ -138,11 +144,25 @@ namespace Sharpy
 
         /// <summary>
         /// The python type name CPython's format messages name an operand of CLR type
-        /// <paramref name="type"/> by: <c>str</c> for the str kind (an enum or a char formats as its
-        /// str), otherwise <see cref="PyTypeName(Type)"/>. Shared with the compiler's static twin.
+        /// <paramref name="type"/> by: <c>str</c> for the str kind (an integer enum or a char formats as
+        /// its str), except a string enum, which is a str subclass and is named as itself (python's
+        /// StrEnum: <c>'Mood'</c>), otherwise <see cref="PyTypeName(Type)"/>. Shared with the compiler's
+        /// static twin.
         /// </summary>
         public static string FormatOperandTypeName(Type type) =>
-            KindOf(type) == FormatOperandKind.Str ? "str" : PyTypeName(type);
+            KindOf(type) == FormatOperandKind.Str && !IsStrEnum(type) ? "str" : PyTypeName(type);
+
+        // Per type: whether it carries SharpyStrEnumAttribute. KindOf runs on every format operation,
+        // so the attribute is not re-read each time.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> _isStrEnum =
+            new System.Collections.Concurrent.ConcurrentDictionary<Type, bool>();
+
+        /// <summary>
+        /// Whether <paramref name="type"/> is the class the compiler emits for a string-backed enum
+        /// (<see cref="SharpyStrEnumAttribute"/>).
+        /// </summary>
+        private static bool IsStrEnum(Type type) =>
+            _isStrEnum.GetOrAdd(type, t => Attribute.IsDefined(t, typeof(SharpyStrEnumAttribute), inherit: false));
 
         /// <summary>
         /// Every CLR integer type python would call <c>int</c>: the eight fixed-width primitives,
@@ -308,12 +328,13 @@ namespace Sharpy
         /// <c>&lt;class 'System.Collections.Generic.List`1[System.Int32]'&gt;</c>). A python builtin
         /// that is not a primitive or a collection (an exception: <c>ValueError</c>, <c>KeyError</c>,
         /// <c>Exception</c>) is in python's <c>builtins</c> module, which the repr elides, so it prints
-        /// its bare name too (<see cref="IsBuiltinsModuleType"/>). An enum class is python's
-        /// <c>EnumType</c> repr, <c>&lt;enum 'Color'&gt;</c>: always the simple name, no module.
+        /// its bare name too (<see cref="IsBuiltinsModuleType"/>). An enum class (a CLR enum, or a
+        /// string enum's <see cref="SharpyStrEnumAttribute"/> class) is python's <c>EnumType</c> repr,
+        /// <c>&lt;enum 'Color'&gt;</c>: always the simple name, no module.
         /// </summary>
         internal static string PyClassRepr(Type type)
         {
-            if (type.IsEnum)
+            if (type.IsEnum || IsStrEnum(type))
             {
                 return "<enum '" + PyDunderName(type) + "'>";
             }
