@@ -61,6 +61,14 @@ public sealed record CompileResult
     public string? OutputAssemblyPath { get; init; }
 
     /// <summary>
+    /// The reflection name of the entry module's members class — the type a self-contained publish
+    /// invokes <c>Main</c> on (<c>Thing.ThingModule</c>, <c>SharpyApp.Main.MainModule</c>): the
+    /// layout semantic analysis recorded for the entry file under the project's root namespace
+    /// (#2039). Null when analysis did not reach the entry file.
+    /// </summary>
+    public string? EntryTypeName { get; init; }
+
+    /// <summary>
     /// Project-level metrics (aggregated per-file plus assembly metrics) when compilation
     /// went through the synthetic project-of-one-file path (#1038), otherwise null. The CLI
     /// renders these for single-file <c>run</c>/<c>build</c>/<c>compile</c>.

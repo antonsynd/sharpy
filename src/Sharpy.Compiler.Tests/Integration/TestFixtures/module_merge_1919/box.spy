@@ -1,5 +1,6 @@
-# Control for #1919: a NON-generic class named like its file merges — it becomes the module class
-# and absorbs the module's members, including main.
+# Control for #1919 → #2039: a NON-generic class named like its file. It used to merge into the
+# module class; with no merge (ruling M2) it is an ordinary type beside the members class
+# `BoxModule`, exactly like the generic thing.spy.
 class Box:
     v: int
 

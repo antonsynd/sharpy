@@ -10,6 +10,12 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Project;
 
 /// <summary>
+/// #2039 update: every module is a namespace and its members class is <c>&lt;Stem&gt;Module</c>
+/// (<c>ModuleIdentifiers.LayoutMembersClassName</c>, recorded as the module layout), so the entry bit
+/// no longer names a class — <c>main.spy</c> is <c>MainModule</c> either way — and it no longer
+/// decides SPY0526. What the matrix still pins: one name every reader agrees on, the SPY0403 entry
+/// requirement, the non-entry <c>MainFunc</c> rename (#2065), and warm ≡ cold. History below.
+///
 /// #2013: ONE module-class-name authority (<c>ModuleIdentifiers.ModuleClassName</c>) with ONE entry
 /// predicate (<c>ModuleIdentifiers.DeclaresEntryMain</c>: a top-level <c>def main</c> that is NOT
 /// backtick-escaped), read by the emitter, by SPY0523 (<c>CodeGenInfoComputer</c>), by SPY0403
@@ -67,27 +73,23 @@ public class ModuleClassNameAuthorityMatrixTests
     /// </summary>
     private static (string[] Codes, string? ModuleClass, string? Member) Expected(string kind, string content)
     {
+        // #2039: every module's members class is <Stem>Module — main.spy and a main/__init__.spy are
+        // both MainModule, entry point or not (the Program special case retired). So `def program`,
+        // `def Main` and `def `Main`` in main.spy no longer meet their class (def Main/`Main` were
+        // SPY0523 against class Main); the entry file without an unescaped main() is SPY0403 alone.
         var entry = kind == "exe_main";
         return content switch
         {
-            "def_main" => (Array.Empty<string>(), "Program", entry ? "Main" : "MainFunc"),
-            "def_program" => entry
-                ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
-                : (Array.Empty<string>(), "Main", "Program"),
-            "def_Main" or "def_escaped_Main" => entry
-                ? (new[] { DiagnosticCodes.Validation.MissingMainFunction, DiagnosticCodes.CodeGen.FunctionModuleClassCollision }, null, null)
-                : (new[] { DiagnosticCodes.CodeGen.FunctionModuleClassCollision }, null, null),
-            "def_escaped_main" => entry
-                ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
-                : (Array.Empty<string>(), "Main", "main"),
-            "init" => entry
+            "def_main" or "calls_main" or "init_main" => (Array.Empty<string>(), "MainModule", entry ? "Main" : "MainFunc"),
+            "def_program" or "init" => entry
                 ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
                 : (Array.Empty<string>(), "MainModule", "Program"),
-            "calls_main" => (Array.Empty<string>(), "Program", entry ? "Main" : "MainFunc"),
-            // A package main/__init__.spy is class MainModule in namespace …Main whatever it declares
-            // (#1948): its entry main() is MainModule.Main() — no longer the CS0542 Main.Main() that was
-            // a true SPY0523 while the class was Main — and a non-entry one is MainFunc.
-            "init_main" => (Array.Empty<string>(), "MainModule", entry ? "Main" : "MainFunc"),
+            "def_Main" or "def_escaped_Main" => entry
+                ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
+                : (Array.Empty<string>(), "MainModule", "Main"),
+            "def_escaped_main" => entry
+                ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
+                : (Array.Empty<string>(), "MainModule", "main"),
             _ => throw new ArgumentOutOfRangeException(nameof(content), content, null)
         };
     }
@@ -156,8 +158,10 @@ public class ModuleClassNameAuthorityMatrixTests
         var cold = helper.Compile();
         var coldCodes = ErrorCodes(cold);
 
-        // At cold the bit is read off the AST: only a module declaring main() spells Program.
-        coldCodes.Contains(DiagnosticCodes.CodeGen.PackageModuleNameCollision).Should().Be(content is "def_main" or "calls_main",
+        // #2039: main.spy is namespace …Main whatever it declares, and program/ is namespace
+        // …Program — two names, as in python, so refusal 1 never fires here. (While the entry
+        // module was class Program, a main.spy declaring main() was refused beside program/.)
+        coldCodes.Should().NotContain(DiagnosticCodes.CodeGen.PackageModuleNameCollision,
             $"[{kind}×{content}] cold\n{Describe(cold)}");
 
         // An edit to a DIFFERENT file (content, not mtime) makes the unit under test cache-served.

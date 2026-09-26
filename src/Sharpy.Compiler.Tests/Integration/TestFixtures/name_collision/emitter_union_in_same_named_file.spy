@@ -1,7 +1,7 @@
-# A union declares a type, and it was missing from the emitter's module-class collision switch
-# altogether: this file used to emit class EmitterUnionInSameNamedFile nested inside class
-# EmitterUnionInSameNamedFile and fail with CS0542 reported as an SPY0908 internal error. A
-# collision the compiler can name is the answer here, exactly as for a struct or an enum (#1268).
+# A union named like its file (#1268 → #2039). It used to emit class EmitterUnionInSameNamedFile
+# nested inside the module class of the same name (CS0542 behind SPY0908), then was refused by name
+# (SPY0520). Every module is now a namespace: the union is declared beside the members class
+# EmitterUnionInSameNamedFileModule, so it is an ordinary type and the program runs.
 union EmitterUnionInSameNamedFile:
     case Circle(r: float)
     case Empty()

@@ -1,1 +1,0 @@
-Type 'Thing' conflicts with module class name 'Thing': a generic class cannot merge into the module class @5:7

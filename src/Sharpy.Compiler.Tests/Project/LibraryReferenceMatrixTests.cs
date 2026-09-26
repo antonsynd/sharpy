@@ -21,12 +21,16 @@ namespace Sharpy.Compiler.Tests.Project;
 /// Prior commit: SPY0908 CS0234 — the module class was nested in wrapper class <c>Pkg</c>, and
 /// discovery (<c>OverloadIndexBuilder</c>) records the nested class's namespace without the wrapper.
 /// A namespace segment is what discovery reads.</item>
-/// <item><c>c</c> merged module <c>thing.spy</c> + <c>class Thing</c> → <c>from thing import thing_fn</c>
-/// → <c>6</c>. It was SPY0300 while the merged module class carried no <c>[SharpyModule]</c>; #2006
-/// (cb5df187f) stamps it, so discovery finds the module. P14c (#2039) lifts the merge and must keep
-/// this cell running.</item>
-/// <item><c>d</c> module with a type → <c>from shapes import Foo, mk</c> → <c>9</c>/<c>9</c> (nested-type
-/// discovery; the positive control that the harness reaches a library's types).</item>
+/// <item><c>c</c> a module with a type named like its file, <c>thing.spy</c> + <c>class Thing</c> →
+/// <c>from thing import thing_fn</c> → <c>6</c>. It was SPY0300 at P5's base 7bb1511a7 (the merged module
+/// class carried no <c>[SharpyModule]</c>); #2006 (cb5df187f) stamped the merged class; with no merge
+/// (#2039, M2) the members class <c>ThingModule</c> is stamped like every other module's — c keeps
+/// running.</item>
+/// <item><c>d</c> module with a type → <c>from shapes import Foo, mk</c> → <c>9</c>/<c>9</c>: the type
+/// is a sibling of <c>ShapesModule</c> stamped <c>[SharpyModuleType("shapes", "Foo")]</c> (#2039), and
+/// discovery finds it by attribute.</item>
+/// <item><c>e</c>/<c>f</c> a module holding ONLY a type → <c>from things import Box</c> / <c>import
+/// things; things.Box</c>: resolves through the type's <c>[SharpyModuleType]</c> stamp (#2039).</item>
 /// </list>
 /// </remarks>
 [Collection("HeavyCompilation")]
@@ -46,15 +50,20 @@ public class LibraryReferenceMatrixTests
             // pkg/lib.spy alone roots at src/pkg/ and names it lib).
             new[] { ("pkg/lib.spy", "def lib_fn() -> int:\n    return 5\n"), ("util.spy", "def u() -> int:\n    return 0\n") },
             "from pkg.lib import lib_fn\n\ndef main() -> None:\n    print(lib_fn())\n", "5", null! },
-        // A merged file==class module (thing.spy declaring `class Thing`): its module class now carries
-        // [SharpyModule] (#2006, cb5df187f), so reference discovery finds it and the import resolves.
-        // It was SPY0300 at P5's original base 7bb1511a7; P6's layout keeps it running.
-        new object[] { "c_merged_module",
+        // A module declaring a type named like its file (thing.spy + `class Thing`): #2006 stamped the
+        // merged module class [SharpyModule]; with no merge (#2039) its members class ThingModule is.
+        new object[] { "c_type_named_like_its_module",
             new[] { ("thing.spy", "class Thing:\n    pass\n\ndef thing_fn() -> int:\n    return 6\n") },
             "from thing import thing_fn\n\ndef main() -> None:\n    print(thing_fn())\n", "6", null! },
         new object[] { "d_module_with_type",
             new[] { ("shapes.spy", "class Foo:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n\ndef mk() -> Foo:\n    return Foo(9)\n") },
             "from shapes import Foo, mk\n\ndef main() -> None:\n    print(Foo(9).v)\n    print(mk().v)\n", "9\n9", null! },
+        new object[] { "e_types_only_module",
+            new[] { ("things.spy", "class Box:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n") },
+            "from things import Box\n\ndef main() -> None:\n    print(Box(3).v)\n", "3", null! },
+        new object[] { "f_types_only_module_whole_import",
+            new[] { ("things.spy", "class Box:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n") },
+            "import things\n\ndef main() -> None:\n    print(things.Box(4).v)\n", "4", null! },
     };
 
     [Theory]
@@ -101,5 +110,5 @@ public class LibraryReferenceMatrixTests
     }
 
     [Fact]
-    public void Matrix_IsTotal() => Cells().Should().HaveCount(4);
+    public void Matrix_IsTotal() => Cells().Should().HaveCount(6);
 }

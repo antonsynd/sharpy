@@ -126,10 +126,10 @@ internal class CodeGenInfoComputer
         foreach (var stmt in module.Body)
             SetDeclaredTypeNames(stmt, enclosing: null);
 
-        // The module-as-namespace layout (#2039): every top-level type is a sibling of <X> in the
-        // module namespace, and the module's own layout is recorded on its root for the emitter.
-        MarkNamespaceSiblings(module);
+        // The module-as-namespace layout (#2039): the module's own layout is recorded on its root for
+        // the emitter, and every top-level type is a sibling of <X> in the module namespace.
         var layout = RecordOwnModuleLayout(module);
+        MarkNamespaceSiblings(module, layout);
 
         // Third pass: Detect module-level name collisions
         DetectModuleLevelCollisions(module, layout);
@@ -143,12 +143,13 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// Marks every top-level type of the module as a namespace sibling of its members class (#2039,
-    /// Decision 28 (a)). Only a type that already carries a <see cref="CodeGenInfo"/> is marked —
+    /// Marks every top-level type of the module as a namespace sibling of its members class and
+    /// records the namespace it lives in (#2039, Decision 28 (a)) — the fact a cross-file reference
+    /// spells the type from. Only a type that already carries a <see cref="CodeGenInfo"/> is marked —
     /// class, struct, interface and enum; union and delegate type symbols carry none until the
     /// python-name channel (#2006, Decision 22) materializes one.
     /// </summary>
-    private void MarkNamespaceSiblings(Module module)
+    private void MarkNamespaceSiblings(Module module, ModuleLayout? layout)
     {
         foreach (var stmt in module.Body)
         {
@@ -166,7 +167,11 @@ internal class CodeGenInfoComputer
                 && _symbolTable.Lookup(name) is TypeSymbol typeSymbol
                 && _semanticBinding.GetCodeGenInfo(typeSymbol) is { } info)
             {
-                SetCodeGenInfo(typeSymbol, info with { IsNamespaceSibling = true });
+                SetCodeGenInfo(typeSymbol, info with
+                {
+                    IsNamespaceSibling = true,
+                    NamespaceSegments = layout?.NamespaceSegments,
+                });
             }
         }
     }
@@ -185,11 +190,10 @@ internal class CodeGenInfoComputer
 
         var membersClass = ModuleIdentifiers.LayoutMembersClassName(_sourceFilePath);
         var functions = module.Body.Select(s => s.UnwrapDecorated()).OfType<FunctionDef>().ToList();
-        var fixtures = functions
-            .Where(f => f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture))
-            .Select(f => NameMangler.ToPascalCase(f.Name) + "Fixture")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var fixtures = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var fixture in functions.Where(f =>
+                     f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture)))
+            fixtures.TryAdd(fixture.Name, NameMangler.ToPascalCase(fixture.Name) + "Fixture");
         var hasTests = functions.Any(f => f.Decorators.Any(DecoratorNames.IsTestDecorator)
             && !f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture));
         var layout = new ModuleLayout(
@@ -383,6 +387,12 @@ internal class CodeGenInfoComputer
             {
                 var originalName = imported.AsName != null ? imported.Name : null;
                 var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol, isNetModule);
+                IReadOnlyList<string>? siblingSegments = symbol is TypeSymbol { ClrType: null, DeclaringType: null } importedType
+                    && !sourceIsNetModule
+                        ? (!string.IsNullOrEmpty(importedType.DefiningFilePath)
+                            ? ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, importedType.DefiningFilePath)
+                            : sourceLayout?.NamespaceSegments)
+                        : null;
 
                 SetCodeGenInfo(symbol, new CodeGenInfo
                 {
@@ -390,8 +400,11 @@ internal class CodeGenInfoComputer
                     OriginalName = effectiveName,
                     ImportKind = imported.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
                     OriginalImportName = originalName,
-                    // A Sharpy module's exported types are its top-level types: siblings of its <X>.
-                    IsNamespaceSibling = symbol is TypeSymbol && !sourceIsNetModule && sourceLayout != null
+                    // A Sharpy module's exported types are its top-level types: siblings of <X> in the
+                    // namespace of the file that DECLARES them — a package __init__ re-exporting a
+                    // submodule's type does not move it (#2039).
+                    IsNamespaceSibling = siblingSegments != null,
+                    NamespaceSegments = siblingSegments
                 });
             }
         }
@@ -1446,72 +1459,22 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// Detects name collisions among module-level symbols (functions, variables, and types).
-    /// All of these become members of the same module class in generated C#. Under the recorded
-    /// module-as-namespace layout (#2039, Decision 28 (h)) the module namespace is also seeded with
-    /// <c>&lt;X&gt;</c> (a declaration spelled like it is SPY0523, ruling 15), the test class
-    /// <c>&lt;X&gt;Tests</c> and the fixture classes (a type spelled like one is SPY0522).
+    /// Detects name collisions among module-level symbols under the module-as-namespace layout
+    /// (#2039, Decision 28): functions, variables and constants are members of one class
+    /// (<c>&lt;X&gt;</c>) and collide with each other; types are siblings in the module namespace and
+    /// collide with each other; a function and a type of one emitted name do not collide (their python
+    /// names are distinct — <c>class FooBar</c> + <c>def foo_bar</c> is legal). The module namespace is
+    /// also seeded with <c>&lt;X&gt;</c> (a declaration spelled like it is SPY0523, ruling 15), the
+    /// test class <c>&lt;X&gt;Tests</c> and the fixture classes (a type spelled like one is SPY0522).
     /// </summary>
     private void DetectModuleLevelCollisions(Module module, ModuleLayout? layout)
     {
         if (layout != null)
             DetectLayoutSeedCollisions(module, layout);
 
-        // The emitter's own authority with the emitter's own entry bit (#2013): a main.spy without an
-        // entry-point main() emits class Main, not Program.
-        var moduleClassName = string.IsNullOrEmpty(_sourceFilePath)
-            ? null
-            : ModuleIdentifiers.ModuleClassName(_sourceFilePath, ModuleIdentifiers.DeclaresEntryMain(module.Body));
-
-        // Check each function/variable against the module class name
-        if (moduleClassName != null)
-        {
-            foreach (var stmt in module.Body)
-            {
-                string? symbolName = null;
-                DeclarationPosition? stmtPos = null;
-
-                switch (stmt)
-                {
-                    case FunctionDef funcDef:
-                        symbolName = funcDef.Name;
-                        stmtPos = DeclarationPosition.From(
-                            funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.LineStart, funcDef.ColumnStart);
-                        break;
-                    case VariableDeclaration varDecl:
-                        symbolName = varDecl.Name;
-                        stmtPos = DeclarationPosition.From(
-                            varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.LineStart, varDecl.ColumnStart);
-                        break;
-                }
-
-                if (symbolName == null)
-                    continue;
-
-                var symbol = _symbolTable.Lookup(symbolName);
-                if (symbol == null)
-                    continue;
-
-                var info = _semanticBinding.GetCodeGenInfo(symbol);
-                if (info == null)
-                    continue;
-
-                if (info.CSharpName == moduleClassName)
-                {
-                    _diagnostics.AddError(
-                        $"Function '{symbolName}' compiles to '{info.CSharpName}', which conflicts " +
-                        $"with the module class name derived from the filename. Rename the function " +
-                        $"to avoid the collision.",
-                        line: stmtPos?.Line,
-                        column: stmtPos?.Column,
-                        code: DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
-                        phase: CompilerPhase.CodeGeneration);
-                }
-            }
-        }
-
-        // CSharpName → (originalName, where it was first declared)
-        var seen = new Dictionary<string, (string originalName, DeclarationPosition? position)>();
+        // (is a type, CSharpName) → (originalName, where it was first declared): members of <X> and
+        // namespace-sibling types are two scopes.
+        var seen = new Dictionary<(bool IsType, string CSharpName), (string originalName, DeclarationPosition? position)>();
 
         foreach (var stmt in module.Body)
         {
@@ -1573,7 +1536,8 @@ internal class CodeGenInfoComputer
             if (csharpName == null)
                 continue;
 
-            if (seen.TryGetValue(csharpName, out var existing))
+            var key = (stmt is not (FunctionDef or VariableDeclaration), csharpName);
+            if (seen.TryGetValue(key, out var existing))
             {
                 // Overloads of the same module-level function share an identical
                 // Python name and intentionally compile to the same C# name — this
@@ -1593,7 +1557,7 @@ internal class CodeGenInfoComputer
             }
             else
             {
-                seen[csharpName] = (symbolName, stmtPos);
+                seen[key] = (symbolName, stmtPos);
             }
         }
     }
@@ -1602,19 +1566,14 @@ internal class CodeGenInfoComputer
     /// The layout seeds of the module namespace (#2039, Decision 28 (h)): a top-level function,
     /// variable or type whose emitted name is <c>&lt;X&gt;</c> is SPY0523 (a member cannot share its
     /// class's name, a type cannot share the members class's); a top-level type spelled like the test
-    /// class or a fixture class the module emits beside it is SPY0522. A declaration the legacy
-    /// module-class check (below) already reports — a package's <c>__init__</c>, whose module class IS
-    /// <c>&lt;X&gt;</c> — is not reported twice.
+    /// class or a fixture class the module emits beside it is SPY0522.
     /// </summary>
     private void DetectLayoutSeedCollisions(Module module, ModuleLayout layout)
     {
-        var legacyModuleClass = string.IsNullOrEmpty(_sourceFilePath)
-            ? null
-            : ModuleIdentifiers.ModuleClassName(_sourceFilePath, ModuleIdentifiers.DeclaresEntryMain(module.Body));
         var classSeeds = new Dictionary<string, string>(StringComparer.Ordinal);
         if (layout.TestClassName != null)
             classSeeds[layout.TestClassName] = "the module's test class";
-        foreach (var fixture in layout.FixtureClassNames ?? Array.Empty<string>())
+        foreach (var fixture in layout.FixtureClassNames?.Values ?? Enumerable.Empty<string>())
             classSeeds.TryAdd(fixture, "a test fixture class");
 
         foreach (var stmt in module.Body)
@@ -1642,10 +1601,6 @@ internal class CodeGenInfoComputer
 
             if (csharpName == layout.MembersClassName)
             {
-                // The legacy check reports a function/variable spelled like the module class; when
-                // that class IS <X> (a package's __init__), one report is enough.
-                if (!isType && csharpName == legacyModuleClass)
-                    continue;
                 _diagnostics.AddError(
                     $"'{name}' compiles to '{csharpName}', which is this module's members class — the class " +
                     $"its functions, variables and constants are emitted into ('{layout.MembersClassName}'). " +

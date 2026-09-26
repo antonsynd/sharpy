@@ -546,16 +546,18 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The file's NAME, used to derive the module class name (and thus to detect the SPY0523
-    /// function/module-class collision). Falls back to <see cref="CurrentFilePath"/> when unset.
+    /// The file's NAME, used to derive the recorded module layout — its namespace and members class
+    /// (and thus to detect the SPY0523 members-class collision). Falls back to
+    /// <see cref="CurrentFilePath"/> when unset.
     /// </summary>
     /// <remarks>
     /// Split out from <see cref="CurrentFilePath"/> for #1433. The two axes were one field, so
     /// nulling the entry file's SYMBOL paths (the #1087 contract, which an editor genuinely needs)
     /// also erased the file's NAME — and SPY0523 is derived entirely from the name. The result was
     /// that a module-level <c>def foo</c> in <c>foo.spy</c> produced no squiggle in the editor and
-    /// then failed the build. Naming the file costs nothing to symbol identity: only
-    /// <see cref="ModuleIdentifiers.ModuleClassName"/> reads this.
+    /// then failed the build. Naming the file costs nothing to symbol identity: only the layout
+    /// recorder (<see cref="ModuleIdentifiers.LayoutNamespaceSegments"/>,
+    /// <see cref="ModuleIdentifiers.LayoutMembersClassName"/>) reads this.
     /// </remarks>
     public string? ModuleIdentityFilePath { get; set; }
 

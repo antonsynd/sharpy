@@ -13,10 +13,10 @@ namespace Sharpy.Compiler.Tests.Project;
 /// diagnostic (the #1437 design the parse seams already used). Before this, the CodeGen-range
 /// collisions CodeGenInfoComputer raises at semantic time (SPY0522/SPY0523/SPY0525) and every
 /// validator warning reached the project bag with no path and rendered as <c>&lt;source&gt;</c>.
-/// The emitter's own SPY0520 carried the path but no location.
+/// The emitter's own diagnostics (SPY0520 then, SPY0500 now) carried the path but no location.
 /// </summary>
 /// <remarks>
-/// Cells: the producer {emitter (SPY0520, un-imported module), CodeGenInfoComputer (SPY0523),
+/// Cells: the producer {emitter (SPY0500, un-imported module), CodeGenInfoComputer (SPY0523),
 /// validator warning (SPY0453), type check aborted at the error limit (SPY0220 ×101), a warning
 /// anchored to a pattern node through the ILocatable overload (SPY0468, SPY0485 — #2070)}. Each cell
 /// asserts that EVERY non-assembly diagnostic names the offending file, and checks the expected
@@ -31,8 +31,10 @@ public class DiagnosticFileProvenanceTests
 
     private static readonly Dictionary<string, (string File, string Source, string Code, int? Line, int? Column)> Cells = new()
     {
-        ["emitter"] = ("thing.spy", "struct Thing:\n    v: int\n", DiagnosticCodes.CodeGen.NameCollision, 1, 8),
-        ["codegeninfo"] = ("util.spy", "def util() -> int:\n    return 1\n", DiagnosticCodes.CodeGen.FunctionModuleClassCollision, 1, 5),
+        // An emitter-time refusal (SPY0500; it was SPY0520 until #2039 retired it).
+        ["emitter"] = ("thing.spy", "@lru_cache\nasync def f() -> int:\n    return 1\n", DiagnosticCodes.CodeGen.EmitError, 2, 1),
+        // #2039: the members class of util.spy is UtilModule, so `def util_module` is the SPY0523 shape.
+        ["codegeninfo"] = ("util.spy", "def util_module() -> int:\n    return 1\n", DiagnosticCodes.CodeGen.FunctionModuleClassCollision, 1, 5),
         ["validator"] = ("naming.spy", "def Compute() -> int:\n    return 1\n", DiagnosticCodes.Validation.NamingConventionWarning, null, null),
         ["aborted"] = ("bad.spy",
             "def f() -> None:\n" + string.Concat(Enumerable.Range(0, 101).Select(i => $"    x{i}: int = \"s\"\n")),

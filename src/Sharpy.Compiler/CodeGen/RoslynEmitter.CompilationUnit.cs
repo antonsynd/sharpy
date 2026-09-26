@@ -46,10 +46,9 @@ internal partial class RoslynEmitter
                 .ToList();
         }
 
-        // Compute the module shape (class name, merged class, extracted types, namespace parts)
-        // ONCE before any declaration is emitted, so the module-member qualifier and the
-        // [MemberData] attribute emitter read one decision instead of re-deriving it (#1683, #1802).
-        _moduleShape = ComputeModuleShape(nonImportStatements);
+        // Read the recorded module layout (namespace, members class <X>, own type names) ONCE before
+        // any declaration is emitted, so every layout consumer reads one fact (#1683, #1802, #2039).
+        _moduleShape = ComputeModuleShape(module, nonImportStatements);
         _context.ModuleShape = _moduleShape;
 
         // Record the owning C# module class of every from-imported member so bare references to
@@ -88,11 +87,10 @@ internal partial class RoslynEmitter
             _pendingTestFunctions.Clear();
         }
 
-        // In library mode, top-level types were extracted from the module class
-        // (RoslynEmitter.ModuleClass.cs) and are emitted as namespace siblings annotated with
-        // [SharpyModuleType]. Capture and reset the shared field before assembling the namespace.
-        var extractedTypes = _extractedTypes.ToList();
-        _extractedTypes.Clear();
+        // Every top-level type is a sibling of the members class in the module namespace (#2039).
+        // Capture and reset the shared field before assembling the namespace.
+        var siblingTypes = _siblingTypes.ToList();
+        _siblingTypes.Clear();
 
         // No `using static <Namespace>.<ModuleClass>` self-import is emitted for the sibling test
         // class or fixture classes (#1683): every reference they make to a module-level member is
@@ -100,18 +98,19 @@ internal partial class RoslynEmitter
         // BuildQualifiedTypeAccess, so the self-import — which resolved a module member/type through a
         // name that can collide with a same-named namespace (CS0118) — is dead.
 
-        // Top-level members of the module's namespace: the module class, extracted types, fixture
-        // classes and the optional test class — siblings in one namespace.
+        // Top-level members of the module's namespace: the members class <X>, the module's types,
+        // fixture classes and the optional test class — siblings in one namespace.
         var topLevelMembers = new List<MemberDeclarationSyntax> { moduleClass };
-        topLevelMembers.AddRange(extractedTypes);
+        topLevelMembers.AddRange(siblingTypes);
         topLevelMembers.AddRange(fixtureClasses);
         if (testClass != null)
         {
             topLevelMembers.Add(testClass);
         }
 
-        // The module's namespace: the project namespace followed by its directories (#1948) — one
-        // assembly for every member. None (the global namespace) for single-file compilation.
+        // The module's namespace: the project namespace followed by the recorded layout segments
+        // (its directories and its stem, #1948, #2039) — one namespace for every member, in every
+        // mode. Empty (the global namespace) only for a nameless module (the AST-only unit-test path).
         CompilationUnitSyntax compilationUnit;
         var namespaceParts = _moduleShape!.NamespaceParts;
         if (namespaceParts.Count > 0)
@@ -126,7 +125,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // Single-file: emit class directly (global namespace)
+            // Nameless module: emit into the global namespace
             compilationUnit = CompilationUnit()
                 .WithUsings(List(usingDirectives))
                 .WithMembers(List(topLevelMembers))
@@ -344,11 +343,10 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var moduleNamespacePath = FromImportModuleClassPath(fromImport);
                 var segs = new List<string>();
                 if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     segs.AddRange(_context.ProjectNamespace!.Split('.'));
-                segs.AddRange(moduleNamespacePath.Split('.'));
+                segs.AddRange(FromImportMembersClassPath(fromImport));
                 containerSegments = segs.ToArray();
             }
 
@@ -379,16 +377,23 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The C# path (relative to the project namespace) of the module class a user-module from-import
-    /// names: spelled from the source FILE import resolution recorded, so a package's members are
-    /// reached through its <c>__init__</c> module class inside the package namespace
-    /// (<c>from pkg import f</c> → <c>Pkg.PkgModule</c>, #1948); from the dotted name only when no
-    /// file inside the project was recorded.
+    /// The C# path (relative to the project namespace) of the members class a user-module from-import
+    /// names — its module namespace followed by <c>&lt;X&gt;</c> (<c>from pkg.thing import f</c> →
+    /// <c>Pkg.Thing.ThingModule</c>; <c>from pkg import f</c> → <c>Pkg.PkgModule</c>, #1948, #2039) —
+    /// read from the source layout semantic analysis recorded on the import node (F6, Decision 28 (e)).
+    /// An import with no recorded layout (no resolved file) spells the module from its dotted name.
     /// </summary>
-    private string FromImportModuleClassPath(FromImportStatement fromImport)
-        => ModuleIdentifiers.ModuleClassPathWithinRoot(
-               _context.ProjectRootPath, _context.SemanticBinding.GetResolvedModuleFilePath(fromImport))
-           ?? ModuleIdentifiers.DottedModulePath(GetResolvedModulePath(fromImport) ?? fromImport.Module);
+    private IEnumerable<string> FromImportMembersClassPath(FromImportStatement fromImport)
+    {
+        if (_context.SemanticInfo?.GetModuleLayout(fromImport) is { } layout)
+            return layout.NamespaceSegments.Append(layout.MembersClassName);
+
+        var dottedName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
+        var stem = dottedName.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? dottedName;
+        return ModuleIdentifiers.DottedModulePath(dottedName)
+            .Split('.', StringSplitOptions.RemoveEmptyEntries)
+            .Append(ModuleIdentifiers.MembersClassName(stem));
+    }
 
     /// <summary>
     /// The exported member NAMES a <c>from m import *</c> binds into this scope. Read from the

@@ -411,11 +411,10 @@ internal partial class RoslynEmitter : ICodeEmitter
     // be emitted into a sibling test class instead of the regular module class.
     private readonly List<FunctionDef> _pendingTestFunctions = new();
 
-    // The module-shape decision (module class name, whether a same-named class merges into it, the
-    // top-level types extracted to namespace siblings, and the namespace segments the module class
-    // is nested under). Computed ONCE by ComputeModuleShape at the start of GenerateCompilationUnit,
-    // before any declaration is emitted, so the module-member qualifier and the [MemberData]
-    // attribute emitter read one decision instead of re-deriving the class name locally (#1802).
+    // The module shape (the module namespace, the members class <X>, the module's own type names and
+    // the recorded layout, #2039). Read ONCE from the recorded ModuleLayout by ComputeModuleShape at
+    // the start of GenerateCompilationUnit, before any declaration is emitted, so every layout
+    // consumer reads one fact instead of re-deriving it (#1802).
     private ModuleShape? _moduleShape;
 
     // For every module-level member (function/variable/const) brought in by a `from module import
@@ -445,12 +444,11 @@ internal partial class RoslynEmitter : ICodeEmitter
     // are wired up via IClassFixture<T>.
     private readonly List<FunctionDef> _pendingFixtures = new();
 
-    // In library mode (non-entry-point files), top-level type declarations (class/struct/
-    // interface/enum/union) are extracted out of the static module class and emitted as
-    // sibling types annotated with [SharpyModuleType]. GenerateModuleMembers populates this
-    // list; GenerateCompilationUnit emits them at namespace level (wrapped in the same
-    // directory-wrapper hierarchy as the module class for multi-file isolation).
-    private readonly List<MemberDeclarationSyntax> _extractedTypes = new();
+    // Every top-level type declaration (class/struct/interface/enum/union/delegate) of the module,
+    // declared beside the members class <X> in the module namespace (#2039) — stamped
+    // [SharpyModuleType] in a non-entry module. GenerateModuleMembers populates this list;
+    // GenerateCompilationUnit emits it into the module namespace.
+    private readonly List<MemberDeclarationSyntax> _siblingTypes = new();
 
     // Maps fixture function name (e.g., "db_connection") → metadata describing the generated
     // C# fixture class (class name, return type, field name in consuming test classes).

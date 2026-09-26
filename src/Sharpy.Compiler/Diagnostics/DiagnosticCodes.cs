@@ -871,7 +871,7 @@ public static class DiagnosticCodes
         // SPY0511-SPY0517: Reserved for future statement-level codegen diagnostics
         public const string UnsupportedExpressionType = "SPY0518";  // Active
         public const string UnsupportedOperator = "SPY0519";        // Active
-        public const string NameCollision = "SPY0520";              // Active
+        public const string NameCollision = "SPY0520";              // Retired — every module is a namespace, no module-class merge (#2039); reserved, never reused
         public const string TypeReExportNotSupported = "SPY0521";   // Reserved — for future type re-export support
         public const string MemberNameCollision = "SPY0522";        // Active
         public const string FunctionModuleClassCollision = "SPY0523"; // Active

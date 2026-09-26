@@ -55,40 +55,42 @@ public class DocumentIdentityDiagnosticsTests : IDisposable
     }
 
     [Fact]
-    public async Task FunctionNamedAfterItsFile_ReportsSPY0523()
+    public async Task FunctionNamedAfterItsMembersClass_ReportsSPY0523()
     {
+        // #2039: collide_target.spy's members class is CollideTargetModule, so the function spelled
+        // like it collides.
         const string source = """
-            def collide_target() -> None:
+            def collide_target_module() -> None:
                 print("this should fail")
 
             def main():
-                collide_target()
+                collide_target_module()
             """;
 
         var codes = await AnalyzeAsync("collide_target.spy", source);
 
         codes.Should().Contain(DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
-            "the module class is derived from the FILE name, so the collision is only visible "
+            "the members class is derived from the FILE name, so the collision is only visible "
             + "to an analysis that knows what the file is called (#1433)");
     }
 
     [Fact]
-    public async Task FunctionNamedAfterADifferentFile_IsSilent()
+    public async Task FunctionNamedAfterADifferentFilesMembersClass_IsSilent()
     {
         // The falsifiable arm: the same source in a differently-named file must NOT report. Without
         // this, the cell above would pass on any change that reported SPY0523 unconditionally.
         const string source = """
-            def collide_target() -> None:
+            def collide_target_module() -> None:
                 print("this is fine")
 
             def main():
-                collide_target()
+                collide_target_module()
             """;
 
         var codes = await AnalyzeAsync("something_else.spy", source);
 
         codes.Should().NotContain(DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
-            "no collision exists when the function's name differs from the file's");
+            "no collision exists when the function's name differs from the file's members class");
     }
 
     [Fact]

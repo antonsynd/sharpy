@@ -16,9 +16,9 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     /// <summary>
-    /// Generates the module class with all members nested inside it.
-    /// Types (classes, structs, interfaces, enums) are nested inside the module class,
-    /// enabling single 'using static' imports for C# consumers.
+    /// Generates the module's members class <c>&lt;X&gt;</c> (its functions, variables and
+    /// constants) and collects its top-level types into <c>_siblingTypes</c>: every module is a
+    /// namespace, and its types are declared beside <c>&lt;X&gt;</c> in it (#2039).
     /// </summary>
     private ClassDeclarationSyntax GenerateModuleMembers(
         List<Statement> statements, List<FromImportStatement>? reExportImports = null)
@@ -26,9 +26,7 @@ internal partial class RoslynEmitter
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
 
-        // Clear extracted-type tracking. In library mode, top-level type declarations are
-        // pulled out of the module class and emitted as namespace siblings (see below).
-        _extractedTypes.Clear();
+        _siblingTypes.Clear();
 
         // Maps a generated top-level type declaration back to its original Sharpy name so the
         // emitted [SharpyModuleType("module", "PythonName")] attribute can carry the source name.
@@ -207,13 +205,12 @@ internal partial class RoslynEmitter
 
             if (member is MemberDeclarationSyntax memberDecl)
             {
-                // Everything goes into the module class for now (collision detection below
-                // relies on type declarations being present). In library mode, top-level types
-                // are partitioned out into _extractedTypes after collision handling.
+                // Declarations are collected in source order; the types among them are partitioned
+                // out to _siblingTypes once every member is generated.
                 moduleDeclarations.Add(memberDecl);
 
-                // Record the original Sharpy name for top-level type declarations so they can
-                // be extracted as namespace siblings (library mode only).
+                // Record the original Sharpy name of every top-level type declaration: it is a
+                // namespace sibling of the members class, stamped with its python name.
                 var sourceTypeName = stmt switch
                 {
                     ClassDef cd => cd.Name,
@@ -221,6 +218,7 @@ internal partial class RoslynEmitter
                     InterfaceDef id => id.Name,
                     EnumDef ed => ed.Name,
                     UnionDef ud => ud.Name,
+                    DelegateDef dd => dd.Name,
                     _ => null
                 };
                 if (sourceTypeName != null)
@@ -287,16 +285,6 @@ internal partial class RoslynEmitter
             _context.Logger.LogWarning($"{executableStatements.Count} module-level executable statement(s) in non-entry-point file ignored", 0, 0);
         }
 
-        // Entry points must have a user-defined main() function (enforced by ModuleLevelValidator).
-        // The user's main() → Main() (via NameMangler) is the C# entry point.
-        bool willHaveMainMethod = hasMainFunction;
-
-        // Collect all function names to check for class name collisions
-        var functionNames = statements
-            .OfType<FunctionDef>()
-            .Select(f => NameMangler.Transform(f.Name, NameContext.Method))
-            .ToHashSet();
-
         // Generate re-export delegating members for from-import statements
         // This enables patterns like: from .helpers import utility_func
         // which makes utility_func accessible from this module's class
@@ -309,152 +297,51 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Generate module class name from source file name
-        var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
-
-        // Name collision detection: a user-defined type collides with the module class only when
-        // the identifier the emitter actually writes for it equals the module class name
-        // (e.g., animal.spy defining class Animal). Each arm below must therefore mirror the
-        // resolver used at the type's declaration site in RoslynEmitter.TypeDeclarations.cs.
-        // Mangling the source spelling here instead reported collisions the generated C# does not
-        // have, because two spellings survive mangling unchanged: a backtick-escaped name emits
-        // verbatim (`h` in h.spy is not H) and an unescaped camelCase name passes through
-        // (camEl in cam_el.spy is not CamEl). For a class that only misdirected the syntax lookup
-        // below into a silent no-op, but every other kind raised SPY0520 and returned without
-        // emitting the module class, so the entry point vanished and the build died with CS5001
-        // (#1268, #1276).
-        // The merge decision is ModuleShape's, computed ONCE with the arity axis (#1919): only a
-        // NON-generic class named like the module merges. This method used to re-derive the decision
-        // with its own arity-less comparison — a second copy that merged the module into `Thing<T>`
-        // (CS5001 under `run`, CS0305 under `project`). A generic class named like the module cannot
-        // merge (the module class has arity 0) and cannot coexist either: it is nested INSIDE the
-        // module class, and C# compares a nested type's name without its arity (CS0542) — so it is
-        // refused below with the other kinds that cannot merge (SPY0520).
-        ClassDeclarationSyntax? collidingTypeDecl = _moduleShape!.MergedClassName is { } mergedClassName
-            ? moduleDeclarations
-                .OfType<ClassDeclarationSyntax>()
-                .FirstOrDefault(c => c.Identifier.Text == mergedClassName)
-            : null;
+        // Every module is a namespace (#2039, Decision 28 (a)/(c)/(f)): its functions, variables and
+        // constants are members of <X>, and every top-level type is declared BESIDE <X> in the module
+        // namespace — never nested in it, never merged into it, in every mode. A non-entry module
+        // stamps each type [SharpyModuleType(module, pythonName)] so discovery finds it by attribute
+        // (rung 3); the entry module's types are stamped `__main__` and its members class carries no
+        // [SharpyModule].
+        var shape = _moduleShape!;
+        var sharpyModuleName = GetSharpyModuleName();
+        var memberDeclarations = new List<MemberDeclarationSyntax>(moduleDeclarations.Count);
+        foreach (var decl in moduleDeclarations)
         {
-            // Refuse the colliding type kinds that cannot merge (a non-generic class merges above)
-            foreach (var stmt in statements)
+            if (extractableTypeNames.TryGetValue(decl, out var pythonName))
             {
-                string? typeName = stmt switch
-                {
-                    ClassDef cd => NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped),
-                    StructDef sd => NameCasing.ResolveType(sd.Name, sd.IsNameBacktickEscaped),
-                    InterfaceDef id => NameCasing.ResolveInterface(id.Name, id.IsNameBacktickEscaped),
-                    EnumDef ed => NameCasing.ResolveType(ed.Name, ed.IsNameBacktickEscaped),
-                    DelegateDef dd => NameCasing.ResolveType(dd.Name, dd.IsNameBacktickEscaped),
-                    // A union declares a type too, and it was missing from this switch entirely:
-                    // `union Shape` in shape.spy emitted class Shape inside class Shape and died
-                    // with CS0542 as an SPY0908 internal error instead of the diagnostic below.
-                    UnionDef ud => NameCasing.ResolveType(ud.Name, ud.IsNameBacktickEscaped),
-                    _ => null
-                };
-
-                // A class named like the module either merged (ModuleShape said so) or cannot: the
-                // shape is the one authority, so a class it did not merge — a generic one — is refused.
-                if (stmt is ClassDef && (typeName != moduleClassName || _moduleShape.MergedClassName != null))
-                {
-                    continue;
-                }
-                else if (stmt is ClassDef generic)
-                {
-                    _context.ReportAt(generic,
-                        $"Type '{generic.Name}' conflicts with module class name '{moduleClassName}': a generic " +
-                        "class cannot merge into the module class, and C# cannot nest it inside a class of the same " +
-                        "name (CS0542). Rename the type or the source file to avoid this collision.",
-                        DiagnosticCodes.CodeGen.NameCollision);
-                }
-                else if (typeName != null && typeName == moduleClassName)
-                {
-                    // Collision with struct/interface/enum/delegate/union — error (can't merge)
-                    var srcName = stmt switch { StructDef sd => sd.Name, InterfaceDef id => id.Name, EnumDef ed => ed.Name, DelegateDef dd => dd.Name, UnionDef ud => ud.Name, _ => "?" };
-                    _context.ReportAt(stmt,
-                        $"Type '{srcName}' conflicts with module class name '{moduleClassName}'. " +
-                        $"Rename the type or the source file to avoid this collision.",
-                        DiagnosticCodes.CodeGen.NameCollision);
-                }
+                // The entry module's types are stamped too, with python's name for it, `__main__`:
+                // once a type is no longer nested in its module class, the stamp is the only thing
+                // that marks it Sharpy-declared for the python-name channel (<__main__.D object>,
+                // #2006 R-CF). The entry members class itself stays unstamped (no [SharpyModule]).
+                _siblingTypes.Add(DecorateSiblingType(
+                    decl, _context.IsEntryPoint ? "__main__" : sharpyModuleName, pythonName));
+            }
+            else
+            {
+                memberDeclarations.Add(decl);
             }
         }
 
-        // Handle collision: when a class name matches the module name, the class
-        // absorbs module-level static members (functions, constants) and becomes
-        // the module representative. This enables the common Python pattern of
-        // animal.spy containing class Animal.
-        if (collidingTypeDecl != null)
-        {
-            // Separate the colliding type from other declarations
-            var otherDeclarations = moduleDeclarations
-                .Where(m => m != collidingTypeDecl)
-                .ToList();
+        var membersClassDecl = ClassDeclaration(shape.MembersClassName);
 
-            // Inject non-type module declarations as static members into the colliding type
-            var augmentedType = collidingTypeDecl.WithMembers(
-                collidingTypeDecl.Members.AddRange(otherDeclarations));
-
-            // The merged class IS the module class, so a non-entry one carries [SharpyModule] too:
-            // its instances name their module (`<thing.Thing object>`), not __main__ (#2006, R-CF).
-            if (!_context.IsEntryPoint)
-            {
-                augmentedType = augmentedType.AddAttributeLists(SharpyModuleAttributeList(GetSharpyModuleName()));
-            }
-
-            return augmentedType;
-        }
-
-        // Single-file library mode: extract top-level type declarations
-        // (class/struct/interface/enum/union) out of the module class and emit them as namespace
-        // siblings annotated with [SharpyModuleType]. Module-level functions, fields, and
-        // re-exports stay on the module class. Entry-point files keep their types nested.
-        //
-        // Extraction is intentionally limited to single-file library compilation (no
-        // ProjectNamespace). Multi-file projects keep types nested inside their module class so
-        // that same-named types in sibling modules stay isolated (avoiding CS0101 duplicate-type
-        // errors at namespace level) and cross-module references continue to resolve via the
-        // Namespace.ModuleClass.Type path. The collision case above returns early, so a type whose
-        // name matches the module class is never extracted.
-        if (!_context.IsEntryPoint
-            && string.IsNullOrEmpty(_context.ProjectNamespace)
-            && extractableTypeNames.Count > 0)
-        {
-            var sharpyModuleName = GetSharpyModuleName();
-            var retainedDeclarations = new List<MemberDeclarationSyntax>(moduleDeclarations.Count);
-            foreach (var decl in moduleDeclarations)
-            {
-                if (extractableTypeNames.TryGetValue(decl, out var pythonName))
-                {
-                    _extractedTypes.Add(DecorateExtractedType(decl, sharpyModuleName, pythonName));
-                }
-                else
-                {
-                    retainedDeclarations.Add(decl);
-                }
-            }
-            moduleDeclarations = retainedDeclarations;
-        }
-
-        // Normal case: build a static module class containing all declarations
-        var moduleClassDecl = ClassDeclaration(moduleClassName);
-
-        // Add [SharpyModule] attribute to non-entry-point module classes
+        // [SharpyModule] on the members class of every non-entry module — including one that holds
+        // only types (uniform layout; discovery also finds such a module through its types'
+        // [SharpyModuleType] stamps).
         if (!_context.IsEntryPoint)
         {
-            moduleClassDecl = moduleClassDecl
-                .WithAttributeLists(SingletonList(SharpyModuleAttributeList(GetSharpyModuleName())));
+            membersClassDecl = membersClassDecl
+                .WithAttributeLists(SingletonList(SharpyModuleAttributeList(sharpyModuleName)));
         }
 
-        // Module class is always partial (allows merging with wrapper declarations
-        // from other files in the same package directory)
-        var moduleClass = moduleClassDecl
+        // The members class is partial (a hand-written partial of a spy-sourced stdlib module
+        // completes it).
+        return membersClassDecl
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword),
                 Token(SyntaxKind.PartialKeyword)))
-            .WithMembers(List(moduleDeclarations));
-
-        return moduleClass;
+            .WithMembers(List(memberDeclarations));
     }
 
     /// <summary><c>[global::Sharpy.SharpyModule("&lt;dotted module name&gt;")]</c> for a module class.</summary>
@@ -467,12 +354,12 @@ internal partial class RoslynEmitter
                         Literal(sharpyModuleName))))))));
 
     /// <summary>
-    /// Annotates an extracted top-level type declaration with
+    /// Annotates a top-level type declaration (a sibling of the members class) with
     /// <c>[global::Sharpy.SharpyModuleType("moduleName", "pythonName")]</c> so the compiler can
-    /// rediscover it as belonging to the module when the assembly is imported. The attribute is
+    /// rediscover it as belonging to the module when the assembly is imported (#2039). The attribute is
     /// prepended ahead of any existing attribute lists (e.g., dataclass-derived attributes).
     /// </summary>
-    private static MemberDeclarationSyntax DecorateExtractedType(
+    private static MemberDeclarationSyntax DecorateSiblingType(
         MemberDeclarationSyntax typeDecl, string moduleName, string pythonName)
     {
         var attribute = Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyModuleType"))
@@ -492,86 +379,46 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The once-computed module-shape decision read by the module-member qualifier (#1802):
-    /// the module class name, the merged class name (non-null when a same-named ClassDef absorbs
-    /// the module's static members, e.g. animal.spy + class Animal), the emitted C# names of the
-    /// top-level types extracted to namespace siblings in single-file library mode, and the
-    /// namespace the module class is declared in (project namespace + directory segments, #1948),
-    /// and whether the module declares the entry-point <c>main()</c>
+    /// The once-computed module shape read by every layout consumer (#1802, #2039): the module
+    /// namespace (<see cref="NamespaceParts"/> — the project namespace followed by the recorded
+    /// <see cref="ModuleLayout.NamespaceSegments"/>), the members class <c>&lt;X&gt;</c>
+    /// (<see cref="MembersClassName"/>) its functions, variables and constants live in, the emitted
+    /// C# names of its top-level types (siblings of <c>&lt;X&gt;</c> in that namespace), the
+    /// recorded layout itself, and whether the module declares the entry-point <c>main()</c>
     /// (<see cref="ModuleIdentifiers.DeclaresEntryMain"/>, #2013).
     /// </summary>
     internal sealed record ModuleShape(
         bool DeclaresEntryMain,
-        string ModuleClassName,
-        string? MergedClassName,
-        IReadOnlyList<string> ExtractedTypeNames,
+        string MembersClassName,
         IReadOnlyList<string> NamespaceParts,
-        IReadOnlySet<string> OwnTypeNames);
+        IReadOnlySet<string> OwnTypeNames,
+        ModuleLayout Layout)
+    {
+        /// <summary>The <c>global::</c>-rootable path of the members class: namespace + <c>&lt;X&gt;</c>.</summary>
+        public string[] MembersClassPath => NamespaceParts.Append(MembersClassName).ToArray();
+
+        /// <summary>The <c>global::</c>-rootable path of a top-level type of this module.</summary>
+        public string[] SiblingTypePath(string csharpTypeName) => NamespaceParts.Append(csharpTypeName).ToArray();
+    }
 
     /// <summary>
     /// Computes the <see cref="ModuleShape"/> ONCE, before any declaration is emitted, from the
-    /// module's statements. Mirrors the class-name / merge / extraction / namespace decisions that
-    /// <see cref="GenerateModuleMembers"/> and <see cref="GenerateCompilationUnit"/> make locally so
-    /// the module-member qualifier can read one authority instead of re-deriving the module class at
-    /// each reference (#1683, #1802). No emission — pure computation stored in <c>_moduleShape</c>.
+    /// module layout semantic analysis recorded on the <see cref="Module"/> root (#2039, Decision 28
+    /// (e)). No emission — the recorded fact, read into <c>_moduleShape</c>.
     /// </summary>
-    private ModuleShape ComputeModuleShape(List<Statement> statements)
+    private ModuleShape ComputeModuleShape(Module? module, List<Statement> statements)
     {
         bool declaresEntryMain = ModuleIdentifiers.DeclaresEntryMain(statements);
-        var moduleClassName = GetModuleClassName(declaresEntryMain);
 
-        // A user class whose emitted identifier equals the module class name merges INTO the module
-        // class (animal.spy + class Animal). Only a ClassDef merges; a struct/interface/enum/union
-        // of the same name is a collision error, not a merge (see GenerateModuleMembers).
-        //
-        // The arity axis (#1919): a GENERIC class named like the module (`class Thing[T]` in
-        // thing.spy) is C# `Thing<T>`, which cannot become the arity-0 module class `Thing`, so it
-        // never merges (GenerateModuleMembers refuses it with SPY0520: nested inside the module class
-        // it would be CS0542). GenerateModuleMembers reads this answer; it does not re-derive it.
-        string? mergedClassName = null;
-        foreach (var stmt in statements)
-        {
-            if (stmt is ClassDef cd
-                && cd.TypeParameters.Length == 0
-                && NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped) == moduleClassName)
-            {
-                mergedClassName = moduleClassName;
-                break;
-            }
-        }
-
-        // Single-file library mode extracts top-level type declarations out of the module class and
-        // emits them as namespace siblings. A merge returns early there, so no extraction happens
-        // when a type merged into the module class. Entry points and multi-file projects keep types
-        // nested inside the module class.
-        var extractedTypeNames = new List<string>();
-        if (!_context.IsEntryPoint
-            && string.IsNullOrEmpty(_context.ProjectNamespace)
-            && mergedClassName == null)
-        {
-            foreach (var stmt in statements)
-            {
-                var name = stmt switch
-                {
-                    ClassDef cd => NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped),
-                    StructDef sd => NameCasing.ResolveType(sd.Name, sd.IsNameBacktickEscaped),
-                    InterfaceDef id => NameCasing.ResolveInterface(id.Name, id.IsNameBacktickEscaped),
-                    EnumDef ed => NameCasing.ResolveType(ed.Name, ed.IsNameBacktickEscaped),
-                    UnionDef ud => NameCasing.ResolveType(ud.Name, ud.IsNameBacktickEscaped),
-                    _ => (string?)null
-                };
-                if (name != null)
-                    extractedTypeNames.Add(name);
-            }
-        }
-
-        // The namespace the module class is declared in: the project namespace (if any) followed by
-        // the module's directory segments (#1948). Empty for single-file compilation, which emits the
-        // module class directly into the global namespace.
-        var namespaceParts = new List<string>();
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            namespaceParts.AddRange(_context.ProjectNamespace!.Split('.'));
-        namespaceParts.AddRange(ModuleIdentifiers.ModuleNamespaceSegments(_context.ProjectRootPath, _context.SourceFilePath));
+        // The AST-only unit-test path drives the emitter without semantic analysis recording a
+        // layout; it reads the same path authority the recorder does, so the two cannot disagree.
+        var layout = (module != null ? _context.SemanticInfo?.GetModuleLayout(module) : null)
+            ?? (string.IsNullOrEmpty(_context.SourceFilePath)
+                ? new ModuleLayout(Array.Empty<string>(), "Module")
+                : new ModuleLayout(
+                    ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, _context.SourceFilePath),
+                    ModuleIdentifiers.LayoutMembersClassName(_context.SourceFilePath)));
+        var namespaceParts = layout.NamespaceParts(_context.ProjectNamespace);
 
         // The emitted C# names of every top-level TYPE this module declares. A same-file type
         // reference is qualified through the module shape ONLY for these names, so a builtin or a
@@ -594,40 +441,17 @@ internal partial class RoslynEmitter
                 ownTypeNames.Add(name);
         }
 
-        return new ModuleShape(
-            declaresEntryMain, moduleClassName, mergedClassName, extractedTypeNames, namespaceParts, ownTypeNames);
+        return new ModuleShape(declaresEntryMain, layout.MembersClassName, namespaceParts, ownTypeNames, layout);
     }
 
     /// <summary>
-    /// Derives the module class name from the source file path. <b><c>ComputeModuleShape</c> is the
-    /// authority for the NAME a consumer should read</b> (#1802): it calls this, records the answer
-    /// as <c>ModuleShape.ModuleClassName</c>, and <c>RoslynEmitter.CompilationUnit</c> publishes that
-    /// shape on <c>_moduleShape</c> / <c>_context.ModuleShape</c> before any member is generated.
-    ///
-    /// <para>Five call sites remain, and the close-out note claiming a single caller is wrong. Three
-    /// pass arguments and are inside this file's own module-class generation —
-    /// <c>ComputeModuleShape</c> itself, <c>GenerateModuleMembers</c> and
-    /// <c>GenerateModuleTestClass</c>, all of which need the <c>willGenerateMainMethod</c> /
-    /// <c>functionNames</c> inputs the recorded name does not carry. The other two are the
-    /// argument-less <c>_moduleShape?.ModuleClassName ?? GetModuleClassName()</c> fallbacks in
-    /// <c>RoslynEmitter.Expressions.cs</c> and <c>RoslynEmitter.TypeDeclarations.cs</c>: those exist
-    /// for the AST-only unit-test path, where an emitter is driven directly without
-    /// <c>ComputeModuleShape</c> ever running, and are unreachable in a real compilation because
-    /// <c>_moduleShape</c> is always set by then.</para>
-    ///
-    /// <para>Do not add a new consumer-side caller: read <c>ModuleShape.ModuleClassName</c>, so the
-    /// name a reference is spelled with is decided in one place.</para>
+    /// The shape of the module being emitted. <see cref="GenerateCompilationUnit"/> computes it before
+    /// any member is generated; the AST-only unit-test paths that emit a single declaration without a
+    /// compilation unit get the shape of a nameless module (no namespace, members class
+    /// <c>Module</c>).
     /// </summary>
-    private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
-    {
-        // Module class name is derived from the source file name — the one authority the project's
-        // SPY0526 check also reads (#1932): __init__.spy → its directory, an entry main.spy →
-        // "Program" (avoids CS0542 Main.Main()), any other file → the mangled stem.
-        if (!string.IsNullOrEmpty(_context.SourceFilePath))
-            return ModuleIdentifiers.ModuleClassName(_context.SourceFilePath, willGenerateMainMethod);
-
-        return "Module"; // Fallback
-    }
+    private ModuleShape CurrentModuleShape
+        => _moduleShape ??= ComputeModuleShape(null, new List<Statement>());
 
     /// <summary>
     /// The Sharpy module name for the [SharpyModule] attribute — the python dotted module path
@@ -785,23 +609,25 @@ internal partial class RoslynEmitter
         if (reExportedSymbols == null || resolvedModulePath == null)
             yield break;
 
-        // The source module's class: "mypackage.helpers" -> "ProjectNamespace.Mypackage.Helpers", a
-        // subpackage's __init__ -> "ProjectNamespace.Mypackage.Sub.SubModule" (#1948).
-        var sourceModuleNamespace = FromImportModuleClassPath(fromImport);
-        var sourceClassName = !string.IsNullOrEmpty(_context.ProjectNamespace)
-            ? $"{_context.ProjectNamespace}.{sourceModuleNamespace}"
-            : sourceModuleNamespace;
+        // The source module's members class, global::-rooted (#2039, F13): "mypackage.helpers" ->
+        // "global::ProjectNamespace.Mypackage.Helpers.HelpersModule", a subpackage's __init__ ->
+        // "global::ProjectNamespace.Mypackage.Sub.SubModule" (#1948).
+        var sourceSegments = new List<string>();
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            sourceSegments.AddRange(_context.ProjectNamespace!.Split('.'));
+        sourceSegments.AddRange(FromImportMembersClassPath(fromImport));
+        var sourceClass = MakeGlobalQualifiedName(sourceSegments.ToArray());
 
         foreach (var (localName, symbol) in reExportedSymbols)
         {
             switch (symbol)
             {
                 case FunctionSymbol funcSymbol:
-                    yield return GenerateReExportMethod(localName, funcSymbol, sourceClassName);
+                    yield return GenerateReExportMethod(localName, funcSymbol, sourceClass);
                     break;
 
                 case VariableSymbol varSymbol:
-                    yield return GenerateReExportProperty(localName, varSymbol, sourceClassName);
+                    yield return GenerateReExportProperty(localName, varSymbol, sourceClass);
                     break;
 
                 case TypeSymbol:
@@ -816,7 +642,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generate a delegating method for a re-exported function.
     /// </summary>
-    private MemberDeclarationSyntax GenerateReExportMethod(string localName, FunctionSymbol funcSymbol, string sourceClassName)
+    private MemberDeclarationSyntax GenerateReExportMethod(string localName, FunctionSymbol funcSymbol, NameSyntax sourceClass)
     {
         var methodName = NameMangler.Transform(localName, NameContext.Method);
         var sourceMethodName = NameMangler.Transform(funcSymbol.Name, NameContext.Method);
@@ -843,7 +669,7 @@ internal partial class RoslynEmitter
         var delegateCall = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                ParseExpression(sourceClassName),
+                sourceClass,
                 IdentifierName(sourceMethodName)))
             .WithArgumentList(ArgumentList(SeparatedList(arguments)));
 
@@ -869,7 +695,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generate a delegating property for a re-exported variable/constant.
     /// </summary>
-    private MemberDeclarationSyntax GenerateReExportProperty(string localName, VariableSymbol varSymbol, string sourceClassName)
+    private MemberDeclarationSyntax GenerateReExportProperty(string localName, VariableSymbol varSymbol, NameSyntax sourceClass)
     {
         // For constants/variables with ALL_CAPS names, preserve the case
         var propertyName = NameFormDetector.IsConstantCaseName(localName)
@@ -886,7 +712,7 @@ internal partial class RoslynEmitter
         // Build the delegate access: SourceClass.Property
         var delegateAccess = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
-            ParseExpression(sourceClassName),
+            sourceClass,
             IdentifierName(sourcePropertyName));
 
         // Generate a read-only property with expression body
@@ -1038,10 +864,10 @@ internal partial class RoslynEmitter
 
         _isInTestFunction = savedIsInTestFunction;
 
-        // Test class name: <ModuleClass>Tests. Always public; not static (xUnit
-        // instantiates the class per test method).
-        var moduleClassName = GetModuleClassName(willGenerateMainMethod: false, functionNames: new HashSet<string>());
-        var testClassName = moduleClassName + "Tests";
+        // Test class name: the recorded <X>Tests (#2039, F14), a sibling of <X> in the module
+        // namespace. Always public; not static (xUnit instantiates the class per test method).
+        var shape = CurrentModuleShape;
+        var testClassName = shape.Layout.TestClassName ?? shape.MembersClassName + "Tests";
 
         // Compose class-level fixture wiring. Two mechanisms can coexist:
         //   - User fixtures: Xunit.IClassFixture<T> base types + ctor injection + readonly fields

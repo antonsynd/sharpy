@@ -13,10 +13,10 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 /// The SPY0908 net is a net, not an error channel (#1387, #1146 spine). It exists so a raw
 /// <c>CSxxxx</c> from the compiler's own generated C# can never reach the user; it says "this is a
 /// Sharpy compiler bug — please report it". That sentence is only true when the compiler believed
-/// the program was good. A module-class name collision reports SPY0520 and the emitter then
-/// <em>drops</em> the refused unit's C#, so the surviving units are compiled with no entry point and
-/// Roslyn answers CS5001 — a consequence of the deliberate refusal, which the net used to hand back
-/// to the user as an internal compiler error alongside the real diagnostic.
+/// the program was good. An emitter-time refusal (SPY0500, and SPY0520 before #2039 retired it) drops
+/// the refused unit's C#, so the surviving units are compiled with no entry point and Roslyn answers
+/// CS5001 — a consequence of the deliberate refusal, which the net used to hand back to the user as
+/// an internal compiler error alongside the real diagnostic.
 ///
 /// <para>
 /// These tests run the whole pipeline <b>including assembly emit</b>. That matters: SPY0908 is a
@@ -50,45 +50,47 @@ public class GeneratedCodeNetSuppressionTests : IDisposable
         }
     }
 
-    // The two module-class-collision shapes that exist in the fixture corpus
-    // (Integration/TestFixtures/name_collision/). Kept verbatim so a change to either fixture and a
-    // change here stay comparable.
-    private const string EscapedStructCollisionSource = """
-        struct `CollidesWithModuleClass`:
-            n: int
+    // Two emitter-time refusals (SPY0500): @lru_cache on an async function, at module level and on a
+    // method. The refused unit's C# is dropped, so Phase 7 compiles the rest with no entry point.
+    // SPY0520 (a type named like its module class), which this test used to drive, retired when every
+    // module became a namespace (#2039); SPY0523 is reported before code generation, so the build
+    // never reaches Phase 7 and cannot exercise the net.
+    private const string ModuleLevelLruAsyncSource = """
+        @lru_cache
+        async def f() -> int:
+            return 4
 
 
         def main() -> None:
-            x = `CollidesWithModuleClass`(4)
-            print(x.n)
+            print(7)
         """;
 
-    private const string UnionCollisionSource = """
-        union CollidesWithModuleClass:
-            case Circle(r: float)
-            case Empty()
+    private const string MethodLruAsyncSource = """
+        class C:
+            @lru_cache
+            async def f(self) -> int:
+                return 4
 
 
         def main() -> None:
-            s: CollidesWithModuleClass = CollidesWithModuleClass.Circle(5.0)
-            print(1)
+            print(7)
         """;
 
     [Theory]
-    [InlineData(EscapedStructCollisionSource)]
-    [InlineData(UnionCollisionSource)]
-    public void ModuleClassCollision_ReportsSpy0520_AndNotSpy0908(string source)
+    [InlineData(ModuleLevelLruAsyncSource)]
+    [InlineData(MethodLruAsyncSource)]
+    public void EmitterRefusal_ReportsItsCode_AndNotSpy0908(string source)
     {
-        var result = CompileWithAssemblyEmit(source, "collides_with_module_class.spy");
+        var result = CompileWithAssemblyEmit(source, "refused_at_emission.spy");
 
         var codes = result.Diagnostics.GetAll().Select(d => d.Code).ToList();
         _output.WriteLine("Diagnostics: " + string.Join(", ", codes));
 
-        Assert.Contains(DiagnosticCodes.CodeGen.NameCollision, codes);
+        Assert.Contains(DiagnosticCodes.CodeGen.EmitError, codes);
         Assert.DoesNotContain(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, codes);
 
         // Non-vacuity guard. Without this the assertion above would also pass if Phase 7 had never
-        // run at all, or if the collision had stopped being detected. The suppressed channel is
+        // run at all, or if the refusal had stopped being detected. The suppressed channel is
         // populated only by an assembly compile that actually happened and that Roslyn actually
         // rejected — so its contents prove the SPY0908 absence is the gate's doing, and prove the
         // leak corpus the #1146 sweeps depend on did not silently shrink.

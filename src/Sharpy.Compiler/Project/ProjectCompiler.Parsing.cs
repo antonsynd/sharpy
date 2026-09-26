@@ -47,20 +47,10 @@ internal partial class ProjectCompiler
         var reported = false;
 
         // Refusal 1 (#1948): a module file beside a same-named package directory. Python imports
-        // only one of them, so the other's modules are unreachable; C# spells a class and a namespace
-        // of one name in one scope (CS0101). A main.spy declaring main() emits "Program" — the one
-        // entry predicate the emitter reads (#2013); a unit served from the incremental cache has no
-        // AST, and its cold build recorded the bit.
-        bool WillGenerateMain(string file)
-        {
-            var body = _projectModel?.GetUnit(file)?.Ast?.Body;
-            return body != null
-                ? ModuleIdentifiers.DeclaresEntryMain(body)
-                : _incrementalCache?.GetFileCache(file)?.DeclaresEntryMain ?? false;
-        }
-
+        // only one of them, so the other's modules are unreachable. Compared by the module's own
+        // namespace segment, which no longer depends on the entry bit (#2039).
         foreach (var (file, directory, identifier) in
-                 ModuleIdentifiers.FindModuleBesideSameNamedPackage(sourceRoot, config.SourceFiles, WillGenerateMain))
+                 ModuleIdentifiers.FindModuleBesideSameNamedPackage(sourceRoot, config.SourceFiles))
         {
             _diagnostics.AddError(
                 $"Module '{Path.GetFileName(file)}' and the package directory '{directory}' beside it both emit " +
@@ -91,7 +81,7 @@ internal partial class ProjectCompiler
             // A child spelled like the package's own module class <X> — both are members of the package
             // namespace (CS0101). Python has no such conflict; the name is Sharpy's <X>, so this is the
             // <X> collision of owner ruling 15: SPY0523, like a `def pkg_module` in the __init__ itself.
-            var membersClass = ModuleIdentifiers.ModuleClassName(initFile, willGenerateMainMethod: false);
+            var membersClass = ModuleIdentifiers.LayoutMembersClassName(initFile);
             if (children.TryGetValue(membersClass, out var twin))
             {
                 var twinIsPackage = twin.EndsWith('/');

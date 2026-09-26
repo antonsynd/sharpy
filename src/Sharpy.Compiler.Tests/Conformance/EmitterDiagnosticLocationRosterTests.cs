@@ -34,9 +34,10 @@ public class EmitterDiagnosticLocationRosterTests
     /// <summary>
     /// The number of reporting invocations under <c>CodeGen/</c>, measured when the guard landed. A
     /// new site must be classified (located, and in range or rostered below) and this literal bumped
-    /// in the same edit.
+    /// in the same edit. 28 → 26 at #2039: the two SPY0520 arms left with the module-class merge
+    /// (every module is a namespace; a type named like its file is an ordinary sibling type).
     /// </summary>
-    private const int ReportingSiteCount = 28;
+    private const int ReportingSiteCount = 26;
 
     /// <summary>
     /// Reporting method names. <c>Add</c> counts only on a receiver that is a diagnostic bag.

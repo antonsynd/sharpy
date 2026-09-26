@@ -106,13 +106,16 @@ internal partial class RoslynEmitter
         members.Add(GenerateDataclassConstructor(
             typeSymbol, className, fields, ownFields, inheritedFields, classBody));
 
-        // Generate Equals + GetHashCode + operator ==/!= if eq=True
+        // Generate Equals + GetHashCode + operator ==/!= if eq=True. The class names itself with its
+        // own type parameters (`Box<T>`): a bare `Box` does not bind a generic class (CS0305), and in a
+        // module namespace spelled like the class it binds the NAMESPACE (CS0118, #2095).
         if (options.Eq)
         {
-            members.Add(GenerateDataclassEquals(className, fields));
+            var selfType = DataclassSelfType(typeSymbol, className);
+            members.Add(GenerateDataclassEquals(selfType, fields));
             members.Add(GenerateDataclassGetHashCode(fields));
-            members.Add(GenerateDataclassOperatorEquals(className));
-            members.Add(GenerateDataclassOperatorNotEquals(className));
+            members.Add(GenerateDataclassOperatorEquals(selfType));
+            members.Add(GenerateDataclassOperatorNotEquals(selfType));
         }
 
         // Generate ToString if repr=True
@@ -272,12 +275,23 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The type a @dataclass names itself with in its synthesized members: its name with its own type
+    /// parameters (<c>Box&lt;T&gt;</c>), since a bare <c>Box</c> does not bind a generic class (CS0305,
+    /// #2095).
+    /// </summary>
+    private static TypeSyntax DataclassSelfType(TypeSymbol typeSymbol, string className)
+        => typeSymbol.TypeParameters.Count == 0
+            ? IdentifierName(className)
+            : GenericName(Identifier(className)).WithTypeArgumentList(TypeArgumentList(
+                SeparatedList<TypeSyntax>(typeSymbol.TypeParameters.Select(tp => TypeParameterIdentifierName(tp.Name)))));
+
+    /// <summary>
     /// Generates override bool Equals(object? obj) for a @dataclass.
     /// Pattern: if (obj is not ClassName other) return false;
     ///          return Equals(F1, other.F1) && Equals(F2, other.F2) && ...;
     /// </summary>
     private MethodDeclarationSyntax GenerateDataclassEquals(
-        string className, IReadOnlyList<VariableSymbol> fields)
+        TypeSyntax selfType, IReadOnlyList<VariableSymbol> fields)
     {
         var statements = new List<StatementSyntax>();
 
@@ -288,7 +302,7 @@ internal partial class RoslynEmitter
                     IdentifierName("obj"),
                     UnaryPattern(
                         DeclarationPattern(
-                            IdentifierName(className),
+                            selfType,
                             SingleVariableDesignation(Identifier("other"))))),
                 ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression))));
 
@@ -434,7 +448,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates operator == for a @dataclass, delegating to Equals.
     /// </summary>
-    private static OperatorDeclarationSyntax GenerateDataclassOperatorEquals(string className)
+    private static OperatorDeclarationSyntax GenerateDataclassOperatorEquals(TypeSyntax selfType)
     {
         return OperatorDeclaration(
             PredefinedType(Token(SyntaxKind.BoolKeyword)),
@@ -445,9 +459,9 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(new[]
             {
                 Parameter(Identifier("left"))
-                    .WithType(NullableType(IdentifierName(className))),
+                    .WithType(NullableType(selfType)),
                 Parameter(Identifier("right"))
-                    .WithType(NullableType(IdentifierName(className))),
+                    .WithType(NullableType(selfType)),
             })))
             .WithExpressionBody(ArrowExpressionClause(
                 InvocationExpression(
@@ -463,7 +477,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates operator != for a @dataclass, delegating to Equals.
     /// </summary>
-    private static OperatorDeclarationSyntax GenerateDataclassOperatorNotEquals(string className)
+    private static OperatorDeclarationSyntax GenerateDataclassOperatorNotEquals(TypeSyntax selfType)
     {
         return OperatorDeclaration(
             PredefinedType(Token(SyntaxKind.BoolKeyword)),
@@ -474,9 +488,9 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(new[]
             {
                 Parameter(Identifier("left"))
-                    .WithType(NullableType(IdentifierName(className))),
+                    .WithType(NullableType(selfType)),
                 Parameter(Identifier("right"))
-                    .WithType(NullableType(IdentifierName(className))),
+                    .WithType(NullableType(selfType)),
             })))
             .WithExpressionBody(ArrowExpressionClause(
                 PrefixUnaryExpression(

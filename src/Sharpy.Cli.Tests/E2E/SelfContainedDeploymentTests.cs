@@ -10,8 +10,9 @@ namespace Sharpy.Cli.Tests.E2E;
 /// executable and run it. Before the fix EVERY publish failed to compile — the wrapper's entry call
 /// interpolated the raw file stem (<c>sc_probe.Main()</c>) against the emitter's mangled module class
 /// (<c>ScProbe</c>): CS0103. The two cells are the case-sensitivity trap the issue names: a
-/// snake_case stem (<c>sc_probe</c> → <c>ScProbe</c>) and <c>main.spy</c> (→ <c>Program</c>, the
-/// CS0542-avoiding special case). Each drives the real <c>sharpyc</c> process through
+/// snake_case stem (<c>sc_probe</c> → <c>ScProbe.ScProbeModule</c>) and <c>main.spy</c> (→
+/// <c>Main.MainModule</c>; the <c>Program</c> special case retired with the module-as-namespace
+/// layout, #2039). Each drives the real <c>sharpyc</c> process through
 /// <c>dotnet publish --self-contained</c> and asserts the program's own stdout, so a regression in
 /// the entry-name mangling OR the reflection/load-context wrapper surfaces here as a failed publish or
 /// a missing type at run time. (<c>--self-contained</c> shells out to <c>dotnet publish</c> and is
@@ -28,7 +29,8 @@ public class SelfContainedDeploymentTests : IDisposable
 
     [Fact]
     public void SnakeCaseStem_PublishesAndRuns() =>
-        // sc_probe.spy → module class ScProbe. The raw-stem bug wrote sc_probe.Main() → CS0103.
+        // sc_probe.spy → members class ScProbe.ScProbeModule (#2039). The raw-stem bug wrote
+        // sc_probe.Main() → CS0103.
         RunSelfContained("sc_probe.spy", """
             def main() -> None:
                 print("hi from sc_probe")
@@ -36,8 +38,8 @@ public class SelfContainedDeploymentTests : IDisposable
 
     [Fact]
     public void MainStem_PublishesAndRuns() =>
-        // main.spy → module class Program (not Main), the CS0542-avoiding special case; the raw stem
-        // would have reflected the non-existent type "main".
+        // main.spy → members class Main.MainModule (#2039); the raw stem would have reflected the
+        // non-existent type "main".
         RunSelfContained("main.spy", """
             def main() -> None:
                 print("hi from main")

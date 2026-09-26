@@ -341,10 +341,11 @@ internal partial class RoslynEmitter
 
                 if (options.Eq)
                 {
-                    members.Add(GenerateDataclassEquals(className, fields));
+                    var selfType = DataclassSelfType(_currentTypeSymbol, className);
+                    members.Add(GenerateDataclassEquals(selfType, fields));
                     members.Add(GenerateDataclassGetHashCode(fields));
-                    members.Add(GenerateDataclassOperatorEquals(className));
-                    members.Add(GenerateDataclassOperatorNotEquals(className));
+                    members.Add(GenerateDataclassOperatorEquals(selfType));
+                    members.Add(GenerateDataclassOperatorNotEquals(selfType));
                 }
 
                 if (options.Repr)

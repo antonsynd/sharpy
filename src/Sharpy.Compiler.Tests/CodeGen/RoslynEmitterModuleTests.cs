@@ -61,9 +61,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file (no ProjectNamespace) emits into global namespace
-        Assert.DoesNotContain("namespace ", code);
-        Assert.Contains("class Utils", code);
+        // Assert - every module is a namespace (#2039): single-file (no ProjectNamespace) emits
+        // namespace Utils with the members class UtilsModule
+        Assert.Contains("namespace Utils", code);
+        Assert.Contains("class UtilsModule", code);
     }
 
     [Fact]
@@ -315,9 +316,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - directory parts are namespace segments (#1948); the module class is the only class
-        Assert.Equal("MyProject.Myapp.Services", NamespaceOf(code));
-        Assert.Equal(new[] { "Auth" }, ClassesOf(code));
+        // Assert - directory parts and then the stem are namespace segments (#1948, #2039); the members
+        // class is the only class
+        Assert.Equal("MyProject.Myapp.Services.Auth", NamespaceOf(code));
+        Assert.Equal(new[] { "AuthModule" }, ClassesOf(code));
     }
 
     [Fact]
@@ -334,9 +336,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file (no ProjectNamespace) emits into global namespace
-        Assert.DoesNotContain("namespace ", code);
-        Assert.Contains("class Auth", code);
+        // Assert - single-file (no ProjectNamespace): the file is its own namespace (#2039)
+        Assert.Contains("namespace Auth", code);
+        Assert.Contains("class AuthModule", code);
     }
 
     [Fact]
@@ -362,9 +364,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - the directory is a namespace segment (#1948)
-        Assert.Equal("MyApp.Lib", NamespaceOf(code));
-        Assert.Equal(new[] { "Mymodule" }, ClassesOf(code));
+        // Assert - the directory and the stem are namespace segments (#1948, #2039)
+        Assert.Equal("MyApp.Lib.Mymodule", NamespaceOf(code));
+        Assert.Equal(new[] { "MymoduleModule" }, ClassesOf(code));
     }
 
     [Fact]
@@ -381,9 +383,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file (no ProjectNamespace) emits into global namespace
-        Assert.DoesNotContain("namespace ", code);
-        Assert.Contains("class Mymodule", code);
+        // Assert - single-file (no ProjectNamespace): the file is its own namespace (#2039)
+        Assert.Contains("namespace Mymodule", code);
+        Assert.Contains("class MymoduleModule", code);
     }
 
     [Fact]
@@ -494,10 +496,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file (no ProjectNamespace) emits into global namespace
-        Assert.DoesNotContain("namespace ", code);
-        // File name starts with number, should have valid class name
-        Assert.Contains("class", code);
+        // Assert - the file is its own namespace (#2039); a leading digit gets a `_` prefix in both
+        // the namespace segment and the members class
+        Assert.Contains("namespace _123test", code);
+        Assert.Contains("class _123testModule", code);
     }
 
     [Fact]
@@ -520,10 +522,11 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - the dashed/dotted directory is ONE valid namespace segment
+        // Assert - the dashed/dotted directory is ONE valid namespace segment, followed by the stem
         var ns = NamespaceOf(code);
         Assert.StartsWith("TestApp.", ns);
-        Assert.Equal(2, ns.Split('.').Length);
+        Assert.Equal(3, ns.Split('.').Length);
+        Assert.EndsWith(".Module", ns);
     }
 
     [Fact]
@@ -546,9 +549,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - the numeric directory is a valid namespace segment
+        // Assert - the numeric directory is a valid namespace segment; the stem follows it
         Assert.StartsWith("Dogfood.", NamespaceOf(code));
-        Assert.Equal(new[] { "Source" }, ClassesOf(code));
+        Assert.EndsWith(".Source", NamespaceOf(code));
+        Assert.Equal(new[] { "SourceModule" }, ClassesOf(code));
     }
 
     [Fact]
@@ -563,9 +567,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file (no ProjectNamespace) emits into global namespace
-        Assert.DoesNotContain("namespace ", code);
-        Assert.Contains("class Source", code);
+        // Assert - single-file: the file is its own namespace (#2039); the directory is not used
+        Assert.Contains("namespace Source", code);
+        Assert.Contains("class SourceModule", code);
     }
 
     [Fact]
@@ -588,9 +592,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should use ProjectNamespace only
-        Assert.Contains("namespace MyApp", code);
-        Assert.DoesNotContain("namespace MyApp.", code);
+        // Assert - the project namespace and the file's own stem (no root path, so no directories)
+        Assert.Contains("namespace MyApp.Mymodule", code);
+        Assert.Contains("class MymoduleModule", code);
     }
 
     [Fact]
@@ -967,9 +971,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Program class should NOT have [SharpyModule] attribute
+        // Assert - the entry module's members class (MainModule, #2039 — the Program special case
+        // retired) has no [SharpyModule] attribute
         Assert.DoesNotContain("SharpyModule", code);
-        Assert.Contains("class Program", code);
+        Assert.Contains("class MainModule", code);
     }
 
     [Fact]
@@ -1049,7 +1054,7 @@ public class RoslynEmitterModuleTests
     #region Name Collision Detection Tests
 
     [Fact]
-    public void GenerateCompilationUnit_ClassNameMatchesModule_ClassAbsorbsMembers()
+    public void GenerateCompilationUnit_ClassNameMatchesModule_IsASiblingOfTheMembersClass()
     {
         // Arrange - animal.spy with class Animal (class name matches module name)
         var builtins = new BuiltinRegistry();
@@ -1092,15 +1097,16 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - No error; class Animal absorbs module-level function
+        // Assert - no error, no merge (#2039, M2): class Animal is a sibling of the members class
+        // AnimalModule, which holds the module-level function
         Assert.False(context.HasErrors);
-        Assert.Contains("class Animal", code);
-        // Module-level function should be inside the Animal class as static
+        Assert.Equal("TestProject.Animal", NamespaceOf(code));
+        Assert.Equal(new[] { "AnimalModule", "Animal" }, ClassesOf(code));
         Assert.Contains("CreateAnimal", code);
     }
 
     [Fact]
-    public void GenerateCompilationUnit_StructNameMatchesModule_EmitsError()
+    public void GenerateCompilationUnit_StructNameMatchesModule_IsASibling()
     {
         // Arrange - point.spy with struct Point (struct can't absorb, should error)
         var builtins = new BuiltinRegistry();
@@ -1126,17 +1132,16 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        emitter.GenerateCompilationUnit(module);
+        var code = emitter.GenerateCompilationUnit(module).ToFullString();
 
-        // Assert - Should emit name collision error
-        Assert.True(context.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == "SPY0520");
-        Assert.Contains(errors, e => e.Message.Contains("conflicts with module class name"));
+        // Assert - no error (SPY0520 retired, #2039): the struct is a sibling of PointModule
+        Assert.False(context.HasErrors);
+        Assert.Equal("TestProject.Point", NamespaceOf(code));
+        Assert.Contains("struct Point", code);
     }
 
     [Fact]
-    public void GenerateCompilationUnit_InterfaceNameMatchesModule_EmitsError()
+    public void GenerateCompilationUnit_InterfaceNameMatchesModule_IsASibling()
     {
         // Arrange - drawable.spy with interface Drawable
         var builtins = new BuiltinRegistry();
@@ -1162,16 +1167,15 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        emitter.GenerateCompilationUnit(module);
+        var code = emitter.GenerateCompilationUnit(module).ToFullString();
 
-        // Assert - Should emit name collision error
-        Assert.True(context.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == "SPY0520");
+        // Assert - no error (SPY0520 retired, #2039): the type is a sibling of the members class
+        Assert.False(context.HasErrors);
+        Assert.Contains("Module", code);
     }
 
     [Fact]
-    public void GenerateCompilationUnit_EnumNameMatchesModule_EmitsError()
+    public void GenerateCompilationUnit_EnumNameMatchesModule_IsASibling()
     {
         // Arrange - color.spy with enum Color
         var builtins = new BuiltinRegistry();
@@ -1200,12 +1204,11 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        emitter.GenerateCompilationUnit(module);
+        var code = emitter.GenerateCompilationUnit(module).ToFullString();
 
-        // Assert - Should emit name collision error
-        Assert.True(context.HasErrors);
-        var errors = context.Diagnostics.GetErrors();
-        Assert.Contains(errors, e => e.Code == "SPY0520");
+        // Assert - no error (SPY0520 retired, #2039): the type is a sibling of the members class
+        Assert.False(context.HasErrors);
+        Assert.Contains("Module", code);
     }
 
     #endregion
@@ -1537,9 +1540,10 @@ public class RoslynEmitterModuleTests
     }
 
     [Fact]
-    public void EntryPointMode_ClassDefinition_RemainsNested()
+    public void EntryPointMode_ClassDefinition_IsASiblingStampedMain()
     {
-        // Arrange - entry-point mode keeps types nested (unchanged behavior)
+        // Arrange - entry-point mode lays types out like every other mode (#2039, ruling 12): beside
+        // the members class. Only the stamp's module differs: the entry module is `__main__`.
         var emitter = CreateEmitter(isEntryPoint: true);
         var module = new Module
         {
@@ -1549,17 +1553,15 @@ public class RoslynEmitterModuleTests
         // Act
         var cu = emitter.GenerateCompilationUnit(module);
 
-        // Assert - Widget is nested inside the module class, no [SharpyModuleType]
+        // Assert - Widget is a sibling of the members class, stamped [SharpyModuleType("__main__", ...)]
         var moduleClass = GetModuleClass(cu);
-        var nestedWidget = moduleClass.Members
-            .OfType<ClassDeclarationSyntax>()
-            .FirstOrDefault(c => c.Identifier.Text == "Widget");
-        Assert.NotNull(nestedWidget);
-        Assert.False(HasSharpyModuleTypeAttribute(nestedWidget!));
-
-        // No top-level Widget sibling
-        Assert.DoesNotContain(cu.Members,
+        Assert.DoesNotContain(moduleClass.Members,
             m => m is ClassDeclarationSyntax c && c.Identifier.Text == "Widget");
+        var sibling = cu.Members.OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == "Widget");
+        Assert.NotNull(sibling);
+        Assert.True(HasSharpyModuleTypeAttribute(sibling!));
+        Assert.Contains("\"__main__\"", sibling!.AttributeLists.ToString());
     }
 
     [Fact]

@@ -568,26 +568,25 @@ class Foo:
             d.Message.Contains("Name collision"));
     }
 
-    [Fact]
-    public void ComputeForModule_ModuleFunctionAndTypeSameMangledName_EmitsSPY0522()
+    /// <summary>
+    /// #2039: a function and a type of one emitted name live in two scopes — the function in the
+    /// members class, the type beside it in the module namespace — so they no longer collide (was
+    /// SPY0522). Two TYPES of one emitted name still do (the control).
+    /// </summary>
+    [Theory]
+    [InlineData("class FooBar:\n    pass\n\ndef foo_bar() -> None:\n    pass\n", false)]
+    [InlineData("class foo_bar:\n    pass\n\nclass FooBar:\n    pass\n", true)]
+    public void ComputeForModule_SameMangledName_CollidesOnlyWithinOneScope(string source, bool collides)
     {
-        var source = @"
-class FooBar:
-    pass
-
-def foo_bar() -> None:
-    pass
-";
         var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
         var diagnostics = new DiagnosticBag();
         var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
 
         computer.ComputeForModule(module);
 
-        diagnostics.HasErrors.Should().BeTrue();
-        diagnostics.GetErrors().Should().Contain(d =>
+        diagnostics.GetErrors().Any(d =>
             d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
-            d.Message.Contains("Name collision"));
+            d.Message.Contains("Name collision")).Should().Be(collides);
     }
 
     [Fact]
@@ -679,23 +678,29 @@ class MyIterator:
         diagnostics.HasErrors.Should().BeFalse();
     }
 
-    [Fact]
-    public void ComputeForModule_FunctionMatchesModuleClassName_EmitsSPY0523()
+    /// <summary>
+    /// SPY0523 under the module-as-namespace layout (#2039, ruling 15): a module's members class is
+    /// <c>&lt;Stem&gt;Module</c>, and a top-level function or variable spelled like it collides. A
+    /// function named like the FILE no longer does — it was SPY0523 while the module class was the stem.
+    /// </summary>
+    [Theory]
+    [InlineData("def foo_bar_module() -> None:\n    pass\n", true)]
+    [InlineData("foo_bar_module: int = 42\n", true)]
+    [InlineData("def foo_bar() -> None:\n    pass\n", false)]
+    [InlineData("foo_bar: int = 42\n", false)]
+    public void ComputeForModule_NameMatchesMembersClass_EmitsSPY0523(string source, bool collides)
     {
-        var source = @"
-def foo_bar() -> None:
-    pass
-";
         var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
         var diagnostics = new DiagnosticBag();
         var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
 
         computer.ComputeForModule(module, sourceFilePath: "foo_bar.spy");
 
-        diagnostics.HasErrors.Should().BeTrue();
-        diagnostics.GetErrors().Should().Contain(d =>
-            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
-            d.Message.Contains("conflicts with the module class name"));
+        diagnostics.GetErrors().Any(d =>
+            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision
+            && d.Message.Contains("members class")
+            && d.Message.Contains("'FooBarModule'")).Should().Be(collides, source);
+        diagnostics.HasErrors.Should().Be(collides, source);
     }
 
     [Fact]
@@ -716,28 +721,10 @@ def sort() -> None:
     }
 
     [Fact]
-    public void ComputeForModule_VariableMatchesModuleClassName_EmitsSPY0523()
-    {
-        var source = @"
-foo_bar: int = 42
-";
-        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
-        var diagnostics = new DiagnosticBag();
-        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
-
-        computer.ComputeForModule(module, sourceFilePath: "foo_bar.spy");
-
-        diagnostics.HasErrors.Should().BeTrue();
-        diagnostics.GetErrors().Should().Contain(d =>
-            d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
-            d.Message.Contains("conflicts with the module class name"));
-    }
-
-    [Fact]
     public void ComputeForModule_NoSourceFilePath_NoSPY0523()
     {
         var source = @"
-def foo_bar() -> None:
+def foo_bar_module() -> None:
     pass
 ";
         var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
@@ -751,9 +738,9 @@ def foo_bar() -> None:
     }
 
     /// <summary>
-    /// A package's <c>__init__.spy</c> module class is <c>&lt;X&gt;</c> = <c>&lt;Dir&gt;Module</c> (#1948,
-    /// ruling X3): a function spelled like it collides (SPY0523, ruling 15); a function named like the
-    /// directory no longer does — it was SPY0523 while the class was the directory's name.
+    /// A package's <c>__init__.spy</c> members class is <c>&lt;Dir&gt;Module</c> (#1948, ruling X3): a
+    /// function spelled like it collides (SPY0523, ruling 15); a function named like the directory
+    /// does not.
     /// </summary>
     [Theory]
     [InlineData("my_package_module", true)]
@@ -769,25 +756,27 @@ def foo_bar() -> None:
 
         diagnostics.GetErrors().Any(d =>
             d.Code == DiagnosticCodes.CodeGen.FunctionModuleClassCollision &&
-            d.Message.Contains("conflicts with the module class name")
+            d.Message.Contains("members class")
             && d.Message.Contains("'MyPackageModule'")).Should().Be(collides, functionName);
         diagnostics.HasErrors.Should().Be(collides, functionName);
     }
 
     /// <summary>
-    /// SPY0523 on <c>main.spy</c> asks the emitter's own authority with the emitter's own entry bit
-    /// (#2013): the module class is <c>Program</c> only when the file declares an UNESCAPED
-    /// <c>main()</c>, and <c>Main</c> otherwise. The deleted second helper answered <c>Program</c> for
-    /// every <c>main.spy</c> — a false refusal of <c>def program</c> and a missed <c>def Main</c>.
+    /// <c>main.spy</c>'s members class is <c>MainModule</c> whether or not it declares the entry point
+    /// (#2039: the <c>Program</c> special case, which kept <c>Main()</c> from being named like its own
+    /// class, is gone — the entry point now lives in <c>MainModule</c>). So <c>def program</c> and
+    /// <c>def Main</c> no longer collide (they were SPY0523 against <c>Program</c> / <c>Main</c>), and
+    /// <c>def main_module</c> does, escaped or not.
     /// </summary>
     [Theory]
     [InlineData("def program() -> None:\n    pass\n", null)]
-    [InlineData("def main() -> None:\n    pass\n\ndef program() -> None:\n    pass\n", "Program")]
-    [InlineData("def Main() -> None:\n    pass\n", "Main")]
-    [InlineData("def `Main`() -> None:\n    pass\n", "Main")]
+    [InlineData("def main() -> None:\n    pass\n\ndef program() -> None:\n    pass\n", null)]
+    [InlineData("def Main() -> None:\n    pass\n", null)]
     [InlineData("def `main`() -> None:\n    pass\n", null)]
-    [InlineData("def `main`() -> None:\n    pass\n\ndef program() -> None:\n    pass\n", null)]
-    public void ComputeForModule_MainSpy_ModuleClassFollowsTheEntryBit(string source, string? collidesWith)
+    [InlineData("def main_module() -> None:\n    pass\n", "MainModule")]
+    [InlineData("def main() -> None:\n    pass\n\ndef main_module() -> None:\n    pass\n", "MainModule")]
+    [InlineData("def `MainModule`() -> None:\n    pass\n", "MainModule")]
+    public void ComputeForModule_MainSpy_MembersClassIsMainModule(string source, string? collidesWith)
     {
         var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
         var diagnostics = new DiagnosticBag();

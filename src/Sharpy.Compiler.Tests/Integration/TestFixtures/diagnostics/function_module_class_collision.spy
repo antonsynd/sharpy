@@ -1,5 +1,9 @@
+# A function named like its file (#2039): every module is a namespace whose members live in
+# `<Stem>Module` (FunctionModuleClassCollisionModule here), so `function_module_class_collision`
+# no longer meets its enclosing class (it was SPY0523 against the stem-named module class). A
+# function spelled like the MEMBERS class is still refused — diagnostics/members_class_collision_2039.
 def function_module_class_collision() -> None:
-    print("this should fail")
+    print("function named like its file")
 
 def main():
     function_module_class_collision()

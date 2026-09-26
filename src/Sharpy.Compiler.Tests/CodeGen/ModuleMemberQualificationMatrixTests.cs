@@ -111,13 +111,13 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         // const — all VALUE positions → global::. (The write-through store is exercised separately
         // below: within the module class its target binds in scope and is emitted bare, so it is not
         // a global:: value cell.)
-        yield return new object[] { "module_function_callee", "global::Prog.Helper()" };
-        yield return new object[] { "module_const_read", "global::Prog.LIMIT" };
-        yield return new object[] { "module_variable_read", "global::Prog.Count" };
+        yield return new object[] { "module_function_callee", "global::Prog.ProgModule.Helper()" };
+        yield return new object[] { "module_const_read", "global::Prog.ProgModule.LIMIT" };
+        yield return new object[] { "module_variable_read", "global::Prog.ProgModule.Count" };
         yield return new object[] { "static_method_callee", "global::Prog.Widget.Make()" };
         yield return new object[] { "static_field_read", "global::Prog.Widget.Total" };
         yield return new object[] { "nested_enum_member", "global::Prog.Widget.Color.Green" };
-        yield return new object[] { "parameter_default_module_const", "= global::Prog.LIMIT" };
+        yield return new object[] { "parameter_default_module_const", "= global::Prog.ProgModule.LIMIT" };
     }
 
     [Theory]
@@ -180,7 +180,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "the specimen must compile. Errors:\n" + string.Join("\n", result.CompilationErrors));
 
         var cs = result.GeneratedCSharp!;
-        cs.Should().Contain("Widget.Inner i = new Widget.Inner(9)",
+        cs.Should().Contain("Widget.Inner i = new global::Prog.Widget.Inner(9)",
             "a same-file nested-type annotation + construction with no collision stays short");
         cs.Should().Contain("Widget.Color c = global::Prog.Widget.Color.Green",
             "the annotation is short (Widget.Color) while the enum MEMBER read in value position is "
@@ -397,8 +397,8 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     public static IEnumerable<object[]> CrossModuleValueCells()
     {
         // cross-module function callee + const read → global::<RootNs>.<LibModule>.<member>.
-        yield return new object[] { "cross_module_function_callee", "global::Test.Lib.Compute()" };
-        yield return new object[] { "cross_module_const_read", "global::Test.Lib.CAP" };
+        yield return new object[] { "cross_module_function_callee", "global::Test.Lib.LibModule.Compute()" };
+        yield return new object[] { "cross_module_const_read", "global::Test.Lib.LibModule.CAP" };
     }
 
     [Theory]
@@ -503,7 +503,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "func==RootNamespace must build and run (no CS0118). Errors:\n"
             + string.Join("\n", run.Exec.CompilationErrors));
         run.Exec.StandardOutput.Should().Be("poisoned\n");
-        run.GeneratedCSharp.Should().Contain("global::Poison.Lib.Poison()",
+        run.GeneratedCSharp.Should().Contain("global::Poison.Lib.LibModule.Poison()",
             "the call is global::-qualified through the module class, so the root-namespace "
             + "collision cannot bind the namespace instead of the method (#1683)");
         run.GeneratedCSharp.Should().NotContain(UsingStatic, "#1683 close criterion");
@@ -605,31 +605,31 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         {
             "whole_module_import",
             "import lib\n\ndef main() -> None:\n    print(lib.compute())\n",
-            "global::Test.Lib.Compute()", "8\n"
+            "global::Test.Lib.LibModule.Compute()", "8\n"
         };
         yield return new object[]
         {
             "whole_module_import_as_alias",
             "import lib as l\n\ndef main() -> None:\n    print(l.other())\n",
-            "global::Test.Lib.Other()", "9\n"
+            "global::Test.Lib.LibModule.Other()", "9\n"
         };
         yield return new object[]
         {
             "from_import_member_as_alias",
             "from lib import compute as c\n\ndef main() -> None:\n    print(c())\n",
-            "global::Test.Lib.Compute()", "8\n"
+            "global::Test.Lib.LibModule.Compute()", "8\n"
         };
         yield return new object[]
         {
             "dotted_package_import",
             "import pkg.sub\n\ndef main() -> None:\n    print(pkg.sub.helper())\n",
-            "global::Test.Pkg.Sub.Helper()", "42\n"
+            "global::Test.Pkg.Sub.SubModule.Helper()", "42\n"
         };
         yield return new object[]
         {
             "dotted_from_import",
             "from pkg.sub import helper\n\ndef main() -> None:\n    print(helper())\n",
-            "global::Test.Pkg.Sub.Helper()", "42\n"
+            "global::Test.Pkg.Sub.SubModule.Helper()", "42\n"
         };
     }
 
@@ -662,12 +662,12 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void FileNamedClassMerge_MemberReference_IsSingleSegmentQualified_NotDoubled()
+    public void FileNamedClass_MemberReference_IsTheNamespaceThenTheClass()
     {
-        // #1802 core: foo.spy declaring `class Foo` merges the class INTO the module class Foo, so a
-        // reference to its const / static field / static method must be `global::Foo.<member>` — a
-        // SINGLE Foo segment. The defect emitted `Foo.Foo.K` (CS0117) because the merge was not seen
-        // at the reference site. `Foo.Foo` must be absent.
+        // #1802 → #2039: foo.spy declaring `class Foo` no longer merges (M2) — the module is namespace
+        // Foo, its members class FooModule, and `class Foo` a sibling. A reference to the class's
+        // const / static field / static method is `global::Foo.Foo.<member>`: the namespace, then
+        // the class. The single-segment `global::Foo.K` spelled the retired merge.
         const string source = """
             class Foo:
                 const K: int = 10
@@ -685,19 +685,17 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             """;
         var result = CompileAndExecute(source, "foo.spy");
         result.Success.Should().BeTrue(
-            "the file==class merge specimen must compile and run (no CS0117). Errors:\n"
+            "the file==class specimen must compile and run (no CS0117). Errors:\n"
             + string.Join("\n", result.CompilationErrors));
         result.StandardOutput.Should().Be("10\n0\n7\n");
 
         var cs = result.GeneratedCSharp!;
-        cs.Should().Contain("global::Foo.K",
-            "the const of a file-named (merged) class is referenced through the single merged class "
-            + "segment (#1802)");
-        cs.Should().Contain("global::Foo.Make()",
-            "the static method of the merged class is single-segment-qualified (#1802)");
-        cs.Should().NotContain("Foo.Foo",
-            "the #1802 defect spelling — the reference site re-derived a module-class segment on top "
-            + "of the class that IS the module class (`Foo.Foo.K` → CS0117) — must be gone");
+        cs.Should().Contain("global::Foo.Foo.K",
+            "the const of a class named like its file is reached through the module namespace (#2039)");
+        cs.Should().Contain("global::Foo.Foo.Make()",
+            "the static method likewise (#2039)");
+        cs.Should().NotContain("global::Foo.K",
+            "the merged single-segment spelling is retired with the merge (#2039, M2)");
         cs.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 
@@ -705,8 +703,8 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
     {
         // A module function whose name equals a CLR namespace/type: it must be emitted
         // global::<Module>.<Name>() so it binds the user function, not System / System.String.
-        yield return new object[] { "def_system", "system", "System", "global::Coll.System()" };
-        yield return new object[] { "def_string", "string", "String", "global::Coll.String()" };
+        yield return new object[] { "def_system", "system", "System", "global::Coll.CollModule.System()" };
+        yield return new object[] { "def_string", "string", "String", "global::Coll.CollModule.String()" };
     }
 
     [Theory]
@@ -935,9 +933,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
 
     /// <summary>
     /// The `__init__` member FQN cell (Decision 28 (a)(b), ruling X3): a package's module class is
-    /// <c>&lt;X&gt;</c> = <c>PkgModule</c> declared INSIDE <c>namespace Simple.Pkg</c> — its members'
-    /// FQN moves once, here — and a submodule of the package stays <c>Simple.Pkg.Lib</c>
-    /// byte-identical. Literals, not the helper: the spelling is the contract.
+    /// <c>&lt;X&gt;</c> = <c>PkgModule</c> declared INSIDE <c>namespace Simple.Pkg</c>, and a submodule
+    /// of the package is its own namespace <c>Simple.Pkg.Lib</c> holding <c>LibModule</c> (#2039).
+    /// Literals, not the helper: the spelling is the contract.
     /// </summary>
     [Fact]
     public void InitMembers_LiveInPkgModuleInsideThePackageNamespace()
@@ -960,7 +958,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             .Select(c => ((c.Parent as BaseNamespaceDeclarationSyntax)?.Name.ToString(), c.Identifier.Text))
             .ToList();
         classes.Should().Contain(("Simple.Pkg", "PkgModule"), "the __init__ module class is <X> in its package namespace");
-        classes.Should().Contain(("Simple.Pkg", "Lib"), "a submodule's FQN is unchanged");
+        classes.Should().Contain(("Simple.Pkg.Lib", "LibModule"), "a submodule is a namespace with its own <X> (#2039)");
         classes.Should().NotContain(c => c.Item2 == "Pkg", "no directory is a class any more");
         var main = files.Single(kv => Path.GetFileName(kv.Key) == "main.cs").Value;
         main.Should().Contain("global::Simple.Pkg.PkgModule.InitFn()",
@@ -1038,9 +1036,9 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
 
         var lib = result.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "lib.cs").Value;
         var ns = CSharpSyntaxTree.ParseText(lib).GetRoot().DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>().Single();
-        ns.Name.ToString().Should().Be("Simple.Pkg");
+        ns.Name.ToString().Should().Be("Simple.Pkg.Lib");
         ns.Members.OfType<ClassDeclarationSyntax>().Select(c => c.Identifier.Text)
-            .Should().BeEquivalentTo(new[] { "Lib", "GreetingFixture" });
+            .Should().BeEquivalentTo(new[] { "LibModule", "GreetingFixture" });
     }
 
     /// <summary>
@@ -1057,6 +1055,78 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
 
         run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
         run.Exec.StandardOutput.Trim().Should().Be("a\nb");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // The sibling axis (#2039, P14c): every module is a namespace, its members live in <X> and its
+    // types are declared beside <X>. Each cell runs; the refused ones name the collision.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A sibling type's method reads a module variable its own field shadows (#1786: python resolves
+    /// the bare name to the module). The reference is emitted <c>global::</c>-rooted through the
+    /// members class — bare, <c>Lib.V</c> would bind the NAMESPACE <c>Lib</c> (CS0234).
+    /// </summary>
+    [Fact]
+    public void SiblingTypeBody_ReachesAShadowedModuleMember_ThroughTheMembersClass()
+    {
+        var run = RunProject("Simple",
+            ("lib.spy", "v: int = 99\n\nclass C:\n    v: int = 1\n\n    def get(self) -> int:\n        return v\n"),
+            ("main.spy", "from lib import C\n\ndef main() -> None:\n    print(C().get())\n"));
+
+        run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Trim().Should().Be("99");
+        run.GeneratedCSharp.Should().Contain("global::Simple.Lib.LibModule.V");
+    }
+
+    /// <summary>A nested class of another module: <c>global::Simple.A.Outer.C</c> (the outer type is a sibling of <c>AModule</c>).</summary>
+    [Fact]
+    public void NestedTypeOfAnotherModule_IsQualifiedThroughItsOuterSibling()
+    {
+        var run = RunProject("Simple",
+            ("a.spy", "class Outer:\n    class C:\n        def who(self) -> str:\n            return \"c\"\n"),
+            ("main.spy", "from a import Outer\n\ndef main() -> None:\n    x: Outer.C = Outer.C()\n    print(x.who())\n"));
+
+        run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Trim().Should().Be("c");
+        run.GeneratedCSharp.Should().Contain("global::Simple.A.Outer.C");
+    }
+
+    /// <summary>
+    /// A function and a type of one emitted name (<c>def foo_bar</c> / <c>class FooBar</c>) live in two
+    /// scopes — the members class and the namespace — so they coexist and both are importable
+    /// (was SPY0522 while both were members of one module class; refused → runs).
+    /// </summary>
+    [Fact]
+    public void FunctionAndTypeOfOneEmittedName_Coexist()
+    {
+        var run = RunProject("Simple",
+            ("lib.spy", "class FooBar:\n    def who(self) -> str:\n        return \"type\"\n\ndef foo_bar() -> str:\n    return \"function\"\n"),
+            ("main.spy", "from lib import FooBar, foo_bar\n\ndef main() -> None:\n    print(FooBar().who())\n    print(foo_bar())\n"));
+
+        run.Exec.Success.Should().BeTrue(string.Join("\n", run.Exec.CompilationErrors));
+        run.Exec.StandardOutput.Trim().Should().Be("type\nfunction");
+    }
+
+    /// <summary>
+    /// The module namespace is seeded with its classes (Decision 28 (h)): a declaration spelled like
+    /// the members class <c>ThingModule</c> is SPY0523 (ruling 15), a type spelled like a fixture class
+    /// the module emits is SPY0522. Direction (run @ 855beadb6): every cell compiled and ran —
+    /// worked → refused.
+    /// </summary>
+    [Theory]
+    [InlineData("def thing_module() -> int:\n    return 1\n", "which is this module's members class")] // SPY0523
+    [InlineData("class ThingModule:\n    pass\n", "which is this module's members class")] // SPY0523
+    [InlineData("class GreetingFixture:\n    pass\n\n@test.fixture\ndef greeting() -> str:\n    return \"hi\"\n", "which is a test fixture class")] // SPY0522
+    public void DeclarationSpelledLikeANamespaceSeed_IsRefused(string thing, string message)
+    {
+        var run = RunProject("Simple",
+            ("thing.spy", thing),
+            ("main.spy", "def main() -> None:\n    print(7)\n"));
+
+        run.Exec.Success.Should().BeFalse();
+        run.Exec.CompilationErrors.Should().Contain(e => e.Contains(message, StringComparison.Ordinal),
+            string.Join("\n", run.Exec.CompilationErrors));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

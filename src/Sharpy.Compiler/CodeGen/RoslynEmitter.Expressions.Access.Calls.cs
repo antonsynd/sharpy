@@ -1329,6 +1329,13 @@ internal partial class RoslynEmitter
         var csharpTypeName = NameCasing.ResolveType(originalName, typeSymbol.IsNameBacktickEscaped);
         var fqn = GetFullyQualifiedTypeName(typeSymbol, originalName);
 
+        // A same-file top-level type comes back bare; it is a sibling of the members class in the
+        // module namespace (#2039), spelled by the ONE same-file qualifier the annotation and
+        // construction positions use — emitted global::-rooted so no `using` set, and no enclosing
+        // type's same-named member, can shadow it (#1683, #1802).
+        if (!fqn.Contains('.', StringComparison.Ordinal))
+            fqn = _typeMapper.QualifySameFileTypeName(typeSymbol, csharpTypeName) ?? fqn;
+
         if (fqn.Contains('.', StringComparison.Ordinal))
         {
             // A global::-prefixed FQN must build its leftmost segment as a real
@@ -1357,41 +1364,7 @@ internal partial class RoslynEmitter
                     SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
         }
 
-        // A same-file type reference. Its C# containment is decided by the module shape, not by
-        // blindly prefixing the module class: a type whose name equals the module class IS that
-        // class (the merge, animal.spy + class Animal) and prefixing it produced `Foo.Foo.K`
-        // (CS0117, #1802); an extracted library-mode sibling lives directly under the namespace;
-        // every other same-file type is nested in the module class. Emitted global::-rooted so no
-        // `using` set can shadow it (#1683).
-        return QualifySameFileType(csharpTypeName);
-    }
-
-    /// <summary>
-    /// The access expression for a top-level SAME-FILE type, decided from the once-computed
-    /// <see cref="ModuleShape"/> (#1802). A type whose emitted name equals the module class IS that
-    /// class (the merge, animal.spy + class Animal), and an extracted library-mode sibling lives
-    /// directly under the namespace — neither is nested in the module class, so neither may be
-    /// prefixed with it (that prefix produced <c>Foo.Foo.K</c>, CS0117). Every other same-file type
-    /// is nested inside the module class, so from inside a type body — where a bare name would bind
-    /// to the enclosing type's own member — it is reached through the module class, exactly as
-    /// before. Callers reach here only for a bare (single-segment) type name; nested same-file types
-    /// carry a dotted declaring chain and take the FQN branch above.
-    /// </summary>
-    private ExpressionSyntax QualifySameFileType(string csharpTypeName)
-    {
-        if (_moduleShape == null)
-            return EscapedIdentifierName(csharpTypeName);
-
-        var segs = new List<string>(_moduleShape.NamespaceParts);
-        // The merged module class and an extracted library-mode sibling live directly under the
-        // namespace; every other same-file type is nested inside the module class.
-        bool isModuleClassOrExtractedSibling =
-            csharpTypeName == _moduleShape.MergedClassName
-            || _moduleShape.ExtractedTypeNames.Contains(csharpTypeName);
-        if (!isModuleClassOrExtractedSibling)
-            segs.Add(_moduleShape.ModuleClassName);
-        segs.Add(csharpTypeName);
-        return MakeGlobalQualifiedName(segs.ToArray());
+        return EscapedIdentifierName(csharpTypeName);
     }
 
     /// <summary>

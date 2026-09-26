@@ -150,11 +150,12 @@ internal static class CompileCommand
         if (selfContained)
         {
             var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
-            // Mangle the entry-type identifier the same way the emitter did (ScProbe for
-            // sc_probe.spy, Program for main.spy — an entry file always declares main(), SPY0403
-            // otherwise); the raw stem emitted sc_probe.Main() against class ScProbe — CS0103, every
-            // publish failed (#1483, #2013). assemblyName stays raw (file names).
-            var entryTypeName = ModuleIdentifiers.ModuleClassName(inputFile.FullName, willGenerateMainMethod: true);
+            // The entry type is the entry module's members class in its namespace, as semantic
+            // analysis recorded it (ScProbe.ScProbeModule for sc_probe.spy); the raw stem emitted
+            // sc_probe.Main() — CS0103, every publish failed (#1483, #2013, #2039). assemblyName stays
+            // raw (file names).
+            var entryTypeName = compileResult.EntryTypeName
+                ?? throw new InvalidOperationException("The compiler recorded no entry type for a successful compile.");
             var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
             if (publishedExe == null)
             {

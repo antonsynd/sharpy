@@ -161,7 +161,12 @@ internal static class RunCommand
             // server (--server) or by compiling in-process. A null result from the server means no
             // server answered → fall back so run always works (#1049).
             IReadOnlySet<string> usedAssemblyPaths;
+            // The entry type a self-contained publish invokes is the recorded layout of the entry
+            // module (#2039), which only an in-process compile returns — a self-contained run
+            // compiles in-process.
+            string? entryTypeName = null;
             if (serverPipe != null
+                && !selfContained
                 && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, namespaceName, out var serverExit, out var serverUsedPaths))
             {
                 if (serverExit != 0)
@@ -180,6 +185,7 @@ internal static class RunCommand
                 }
 
                 usedAssemblyPaths = compileResult.UsedAssemblyPaths;
+                entryTypeName = compileResult.EntryTypeName;
             }
 
             var outputDir = Path.GetDirectoryName(outputPath)!;
@@ -187,7 +193,9 @@ internal static class RunCommand
 
             if (selfContained)
             {
-                return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths);
+                return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths,
+                    entryTypeName ?? throw new InvalidOperationException(
+                        "The compiler recorded no entry type for a successful compile."));
             }
 
             Console.WriteLine();
@@ -264,15 +272,14 @@ internal static class RunCommand
         FileInfo inputFile,
         string compiledExePath,
         string[] args,
-        IReadOnlySet<string> usedAssemblyPaths)
+        IReadOnlySet<string> usedAssemblyPaths,
+        string entryTypeNameFromCompile)
     {
         var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
-        // The Main() call must name the class the emitter actually generated, not the raw stem: a
-        // self-contained publish is always an entry-point file, which declares main() (SPY0403
-        // otherwise), so the emitter's own authority gives ScProbe for sc_probe.spy and Program for
-        // main.spy — never the sc_probe/main the raw stem would emit, which failed EVERY publish with
-        // CS0103 (#1483, #2013).
-        var entryTypeName = ModuleIdentifiers.ModuleClassName(inputFile.FullName, willGenerateMainMethod: true);
+        // The Main() call must name the class the emitter actually generated: the entry module's
+        // members class in its namespace, as semantic analysis recorded it (ScProbe.ScProbeModule for
+        // sc_probe.spy, #1483, #2013, #2039) — never the raw stem, which failed EVERY publish.
+        var entryTypeName = entryTypeNameFromCompile;
         var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
 
         // No cleanup of the compiled executable here: the caller staged it in a directory of its own

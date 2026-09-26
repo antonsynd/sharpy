@@ -1,4 +1,12 @@
+# #1268's own repro, `delegate h` beside `def H` (both emitted `H`). It was SPY0522 while the
+# delegate and the function were members of one module class; every module is now a namespace
+# (#2039) — the function lives in the members class and the delegate beside it — so the two
+# python names no longer collide (refused → runs).
 delegate h(x: int) -> int
 
 def H(x: int) -> int:
     return x * 2
+
+def main() -> None:
+    f: h = H
+    print(f(3))

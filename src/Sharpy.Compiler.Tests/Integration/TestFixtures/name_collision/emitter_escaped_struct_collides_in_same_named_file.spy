@@ -1,7 +1,7 @@
-# NEGATIVE CONTROL for emitter_escaped_struct_in_same_named_file. Escape-awareness must not become
-# escape-blindness in the other direction: an escaped name emits verbatim, so a struct escaped as
-# `EmitterEscapedStructCollidesInSameNamedFile` really does land on the module class name and
-# really is a collision. Delete the collision check and this fixture is what fails (#1268).
+# An escaped struct whose verbatim name equals the file's stem (#1268 → #2039). It was the negative
+# control of emitter_escaped_struct_in_same_named_file while the module class was named by the stem;
+# every module is now a namespace whose members live in `<Stem>Module`, so a type named like its
+# file is an ordinary sibling type and the program runs (refused → runs, SPY0520 retired).
 struct `EmitterEscapedStructCollidesInSameNamedFile`:
     n: int
 

@@ -1,7 +1,7 @@
-# A GENERIC class named like its file (#1919) cannot merge into the module class `Thing` (arity 0),
-# and C# cannot nest `Thing<T>` inside class `Thing` (CS0542 compares names without arity) — so it
-# is refused by name, like a struct/union/interface/enum of the same name. Prior commit: the module
-# merged into `Thing<T>` and died with CS5001 behind SPY0908.
+# A GENERIC class named like its file (#1919 → #2039, the #2039 repro). It could not merge into
+# the module class `Thing` (arity 0) nor nest in it (CS0542), so it was refused (SPY0520). Every
+# module is now a namespace: `Thing<T>` is declared beside the members class `ThingModule`, and the
+# program runs.
 class Thing[T]:
     v: T
 

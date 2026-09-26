@@ -663,13 +663,12 @@ internal class TypeSyntaxMapper
         => QualifyFromSymbol(typeSymbol, sharpyTypeName, NamePosition.Reference);
 
     /// <summary>
-    /// The <c>global::</c>-rooted C# name of a TOP-LEVEL SAME-FILE type, decided from the once-computed
-    /// <see cref="RoslynEmitter.ModuleShape"/> on the context (#1683, #1802): the merged module class
-    /// and an extracted library-mode sibling live directly under the namespace; every other same-file
-    /// type is nested in the module class. Returns <c>null</c> for a NESTED type (it carries a
-    /// declaring chain handled elsewhere) or when no shape is available — so the caller keeps the bare
-    /// name. This is what lets a same-file type resolve from a sibling class (a test/fixture class)
-    /// once the <c>using static</c> self-import is deleted.
+    /// The <c>global::</c>-rooted C# name of a TOP-LEVEL SAME-FILE type, read from the once-computed
+    /// <see cref="RoslynEmitter.ModuleShape"/> on the context (#1683, #1802): every top-level type is a
+    /// sibling of the members class in the module namespace (#2039), so its name is that namespace
+    /// followed by the type. Returns <c>null</c> for a NESTED type (it carries a declaring chain
+    /// handled elsewhere) or when no shape is available — so the caller keeps the bare name. The ONE
+    /// same-file type qualifier: construction, annotation and value positions all route here.
     /// </summary>
     internal string? QualifySameFileTypeName(TypeSymbol typeSymbol, string csharpTypeName)
     {
@@ -682,14 +681,7 @@ internal class TypeSyntaxMapper
         if (!shape.OwnTypeNames.Contains(csharpTypeName))
             return null;
 
-        var segs = new List<string>(shape.NamespaceParts);
-        bool isModuleClassOrExtractedSibling =
-            csharpTypeName == shape.MergedClassName
-            || shape.ExtractedTypeNames.Contains(csharpTypeName);
-        if (!isModuleClassOrExtractedSibling)
-            segs.Add(shape.ModuleClassName);
-        segs.Add(csharpTypeName);
-        return "global::" + string.Join(".", segs);
+        return "global::" + string.Join(".", shape.SiblingTypePath(csharpTypeName));
     }
 
     /// <summary>
@@ -724,44 +716,43 @@ internal class TypeSyntaxMapper
             return GlobalClrTypeName(clrType);
         }
 
-        string moduleNamespace;
-
         // Position-dependent: a construction position resolves a cross-file type from its defining file
         // first, and falls through to the current-file short name when the type is not cross-file. A
         // reference position prefers DefiningModule and is only reached once its caller (GetMappedTypeName /
         // GetMappedTypeNameFromSymbol) has already decided the name must be qualified.
-        if (position == NamePosition.Construction
-            && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath)
-            && !string.IsNullOrEmpty(_context.SourceFilePath)
-            && !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
-        {
-            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
-        }
-        else if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
-        {
-            // Use DefiningModule (e.g., "animal" from import)
-            moduleNamespace = ModuleIdentifiers.DottedModulePath(typeSymbol.DefiningModule);
-        }
-        else if (position == NamePosition.Reference && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
-        {
-            // Derive module namespace from file path
-            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
-        }
-        else
-        {
-            // Nested types in the current file need their declaring chain.
-            if (typeSymbol.DeclaringType != null)
-                return DeclaringChainName(typeSymbol, typeSymbol.Name);
+        bool crossFile =
+            (position == NamePosition.Construction
+                && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath)
+                && !string.IsNullOrEmpty(_context.SourceFilePath)
+                && !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
+            || !string.IsNullOrEmpty(typeSymbol.DefiningModule)
+            || (position == NamePosition.Reference && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath));
 
-            // Construction: type is in the current file. Reference: fallback that shouldn't happen.
-            return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
+        // The chain is needed on the qualified branches too: an IMPORTED nested type is
+        // `Registry.Entry` inside its module namespace, not `Entry` (#1435). One walk, every branch.
+        var chain = DeclaringChainName(typeSymbol, sharpyTypeName);
+        if (!crossFile)
+        {
+            // Construction: type is in the current file (a nested type carries its declaring chain,
+            // qualified through its outermost type). Reference: fallback that shouldn't happen.
+            if (typeSymbol.DeclaringType == null)
+                return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
+            var ownChain = DeclaringChainName(typeSymbol, typeSymbol.Name);
+            return QualifySameFileChain(typeSymbol, ownChain) ?? ownChain;
         }
 
-        // The chain is needed on the qualified branches too. Only the current-file branch above ran
-        // it, so an IMPORTED nested type emitted as `Lib.Entry` where its C# name is
-        // `Lib.Registry.Entry` — CS0426 behind SPY0908, on the imported spelling alone while the
-        // same-file spelling was correct (#1435). One walk, every branch.
-        return BuildQualifiedTypeName(moduleNamespace, DeclaringChainName(typeSymbol, sharpyTypeName));
+        // A cross-module type is a sibling of its module's members class in the module namespace
+        // (#2039): `global::<Root>.<Segments>.<Chain>` — the recorded segments of its outermost type,
+        // no module class, no merge. Emitted global::-rooted so no `using` set or a local type of
+        // the same spelling as a root-namespace segment can shadow it (#1683/#1802/#1899). This is the
+        // ONE qualification authority every reference position bottoms out at (annotation, generic
+        // argument, base list, cast/isinstance, nested-enum-member access).
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            parts.AddRange(_context.ProjectNamespace!.Split('.'));
+        parts.AddRange(TypeNamespaceSegments(OutermostType(typeSymbol)));
+        parts.Add(chain);
+        return "global::" + string.Join(".", parts);
     }
 
     /// <summary>
@@ -785,68 +776,57 @@ internal class TypeSyntaxMapper
         return string.Join(".", parts);
     }
 
-    /// <summary>
-    /// Joins a module namespace and a resolved type name, handling the collision case where the
-    /// file/directory name matches the type name: the type IS the module class (collision merge), not
-    /// nested inside it. E.g., animal.spy with class Animal → Sharpy.Test.Animal, not
-    /// Sharpy.Test.Animal.Animal.
-    /// </summary>
-    private string BuildQualifiedTypeName(string moduleNamespace, string typeName)
+    /// <summary>The outermost declaring type of <paramref name="typeSymbol"/> (itself when top-level).</summary>
+    private static TypeSymbol OutermostType(TypeSymbol typeSymbol)
     {
-        var lastSegment = moduleNamespace.Contains('.', StringComparison.Ordinal)
-            ? moduleNamespace.Split('.').Last()
-            : moduleNamespace;
-
-        // typeName may carry a nested type's declaring chain (`Registry.Entry`, #1435). The
-        // collision merge is decided by the OUTERMOST type — that is the one that can BE the module
-        // class — and the rest of the chain rides along behind whatever the merge produces.
-        var chainStart = typeName.IndexOf('.', StringComparison.Ordinal);
-        var outermost = chainStart < 0 ? typeName : typeName[..chainStart];
-        var nestedSuffix = chainStart < 0 ? string.Empty : typeName[chainStart..];
-
-        // A cross-module qualified name is emitted global::-rooted so no `using` set or a local type
-        // of the same spelling as a root-namespace segment can shadow it (#1683/#1802). This is the
-        // ONE qualification authority every reference position bottoms out at (annotation, generic
-        // argument, base list, cast/isinstance, nested-enum-member access), so global::-rooting here
-        // fixes them all uniformly; the construction site's NormalizeTypeName strips and re-adds the
-        // prefix idempotently, so its output is unchanged. Before this, only construction bolted on
-        // global:: (via NormalizeTypeName), leaving the annotation (`Poison.Lib.Box b`, CS0426) and
-        // the nested-enum-member access (`Poison.Lib.Box.Kind.A`, CS0117) bare when a local type
-        // shadowed the root-namespace segment `Poison` (#1899).
-        if (string.Equals(lastSegment, outermost, StringComparison.Ordinal))
-        {
-            // Type IS the module class — module path is the type path
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                return $"global::{_context.ProjectNamespace}.{moduleNamespace}{nestedSuffix}";
-            }
-            return moduleNamespace + nestedSuffix;
-        }
-
-        // Type is nested inside the module class
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-        {
-            return $"global::{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
-        }
-        return $"{moduleNamespace}.{typeName}";
+        var outermost = typeSymbol;
+        while (outermost.DeclaringType != null)
+            outermost = outermost.DeclaringType;
+        return outermost;
     }
 
     /// <summary>
-    /// The emitted C# path (namespace + module class) of a module identified by its FILE PATH — the same
-    /// derivation cross-file TYPE references use. Exposed so the module-access emitter can qualify a
-    /// module reference from its resolved <see cref="ModuleSymbol.FilePath"/> rather than from the
-    /// import alias (which drops to the alias name) or CanonicalModuleName (which drops the directory
-    /// for a subdir module) — #1683 subdir/alias regression.
+    /// The namespace segments (relative to the project namespace) a top-level Sharpy type is declared
+    /// in: the fact semantic analysis recorded on its <see cref="CodeGenInfo"/> (#2039,
+    /// <see cref="CodeGenInfo.NamespaceSegments"/>). A type that carries no CodeGenInfo (a union or
+    /// delegate until #2006 materializes one) reads the same path authority the recorder does, from its
+    /// defining file, or its defining module's dotted name.
     /// </summary>
-    internal string ModuleNamespaceFromFilePath(string filePath) => GetModuleNameFromFilePath(filePath);
+    private IReadOnlyList<string> TypeNamespaceSegments(TypeSymbol topLevelType)
+    {
+        if (_context.SemanticBinding.GetCodeGenInfo(topLevelType) is { IsNamespaceSibling: true, NamespaceSegments: { } recorded })
+            return recorded;
+        if (!string.IsNullOrEmpty(topLevelType.DefiningFilePath))
+            return ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, topLevelType.DefiningFilePath);
+        return ModuleIdentifiers.DottedModulePath(topLevelType.DefiningModule ?? "").Split('.', StringSplitOptions.RemoveEmptyEntries);
+    }
 
     /// <summary>
-    /// The C# path of the module class <paramref name="filePath"/> emits (relative to the project
-    /// namespace) — read from the one path authority, <see cref="ModuleIdentifiers.ModuleClassPath"/>
-    /// (#1948: this was a second derivation of the same layout).
+    /// A same-file NESTED type's declaring <paramref name="chain"/> (<c>Outer.Inner</c>), qualified
+    /// through the module namespace its outermost type is declared in — <c>global::Ns.Outer.Inner</c>
+    /// — so a members-class member spelled like the outer type cannot shadow it (#2039). Null when the
+    /// outermost type is not this module's own.
     /// </summary>
-    private string GetModuleNameFromFilePath(string filePath)
-        => ModuleIdentifiers.ModuleClassPath(_context.ProjectRootPath, filePath);
+    internal string? QualifySameFileChain(TypeSymbol typeSymbol, string chain)
+    {
+        var outermost = OutermostType(typeSymbol);
+        var outerName = NameCasing.ResolveType(outermost.Name, outermost.IsNameBacktickEscaped);
+        var qualifiedOuter = QualifySameFileTypeName(outermost, outerName);
+        if (qualifiedOuter == null)
+            return null;
+        var dot = chain.IndexOf('.', StringComparison.Ordinal);
+        return dot < 0 ? qualifiedOuter : qualifiedOuter + chain[dot..];
+    }
+
+    /// <summary>
+    /// The C# namespace (relative to the project namespace) a module identified by its FILE PATH is
+    /// declared in — <c>pkg/thing.spy</c> → <c>Pkg.Thing</c> — read from the one path authority the
+    /// layout recorder uses (<see cref="ModuleIdentifiers.LayoutNamespaceSegments"/>). For a module
+    /// reached without a recorded <see cref="CodeGenInfo"/> (a submodule reached through its parent
+    /// package's exports).
+    /// </summary>
+    internal IReadOnlyList<string> ModuleNamespaceFromFilePath(string filePath)
+        => ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, filePath);
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.

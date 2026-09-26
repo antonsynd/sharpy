@@ -4,13 +4,13 @@ using Sharpy.Compiler.Semantic;
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
-/// The C# identifiers a source file's position in a project emits (#1932, #1948): the namespace
-/// segments its directories become, and the module class itself. One authority, read by the
-/// emitter (<c>RoslynEmitter.ComputeModuleShape</c> / <c>GetModuleClassName</c>, the type-naming
-/// seam and the module-access emitter), by the project's pre-emission check
-/// (<c>ProjectCompiler.ReportPackageModuleNameCollisions</c>, SPY0526), by the function/module-class
-/// collision check (<c>CodeGenInfoComputer</c>, SPY0523) and by the CLI's self-contained publish
-/// entry type, so no two of them can disagree on a spelling (#2013).
+/// The C# identifiers a source file's position in a project emits (#1932, #1948, #2039): the module
+/// namespace its directories and stem become, and its members class <c>&lt;X&gt;</c>. One authority,
+/// read by the layout recorder (<c>CodeGenInfoComputer</c>, whose recorded <c>ModuleLayout</c> every
+/// emitter family and the CLI's self-contained publish entry type read), by the emitter's AST-only
+/// and unrecorded-submodule fallbacks, and by the project's pre-emission checks
+/// (<c>ProjectCompiler.ReportPackageModuleNameCollisions</c>, SPY0526/SPY0523), so no two of them can
+/// disagree on a spelling (#2013).
 /// </summary>
 internal static class ModuleIdentifiers
 {
@@ -30,12 +30,18 @@ internal static class ModuleIdentifiers
 
     /// <summary>
     /// <c>&lt;X&gt;</c>, the module-members class a stem names (Decision 28 (b), ruling X3):
-    /// <c>NameMangler.Transform(stem, Type) + "Module"</c> — <c>pkg</c> → <c>PkgModule</c>. In P14b
-    /// only a package's <c>__init__.spy</c> is spelled through it (inside <c>namespace …Pkg</c>);
-    /// regular modules keep their stem class until P14c.
+    /// <c>NameMangler.Transform(stem, Type) + "Module"</c> — <c>pkg</c> → <c>PkgModule</c>, <c>thing</c>
+    /// → <c>ThingModule</c> (<see cref="LayoutMembersClassName"/>).
     /// </summary>
     public static string MembersClassName(string stem)
-        => NameMangler.Transform(stem, NameContext.Type) + "Module";
+    {
+        // A stem is a file or directory name, not an identifier: a character C# rejects becomes `_`
+        // and a leading digit gets a `_` prefix (`20260118_x` → `_20260118XModule`), as its namespace
+        // segment does (NameMangler.ToNamespacePart).
+        var name = NameMangler.Transform(stem, NameContext.Type) + "Module";
+        var sanitized = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_').ToArray());
+        return char.IsDigit(sanitized[0]) ? "_" + sanitized : sanitized;
+    }
 
     /// <summary>
     /// The namespace a module's members class and its sibling types live in under the
@@ -64,64 +70,10 @@ internal static class ModuleIdentifiers
     public static string LayoutMembersClassName(string filePath)
     {
         var stem = Path.GetFileNameWithoutExtension(filePath);
-        return stem == DunderNames.Init
-            ? ModuleClassName(filePath, willGenerateMainMethod: false)
-            : MembersClassName(stem);
-    }
-
-    /// <summary>
-    /// The module class name a source file emits: the mangled file stem;
-    /// <see cref="MembersClassName"/> of the directory for <c>__init__.spy</c> (<c>pkg/__init__.spy</c>
-    /// → <c>PkgModule</c>, in namespace <c>…Pkg</c>, #1948); <c>Program</c> for a <c>main.spy</c> that generates the entry point
-    /// (avoids CS0542 <c>Main.Main()</c>). <paramref name="willGenerateMainMethod"/> is
-    /// <see cref="DeclaresEntryMain"/> of the file's body — every caller computes it with that one
-    /// predicate (#2013).
-    /// </summary>
-    public static string ModuleClassName(string filePath, bool willGenerateMainMethod)
-    {
-        var fileName = Path.GetFileNameWithoutExtension(filePath);
-        if (fileName == DunderNames.Init)
-        {
-            var dirName = Path.GetFileName(Path.GetDirectoryName(filePath));
-            return string.IsNullOrEmpty(dirName) ? "Module" : MembersClassName(dirName);
-        }
-
-        if (willGenerateMainMethod && fileName.Equals("main", StringComparison.OrdinalIgnoreCase))
-            return "Program";
-
-        return NameMangler.ToNamespacePart(fileName);
-    }
-
-    /// <summary>
-    /// The C# path of the class a source file's module-level members live in, relative to the project
-    /// namespace: its namespace segments followed by its module class (<c>pkg/lib.spy</c> →
-    /// <c>Pkg.Lib</c>, <c>pkg/__init__.spy</c> → <c>Pkg.PkgModule</c>). THE path authority every cross-file
-    /// reference reads (#1948): the type-naming seam, the module-access emitter and the from-import
-    /// member qualifier all spell a module's container through this one function, so they cannot drift
-    /// from what <see cref="ModuleNamespaceSegments"/> and <see cref="ModuleClassName"/> declare. A non-entry
-    /// spelling: an entry <c>main.spy</c>'s members are never referenced from another file.
-    /// </summary>
-    public static string ModuleClassPath(string? sourceRoot, string filePath)
-    {
-        var segments = ModuleNamespaceSegments(sourceRoot, filePath);
-        segments.Add(ModuleClassName(filePath, willGenerateMainMethod: false));
-        return string.Join(".", segments);
-    }
-
-    /// <summary>
-    /// <see cref="ModuleClassPath"/> for a file inside <paramref name="sourceRoot"/>, or null when there
-    /// is no root (single-file compilation) or the file lies outside it — the caller then spells the
-    /// module from its dotted name (<see cref="DottedModulePath"/>).
-    /// </summary>
-    public static string? ModuleClassPathWithinRoot(string? sourceRoot, string? filePath)
-    {
-        if (string.IsNullOrEmpty(sourceRoot) || string.IsNullOrEmpty(filePath))
-            return null;
-        var relative = Path.GetRelativePath(sourceRoot, filePath);
-        return relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-                || Path.IsPathRooted(relative)
-            ? null
-            : ModuleClassPath(sourceRoot, filePath);
+        if (stem != DunderNames.Init)
+            return MembersClassName(stem);
+        var dirName = Path.GetFileName(Path.GetDirectoryName(filePath));
+        return string.IsNullOrEmpty(dirName) ? "Module" : MembersClassName(dirName);
     }
 
     /// <summary>
@@ -158,12 +110,14 @@ internal static class ModuleIdentifiers
     /// Refusal 1 of SPY0526 (#1948): a module file and a package directory of one name side by side
     /// (<c>pkg.spy</c> + <c>pkg/x.spy</c>, with or without <c>pkg/__init__.spy</c>). Python imports only
     /// one of them (the package with <c>__init__</c>, the module without), so <c>pkg.x</c> is never
-    /// importable beside <c>pkg.spy</c>; in C# the module class and the directory spell one identifier
-    /// in one scope. Compared by EMITTED identifier (<c>my_pkg.spy</c> + <c>myPkg/</c> collide too).
+    /// importable beside <c>pkg.spy</c>. Compared by EMITTED namespace segment (<c>my_pkg.spy</c> +
+    /// <c>myPkg/</c> collide too) — the module's own namespace segment, which does not depend on
+    /// whether it declares the entry point (#2039: the entry module is no longer the class
+    /// <c>Program</c>, so <c>main.spy</c> beside <c>program/</c> is two names, as in python).
     /// Returns (file, directory, identifier) for every such file.
     /// </summary>
     public static List<(string File, string Directory, string Identifier)> FindModuleBesideSameNamedPackage(
-        string? sourceRoot, IReadOnlyCollection<string> sourceFiles, Func<string, bool> willGenerateMainMethod)
+        string? sourceRoot, IReadOnlyCollection<string> sourceFiles)
     {
         var result = new List<(string, string, string)>();
         if (string.IsNullOrEmpty(sourceRoot))
@@ -186,7 +140,7 @@ internal static class ModuleIdentifiers
             if (Path.GetFileNameWithoutExtension(file) == DunderNames.Init)
                 continue;
             var parent = string.Join("/", SourceDirectories(sourceRoot, file));
-            var identifier = ModuleClassName(file, willGenerateMainMethod(file));
+            var identifier = NameMangler.ToNamespacePart(Path.GetFileNameWithoutExtension(file));
             if (childDirectories.TryGetValue((parent, identifier), out var directory))
                 result.Add((file, directory, identifier));
         }
@@ -295,8 +249,8 @@ internal static class ModuleIdentifiers
 
     /// <summary>
     /// Whether a module body declares the entry-point <c>main</c> (<see cref="IsEntryMain"/>) at top
-    /// level. The ONE predicate behind the module class name (<see cref="ModuleClassName"/>), the
-    /// SPY0403 entry-point requirement and the incremental cache's recorded entry bit (#2013).
+    /// level. The ONE predicate behind the SPY0403 entry-point requirement, the emitter's entry
+    /// <c>Main()</c> and the incremental cache's recorded entry bit (#2013).
     /// </summary>
     public static bool DeclaresEntryMain(IEnumerable<Statement> body)
         => body.Any(s => s.UnwrapDecorated() is FunctionDef f && IsEntryMain(f));

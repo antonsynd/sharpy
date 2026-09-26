@@ -2915,7 +2915,8 @@ public enum InterpolationKind
 /// <c>ThingModule</c>) and the module's top-level types beside it. <see cref="TestClassName"/> and
 /// <see cref="FixtureClassNames"/> are the other classes the module emits into that namespace (the
 /// test class <c>&lt;X&gt;Tests</c> when the module declares tests, one <c>&lt;Name&gt;Fixture</c>
-/// per <c>@test.fixture</c>); every module-level collision check seeds the namespace with them.
+/// per <c>@test.fixture</c>, keyed by the fixture function's python name); every module-level
+/// collision check seeds the namespace with them, and the emitter names the classes from them.
 /// Recorded by <c>CodeGenInfoComputer</c>. Not on the incremental-cache wire (a per-node fact); an
 /// imported module's layout crosses files on its <see cref="ModuleSymbol"/>'s CodeGenInfo.
 /// </summary>
@@ -2923,7 +2924,28 @@ public sealed record ModuleLayout(
     IReadOnlyList<string> NamespaceSegments,
     string MembersClassName,
     string? TestClassName = null,
-    IReadOnlyList<string>? FixtureClassNames = null);
+    IReadOnlyDictionary<string, string>? FixtureClassNames = null)
+{
+    /// <summary>
+    /// The C# namespace the module's members class and sibling types are declared in, under
+    /// <paramref name="rootNamespace"/> (the project namespace; empty or null for none).
+    /// </summary>
+    public IReadOnlyList<string> NamespaceParts(string? rootNamespace)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(rootNamespace))
+            parts.AddRange(rootNamespace.Split('.'));
+        parts.AddRange(NamespaceSegments);
+        return parts;
+    }
+
+    /// <summary>
+    /// The reflection name of the members class under <paramref name="rootNamespace"/> — the entry
+    /// type a self-contained publish invokes <c>Main</c> on (<c>Thing.ThingModule</c>).
+    /// </summary>
+    public string MembersClassFullName(string? rootNamespace)
+        => string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
+}
 
 /// <summary>
 /// How an f-string / t-string hole is lowered: its base rendering (<see cref="Kind"/>) and, when

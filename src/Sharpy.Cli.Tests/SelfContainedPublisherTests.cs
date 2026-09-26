@@ -9,8 +9,9 @@ namespace Sharpy.Cli.Tests;
 /// interpolated the raw file stem as a C# identifier (<c>sc_probe.Main()</c>) against the emitter's
 /// mangled module class (<c>ScProbe</c>), so EVERY publish failed to compile with CS0103. This is the
 /// fast, deterministic guard for the wrapper half of the fix — that the reflection entry point uses
-/// the mangled type name — without shelling out to <c>dotnet publish</c>. The caller half (mangling
-/// via ModuleIdentifiers.ModuleClassName, #2013) and the end-to-end publish-and-run are covered by
+/// the mangled type name — without shelling out to <c>dotnet publish</c>. The caller half (the entry
+/// module's recorded members class, <c>CompileResult.EntryTypeName</c>, #2013, #2039) and the
+/// end-to-end publish-and-run are covered by
 /// <c>E2E/SelfContainedDeploymentTests</c>.
 /// </summary>
 public class SelfContainedPublisherTests
@@ -19,9 +20,9 @@ public class SelfContainedPublisherTests
     public void BuildEntryPointSource_ReflectsTheMangledType_NotTheRawStem()
     {
         // The wrapper reflection-loads the program and invokes Main on the MANGLED module class.
-        var source = SelfContainedPublisher.BuildEntryPointSource("__sharpy_program.dll", "ScProbe");
+        var source = SelfContainedPublisher.BuildEntryPointSource("__sharpy_program.dll", "ScProbe.ScProbeModule");
 
-        source.Should().Contain("GetType(\"ScProbe\")");
+        source.Should().Contain("GetType(\"ScProbe.ScProbeModule\")");
         source.Should().Contain("GetMethod(\"Main\")");
         // The raw stem must never appear as the reflected type — that was the CS0103 defect.
         source.Should().NotContain("GetType(\"sc_probe\")");
@@ -31,7 +32,7 @@ public class SelfContainedPublisherTests
         // A dedicated load context, because the program's identity may equal the wrapper's.
         source.Should().Contain("AssemblyLoadContext(");
         // MUTATION: pass the raw stem to entryTypeName in RunCommand/CompileCommand (revert to
-        // Path.GetFileNameWithoutExtension) → ModuleIdentifiers.ModuleClassName no longer feeds this, the wrapper
+        // Path.GetFileNameWithoutExtension) → CompileResult.EntryTypeName no longer feeds this, the wrapper
         // reflects GetType("sc_probe"), the type is not found, and the E2E publish-and-run goes red.
     }
 }

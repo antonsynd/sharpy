@@ -27,22 +27,33 @@ public class ModulePathAuthorityTests
 
     private const string Root = "/proj/src";
 
+    /// <summary>
+    /// The module-as-namespace layout (#2039): a file's namespace (its directories, then its stem — a
+    /// package's <c>__init__</c> is the package itself) and its members class <c>&lt;X&gt;</c>.
+    /// </summary>
     [Theory]
-    [InlineData("lib.spy", "Lib")]
-    [InlineData("main.spy", "Main")]
-    [InlineData("pkg/lib.spy", "Pkg.Lib")]
-    [InlineData("pkg/__init__.spy", "Pkg.PkgModule")]
-    [InlineData("pkg/sub/__init__.spy", "Pkg.Sub.SubModule")]
-    [InlineData("pkg/sub/leaf.spy", "Pkg.Sub.Leaf")]
-    [InlineData("my_pkg/sub_mod.spy", "MyPkg.SubMod")]
-    [InlineData("db/models.spy", "DB.Models")]
-    [InlineData("a/b/c/d.spy", "A.B.C.D")]
-    [InlineData("lib/lib.spy", "Lib.Lib")]
-    [InlineData("a/a/x.spy", "A.A.X")]
-    [InlineData("__init__.spy", "SrcModule")]
-    [InlineData("api/v2/__init__.spy", "API.V2.V2Module")]
-    public void ModuleClassPath_IsTheLiteralLayout(string relativePath, string expected)
-        => ModuleIdentifiers.ModuleClassPath(Root, Path.Combine(Root, relativePath)).Should().Be(expected);
+    [InlineData("lib.spy", "Lib|LibModule")]
+    [InlineData("main.spy", "Main|MainModule")]
+    [InlineData("pkg/lib.spy", "Pkg.Lib|LibModule")]
+    [InlineData("pkg/__init__.spy", "Pkg|PkgModule")]
+    [InlineData("pkg/sub/__init__.spy", "Pkg.Sub|SubModule")]
+    [InlineData("pkg/sub/leaf.spy", "Pkg.Sub.Leaf|LeafModule")]
+    [InlineData("my_pkg/sub_mod.spy", "MyPkg.SubMod|SubModModule")]
+    [InlineData("db/models.spy", "DB.Models|ModelsModule")]
+    [InlineData("a/b/c/d.spy", "A.B.C.D|DModule")]
+    [InlineData("lib/lib.spy", "Lib.Lib|LibModule")]
+    [InlineData("a/a/x.spy", "A.A.X|XModule")]
+    [InlineData("__init__.spy", "|SrcModule")]
+    [InlineData("api/v2/__init__.spy", "API.V2|V2Module")]
+    // A stem is not an identifier: a leading digit gets a `_` in the namespace segment AND <X>.
+    [InlineData("20260118_x.spy", "_20260118X|_20260118XModule")]
+    public void Layout_IsTheLiteralNamespaceAndMembersClass(string relativePath, string expected)
+    {
+        var file = Path.Combine(Root, relativePath);
+        (string.Join(".", ModuleIdentifiers.LayoutNamespaceSegments(Root, file))
+                + "|" + ModuleIdentifiers.LayoutMembersClassName(file))
+            .Should().Be(expected);
+    }
 
     [Theory]
     [InlineData("lib.spy", "")]
@@ -120,10 +131,14 @@ public class ModulePathAuthorityTests
         var result = helper.Compile();
         result.Success.Should().BeTrue(string.Join("\n", result.Diagnostics.GetErrors().Select(d => d.Message)));
 
+        // Functions, variables and constants are members of <X>; types are its siblings in the
+        // module namespace (#2039).
         var cs = result.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "lib.cs").Value;
-        var moduleClass = CSharpSyntaxTree.ParseText(cs).GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>()
-            .Single(c => c.Identifier.Text == "Lib");
-        var declared = moduleClass.Members.SelectMany(m => m switch
+        var moduleNamespace = CSharpSyntaxTree.ParseText(cs).GetRoot().DescendantNodes()
+            .OfType<BaseNamespaceDeclarationSyntax>().Single();
+        var membersClass = moduleNamespace.Members.OfType<ClassDeclarationSyntax>()
+            .Single(c => c.Identifier.Text == "LibModule");
+        var declared = membersClass.Members.Concat(moduleNamespace.Members).SelectMany(m => m switch
         {
             FieldDeclarationSyntax f => f.Declaration.Variables.Select(v => v.Identifier.Text),
             MethodDeclarationSyntax meth => new[] { meth.Identifier.Text },

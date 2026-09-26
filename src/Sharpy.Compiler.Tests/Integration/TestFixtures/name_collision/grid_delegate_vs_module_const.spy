@@ -1,7 +1,7 @@
-# The delegate arm of #1268's collision grid, module-constant cell. A lowercase `const h` mangles
-# to `H` exactly as the module variable does, so it collides with `delegate H` the same way.
-# SPY0453 also fires here (a constant should be SCREAMING_SNAKE_CASE) — that is the naming advice,
-# not the refusal; the refusal is SPY0522.
+# The delegate arm of #1268's collision grid, module-constant cell. `delegate H` and `const h`
+# (emitted `H`) no longer share a scope (#2039): the constant is a member of the members class, the
+# delegate its sibling in the module namespace — refused → runs. SPY0453 (a constant should be
+# SCREAMING_SNAKE_CASE) is naming advice, not a refusal.
 delegate H() -> None
 
 const h: int = 7

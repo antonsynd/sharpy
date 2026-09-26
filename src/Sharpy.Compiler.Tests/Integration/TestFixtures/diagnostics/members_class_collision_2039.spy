@@ -1,0 +1,9 @@
+# SPY0523 under the module-as-namespace layout (#2039, ruling 15): the members class of
+# members_class_collision_2039.spy is `MembersClassCollision2039Module`, and a top-level function
+# spelled like it would be a member named like its enclosing class (CS0542). Refused by name, with
+# the caret on the function's name token.
+def members_class_collision_2039_module() -> None:
+    print("never")
+
+def main():
+    members_class_collision_2039_module()

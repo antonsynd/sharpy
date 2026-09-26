@@ -1875,7 +1875,7 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Builds [Xunit.MemberDataAttribute(nameof(Module.VarMemberData), MemberType = typeof(Module))]
+    /// Builds [Xunit.MemberDataAttribute(nameof(global::Ns.X.VarMemberData), MemberType = typeof(global::Ns.X))]
     /// for a @test.parametrize(VARIABLE) decorator. Also records the variable name so the module
     /// class generation emits the companion MemberData wrapper property.
     /// </summary>
@@ -1883,7 +1883,9 @@ internal partial class RoslynEmitter
     {
         _memberDataVariables.Add(variableName);
 
-        var moduleClassName = _moduleShape?.ModuleClassName ?? GetModuleClassName();
+        // The members class, global::-rooted (#2039, F10): the attribute sits on a test method of a
+        // sibling test class or user class, where a bare <X> is not in scope.
+        var membersClass = CurrentModuleShape.MembersClassPath;
         var propertyName = GetMemberDataPropertyName(variableName);
 
         // nameof(Module.VarMemberData) — the invocation target must carry ContextualKind ==
@@ -1896,12 +1898,12 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                     Argument(MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(moduleClassName),
+                        MakeGlobalQualifiedName(membersClass),
                         EscapedIdentifierName(propertyName)))))));
 
-        // MemberType = typeof(Module)
+        // MemberType = typeof(global::Ns.<X>)
         var memberTypeArgument = AttributeArgument(
-            TypeOfExpression(IdentifierName(moduleClassName)))
+            TypeOfExpression(MakeGlobalQualifiedName(membersClass)))
             .WithNameEquals(NameEquals("MemberType"));
 
         return Attribute(ParseQualifiedName("Xunit.MemberDataAttribute"))

@@ -10,9 +10,11 @@ namespace Sharpy
     /// <remarks>
     /// An optional <see cref="PythonName"/> lets a type expose a Python-facing identifier
     /// that differs from its CLR name — e.g., <c>DateTime</c> appears as <c>datetime</c> in
-    /// user code. When omitted, the CLR type name is used verbatim.
+    /// user code. When omitted, the CLR type name is used verbatim. The compiler stamps it on every
+    /// top-level type of a non-entry module — a delegate included — because those types are declared
+    /// beside the module's members class, not inside it (#2039).
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface | AttributeTargets.Delegate, AllowMultiple = false)]
     public sealed class SharpyModuleTypeAttribute : Attribute
     {
         /// <summary>The module name this type belongs to.</summary>

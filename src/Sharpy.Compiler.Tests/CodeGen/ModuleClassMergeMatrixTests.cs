@@ -10,37 +10,37 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// A type named like its file (#1919): the merge decision lives ONCE on
-/// <c>ModuleShape.MergedClassName</c> (computed by <c>ComputeModuleShape</c> with the arity axis) and
-/// <c>GenerateModuleMembers</c> reads it — the arity-less second copy that merged the module into
-/// <c>Thing&lt;T&gt;</c> (CS5001 under <c>run</c>, CS0305 under <c>project</c>, both SPY0908) is gone.
+/// A type named like its file (#1919 → #2039): every module is a C# namespace, its functions,
+/// variables and constants live in its members class <c>&lt;X&gt;</c> (<c>ThingModule</c>) and its
+/// types are declared BESIDE <c>&lt;X&gt;</c> — so a type named like its file is an ordinary type in
+/// that namespace (<c>Merge.Thing.Thing</c>), in every kind and every mode. There is no merge (ruling
+/// M2) and no refusal: the 16 cells that were SPY0520 (generic class/dataclass, struct, union,
+/// interface, enum × project/unimported, plus the four <c>run</c> cells of the same kinds) all run.
 ///
 /// <para><b>Cells.</b> colliding kind {class, dataclass, generic class, generic dataclass, struct,
 /// union, interface, enum} × mode {<c>run</c> — the colliding file is the entry and has
 /// <c>main</c>; <c>project</c> — the colliding file is an imported library module without
 /// <c>main</c>, whose function <c>main.spy</c> calls; <c>project_unimported</c> — the same library
-/// module, which nothing imports (#2028: its refusal is still the build's verdict — the build fails
-/// and writes no assembly, although the C# handed to Roslyn compiles without it)}. A non-generic class or dataclass MERGES and runs (the module class IS the user
-/// class). A generic one cannot merge (the module class has arity 0) and cannot coexist either: it
-/// is nested inside the module class, and C# compares a nested type's name without its arity
-/// (CS0542, measured) — so it is refused by name (SPY0520) with the other kinds that cannot merge.
-/// struct/union/interface/enum stay SPY0520 (control).</para>
+/// module, which nothing imports}. The layout is asserted on the tree: <c>Thing</c> is a direct
+/// member of the module namespace (never nested in <c>ThingModule</c>), and the module's function
+/// is a member of <c>ThingModule</c>.</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class ModuleClassMergeMatrixTests : IntegrationTestBase
 {
     public ModuleClassMergeMatrixTests(ITestOutputHelper output) : base(output) { }
 
-    private static readonly Dictionary<string, (string Declaration, bool Merges)> Kinds = new()
+    // kind → (declaration, whether the program constructs it, its arity)
+    private static readonly Dictionary<string, (string Declaration, bool Constructs, int Arity)> Kinds = new()
     {
-        ["class"] = ("class Thing:\n    v: int\n\n    def __init__(self, v: int) -> None:\n        self.v = v\n", true),
-        ["dataclass"] = ("@dataclass\nclass Thing:\n    v: int\n", true),
-        ["generic_class"] = ("class Thing[T]:\n    v: T\n\n    def __init__(self, v: T) -> None:\n        self.v = v\n", false),
-        ["generic_dataclass"] = ("@dataclass\nclass Thing[T]:\n    v: T\n", false),
-        ["struct"] = ("struct Thing:\n    v: int\n", false),
-        ["union"] = ("union Thing:\n    case A(v: int)\n    case B()\n", false),
-        ["interface"] = ("interface Thing:\n    def f(self) -> int: ...\n", false),
-        ["enum"] = ("enum Thing:\n    A = 1\n", false),
+        ["class"] = ("class Thing:\n    v: int\n\n    def __init__(self, v: int) -> None:\n        self.v = v\n", true, 0),
+        ["dataclass"] = ("@dataclass\nclass Thing:\n    v: int\n", true, 0),
+        ["generic_class"] = ("class Thing[T]:\n    v: T\n\n    def __init__(self, v: T) -> None:\n        self.v = v\n", true, 1),
+        ["generic_dataclass"] = ("@dataclass\nclass Thing[T]:\n    v: T\n", true, 1),
+        ["struct"] = ("struct Thing:\n    v: int\n", true, 0),
+        ["union"] = ("union Thing:\n    case A(v: int)\n    case B()\n", false, 0),
+        ["interface"] = ("interface Thing:\n    def f(self) -> int: ...\n", false, 0),
+        ["enum"] = ("enum Thing:\n    A = 1\n", false, 0),
     };
 
     private static string Construction(string kind) => kind.StartsWith("generic") ? "Thing[int](7).v" : "Thing(7).v";
@@ -52,10 +52,10 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
 
     [Theory]
     [MemberData(nameof(Cells))]
-    public void TypeNamedLikeItsFile_MergesOnlyWhenNonGenericClass(string kind, string mode)
+    public void TypeNamedLikeItsFile_IsASiblingOfTheMembersClass(string kind, string mode)
     {
-        var (declaration, merges) = Kinds[kind];
-        var use = merges ? $"print({Construction(kind)})" : "print(7)";
+        var (declaration, constructs, arity) = Kinds[kind];
+        var use = constructs ? $"print({Construction(kind)})" : "print(7)";
 
         IReadOnlyList<(string Code, string Message)> errors;
         bool success;
@@ -63,7 +63,7 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
         string csharp;
         if (mode == "run")
         {
-            var source = declaration + "\ndef main() -> None:\n    " + use + "\n";
+            var source = declaration + "\ndef helper() -> int:\n    return 7\n\ndef main() -> None:\n    " + use + "\n";
             var result = CompileAndExecute(source, fileName: "thing.spy");
             success = result.Success;
             stdout = result.StandardOutput;
@@ -79,68 +79,50 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
             helper.AddSourceFile("thing.spy", declaration + "\ndef helper() -> int:\n    return 7\n");
             helper.AddSourceFile("main.spy", mode == "project_unimported"
                 ? "def main() -> None:\n    print(7)\n"
-                : (merges ? "from thing import Thing, helper\n\n" : "from thing import helper\n\n")
-                    + "def main() -> None:\n    " + (merges ? use : "print(helper())") + "\n");
+                : (constructs ? "from thing import Thing, helper\n\n" : "from thing import helper\n\n")
+                    + "def main() -> None:\n    " + (constructs ? use : "print(helper())") + "\n");
             helper.CreateProjectFile();
             var exec = helper.CompileAndExecute();
             success = exec.Success;
             stdout = exec.StandardOutput;
             csharp = helper.LastCompilationResult != null
-                ? string.Concat(helper.LastCompilationResult.GeneratedCSharpFiles.Values) : "";
+                ? string.Concat(helper.LastCompilationResult.GeneratedCSharpFiles
+                    .Where(kv => Path.GetFileName(kv.Key) == "thing.cs").Select(kv => kv.Value)) : "";
             errors = helper.LastCompilationResult?.Diagnostics.GetErrors()
                 .Select(d => (d.Code ?? "", d.Message)).ToList() ?? new List<(string, string)>();
-            if (!merges)
-            {
-                // The compile result's own verdict, not the execution's: a build that claims success
-                // but names no assembly fails to execute too, which would hide the wrong verdict.
-                helper.LastCompilationResult.Should().NotBeNull();
-                helper.LastCompilationResult!.Success.Should().BeFalse(
-                    $"[{kind}×{mode}] a bag holding an error is a failed build (#2028)");
-                helper.LastCompilationResult.OutputAssemblyPath.Should().BeNull(
-                    $"[{kind}×{mode}] a refused build names no output assembly (#2028)");
-            }
         }
 
-        errors.Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            $"[{kind}×{mode}] never CS5001/CS0305/CS0542 behind SPY0908");
+        success.Should().BeTrue($"[{kind}×{mode}] {string.Join(" | ", errors.Select(e => e.Code + " " + e.Message))}");
+        stdout.Trim().Should().Be("7", $"[{kind}×{mode}]");
 
-        if (merges)
-        {
-            success.Should().BeTrue($"[{kind}×{mode}] {string.Join(" | ", errors.Select(e => e.Message))}");
-            stdout.Trim().Should().Be("7", $"[{kind}×{mode}]");
-            // The merge is visible in the tree: ONE class `Thing` (arity 0) declares both the user
-            // member `V` and the module's members.
-            var things = CSharpSyntaxTree.ParseText(csharp).GetRoot().DescendantNodes()
-                .OfType<ClassDeclarationSyntax>().Where(c => c.Identifier.Text == "Thing").ToList();
-            things.Should().ContainSingle($"[{kind}×{mode}] the user class IS the module class\n{csharp}");
-            things[0].TypeParameterList.Should().BeNull();
-        }
-        else
-        {
-            success.Should().BeFalse($"[{kind}×{mode}] must be refused");
-            errors.Should().Contain(e => e.Code == DiagnosticCodes.CodeGen.NameCollision
-                && e.Message.StartsWith("Type 'Thing' conflicts with module class name 'Thing'")
-                && e.Message.EndsWith("Rename the type or the source file to avoid this collision."),
-                $"[{kind}×{mode}] {string.Join(" | ", errors.Select(e => e.Code + " " + e.Message))}");
-        }
+        // The layout is visible in the tree: `Thing` is declared directly in the module namespace,
+        // beside the members class `ThingModule` that holds `Helper` — never nested in it, never
+        // merged into it.
+        var ns = CSharpSyntaxTree.ParseText(csharp).GetRoot().DescendantNodes()
+            .OfType<BaseNamespaceDeclarationSyntax>().Single(n => n.Name.ToString().EndsWith("Thing", StringComparison.Ordinal));
+        var thing = ns.Members.OfType<BaseTypeDeclarationSyntax>().Where(t => t.Identifier.Text == "Thing").ToList();
+        var delegateThing = ns.Members.OfType<DelegateDeclarationSyntax>().Where(t => t.Identifier.Text == "Thing").ToList();
+        (thing.Count + delegateThing.Count).Should().Be(1, $"[{kind}×{mode}] Thing is a sibling in the module namespace\n{csharp}");
+        if (thing.Count == 1 && thing[0] is TypeDeclarationSyntax typed)
+            (typed.TypeParameterList?.Parameters.Count ?? 0).Should().Be(arity, $"[{kind}×{mode}]");
+        var members = ns.Members.OfType<ClassDeclarationSyntax>().Single(c => c.Identifier.Text == "ThingModule");
+        members.Members.OfType<MethodDeclarationSyntax>().Should().Contain(m => m.Identifier.Text == "Helper", $"[{kind}×{mode}]");
+        members.Members.OfType<BaseTypeDeclarationSyntax>().Should().BeEmpty($"[{kind}×{mode}] no type is nested in the members class");
     }
 
     /// <summary>
-    /// A library module holding ONLY the class (no module-level member). This is the one cell the
-    /// SPY0520 refusal turned from worked into refused: at d17ddb956 a module with only
-    /// <c>class Thing[T]</c> emitted <c>public class Thing&lt;T&gt;</c> as its module class and
-    /// <c>Thing[int](7).get()</c> printed <c>7</c>. The owner re-ruled it on 2026-09-24 (plan-bf0244
-    /// verify): the refusal stays uniform — "merges only when the module has nothing else" would
-    /// be a cliff that one added helper flips. The general cure, user types emitted beside the
-    /// module class, is #2039. The non-generic class in the same layout still merges and runs, which
-    /// is the positive control.
+    /// A library module holding ONLY the class (no module-level member) — the #2039 repro. At
+    /// d17ddb956 <c>class Thing[T]</c> alone printed <c>7</c>; the uniform SPY0520 refusal (ruled
+    /// 2026-09-24) turned it into refused; the module-as-namespace layout makes it run again, in the
+    /// same layout as every other module: <c>Merge.Thing.Thing&lt;T&gt;</c> beside an empty
+    /// <c>[SharpyModule] ThingModule</c>. The non-generic class is the control.
     /// </summary>
     [Theory]
     [InlineData("generic_class")]
     [InlineData("class")]
-    public void LibraryModuleHoldingOnlyTheType_GenericIsRefusedUniformly(string kind)
+    public void LibraryModuleHoldingOnlyTheType_Runs(string kind)
     {
-        var (declaration, merges) = Kinds[kind];
+        var (declaration, _, _) = Kinds[kind];
         using var helper = new ProjectCompilationHelper(Output);
         helper.WithRootNamespace("Merge").WithEntryPoint("main.spy");
         helper.AddSourceFile("thing.spy", declaration);
@@ -150,18 +132,8 @@ public class ModuleClassMergeMatrixTests : IntegrationTestBase
         var errors = helper.LastCompilationResult?.Diagnostics.GetErrors()
             .Select(d => (Code: d.Code ?? "", d.Message)).ToList() ?? new List<(string Code, string Message)>();
 
-        if (merges)
-        {
-            exec.Success.Should().BeTrue(string.Join(" | ", errors.Select(e => e.Message)));
-            exec.StandardOutput.Trim().Should().Be("7");
-        }
-        else
-        {
-            exec.Success.Should().BeFalse("a generic class named like its module is refused even when the module holds nothing else");
-            errors.Should().Contain(e => e.Code == DiagnosticCodes.CodeGen.NameCollision
-                && e.Message.StartsWith("Type 'Thing' conflicts with module class name 'Thing'"),
-                string.Join(" | ", errors.Select(e => e.Code + " " + e.Message)));
-        }
+        exec.Success.Should().BeTrue(string.Join(" | ", errors.Select(e => e.Code + " " + e.Message)));
+        exec.StandardOutput.Trim().Should().Be("7");
     }
 
     [Fact]

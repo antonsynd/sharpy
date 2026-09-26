@@ -2003,6 +2003,8 @@ internal partial class RoslynEmitter
             // use the fully qualified class name so np.random.seed(42) emits NumpyRandom.Seed(42).
             var moduleParts = modulePath.Take(modulePartCount);
             ExpressionSyntax moduleExpr;
+            // Set for a user module: the members class its functions/variables are reached through.
+            string? userMembersClass = null;
             if (currentModule.CSharpClassName != null)
             {
                 var ns = currentModule.CSharpNamespace ?? "Sharpy";
@@ -2034,28 +2036,30 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    // A user module (no CLR class / namespace) is emitted fully qualified as
-                    // global::[ProjectNamespace.]<emitted module path> instead of the `import` alias
-                    // identifier, whose `using lib = <Ns>.Lib;` directive is deleted (#1683). The
-                    // emitted path comes from the resolved module's FILE PATH — the same derivation a
-                    // TYPE from that module uses — NOT from CanonicalModuleName (which drops the
-                    // directory for a subdir module: lib/math.spy -> "math" -> CS0234) and NOT from the
-                    // written segments (which carry the import alias: `import utils as u` -> "u").
-                    var userModuleNamespacePath = !string.IsNullOrEmpty(currentModule.FilePath)
-                        ? _typeMapper.ModuleNamespaceFromFilePath(currentModule.FilePath)
-                        : ModuleIdentifiers.DottedModulePath(resolvedModuleName);
+                    // A user module (no CLR class / namespace) is a C# NAMESPACE whose functions,
+                    // variables and constants live in its members class <X> and whose types are
+                    // declared beside <X> (#2039, F7). Spelled global::-rooted from the layout
+                    // semantic analysis recorded on the imported ModuleSymbol (Decision 28 (e)), not
+                    // from the `import` alias (`import utils as u` -> "u") nor CanonicalModuleName
+                    // (which drops a subdir module's directory, #1683).
+                    var (moduleNamespace, membersClass) = UserModuleLayout(currentModule, resolvedModuleName);
                     var moduleSegs = new List<string>();
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                         moduleSegs.AddRange(_context.ProjectNamespace!.Split('.'));
-                    moduleSegs.AddRange(userModuleNamespacePath.Split('.'));
+                    moduleSegs.AddRange(moduleNamespace);
                     moduleExpr = MakeGlobalQualifiedName(moduleSegs.ToArray());
+                    userMembersClass = membersClass;
                 }
             }
 
-            // If the entire path is just the module (no member access), return it
+            // If the entire path is just the module (no member access), return it — a user module
+            // as its members class, the class that stands for the module's members.
             if (modulePartCount == modulePath.Count)
             {
-                return moduleExpr;
+                return userMembersClass != null
+                    ? MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, moduleExpr,
+                        EscapedIdentifierName(userMembersClass))
+                    : moduleExpr;
             }
 
             // Build member access: module.Member1.Member2...
@@ -2077,6 +2081,11 @@ internal partial class RoslynEmitter
                     // declaration reads: `util.main()` names the non-entry MainFunc (#2065).
                     mangledMemberName = declaredName;
                 }
+                else if (!currentModule.IsNetModule && i == modulePartCount && exportSymbol is TypeSymbol exportedType)
+                {
+                    // A user module's type is spelled as its declaration is.
+                    mangledMemberName = NameCasing.ResolveType(exportedType.Name, exportedType.IsNameBacktickEscaped);
+                }
                 else if (NameFormDetector.IsConstantCaseName(memberPart))
                 {
                     mangledMemberName = NameMangler.ToConstantCase(memberPart);
@@ -2084,6 +2093,14 @@ internal partial class RoslynEmitter
                 else
                 {
                     mangledMemberName = NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false, GetClrMethodName(exportSymbol));
+                }
+
+                // A user module's function/variable/constant lives in its members class; a type
+                // is a sibling of that class in the module namespace (#2039).
+                if (i == modulePartCount && userMembersClass != null && exportSymbol is not TypeSymbol)
+                {
+                    expr = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression, expr, EscapedIdentifierName(userMembersClass));
                 }
 
                 expr = MemberAccessExpression(
@@ -2114,6 +2131,27 @@ internal partial class RoslynEmitter
         }
 
         return currentExpr;
+    }
+
+    /// <summary>
+    /// The namespace segments (relative to the project namespace) and members class of a user module
+    /// reached as a value (<c>import thing</c> / <c>thing.helper()</c>): the layout semantic analysis
+    /// recorded on the imported <see cref="ModuleSymbol"/>'s CodeGenInfo (#2039, Decision 28 (e)). A
+    /// submodule reached through its package's exports carries no CodeGenInfo of its own and reads the
+    /// same path authority the recorder does, from its file — or its dotted name when it has none.
+    /// </summary>
+    private (IReadOnlyList<string> Namespace, string MembersClass) UserModuleLayout(
+        ModuleSymbol module, string resolvedModuleName)
+    {
+        if (GetCodeGenInfo(module) is { NamespaceSegments: { } segments, MembersClassName: { } members })
+            return (segments, members);
+        if (!string.IsNullOrEmpty(module.FilePath))
+            return (_typeMapper.ModuleNamespaceFromFilePath(module.FilePath),
+                ModuleIdentifiers.LayoutMembersClassName(module.FilePath));
+        var dotted = ModuleIdentifiers.DottedModulePath(resolvedModuleName)
+            .Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var stem = resolvedModuleName.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? resolvedModuleName;
+        return (dotted, ModuleIdentifiers.MembersClassName(stem));
     }
 
     /// <summary>

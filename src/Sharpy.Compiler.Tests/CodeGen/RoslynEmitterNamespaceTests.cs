@@ -39,17 +39,17 @@ public class RoslynEmitterNamespaceTests
     }
 
     /// <summary>
-    /// #1948: the project namespace followed by every directory above the file is the C# namespace,
-    /// and the module class is its ONLY class — no directory is a wrapper class. A package's
-    /// <c>__init__.spy</c> emits <c>&lt;Dir&gt;Module</c> inside its own directory's namespace.
+    /// #1948, #2039: the project namespace followed by every directory above the file and then the
+    /// file's own stem is the C# namespace (a package's <c>__init__.spy</c> is the package itself), and
+    /// the members class <c>&lt;Stem&gt;Module</c> is its ONLY class — no directory is a wrapper class.
     /// </summary>
     [Theory]
     [InlineData("/project/src/__init__.spy", "TestProject", "SrcModule")]
     [InlineData("/project/src/level1/__init__.spy", "TestProject.Level1", "Level1Module")]
     [InlineData("/project/src/level1/level2/__init__.spy", "TestProject.Level1.Level2", "Level2Module")]
     [InlineData("/project/src/level1/level2/level3/__init__.spy", "TestProject.Level1.Level2.Level3", "Level3Module")]
-    [InlineData("/project/src/level1/level2/module.spy", "TestProject.Level1.Level2", "Module")]
-    [InlineData("/project/src/mymodule.spy", "TestProject", "Mymodule")]
+    [InlineData("/project/src/level1/level2/module.spy", "TestProject.Level1.Level2.Module", "ModuleModule")]
+    [InlineData("/project/src/mymodule.spy", "TestProject.Mymodule", "MymoduleModule")]
     public void GenerateProjectNamespace_DirectoriesAreNamespaceSegments(
         string sourceFilePath, string expectedNamespace, string expectedClass)
     {

@@ -458,10 +458,10 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// <c>Module.Name</c> — a module-level member reached from inside a type body, where a bare
-    /// name would bind to the type's own member instead. The same spelling
-    /// <c>BuildQualifiedTypeAccess</c> already uses for a module-level TYPE named from inside a
-    /// class (RoslynEmitter.Expressions.Access.Calls.cs). Emitted only where semantic analysis recorded
+    /// <c>global::Ns.&lt;X&gt;.Name</c> — a module-level member reached from inside a type body, where
+    /// a bare name would bind to the type's own member instead. <c>global::</c>-rooted through the
+    /// members class (#2039, F9): a type is a sibling of <c>&lt;X&gt;</c>, so a bare <c>Thing</c> in its
+    /// body would bind the module NAMESPACE, not the members class. Emitted only where semantic analysis recorded
     /// <c>SetModuleAccessCrossesClassMember</c>: the checker decided which binding the name has
     /// (#1786, R-Y — Python resolves a bare name in a method body to the module, skipping the
     /// class body), and this prints that decision. Unqualified, the emitted C# silently read the
@@ -471,7 +471,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax ModuleQualified(string csharpName)
         => MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
-            IdentifierName(_moduleShape?.ModuleClassName ?? GetModuleClassName()),
+            MakeGlobalQualifiedName(CurrentModuleShape.MembersClassPath),
             EscapedIdentifierName(csharpName));
 
     /// <summary>
@@ -499,19 +499,10 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The namespace segments of THIS module's C# module class: its namespace — the project
-    /// namespace + directory segments (<see cref="ModuleShape.NamespaceParts"/>) — followed by the
-    /// module class name.
+    /// The namespace segments of THIS module's members class: the module namespace
+    /// (<see cref="ModuleShape.NamespaceParts"/>) followed by <c>&lt;X&gt;</c> (#2039).
     /// </summary>
-    private string[] OwnModuleContainerSegments()
-    {
-        var parts = _moduleShape!.NamespaceParts;
-        var segs = new string[parts.Count + 1];
-        for (int i = 0; i < parts.Count; i++)
-            segs[i] = parts[i];
-        segs[^1] = _moduleShape.ModuleClassName;
-        return segs;
-    }
+    private string[] OwnModuleContainerSegments() => _moduleShape!.MembersClassPath;
 
     /// <summary>
     /// A from-imported module-level member reference (function/variable/const), emitted fully

@@ -238,7 +238,7 @@ public class FrontEndParityTests
         // Baseline: analysis of the fixture AS THE FILE IT IS (library mode), features threaded so
         // gated fixtures match. The baseline names the file for the same reason every real front
         // door does — a .spy file on disk has a name, and two diagnostic classes are derived from
-        // it (SPY0523 module-class collision, SPY0302 self-import). A nameless baseline could not
+        // it (SPY0523 members-class collision, SPY0302 self-import). A nameless baseline could not
         // produce either, so it disagreed with `run`, `project`, `emit diagnostics`, the LSP, and
         // the fixtures' own .error sidecars, and the disagreement had to be carried on the
         // allowlist as the baseline's own limitation (#1433). AnalyzeDocument is the shape that
@@ -448,10 +448,10 @@ public class FrontEndParityTests
     /// #1268's delegate repro emits SPY0522 and nothing else, so all four entry points were compared
     /// on an empty multiset and would have agreed no matter how far they had drifted.
     /// <para>
-    /// Deliberately NOT admitted: SPY0520, which <c>RoslynEmitter.ModuleClass</c> emits and Analyze
-    /// therefore structurally cannot produce (admitting it would manufacture divergences, which is
-    /// what N1's band exists to prevent), and SPY0521, which is reserved and never emitted. This is
-    /// an exception for two named codes, not a widening of the band to 5xx.
+    /// Deliberately NOT admitted: SPY0520, which only the emitter ever produced (retired by #2039 —
+    /// every module is a namespace, so a type named like its file is no refusal), and SPY0521, which
+    /// is reserved and never emitted. This is an exception for two named codes, not a widening of
+    /// the band to 5xx.
     /// </para>
     /// </remarks>
     private static readonly SCG.HashSet<string> FrontEndEmittedCollisionCodes = new(StringComparer.Ordinal)

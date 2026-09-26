@@ -1,6 +1,7 @@
 # The delegate arm of #1268's collision grid, module-variable cell. `delegate H` and the module
-# variable `h` both become members of the same generated module class under the name `H`, so the
-# pair is refused at binding (SPY0522) instead of reaching Roslyn as CS0102 behind SPY0908.
+# variable `h` (emitted `H`) were members of one generated module class and refused (SPY0522); every
+# module is now a namespace (#2039) — the variable lives in the members class and the delegate
+# beside it, so the pair no longer collides and the program runs.
 delegate H() -> None
 
 h: int = 7

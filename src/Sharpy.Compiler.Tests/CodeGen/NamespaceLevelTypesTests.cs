@@ -11,9 +11,12 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// Tests for type generation nested in the module class.
-/// Verifies that type declarations (classes, structs, interfaces, enums) are placed
-/// inside the module class as nested types, not as siblings at namespace level.
+/// Type declarations under the module-as-namespace layout (#2039, Decision 28 (a), ruling 12
+/// uniform): every top-level type (class, struct, interface, enum) is declared BESIDE the module's
+/// members class, in every mode — entry point or library — never nested inside it. These cells drive
+/// the emitter with no source file, so the module is nameless: members class <c>Module</c>, global
+/// namespace. Re-pinned by #2039: the eight entry-point cells that asserted nesting now assert the
+/// sibling layout; the library cell (already a sibling) is unchanged.
 /// </summary>
 public class NamespaceLevelTypesTests
 {
@@ -21,7 +24,7 @@ public class NamespaceLevelTypesTests
         => EmitterTestPipeline.CompileToCSharp(source, isEntryPoint);
 
     [Fact]
-    public void ClassDef_GeneratesNestedInModuleClass()
+    public void ClassDef_GeneratesBesideTheMembersClass()
     {
         var source = @"
 class Point:
@@ -36,8 +39,8 @@ def main():
         // Class should exist
         Assert.Contains("public class Point", csharp);
 
-        // Class should be INSIDE the module class (no SourceFilePath → fallback name "Module")
-        // No namespace wrapper in single-file mode (global namespace)
+        // Class is a SIBLING of the members class (no SourceFilePath → nameless module "Module",
+        // global namespace)
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var pointIndex = csharp.IndexOf("public class Point");
 
@@ -46,11 +49,11 @@ def main():
 
         // Find closing brace of Module class (counting braces)
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
-        Assert.True(pointIndex < moduleEnd, "Point should appear inside Module class");
+        Assert.True(pointIndex > moduleEnd, "Point should be declared beside (after) the Module class");
     }
 
     [Fact]
-    public void StructDef_GeneratesNestedInModuleClass()
+    public void StructDef_GeneratesBesideTheMembersClass()
     {
         var source = @"
 struct Vector:
@@ -65,15 +68,15 @@ def main():
         // Struct should exist
         Assert.Contains("public struct Vector", csharp);
 
-        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        // Verify it's a sibling of the Module class (no SourceFilePath → nameless module "Module")
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var vectorIndex = csharp.IndexOf("public struct Vector");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
-        Assert.True(vectorIndex < moduleEnd, "Vector should appear inside Module class");
+        Assert.True(vectorIndex > moduleEnd, "Vector should be declared beside the Module class");
     }
 
     [Fact]
-    public void InterfaceDef_GeneratesNestedInModuleClass()
+    public void InterfaceDef_GeneratesBesideTheMembersClass()
     {
         var source = @"
 interface IDrawable:
@@ -88,15 +91,15 @@ def main():
         // Interface should exist
         Assert.Contains("public interface IDrawable", csharp);
 
-        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        // Verify it's a sibling of the Module class (no SourceFilePath → nameless module "Module")
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var interfaceIndex = csharp.IndexOf("public interface IDrawable");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
-        Assert.True(interfaceIndex < moduleEnd, "IDrawable should appear inside Module class");
+        Assert.True(interfaceIndex > moduleEnd, "IDrawable should be declared beside the Module class");
     }
 
     [Fact]
-    public void EnumDef_GeneratesNestedInModuleClass()
+    public void EnumDef_GeneratesBesideTheMembersClass()
     {
         var source = @"
 enum Color:
@@ -112,11 +115,11 @@ def main():
         // Enum should exist
         Assert.Contains("public enum Color", csharp);
 
-        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        // Verify it's a sibling of the Module class (no SourceFilePath → nameless module "Module")
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var enumIndex = csharp.IndexOf("public enum Color");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
-        Assert.True(enumIndex < moduleEnd, "Color should appear inside Module class");
+        Assert.True(enumIndex > moduleEnd, "Color should be declared beside the Module class");
     }
 
     [Fact]
@@ -151,18 +154,18 @@ def main():
         Assert.Contains("public class Point", csharp);
         Assert.Contains("public struct Vector", csharp);
 
-        // Verify types are nested inside Module class (no SourceFilePath → fallback name "Module")
+        // Verify types are siblings of the Module class (no SourceFilePath → nameless module "Module")
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
         var pointIndex = csharp.IndexOf("public class Point");
         var vectorIndex = csharp.IndexOf("public struct Vector");
 
-        Assert.True(pointIndex < moduleEnd, "Point should be inside Module class");
-        Assert.True(vectorIndex < moduleEnd, "Vector should be inside Module class");
+        Assert.True(pointIndex > moduleEnd, "Point should be beside the Module class");
+        Assert.True(vectorIndex > moduleEnd, "Vector should be beside the Module class");
     }
 
     [Fact]
-    public void MultipleTypes_AllNestedInModuleClass()
+    public void MultipleTypes_AllBesideTheMembersClass()
     {
         var source = @"
 class Point:
@@ -186,7 +189,7 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // All types should be nested inside Module class (no SourceFilePath → fallback name "Module")
+        // All types are siblings of the Module class (no SourceFilePath → nameless module "Module")
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
 
@@ -201,16 +204,16 @@ def main():
         foreach (var (name, position) in typePositions)
         {
             Assert.True(position > 0, $"{name} should exist in output");
-            Assert.True(position < moduleEnd, $"{name} should be inside Module class");
+            Assert.True(position > moduleEnd, $"{name} should be beside the Module class");
         }
     }
 
     [Fact]
     public void LibraryModule_TypesExtractedAsNamespaceSiblings()
     {
-        // Non-entry-point single-file module (library mode). Top-level types are extracted out
-        // of the module class and emitted as namespace siblings annotated with
-        // [SharpyModuleType], while module-level functions stay on the module class. (#702)
+        // Non-entry-point module (library mode). Top-level types are namespace siblings annotated
+        // with [SharpyModuleType], while module-level functions stay on the members class — the
+        // layout every mode now shares (#702, #2039).
         var source = @"
 class Point:
     x: int
@@ -263,9 +266,10 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // Function should reference Point correctly (without qualifying with Exports)
-        Assert.Contains("public static global::Module.Point CreatePoint()", csharp);
-        Assert.Contains("return new global::Module.Point(0, 0)", csharp);
+        // Function references Point as the namespace sibling it is (the nameless module has no
+        // namespace, so global::Point) — never through the members class.
+        Assert.Contains("public static global::Point CreatePoint()", csharp);
+        Assert.Contains("return new global::Point(0, 0)", csharp);
     }
 
     [Fact]
@@ -281,14 +285,14 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // Should have Module class with Empty nested inside it (no SourceFilePath → fallback name "Module")
+        // Should have the Module class with Empty beside it (no SourceFilePath → nameless module "Module")
         Assert.Contains("public static partial class Module", csharp);
         Assert.Contains("public class Empty", csharp);
 
-        // Verify Empty is nested inside Module class
+        // Verify Empty is declared beside the Module class
         var moduleEnd = FindClosingBrace(csharp, csharp.IndexOf("public static partial class Module"));
         var emptyIndex = csharp.IndexOf("public class Empty");
-        Assert.True(emptyIndex < moduleEnd, "Empty should be inside Module class");
+        Assert.True(emptyIndex > moduleEnd, "Empty should be beside the Module class");
     }
 
     /// <summary>

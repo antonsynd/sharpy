@@ -1,5 +1,15 @@
+# A function and a type of one emitted name (`def foo_bar` and `class FooBar` both spell `FooBar`)
+# are not a collision (#2039): every module is a namespace, the function is a member of the
+# members class and the type is its sibling in the namespace, so the two never share a scope. This
+# was SPY0522 while both were members of one module class; python binds two distinct names.
 class FooBar:
     pass
 
+
 def foo_bar() -> None:
-    pass
+    print("foo_bar")
+
+
+def main() -> None:
+    FooBar()
+    foo_bar()

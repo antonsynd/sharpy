@@ -54,7 +54,11 @@ internal partial class RoslynEmitter
         if (_fixtureRegistry.TryGetValue(func.Name, out var existing))
             return existing;
 
-        var className = NameMangler.ToPascalCase(func.Name) + "Fixture";
+        // The class name semantic analysis recorded for the module namespace it is declared in, beside
+        // <X> — the same name the collision check seeded (#2039, F14). The AST-only unit-test path
+        // records none.
+        var className = CurrentModuleShape.Layout.FixtureClassNames?.GetValueOrDefault(func.Name)
+            ?? NameMangler.ToPascalCase(func.Name) + "Fixture";
         TypeSyntax valueType = func.ReturnType != null
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));

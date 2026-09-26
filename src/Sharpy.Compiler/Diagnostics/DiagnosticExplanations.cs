@@ -119,12 +119,15 @@ public static partial class DiagnosticExplanations
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
-        Add(dict, DiagnosticCodes.CodeGen.NameCollision, "Module class name collision", "CodeGen",
-            "A type name in the source file matches the module class name derived from the file name. " +
-            "For class types, the class absorbs module-level members and becomes the module representative. " +
-            "For struct, interface, or enum types, this is an error because they cannot serve as module classes.",
-            "# File: animal.spy\n# Module class name would be 'Animal', but 'struct Animal' collides\nstruct Animal:\n    name: str",
-            "Rename the type or the source file so that the type name does not match the file name in PascalCase.");
+        // SPY0520 RETIRED (#2039): every module is a namespace — its members live in '<Stem>Module' and
+        // its types beside it — so a type named like its file no longer meets a module class.
+        Add(dict, DiagnosticCodes.CodeGen.NameCollision, "Module class name collision (retired)", "CodeGen",
+            "This diagnostic is retired. Every module is a C# namespace (#2039): its functions, variables " +
+            "and constants live in the members class '<Stem>Module' and its types are declared beside it, so " +
+            "a type named like its file ('struct Animal' in animal.spy, 'class Thing[T]' in thing.spy) is an " +
+            "ordinary type in that namespace. SPY0520 is reserved and never reused.",
+            "# File: animal.spy — previously refused, now allowed\nstruct Animal:\n    name: str",
+            "No action needed — this diagnostic is no longer emitted.");
 
         Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Name collision after mangling", "CodeGen",
             "Two distinct spellings in the same declaration space produce the same C# name after " +
@@ -140,16 +143,16 @@ public static partial class DiagnosticExplanations
             "Module-level or class-member collision: backtick-escape the name mangling would rewrite, " +
             "or rename one of the two. Local collision: rename one of the two.");
 
-        Add(dict, DiagnosticCodes.CodeGen.FunctionModuleClassCollision, "Function name collides with module class name", "CodeGen",
-            "A module-level function's mangled name matches the module class name derived from the source filename. " +
-            "In C#, a member cannot have the same name as its enclosing type (CS0542). A package's '__init__.spy' " +
-            "emits its module class as '<Dir>Module' inside the package's namespace ('pkg/__init__.spy' -> " +
-            "'PkgModule'), so the same rule applies to a function spelled like it ('def pkg_module') and to a " +
-            "submodule or subpackage spelled like it ('pkg/pkg_module.spy' or 'pkg/pkg_module/'), which would be " +
-            "a second 'PkgModule' in that namespace (CS0101).",
-            "# File: bubble_sort.spy\ndef bubble_sort(arr: list[int]) -> list[int]:\n    ...\n# 'bubble_sort' compiles to 'BubbleSort', same as class 'BubbleSort' from filename",
-            "Rename the function or the source file so the function's PascalCase name does not match the filename's " +
-            "PascalCase name; for a package, rename the function, submodule or subpackage spelled like '<Dir>Module'.");
+        Add(dict, DiagnosticCodes.CodeGen.FunctionModuleClassCollision, "Name collides with the module's members class", "CodeGen",
+            "Every module is a C# namespace whose functions, variables and constants live in one members class, " +
+            "'<Stem>Module' ('thing.spy' -> 'ThingModule'; a package's '__init__.spy' -> '<Dir>Module', " +
+            "'pkg/__init__.spy' -> 'PkgModule'). A top-level function, variable or constant whose emitted name " +
+            "is that class's name would be a member named like its enclosing type (CS0542); a type spelled like " +
+            "it would be a second declaration of that name in the module namespace (CS0101). The same applies " +
+            "to a package's submodule or subpackage spelled like '<Dir>Module' ('pkg/pkg_module.spy').",
+            "# File: thing.spy\ndef thing_module() -> int:   # compiles to 'ThingModule', the members class\n    return 1",
+            "Rename the function, variable or type (or the source file) so its PascalCase name is not " +
+            "'<Stem>Module'; for a package, rename the submodule or subpackage spelled like '<Dir>Module'.");
 
         Add(dict, DiagnosticCodes.CodeGen.MemberEnclosingTypeCollision, "Member name equals its enclosing type's", "CodeGen",
             "A member's emitted C# name equals the emitted name of the type that declares it — for example a " +

@@ -10,14 +10,14 @@ namespace Sharpy.Cli.Tests.E2E;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A library module whose type is named like its file (SPY0520) is refused at code generation and
-/// its C# is dropped. When nothing imports that module the remaining C# compiles cleanly, and the
+/// A library module refused by name (SPY0520 until #2039; now SPY0523, a function spelled like the
+/// module's members class) has its C# dropped. When nothing imports that module the remaining C# compiles cleanly, and the
 /// driver used to key the verdict on Roslyn alone: <c>sharpyc project</c> printed
 /// <c>Build succeeded.</c>, never showed the SPY0520 it held, saved the incremental cache and wrote
 /// a complete <c>Probe.exe</c> (2560 bytes, measured at acd1d40a2). When the module IS imported the
 /// build failed correctly, but the output files were opened before Roslyn ran, so the failed build
 /// left a 0-byte <c>Probe.exe</c> and <c>Probe.pdb</c> behind (measured at acd1d40a2). Both cells
-/// assert the printed verdict, the SPY0520 line and the ABSENCE of every output artifact; the
+/// assert the printed verdict, the refusal line and the ABSENCE of every output artifact; the
 /// artifacts present at the base commit are the positive controls for the absence assertions.
 /// </para>
 /// </remarks>
@@ -25,9 +25,12 @@ public class FailedBuildVerdictTests : IDisposable
 {
     private static readonly string CliDll = Path.Combine(AppContext.BaseDirectory, "sharpyc.dll");
 
+    // A library module refused by name: `probe_module` is spelled like the module's members class
+    // `ProbeModule` (SPY0523, #2039). It was a struct named like its file (SPY0520) until every module
+    // became a namespace and that shape stopped being a refusal.
     private const string RefusedModule = """
-        struct Probe:
-            v: int
+        def probe_module() -> int:
+            return 1
 
         def helper() -> int:
             return 7
@@ -67,9 +70,9 @@ public class FailedBuildVerdictTests : IDisposable
         result.ExitCode.Should().NotBe(0, combined);
         result.StdErr.Should().Contain("Build FAILED.", combined);
         combined.Should().NotContain("Build succeeded.");
-        combined.Should().Contain("error[SPY0520]: Type 'Probe' conflicts with module class name 'Probe'.");
-        combined.Should().Contain("--> " + _ws.PathFor("probe.spy") + ":1:8",
-            "the refusal names the file whose type collides and the type's name token (#2032)");
+        combined.Should().Contain("error[SPY0523]: 'probe_module' compiles to 'ProbeModule', which is this module's members class");
+        combined.Should().Contain("--> " + _ws.PathFor("probe.spy") + ":1:5",
+            "the refusal names the file whose function collides and the function's name token (#2032)");
 
         var artifacts = Directory.Exists(_ws.PathFor("bin"))
             ? Directory.GetFiles(_ws.PathFor("bin"), "Probe.*", SearchOption.AllDirectories)
