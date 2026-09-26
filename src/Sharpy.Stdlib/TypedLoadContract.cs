@@ -206,10 +206,11 @@ namespace Sharpy
 
         /// <summary>
         /// The message both doors report for a missing required field, so a caller that matches on
-        /// text sees one sentence rather than two dialects.
+        /// text sees one sentence rather than two dialects. The target is named by its python name
+        /// (<see cref="PyFormat.PyTypeName"/>: <c>app_cfg</c>, not the emitted <c>AppCfg</c>; #2099).
         /// </summary>
         internal static string MissingFieldMessage(Type target, string fieldName)
-            => $"missing required field '{fieldName}' for {target.Name}";
+            => $"missing required field '{fieldName}' for {PyFormat.PyTypeName(target)}";
 
         /// <summary>
         /// All fields of <paramref name="target"/>: the parameters of its single all-fields
