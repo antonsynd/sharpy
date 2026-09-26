@@ -7,8 +7,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AbstractClass0000
+namespace AbstractClass0000
 {
+    public static partial class AbstractClass0000Module
+    {
+        public static void Main()
+        {
+#line (46, 5) - (46, 31) 12 "abstract_class_0000.spy"
+            var rect = new global::AbstractClass0000.Rectangle(4.0d, 5.0d);
+#line (47, 5) - (47, 23) 12 "abstract_class_0000.spy"
+            var circ = new global::AbstractClass0000.Circle(3.0d);
+#line (49, 5) - (49, 27) 12 "abstract_class_0000.spy"
+            global::Sharpy.Builtins.Print(rect.Describe());
+#line (50, 5) - (50, 23) 12 "abstract_class_0000.spy"
+            global::Sharpy.Builtins.Print(rect.Area());
+#line (51, 5) - (51, 27) 12 "abstract_class_0000.spy"
+            global::Sharpy.Builtins.Print(circ.Describe());
+#line (52, 5) - (52, 23) 12 "abstract_class_0000.spy"
+            global::Sharpy.Builtins.Print(circ.Area());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Shape")]
     public abstract class Shape
     {
         public string Name;
@@ -30,6 +51,7 @@ public static partial class AbstractClass0000
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Rectangle")]
     public class Rectangle : global::AbstractClass0000.Shape
     {
         public double Width;
@@ -53,6 +75,7 @@ public static partial class AbstractClass0000
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Circle")]
     public class Circle : global::AbstractClass0000.Shape
     {
         public double Radius;
@@ -79,23 +102,6 @@ public static partial class AbstractClass0000
             this.Radius = r;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (46, 5) - (46, 31) 8 "abstract_class_0000.spy"
-        var rect = new global::AbstractClass0000.Rectangle(4.0d, 5.0d);
-#line (47, 5) - (47, 23) 8 "abstract_class_0000.spy"
-        var circ = new global::AbstractClass0000.Circle(3.0d);
-#line (49, 5) - (49, 27) 8 "abstract_class_0000.spy"
-        global::Sharpy.Builtins.Print(rect.Describe());
-#line (50, 5) - (50, 23) 8 "abstract_class_0000.spy"
-        global::Sharpy.Builtins.Print(rect.Area());
-#line (51, 5) - (51, 27) 8 "abstract_class_0000.spy"
-        global::Sharpy.Builtins.Print(circ.Describe());
-#line (52, 5) - (52, 23) 8 "abstract_class_0000.spy"
-        global::Sharpy.Builtins.Print(circ.Area());
-#line hidden
     }
 }
 #line default

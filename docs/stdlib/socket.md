@@ -15,94 +15,6 @@ import socket
 
 ## Functions
 
-### `socket.from_socket_exception(ex: Net.Sockets.SocketException) -> Error`
-
-Create a socket error from a .NET SocketException.
-
-### `socket.connect(address: tuple[str, int])`
-
-Connect to a remote (host, port) address.
-
-### `socket.bind(address: tuple[str, int])`
-
-Bind the socket to a local (host, port) address.
-
-### `socket.listen(backlog: int = 5)`
-
-Enable a server to accept connections with the given backlog.
-
-### `socket.accept() -> tuple[Socket, tuple[str, int]]`
-
-Accept a connection, returning (new socket, (remote_host, remote_port)).
-
-### `socket.send(data: Sharpy.Bytes) -> int`
-
-Send data to the socket, returning the number of bytes sent.
-
-### `socket.sendall(data: Sharpy.Bytes)`
-
-Send all data to the socket, continuing until every byte is sent.
-
-### `socket.recv(bufsize: int) -> Sharpy.Bytes`
-
-Receive up to bufsize bytes from the socket.
-
-### `socket.sendto(data: Sharpy.Bytes, address: tuple[str, int]) -> int`
-
-Send data to a specific (host, port) address (UDP).
-
-### `socket.recvfrom(bufsize: int) -> tuple[Sharpy.Bytes, tuple[str, int]]`
-
-Receive data and the sender's address (UDP).
-
-### `socket.setsockopt(level: int, optname: int, value: int)`
-
-Set a socket option (e.g., SOL_SOCKET, SO_REUSEADDR).
-
-### `socket.getsockopt(level: int, optname: int) -> int`
-
-Get a socket option value.
-
-### `socket.settimeout(timeout: float | None)`
-
-Set the timeout in seconds for blocking operations, or None for blocking mode.
-
-### `socket.gettimeout() -> float | None`
-
-Return the timeout in seconds, or None if in blocking mode.
-
-### `socket.setblocking(flag: bool)`
-
-Set blocking (True) or non-blocking (False) mode.
-
-### `socket.getblocking() -> bool`
-
-Return whether the socket is in blocking mode.
-
-### `socket.shutdown(how: int)`
-
-Shut down one or both halves of the connection (SHUT_RD/WR/RDWR).
-
-### `socket.close()`
-
-Close the socket.
-
-### `socket.getsockname() -> tuple[str, int]`
-
-Return the local (host, port) address the socket is bound to.
-
-### `socket.getpeername() -> tuple[str, int]`
-
-Return the remote (host, port) address the socket is connected to.
-
-### `socket.fileno() -> int`
-
-Return the socket handle (file descriptor) as an integer.
-
-### `socket.enter() -> Socket`
-
-### `socket.exit()`
-
 ### `socket.getdefaulttimeout() -> float | None`
 
 Return the default timeout in seconds for new sockets, or None.
@@ -176,3 +88,116 @@ similar to Python's `socket.inet_ntop()`.
 Resolve a hostname to a list of address info tuples, similar to Python's
 `socket.getaddrinfo()`. Returns a list of tuples
 (family, type, proto, canonname, sockaddr).
+
+## error
+
+Base exception for socket-related errors. Corresponds to Python's socket.error.
+
+### `from_socket_exception(ex: Net.Sockets.SocketException) -> Error`
+
+Create a socket error from a .NET SocketException.
+
+## timeout
+
+Raised when a socket operation times out. Corresponds to Python's socket.timeout.
+
+## gaierror
+
+Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror.
+
+## herror
+
+Raised for legacy address-related errors. Corresponds to Python's socket.herror.
+
+## socket
+
+Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
+Supports TCP and UDP communication, socket options, and timeout handling.
+
+### `connect(address: tuple[str, int])`
+
+Connect to a remote (host, port) address.
+
+### `bind(address: tuple[str, int])`
+
+Bind the socket to a local (host, port) address.
+
+### `listen(backlog: int = 5)`
+
+Enable a server to accept connections with the given backlog.
+
+### `accept() -> tuple[Socket, tuple[str, int]]`
+
+Accept a connection, returning (new socket, (remote_host, remote_port)).
+
+### `send(data: Sharpy.Bytes) -> int`
+
+Send data to the socket, returning the number of bytes sent.
+
+### `sendall(data: Sharpy.Bytes)`
+
+Send all data to the socket, continuing until every byte is sent.
+
+### `recv(bufsize: int) -> Sharpy.Bytes`
+
+Receive up to bufsize bytes from the socket.
+
+### `sendto(data: Sharpy.Bytes, address: tuple[str, int]) -> int`
+
+Send data to a specific (host, port) address (UDP).
+
+### `recvfrom(bufsize: int) -> tuple[Sharpy.Bytes, tuple[str, int]]`
+
+Receive data and the sender's address (UDP).
+
+### `setsockopt(level: int, optname: int, value: int)`
+
+Set a socket option (e.g., SOL_SOCKET, SO_REUSEADDR).
+
+### `getsockopt(level: int, optname: int) -> int`
+
+Get a socket option value.
+
+### `settimeout(timeout: float | None)`
+
+Set the timeout in seconds for blocking operations, or None for blocking mode.
+
+### `gettimeout() -> float | None`
+
+Return the timeout in seconds, or None if in blocking mode.
+
+### `setblocking(flag: bool)`
+
+Set blocking (True) or non-blocking (False) mode.
+
+### `getblocking() -> bool`
+
+Return whether the socket is in blocking mode.
+
+### `shutdown(how: int)`
+
+Shut down one or both halves of the connection (SHUT_RD/WR/RDWR).
+
+### `close()`
+
+Close the socket.
+
+### `getsockname() -> tuple[str, int]`
+
+Return the local (host, port) address the socket is bound to.
+
+### `getpeername() -> tuple[str, int]`
+
+Return the remote (host, port) address the socket is connected to.
+
+### `fileno() -> int`
+
+Return the socket handle (file descriptor) as an integer.
+
+### `enter() -> Socket`
+
+### `exit()`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.

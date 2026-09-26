@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using pprint = global::Sharpy.PprintModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Pprint
+namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 {
     [global::Sharpy.SharpyModule("pprint.pprint_tests")]
-    public static partial class PprintTests
+    public static partial class PprintTestsModule
     {
     }
 
-    public partial class PprintTestsTests
+    public partial class PprintTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestPformatIntegerReturnsDigits()

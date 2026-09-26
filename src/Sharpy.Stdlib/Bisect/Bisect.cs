@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.BisectModule
 {
     /// <summary>
     /// Array bisection algorithm for maintaining sorted lists.
     /// </summary>
-    public static partial class BisectModule
+    public static partial class BisectModuleModule
     {
         /// <summary>
         /// Locate the insertion point for x in a to maintain sorted order.
@@ -75,7 +75,7 @@ namespace Sharpy
         public static int Bisect<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            return global::Sharpy.BisectModule.BisectRight<T>(a, x, lo, hi);
+            return global::Sharpy.BisectModule.BisectModuleModule.BisectRight<T>(a, x, lo, hi);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Sharpy
         public static void InsortLeft<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            int idx = global::Sharpy.BisectModule.BisectLeft<T>(a, x, lo, hi);
+            int idx = global::Sharpy.BisectModule.BisectModuleModule.BisectLeft<T>(a, x, lo, hi);
             a.Insert(idx, x);
         }
 
@@ -94,7 +94,7 @@ namespace Sharpy
         public static void InsortRight<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            int idx = global::Sharpy.BisectModule.BisectRight<T>(a, x, lo, hi);
+            int idx = global::Sharpy.BisectModule.BisectModuleModule.BisectRight<T>(a, x, lo, hi);
             a.Insert(idx, x);
         }
 
@@ -104,7 +104,7 @@ namespace Sharpy
         public static void Insort<T>(Sharpy.List<T> a, T x, int lo = 0, int hi = -1)
             where T : global::System.IComparable<T>
         {
-            global::Sharpy.BisectModule.InsortRight<T>(a, x, lo, hi);
+            global::Sharpy.BisectModule.BisectModuleModule.InsortRight<T>(a, x, lo, hi);
         }
     }
 }

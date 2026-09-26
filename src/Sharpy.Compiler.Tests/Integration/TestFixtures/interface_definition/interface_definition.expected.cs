@@ -7,14 +7,36 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class InterfaceDefinition
+namespace InterfaceDefinition
 {
+    public static partial class InterfaceDefinitionModule
+    {
+        public static void Main()
+        {
+#line (34, 5) - (34, 35) 12 "interface_definition.spy"
+            global::InterfaceDefinition.IDrawable circle = new global::InterfaceDefinition.Circle(5);
+#line (35, 5) - (35, 25) 12 "interface_definition.spy"
+            global::Sharpy.Builtins.Print(circle.Draw());
+#line (36, 5) - (36, 25) 12 "interface_definition.spy"
+            global::Sharpy.Builtins.Print(circle.Area());
+#line (38, 5) - (38, 39) 12 "interface_definition.spy"
+            global::InterfaceDefinition.IDrawable rect = new global::InterfaceDefinition.Rectangle(4, 6);
+#line (39, 5) - (39, 23) 12 "interface_definition.spy"
+            global::Sharpy.Builtins.Print(rect.Draw());
+#line (40, 5) - (40, 23) 12 "interface_definition.spy"
+            global::Sharpy.Builtins.Print(rect.Area());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "IDrawable")]
     public interface IDrawable
     {
         string Draw();
         int Area();
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Circle")]
     public class Circle : global::InterfaceDefinition.IDrawable
     {
         public int Radius;
@@ -43,6 +65,7 @@ public static partial class InterfaceDefinition
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Rectangle")]
     public class Rectangle : global::InterfaceDefinition.IDrawable
     {
         public int Width;
@@ -72,23 +95,6 @@ public static partial class InterfaceDefinition
             this.Height = h;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (34, 5) - (34, 35) 8 "interface_definition.spy"
-        global::InterfaceDefinition.IDrawable circle = new global::InterfaceDefinition.Circle(5);
-#line (35, 5) - (35, 25) 8 "interface_definition.spy"
-        global::Sharpy.Builtins.Print(circle.Draw());
-#line (36, 5) - (36, 25) 8 "interface_definition.spy"
-        global::Sharpy.Builtins.Print(circle.Area());
-#line (38, 5) - (38, 39) 8 "interface_definition.spy"
-        global::InterfaceDefinition.IDrawable rect = new global::InterfaceDefinition.Rectangle(4, 6);
-#line (39, 5) - (39, 23) 8 "interface_definition.spy"
-        global::Sharpy.Builtins.Print(rect.Draw());
-#line (40, 5) - (40, 23) 8 "interface_definition.spy"
-        global::Sharpy.Builtins.Print(rect.Area());
-#line hidden
     }
 }
 #line default

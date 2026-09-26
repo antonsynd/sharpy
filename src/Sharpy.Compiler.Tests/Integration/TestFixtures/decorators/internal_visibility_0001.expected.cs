@@ -7,8 +7,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class InternalVisibility0001
+namespace InternalVisibility0001
 {
+    public static partial class InternalVisibility0001Module
+    {
+        public static void Main()
+        {
+#line (22, 5) - (22, 28) 12 "internal_visibility_0001.spy"
+            global::InternalVisibility0001.Service s = new global::InternalVisibility0001.Service();
+#line (23, 5) - (23, 29) 12 "internal_visibility_0001.spy"
+            global::Sharpy.Builtins.Print(s.PublicMethod());
+#line (24, 5) - (24, 19) 12 "internal_visibility_0001.spy"
+            global::Sharpy.Builtins.Print(s.Label);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Service")]
     public class Service
     {
         protected string _Name;
@@ -45,17 +60,6 @@ public static partial class InternalVisibility0001
             this._Name = "MyService";
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (22, 5) - (22, 28) 8 "internal_visibility_0001.spy"
-        global::InternalVisibility0001.Service s = new global::InternalVisibility0001.Service();
-#line (23, 5) - (23, 29) 8 "internal_visibility_0001.spy"
-        global::Sharpy.Builtins.Print(s.PublicMethod());
-#line (24, 5) - (24, 19) 8 "internal_visibility_0001.spy"
-        global::Sharpy.Builtins.Print(s.Label);
-#line hidden
     }
 }
 #line default

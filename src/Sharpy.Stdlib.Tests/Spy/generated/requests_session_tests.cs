@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using requests = global::Sharpy.Requests;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Requests
+namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsSessionTests
 {
     [global::Sharpy.SharpyModule("requests.requests_session_tests")]
-    public static partial class RequestsSessionTests
+    public static partial class RequestsSessionTestsModule
     {
     }
 
-    public partial class RequestsSessionTestsTests
+    public partial class RequestsSessionTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSessionHeadersDefaultsToEmptyDict()

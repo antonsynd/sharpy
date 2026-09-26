@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using grapheme = global::Sharpy.Grapheme;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Grapheme
+namespace Sharpy.Stdlib.Tests.Spy.Grapheme.GraphemeTests
 {
     [global::Sharpy.SharpyModule("grapheme.grapheme_tests")]
-    public static partial class GraphemeTests
+    public static partial class GraphemeTestsModule
     {
     }
 
-    public partial class GraphemeTestsTests
+    public partial class GraphemeTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestLengthAsciiReturnsCharacterCount()

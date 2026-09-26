@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using secrets = global::Sharpy.SecretsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Secrets
+namespace Sharpy.Stdlib.Tests.Spy.Secrets.SecretsTests
 {
     [global::Sharpy.SharpyModule("secrets.secrets_tests")]
-    public static partial class SecretsTests
+    public static partial class SecretsTestsModule
     {
     }
 
-    public partial class SecretsTestsTests
+    public partial class SecretsTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestTokenBytesReturnsCorrectLength()

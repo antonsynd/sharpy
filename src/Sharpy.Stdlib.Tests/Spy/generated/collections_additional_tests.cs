@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsAdditionalTests
 {
     [global::Sharpy.SharpyModule("collections.collections_additional_tests")]
-    public static partial class CollectionsAdditionalTests
+    public static partial class CollectionsAdditionalTestsModule
     {
     }
 
-    public partial class CollectionsAdditionalTestsTests
+    public partial class CollectionsAdditionalTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestOrderedDictMaintainsInsertionOrder()

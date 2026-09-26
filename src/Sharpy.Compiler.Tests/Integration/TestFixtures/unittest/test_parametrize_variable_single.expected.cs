@@ -7,33 +7,36 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestParametrizeVariableSingle
+namespace TestParametrizeVariableSingle
 {
-    public static readonly Sharpy.List<bool> FLAGS = new Sharpy.List<bool>()
+    public static partial class TestParametrizeVariableSingleModule
     {
-        true,
-        false,
-        true
-    };
-    public static void Main()
-    {
-#line (8, 5) - (8, 16) 8 "test_parametrize_variable_single.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static readonly Sharpy.List<bool> FLAGS = new Sharpy.List<bool>()
+        {
+            true,
+            false,
+            true
+        };
+        public static void Main()
+        {
+#line (8, 5) - (8, 16) 12 "test_parametrize_variable_single.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        public static global::System.Collections.Generic.IEnumerable<object[]> FLAGSMemberData => global::System.Linq.Enumerable.Select(FLAGS, row => new object[] { row });
     }
 
-    public static global::System.Collections.Generic.IEnumerable<object[]> FLAGSMemberData => global::System.Linq.Enumerable.Select(FLAGS, row => new object[] { row });
-}
-
-public partial class TestParametrizeVariableSingleTests
-{
-    [Xunit.TheoryAttribute]
-    [Xunit.MemberDataAttribute(nameof(TestParametrizeVariableSingle.FLAGSMemberData), MemberType = typeof(TestParametrizeVariableSingle))]
-    public void TestBool(bool flag)
+    public partial class TestParametrizeVariableSingleModuleTests
     {
-#line (5, 5) - (5, 42) 8 "test_parametrize_variable_single.spy"
-        Xunit.Assert.True(flag == true || flag == false);
+        [Xunit.TheoryAttribute]
+        [Xunit.MemberDataAttribute(nameof(global::TestParametrizeVariableSingle.TestParametrizeVariableSingleModule.FLAGSMemberData), MemberType = typeof(global::TestParametrizeVariableSingle.TestParametrizeVariableSingleModule))]
+        public void TestBool(bool flag)
+        {
+#line (5, 5) - (5, 42) 12 "test_parametrize_variable_single.spy"
+            Xunit.Assert.True(flag == true || flag == false);
 #line hidden
+        }
     }
 }
 #line default

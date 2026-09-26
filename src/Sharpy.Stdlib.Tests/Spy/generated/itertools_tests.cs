@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using itertools = global::Sharpy.Itertools;
+using itertools = global::Sharpy.Itertools.ItertoolsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Itertools
+namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsTests
 {
     [global::Sharpy.SharpyModule("itertools.itertools_tests")]
-    public static partial class ItertoolsTests
+    public static partial class ItertoolsTestsModule
     {
     }
 
-    public partial class ItertoolsTestsTests
+    public partial class ItertoolsTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestChainConcatenatesMultipleIterables()

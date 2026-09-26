@@ -7,36 +7,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AsyncComprehensionAsyncFor
+namespace AsyncComprehensionAsyncFor
 {
-    public static async System.Collections.Generic.IAsyncEnumerable<int> Gen()
+    public static partial class AsyncComprehensionAsyncForModule
     {
-#line (2, 5) - (2, 13) 8 "async_comprehension_async_for.spy"
-        yield return 1;
-#line (3, 5) - (3, 13) 8 "async_comprehension_async_for.spy"
-        yield return 2;
-#line (4, 5) - (4, 13) 8 "async_comprehension_async_for.spy"
-        yield return 3;
-#line hidden
-    }
-
-    public static async System.Threading.Tasks.Task Main()
-    {
-        var __comp_0 = new Sharpy.List<int>();
-        await foreach (var __loopVar_1 in global::AsyncComprehensionAsyncFor.Gen())
+        public static async System.Collections.Generic.IAsyncEnumerable<int> Gen()
         {
-            var x = __loopVar_1;
-            if (x > 0)
-            {
-                __comp_0.Add(x * 2);
-            }
+#line (2, 5) - (2, 13) 12 "async_comprehension_async_for.spy"
+            yield return 1;
+#line (3, 5) - (3, 13) 12 "async_comprehension_async_for.spy"
+            yield return 2;
+#line (4, 5) - (4, 13) 12 "async_comprehension_async_for.spy"
+            yield return 3;
+#line hidden
         }
 
-#line (7, 5) - (7, 51) 8 "async_comprehension_async_for.spy"
-        var result = __comp_0;
-#line (8, 5) - (8, 18) 8 "async_comprehension_async_for.spy"
-        global::Sharpy.Builtins.Print(result);
+        public static async System.Threading.Tasks.Task Main()
+        {
+            var __comp_0 = new Sharpy.List<int>();
+            await foreach (var __loopVar_1 in global::AsyncComprehensionAsyncFor.AsyncComprehensionAsyncForModule.Gen())
+            {
+                var x = __loopVar_1;
+                if (x > 0)
+                {
+                    __comp_0.Add(x * 2);
+                }
+            }
+
+#line (7, 5) - (7, 51) 12 "async_comprehension_async_for.spy"
+            var result = __comp_0;
+#line (8, 5) - (8, 18) 12 "async_comprehension_async_for.spy"
+            global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
     }
 }
 #line default

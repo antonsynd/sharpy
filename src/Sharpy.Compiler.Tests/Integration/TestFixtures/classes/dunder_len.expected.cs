@@ -6,8 +6,31 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderLen
+namespace DunderLen
 {
+    public static partial class DunderLenModule
+    {
+        public static void Main()
+        {
+#line (15, 5) - (15, 18) 12 "dunder_len.spy"
+            var ml = new global::DunderLen.MyList();
+#line (16, 5) - (16, 14) 12 "dunder_len.spy"
+            ml.Add(1);
+#line (17, 5) - (17, 14) 12 "dunder_len.spy"
+            ml.Add(2);
+#line (18, 5) - (18, 14) 12 "dunder_len.spy"
+            ml.Add(3);
+#line (19, 5) - (19, 19) 12 "dunder_len.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(ml));
+#line (20, 5) - (20, 21) 12 "dunder_len.spy"
+            var empty = new global::DunderLen.MyList();
+#line (21, 5) - (21, 22) 12 "dunder_len.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(empty));
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "MyList")]
     public class MyList : Sharpy.ISized
     {
         public Sharpy.List<int> Items;
@@ -38,25 +61,6 @@ public static partial class DunderLen
             {
             };
         }
-    }
-
-    public static void Main()
-    {
-#line (15, 5) - (15, 18) 8 "dunder_len.spy"
-        var ml = new global::DunderLen.MyList();
-#line (16, 5) - (16, 14) 8 "dunder_len.spy"
-        ml.Add(1);
-#line (17, 5) - (17, 14) 8 "dunder_len.spy"
-        ml.Add(2);
-#line (18, 5) - (18, 14) 8 "dunder_len.spy"
-        ml.Add(3);
-#line (19, 5) - (19, 19) 8 "dunder_len.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(ml));
-#line (20, 5) - (20, 21) 8 "dunder_len.spy"
-        var empty = new global::DunderLen.MyList();
-#line (21, 5) - (21, 22) 8 "dunder_len.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(empty));
-#line hidden
     }
 }
 #line default

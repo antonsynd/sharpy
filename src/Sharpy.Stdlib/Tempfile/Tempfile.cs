@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.TempfileModule
 {
     /// <summary>
     /// Generate temporary files and directories.
     /// </summary>
-    public static partial class TempfileModule
+    public static partial class TempfileModuleModule
     {
         /// <summary>
         /// Return the name of the directory used for temporary files.
@@ -69,237 +69,240 @@ namespace Sharpy
                 throw new global::Sharpy.OSError("Failed to create temporary file: " + global::Sharpy.Builtins.Str(ex));
             }
         }
+    }
 
+    /// <summary>
+    /// A temporary file with a visible name, deleted on close by default.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("tempfile", "NamedTemporaryFile")]
+    public class NamedTemporaryFile
+    {
+        public string Name;
+        public string Mode;
+        public bool Delete;
+        protected bool _Closed;
         /// <summary>
-        /// A temporary file with a visible name, deleted on close by default.
+        /// Write a string to the file, returning the number of characters written.
         /// </summary>
-        public class NamedTemporaryFile
+        public int Write(string data)
         {
-            public string Name;
-            public string Mode;
-            public bool Delete;
-            protected bool _Closed;
-            /// <summary>
-            /// Write a string to the file, returning the number of characters written.
-            /// </summary>
-            public int Write(string data)
-            {
-                global::System.IO.File.AppendAllText(this.Name, data);
-                return data.Length;
-            }
-
-            /// <summary>
-            /// Read the entire contents of the file.
-            /// </summary>
-            public string Read()
-            {
-                return global::System.IO.File.ReadAllText(this.Name);
-            }
-
-            /// <summary>
-            /// Close the file, deleting it if delete is True.
-            /// </summary>
-            public void Close()
-            {
-                if (this._Closed)
-                {
-                    return;
-                }
-
-                this._Closed = true;
-                if (this.Delete)
-                {
-                    if (global::System.IO.File.Exists(this.Name))
-                    {
-                        global::System.IO.File.Delete(this.Name);
-                    }
-                }
-            }
-
-            public global::Sharpy.TempfileModule.NamedTemporaryFile Enter()
-            {
-                return this;
-            }
-
-            public void Exit()
-            {
-                this.Close();
-            }
-
-            /// <summary>
-            /// Create a named temporary file in the default temporary directory.
-            /// </summary>
-            public NamedTemporaryFile(string mode = "w+b", string suffix = "", string prefix = "tmp", bool delete = true)
-            {
-                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
-                this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
-                global::System.IO.File.WriteAllText(this.Name, "");
-                this.Mode = mode;
-                this.Delete = delete;
-                this._Closed = false;
-            }
+            global::System.IO.File.AppendAllText(this.Name, data);
+            return data.Length;
         }
 
         /// <summary>
-        /// A temporary directory, recursively deleted on cleanup or context exit.
+        /// Read the entire contents of the file.
         /// </summary>
-        public class TemporaryDirectory
+        public string Read()
         {
-            public string Name;
-            /// <summary>
-            /// Recursively delete the temporary directory and its contents.
-            /// </summary>
-            public void Cleanup()
-            {
-                if (global::System.IO.Directory.Exists(this.Name))
-                {
-                    global::System.IO.Directory.Delete(this.Name, true);
-                }
-            }
-
-            public string Enter()
-            {
-                return this.Name;
-            }
-
-            public void Exit()
-            {
-                this.Cleanup();
-            }
-
-            /// <summary>
-            /// Create a temporary directory in the default temporary directory.
-            /// </summary>
-            public TemporaryDirectory(string suffix = "", string prefix = "tmp")
-            {
-                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
-                this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
-                global::System.IO.Directory.CreateDirectory(this.Name);
-            }
+            return global::System.IO.File.ReadAllText(this.Name);
         }
 
         /// <summary>
-        /// A temporary file kept in memory until it exceeds max_size, then written to disk.
+        /// Close the file, deleting it if delete is True.
         /// </summary>
-        public class SpooledTemporaryFile
+        public void Close()
         {
-            public int MaxSize;
-            public string Mode;
-            public string? Name;
-            protected string _Buffer;
-            protected bool _Rolled;
-            protected bool _Closed;
-            /// <summary>
-            /// Write the in-memory buffer to a real temporary file on disk.
-            /// </summary>
-            public void Rollover()
+            if (this._Closed)
             {
-                if (this._Rolled)
-                {
-                    return;
-                }
-
-                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
-                string path = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), "tmp" + randomPart);
-                global::System.IO.File.WriteAllText(path, this._Buffer);
-                this.Name = path;
-                this._Buffer = "";
-                this._Rolled = true;
+                return;
             }
 
-            /// <summary>
-            /// Write a string to the spooled file, rolling over to disk if max_size is exceeded.
-            /// </summary>
-            public int Write(string data)
+            this._Closed = true;
+            if (this.Delete)
             {
-                if (this._Rolled)
+                if (global::System.IO.File.Exists(this.Name))
                 {
-                    string? path = this.Name;
-                    if (path != null)
-                    {
-                        global::System.IO.File.AppendAllText(path!, data);
-                    }
-
-                    return data.Length;
+                    global::System.IO.File.Delete(this.Name);
                 }
+            }
+        }
 
-                this._Buffer = this._Buffer + data;
-                if (this.MaxSize > 0)
+        public global::Sharpy.TempfileModule.NamedTemporaryFile Enter()
+        {
+            return this;
+        }
+
+        public void Exit()
+        {
+            this.Close();
+        }
+
+        /// <summary>
+        /// Create a named temporary file in the default temporary directory.
+        /// </summary>
+        public NamedTemporaryFile(string mode = "w+b", string suffix = "", string prefix = "tmp", bool delete = true)
+        {
+            string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
+            this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
+            global::System.IO.File.WriteAllText(this.Name, "");
+            this.Mode = mode;
+            this.Delete = delete;
+            this._Closed = false;
+        }
+    }
+
+    /// <summary>
+    /// A temporary directory, recursively deleted on cleanup or context exit.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("tempfile", "TemporaryDirectory")]
+    public class TemporaryDirectory
+    {
+        public string Name;
+        /// <summary>
+        /// Recursively delete the temporary directory and its contents.
+        /// </summary>
+        public void Cleanup()
+        {
+            if (global::System.IO.Directory.Exists(this.Name))
+            {
+                global::System.IO.Directory.Delete(this.Name, true);
+            }
+        }
+
+        public string Enter()
+        {
+            return this.Name;
+        }
+
+        public void Exit()
+        {
+            this.Cleanup();
+        }
+
+        /// <summary>
+        /// Create a temporary directory in the default temporary directory.
+        /// </summary>
+        public TemporaryDirectory(string suffix = "", string prefix = "tmp")
+        {
+            string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
+            this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
+            global::System.IO.Directory.CreateDirectory(this.Name);
+        }
+    }
+
+    /// <summary>
+    /// A temporary file kept in memory until it exceeds max_size, then written to disk.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("tempfile", "SpooledTemporaryFile")]
+    public class SpooledTemporaryFile
+    {
+        public int MaxSize;
+        public string Mode;
+        public string? Name;
+        protected string _Buffer;
+        protected bool _Rolled;
+        protected bool _Closed;
+        /// <summary>
+        /// Write the in-memory buffer to a real temporary file on disk.
+        /// </summary>
+        public void Rollover()
+        {
+            if (this._Rolled)
+            {
+                return;
+            }
+
+            string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
+            string path = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), "tmp" + randomPart);
+            global::System.IO.File.WriteAllText(path, this._Buffer);
+            this.Name = path;
+            this._Buffer = "";
+            this._Rolled = true;
+        }
+
+        /// <summary>
+        /// Write a string to the spooled file, rolling over to disk if max_size is exceeded.
+        /// </summary>
+        public int Write(string data)
+        {
+            if (this._Rolled)
+            {
+                string? path = this.Name;
+                if (path != null)
                 {
-                    if (this._Buffer.Length > this.MaxSize)
-                    {
-                        this.Rollover();
-                    }
+                    global::System.IO.File.AppendAllText(path!, data);
                 }
 
                 return data.Length;
             }
 
-            /// <summary>
-            /// Read the entire contents of the spooled file.
-            /// </summary>
-            public string Read()
+            this._Buffer = this._Buffer + data;
+            if (this.MaxSize > 0)
             {
-                if (this._Rolled)
+                if (this._Buffer.Length > this.MaxSize)
                 {
-                    string? path = this.Name;
-                    if (path != null)
+                    this.Rollover();
+                }
+            }
+
+            return data.Length;
+        }
+
+        /// <summary>
+        /// Read the entire contents of the spooled file.
+        /// </summary>
+        public string Read()
+        {
+            if (this._Rolled)
+            {
+                string? path = this.Name;
+                if (path != null)
+                {
+                    return global::System.IO.File.ReadAllText(path!);
+                }
+
+                return "";
+            }
+
+            return this._Buffer;
+        }
+
+        /// <summary>
+        /// Close the spooled file, deleting any on-disk file.
+        /// </summary>
+        public void Close()
+        {
+            if (this._Closed)
+            {
+                return;
+            }
+
+            this._Closed = true;
+            if (this._Rolled)
+            {
+                string? path = this.Name;
+                if (path != null)
+                {
+                    if (global::System.IO.File.Exists(path!))
                     {
-                        return global::System.IO.File.ReadAllText(path!);
-                    }
-
-                    return "";
-                }
-
-                return this._Buffer;
-            }
-
-            /// <summary>
-            /// Close the spooled file, deleting any on-disk file.
-            /// </summary>
-            public void Close()
-            {
-                if (this._Closed)
-                {
-                    return;
-                }
-
-                this._Closed = true;
-                if (this._Rolled)
-                {
-                    string? path = this.Name;
-                    if (path != null)
-                    {
-                        if (global::System.IO.File.Exists(path!))
-                        {
-                            global::System.IO.File.Delete(path!);
-                        }
+                        global::System.IO.File.Delete(path!);
                     }
                 }
             }
+        }
 
-            public global::Sharpy.TempfileModule.SpooledTemporaryFile Enter()
-            {
-                return this;
-            }
+        public global::Sharpy.TempfileModule.SpooledTemporaryFile Enter()
+        {
+            return this;
+        }
 
-            public void Exit()
-            {
-                this.Close();
-            }
+        public void Exit()
+        {
+            this.Close();
+        }
 
-            /// <summary>
-            /// Create a spooled temporary file that rolls over to disk when max_size is exceeded.
-            /// </summary>
-            public SpooledTemporaryFile(int maxSize = 0, string mode = "w+b")
-            {
-                this.MaxSize = maxSize;
-                this.Mode = mode;
-                this.Name = null;
-                this._Buffer = "";
-                this._Rolled = false;
-                this._Closed = false;
-            }
+        /// <summary>
+        /// Create a spooled temporary file that rolls over to disk when max_size is exceeded.
+        /// </summary>
+        public SpooledTemporaryFile(int maxSize = 0, string mode = "w+b")
+        {
+            this.MaxSize = maxSize;
+            this.Mode = mode;
+            this.Name = null;
+            this._Buffer = "";
+            this._Rolled = false;
+            this._Closed = false;
         }
     }
 }

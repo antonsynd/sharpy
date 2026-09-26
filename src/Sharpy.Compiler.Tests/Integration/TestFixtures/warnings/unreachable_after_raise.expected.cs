@@ -7,32 +7,35 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class UnreachableAfterRaise
+namespace UnreachableAfterRaise
 {
-    public static int Foo()
+    public static partial class UnreachableAfterRaiseModule
     {
-#line (2, 5) - (2, 30) 8 "unreachable_after_raise.spy"
-        throw new global::System.Exception("error");
-#line (3, 5) - (3, 14) 8 "unreachable_after_raise.spy"
-        return 1;
-#line hidden
-    }
-
-    public static void Main()
-    {
-#line (6, 5) - (9, 24) 8 "unreachable_after_raise.spy"
-        try
-#line hidden
+        public static int Foo()
         {
-#line (7, 9) - (7, 14) 12 "unreachable_after_raise.spy"
-            global::UnreachableAfterRaise.Foo();
+#line (2, 5) - (2, 30) 12 "unreachable_after_raise.spy"
+            throw new global::System.Exception("error");
+#line (3, 5) - (3, 14) 12 "unreachable_after_raise.spy"
+            return 1;
 #line hidden
         }
-        catch (global::System.Exception e)
+
+        public static void Main()
         {
-#line (9, 9) - (9, 24) 12 "unreachable_after_raise.spy"
-            global::Sharpy.Builtins.Print("caught");
+#line (6, 5) - (9, 24) 12 "unreachable_after_raise.spy"
+            try
 #line hidden
+            {
+#line (7, 9) - (7, 14) 16 "unreachable_after_raise.spy"
+                global::UnreachableAfterRaise.UnreachableAfterRaiseModule.Foo();
+#line hidden
+            }
+            catch (global::System.Exception e)
+            {
+#line (9, 9) - (9, 24) 16 "unreachable_after_raise.spy"
+                global::Sharpy.Builtins.Print("caught");
+#line hidden
+            }
         }
     }
 }

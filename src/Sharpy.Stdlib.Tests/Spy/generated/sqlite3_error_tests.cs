@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using sqlite3 = global::Sharpy.Sqlite3;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
+namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ErrorTests
 {
     [global::Sharpy.SharpyModule("sqlite3.sqlite3_error_tests")]
-    public static partial class Sqlite3ErrorTests
+    public static partial class Sqlite3ErrorTestsModule
     {
     }
 
-    public partial class Sqlite3ErrorTestsTests
+    public partial class Sqlite3ErrorTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestOperationalErrorCaughtBySqlite3Error()

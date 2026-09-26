@@ -6,8 +6,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class BracketAttrOnField
+namespace BracketAttrOnField
 {
+    public static partial class BracketAttrOnFieldModule
+    {
+        public static void Main()
+        {
+#line (10, 5) - (10, 19) 12 "bracket_attr_on_field.spy"
+            var s = new global::BracketAttrOnField.Settings();
+#line (11, 5) - (11, 23) 12 "bracket_attr_on_field.spy"
+            global::Sharpy.Builtins.Print(s.Threshold);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Settings")]
     public class Settings
     {
         [System.ComponentModel.DefaultValue(100)]
@@ -19,15 +32,6 @@ public static partial class BracketAttrOnField
             this.Threshold = 100;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (10, 5) - (10, 19) 8 "bracket_attr_on_field.spy"
-        var s = new global::BracketAttrOnField.Settings();
-#line (11, 5) - (11, 23) 8 "bracket_attr_on_field.spy"
-        global::Sharpy.Builtins.Print(s.Threshold);
-#line hidden
     }
 }
 #line default

@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyRandomTests
 {
     [global::Sharpy.SharpyModule("numpy.numpy_random_tests")]
-    public static partial class NumpyRandomTests
+    public static partial class NumpyRandomTestsModule
     {
     }
 
-    public partial class NumpyRandomTestsTests
+    public partial class NumpyRandomTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSeedProducesReproducibleSequence()

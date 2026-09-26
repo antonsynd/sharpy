@@ -9,17 +9,17 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
-using math = global::Sharpy.MathModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyMathTests
 {
     [global::Sharpy.SharpyModule("numpy.numpy_math_tests")]
-    public static partial class NumpyMathTests
+    public static partial class NumpyMathTestsModule
     {
     }
 
-    public partial class NumpyMathTestsTests
+    public partial class NumpyMathTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSqrtArray()
@@ -61,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy
         public void TestLogArray()
         {
 #line (54, 5) - (54, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-            var a = np.Array(new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.E, 10.0d });
+            var a = np.Array(new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.MathModuleModule.E, 10.0d });
 #line (55, 5) - (55, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
             var r = np.Log(a);
 #line (56, 5) - (56, 87) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
@@ -109,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy
         public void TestSinCosTanMatchMath()
         {
 #line (78, 5) - (78, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-            var a = np.Array(new Sharpy.List<double>() { 0.0d, global::Sharpy.MathModule.Pi / 6, global::Sharpy.MathModule.Pi / 4, global::Sharpy.MathModule.Pi / 2 });
+            var a = np.Array(new Sharpy.List<double>() { 0.0d, global::Sharpy.MathModule.MathModuleModule.Pi / 6, global::Sharpy.MathModule.MathModuleModule.Pi / 4, global::Sharpy.MathModule.MathModuleModule.Pi / 2 });
 #line (79, 5) - (79, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
             var s = np.Sin(a);
 #line (80, 5) - (80, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
@@ -117,11 +117,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy
 #line (81, 5) - (81, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
             var t = np.Tan(a);
 #line (82, 5) - (82, 145) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-            Xunit.Assert.True(np.Allclose(s, np.Array(new Sharpy.List<double>() { math.Sin(0.0d), math.Sin(global::Sharpy.MathModule.Pi / 6), math.Sin(global::Sharpy.MathModule.Pi / 4), math.Sin(global::Sharpy.MathModule.Pi / 2) }), rtol: 0.0d, atol: 1e-12d));
+            Xunit.Assert.True(np.Allclose(s, np.Array(new Sharpy.List<double>() { math.Sin(0.0d), math.Sin(global::Sharpy.MathModule.MathModuleModule.Pi / 6), math.Sin(global::Sharpy.MathModule.MathModuleModule.Pi / 4), math.Sin(global::Sharpy.MathModule.MathModuleModule.Pi / 2) }), rtol: 0.0d, atol: 1e-12d));
 #line (83, 5) - (83, 145) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-            Xunit.Assert.True(np.Allclose(c, np.Array(new Sharpy.List<double>() { math.Cos(0.0d), math.Cos(global::Sharpy.MathModule.Pi / 6), math.Cos(global::Sharpy.MathModule.Pi / 4), math.Cos(global::Sharpy.MathModule.Pi / 2) }), rtol: 0.0d, atol: 1e-12d));
+            Xunit.Assert.True(np.Allclose(c, np.Array(new Sharpy.List<double>() { math.Cos(0.0d), math.Cos(global::Sharpy.MathModule.MathModuleModule.Pi / 6), math.Cos(global::Sharpy.MathModule.MathModuleModule.Pi / 4), math.Cos(global::Sharpy.MathModule.MathModuleModule.Pi / 2) }), rtol: 0.0d, atol: 1e-12d));
 #line (84, 5) - (84, 114) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-            Xunit.Assert.True(np.Allclose(np.Array(new Sharpy.List<double>() { 0.0d, 1.0d }), np.Array(new Sharpy.List<double>() { np.Tan(0.0d), np.Tan(global::Sharpy.MathModule.Pi / 4) }), rtol: 0.0d, atol: 1e-12d));
+            Xunit.Assert.True(np.Allclose(np.Array(new Sharpy.List<double>() { 0.0d, 1.0d }), np.Array(new Sharpy.List<double>() { np.Tan(0.0d), np.Tan(global::Sharpy.MathModule.MathModuleModule.Pi / 4) }), rtol: 0.0d, atol: 1e-12d));
 #line hidden
         }
 

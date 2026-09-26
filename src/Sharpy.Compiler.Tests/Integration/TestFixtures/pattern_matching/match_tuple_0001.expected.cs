@@ -6,23 +6,26 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class MatchTuple0001
+namespace MatchTuple0001
 {
-    public static void Main()
+    public static partial class MatchTuple0001Module
     {
-#line (2, 5) - (2, 21) 8 "match_tuple_0001.spy"
-        global::System.ValueTuple<int, int> point = (10, 20);
-#line (3, 5) - (6, 21) 8 "match_tuple_0001.spy"
-        switch (point)
-#line hidden
+        public static void Main()
         {
-            case (var x, var y):
-#line (5, 13) - (5, 21) 16 "match_tuple_0001.spy"
-                global::Sharpy.Builtins.Print(x);
-#line (6, 13) - (6, 21) 16 "match_tuple_0001.spy"
-                global::Sharpy.Builtins.Print(y);
+#line (2, 5) - (2, 21) 12 "match_tuple_0001.spy"
+            global::System.ValueTuple<int, int> point = (10, 20);
+#line (3, 5) - (6, 21) 12 "match_tuple_0001.spy"
+            switch (point)
 #line hidden
-                break;
+            {
+                case (var x, var y):
+#line (5, 13) - (5, 21) 20 "match_tuple_0001.spy"
+                    global::Sharpy.Builtins.Print(x);
+#line (6, 13) - (6, 21) 20 "match_tuple_0001.spy"
+                    global::Sharpy.Builtins.Print(y);
+#line hidden
+                    break;
+            }
         }
     }
 }

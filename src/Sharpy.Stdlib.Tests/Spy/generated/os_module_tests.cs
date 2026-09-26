@@ -8,13 +8,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using os = global::Sharpy.OsModule;
+using os = global::Sharpy.OsModule.OsModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Os
+namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests
 {
     [global::Sharpy.SharpyModule("os.os_module_tests")]
-    public static partial class OsModuleTests
+    public static partial class OsModuleTestsModule
     {
         public static bool Contains(Sharpy.List<string> items, string value)
         {
@@ -39,14 +39,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         }
     }
 
-    public partial class OsModuleTestsTests : global::System.IDisposable
+    public partial class OsModuleTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
         public void TestSepIsNotEmpty()
         {
 #line (33, 5) - (33, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsModule.Sep.Length > 0);
+            Xunit.Assert.True(global::Sharpy.OsModule.OsModuleModule.Sep.Length > 0);
 #line hidden
         }
 
@@ -54,7 +54,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestLinesepIsNotEmpty()
         {
 #line (38, 5) - (38, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsModule.Linesep.Length > 0);
+            Xunit.Assert.True(global::Sharpy.OsModule.OsModuleModule.Linesep.Length > 0);
 #line hidden
         }
 
@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestNameIsPosixOrNt()
         {
 #line (43, 5) - (43, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsModule.Name == "posix" || global::Sharpy.OsModule.Name == "nt");
+            Xunit.Assert.True(global::Sharpy.OsModule.OsModuleModule.Name == "posix" || global::Sharpy.OsModule.OsModuleModule.Name == "nt");
 #line hidden
         }
 
@@ -84,7 +84,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (53, 5) - (53, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Remove(path);
 #line (54, 5) - (54, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Exists(path));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(path));
 #line hidden
         }
 
@@ -130,9 +130,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (69, 5) - (69, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Rename(src, dst);
 #line (70, 5) - (70, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Exists(src));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(src));
 #line (71, 5) - (71, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Exists(dst));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(dst));
 #line hidden
         }
 
@@ -167,7 +167,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (85, 5) - (85, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Mkdir(path);
 #line (86, 5) - (86, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(path));
 #line hidden
         }
 
@@ -206,7 +206,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (100, 5) - (100, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Makedirs(path);
 #line (101, 5) - (101, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(path));
 #line hidden
         }
 
@@ -221,7 +221,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (108, 5) - (108, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Makedirs(path, existOk: true);
 #line (109, 5) - (109, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(path));
 #line hidden
         }
 
@@ -262,7 +262,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (124, 5) - (124, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             os.Rmdir(path);
 #line (125, 5) - (125, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isdir(path));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(path));
 #line hidden
         }
 
@@ -354,11 +354,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (153, 5) - (153, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             var entries = os.Listdir(d);
 #line (154, 5) - (154, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.Contains(entries, "a.txt"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.OsModuleTestsModule.Contains(entries, "a.txt"));
 #line (155, 5) - (155, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.Contains(entries, "b.txt"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.OsModuleTestsModule.Contains(entries, "b.txt"));
 #line (156, 5) - (156, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.Contains(entries, "subdir"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.OsModuleTestsModule.Contains(entries, "subdir"));
 #line hidden
         }
 
@@ -405,7 +405,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
 #line (175, 5) - (175, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             var cwd = os.Getcwd();
 #line (176, 5) - (176, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            var dirName = global::Sharpy.OsPathModule.Basename(tmpPath);
+            var dirName = global::Sharpy.OsPathModule.OsPathModuleModule.Basename(tmpPath);
 #line (177, 5) - (177, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
             bool found = cwd.Contains(dirName);
 #line (179, 5) - (179, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
@@ -469,7 +469,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestEnvironReturnsDictWithEntries()
         {
 #line (210, 5) - (210, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Builtins.Len(global::Sharpy.OsModule.Environ) > 0);
+            Xunit.Assert.True(global::Sharpy.Builtins.Len(global::Sharpy.OsModule.OsModuleModule.Environ) > 0);
 #line hidden
         }
 

@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.OsPathModule
 {
     /// <summary>
     /// Common pathname manipulations (os.path equivalent).
     /// </summary>
-    public static partial class OsPathModule
+    public static partial class OsPathModuleModule
     {
         /// <summary>
         /// Join two pathname components, inserting '/' as needed.

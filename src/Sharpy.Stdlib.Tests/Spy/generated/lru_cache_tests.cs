@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Functools
+namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
 {
     [global::Sharpy.SharpyModule("functools.lru_cache_tests")]
-    public static partial class LruCacheTests
+    public static partial class LruCacheTestsModule
     {
         private static readonly global::Sharpy.LruCache<int, int> __DoubleValCache = new global::Sharpy.LruCache<int, int>(null);
         private static int __DoubleVal(int k)
@@ -33,7 +33,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         private static int __TrackedDouble(int k)
         {
 #line (23, 5) - (23, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.UnboundedCalls.Append(1);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.UnboundedCalls.Append(1);
 #line (24, 5) - (24, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
             return k * 2;
 #line hidden
@@ -60,7 +60,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         private static int __CountedIdentity(int k)
         {
 #line (57, 5) - (57, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedCalls.Append(1);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedCalls.Append(1);
 #line (58, 5) - (58, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
             return k;
 #line hidden
@@ -87,7 +87,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         private static int __BoundedTouch(int k)
         {
 #line (92, 5) - (92, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TouchCalls.Append(k);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TouchCalls.Append(k);
 #line (93, 5) - (93, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
             return k;
 #line hidden
@@ -164,13 +164,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public static void SnapshotFnCacheClear() => __SnapshotFnCache.CacheClear();
     }
 
-    public partial class LruCacheTestsTests
+    public partial class LruCacheTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestUnboundedGetOrAddStoresAndReturnsValue()
         {
 #line (13, 5) - (13, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            int result = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.DoubleVal(5);
+            int result = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.DoubleVal(5);
 #line (14, 5) - (14, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
             Xunit.Assert.Equal(10, result);
 #line hidden
@@ -180,22 +180,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestUnboundedGetOrAddHitDoesNotInvokeFactory()
         {
 #line (29, 5) - (30, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.UnboundedCalls) > 0)
+            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.UnboundedCalls) > 0)
 #line hidden
             {
 #line (30, 9) - (30, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.UnboundedCalls.Pop();
+                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.UnboundedCalls.Pop();
 #line hidden
             }
 
 #line (31, 5) - (31, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TrackedDouble(5);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TrackedDouble(5);
 #line (32, 5) - (32, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TrackedDouble(5);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TrackedDouble(5);
 #line (33, 5) - (33, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TrackedDouble(5);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TrackedDouble(5);
 #line (35, 5) - (35, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.UnboundedCalls));
+            Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.UnboundedCalls));
 #line hidden
         }
 
@@ -203,13 +203,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestUnboundedCacheTracksMultipleKeys()
         {
 #line (46, 5) - (46, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(100, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.IdentityFn(100));
+            Xunit.Assert.Equal(100, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.IdentityFn(100));
 #line (47, 5) - (47, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(200, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.IdentityFn(200));
+            Xunit.Assert.Equal(200, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.IdentityFn(200));
 #line (48, 5) - (48, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(100, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.IdentityFn(100));
+            Xunit.Assert.Equal(100, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.IdentityFn(100));
 #line (49, 5) - (49, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(200, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.IdentityFn(200));
+            Xunit.Assert.Equal(200, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.IdentityFn(200));
 #line hidden
         }
 
@@ -217,24 +217,24 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestUnboundedCacheReturnsCorrectValuesAfterHits()
         {
 #line (62, 5) - (63, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedCalls) > 0)
+            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedCalls) > 0)
 #line hidden
             {
 #line (63, 9) - (63, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedCalls.Pop();
+                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedCalls.Pop();
 #line hidden
             }
 
 #line (64, 5) - (64, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedIdentity(10);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedIdentity(10);
 #line (65, 5) - (65, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedIdentity(10);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedIdentity(10);
 #line (66, 5) - (66, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedCalls));
+            Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedCalls));
 #line (67, 5) - (67, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedIdentity(20);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedIdentity(20);
 #line (68, 5) - (68, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.CountedCalls));
+            Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.CountedCalls));
 #line hidden
         }
 
@@ -242,13 +242,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestBoundedEvictsLeastRecentlyUsed()
         {
 #line (79, 5) - (79, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1001 * 1001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedSquare(1001));
+            Xunit.Assert.Equal(1001 * 1001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedSquare(1001));
 #line (80, 5) - (80, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1002 * 1002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedSquare(1002));
+            Xunit.Assert.Equal(1002 * 1002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedSquare(1002));
 #line (82, 5) - (82, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1003 * 1003, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedSquare(1003));
+            Xunit.Assert.Equal(1003 * 1003, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedSquare(1003));
 #line (84, 5) - (84, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1001 * 1001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedSquare(1001));
+            Xunit.Assert.Equal(1001 * 1001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedSquare(1001));
 #line hidden
         }
 
@@ -256,28 +256,28 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestBoundedAccessingKeyMakesItMostRecentlyUsed()
         {
 #line (97, 5) - (98, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TouchCalls) > 0)
+            while (global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TouchCalls) > 0)
 #line hidden
             {
 #line (98, 9) - (98, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TouchCalls.Pop();
+                global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TouchCalls.Pop();
 #line hidden
             }
 
 #line (99, 5) - (99, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedTouch(2001);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedTouch(2001);
 #line (100, 5) - (100, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedTouch(2002);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedTouch(2002);
 #line (101, 5) - (101, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedTouch(2001);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedTouch(2001);
 #line (102, 5) - (102, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedTouch(2003);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedTouch(2003);
 #line (103, 5) - (103, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            int prevLen = global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TouchCalls);
+            int prevLen = global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TouchCalls);
 #line (104, 5) - (104, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedTouch(2002);
+            global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedTouch(2002);
 #line (105, 5) - (105, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(prevLen + 1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TouchCalls));
+            Xunit.Assert.Equal(prevLen + 1, global::Sharpy.Builtins.Len(global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TouchCalls));
 #line hidden
         }
 
@@ -285,9 +285,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestBoundedCacheInfoReportsMaxSize()
         {
 #line (116, 5) - (116, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedFn(3001));
+            Xunit.Assert.Equal(1, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedFn(3001));
 #line (117, 5) - (117, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(1, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedFn(3001));
+            Xunit.Assert.Equal(1, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedFn(3001));
 #line hidden
         }
 
@@ -295,11 +295,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestConstructorInvalidMaxSizeUsesValidCache()
         {
 #line (127, 5) - (127, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(4001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TinyCache(4001));
+            Xunit.Assert.Equal(4001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TinyCache(4001));
 #line (128, 5) - (128, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(4002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TinyCache(4002));
+            Xunit.Assert.Equal(4002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TinyCache(4002));
 #line (130, 5) - (130, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(4001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.TinyCache(4001));
+            Xunit.Assert.Equal(4001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.TinyCache(4001));
 #line hidden
         }
 
@@ -307,11 +307,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestGetOrAddReturnsCorrectValue()
         {
 #line (136, 5) - (136, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(20, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.DoubleVal(10));
+            Xunit.Assert.Equal(20, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.DoubleVal(10));
 #line (137, 5) - (137, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(0, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.DoubleVal(0));
+            Xunit.Assert.Equal(0, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.DoubleVal(0));
 #line (138, 5) - (138, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(-10, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.DoubleVal(-5));
+            Xunit.Assert.Equal(-10, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.DoubleVal(-5));
 #line hidden
         }
 
@@ -325,7 +325,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
 #line hidden
             {
 #line (150, 9) - (150, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                int val = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SquareVal(i);
+                int val = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SquareVal(i);
 #line (151, 9) - (151, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 Xunit.Assert.Equal(i * i, val);
 #line (152, 9) - (152, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
@@ -334,9 +334,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
             }
 
 #line (154, 5) - (154, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(5000 * 5000, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SquareVal(5000));
+            Xunit.Assert.Equal(5000 * 5000, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SquareVal(5000));
 #line (155, 5) - (155, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(5049 * 5049, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SquareVal(5049));
+            Xunit.Assert.Equal(5049 * 5049, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SquareVal(5049));
 #line hidden
         }
 
@@ -352,7 +352,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
 #line (167, 9) - (167, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 int key = 6000 + (global::Sharpy.Builtins.FloorMod(i, 32));
 #line (168, 9) - (168, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                int val = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedDouble(key);
+                int val = global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedDouble(key);
 #line (169, 9) - (169, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 Xunit.Assert.Equal(key * 2, val);
 #line (170, 9) - (170, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
@@ -365,11 +365,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestBoundedCacheClearAllowsRefilling()
         {
 #line (180, 5) - (180, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(7001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedClearFn(7001));
+            Xunit.Assert.Equal(7001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedClearFn(7001));
 #line (181, 5) - (181, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(7002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedClearFn(7002));
+            Xunit.Assert.Equal(7002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedClearFn(7002));
 #line (183, 5) - (183, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(7001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.BoundedClearFn(7001));
+            Xunit.Assert.Equal(7001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.BoundedClearFn(7001));
 #line hidden
         }
 
@@ -377,13 +377,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools
         public void TestCacheReturnsConsistentValues()
         {
 #line (193, 5) - (193, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(8001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SnapshotFn(8001));
+            Xunit.Assert.Equal(8001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SnapshotFn(8001));
 #line (194, 5) - (194, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(8002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SnapshotFn(8002));
+            Xunit.Assert.Equal(8002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SnapshotFn(8002));
 #line (196, 5) - (196, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(8001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SnapshotFn(8001));
+            Xunit.Assert.Equal(8001, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SnapshotFn(8001));
 #line (197, 5) - (197, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-            Xunit.Assert.Equal(8002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.SnapshotFn(8002));
+            Xunit.Assert.Equal(8002, global::Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests.LruCacheTestsModule.SnapshotFn(8002));
 #line hidden
         }
     }

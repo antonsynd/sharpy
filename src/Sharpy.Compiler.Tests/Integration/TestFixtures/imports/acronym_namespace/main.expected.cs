@@ -27,29 +27,31 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test.API
+namespace Sharpy.Test.API.UI
 {
     [global::Sharpy.SharpyModule("api.ui")]
-    public static partial class UI
+    public static partial class UiModule
     {
-        public class Widget
-        {
-            public string Label;
-            public string Render()
-#line 7 "ui.spy"
-            {
-#line (8, 9) - (8, 34) 16 "ui.spy"
-                return FormattableString.Invariant($"[{(global::Sharpy.Builtins.Str(this.Label))}]");
-#line hidden
-            }
+    }
 
-            public Widget(string label)
-#line 4 "ui.spy"
-            {
-#line (5, 9) - (5, 27) 16 "ui.spy"
-                this.Label = label;
+    [global::Sharpy.SharpyModuleType("api.ui", "Widget")]
+    public class Widget
+    {
+        public string Label;
+        public string Render()
+#line 7 "ui.spy"
+        {
+#line (8, 9) - (8, 34) 12 "ui.spy"
+            return FormattableString.Invariant($"[{(global::Sharpy.Builtins.Str(this.Label))}]");
 #line hidden
-            }
+        }
+
+        public Widget(string label)
+#line 4 "ui.spy"
+        {
+#line (5, 9) - (5, 27) 12 "ui.spy"
+            this.Label = label;
+#line hidden
         }
     }
 }
@@ -66,29 +68,31 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.DB
 {
     [global::Sharpy.SharpyModule("db")]
-    public static partial class DB
+    public static partial class DbModule
     {
-        public class Record
-        {
-            public string Key;
-            public string Describe()
-#line 7 "db.spy"
-            {
-#line (8, 9) - (8, 38) 16 "db.spy"
-                return FormattableString.Invariant($"Record({(global::Sharpy.Builtins.Str(this.Key))})");
-#line hidden
-            }
+    }
 
-            public Record(string key)
-#line 4 "db.spy"
-            {
-#line (5, 9) - (5, 23) 16 "db.spy"
-                this.Key = key;
+    [global::Sharpy.SharpyModuleType("db", "Record")]
+    public class Record
+    {
+        public string Key;
+        public string Describe()
+#line 7 "db.spy"
+        {
+#line (8, 9) - (8, 38) 12 "db.spy"
+            return FormattableString.Invariant($"Record({(global::Sharpy.Builtins.Str(this.Key))})");
 #line hidden
-            }
+        }
+
+        public Record(string key)
+#line 4 "db.spy"
+        {
+#line (5, 9) - (5, 23) 12 "db.spy"
+            this.Key = key;
+#line hidden
         }
     }
 }
@@ -105,9 +109,9 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.Main
 {
-    public static partial class Program
+    public static partial class MainModule
     {
         public static string Combine(global::Sharpy.Test.DB.Record r, global::Sharpy.Test.API.UI.Widget w)
         {
@@ -131,7 +135,7 @@ namespace Sharpy.Test
 #line (24, 5) - (24, 37) 12 "main.spy"
             global::Sharpy.Builtins.Print(annotatedWidget.Render());
 #line (25, 5) - (25, 55) 12 "main.spy"
-            global::Sharpy.Builtins.Print(global::Sharpy.Test.Program.Combine(annotatedRecord, annotatedWidget));
+            global::Sharpy.Builtins.Print(global::Sharpy.Test.Main.MainModule.Combine(annotatedRecord, annotatedWidget));
 #line hidden
         }
     }

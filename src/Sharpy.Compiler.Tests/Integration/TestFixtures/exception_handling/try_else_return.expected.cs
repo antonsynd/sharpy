@@ -6,52 +6,55 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class TryElseReturn
+namespace TryElseReturn
 {
-    public static string SafeDivide(int a, int b)
+    public static partial class TryElseReturnModule
     {
-#line (2, 5) - (2, 21) 8 "try_else_return.spy"
-        int result = 0;
-#line (3, 5) - (3, 20) 8 "try_else_return.spy"
-        int total = 0;
-#line (4, 5) - (10, 35) 8 "try_else_return.spy"
+        public static string SafeDivide(int a, int b)
         {
-#line hidden
-            bool __trySucceeded_0 = false;
-            try
+#line (2, 5) - (2, 21) 12 "try_else_return.spy"
+            int result = 0;
+#line (3, 5) - (3, 20) 12 "try_else_return.spy"
+            int total = 0;
+#line (4, 5) - (10, 35) 12 "try_else_return.spy"
             {
-#line (5, 9) - (5, 19) 16 "try_else_return.spy"
-                result = a;
-#line (6, 9) - (6, 27) 16 "try_else_return.spy"
-                total = result + b;
 #line hidden
-                __trySucceeded_0 = true;
-            }
-            catch (global::System.Exception)
-            {
-#line (8, 9) - (8, 24) 16 "try_else_return.spy"
-                return "error";
+                bool __trySucceeded_0 = false;
+                try
+                {
+#line (5, 9) - (5, 19) 20 "try_else_return.spy"
+                    result = a;
+#line (6, 9) - (6, 27) 20 "try_else_return.spy"
+                    total = result + b;
 #line hidden
-            }
+                    __trySucceeded_0 = true;
+                }
+                catch (global::System.Exception)
+                {
+#line (8, 9) - (8, 24) 20 "try_else_return.spy"
+                    return "error";
+#line hidden
+                }
 
-            if (__trySucceeded_0)
-            {
-#line (10, 9) - (10, 35) 16 "try_else_return.spy"
-                return FormattableString.Invariant($"result: {(global::Sharpy.Builtins.Str(total))}");
+                if (__trySucceeded_0)
+                {
+#line (10, 9) - (10, 35) 20 "try_else_return.spy"
+                    return FormattableString.Invariant($"result: {(global::Sharpy.Builtins.Str(total))}");
 #line hidden
-            }
+                }
 
-            throw new global::System.InvalidOperationException("unreachable");
+                throw new global::System.InvalidOperationException("unreachable");
+            }
         }
-    }
 
-    public static void Main()
-    {
-#line (13, 5) - (13, 30) 8 "try_else_return.spy"
-        global::Sharpy.Builtins.Print(global::TryElseReturn.SafeDivide(10, 5));
-#line (14, 5) - (14, 29) 8 "try_else_return.spy"
-        global::Sharpy.Builtins.Print(global::TryElseReturn.SafeDivide(3, 7));
+        public static void Main()
+        {
+#line (13, 5) - (13, 30) 12 "try_else_return.spy"
+            global::Sharpy.Builtins.Print(global::TryElseReturn.TryElseReturnModule.SafeDivide(10, 5));
+#line (14, 5) - (14, 29) 12 "try_else_return.spy"
+            global::Sharpy.Builtins.Print(global::TryElseReturn.TryElseReturnModule.SafeDivide(3, 7));
 #line hidden
+        }
     }
 }
 #line default

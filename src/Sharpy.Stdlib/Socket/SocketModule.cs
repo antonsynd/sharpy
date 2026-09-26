@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.SocketModule
 {
     /// <summary>
     /// Low-level networking interface (TCP, UDP, DNS).
     /// </summary>
-    public static partial class SocketModule
+    public static partial class SocketModuleModule
     {
         public static int AF_INET = (int)global::System.Net.Sockets.AddressFamily.InterNetwork;
         public static int AF_INET6 = (int)global::System.Net.Sockets.AddressFamily.InterNetworkV6;
@@ -37,569 +37,11 @@ namespace Sharpy
         public static int SOMAXCONN = 128;
         public static double? _DefaultTimeout = null;
         /// <summary>
-        /// Base exception for socket-related errors. Corresponds to Python's socket.error.
-        /// </summary>
-        [global::Sharpy.SharpyName("error")]
-        public class Error : global::System.Exception
-        {
-            public int Errno;
-            /// <summary>
-            /// Create a socket error from a .NET SocketException.
-            /// </summary>
-            public static global::Sharpy.SocketModule.Error FromSocketException(global::System.Net.Sockets.SocketException ex)
-            {
-                return new global::Sharpy.SocketModule.Error(ex.Message, ex, ((int)ex.SocketErrorCode));
-            }
-
-            /// <summary>
-            /// Create a socket error with the specified message and optional errno.
-            /// </summary>
-            public Error(string message, int errno = 0) : base(message)
-            {
-                this.Errno = errno;
-            }
-
-            /// <summary>
-            /// Create a socket error wrapping an inner exception.
-            /// </summary>
-            public Error(string message, global::System.Exception inner, int errno = 0) : base(message, inner)
-            {
-                this.Errno = errno;
-            }
-        }
-
-        /// <summary>
-        /// Raised when a socket operation times out. Corresponds to Python's socket.timeout.
-        /// </summary>
-        [global::Sharpy.SharpyName("timeout")]
-        public class Timeout : global::Sharpy.SocketModule.Error
-        {
-            /// <summary>
-            /// Create a socket timeout error with the specified message.
-            /// </summary>
-            public Timeout(string message, int errno = 0) : base(message, errno)
-            {
-            }
-
-            /// <summary>
-            /// Create a socket timeout error wrapping an inner exception.
-            /// </summary>
-            public Timeout(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
-            {
-            }
-        }
-
-        /// <summary>
-        /// Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror.
-        /// </summary>
-        [global::Sharpy.SharpyName("gaierror")]
-        public class Gaierror : global::Sharpy.SocketModule.Error
-        {
-            /// <summary>
-            /// Create a GAI error with the specified message.
-            /// </summary>
-            public Gaierror(string message, int errno = 0) : base(message, errno)
-            {
-            }
-
-            /// <summary>
-            /// Create a GAI error wrapping an inner exception.
-            /// </summary>
-            public Gaierror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
-            {
-            }
-        }
-
-        /// <summary>
-        /// Raised for legacy address-related errors. Corresponds to Python's socket.herror.
-        /// </summary>
-        [global::Sharpy.SharpyName("herror")]
-        public class Herror : global::Sharpy.SocketModule.Error
-        {
-            /// <summary>
-            /// Create an herror with the specified message.
-            /// </summary>
-            public Herror(string message, int errno = 0) : base(message, errno)
-            {
-            }
-
-            /// <summary>
-            /// Create an herror wrapping an inner exception.
-            /// </summary>
-            public Herror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
-            {
-            }
-        }
-
-        /// <summary>
-        /// Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
-        /// Supports TCP and UDP communication, socket options, and timeout handling.
-        /// </summary>
-        [global::Sharpy.SharpyName("socket")]
-        public sealed class Socket : global::System.IDisposable
-        {
-            private global::System.Net.Sockets.Socket _Socket;
-            private double? _Timeout;
-            /// <summary>
-            /// Connect to a remote (host, port) address.
-            /// </summary>
-            public void Connect((string host, int port) address)
-            {
-                try
-                {
-                    var ipAddresses = global::System.Net.Dns.GetHostAddresses(address.Item1);
-                    if (global::Sharpy.Builtins.Len(ipAddresses) == 0)
-                    {
-                        throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
-                    }
-
-                    global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
-                    this._Socket.Connect(endpoint);
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Bind the socket to a local (host, port) address.
-            /// </summary>
-            public void Bind((string host, int port) address)
-            {
-                try
-                {
-                    global::System.Net.IPAddress ipAddr = global::System.Net.IPAddress.Any;
-                    string host = address.Item1;
-                    if (host == "" || host == "0.0.0.0")
-                    {
-                        ipAddr = global::System.Net.IPAddress.Any;
-                    }
-                    else if (host == "::")
-                    {
-                        ipAddr = global::System.Net.IPAddress.IPv6Any;
-                    }
-                    else
-                    {
-                        ipAddr = global::System.Net.IPAddress.Parse(host);
-                    }
-
-                    global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
-                    this._Socket.Bind(endpoint);
-                }
-                catch (global::System.Net.Sockets.SocketException ex)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
-                }
-            }
-
-            /// <summary>
-            /// Enable a server to accept connections with the given backlog.
-            /// </summary>
-            public void Listen(int backlog = 5)
-            {
-                try
-                {
-                    this._Socket.Listen(backlog);
-                }
-                catch (global::System.Net.Sockets.SocketException ex)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
-                }
-            }
-
-            /// <summary>
-            /// Accept a connection, returning (new socket, (remote_host, remote_port)).
-            /// </summary>
-            public (global::Sharpy.SocketModule.Socket conn, (string host, int port) addr) Accept()
-            {
-                try
-                {
-                    var accepted = this._Socket.Accept();
-                    var remote = accepted.RemoteEndPoint;
-                    if (remote == null)
-                    {
-                        throw new global::Sharpy.SocketModule.Error("Accepted connection has no remote endpoint.");
-                    }
-
-                    global::System.Net.IPEndPoint remoteEp = (global::System.Net.IPEndPoint)remote!;
-                    global::Sharpy.SocketModule.Socket conn = new global::Sharpy.SocketModule.Socket(accepted);
-                    return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Send data to the socket, returning the number of bytes sent.
-            /// </summary>
-            public int Send(Sharpy.Bytes data)
-            {
-                try
-                {
-                    return this._Socket.Send(data.ToArray());
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Send all data to the socket, continuing until every byte is sent.
-            /// </summary>
-            public void Sendall(Sharpy.Bytes data)
-            {
-                try
-                {
-                    var buffer = data.ToArray();
-                    int total = global::Sharpy.Builtins.Len(data);
-                    int totalSent = 0;
-                    while (totalSent < total)
-                    {
-                        int sent = this._Socket.Send(buffer, totalSent, total - totalSent, global::System.Net.Sockets.SocketFlags.None);
-                        if (sent == 0)
-                        {
-                            throw new global::Sharpy.SocketModule.Error("Connection reset by peer", ((int)global::System.Net.Sockets.SocketError.ConnectionReset));
-                        }
-
-                        totalSent = totalSent + sent;
-                    }
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Receive up to bufsize bytes from the socket.
-            /// </summary>
-            public Sharpy.Bytes Recv(int bufsize)
-            {
-                try
-                {
-                    var buffer = new byte[bufsize];
-                    int received = this._Socket.Receive(buffer);
-                    var result = new byte[received];
-                    global::System.Array.Copy(buffer, result, received);
-                    return new global::Sharpy.Bytes(result);
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Send data to a specific (host, port) address (UDP).
-            /// </summary>
-            public int Sendto(Sharpy.Bytes data, (string host, int port) address)
-            {
-                try
-                {
-                    global::System.Net.IPAddress ipAddr = global::System.Net.IPAddress.Parse(address.Item1);
-                    global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
-                    return this._Socket.SendTo(data.ToArray(), endpoint);
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Receive data and the sender's address (UDP).
-            /// </summary>
-            public (Sharpy.Bytes data, (string host, int port) addr) Recvfrom(int bufsize)
-            {
-                try
-                {
-                    var buffer = new byte[bufsize];
-                    global::System.Net.EndPoint remote = new global::System.Net.IPEndPoint(global::System.Net.IPAddress.Any, 0);
-                    int received = this._Socket.ReceiveFrom(buffer, ref remote);
-                    var result = new byte[received];
-                    global::System.Array.Copy(buffer, result, received);
-                    global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)remote;
-                    return (new global::Sharpy.Bytes(result), (ep.Address.ToString(), ep.Port));
-                }
-                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
-                {
-                    throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
-                }
-                catch (global::System.Net.Sockets.SocketException ex_1)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-            }
-
-            /// <summary>
-            /// Set a socket option (e.g., SOL_SOCKET, SO_REUSEADDR).
-            /// </summary>
-            public void Setsockopt(int level, int optname, int value)
-            {
-                try
-                {
-                    this._Socket.SetSocketOption((global::System.Net.Sockets.SocketOptionLevel)level, (global::System.Net.Sockets.SocketOptionName)optname, value);
-                }
-                catch (global::System.Net.Sockets.SocketException ex)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
-                }
-            }
-
-            /// <summary>
-            /// Get a socket option value.
-            /// </summary>
-            public int Getsockopt(int level, int optname)
-            {
-                try
-                {
-                    var opt = this._Socket.GetSocketOption((global::System.Net.Sockets.SocketOptionLevel)level, (global::System.Net.Sockets.SocketOptionName)optname);
-                    if (opt == null)
-                    {
-                        return 0;
-                    }
-
-                    return (int)opt!;
-                }
-                catch (global::System.Net.Sockets.SocketException ex)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
-                }
-            }
-
-            /// <summary>
-            /// Set the timeout in seconds for blocking operations, or None for blocking mode.
-            /// </summary>
-            public void Settimeout(double? timeout)
-            {
-                this._Timeout = timeout;
-                if (timeout == null)
-                {
-                    this._Socket.Blocking = true;
-                    this._Socket.ReceiveTimeout = 0;
-                    this._Socket.SendTimeout = 0;
-                }
-                else
-                {
-                    double value = timeout.Value;
-                    if (value == 0.0d)
-                    {
-                        this._Socket.Blocking = false;
-                    }
-                    else
-                    {
-                        this._Socket.Blocking = true;
-                        int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
-                        this._Socket.ReceiveTimeout = ms;
-                        this._Socket.SendTimeout = ms;
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Return the timeout in seconds, or None if in blocking mode.
-            /// </summary>
-            public double? Gettimeout()
-            {
-                return this._Timeout;
-            }
-
-            /// <summary>
-            /// Set blocking (True) or non-blocking (False) mode.
-            /// </summary>
-            public void Setblocking(bool flag)
-            {
-                if (flag)
-                {
-                    this.Settimeout(null);
-                }
-                else
-                {
-                    this.Settimeout(0.0d);
-                }
-            }
-
-            /// <summary>
-            /// Return whether the socket is in blocking mode.
-            /// </summary>
-            public bool Getblocking()
-            {
-                return this._Socket.Blocking;
-            }
-
-            /// <summary>
-            /// Shut down one or both halves of the connection (SHUT_RD/WR/RDWR).
-            /// </summary>
-            public void Shutdown(int how)
-            {
-                try
-                {
-                    this._Socket.Shutdown((global::System.Net.Sockets.SocketShutdown)how);
-                }
-                catch (global::System.Net.Sockets.SocketException ex)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
-                }
-            }
-
-            /// <summary>
-            /// Close the socket.
-            /// </summary>
-            public void Close()
-            {
-                this._Socket.Close();
-            }
-
-            /// <summary>
-            /// Return the local (host, port) address the socket is bound to.
-            /// </summary>
-            public (string host, int port) Getsockname()
-            {
-                var endpoint = this._Socket.LocalEndPoint;
-                if (endpoint == null)
-                {
-                    throw new global::Sharpy.SocketModule.Error("Socket is not bound to an address.");
-                }
-
-                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
-                return (ep.Address.ToString(), ep.Port);
-            }
-
-            /// <summary>
-            /// Return the remote (host, port) address the socket is connected to.
-            /// </summary>
-            public (string host, int port) Getpeername()
-            {
-                var endpoint = this._Socket.RemoteEndPoint;
-                if (endpoint == null)
-                {
-                    throw new global::Sharpy.SocketModule.Error("Socket is not connected.");
-                }
-
-                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
-                return (ep.Address.ToString(), ep.Port);
-            }
-
-            /// <summary>
-            /// Return the socket handle (file descriptor) as an integer.
-            /// </summary>
-            public int Fileno()
-            {
-                return global::Sharpy.NumericCheckedCast.ToInt(this._Socket.Handle.ToInt64());
-            }
-
-            /// <summary>
-            /// Dispose the underlying socket resources.
-            /// </summary>
-            public void Dispose()
-            {
-                this._Socket.Dispose();
-            }
-
-            public global::Sharpy.SocketModule.Socket Enter()
-            {
-                return this;
-            }
-
-            public void Exit()
-            {
-                this.Dispose();
-            }
-
-            public override string ToString()
-            {
-                int fd = this.Fileno();
-                int fam = this.Family;
-                int typ = this.type;
-                int pr = this.Proto;
-                return FormattableString.Invariant($"<socket fd={(global::Sharpy.Builtins.Str(fd))}, family={(global::Sharpy.Builtins.Str(fam))}, type={(global::Sharpy.Builtins.Str(typ))}, proto={(global::Sharpy.Builtins.Str(pr))}>");
-            }
-
-            public int Family
-            {
-                get
-                {
-                    _ = "The address family of the socket.";
-                    return (int)this._Socket.AddressFamily;
-                }
-            }
-
-            public int type
-            {
-                get
-                {
-                    _ = "The socket type.";
-                    return (int)this._Socket.SocketType;
-                }
-            }
-
-            public int Proto
-            {
-                get
-                {
-                    _ = "The protocol type.";
-                    return (int)this._Socket.ProtocolType;
-                }
-            }
-
-            /// <summary>
-            /// Create a new socket with the given address family, type, and protocol.
-            /// </summary>
-            public Socket(int family = 2, int sockType = 1, int proto = 0)
-            {
-                this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
-                this._Timeout = null;
-                double? @default = global::Sharpy.SocketModule._DefaultTimeout;
-                if (@default != null)
-                {
-                    this.Settimeout(@default.Value);
-                }
-            }
-
-            /// <summary>
-            /// Wrap an existing .NET socket (used for accepted connections).
-            /// </summary>
-            public Socket(global::System.Net.Sockets.Socket existing)
-            {
-                this._Socket = existing;
-                this._Timeout = null;
-            }
-        }
-
-        /// <summary>
         /// Return the default timeout in seconds for new sockets, or None.
         /// </summary>
         public static double? Getdefaulttimeout()
         {
-            return global::Sharpy.SocketModule._DefaultTimeout;
+            return global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
         }
 
         /// <summary>
@@ -615,7 +57,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address, double? timeout = null)
         {
-            global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.AF_INET, global::Sharpy.SocketModule.SOCK_STREAM, 0);
+            global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM, 0);
             try
             {
                 if (timeout != null)
@@ -652,7 +94,7 @@ namespace Sharpy
                 int i = 0;
                 while (i < global::Sharpy.Builtins.Len(addresses))
                 {
-                    if (((int)global::Sharpy.ArrayHelpers.GetItem(addresses, i).AddressFamily) == global::Sharpy.SocketModule.AF_INET)
+                    if (((int)global::Sharpy.ArrayHelpers.GetItem(addresses, i).AddressFamily) == global::Sharpy.SocketModule.SocketModuleModule.AF_INET)
                     {
                         return global::Sharpy.ArrayHelpers.GetItem(addresses, i).ToString();
                     }
@@ -706,6 +148,569 @@ namespace Sharpy
             {
                 throw new global::Sharpy.SocketModule.Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
             }
+        }
+    }
+
+    /// <summary>
+    /// Base exception for socket-related errors. Corresponds to Python's socket.error.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("socket", "error")]
+    [global::Sharpy.SharpyName("error")]
+    public class Error : global::System.Exception
+    {
+        public int Errno;
+        /// <summary>
+        /// Create a socket error from a .NET SocketException.
+        /// </summary>
+        public static global::Sharpy.SocketModule.Error FromSocketException(global::System.Net.Sockets.SocketException ex)
+        {
+            return new global::Sharpy.SocketModule.Error(ex.Message, ex, ((int)ex.SocketErrorCode));
+        }
+
+        /// <summary>
+        /// Create a socket error with the specified message and optional errno.
+        /// </summary>
+        public Error(string message, int errno = 0) : base(message)
+        {
+            this.Errno = errno;
+        }
+
+        /// <summary>
+        /// Create a socket error wrapping an inner exception.
+        /// </summary>
+        public Error(string message, global::System.Exception inner, int errno = 0) : base(message, inner)
+        {
+            this.Errno = errno;
+        }
+    }
+
+    /// <summary>
+    /// Raised when a socket operation times out. Corresponds to Python's socket.timeout.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("socket", "timeout")]
+    [global::Sharpy.SharpyName("timeout")]
+    public class Timeout : global::Sharpy.SocketModule.Error
+    {
+        /// <summary>
+        /// Create a socket timeout error with the specified message.
+        /// </summary>
+        public Timeout(string message, int errno = 0) : base(message, errno)
+        {
+        }
+
+        /// <summary>
+        /// Create a socket timeout error wrapping an inner exception.
+        /// </summary>
+        public Timeout(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("socket", "gaierror")]
+    [global::Sharpy.SharpyName("gaierror")]
+    public class Gaierror : global::Sharpy.SocketModule.Error
+    {
+        /// <summary>
+        /// Create a GAI error with the specified message.
+        /// </summary>
+        public Gaierror(string message, int errno = 0) : base(message, errno)
+        {
+        }
+
+        /// <summary>
+        /// Create a GAI error wrapping an inner exception.
+        /// </summary>
+        public Gaierror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Raised for legacy address-related errors. Corresponds to Python's socket.herror.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("socket", "herror")]
+    [global::Sharpy.SharpyName("herror")]
+    public class Herror : global::Sharpy.SocketModule.Error
+    {
+        /// <summary>
+        /// Create an herror with the specified message.
+        /// </summary>
+        public Herror(string message, int errno = 0) : base(message, errno)
+        {
+        }
+
+        /// <summary>
+        /// Create an herror wrapping an inner exception.
+        /// </summary>
+        public Herror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
+    /// Supports TCP and UDP communication, socket options, and timeout handling.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("socket", "socket")]
+    [global::Sharpy.SharpyName("socket")]
+    public sealed class Socket : global::System.IDisposable
+    {
+        private global::System.Net.Sockets.Socket _Socket;
+        private double? _Timeout;
+        /// <summary>
+        /// Connect to a remote (host, port) address.
+        /// </summary>
+        public void Connect((string host, int port) address)
+        {
+            try
+            {
+                var ipAddresses = global::System.Net.Dns.GetHostAddresses(address.Item1);
+                if (global::Sharpy.Builtins.Len(ipAddresses) == 0)
+                {
+                    throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
+                }
+
+                global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
+                this._Socket.Connect(endpoint);
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Bind the socket to a local (host, port) address.
+        /// </summary>
+        public void Bind((string host, int port) address)
+        {
+            try
+            {
+                global::System.Net.IPAddress ipAddr = global::System.Net.IPAddress.Any;
+                string host = address.Item1;
+                if (host == "" || host == "0.0.0.0")
+                {
+                    ipAddr = global::System.Net.IPAddress.Any;
+                }
+                else if (host == "::")
+                {
+                    ipAddr = global::System.Net.IPAddress.IPv6Any;
+                }
+                else
+                {
+                    ipAddr = global::System.Net.IPAddress.Parse(host);
+                }
+
+                global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
+                this._Socket.Bind(endpoint);
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Enable a server to accept connections with the given backlog.
+        /// </summary>
+        public void Listen(int backlog = 5)
+        {
+            try
+            {
+                this._Socket.Listen(backlog);
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Accept a connection, returning (new socket, (remote_host, remote_port)).
+        /// </summary>
+        public (global::Sharpy.SocketModule.Socket conn, (string host, int port) addr) Accept()
+        {
+            try
+            {
+                var accepted = this._Socket.Accept();
+                var remote = accepted.RemoteEndPoint;
+                if (remote == null)
+                {
+                    throw new global::Sharpy.SocketModule.Error("Accepted connection has no remote endpoint.");
+                }
+
+                global::System.Net.IPEndPoint remoteEp = (global::System.Net.IPEndPoint)remote!;
+                global::Sharpy.SocketModule.Socket conn = new global::Sharpy.SocketModule.Socket(accepted);
+                return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Send data to the socket, returning the number of bytes sent.
+        /// </summary>
+        public int Send(Sharpy.Bytes data)
+        {
+            try
+            {
+                return this._Socket.Send(data.ToArray());
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Send all data to the socket, continuing until every byte is sent.
+        /// </summary>
+        public void Sendall(Sharpy.Bytes data)
+        {
+            try
+            {
+                var buffer = data.ToArray();
+                int total = global::Sharpy.Builtins.Len(data);
+                int totalSent = 0;
+                while (totalSent < total)
+                {
+                    int sent = this._Socket.Send(buffer, totalSent, total - totalSent, global::System.Net.Sockets.SocketFlags.None);
+                    if (sent == 0)
+                    {
+                        throw new global::Sharpy.SocketModule.Error("Connection reset by peer", ((int)global::System.Net.Sockets.SocketError.ConnectionReset));
+                    }
+
+                    totalSent = totalSent + sent;
+                }
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Receive up to bufsize bytes from the socket.
+        /// </summary>
+        public Sharpy.Bytes Recv(int bufsize)
+        {
+            try
+            {
+                var buffer = new byte[bufsize];
+                int received = this._Socket.Receive(buffer);
+                var result = new byte[received];
+                global::System.Array.Copy(buffer, result, received);
+                return new global::Sharpy.Bytes(result);
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Send data to a specific (host, port) address (UDP).
+        /// </summary>
+        public int Sendto(Sharpy.Bytes data, (string host, int port) address)
+        {
+            try
+            {
+                global::System.Net.IPAddress ipAddr = global::System.Net.IPAddress.Parse(address.Item1);
+                global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
+                return this._Socket.SendTo(data.ToArray(), endpoint);
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Receive data and the sender's address (UDP).
+        /// </summary>
+        public (Sharpy.Bytes data, (string host, int port) addr) Recvfrom(int bufsize)
+        {
+            try
+            {
+                var buffer = new byte[bufsize];
+                global::System.Net.EndPoint remote = new global::System.Net.IPEndPoint(global::System.Net.IPAddress.Any, 0);
+                int received = this._Socket.ReceiveFrom(buffer, ref remote);
+                var result = new byte[received];
+                global::System.Array.Copy(buffer, result, received);
+                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)remote;
+                return (new global::Sharpy.Bytes(result), (ep.Address.ToString(), ep.Port));
+            }
+            catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+            {
+                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+            }
+            catch (global::System.Net.Sockets.SocketException ex_1)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+            }
+        }
+
+        /// <summary>
+        /// Set a socket option (e.g., SOL_SOCKET, SO_REUSEADDR).
+        /// </summary>
+        public void Setsockopt(int level, int optname, int value)
+        {
+            try
+            {
+                this._Socket.SetSocketOption((global::System.Net.Sockets.SocketOptionLevel)level, (global::System.Net.Sockets.SocketOptionName)optname, value);
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Get a socket option value.
+        /// </summary>
+        public int Getsockopt(int level, int optname)
+        {
+            try
+            {
+                var opt = this._Socket.GetSocketOption((global::System.Net.Sockets.SocketOptionLevel)level, (global::System.Net.Sockets.SocketOptionName)optname);
+                if (opt == null)
+                {
+                    return 0;
+                }
+
+                return (int)opt!;
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Set the timeout in seconds for blocking operations, or None for blocking mode.
+        /// </summary>
+        public void Settimeout(double? timeout)
+        {
+            this._Timeout = timeout;
+            if (timeout == null)
+            {
+                this._Socket.Blocking = true;
+                this._Socket.ReceiveTimeout = 0;
+                this._Socket.SendTimeout = 0;
+            }
+            else
+            {
+                double value = timeout.Value;
+                if (value == 0.0d)
+                {
+                    this._Socket.Blocking = false;
+                }
+                else
+                {
+                    this._Socket.Blocking = true;
+                    int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
+                    this._Socket.ReceiveTimeout = ms;
+                    this._Socket.SendTimeout = ms;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Return the timeout in seconds, or None if in blocking mode.
+        /// </summary>
+        public double? Gettimeout()
+        {
+            return this._Timeout;
+        }
+
+        /// <summary>
+        /// Set blocking (True) or non-blocking (False) mode.
+        /// </summary>
+        public void Setblocking(bool flag)
+        {
+            if (flag)
+            {
+                this.Settimeout(null);
+            }
+            else
+            {
+                this.Settimeout(0.0d);
+            }
+        }
+
+        /// <summary>
+        /// Return whether the socket is in blocking mode.
+        /// </summary>
+        public bool Getblocking()
+        {
+            return this._Socket.Blocking;
+        }
+
+        /// <summary>
+        /// Shut down one or both halves of the connection (SHUT_RD/WR/RDWR).
+        /// </summary>
+        public void Shutdown(int how)
+        {
+            try
+            {
+                this._Socket.Shutdown((global::System.Net.Sockets.SocketShutdown)how);
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Close the socket.
+        /// </summary>
+        public void Close()
+        {
+            this._Socket.Close();
+        }
+
+        /// <summary>
+        /// Return the local (host, port) address the socket is bound to.
+        /// </summary>
+        public (string host, int port) Getsockname()
+        {
+            var endpoint = this._Socket.LocalEndPoint;
+            if (endpoint == null)
+            {
+                throw new global::Sharpy.SocketModule.Error("Socket is not bound to an address.");
+            }
+
+            global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
+            return (ep.Address.ToString(), ep.Port);
+        }
+
+        /// <summary>
+        /// Return the remote (host, port) address the socket is connected to.
+        /// </summary>
+        public (string host, int port) Getpeername()
+        {
+            var endpoint = this._Socket.RemoteEndPoint;
+            if (endpoint == null)
+            {
+                throw new global::Sharpy.SocketModule.Error("Socket is not connected.");
+            }
+
+            global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
+            return (ep.Address.ToString(), ep.Port);
+        }
+
+        /// <summary>
+        /// Return the socket handle (file descriptor) as an integer.
+        /// </summary>
+        public int Fileno()
+        {
+            return global::Sharpy.NumericCheckedCast.ToInt(this._Socket.Handle.ToInt64());
+        }
+
+        /// <summary>
+        /// Dispose the underlying socket resources.
+        /// </summary>
+        public void Dispose()
+        {
+            this._Socket.Dispose();
+        }
+
+        public global::Sharpy.SocketModule.Socket Enter()
+        {
+            return this;
+        }
+
+        public void Exit()
+        {
+            this.Dispose();
+        }
+
+        public override string ToString()
+        {
+            int fd = this.Fileno();
+            int fam = this.Family;
+            int typ = this.type;
+            int pr = this.Proto;
+            return FormattableString.Invariant($"<socket fd={(global::Sharpy.Builtins.Str(fd))}, family={(global::Sharpy.Builtins.Str(fam))}, type={(global::Sharpy.Builtins.Str(typ))}, proto={(global::Sharpy.Builtins.Str(pr))}>");
+        }
+
+        public int Family
+        {
+            get
+            {
+                _ = "The address family of the socket.";
+                return (int)this._Socket.AddressFamily;
+            }
+        }
+
+        public int type
+        {
+            get
+            {
+                _ = "The socket type.";
+                return (int)this._Socket.SocketType;
+            }
+        }
+
+        public int Proto
+        {
+            get
+            {
+                _ = "The protocol type.";
+                return (int)this._Socket.ProtocolType;
+            }
+        }
+
+        /// <summary>
+        /// Create a new socket with the given address family, type, and protocol.
+        /// </summary>
+        public Socket(int family = 2, int sockType = 1, int proto = 0)
+        {
+            this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
+            this._Timeout = null;
+            double? @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+            if (@default != null)
+            {
+                this.Settimeout(@default.Value);
+            }
+        }
+
+        /// <summary>
+        /// Wrap an existing .NET socket (used for accepted connections).
+        /// </summary>
+        public Socket(global::System.Net.Sockets.Socket existing)
+        {
+            this._Socket = existing;
+            this._Timeout = null;
         }
     }
 }

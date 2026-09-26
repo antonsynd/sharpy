@@ -6,43 +6,46 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class YieldFrom
+namespace YieldFrom
 {
-    public static System.Collections.Generic.IEnumerable<int> Inner()
+    public static partial class YieldFromModule
     {
-#line (2, 5) - (2, 13) 8 "yield_from.spy"
-        yield return 0;
-#line (3, 5) - (3, 13) 8 "yield_from.spy"
-        yield return 1;
-#line hidden
-    }
-
-    public static System.Collections.Generic.IEnumerable<int> Outer()
-    {
-#line (6, 5) - (6, 24) 8 "yield_from.spy"
-        foreach (var __yieldItem_0 in global::YieldFrom.Inner())
-#line hidden
+        public static System.Collections.Generic.IEnumerable<int> Inner()
         {
-            yield return __yieldItem_0;
+#line (2, 5) - (2, 13) 12 "yield_from.spy"
+            yield return 0;
+#line (3, 5) - (3, 13) 12 "yield_from.spy"
+            yield return 1;
+#line hidden
         }
 
-#line (7, 5) - (7, 13) 8 "yield_from.spy"
-        yield return 2;
-#line (8, 5) - (8, 13) 8 "yield_from.spy"
-        yield return 3;
-#line hidden
-    }
-
-    public static void Main()
-    {
-#line (11, 5) - (12, 17) 8 "yield_from.spy"
-        foreach (var __loopVar_1 in global::YieldFrom.Outer())
-#line hidden
+        public static System.Collections.Generic.IEnumerable<int> Outer()
         {
-            var x = __loopVar_1;
-#line (12, 9) - (12, 17) 12 "yield_from.spy"
-            global::Sharpy.Builtins.Print(x);
+#line (6, 5) - (6, 24) 12 "yield_from.spy"
+            foreach (var __yieldItem_0 in global::YieldFrom.YieldFromModule.Inner())
 #line hidden
+            {
+                yield return __yieldItem_0;
+            }
+
+#line (7, 5) - (7, 13) 12 "yield_from.spy"
+            yield return 2;
+#line (8, 5) - (8, 13) 12 "yield_from.spy"
+            yield return 3;
+#line hidden
+        }
+
+        public static void Main()
+        {
+#line (11, 5) - (12, 17) 12 "yield_from.spy"
+            foreach (var __loopVar_1 in global::YieldFrom.YieldFromModule.Outer())
+#line hidden
+            {
+                var x = __loopVar_1;
+#line (12, 9) - (12, 17) 16 "yield_from.spy"
+                global::Sharpy.Builtins.Print(x);
+#line hidden
+            }
         }
     }
 }

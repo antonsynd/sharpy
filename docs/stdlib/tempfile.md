@@ -24,46 +24,58 @@ Create and return a unique temporary directory.
 
 Create and return a unique temporary file.
 
-### `tempfile.write(data: str) -> int`
+## NamedTemporaryFile
+
+A temporary file with a visible name, deleted on close by default.
+
+### `write(data: str) -> int`
 
 Write a string to the file, returning the number of characters written.
 
-### `tempfile.read() -> str`
+### `read() -> str`
 
 Read the entire contents of the file.
 
-### `tempfile.close()`
+### `close()`
 
 Close the file, deleting it if delete is True.
 
-### `tempfile.enter() -> NamedTemporaryFile`
+### `enter() -> NamedTemporaryFile`
 
-### `tempfile.exit()`
+### `exit()`
 
-### `tempfile.cleanup()`
+## TemporaryDirectory
+
+A temporary directory, recursively deleted on cleanup or context exit.
+
+### `cleanup()`
 
 Recursively delete the temporary directory and its contents.
 
-### `tempfile.enter() -> str`
+### `enter() -> str`
 
-### `tempfile.exit()`
+### `exit()`
 
-### `tempfile.rollover()`
+## SpooledTemporaryFile
+
+A temporary file kept in memory until it exceeds max_size, then written to disk.
+
+### `rollover()`
 
 Write the in-memory buffer to a real temporary file on disk.
 
-### `tempfile.write(data: str) -> int`
+### `write(data: str) -> int`
 
 Write a string to the spooled file, rolling over to disk if max_size is exceeded.
 
-### `tempfile.read() -> str`
+### `read() -> str`
 
 Read the entire contents of the spooled file.
 
-### `tempfile.close()`
+### `close()`
 
 Close the spooled file, deleting any on-disk file.
 
-### `tempfile.enter() -> SpooledTemporaryFile`
+### `enter() -> SpooledTemporaryFile`
 
-### `tempfile.exit()`
+### `exit()`

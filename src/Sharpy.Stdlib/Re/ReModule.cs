@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.ReModule
 {
     /// <summary>
     /// Regular expression matching operations.
     /// </summary>
-    public static partial class ReModule
+    public static partial class ReModuleModule
     {
         public static int IGNORECASE = 2;
         [global::Sharpy.SharpyFieldName("I")]
@@ -54,10 +54,10 @@ namespace Sharpy
                         return true;
                     }
 
-                    if (i + 2 < pattern.Length && global::Sharpy.ReModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, i + 2)))
+                    if (i + 2 < pattern.Length && global::Sharpy.ReModule.ReModuleModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, i + 2)))
                     {
                         int j = i + 2;
-                        while (j < pattern.Length && global::Sharpy.ReModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, j)))
+                        while (j < pattern.Length && global::Sharpy.ReModule.ReModuleModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, j)))
                         {
                             j = j + 1;
                         }
@@ -118,7 +118,7 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("expected string, got NoneType");
             }
 
-            if (!global::Sharpy.ReModule._NeedsTranslation(pattern))
+            if (!global::Sharpy.ReModule.ReModuleModule._NeedsTranslation(pattern))
             {
                 return pattern;
             }
@@ -168,11 +168,11 @@ namespace Sharpy
                         }
                     }
 
-                    if (i + 2 < pattern.Length && global::Sharpy.ReModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, i + 2)))
+                    if (i + 2 < pattern.Length && global::Sharpy.ReModule.ReModuleModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, i + 2)))
                     {
                         int flagStart = i + 2;
                         int j = flagStart;
-                        while (j < pattern.Length && global::Sharpy.ReModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, j)))
+                        while (j < pattern.Length && global::Sharpy.ReModule.ReModuleModule._IsInlineFlagChar(global::Sharpy.StringHelpers.GetItem(pattern, j)))
                         {
                             j = j + 1;
                         }
@@ -180,7 +180,7 @@ namespace Sharpy
                         if (j < pattern.Length && (global::Sharpy.StringHelpers.GetItem(pattern, j) == ")" || global::Sharpy.StringHelpers.GetItem(pattern, j) == ":"))
                         {
                             string flagsStr = pattern.Substring(flagStart, j - flagStart);
-                            string filtered = global::Sharpy.ReModule._FilterInlineFlags(flagsStr);
+                            string filtered = global::Sharpy.ReModule.ReModuleModule._FilterInlineFlags(flagsStr);
                             if (global::Sharpy.StringHelpers.GetItem(pattern, j) == ")")
                             {
                                 if (filtered.Length > 0)
@@ -279,695 +279,27 @@ namespace Sharpy
         internal static global::System.Text.RegularExpressions.RegexOptions _FlagsToOptions(int flags)
         {
             int options = 0;
-            if ((flags & global::Sharpy.ReModule.IGNORECASE) != 0)
+            if ((flags & global::Sharpy.ReModule.ReModuleModule.IGNORECASE) != 0)
             {
                 options = options | ((int)global::System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             }
 
-            if ((flags & global::Sharpy.ReModule.MULTILINE) != 0)
+            if ((flags & global::Sharpy.ReModule.ReModuleModule.MULTILINE) != 0)
             {
                 options = options | ((int)global::System.Text.RegularExpressions.RegexOptions.Multiline);
             }
 
-            if ((flags & global::Sharpy.ReModule.DOTALL) != 0)
+            if ((flags & global::Sharpy.ReModule.ReModuleModule.DOTALL) != 0)
             {
                 options = options | ((int)global::System.Text.RegularExpressions.RegexOptions.Singleline);
             }
 
-            if ((flags & global::Sharpy.ReModule.VERBOSE) != 0)
+            if ((flags & global::Sharpy.ReModule.ReModuleModule.VERBOSE) != 0)
             {
                 options = options | ((int)global::System.Text.RegularExpressions.RegexOptions.IgnorePatternWhitespace);
             }
 
             return (global::System.Text.RegularExpressions.RegexOptions)options;
-        }
-
-        /// <summary>
-        /// Exception raised when a regex pattern is invalid.
-        /// </summary>
-        [global::Sharpy.SharpyName("error")]
-        public class Error : global::System.Exception
-        {
-            public string Msg;
-            public string? Pattern;
-            public int? Pos;
-            public int? Lineno;
-            public int? Colno;
-            /// <summary>
-            /// Create an error with the specified message and optional pattern/position info.
-            /// </summary>
-            public Error(string msg, string? pattern = null, int? pos = null) : base(msg)
-            {
-                this.Msg = msg;
-                this.Pattern = pattern;
-                this.Pos = pos;
-                if (pos != null && pattern != null)
-                {
-                    int line = 1;
-                    int col = pos.Value + 1;
-                    int idx = 0;
-                    while (idx < pos.Value && idx < pattern!.Length)
-                    {
-                        if (global::Sharpy.StringHelpers.GetItem(pattern!, idx) == "\n")
-                        {
-                            line = line + 1;
-                            col = pos.Value - idx;
-                        }
-
-                        idx = idx + 1;
-                    }
-
-                    this.Lineno = line;
-                    this.Colno = col;
-                }
-                else
-                {
-                    this.Lineno = null;
-                    this.Colno = null;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Compiled regular expression pattern, wrapping .NET Regex.
-        /// </summary>
-        public sealed class Pattern
-        {
-            private global::System.Text.RegularExpressions.Regex _Regex;
-            private string _PatternStr;
-            private int _Flags;
-            private Sharpy.Dict<string, int> _Groupindex;
-            private bool _GroupindexCached;
-            /// <summary>
-            /// Scan through string looking for the first match.
-            /// </summary>
-            public global::Sharpy.ReModule.MatchResult? Search(string s, int pos = 0, int? endpos = null)
-            {
-                string target = global::Sharpy.ReModule._ApplyEndpos(s, endpos);
-                global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
-                if (!m.Success)
-                {
-                    return null;
-                }
-
-                int actualEndpos = s.Length;
-                if (endpos != null)
-                {
-                    actualEndpos = endpos.Value;
-                }
-
-                return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
-            }
-
-            /// <summary>
-            /// Try to apply the pattern at the start of the string.
-            /// </summary>
-            public global::Sharpy.ReModule.MatchResult? Match(string s, int pos = 0, int? endpos = null)
-            {
-                string target = global::Sharpy.ReModule._ApplyEndpos(s, endpos);
-                global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
-                if (!m.Success || m.Index != pos)
-                {
-                    return null;
-                }
-
-                int actualEndpos = s.Length;
-                if (endpos != null)
-                {
-                    actualEndpos = endpos.Value;
-                }
-
-                return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
-            }
-
-            /// <summary>
-            /// Try to apply the pattern to the entire string.
-            /// </summary>
-            public global::Sharpy.ReModule.MatchResult? Fullmatch(string s, int pos = 0, int? endpos = null)
-            {
-                string target = global::Sharpy.ReModule._ApplyEndpos(s, endpos);
-                global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
-                if (!m.Success || m.Index != pos || m.Length != target.Length - pos)
-                {
-                    return null;
-                }
-
-                int actualEndpos = s.Length;
-                if (endpos != null)
-                {
-                    actualEndpos = endpos.Value;
-                }
-
-                return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
-            }
-
-            /// <summary>
-            /// Return all non-overlapping matches as a list.
-            /// </summary>
-            public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = null)
-            {
-                string target = global::Sharpy.ReModule._ApplyEndpos(s, endpos);
-                global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
-                Sharpy.List<object> result = new Sharpy.List<object>()
-                {
-                };
-                bool hasGroups = global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) > 1;
-                foreach (var __loopVar_0 in matches)
-                {
-                    var mRaw = __loopVar_0;
-                    global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
-                    if (m.Index < pos)
-                    {
-                        continue;
-                    }
-
-                    if (!hasGroups)
-                    {
-                        result.Append(m.Value);
-                    }
-                    else if (m.Groups.Count == 2)
-                    {
-                        global::System.Text.RegularExpressions.Group g = m.Groups[1];
-                        result.Append(g.Success ? g.Value : "");
-                    }
-                    else
-                    {
-                        Sharpy.List<object> groupValues = new Sharpy.List<object>()
-                        {
-                        };
-                        int gi = 1;
-                        while (gi < m.Groups.Count)
-                        {
-                            global::System.Text.RegularExpressions.Group grp = m.Groups[gi];
-                            groupValues.Append(grp.Success ? grp.Value : "");
-                            gi = gi + 1;
-                        }
-
-                        result.Append(groupValues);
-                    }
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Return a list of MatchResult objects over all non-overlapping matches.
-            /// </summary>
-            public Sharpy.List<global::Sharpy.ReModule.MatchResult> Finditer(string s, int pos = 0, int? endpos = null)
-            {
-                string target = global::Sharpy.ReModule._ApplyEndpos(s, endpos);
-                global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
-                Sharpy.List<global::Sharpy.ReModule.MatchResult> result = new Sharpy.List<global::Sharpy.ReModule.MatchResult>()
-                {
-                };
-                int actualEndpos = s.Length;
-                if (endpos != null)
-                {
-                    actualEndpos = endpos.Value;
-                }
-
-                foreach (var __loopVar_1 in matches)
-                {
-                    var mRaw = __loopVar_1;
-                    global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
-                    if (m.Index < pos)
-                    {
-                        continue;
-                    }
-
-                    result.Append(new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this));
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Return the string obtained by replacing occurrences using a string.
-            /// </summary>
-            public string Sub(string repl, string s, int count = 0)
-            {
-                string translated = global::Sharpy.ReModule._TranslateReplacement(repl);
-                if (count == 0)
-                {
-                    return this._Regex.Replace(s, translated);
-                }
-
-                return this._Regex.Replace(s, translated, count);
-            }
-
-            /// <summary>
-            /// Return the string obtained by replacing occurrences using a callable.
-            /// </summary>
-            public string Sub(global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0)
-            {
-                string Evaluator(global::System.Text.RegularExpressions.Match m)
-                {
-                    global::Sharpy.ReModule.MatchResult reMatch = new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, 0, s.Length, this);
-                    return repl(reMatch);
-                }
-
-                if (count == 0)
-                {
-                    return this._Regex.Replace(s, Evaluator);
-                }
-
-                return this._Regex.Replace(s, Evaluator, count);
-            }
-
-            /// <summary>
-            /// Like sub(), but returns (new_string, number_of_subs_made).
-            /// </summary>
-            public global::System.ValueTuple<string, int> Subn(string repl, string s, int count = 0)
-            {
-                string translated = global::Sharpy.ReModule._TranslateReplacement(repl);
-                Sharpy.List<int> replacementCount = new Sharpy.List<int>()
-                {
-                    0
-                };
-                string StrEvaluator(global::System.Text.RegularExpressions.Match m)
-                {
-                    replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
-                    return m.Result(translated);
-                }
-
-                string result = default!;
-                if (count == 0)
-                {
-                    result = this._Regex.Replace(s, StrEvaluator);
-                }
-                else
-                {
-                    result = this._Regex.Replace(s, StrEvaluator, count);
-                }
-
-                return (result, replacementCount.GetItemUnchecked(0));
-            }
-
-            /// <summary>
-            /// Like sub() with callable, but returns (new_string, number_of_subs_made).
-            /// </summary>
-            public global::System.ValueTuple<string, int> Subn(global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0)
-            {
-                Sharpy.List<int> replacementCount = new Sharpy.List<int>()
-                {
-                    0
-                };
-                string CallableEvaluator(global::System.Text.RegularExpressions.Match m)
-                {
-                    replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
-                    global::Sharpy.ReModule.MatchResult reMatch = new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, 0, s.Length, this);
-                    return repl(reMatch);
-                }
-
-                string result = default!;
-                if (count == 0)
-                {
-                    result = this._Regex.Replace(s, CallableEvaluator);
-                }
-                else
-                {
-                    result = this._Regex.Replace(s, CallableEvaluator, count);
-                }
-
-                return (result, replacementCount.GetItemUnchecked(0));
-            }
-
-            /// <summary>
-            /// Split string by the occurrences of the pattern.
-            /// </summary>
-            public Sharpy.List<string> Split(string s, int maxsplit = 0)
-            {
-                Sharpy.List<string> result = new Sharpy.List<string>()
-                {
-                };
-                if (maxsplit == 0)
-                {
-                    foreach (var __loopVar_2 in this._Regex.Split(s))
-                    {
-                        var part = __loopVar_2;
-                        result.Append(part);
-                    }
-                }
-                else
-                {
-                    foreach (var __loopVar_3 in this._Regex.Split(s, maxsplit + 1))
-                    {
-                        var part_1 = __loopVar_3;
-                        result.Append(part_1);
-                    }
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Returns a string representation of the compiled pattern.
-            /// </summary>
-            public override string ToString()
-            {
-                return "re.compile('" + this._PatternStr + "')";
-            }
-
-            public string PatternStr
-            {
-                get
-                {
-                    _ = "The original pattern string.";
-                    return this._PatternStr;
-                }
-            }
-
-            public int Flags
-            {
-                get
-                {
-                    _ = "The flags used to compile this pattern.";
-                    return this._Flags;
-                }
-            }
-
-            public int Groups
-            {
-                get
-                {
-                    _ = "The number of capturing groups in the pattern.";
-                    return global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) - 1;
-                }
-            }
-
-            public Sharpy.Dict<string, int> Groupindex
-            {
-                get
-                {
-                    _ = "A dictionary mapping named group names to group numbers.";
-                    if (global::Sharpy.Builtins.Len(this._Groupindex) > 0 || this._GroupindexCached)
-                    {
-                        return this._Groupindex;
-                    }
-
-                    var names = this._Regex.GetGroupNames();
-                    foreach (var __loopVar_4 in names)
-                    {
-                        var name = __loopVar_4;
-                        if (!global::Sharpy.StringExtensions.Isdigit(name))
-                        {
-                            this._Groupindex[name] = this._Regex.GroupNumberFromName(name);
-                        }
-                    }
-
-                    this._GroupindexCached = true;
-                    return this._Groupindex;
-                }
-            }
-
-            public global::System.Text.RegularExpressions.Regex Regex
-            {
-                get
-                {
-                    _ = "The internal .NET Regex object.";
-                    return this._Regex;
-                }
-            }
-
-            /// <summary>
-            /// Compile a regular expression pattern.
-            /// </summary>
-            public Pattern(string patternStr, int flags = 0)
-            {
-                this._PatternStr = patternStr;
-                this._Flags = flags;
-                this._Groupindex = new Sharpy.Dict<string, int>()
-                {
-                };
-                this._GroupindexCached = false;
-                string translated = global::Sharpy.ReModule._TranslatePattern(patternStr);
-                try
-                {
-                    this._Regex = new global::System.Text.RegularExpressions.Regex(translated, global::Sharpy.ReModule._FlagsToOptions(flags));
-                }
-                catch (global::System.Exception ex)
-                {
-                    throw new global::Sharpy.ReModule.Error(global::Sharpy.Builtins.Str(ex), patternStr);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Wraps a .NET Match with Python-compatible regex match API.
-        /// </summary>
-        public sealed class MatchResult
-        {
-            private global::System.Text.RegularExpressions.Match _Match;
-            private string _String;
-            private string _PatternStr;
-            private int _Pos;
-            private int _Endpos;
-            private global::Sharpy.ReModule.Pattern? _Re;
-            /// <summary>
-            /// Return the string matched by group number.
-            /// </summary>
-            public string? Group(int n = 0)
-            {
-                if (n < 0 || n >= this._Match.Groups.Count)
-                {
-                    throw new global::Sharpy.IndexError("no such group");
-                }
-
-                global::System.Text.RegularExpressions.Group g = this._Match.Groups[n];
-                return g.Success ? g.Value : null;
-            }
-
-            /// <summary>
-            /// Return the string matched by a named group.
-            /// </summary>
-            public string? Group(string name)
-            {
-                if (this._Re != null)
-                {
-                    if (this._Re!.Regex.GroupNumberFromName(name) == -1)
-                    {
-                        throw new global::Sharpy.IndexError("no such group");
-                    }
-                }
-
-                global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
-                return g.Success ? g.Value : null;
-            }
-
-            /// <summary>
-            /// Return a list of all subgroups (groups 1..n).
-            /// </summary>
-            public Sharpy.List<string?> Groups()
-            {
-                Sharpy.List<string?> result = new Sharpy.List<string?>()
-                {
-                };
-                int i = 1;
-                while (i < this._Match.Groups.Count)
-                {
-                    global::System.Text.RegularExpressions.Group g = this._Match.Groups[i];
-                    result.Append(g.Success ? g.Value : null);
-                    i = i + 1;
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Return a dict of all named subgroups.
-            /// </summary>
-            public Sharpy.Dict<string, string?> Groupdict()
-            {
-                Sharpy.Dict<string, string?> result = new Sharpy.Dict<string, string?>()
-                {
-                };
-                if (this._Re == null)
-                {
-                    return result;
-                }
-
-                var names = this._Re!.Regex.GetGroupNames();
-                foreach (var __loopVar_5 in names)
-                {
-                    var name = __loopVar_5;
-                    if (!global::Sharpy.StringExtensions.Isdigit(name))
-                    {
-                        global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
-                        result[name] = g.Success ? g.Value : null;
-                    }
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Start index of the matched group.
-            /// </summary>
-            public int Start(int groupNum = 0)
-            {
-                if (groupNum < 0 || groupNum >= this._Match.Groups.Count)
-                {
-                    throw new global::Sharpy.IndexError("no such group");
-                }
-
-                global::System.Text.RegularExpressions.Group g = this._Match.Groups[groupNum];
-                return g.Success ? g.Index : -1;
-            }
-
-            /// <summary>
-            /// End index of the matched group.
-            /// </summary>
-            public int End(int groupNum = 0)
-            {
-                if (groupNum < 0 || groupNum >= this._Match.Groups.Count)
-                {
-                    throw new global::Sharpy.IndexError("no such group");
-                }
-
-                global::System.Text.RegularExpressions.Group g = this._Match.Groups[groupNum];
-                return g.Success ? g.Index + g.Length : -1;
-            }
-
-            /// <summary>
-            /// Returns (start, end) for the matched group.
-            /// </summary>
-            public global::System.ValueTuple<int, int> Span(int groupNum = 0)
-            {
-                return (this.Start(groupNum), this.End(groupNum));
-            }
-
-            /// <summary>
-            /// Return the string obtained by doing backslash substitution on the template.
-            /// </summary>
-            public string Expand(string template)
-            {
-                string translated = global::Sharpy.ReModule._TranslateReplacement(template);
-                return this._Match.Result(translated);
-            }
-
-            /// <summary>
-            /// String representation of the match.
-            /// </summary>
-            public override string ToString()
-            {
-                return "<re.Match object; span=(" + global::Sharpy.Builtins.Str(this._Match.Index) + ", " + global::Sharpy.Builtins.Str(this._Match.Index + this._Match.Length) + "), match='" + this._Match.Value + "'>";
-            }
-
-            public string String
-            {
-                get
-                {
-                    _ = "The input string.";
-                    return this._String;
-                }
-            }
-
-            public string Pattern
-            {
-                get
-                {
-                    _ = "The pattern string.";
-                    return this._PatternStr;
-                }
-            }
-
-            public int Pos
-            {
-                get
-                {
-                    _ = "The start position of the search.";
-                    return this._Pos;
-                }
-            }
-
-            public int Endpos
-            {
-                get
-                {
-                    _ = "The end position of the search.";
-                    return this._Endpos;
-                }
-            }
-
-            public global::Sharpy.ReModule.Pattern? Re
-            {
-                get
-                {
-                    _ = "The compiled pattern object that produced this match.";
-                    return this._Re;
-                }
-            }
-
-            public int? Lastindex
-            {
-                get
-                {
-                    _ = "The integer index of the last matched capturing group.";
-                    int i = this._Match.Groups.Count - 1;
-                    while (i >= 1)
-                    {
-                        if (this._Match.Groups[i].Success)
-                        {
-                            return i;
-                        }
-
-                        i = i - 1;
-                    }
-
-                    return null;
-                }
-            }
-
-            public string? Lastgroup
-            {
-                get
-                {
-                    _ = "The name of the last matched capturing group, or None if unnamed.";
-                    int? idx = this.Lastindex;
-                    if (idx == null)
-                    {
-                        return null;
-                    }
-
-                    if (this._Re == null)
-                    {
-                        return null;
-                    }
-
-                    int grpIdx = idx.Value;
-                    string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
-                    if (name == global::Sharpy.Builtins.Str(grpIdx))
-                    {
-                        return null;
-                    }
-
-                    return name;
-                }
-            }
-
-            /// <summary>
-            /// Access group by index.
-            /// </summary>
-            public string? this[int n]
-            {
-                get
-                {
-                    return this.Group(n);
-                }
-            }
-
-            /// <summary>
-            /// Create a MatchResult wrapping a .NET Match object.
-            /// </summary>
-            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, global::Sharpy.ReModule.Pattern? compiledPattern = null)
-            {
-                this._Match = netMatch;
-                this._String = @string;
-                this._PatternStr = patternStr;
-                this._Pos = pos;
-                this._Endpos = endpos;
-                this._Re = compiledPattern;
-            }
         }
 
         /// <summary>
@@ -1010,7 +342,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.ReModule.MatchResult? Search(string pattern, string s, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Search(s, 0, null);
         }
 
@@ -1019,7 +351,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.ReModule.MatchResult? Match(string pattern, string s, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Match(s, 0, null);
         }
 
@@ -1028,7 +360,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.ReModule.MatchResult? Fullmatch(string pattern, string s, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Fullmatch(s, 0, null);
         }
 
@@ -1037,7 +369,7 @@ namespace Sharpy
         /// </summary>
         public static Sharpy.List<object> Findall(string pattern, string s, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Findall(s, 0, null);
         }
 
@@ -1046,7 +378,7 @@ namespace Sharpy
         /// </summary>
         public static Sharpy.List<global::Sharpy.ReModule.MatchResult> Finditer(string pattern, string s, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Finditer(s, 0, null);
         }
 
@@ -1055,7 +387,7 @@ namespace Sharpy
         /// </summary>
         public static string Sub(string pattern, string repl, string s, int count = 0, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Sub(repl, s, count);
         }
 
@@ -1064,7 +396,7 @@ namespace Sharpy
         /// </summary>
         public static string Sub(string pattern, global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Sub(repl, s, count);
         }
 
@@ -1073,7 +405,7 @@ namespace Sharpy
         /// </summary>
         public static global::System.ValueTuple<string, int> Subn(string pattern, string repl, string s, int count = 0, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Subn(repl, s, count);
         }
 
@@ -1082,7 +414,7 @@ namespace Sharpy
         /// </summary>
         public static global::System.ValueTuple<string, int> Subn(string pattern, global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Subn(repl, s, count);
         }
 
@@ -1091,7 +423,7 @@ namespace Sharpy
         /// </summary>
         public static Sharpy.List<string> Split(string pattern, string s, int maxsplit = 0, int flags = 0)
         {
-            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.Compile(pattern, flags);
+            global::Sharpy.ReModule.Pattern p = global::Sharpy.ReModule.ReModuleModule.Compile(pattern, flags);
             return p.Split(s, maxsplit);
         }
 
@@ -1108,7 +440,678 @@ namespace Sharpy
         /// </summary>
         public static string Escape(string pattern)
         {
-            return global::Sharpy.ReModule._EscapePattern(pattern);
+            return global::Sharpy.ReModule.ReModuleModule._EscapePattern(pattern);
+        }
+    }
+
+    /// <summary>
+    /// Exception raised when a regex pattern is invalid.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("re", "error")]
+    [global::Sharpy.SharpyName("error")]
+    public class Error : global::System.Exception
+    {
+        public string Msg;
+        public string? Pattern;
+        public int? Pos;
+        public int? Lineno;
+        public int? Colno;
+        /// <summary>
+        /// Create an error with the specified message and optional pattern/position info.
+        /// </summary>
+        public Error(string msg, string? pattern = null, int? pos = null) : base(msg)
+        {
+            this.Msg = msg;
+            this.Pattern = pattern;
+            this.Pos = pos;
+            if (pos != null && pattern != null)
+            {
+                int line = 1;
+                int col = pos.Value + 1;
+                int idx = 0;
+                while (idx < pos.Value && idx < pattern!.Length)
+                {
+                    if (global::Sharpy.StringHelpers.GetItem(pattern!, idx) == "\n")
+                    {
+                        line = line + 1;
+                        col = pos.Value - idx;
+                    }
+
+                    idx = idx + 1;
+                }
+
+                this.Lineno = line;
+                this.Colno = col;
+            }
+            else
+            {
+                this.Lineno = null;
+                this.Colno = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Compiled regular expression pattern, wrapping .NET Regex.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("re", "Pattern")]
+    public sealed class Pattern
+    {
+        private global::System.Text.RegularExpressions.Regex _Regex;
+        private string _PatternStr;
+        private int _Flags;
+        private Sharpy.Dict<string, int> _Groupindex;
+        private bool _GroupindexCached;
+        /// <summary>
+        /// Scan through string looking for the first match.
+        /// </summary>
+        public global::Sharpy.ReModule.MatchResult? Search(string s, int pos = 0, int? endpos = null)
+        {
+            string target = global::Sharpy.ReModule.ReModuleModule._ApplyEndpos(s, endpos);
+            global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
+            if (!m.Success)
+            {
+                return null;
+            }
+
+            int actualEndpos = s.Length;
+            if (endpos != null)
+            {
+                actualEndpos = endpos.Value;
+            }
+
+            return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
+        }
+
+        /// <summary>
+        /// Try to apply the pattern at the start of the string.
+        /// </summary>
+        public global::Sharpy.ReModule.MatchResult? Match(string s, int pos = 0, int? endpos = null)
+        {
+            string target = global::Sharpy.ReModule.ReModuleModule._ApplyEndpos(s, endpos);
+            global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
+            if (!m.Success || m.Index != pos)
+            {
+                return null;
+            }
+
+            int actualEndpos = s.Length;
+            if (endpos != null)
+            {
+                actualEndpos = endpos.Value;
+            }
+
+            return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
+        }
+
+        /// <summary>
+        /// Try to apply the pattern to the entire string.
+        /// </summary>
+        public global::Sharpy.ReModule.MatchResult? Fullmatch(string s, int pos = 0, int? endpos = null)
+        {
+            string target = global::Sharpy.ReModule.ReModuleModule._ApplyEndpos(s, endpos);
+            global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
+            if (!m.Success || m.Index != pos || m.Length != target.Length - pos)
+            {
+                return null;
+            }
+
+            int actualEndpos = s.Length;
+            if (endpos != null)
+            {
+                actualEndpos = endpos.Value;
+            }
+
+            return new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
+        }
+
+        /// <summary>
+        /// Return all non-overlapping matches as a list.
+        /// </summary>
+        public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = null)
+        {
+            string target = global::Sharpy.ReModule.ReModuleModule._ApplyEndpos(s, endpos);
+            global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
+            Sharpy.List<object> result = new Sharpy.List<object>()
+            {
+            };
+            bool hasGroups = global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) > 1;
+            foreach (var __loopVar_0 in matches)
+            {
+                var mRaw = __loopVar_0;
+                global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
+                if (m.Index < pos)
+                {
+                    continue;
+                }
+
+                if (!hasGroups)
+                {
+                    result.Append(m.Value);
+                }
+                else if (m.Groups.Count == 2)
+                {
+                    global::System.Text.RegularExpressions.Group g = m.Groups[1];
+                    result.Append(g.Success ? g.Value : "");
+                }
+                else
+                {
+                    Sharpy.List<object> groupValues = new Sharpy.List<object>()
+                    {
+                    };
+                    int gi = 1;
+                    while (gi < m.Groups.Count)
+                    {
+                        global::System.Text.RegularExpressions.Group grp = m.Groups[gi];
+                        groupValues.Append(grp.Success ? grp.Value : "");
+                        gi = gi + 1;
+                    }
+
+                    result.Append(groupValues);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return a list of MatchResult objects over all non-overlapping matches.
+        /// </summary>
+        public Sharpy.List<global::Sharpy.ReModule.MatchResult> Finditer(string s, int pos = 0, int? endpos = null)
+        {
+            string target = global::Sharpy.ReModule.ReModuleModule._ApplyEndpos(s, endpos);
+            global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
+            Sharpy.List<global::Sharpy.ReModule.MatchResult> result = new Sharpy.List<global::Sharpy.ReModule.MatchResult>()
+            {
+            };
+            int actualEndpos = s.Length;
+            if (endpos != null)
+            {
+                actualEndpos = endpos.Value;
+            }
+
+            foreach (var __loopVar_1 in matches)
+            {
+                var mRaw = __loopVar_1;
+                global::System.Text.RegularExpressions.Match m = (global::System.Text.RegularExpressions.Match)mRaw;
+                if (m.Index < pos)
+                {
+                    continue;
+                }
+
+                result.Append(new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, pos, actualEndpos, this));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences using a string.
+        /// </summary>
+        public string Sub(string repl, string s, int count = 0)
+        {
+            string translated = global::Sharpy.ReModule.ReModuleModule._TranslateReplacement(repl);
+            if (count == 0)
+            {
+                return this._Regex.Replace(s, translated);
+            }
+
+            return this._Regex.Replace(s, translated, count);
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences using a callable.
+        /// </summary>
+        public string Sub(global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0)
+        {
+            string Evaluator(global::System.Text.RegularExpressions.Match m)
+            {
+                global::Sharpy.ReModule.MatchResult reMatch = new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, 0, s.Length, this);
+                return repl(reMatch);
+            }
+
+            if (count == 0)
+            {
+                return this._Regex.Replace(s, Evaluator);
+            }
+
+            return this._Regex.Replace(s, Evaluator, count);
+        }
+
+        /// <summary>
+        /// Like sub(), but returns (new_string, number_of_subs_made).
+        /// </summary>
+        public global::System.ValueTuple<string, int> Subn(string repl, string s, int count = 0)
+        {
+            string translated = global::Sharpy.ReModule.ReModuleModule._TranslateReplacement(repl);
+            Sharpy.List<int> replacementCount = new Sharpy.List<int>()
+            {
+                0
+            };
+            string StrEvaluator(global::System.Text.RegularExpressions.Match m)
+            {
+                replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
+                return m.Result(translated);
+            }
+
+            string result = default!;
+            if (count == 0)
+            {
+                result = this._Regex.Replace(s, StrEvaluator);
+            }
+            else
+            {
+                result = this._Regex.Replace(s, StrEvaluator, count);
+            }
+
+            return (result, replacementCount.GetItemUnchecked(0));
+        }
+
+        /// <summary>
+        /// Like sub() with callable, but returns (new_string, number_of_subs_made).
+        /// </summary>
+        public global::System.ValueTuple<string, int> Subn(global::System.Func<global::Sharpy.ReModule.MatchResult, string> repl, string s, int count = 0)
+        {
+            Sharpy.List<int> replacementCount = new Sharpy.List<int>()
+            {
+                0
+            };
+            string CallableEvaluator(global::System.Text.RegularExpressions.Match m)
+            {
+                replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
+                global::Sharpy.ReModule.MatchResult reMatch = new global::Sharpy.ReModule.MatchResult(m, s, this._PatternStr, 0, s.Length, this);
+                return repl(reMatch);
+            }
+
+            string result = default!;
+            if (count == 0)
+            {
+                result = this._Regex.Replace(s, CallableEvaluator);
+            }
+            else
+            {
+                result = this._Regex.Replace(s, CallableEvaluator, count);
+            }
+
+            return (result, replacementCount.GetItemUnchecked(0));
+        }
+
+        /// <summary>
+        /// Split string by the occurrences of the pattern.
+        /// </summary>
+        public Sharpy.List<string> Split(string s, int maxsplit = 0)
+        {
+            Sharpy.List<string> result = new Sharpy.List<string>()
+            {
+            };
+            if (maxsplit == 0)
+            {
+                foreach (var __loopVar_2 in this._Regex.Split(s))
+                {
+                    var part = __loopVar_2;
+                    result.Append(part);
+                }
+            }
+            else
+            {
+                foreach (var __loopVar_3 in this._Regex.Split(s, maxsplit + 1))
+                {
+                    var part_1 = __loopVar_3;
+                    result.Append(part_1);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns a string representation of the compiled pattern.
+        /// </summary>
+        public override string ToString()
+        {
+            return "re.compile('" + this._PatternStr + "')";
+        }
+
+        public string PatternStr
+        {
+            get
+            {
+                _ = "The original pattern string.";
+                return this._PatternStr;
+            }
+        }
+
+        public int Flags
+        {
+            get
+            {
+                _ = "The flags used to compile this pattern.";
+                return this._Flags;
+            }
+        }
+
+        public int Groups
+        {
+            get
+            {
+                _ = "The number of capturing groups in the pattern.";
+                return global::Sharpy.Builtins.Len(this._Regex.GetGroupNumbers()) - 1;
+            }
+        }
+
+        public Sharpy.Dict<string, int> Groupindex
+        {
+            get
+            {
+                _ = "A dictionary mapping named group names to group numbers.";
+                if (global::Sharpy.Builtins.Len(this._Groupindex) > 0 || this._GroupindexCached)
+                {
+                    return this._Groupindex;
+                }
+
+                var names = this._Regex.GetGroupNames();
+                foreach (var __loopVar_4 in names)
+                {
+                    var name = __loopVar_4;
+                    if (!global::Sharpy.StringExtensions.Isdigit(name))
+                    {
+                        this._Groupindex[name] = this._Regex.GroupNumberFromName(name);
+                    }
+                }
+
+                this._GroupindexCached = true;
+                return this._Groupindex;
+            }
+        }
+
+        public global::System.Text.RegularExpressions.Regex Regex
+        {
+            get
+            {
+                _ = "The internal .NET Regex object.";
+                return this._Regex;
+            }
+        }
+
+        /// <summary>
+        /// Compile a regular expression pattern.
+        /// </summary>
+        public Pattern(string patternStr, int flags = 0)
+        {
+            this._PatternStr = patternStr;
+            this._Flags = flags;
+            this._Groupindex = new Sharpy.Dict<string, int>()
+            {
+            };
+            this._GroupindexCached = false;
+            string translated = global::Sharpy.ReModule.ReModuleModule._TranslatePattern(patternStr);
+            try
+            {
+                this._Regex = new global::System.Text.RegularExpressions.Regex(translated, global::Sharpy.ReModule.ReModuleModule._FlagsToOptions(flags));
+            }
+            catch (global::System.Exception ex)
+            {
+                throw new global::Sharpy.ReModule.Error(global::Sharpy.Builtins.Str(ex), patternStr);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Wraps a .NET Match with Python-compatible regex match API.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("re", "MatchResult")]
+    public sealed class MatchResult
+    {
+        private global::System.Text.RegularExpressions.Match _Match;
+        private string _String;
+        private string _PatternStr;
+        private int _Pos;
+        private int _Endpos;
+        private global::Sharpy.ReModule.Pattern? _Re;
+        /// <summary>
+        /// Return the string matched by group number.
+        /// </summary>
+        public string? Group(int n = 0)
+        {
+            if (n < 0 || n >= this._Match.Groups.Count)
+            {
+                throw new global::Sharpy.IndexError("no such group");
+            }
+
+            global::System.Text.RegularExpressions.Group g = this._Match.Groups[n];
+            return g.Success ? g.Value : null;
+        }
+
+        /// <summary>
+        /// Return the string matched by a named group.
+        /// </summary>
+        public string? Group(string name)
+        {
+            if (this._Re != null)
+            {
+                if (this._Re!.Regex.GroupNumberFromName(name) == -1)
+                {
+                    throw new global::Sharpy.IndexError("no such group");
+                }
+            }
+
+            global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
+            return g.Success ? g.Value : null;
+        }
+
+        /// <summary>
+        /// Return a list of all subgroups (groups 1..n).
+        /// </summary>
+        public Sharpy.List<string?> Groups()
+        {
+            Sharpy.List<string?> result = new Sharpy.List<string?>()
+            {
+            };
+            int i = 1;
+            while (i < this._Match.Groups.Count)
+            {
+                global::System.Text.RegularExpressions.Group g = this._Match.Groups[i];
+                result.Append(g.Success ? g.Value : null);
+                i = i + 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return a dict of all named subgroups.
+        /// </summary>
+        public Sharpy.Dict<string, string?> Groupdict()
+        {
+            Sharpy.Dict<string, string?> result = new Sharpy.Dict<string, string?>()
+            {
+            };
+            if (this._Re == null)
+            {
+                return result;
+            }
+
+            var names = this._Re!.Regex.GetGroupNames();
+            foreach (var __loopVar_5 in names)
+            {
+                var name = __loopVar_5;
+                if (!global::Sharpy.StringExtensions.Isdigit(name))
+                {
+                    global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
+                    result[name] = g.Success ? g.Value : null;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Start index of the matched group.
+        /// </summary>
+        public int Start(int groupNum = 0)
+        {
+            if (groupNum < 0 || groupNum >= this._Match.Groups.Count)
+            {
+                throw new global::Sharpy.IndexError("no such group");
+            }
+
+            global::System.Text.RegularExpressions.Group g = this._Match.Groups[groupNum];
+            return g.Success ? g.Index : -1;
+        }
+
+        /// <summary>
+        /// End index of the matched group.
+        /// </summary>
+        public int End(int groupNum = 0)
+        {
+            if (groupNum < 0 || groupNum >= this._Match.Groups.Count)
+            {
+                throw new global::Sharpy.IndexError("no such group");
+            }
+
+            global::System.Text.RegularExpressions.Group g = this._Match.Groups[groupNum];
+            return g.Success ? g.Index + g.Length : -1;
+        }
+
+        /// <summary>
+        /// Returns (start, end) for the matched group.
+        /// </summary>
+        public global::System.ValueTuple<int, int> Span(int groupNum = 0)
+        {
+            return (this.Start(groupNum), this.End(groupNum));
+        }
+
+        /// <summary>
+        /// Return the string obtained by doing backslash substitution on the template.
+        /// </summary>
+        public string Expand(string template)
+        {
+            string translated = global::Sharpy.ReModule.ReModuleModule._TranslateReplacement(template);
+            return this._Match.Result(translated);
+        }
+
+        /// <summary>
+        /// String representation of the match.
+        /// </summary>
+        public override string ToString()
+        {
+            return "<re.Match object; span=(" + global::Sharpy.Builtins.Str(this._Match.Index) + ", " + global::Sharpy.Builtins.Str(this._Match.Index + this._Match.Length) + "), match='" + this._Match.Value + "'>";
+        }
+
+        public string String
+        {
+            get
+            {
+                _ = "The input string.";
+                return this._String;
+            }
+        }
+
+        public string Pattern
+        {
+            get
+            {
+                _ = "The pattern string.";
+                return this._PatternStr;
+            }
+        }
+
+        public int Pos
+        {
+            get
+            {
+                _ = "The start position of the search.";
+                return this._Pos;
+            }
+        }
+
+        public int Endpos
+        {
+            get
+            {
+                _ = "The end position of the search.";
+                return this._Endpos;
+            }
+        }
+
+        public global::Sharpy.ReModule.Pattern? Re
+        {
+            get
+            {
+                _ = "The compiled pattern object that produced this match.";
+                return this._Re;
+            }
+        }
+
+        public int? Lastindex
+        {
+            get
+            {
+                _ = "The integer index of the last matched capturing group.";
+                int i = this._Match.Groups.Count - 1;
+                while (i >= 1)
+                {
+                    if (this._Match.Groups[i].Success)
+                    {
+                        return i;
+                    }
+
+                    i = i - 1;
+                }
+
+                return null;
+            }
+        }
+
+        public string? Lastgroup
+        {
+            get
+            {
+                _ = "The name of the last matched capturing group, or None if unnamed.";
+                int? idx = this.Lastindex;
+                if (idx == null)
+                {
+                    return null;
+                }
+
+                if (this._Re == null)
+                {
+                    return null;
+                }
+
+                int grpIdx = idx.Value;
+                string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
+                if (name == global::Sharpy.Builtins.Str(grpIdx))
+                {
+                    return null;
+                }
+
+                return name;
+            }
+        }
+
+        /// <summary>
+        /// Access group by index.
+        /// </summary>
+        public string? this[int n]
+        {
+            get
+            {
+                return this.Group(n);
+            }
+        }
+
+        /// <summary>
+        /// Create a MatchResult wrapping a .NET Match object.
+        /// </summary>
+        public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, global::Sharpy.ReModule.Pattern? compiledPattern = null)
+        {
+            this._Match = netMatch;
+            this._String = @string;
+            this._PatternStr = patternStr;
+            this._Pos = pos;
+            this._Endpos = endpos;
+            this._Re = compiledPattern;
         }
     }
 }

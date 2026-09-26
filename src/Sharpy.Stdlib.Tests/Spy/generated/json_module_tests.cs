@@ -9,27 +9,15 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using json = global::Sharpy.Json;
-using math = global::Sharpy.MathModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.JSON
+namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests
 {
     [global::Sharpy.SharpyModule("json.json_module_tests")]
-    public static partial class JsonModuleTests
+    public static partial class JsonModuleTestsModule
     {
-        public class Unserializable
-        {
-            public int Marker = 0;
-        }
-
-        public class Stamp
-        {
-            public int Year = 2026;
-            public int Month = 1;
-            public int Day = 15;
-        }
-
         public static object StampToString(object obj)
         {
 #line (875, 5) - (876, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -88,7 +76,21 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         }
     }
 
-    public partial class JsonModuleTestsTests : global::System.IDisposable
+    [global::Sharpy.SharpyModuleType("json.json_module_tests", "Unserializable")]
+    public class Unserializable
+    {
+        public int Marker = 0;
+    }
+
+    [global::Sharpy.SharpyModuleType("json.json_module_tests", "Stamp")]
+    public class Stamp
+    {
+        public int Year = 2026;
+        public int Month = 1;
+        public int Day = 15;
+    }
+
+    public partial class JsonModuleTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
@@ -410,7 +412,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsInfinityEmitsCpythonToken()
         {
 #line (165, 5) - (165, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("Infinity", json.Dumps((object?)global::Sharpy.MathModule.Inf));
+            Xunit.Assert.Equal("Infinity", json.Dumps((object?)global::Sharpy.MathModule.MathModuleModule.Inf));
 #line hidden
         }
 
@@ -418,7 +420,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsNegativeInfinityEmitsCpythonToken()
         {
 #line (169, 5) - (169, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("-Infinity", json.Dumps((object?)-global::Sharpy.MathModule.Inf));
+            Xunit.Assert.Equal("-Infinity", json.Dumps((object?)-global::Sharpy.MathModule.MathModuleModule.Inf));
 #line hidden
         }
 
@@ -426,7 +428,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsNanEmitsCpythonToken()
         {
 #line (173, 5) - (173, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("NaN", json.Dumps((object?)global::Sharpy.MathModule.Nan));
+            Xunit.Assert.Equal("NaN", json.Dumps((object?)global::Sharpy.MathModule.MathModuleModule.Nan));
 #line hidden
         }
 
@@ -438,8 +440,8 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line hidden
             {
                 1.0d,
-                global::Sharpy.MathModule.Inf,
-                global::Sharpy.MathModule.Nan
+                global::Sharpy.MathModule.MathModuleModule.Inf,
+                global::Sharpy.MathModule.MathModuleModule.Nan
             };
 #line (178, 5) - (178, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             Xunit.Assert.Equal("[1.0, Infinity, NaN]", json.Dumps((object?)xs));
@@ -455,7 +457,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
             try
             {
 #line (183, 9) - (183, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                json.Dumps(global::Sharpy.MathModule.Inf, allowNan: false);
+                json.Dumps(global::Sharpy.MathModule.MathModuleModule.Inf, allowNan: false);
 #line hidden
             }
             catch (ValueError)
@@ -476,7 +478,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
             try
             {
 #line (188, 9) - (188, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                json.Dumps(global::Sharpy.MathModule.Nan, allowNan: false);
+                json.Dumps(global::Sharpy.MathModule.MathModuleModule.Nan, allowNan: false);
 #line hidden
             }
             catch (ValueError)
@@ -518,8 +520,8 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line hidden
             {
                 1.0d,
-                global::Sharpy.MathModule.Inf,
-                -global::Sharpy.MathModule.Inf
+                global::Sharpy.MathModule.MathModuleModule.Inf,
+                -global::Sharpy.MathModule.MathModuleModule.Inf
             };
 #line (204, 5) - (204, 83) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             Xunit.Assert.Equal("[1.0, Infinity, -Infinity]", json.Dumps(json.Loads(json.Dumps((object?)xs))));
@@ -1937,7 +1939,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line (755, 5) - (755, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             var stamp = new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.Stamp();
 #line (756, 5) - (756, 75) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("\"2026-01-15\"", json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.StampToString!));
+            Xunit.Assert.Equal("\"2026-01-15\"", json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.StampToString!));
 #line hidden
         }
 
@@ -1947,7 +1949,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line (760, 5) - (760, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             var stamp = new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.Stamp();
 #line (761, 5) - (761, 102) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.StampToDict!));
+            Xunit.Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.StampToDict!));
 #line hidden
         }
 
@@ -1955,7 +1957,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsDefaultCallbackNotInvokedForNull()
         {
 #line (766, 5) - (766, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("null", json.Dumps(null, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.FallbackCallback!));
+            Xunit.Assert.Equal("null", json.Dumps(null, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.FallbackCallback!));
 #line hidden
         }
 
@@ -1963,7 +1965,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsDefaultCallbackNotInvokedForNativelySerializableTypes()
         {
 #line (770, 5) - (770, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("42", json.Dumps(42, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.FallbackCallback!));
+            Xunit.Assert.Equal("42", json.Dumps(42, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.FallbackCallback!));
 #line hidden
         }
 
@@ -1978,7 +1980,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
             try
             {
 #line (776, 9) - (776, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.IdentityCallback!);
+                json.Dumps(stamp, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.IdentityCallback!);
 #line hidden
             }
             catch (TypeError)
@@ -2028,7 +2030,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line (789, 5) - (789, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             d["count"] = 5;
 #line (790, 5) - (790, 97) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", json.Dumps(d, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.StampToString!));
+            Xunit.Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", json.Dumps(d, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.StampToString!));
 #line hidden
         }
 
@@ -2047,7 +2049,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line (797, 5) - (797, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             l.Append(1);
 #line (798, 5) - (798, 76) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("[\"2026-01-15\", 1]", json.Dumps(l, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.StampToString!));
+            Xunit.Assert.Equal("[\"2026-01-15\", 1]", json.Dumps(l, @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.StampToString!));
 #line hidden
         }
 
@@ -2066,7 +2068,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
 #line (805, 5) - (805, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
             d["count"] = 5;
 #line (806, 5) - (806, 117) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-            Xunit.Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", json.Dumps(d, separators: (",", ":"), @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.StampToString!));
+            Xunit.Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", json.Dumps(d, separators: (",", ":"), @default: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonModuleTests.JsonModuleTestsModule.StampToString!));
 #line hidden
         }
 

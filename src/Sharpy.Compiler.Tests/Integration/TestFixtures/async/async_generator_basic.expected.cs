@@ -6,34 +6,37 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AsyncGeneratorBasic
+namespace AsyncGeneratorBasic
 {
-    public static async System.Collections.Generic.IAsyncEnumerable<int> CountAsync(int n)
+    public static partial class AsyncGeneratorBasicModule
     {
-#line (2, 5) - (2, 10) 8 "async_generator_basic.spy"
-        var i = 0;
-#line (3, 5) - (5, 15) 8 "async_generator_basic.spy"
-        while (i < n)
-#line hidden
+        public static async System.Collections.Generic.IAsyncEnumerable<int> CountAsync(int n)
         {
-#line (4, 9) - (4, 17) 12 "async_generator_basic.spy"
-            yield return i;
-#line (5, 9) - (5, 15) 12 "async_generator_basic.spy"
-            i = i + 1;
+#line (2, 5) - (2, 10) 12 "async_generator_basic.spy"
+            var i = 0;
+#line (3, 5) - (5, 15) 12 "async_generator_basic.spy"
+            while (i < n)
 #line hidden
+            {
+#line (4, 9) - (4, 17) 16 "async_generator_basic.spy"
+                yield return i;
+#line (5, 9) - (5, 15) 16 "async_generator_basic.spy"
+                i = i + 1;
+#line hidden
+            }
         }
-    }
 
-    public static async System.Threading.Tasks.Task Main()
-    {
-#line (8, 5) - (9, 17) 8 "async_generator_basic.spy"
-        await foreach (var __loopVar_0 in global::AsyncGeneratorBasic.CountAsync(3))
-#line hidden
+        public static async System.Threading.Tasks.Task Main()
         {
-            var x = __loopVar_0;
-#line (9, 9) - (9, 17) 12 "async_generator_basic.spy"
-            global::Sharpy.Builtins.Print(x);
+#line (8, 5) - (9, 17) 12 "async_generator_basic.spy"
+            await foreach (var __loopVar_0 in global::AsyncGeneratorBasic.AsyncGeneratorBasicModule.CountAsync(3))
 #line hidden
+            {
+                var x = __loopVar_0;
+#line (9, 9) - (9, 17) 16 "async_generator_basic.spy"
+                global::Sharpy.Builtins.Print(x);
+#line hidden
+            }
         }
     }
 }

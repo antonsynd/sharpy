@@ -7,8 +7,107 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class MatchScrutineeIsinstanceNarrowed
+namespace MatchScrutineeIsinstanceNarrowed
 {
+    public static partial class MatchScrutineeIsinstanceNarrowedModule
+    {
+        public static void NarrowedUserGeneric(object o)
+        {
+#line (18, 5) - (25, 27) 12 "match_scrutinee_isinstance_narrowed.spy"
+            if (o is global::MatchScrutineeIsinstanceNarrowed.Box<int>)
+#line hidden
+            {
+#line (19, 9) - (23, 31) 16 "match_scrutinee_isinstance_narrowed.spy"
+                switch (o)
+#line hidden
+                {
+                    case global::MatchScrutineeIsinstanceNarrowed.Box<int> { Value: var v }:
+#line (21, 17) - (21, 25) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print(v);
+#line hidden
+                        break;
+                    default:
+#line (23, 17) - (23, 31) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print("other");
+#line hidden
+                        break;
+                }
+            }
+            else
+            {
+#line (25, 9) - (25, 27) 16 "match_scrutinee_isinstance_narrowed.spy"
+                global::Sharpy.Builtins.Print("not a box");
+#line hidden
+            }
+        }
+
+        public static void NarrowedCollection(object o)
+        {
+#line (28, 5) - (35, 28) 12 "match_scrutinee_isinstance_narrowed.spy"
+            if (o is Sharpy.List<int>)
+#line hidden
+            {
+#line (29, 9) - (33, 31) 16 "match_scrutinee_isinstance_narrowed.spy"
+                switch (o)
+#line hidden
+                {
+                    case Sharpy.List<int> _:
+#line (31, 17) - (31, 38) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print("coupled-list");
+#line hidden
+                        break;
+                    default:
+#line (33, 17) - (33, 31) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print("other");
+#line hidden
+                        break;
+                }
+            }
+            else
+            {
+#line (35, 9) - (35, 28) 16 "match_scrutinee_isinstance_narrowed.spy"
+                global::Sharpy.Builtins.Print("not a list");
+#line hidden
+            }
+        }
+
+        public static void NarrowedOptional(Optional<string> x)
+        {
+#line (40, 5) - (45, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
+            if (x.IsSome)
+#line hidden
+            {
+#line (41, 9) - (45, 31) 16 "match_scrutinee_isinstance_narrowed.spy"
+                switch (x.Unwrap())
+#line hidden
+                {
+                    case string s:
+#line (43, 17) - (43, 25) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print(s);
+#line hidden
+                        break;
+                    default:
+#line (45, 17) - (45, 31) 24 "match_scrutinee_isinstance_narrowed.spy"
+                        global::Sharpy.Builtins.Print("other");
+#line hidden
+                        break;
+                }
+            }
+        }
+
+        public static void Main()
+        {
+#line (48, 5) - (48, 40) 12 "match_scrutinee_isinstance_narrowed.spy"
+            global::MatchScrutineeIsinstanceNarrowed.MatchScrutineeIsinstanceNarrowedModule.NarrowedUserGeneric(new global::MatchScrutineeIsinstanceNarrowed.Box<int>(42));
+#line (49, 5) - (49, 29) 12 "match_scrutinee_isinstance_narrowed.spy"
+            global::MatchScrutineeIsinstanceNarrowed.MatchScrutineeIsinstanceNarrowedModule.NarrowedCollection(new Sharpy.List<int>() { 9 });
+#line (50, 5) - (50, 34) 12 "match_scrutinee_isinstance_narrowed.spy"
+            global::MatchScrutineeIsinstanceNarrowed.MatchScrutineeIsinstanceNarrowedModule.NarrowedOptional(Optional<string>.Some("hi"));
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Box")]
     public class Box<T>
     {
         public T Value;
@@ -19,101 +118,6 @@ public static partial class MatchScrutineeIsinstanceNarrowed
             this.Value = value;
 #line hidden
         }
-    }
-
-    public static void NarrowedUserGeneric(object o)
-    {
-#line (18, 5) - (25, 27) 8 "match_scrutinee_isinstance_narrowed.spy"
-        if (o is global::MatchScrutineeIsinstanceNarrowed.Box<int>)
-#line hidden
-        {
-#line (19, 9) - (23, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
-            switch (o)
-#line hidden
-            {
-                case global::MatchScrutineeIsinstanceNarrowed.Box<int> { Value: var v }:
-#line (21, 17) - (21, 25) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print(v);
-#line hidden
-                    break;
-                default:
-#line (23, 17) - (23, 31) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print("other");
-#line hidden
-                    break;
-            }
-        }
-        else
-        {
-#line (25, 9) - (25, 27) 12 "match_scrutinee_isinstance_narrowed.spy"
-            global::Sharpy.Builtins.Print("not a box");
-#line hidden
-        }
-    }
-
-    public static void NarrowedCollection(object o)
-    {
-#line (28, 5) - (35, 28) 8 "match_scrutinee_isinstance_narrowed.spy"
-        if (o is Sharpy.List<int>)
-#line hidden
-        {
-#line (29, 9) - (33, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
-            switch (o)
-#line hidden
-            {
-                case Sharpy.List<int> _:
-#line (31, 17) - (31, 38) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print("coupled-list");
-#line hidden
-                    break;
-                default:
-#line (33, 17) - (33, 31) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print("other");
-#line hidden
-                    break;
-            }
-        }
-        else
-        {
-#line (35, 9) - (35, 28) 12 "match_scrutinee_isinstance_narrowed.spy"
-            global::Sharpy.Builtins.Print("not a list");
-#line hidden
-        }
-    }
-
-    public static void NarrowedOptional(Optional<string> x)
-    {
-#line (40, 5) - (45, 31) 8 "match_scrutinee_isinstance_narrowed.spy"
-        if (x.IsSome)
-#line hidden
-        {
-#line (41, 9) - (45, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
-            switch (x.Unwrap())
-#line hidden
-            {
-                case string s:
-#line (43, 17) - (43, 25) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print(s);
-#line hidden
-                    break;
-                default:
-#line (45, 17) - (45, 31) 20 "match_scrutinee_isinstance_narrowed.spy"
-                    global::Sharpy.Builtins.Print("other");
-#line hidden
-                    break;
-            }
-        }
-    }
-
-    public static void Main()
-    {
-#line (48, 5) - (48, 40) 8 "match_scrutinee_isinstance_narrowed.spy"
-        global::MatchScrutineeIsinstanceNarrowed.NarrowedUserGeneric(new global::MatchScrutineeIsinstanceNarrowed.Box<int>(42));
-#line (49, 5) - (49, 29) 8 "match_scrutinee_isinstance_narrowed.spy"
-        global::MatchScrutineeIsinstanceNarrowed.NarrowedCollection(new Sharpy.List<int>() { 9 });
-#line (50, 5) - (50, 34) 8 "match_scrutinee_isinstance_narrowed.spy"
-        global::MatchScrutineeIsinstanceNarrowed.NarrowedOptional(Optional<string>.Some("hi"));
-#line hidden
     }
 }
 #line default

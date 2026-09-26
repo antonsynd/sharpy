@@ -7,8 +7,19 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestParametrizeClass
+namespace TestParametrizeClass
 {
+    public static partial class TestParametrizeClassModule
+    {
+        public static void Main()
+        {
+#line (11, 5) - (11, 16) 12 "test_parametrize_class.spy"
+            global::Sharpy.Builtins.Print("ok");
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "CalculatorTests")]
     public class CalculatorTests
     {
         [Xunit.TheoryAttribute]
@@ -32,13 +43,6 @@ public static partial class TestParametrizeClass
             Xunit.Assert.Equal(expected, a * b);
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (11, 5) - (11, 16) 8 "test_parametrize_class.spy"
-        global::Sharpy.Builtins.Print("ok");
-#line hidden
     }
 }
 #line default

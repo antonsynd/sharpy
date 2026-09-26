@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayTests
 {
     [global::Sharpy.SharpyModule("numpy.ndarray_tests")]
-    public static partial class NdarrayTests
+    public static partial class NdarrayTestsModule
     {
     }
 
-    public partial class NdarrayTestsTests
+    public partial class NdarrayTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestProperties1d()

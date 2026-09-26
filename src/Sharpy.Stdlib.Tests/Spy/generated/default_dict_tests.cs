@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.DefaultDictTests
 {
     [global::Sharpy.SharpyModule("collections.default_dict_tests")]
-    public static partial class DefaultDictTests
+    public static partial class DefaultDictTestsModule
     {
     }
 
-    public partial class DefaultDictTestsTests
+    public partial class DefaultDictTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDefaultDictGetNoDefaultReturnsDefaultT()

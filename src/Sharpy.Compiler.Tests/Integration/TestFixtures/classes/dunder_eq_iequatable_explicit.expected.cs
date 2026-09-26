@@ -6,8 +6,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderEqIequatableExplicit
+namespace DunderEqIequatableExplicit
 {
+    public static partial class DunderEqIequatableExplicitModule
+    {
+        public static void Main()
+        {
+#line (13, 5) - (13, 15) 12 "dunder_eq_iequatable_explicit.spy"
+            var a = new global::DunderEqIequatableExplicit.Foo(1);
+#line (14, 5) - (14, 15) 12 "dunder_eq_iequatable_explicit.spy"
+            var b = new global::DunderEqIequatableExplicit.Foo(1);
+#line (16, 5) - (16, 18) 12 "dunder_eq_iequatable_explicit.spy"
+            global::Sharpy.Builtins.Print(a == b);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Foo")]
     public class Foo : global::System.IEquatable<global::DunderEqIequatableExplicit.Foo>
     {
         public int Value;
@@ -38,17 +53,6 @@ public static partial class DunderEqIequatableExplicit
         {
             return !(left?.Equals(right) ?? right is null);
         }
-    }
-
-    public static void Main()
-    {
-#line (13, 5) - (13, 15) 8 "dunder_eq_iequatable_explicit.spy"
-        var a = new global::DunderEqIequatableExplicit.Foo(1);
-#line (14, 5) - (14, 15) 8 "dunder_eq_iequatable_explicit.spy"
-        var b = new global::DunderEqIequatableExplicit.Foo(1);
-#line (16, 5) - (16, 18) 8 "dunder_eq_iequatable_explicit.spy"
-        global::Sharpy.Builtins.Print(a == b);
-#line hidden
     }
 }
 #line default

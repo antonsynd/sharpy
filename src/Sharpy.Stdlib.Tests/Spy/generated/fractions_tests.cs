@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using math = global::Sharpy.MathModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Fractions
+namespace Sharpy.Stdlib.Tests.Spy.Fractions.FractionsTests
 {
     [global::Sharpy.SharpyModule("fractions.fractions_tests")]
-    public static partial class FractionsTests
+    public static partial class FractionsTestsModule
     {
     }
 
-    public partial class FractionsTestsTests
+    public partial class FractionsTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestFractionFromIntsReducesToLowestTerms()
@@ -134,7 +134,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Fractions
             try
             {
 #line (59, 9) - (59, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                new global::Sharpy.Fraction(global::Sharpy.MathModule.Nan);
+                new global::Sharpy.Fraction(global::Sharpy.MathModule.MathModuleModule.Nan);
 #line hidden
             }
             catch (ValueError)
@@ -155,7 +155,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Fractions
             try
             {
 #line (64, 9) - (64, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                new global::Sharpy.Fraction(global::Sharpy.MathModule.Inf);
+                new global::Sharpy.Fraction(global::Sharpy.MathModule.MathModuleModule.Inf);
 #line hidden
             }
             catch (ValueError)

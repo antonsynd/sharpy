@@ -6,8 +6,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AccessNamingConventionMethods
+namespace AccessNamingConventionMethods
 {
+    public static partial class AccessNamingConventionMethodsModule
+    {
+        public static void Main()
+        {
+#line (32, 5) - (32, 22) 12 "access_naming_convention_methods.spy"
+            global::AccessNamingConventionMethods.Base b = new global::AccessNamingConventionMethods.Base();
+#line (34, 5) - (34, 18) 12 "access_naming_convention_methods.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Str(b));
+#line (36, 5) - (36, 29) 12 "access_naming_convention_methods.spy"
+            global::Sharpy.Builtins.Print(b.PublicMethod());
+#line (38, 5) - (38, 28) 12 "access_naming_convention_methods.spy"
+            global::Sharpy.Builtins.Print(b.CallPrivate());
+#line (40, 5) - (40, 24) 12 "access_naming_convention_methods.spy"
+            global::AccessNamingConventionMethods.Child c = new global::AccessNamingConventionMethods.Child();
+#line (42, 5) - (42, 30) 12 "access_naming_convention_methods.spy"
+            global::Sharpy.Builtins.Print(c.CallProtected());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Base")]
     public class Base
     {
         public override string ToString()
@@ -59,6 +80,7 @@ public static partial class AccessNamingConventionMethods
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Child")]
     public class Child : global::AccessNamingConventionMethods.Base
     {
         public string CallProtected()
@@ -74,22 +96,4 @@ public static partial class AccessNamingConventionMethods
         {
         }
     }
-
-    public static void Main()
-    {
-#line (32, 5) - (32, 22) 8 "access_naming_convention_methods.spy"
-        global::AccessNamingConventionMethods.Base b = new global::AccessNamingConventionMethods.Base();
-#line (34, 5) - (34, 18) 8 "access_naming_convention_methods.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Str(b));
-#line (36, 5) - (36, 29) 8 "access_naming_convention_methods.spy"
-        global::Sharpy.Builtins.Print(b.PublicMethod());
-#line (38, 5) - (38, 28) 8 "access_naming_convention_methods.spy"
-        global::Sharpy.Builtins.Print(b.CallPrivate());
-#line (40, 5) - (40, 24) 8 "access_naming_convention_methods.spy"
-        global::AccessNamingConventionMethods.Child c = new global::AccessNamingConventionMethods.Child();
-#line (42, 5) - (42, 30) 8 "access_naming_convention_methods.spy"
-        global::Sharpy.Builtins.Print(c.CallProtected());
-#line hidden
-    }
 }
-#line default

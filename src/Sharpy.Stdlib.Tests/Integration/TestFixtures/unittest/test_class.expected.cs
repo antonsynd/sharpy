@@ -7,8 +7,19 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestClass
+namespace TestClass
 {
+    public static partial class TestClassModule
+    {
+        public static void Main()
+        {
+#line (17, 5) - (17, 16) 12 "test_class.spy"
+            global::Sharpy.Builtins.Print("ok");
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "TestCalc")]
     public class TestCalc : global::System.IDisposable
     {
         public TestCalc()
@@ -46,13 +57,6 @@ public static partial class TestClass
         {
             Teardown();
         }
-    }
-
-    public static void Main()
-    {
-#line (17, 5) - (17, 16) 8 "test_class.spy"
-        global::Sharpy.Builtins.Print("ok");
-#line hidden
     }
 }
 #line default

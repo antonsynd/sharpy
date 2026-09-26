@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using base64 = global::Sharpy.Base64Module;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Base64
+namespace Sharpy.Stdlib.Tests.Spy.Base64.Base64Tests
 {
     [global::Sharpy.SharpyModule("base64.base64_tests")]
-    public static partial class Base64Tests
+    public static partial class Base64TestsModule
     {
     }
 
-    public partial class Base64TestsTests
+    public partial class Base64TestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestB64encodeHelloWorld()

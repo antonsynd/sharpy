@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using shlex = global::Sharpy.ShlexModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Shlex
+namespace Sharpy.Stdlib.Tests.Spy.Shlex.ShlexModuleTests
 {
     [global::Sharpy.SharpyModule("shlex.shlex_module_tests")]
-    public static partial class ShlexModuleTests
+    public static partial class ShlexModuleTestsModule
     {
     }
 
-    public partial class ShlexModuleTestsTests
+    public partial class ShlexModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSplitSimpleWords()

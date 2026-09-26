@@ -6,31 +6,34 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class MatchLiteral0001
+namespace MatchLiteral0001
 {
-    public static void Main()
+    public static partial class MatchLiteral0001Module
     {
-#line (2, 5) - (2, 21) 8 "match_literal_0001.spy"
-        int value = 42;
-#line (3, 5) - (9, 27) 8 "match_literal_0001.spy"
-        switch (value)
-#line hidden
+        public static void Main()
         {
-            case 1:
-#line (5, 13) - (5, 25) 16 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print("one");
+#line (2, 5) - (2, 21) 12 "match_literal_0001.spy"
+            int value = 42;
+#line (3, 5) - (9, 27) 12 "match_literal_0001.spy"
+            switch (value)
 #line hidden
-                break;
-            case 42:
-#line (7, 13) - (7, 31) 16 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print("forty-two");
+            {
+                case 1:
+#line (5, 13) - (5, 25) 20 "match_literal_0001.spy"
+                    global::Sharpy.Builtins.Print("one");
 #line hidden
-                break;
-            default:
-#line (9, 13) - (9, 27) 16 "match_literal_0001.spy"
-                global::Sharpy.Builtins.Print("other");
+                    break;
+                case 42:
+#line (7, 13) - (7, 31) 20 "match_literal_0001.spy"
+                    global::Sharpy.Builtins.Print("forty-two");
 #line hidden
-                break;
+                    break;
+                default:
+#line (9, 13) - (9, 27) 20 "match_literal_0001.spy"
+                    global::Sharpy.Builtins.Print("other");
+#line hidden
+                    break;
+            }
         }
     }
 }

@@ -6,8 +6,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AccessDecoratorOverridesConvention
+namespace AccessDecoratorOverridesConvention
 {
+    public static partial class AccessDecoratorOverridesConventionModule
+    {
+        public static void Main()
+        {
+#line (16, 5) - (16, 26) 12 "access_decorator_overrides_convention.spy"
+            global::AccessDecoratorOverridesConvention.Config c = new global::AccessDecoratorOverridesConvention.Config();
+#line (18, 5) - (18, 32) 12 "access_decorator_overrides_convention.spy"
+            global::Sharpy.Builtins.Print(c.__ShouldBePublic);
+#line (19, 5) - (19, 33) 12 "access_decorator_overrides_convention.spy"
+            global::Sharpy.Builtins.Print(c._ShouldBePublic());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Config")]
     public class Config
     {
         public int __ShouldBePublic;
@@ -26,17 +41,6 @@ public static partial class AccessDecoratorOverridesConvention
             this.__ShouldBePublic = 99;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (16, 5) - (16, 26) 8 "access_decorator_overrides_convention.spy"
-        global::AccessDecoratorOverridesConvention.Config c = new global::AccessDecoratorOverridesConvention.Config();
-#line (18, 5) - (18, 32) 8 "access_decorator_overrides_convention.spy"
-        global::Sharpy.Builtins.Print(c.__ShouldBePublic);
-#line (19, 5) - (19, 33) 8 "access_decorator_overrides_convention.spy"
-        global::Sharpy.Builtins.Print(c._ShouldBePublic());
-#line hidden
     }
 }
 #line default

@@ -7,8 +7,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class VirtualOverrideShapes
+namespace VirtualOverrideShapes
 {
+    public static partial class VirtualOverrideShapesModule
+    {
+        public static global::VirtualOverrideShapes.Rectangle Rect = new global::VirtualOverrideShapes.Rectangle(5.0d, 3.0d);
+        public static global::VirtualOverrideShapes.Circle Circ = new global::VirtualOverrideShapes.Circle(4.0d);
+        public static void Main()
+        {
+#line (59, 5) - (59, 20) 12 "virtual_override_shapes.spy"
+            global::VirtualOverrideShapes.VirtualOverrideShapesModule.Rect.Describe();
+#line (61, 5) - (61, 20) 12 "virtual_override_shapes.spy"
+            global::VirtualOverrideShapes.VirtualOverrideShapesModule.Circ.Describe();
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Shape")]
     public abstract class Shape
     {
         public string Name;
@@ -49,6 +64,7 @@ public static partial class VirtualOverrideShapes
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Rectangle")]
     public class Rectangle : global::VirtualOverrideShapes.Shape
     {
         public double Width;
@@ -80,6 +96,7 @@ public static partial class VirtualOverrideShapes
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Circle")]
     public class Circle : global::VirtualOverrideShapes.Shape
     {
         public double Radius;
@@ -106,17 +123,6 @@ public static partial class VirtualOverrideShapes
             this.Radius = radius;
 #line hidden
         }
-    }
-
-    public static global::VirtualOverrideShapes.Rectangle Rect = new global::VirtualOverrideShapes.Rectangle(5.0d, 3.0d);
-    public static global::VirtualOverrideShapes.Circle Circ = new global::VirtualOverrideShapes.Circle(4.0d);
-    public static void Main()
-    {
-#line (59, 5) - (59, 20) 8 "virtual_override_shapes.spy"
-        global::VirtualOverrideShapes.Rect.Describe();
-#line (61, 5) - (61, 20) 8 "virtual_override_shapes.spy"
-        global::VirtualOverrideShapes.Circ.Describe();
-#line hidden
     }
 }
 #line default

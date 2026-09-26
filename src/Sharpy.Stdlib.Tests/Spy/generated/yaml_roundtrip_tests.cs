@@ -12,14 +12,14 @@ using yaml = global::Sharpy.Yaml;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Yaml
+namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
 {
     [global::Sharpy.SharpyModule("yaml.yaml_roundtrip_tests")]
-    public static partial class YamlRoundtripTests
+    public static partial class YamlRoundtripTestsModule
     {
     }
 
-    public partial class YamlRoundtripTestsTests
+    public partial class YamlRoundtripTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestRoundtripLoadMappingReturnsCommentedMap()

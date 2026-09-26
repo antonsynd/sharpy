@@ -7,8 +7,80 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class KeywordArgsWithDefaults
+namespace KeywordArgsWithDefaults
 {
+    public static partial class KeywordArgsWithDefaultsModule
+    {
+        public static int CalculateScore(int @base, int bonus = 10, int multiplier = 1, int penalty = 0)
+        {
+#line (47, 5) - (47, 32) 12 "keyword_args_with_defaults.spy"
+            int result = @base + bonus;
+#line (48, 5) - (48, 33) 12 "keyword_args_with_defaults.spy"
+            result = result * multiplier;
+#line (49, 5) - (49, 30) 12 "keyword_args_with_defaults.spy"
+            result = result - penalty;
+#line (50, 5) - (50, 19) 12 "keyword_args_with_defaults.spy"
+            return result;
+#line hidden
+        }
+
+        public static int ProcessData(string name, int value = 100, bool enabled = true)
+        {
+#line (53, 5) - (55, 22) 12 "keyword_args_with_defaults.spy"
+            if (enabled)
+#line hidden
+            {
+#line (54, 9) - (54, 20) 16 "keyword_args_with_defaults.spy"
+                global::Sharpy.Builtins.Print(name);
+#line (55, 9) - (55, 22) 16 "keyword_args_with_defaults.spy"
+                return value;
+#line hidden
+            }
+
+#line (56, 5) - (56, 14) 12 "keyword_args_with_defaults.spy"
+            return 0;
+#line hidden
+        }
+
+        public static void Main()
+        {
+#line (59, 5) - (59, 46) 12 "keyword_args_with_defaults.spy"
+            global::KeywordArgsWithDefaults.ConfigBuilder config1 = new global::KeywordArgsWithDefaults.ConfigBuilder();
+#line (60, 5) - (60, 29) 12 "keyword_args_with_defaults.spy"
+            config1.DisplayConfig();
+#line (62, 5) - (62, 75) 12 "keyword_args_with_defaults.spy"
+            global::KeywordArgsWithDefaults.ConfigBuilder config2 = new global::KeywordArgsWithDefaults.ConfigBuilder(host: "example.com", port: 9000);
+#line (63, 5) - (63, 24) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(config2.Host);
+#line (64, 5) - (64, 24) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(config2.Port);
+#line (66, 5) - (66, 80) 12 "keyword_args_with_defaults.spy"
+            global::KeywordArgsWithDefaults.HttpClient client = new global::KeywordArgsWithDefaults.HttpClient(url: "https://api.example.com", retries: 10);
+#line (67, 5) - (67, 84) 12 "keyword_args_with_defaults.spy"
+            int result = client.SendRequest(endpoint: "/users", method: "POST", retries: 5);
+#line (68, 5) - (68, 18) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(result);
+#line (70, 5) - (70, 44) 12 "keyword_args_with_defaults.spy"
+            int score1 = global::KeywordArgsWithDefaults.KeywordArgsWithDefaultsModule.CalculateScore(@base: 50);
+#line (71, 5) - (71, 18) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(score1);
+#line (73, 5) - (73, 68) 12 "keyword_args_with_defaults.spy"
+            int score2 = global::KeywordArgsWithDefaults.KeywordArgsWithDefaultsModule.CalculateScore(@base: 50, bonus: 20, multiplier: 2);
+#line (74, 5) - (74, 18) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(score2);
+#line (76, 5) - (76, 71) 12 "keyword_args_with_defaults.spy"
+            int score3 = global::KeywordArgsWithDefaults.KeywordArgsWithDefaultsModule.CalculateScore(@base: 100, penalty: 15, multiplier: 3);
+#line (77, 5) - (77, 18) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(score3);
+#line (79, 5) - (79, 58) 12 "keyword_args_with_defaults.spy"
+            int val = global::KeywordArgsWithDefaults.KeywordArgsWithDefaultsModule.ProcessData(name: "DataPoint", value: 250);
+#line (80, 5) - (80, 15) 12 "keyword_args_with_defaults.spy"
+            global::Sharpy.Builtins.Print(val);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "ConfigBuilder")]
     public class ConfigBuilder
     {
         public string Host;
@@ -44,6 +116,7 @@ public static partial class KeywordArgsWithDefaults
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "RequestHandler")]
     public abstract class RequestHandler
     {
         public string BaseUrl;
@@ -57,6 +130,7 @@ public static partial class KeywordArgsWithDefaults
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "HttpClient")]
     public class HttpClient : global::KeywordArgsWithDefaults.RequestHandler
     {
         public int MaxRetries;
@@ -79,74 +153,6 @@ public static partial class KeywordArgsWithDefaults
             this.MaxRetries = retries;
 #line hidden
         }
-    }
-
-    public static int CalculateScore(int @base, int bonus = 10, int multiplier = 1, int penalty = 0)
-    {
-#line (47, 5) - (47, 32) 8 "keyword_args_with_defaults.spy"
-        int result = @base + bonus;
-#line (48, 5) - (48, 33) 8 "keyword_args_with_defaults.spy"
-        result = result * multiplier;
-#line (49, 5) - (49, 30) 8 "keyword_args_with_defaults.spy"
-        result = result - penalty;
-#line (50, 5) - (50, 19) 8 "keyword_args_with_defaults.spy"
-        return result;
-#line hidden
-    }
-
-    public static int ProcessData(string name, int value = 100, bool enabled = true)
-    {
-#line (53, 5) - (55, 22) 8 "keyword_args_with_defaults.spy"
-        if (enabled)
-#line hidden
-        {
-#line (54, 9) - (54, 20) 12 "keyword_args_with_defaults.spy"
-            global::Sharpy.Builtins.Print(name);
-#line (55, 9) - (55, 22) 12 "keyword_args_with_defaults.spy"
-            return value;
-#line hidden
-        }
-
-#line (56, 5) - (56, 14) 8 "keyword_args_with_defaults.spy"
-        return 0;
-#line hidden
-    }
-
-    public static void Main()
-    {
-#line (59, 5) - (59, 46) 8 "keyword_args_with_defaults.spy"
-        global::KeywordArgsWithDefaults.ConfigBuilder config1 = new global::KeywordArgsWithDefaults.ConfigBuilder();
-#line (60, 5) - (60, 29) 8 "keyword_args_with_defaults.spy"
-        config1.DisplayConfig();
-#line (62, 5) - (62, 75) 8 "keyword_args_with_defaults.spy"
-        global::KeywordArgsWithDefaults.ConfigBuilder config2 = new global::KeywordArgsWithDefaults.ConfigBuilder(host: "example.com", port: 9000);
-#line (63, 5) - (63, 24) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(config2.Host);
-#line (64, 5) - (64, 24) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(config2.Port);
-#line (66, 5) - (66, 80) 8 "keyword_args_with_defaults.spy"
-        global::KeywordArgsWithDefaults.HttpClient client = new global::KeywordArgsWithDefaults.HttpClient(url: "https://api.example.com", retries: 10);
-#line (67, 5) - (67, 84) 8 "keyword_args_with_defaults.spy"
-        int result = client.SendRequest(endpoint: "/users", method: "POST", retries: 5);
-#line (68, 5) - (68, 18) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(result);
-#line (70, 5) - (70, 44) 8 "keyword_args_with_defaults.spy"
-        int score1 = global::KeywordArgsWithDefaults.CalculateScore(@base: 50);
-#line (71, 5) - (71, 18) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(score1);
-#line (73, 5) - (73, 68) 8 "keyword_args_with_defaults.spy"
-        int score2 = global::KeywordArgsWithDefaults.CalculateScore(@base: 50, bonus: 20, multiplier: 2);
-#line (74, 5) - (74, 18) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(score2);
-#line (76, 5) - (76, 71) 8 "keyword_args_with_defaults.spy"
-        int score3 = global::KeywordArgsWithDefaults.CalculateScore(@base: 100, penalty: 15, multiplier: 3);
-#line (77, 5) - (77, 18) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(score3);
-#line (79, 5) - (79, 58) 8 "keyword_args_with_defaults.spy"
-        int val = global::KeywordArgsWithDefaults.ProcessData(name: "DataPoint", value: 250);
-#line (80, 5) - (80, 15) 8 "keyword_args_with_defaults.spy"
-        global::Sharpy.Builtins.Print(val);
-#line hidden
     }
 }
 #line default

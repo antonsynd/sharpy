@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayReshapeTests
 {
     [global::Sharpy.SharpyModule("numpy.ndarray_reshape_tests")]
-    public static partial class NdarrayReshapeTests
+    public static partial class NdarrayReshapeTestsModule
     {
     }
 
-    public partial class NdarrayReshapeTestsTests
+    public partial class NdarrayReshapeTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestReshape1dTo2d()

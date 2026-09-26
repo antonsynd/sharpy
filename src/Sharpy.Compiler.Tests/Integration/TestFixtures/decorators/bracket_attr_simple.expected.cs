@@ -6,8 +6,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class BracketAttrSimple
+namespace BracketAttrSimple
 {
+    public static partial class BracketAttrSimpleModule
+    {
+        public static void Main()
+        {
+#line (10, 5) - (10, 19) 12 "bracket_attr_simple.spy"
+            var c = new global::BracketAttrSimple.Config(42);
+#line (11, 5) - (11, 19) 12 "bracket_attr_simple.spy"
+            global::Sharpy.Builtins.Print(c.Value);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Config")]
     [Serializable]
     public class Config
     {
@@ -19,15 +32,6 @@ public static partial class BracketAttrSimple
             this.Value = v;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (10, 5) - (10, 19) 8 "bracket_attr_simple.spy"
-        var c = new global::BracketAttrSimple.Config(42);
-#line (11, 5) - (11, 19) 8 "bracket_attr_simple.spy"
-        global::Sharpy.Builtins.Print(c.Value);
-#line hidden
     }
 }
 #line default

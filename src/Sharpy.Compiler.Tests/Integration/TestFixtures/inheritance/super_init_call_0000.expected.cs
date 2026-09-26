@@ -7,8 +7,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class SuperInitCall0000
+namespace SuperInitCall0000
 {
+    public static partial class SuperInitCall0000Module
+    {
+        public static void Main()
+        {
+#line (40, 5) - (40, 46) 12 "super_init_call_0000.spy"
+            var tesla = new global::SuperInitCall0000.ElectricCar("Tesla", 2024, 4, 85);
+#line (41, 5) - (41, 21) 12 "super_init_call_0000.spy"
+            tesla.Drive(150);
+#line (42, 5) - (42, 25) 12 "super_init_call_0000.spy"
+            tesla.DisplayInfo();
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Vehicle")]
     public class Vehicle
     {
         public string Brand;
@@ -24,6 +39,7 @@ public static partial class SuperInitCall0000
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Car")]
     public class Car : global::SuperInitCall0000.Vehicle
     {
         public int Doors;
@@ -47,6 +63,7 @@ public static partial class SuperInitCall0000
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "ElectricCar")]
     public class ElectricCar : global::SuperInitCall0000.Car
     {
         public int BatteryCapacity;
@@ -76,17 +93,6 @@ public static partial class SuperInitCall0000
             this.ChargeLevel = 100;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (40, 5) - (40, 46) 8 "super_init_call_0000.spy"
-        var tesla = new global::SuperInitCall0000.ElectricCar("Tesla", 2024, 4, 85);
-#line (41, 5) - (41, 21) 8 "super_init_call_0000.spy"
-        tesla.Drive(150);
-#line (42, 5) - (42, 25) 8 "super_init_call_0000.spy"
-        tesla.DisplayInfo();
-#line hidden
     }
 }
 #line default

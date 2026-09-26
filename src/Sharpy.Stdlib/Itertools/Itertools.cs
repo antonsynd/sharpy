@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.Itertools
 {
     /// <summary>
     /// Functions creating iterators for efficient looping.
     /// </summary>
-    public static partial class Itertools
+    public static partial class ItertoolsModule
     {
         internal static System.Collections.Generic.IEnumerable<int> _CountCore(int start, int step)
         {
@@ -30,7 +30,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<int> Count(int start = 0, int step = 1)
         {
-            return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools._CountCore(start, step));
+            return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools.ItertoolsModule._CountCore(start, step));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _RepeatCore<T>(T elem, int n)
@@ -58,7 +58,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Repeat<T>(T elem, int n = -1)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._RepeatCore<T>(elem, n));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._RepeatCore<T>(elem, n));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _CycleCore<T>(Sharpy.List<T> iterable)
@@ -84,7 +84,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Cycle<T>(Sharpy.List<T> iterable)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._CycleCore<T>(iterable));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._CycleCore<T>(iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _CompressCore<T>(Sharpy.List<T> data, Sharpy.List<bool> selectors)
@@ -108,7 +108,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Compress<T>(Sharpy.List<T> data, Sharpy.List<bool> selectors)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._CompressCore<T>(data, selectors));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._CompressCore<T>(data, selectors));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _DropwhileCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
@@ -137,7 +137,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Dropwhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._DropwhileCore<T>(predicate, iterable));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._DropwhileCore<T>(predicate, iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _TakewhileCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
@@ -161,7 +161,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Takewhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._TakewhileCore<T>(predicate, iterable));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._TakewhileCore<T>(predicate, iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _FilterfalseCore<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
@@ -181,7 +181,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Filterfalse<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._FilterfalseCore<T>(predicate, iterable));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._FilterfalseCore<T>(predicate, iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _IsliceCore<T>(Sharpy.List<T> iterable, int stop)
@@ -205,7 +205,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Islice<T>(Sharpy.List<T> iterable, int stop)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._IsliceCore<T>(iterable, stop));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._IsliceCore<T>(iterable, stop));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _IsliceRangeCore<T>(Sharpy.List<T> iterable, int start, int stop, int step)
@@ -235,7 +235,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> IsliceRange<T>(Sharpy.List<T> iterable, int start, int stop, int step = 1)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._IsliceRangeCore<T>(iterable, start, stop, step));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._IsliceRangeCore<T>(iterable, start, stop, step));
         }
 
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> _PairwiseCore<T>(Sharpy.List<T> iterable)
@@ -254,7 +254,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<T, T>> Pairwise<T>(Sharpy.List<T> iterable)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T, T>>(global::Sharpy.Itertools._PairwiseCore<T>(iterable));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T, T>>(global::Sharpy.Itertools.ItertoolsModule._PairwiseCore<T>(iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<int> _AccumulateCore(Sharpy.List<int> iterable)
@@ -281,7 +281,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<int> Accumulate(Sharpy.List<int> iterable)
         {
-            return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools._AccumulateCore(iterable));
+            return global::Sharpy.Builtins.Iter<int>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _AccumulateCore<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func)
@@ -308,7 +308,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Accumulate<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._AccumulateCore(iterable, func));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable, func));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _AccumulateCore<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func, T initial)
@@ -328,7 +328,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Accumulate<T>(Sharpy.List<T> iterable, global::System.Func<T, T, T> func, T initial)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._AccumulateCore(iterable, func, initial));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._AccumulateCore(iterable, func, initial));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _ChainCore<T>(Sharpy.List<T> first, Sharpy.List<T> second)
@@ -351,7 +351,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Chain<T>(Sharpy.List<T> first, Sharpy.List<T> second)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._ChainCore<T>(first, second));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainCore<T>(first, second));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _ChainCore<T>(Sharpy.List<T> first, Sharpy.List<T> second, Sharpy.List<T> third)
@@ -380,7 +380,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> Chain<T>(Sharpy.List<T> first, Sharpy.List<T> second, Sharpy.List<T> third)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._ChainCore<T>(first, second, third));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainCore<T>(first, second, third));
         }
 
         internal static System.Collections.Generic.IEnumerable<T> _ChainFromIterableCore<T>(Sharpy.List<Sharpy.List<T>> iterables)
@@ -401,7 +401,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<T> ChainFromIterable<T>(Sharpy.List<Sharpy.List<T>> iterables)
         {
-            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools._ChainFromIterableCore<T>(iterables));
+            return global::Sharpy.Builtins.Iter<T>(global::Sharpy.Itertools.ItertoolsModule._ChainFromIterableCore<T>(iterables));
         }
 
         internal static System.Collections.Generic.IEnumerable<R> _StarmapCore<T1, T2, R>(global::System.Func<T1, T2, R> func, Sharpy.List<global::System.ValueTuple<T1, T2>> iterable)
@@ -417,7 +417,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<R> Starmap<T1, T2, R>(global::System.Func<T1, T2, R> func, Sharpy.List<global::System.ValueTuple<T1, T2>> iterable)
         {
-            return global::Sharpy.Builtins.Iter<R>(global::Sharpy.Itertools._StarmapCore<T1, T2, R>(func, iterable));
+            return global::Sharpy.Builtins.Iter<R>(global::Sharpy.Itertools.ItertoolsModule._StarmapCore<T1, T2, R>(func, iterable));
         }
 
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> _ZipLongestCore<T>(Sharpy.List<T> first, Sharpy.List<T> second, T fillvalue)
@@ -440,7 +440,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<T, T>> ZipLongest<T>(Sharpy.List<T> first, Sharpy.List<T> second, T fillvalue)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T, T>>(global::Sharpy.Itertools._ZipLongestCore<T>(first, second, fillvalue));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T, T>>(global::Sharpy.Itertools.ItertoolsModule._ZipLongestCore<T>(first, second, fillvalue));
         }
 
         /// <summary>
@@ -502,7 +502,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<T1, T2>> Product<T1, T2>(Sharpy.List<T1> first, Sharpy.List<T2> second)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2>>(global::Sharpy.Itertools._ProductCore<T1, T2>(first, second));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2>>(global::Sharpy.Itertools.ItertoolsModule._ProductCore<T1, T2>(first, second));
         }
 
         internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T1, T2, T3>> _ProductCore<T1, T2, T3>(Sharpy.List<T1> first, Sharpy.List<T2> second, Sharpy.List<T3> third)
@@ -527,7 +527,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<T1, T2, T3>> Product<T1, T2, T3>(Sharpy.List<T1> first, Sharpy.List<T2> second, Sharpy.List<T3> third)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2, T3>>(global::Sharpy.Itertools._ProductCore<T1, T2, T3>(first, second, third));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<T1, T2, T3>>(global::Sharpy.Itertools.ItertoolsModule._ProductCore<T1, T2, T3>(first, second, third));
         }
 
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _CombinationsCore<T>(Sharpy.List<T> iterable, int r)
@@ -614,7 +614,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<Sharpy.List<T>> Combinations<T>(Sharpy.List<T> iterable, int r)
         {
-            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools._CombinationsCore<T>(iterable, r));
+            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._CombinationsCore<T>(iterable, r));
         }
 
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _PermutationsCore<T>(Sharpy.List<T> iterable, int r)
@@ -724,7 +724,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<Sharpy.List<T>> Permutations<T>(Sharpy.List<T> iterable, int r = -1)
         {
-            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools._PermutationsCore<T>(iterable, r));
+            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._PermutationsCore<T>(iterable, r));
         }
 
         internal static System.Collections.Generic.IEnumerable<Sharpy.List<T>> _CombinationsWithReplacementCore<T>(Sharpy.List<T> iterable, int r)
@@ -811,7 +811,7 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<Sharpy.List<T>> CombinationsWithReplacement<T>(Sharpy.List<T> iterable, int r)
         {
-            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools._CombinationsWithReplacementCore<T>(iterable, r));
+            return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._CombinationsWithReplacementCore<T>(iterable, r));
         }
     }
 }

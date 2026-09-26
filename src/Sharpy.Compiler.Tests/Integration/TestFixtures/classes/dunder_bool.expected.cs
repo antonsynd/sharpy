@@ -6,8 +6,43 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderBool
+namespace DunderBool
 {
+    public static partial class DunderBoolModule
+    {
+        public static void Main()
+        {
+#line (12, 5) - (12, 18) 12 "dunder_bool.spy"
+            var t = new global::DunderBool.Truthy(1);
+#line (13, 5) - (13, 18) 12 "dunder_bool.spy"
+            var f = new global::DunderBool.Truthy(0);
+#line (14, 5) - (15, 24) 12 "dunder_bool.spy"
+            if (t.IsTrue)
+#line hidden
+            {
+#line (15, 9) - (15, 24) 16 "dunder_bool.spy"
+                global::Sharpy.Builtins.Print("truthy");
+#line hidden
+            }
+
+#line (16, 5) - (19, 23) 12 "dunder_bool.spy"
+            if (f.IsTrue)
+#line hidden
+            {
+#line (17, 9) - (17, 34) 16 "dunder_bool.spy"
+                global::Sharpy.Builtins.Print("should not print");
+#line hidden
+            }
+            else
+            {
+#line (19, 9) - (19, 23) 16 "dunder_bool.spy"
+                global::Sharpy.Builtins.Print("falsy");
+#line hidden
+            }
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Truthy")]
     public class Truthy : Sharpy.IBoolConvertible
     {
         public int Value;
@@ -37,37 +72,6 @@ public static partial class DunderBool
         public static bool operator false(Truthy value)
         {
             return !value.IsTrue;
-        }
-    }
-
-    public static void Main()
-    {
-#line (12, 5) - (12, 18) 8 "dunder_bool.spy"
-        var t = new global::DunderBool.Truthy(1);
-#line (13, 5) - (13, 18) 8 "dunder_bool.spy"
-        var f = new global::DunderBool.Truthy(0);
-#line (14, 5) - (15, 24) 8 "dunder_bool.spy"
-        if (t.IsTrue)
-#line hidden
-        {
-#line (15, 9) - (15, 24) 12 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print("truthy");
-#line hidden
-        }
-
-#line (16, 5) - (19, 23) 8 "dunder_bool.spy"
-        if (f.IsTrue)
-#line hidden
-        {
-#line (17, 9) - (17, 34) 12 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print("should not print");
-#line hidden
-        }
-        else
-        {
-#line (19, 9) - (19, 23) 12 "dunder_bool.spy"
-            global::Sharpy.Builtins.Print("falsy");
-#line hidden
         }
     }
 }

@@ -7,19 +7,48 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class InterfaceImplementation0003
+namespace InterfaceImplementation0003
 {
+    public static partial class InterfaceImplementation0003Module
+    {
+        public static void Main()
+        {
+#line (42, 5) - (42, 31) 12 "interface_implementation_0003.spy"
+            var cc = new global::InterfaceImplementation0003.CreditCardProcessor();
+#line (43, 5) - (43, 27) 12 "interface_implementation_0003.spy"
+            var cash = new global::InterfaceImplementation0003.CashProcessor();
+#line (45, 5) - (45, 28) 12 "interface_implementation_0003.spy"
+            cc.ProcessPayment(100);
+#line (46, 5) - (46, 30) 12 "interface_implementation_0003.spy"
+            global::Sharpy.Builtins.Print(cc.TotalProcessed);
+#line (47, 5) - (47, 24) 12 "interface_implementation_0003.spy"
+            global::Sharpy.Builtins.Print(cc.GetFee());
+#line (49, 5) - (49, 26) 12 "interface_implementation_0003.spy"
+            cc.ProcessRefund(25);
+#line (50, 5) - (50, 30) 12 "interface_implementation_0003.spy"
+            global::Sharpy.Builtins.Print(cc.TotalProcessed);
+#line (52, 5) - (52, 29) 12 "interface_implementation_0003.spy"
+            cash.ProcessPayment(50);
+#line (53, 5) - (53, 26) 12 "interface_implementation_0003.spy"
+            global::Sharpy.Builtins.Print(cash.GetFee());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "IPaymentProcessor")]
     public interface IPaymentProcessor
     {
         bool ProcessPayment(int amount);
         int GetFee();
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "IRefundable")]
     public interface IRefundable
     {
         bool ProcessRefund(int amount);
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "CreditCardProcessor")]
     public class CreditCardProcessor : global::InterfaceImplementation0003.IPaymentProcessor, global::InterfaceImplementation0003.IRefundable
     {
         public int Fee;
@@ -63,6 +92,7 @@ public static partial class InterfaceImplementation0003
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "CashProcessor")]
     public class CashProcessor : global::InterfaceImplementation0003.IPaymentProcessor
     {
         public int Fee;
@@ -89,29 +119,6 @@ public static partial class InterfaceImplementation0003
             this.Fee = 0;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (42, 5) - (42, 31) 8 "interface_implementation_0003.spy"
-        var cc = new global::InterfaceImplementation0003.CreditCardProcessor();
-#line (43, 5) - (43, 27) 8 "interface_implementation_0003.spy"
-        var cash = new global::InterfaceImplementation0003.CashProcessor();
-#line (45, 5) - (45, 28) 8 "interface_implementation_0003.spy"
-        cc.ProcessPayment(100);
-#line (46, 5) - (46, 30) 8 "interface_implementation_0003.spy"
-        global::Sharpy.Builtins.Print(cc.TotalProcessed);
-#line (47, 5) - (47, 24) 8 "interface_implementation_0003.spy"
-        global::Sharpy.Builtins.Print(cc.GetFee());
-#line (49, 5) - (49, 26) 8 "interface_implementation_0003.spy"
-        cc.ProcessRefund(25);
-#line (50, 5) - (50, 30) 8 "interface_implementation_0003.spy"
-        global::Sharpy.Builtins.Print(cc.TotalProcessed);
-#line (52, 5) - (52, 29) 8 "interface_implementation_0003.spy"
-        cash.ProcessPayment(50);
-#line (53, 5) - (53, 26) 8 "interface_implementation_0003.spy"
-        global::Sharpy.Builtins.Print(cash.GetFee());
-#line hidden
     }
 }
 #line default

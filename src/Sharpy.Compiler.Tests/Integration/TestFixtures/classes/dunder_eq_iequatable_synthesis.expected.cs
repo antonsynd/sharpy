@@ -6,8 +6,31 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderEqIequatableSynthesis
+namespace DunderEqIequatableSynthesis
 {
+    public static partial class DunderEqIequatableSynthesisModule
+    {
+        public static void Main()
+        {
+#line (13, 5) - (13, 20) 12 "dunder_eq_iequatable_synthesis.spy"
+            var a = new global::DunderEqIequatableSynthesis.Point(1, 2);
+#line (14, 5) - (14, 20) 12 "dunder_eq_iequatable_synthesis.spy"
+            var b = new global::DunderEqIequatableSynthesis.Point(1, 2);
+#line (15, 5) - (15, 20) 12 "dunder_eq_iequatable_synthesis.spy"
+            var c = new global::DunderEqIequatableSynthesis.Point(3, 4);
+#line (18, 5) - (18, 18) 12 "dunder_eq_iequatable_synthesis.spy"
+            global::Sharpy.Builtins.Print(a == b);
+#line (19, 5) - (19, 18) 12 "dunder_eq_iequatable_synthesis.spy"
+            global::Sharpy.Builtins.Print(a == c);
+#line (22, 5) - (22, 18) 12 "dunder_eq_iequatable_synthesis.spy"
+            global::Sharpy.Builtins.Print(a != b);
+#line (23, 5) - (23, 18) 12 "dunder_eq_iequatable_synthesis.spy"
+            global::Sharpy.Builtins.Print(a != c);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Point")]
     public class Point : System.IEquatable<global::DunderEqIequatableSynthesis.Point>
     {
         public int X;
@@ -41,25 +64,6 @@ public static partial class DunderEqIequatableSynthesis
         {
             return !(left?.Equals(right) ?? right is null);
         }
-    }
-
-    public static void Main()
-    {
-#line (13, 5) - (13, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var a = new global::DunderEqIequatableSynthesis.Point(1, 2);
-#line (14, 5) - (14, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var b = new global::DunderEqIequatableSynthesis.Point(1, 2);
-#line (15, 5) - (15, 20) 8 "dunder_eq_iequatable_synthesis.spy"
-        var c = new global::DunderEqIequatableSynthesis.Point(3, 4);
-#line (18, 5) - (18, 18) 8 "dunder_eq_iequatable_synthesis.spy"
-        global::Sharpy.Builtins.Print(a == b);
-#line (19, 5) - (19, 18) 8 "dunder_eq_iequatable_synthesis.spy"
-        global::Sharpy.Builtins.Print(a == c);
-#line (22, 5) - (22, 18) 8 "dunder_eq_iequatable_synthesis.spy"
-        global::Sharpy.Builtins.Print(a != b);
-#line (23, 5) - (23, 18) 8 "dunder_eq_iequatable_synthesis.spy"
-        global::Sharpy.Builtins.Print(a != c);
-#line hidden
     }
 }
 #line default

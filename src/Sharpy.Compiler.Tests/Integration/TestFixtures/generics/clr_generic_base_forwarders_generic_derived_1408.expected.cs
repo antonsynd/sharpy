@@ -7,8 +7,25 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ClrGenericBaseForwardersGenericDerived1408
+namespace ClrGenericBaseForwardersGenericDerived1408
 {
+    public static partial class ClrGenericBaseForwardersGenericDerived1408Module
+    {
+        public static void Main()
+        {
+#line (16, 5) - (16, 36) 12 "clr_generic_base_forwarders_generic_derived_1408.spy"
+            global::ClrGenericBaseForwardersGenericDerived1408.MyList<string> m = new global::ClrGenericBaseForwardersGenericDerived1408.MyList<string>();
+#line (17, 5) - (17, 13) 12 "clr_generic_base_forwarders_generic_derived_1408.spy"
+            m.Add(7);
+#line (18, 5) - (18, 23) 12 "clr_generic_base_forwarders_generic_derived_1408.spy"
+            global::System.Collections.Generic.List<int> ok = m;
+#line (19, 5) - (19, 20) 12 "clr_generic_base_forwarders_generic_derived_1408.spy"
+            global::Sharpy.Builtins.Print(ok.Count);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "MyList")]
     public class MyList<T> : global::System.Collections.Generic.List<int>
     {
         public MyList() : base()
@@ -22,19 +39,6 @@ public static partial class ClrGenericBaseForwardersGenericDerived1408
         public MyList(global::System.Collections.Generic.IEnumerable<int> collection) : base(collection)
         {
         }
-    }
-
-    public static void Main()
-    {
-#line (16, 5) - (16, 36) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
-        global::ClrGenericBaseForwardersGenericDerived1408.MyList<string> m = new global::ClrGenericBaseForwardersGenericDerived1408.MyList<string>();
-#line (17, 5) - (17, 13) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
-        m.Add(7);
-#line (18, 5) - (18, 23) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
-        global::System.Collections.Generic.List<int> ok = m;
-#line (19, 5) - (19, 20) 8 "clr_generic_base_forwarders_generic_derived_1408.spy"
-        global::Sharpy.Builtins.Print(ok.Count);
-#line hidden
     }
 }
 #line default

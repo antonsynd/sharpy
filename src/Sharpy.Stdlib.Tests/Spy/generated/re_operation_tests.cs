@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using re = global::Sharpy.ReModule;
+using re = global::Sharpy.ReModule.ReModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Re
+namespace Sharpy.Stdlib.Tests.Spy.Re.ReOperationTests
 {
     [global::Sharpy.SharpyModule("re.re_operation_tests")]
-    public static partial class ReOperationTests
+    public static partial class ReOperationTestsModule
     {
     }
 
-    public partial class ReOperationTestsTests
+    public partial class ReOperationTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestFindallNoGroupsReturnsFullMatches()
@@ -66,7 +66,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Re
         public void TestFindallWithFlagsIgnoreCase()
         {
 #line (33, 5) - (33, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
-            var result = re.Findall("[a-z]+", "Hello World", flags: global::Sharpy.ReModule.IGNORECASE);
+            var result = re.Findall("[a-z]+", "Hello World", flags: global::Sharpy.ReModule.ReModuleModule.IGNORECASE);
 #line (34, 5) - (34, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (35, 5) - (35, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
@@ -252,7 +252,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Re
         public void TestSubWithFlagsCaseInsensitive()
         {
 #line (133, 5) - (133, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
-            string result = re.Sub("[a-z]+", "X", "Hello World", flags: global::Sharpy.ReModule.IGNORECASE);
+            string result = re.Sub("[a-z]+", "X", "Hello World", flags: global::Sharpy.ReModule.ReModuleModule.IGNORECASE);
 #line (134, 5) - (134, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_operation_tests.spy"
             Xunit.Assert.Equal("X X", result);
 #line hidden

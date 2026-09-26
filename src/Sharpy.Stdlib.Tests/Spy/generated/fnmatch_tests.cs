@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using fnmatch = global::Sharpy.FnmatchModule;
+using fnmatch = global::Sharpy.FnmatchModule.FnmatchModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Fnmatch
+namespace Sharpy.Stdlib.Tests.Spy.Fnmatch.FnmatchTests
 {
     [global::Sharpy.SharpyModule("fnmatch.fnmatch_tests")]
-    public static partial class FnmatchTests
+    public static partial class FnmatchTestsModule
     {
     }
 
-    public partial class FnmatchTestsTests
+    public partial class FnmatchTestsModuleTests
     {
         [Xunit.TheoryAttribute]
         [Xunit.InlineDataAttribute("foo.txt", "*.txt", true)]

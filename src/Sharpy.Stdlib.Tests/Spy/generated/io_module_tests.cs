@@ -10,14 +10,14 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.IO
+namespace Sharpy.Stdlib.Tests.Spy.IO.IoModuleTests
 {
     [global::Sharpy.SharpyModule("io.io_module_tests")]
-    public static partial class IoModuleTests
+    public static partial class IoModuleTestsModule
     {
     }
 
-    public partial class IoModuleTestsTests
+    public partial class IoModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestWriteReturnsLengthWritten()

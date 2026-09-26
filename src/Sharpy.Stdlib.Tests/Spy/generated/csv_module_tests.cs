@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using csv = global::Sharpy.CsvModule;
+using csv = global::Sharpy.CsvModule.CsvModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.CSV
+namespace Sharpy.Stdlib.Tests.Spy.CSV.CsvModuleTests
 {
     [global::Sharpy.SharpyModule("csv.csv_module_tests")]
-    public static partial class CsvModuleTests
+    public static partial class CsvModuleTestsModule
     {
     }
 
-    public partial class CsvModuleTestsTests
+    public partial class CsvModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestReaderSimpleLine()
@@ -188,13 +188,13 @@ namespace Sharpy.Stdlib.Tests.Spy.CSV
         public void TestConstantsHaveCorrectValues()
         {
 #line (72, 5) - (72, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-            Xunit.Assert.Equal(1, global::Sharpy.CsvModule.QUOTE_ALL);
+            Xunit.Assert.Equal(1, global::Sharpy.CsvModule.CsvModuleModule.QUOTE_ALL);
 #line (73, 5) - (73, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-            Xunit.Assert.Equal(0, global::Sharpy.CsvModule.QUOTE_MINIMAL);
+            Xunit.Assert.Equal(0, global::Sharpy.CsvModule.CsvModuleModule.QUOTE_MINIMAL);
 #line (74, 5) - (74, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-            Xunit.Assert.Equal(3, global::Sharpy.CsvModule.QUOTE_NONE);
+            Xunit.Assert.Equal(3, global::Sharpy.CsvModule.CsvModuleModule.QUOTE_NONE);
 #line (75, 5) - (75, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-            Xunit.Assert.Equal(2, global::Sharpy.CsvModule.QUOTE_NONNUMERIC);
+            Xunit.Assert.Equal(2, global::Sharpy.CsvModule.CsvModuleModule.QUOTE_NONNUMERIC);
 #line hidden
         }
 

@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using bisect = global::Sharpy.BisectModule;
+using bisect = global::Sharpy.BisectModule.BisectModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Bisect
+namespace Sharpy.Stdlib.Tests.Spy.Bisect.BisectTests
 {
     [global::Sharpy.SharpyModule("bisect.bisect_tests")]
-    public static partial class BisectTests
+    public static partial class BisectTestsModule
     {
     }
 
-    public partial class BisectTestsTests
+    public partial class BisectTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestBisectLeftFindsLeftmostInsertionPoint()

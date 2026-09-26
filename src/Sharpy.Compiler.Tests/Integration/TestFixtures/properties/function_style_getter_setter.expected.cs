@@ -6,8 +6,25 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class FunctionStyleGetterSetter
+namespace FunctionStyleGetterSetter
 {
+    public static partial class FunctionStyleGetterSetterModule
+    {
+        public static void Main()
+        {
+#line (14, 5) - (14, 27) 12 "function_style_getter_setter.spy"
+            var t = new global::FunctionStyleGetterSetter.Temperature(100.0d);
+#line (15, 5) - (15, 21) 12 "function_style_getter_setter.spy"
+            global::Sharpy.Builtins.Print(t.Celsius);
+#line (16, 5) - (16, 21) 12 "function_style_getter_setter.spy"
+            t.Celsius = 37.5d;
+#line (17, 5) - (17, 21) 12 "function_style_getter_setter.spy"
+            global::Sharpy.Builtins.Print(t.Celsius);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Temperature")]
     public class Temperature
     {
         protected double _Celsius;
@@ -35,19 +52,6 @@ public static partial class FunctionStyleGetterSetter
             this._Celsius = celsius;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (14, 5) - (14, 27) 8 "function_style_getter_setter.spy"
-        var t = new global::FunctionStyleGetterSetter.Temperature(100.0d);
-#line (15, 5) - (15, 21) 8 "function_style_getter_setter.spy"
-        global::Sharpy.Builtins.Print(t.Celsius);
-#line (16, 5) - (16, 21) 8 "function_style_getter_setter.spy"
-        t.Celsius = 37.5d;
-#line (17, 5) - (17, 21) 8 "function_style_getter_setter.spy"
-        global::Sharpy.Builtins.Print(t.Celsius);
-#line hidden
     }
 }
 #line default

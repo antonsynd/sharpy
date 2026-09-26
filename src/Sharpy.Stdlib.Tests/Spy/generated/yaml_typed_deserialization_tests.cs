@@ -11,99 +11,106 @@ using Sharpy.Stdlib.Tests.Spy;
 using yaml = global::Sharpy.Yaml;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Yaml
+namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests
 {
     [global::Sharpy.SharpyModule("yaml.yaml_typed_deserialization_tests")]
-    public static partial class YamlTypedDeserializationTests
+    public static partial class YamlTypedDeserializationTestsModule
     {
-        public class ServerConfig
+    }
+
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "ServerConfig")]
+    public class ServerConfig
+    {
+        public string Host = "";
+        public int Port = 0;
+        public bool Enabled = false;
+    }
+
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "SnakeCaseConfig")]
+    public class SnakeCaseConfig
+    {
+        public string ServiceName = "";
+        public int MaxConnections = 0;
+    }
+
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "NestedConfig")]
+    public class NestedConfig
+    {
+        public string Label = "";
+        public global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests.ServerConfig Server = new global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests.ServerConfig();
+    }
+
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "RatioConfig")]
+    public class RatioConfig
+    {
+        public double Ratio = 0.0d;
+    }
+
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "DataclassConfig")]
+    public class DataclassConfig
+    {
+        public double Ratio { get; set; }
+
+        public DataclassConfig(double ratio)
         {
-            public string Host = "";
-            public int Port = 0;
-            public bool Enabled = false;
+            this.Ratio = ratio;
         }
 
-        public class SnakeCaseConfig
+        public override bool Equals(object? obj)
         {
-            public string ServiceName = "";
-            public int MaxConnections = 0;
+            if (obj is not DataclassConfig other)
+                return false;
+            return Equals(Ratio, other.Ratio);
         }
 
-        public class NestedConfig
+        public override int GetHashCode()
         {
-            public string Label = "";
-            public global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests.ServerConfig Server = new global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests.ServerConfig();
+            return HashCode.Combine(Ratio);
         }
 
-        public class RatioConfig
+        public static bool operator ==(DataclassConfig? left, DataclassConfig? right) => Equals(left, right);
+        public static bool operator !=(DataclassConfig? left, DataclassConfig? right) => !Equals(left, right);
+        public override string ToString()
         {
-            public double Ratio = 0.0d;
-        }
-
-        public class DataclassConfig
-        {
-            public double Ratio { get; set; }
-
-            public DataclassConfig(double ratio)
-            {
-                this.Ratio = ratio;
-            }
-
-            public override bool Equals(object? obj)
-            {
-                if (obj is not DataclassConfig other)
-                    return false;
-                return Equals(Ratio, other.Ratio);
-            }
-
-            public override int GetHashCode()
-            {
-                return HashCode.Combine(Ratio);
-            }
-
-            public static bool operator ==(DataclassConfig? left, DataclassConfig? right) => Equals(left, right);
-            public static bool operator !=(DataclassConfig? left, DataclassConfig? right) => !Equals(left, right);
-            public override string ToString()
-            {
-                return $"DataclassConfig(ratio={Ratio})";
-            }
-        }
-
-        public class DataclassMultiField
-        {
-            public string ServiceName { get; set; }
-            public int MaxConnections { get; set; }
-            public bool Enabled { get; set; }
-
-            public DataclassMultiField(string serviceName, int maxConnections, bool enabled)
-            {
-                this.ServiceName = serviceName;
-                this.MaxConnections = maxConnections;
-                this.Enabled = enabled;
-            }
-
-            public override bool Equals(object? obj)
-            {
-                if (obj is not DataclassMultiField other)
-                    return false;
-                return Equals(ServiceName, other.ServiceName) && Equals(MaxConnections, other.MaxConnections) && Equals(Enabled, other.Enabled);
-            }
-
-            public override int GetHashCode()
-            {
-                return HashCode.Combine(ServiceName, MaxConnections, Enabled);
-            }
-
-            public static bool operator ==(DataclassMultiField? left, DataclassMultiField? right) => Equals(left, right);
-            public static bool operator !=(DataclassMultiField? left, DataclassMultiField? right) => !Equals(left, right);
-            public override string ToString()
-            {
-                return $"DataclassMultiField(service_name={ServiceName}, max_connections={MaxConnections}, enabled={Enabled})";
-            }
+            return $"DataclassConfig(ratio={Ratio})";
         }
     }
 
-    public partial class YamlTypedDeserializationTestsTests
+    [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "DataclassMultiField")]
+    public class DataclassMultiField
+    {
+        public string ServiceName { get; set; }
+        public int MaxConnections { get; set; }
+        public bool Enabled { get; set; }
+
+        public DataclassMultiField(string serviceName, int maxConnections, bool enabled)
+        {
+            this.ServiceName = serviceName;
+            this.MaxConnections = maxConnections;
+            this.Enabled = enabled;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is not DataclassMultiField other)
+                return false;
+            return Equals(ServiceName, other.ServiceName) && Equals(MaxConnections, other.MaxConnections) && Equals(Enabled, other.Enabled);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ServiceName, MaxConnections, Enabled);
+        }
+
+        public static bool operator ==(DataclassMultiField? left, DataclassMultiField? right) => Equals(left, right);
+        public static bool operator !=(DataclassMultiField? left, DataclassMultiField? right) => !Equals(left, right);
+        public override string ToString()
+        {
+            return $"DataclassMultiField(service_name={ServiceName}, max_connections={MaxConnections}, enabled={Enabled})";
+        }
+    }
+
+    public partial class YamlTypedDeserializationTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSafeLoadTypedSimpleClassDeserializes()

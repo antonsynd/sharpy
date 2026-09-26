@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.ShutilModule
 {
     /// <summary>
     /// High-level file operations (copy, move, remove trees).
     /// </summary>
-    public static partial class ShutilModule
+    public static partial class ShutilModuleModule
     {
         /// <summary>
         /// Copy data and mode bits ("cp src dst"). Return the file's destination.
@@ -25,7 +25,7 @@ namespace Sharpy
                 throw new global::Sharpy.OSError("No such file: '" + src + "'");
             }
 
-            string destPath = global::Sharpy.ShutilModule._ResolveDestination(src, dst);
+            string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
             try
             {
                 global::System.IO.File.Copy(src, destPath, true);
@@ -48,7 +48,7 @@ namespace Sharpy
                 throw new global::Sharpy.OSError("No such file: '" + src + "'");
             }
 
-            string destPath = global::Sharpy.ShutilModule._ResolveDestination(src, dst);
+            string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
             try
             {
                 global::System.IO.File.Copy(src, destPath, true);
@@ -75,7 +75,7 @@ namespace Sharpy
 
             try
             {
-                global::Sharpy.ShutilModule._CopyDirectoryRecursive(src, dst);
+                global::Sharpy.ShutilModule.ShutilModuleModule._CopyDirectoryRecursive(src, dst);
             }
             catch (global::System.Exception)
             {
@@ -112,7 +112,7 @@ namespace Sharpy
         {
             if (global::System.IO.File.Exists(src))
             {
-                string destPath = global::Sharpy.ShutilModule._ResolveDestination(src, dst);
+                string destPath = global::Sharpy.ShutilModule.ShutilModuleModule._ResolveDestination(src, dst);
                 try
                 {
                     global::System.IO.File.Move(src, destPath);
@@ -258,7 +258,7 @@ namespace Sharpy
             {
                 var dirPath = __loopVar_3;
                 string destDir = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(dirPath));
-                global::Sharpy.ShutilModule._CopyDirectoryRecursive(dirPath, destDir);
+                global::Sharpy.ShutilModule.ShutilModuleModule._CopyDirectoryRecursive(dirPath, destDir);
             }
         }
     }

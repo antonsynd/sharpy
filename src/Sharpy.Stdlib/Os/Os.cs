@@ -8,40 +8,16 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.OsModule
 {
     /// <summary>
     /// Miscellaneous operating system interfaces.
     /// </summary>
-    public static partial class OsModule
+    public static partial class OsModuleModule
     {
-        /// <summary>
-        /// Result of os.stat(), similar to Python's os.stat_result.
-        /// </summary>
-        public class StatResult
-        {
-            public long StSize { get; }
-            public double StMtime { get; }
-            public double StCtime { get; }
-            public double StAtime { get; }
-            public int StMode { get; }
-
-            /// <summary>
-            /// Create a new stat result.
-            /// </summary>
-            public StatResult(long stSize, double stMtime, double stCtime, double stAtime, int stMode)
-            {
-                this.StSize = stSize;
-                this.StMtime = stMtime;
-                this.StCtime = stCtime;
-                this.StAtime = stAtime;
-                this.StMode = stMode;
-            }
-        }
-
         public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
         public static string Linesep = global::System.Environment.NewLine;
-        public static string Name = global::Sharpy.OsModule.Sep == "\\" ? "nt" : "posix";
+        public static string Name = global::Sharpy.OsModule.OsModuleModule.Sep == "\\" ? "nt" : "posix";
         public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString());
         public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar.ToString() == global::System.IO.Path.DirectorySeparatorChar.ToString() ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
         /// <summary>
@@ -257,7 +233,7 @@ namespace Sharpy
             get
             {
                 _ = "A mapping object representing the string environment.";
-                return global::Sharpy.OsModule.GetEnviron();
+                return global::Sharpy.OsModule.OsModuleModule.GetEnviron();
             }
         }
 
@@ -342,7 +318,32 @@ namespace Sharpy
         /// </summary>
         public static global::Sharpy.Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
         {
-            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(global::Sharpy.OsModule._WalkCore(top));
+            return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(global::Sharpy.OsModule.OsModuleModule._WalkCore(top));
+        }
+    }
+
+    /// <summary>
+    /// Result of os.stat(), similar to Python's os.stat_result.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("os", "StatResult")]
+    public class StatResult
+    {
+        public long StSize { get; }
+        public double StMtime { get; }
+        public double StCtime { get; }
+        public double StAtime { get; }
+        public int StMode { get; }
+
+        /// <summary>
+        /// Create a new stat result.
+        /// </summary>
+        public StatResult(long stSize, double stMtime, double stCtime, double stAtime, int stMode)
+        {
+            this.StSize = stSize;
+            this.StMtime = stMtime;
+            this.StCtime = stCtime;
+            this.StAtime = stAtime;
+            this.StMode = stMode;
         }
     }
 }

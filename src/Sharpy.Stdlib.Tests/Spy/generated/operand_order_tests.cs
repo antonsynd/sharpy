@@ -11,10 +11,10 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Compiler
+namespace Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests
 {
     [global::Sharpy.SharpyModule("compiler.operand_order_tests")]
-    public static partial class OperandOrderTests
+    public static partial class OperandOrderTestsModule
     {
         public static int Take(Sharpy.List<int> xs)
         {
@@ -49,7 +49,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
         }
     }
 
-    public partial class OperandOrderTestsTests
+    public partial class OperandOrderTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestAssertEqualOperandOrder1853()
@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 9,
                 9
             };
-            var __arg_3 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take(xs);
+            var __arg_3 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_1 = xs;
             var __comp_0 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_1).Count);
             foreach (var __loopVar_2 in __src_1)
@@ -87,7 +87,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 9,
                 9
             };
-            var __arg_7 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take(xs);
+            var __arg_7 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_5 = xs;
             var __comp_4 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_5).Count);
             foreach (var __loopVar_6 in __src_5)
@@ -112,7 +112,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 1,
                 2
             };
-            var __arg_11 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take(xs);
+            var __arg_11 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_9 = xs;
             var __comp_8 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_9).Count);
             foreach (var __loopVar_10 in __src_9)
@@ -137,7 +137,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 9.0d,
                 9.0d
             };
-            var __arg_15 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Takef(xs);
+            var __arg_15 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Takef(xs);
             Sharpy.List<double> __src_13 = xs;
             var __comp_12 = new Sharpy.List<double>(((global::Sharpy.ISized)__src_13).Count);
             foreach (var __loopVar_14 in __src_13)
@@ -162,7 +162,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 9.0d,
                 9.0d
             };
-            var __arg_19 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Takef(xs);
+            var __arg_19 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Takef(xs);
             Sharpy.List<double> __src_17 = xs;
             var __comp_16 = new Sharpy.List<double>(((global::Sharpy.ISized)__src_17).Count);
             foreach (var __loopVar_18 in __src_17)
@@ -187,7 +187,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 9,
                 9
             };
-            var __arg_23 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take(xs);
+            var __arg_23 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_21 = xs;
             var __comp_20 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_21).Count);
             foreach (var __loopVar_22 in __src_21)
@@ -212,7 +212,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 1,
                 2
             };
-            var __arg_27 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take(xs);
+            var __arg_27 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_25 = xs;
             var __comp_24 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_25).Count);
             foreach (var __loopVar_26 in __src_25)
@@ -237,7 +237,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
                 2,
                 3
             };
-            var __arg_31 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.TakeStr(state, "23");
+            var __arg_31 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.TakeStr(state, "23");
             Sharpy.List<int> __src_29 = state;
             var __comp_28 = new Sharpy.List<string>(((global::Sharpy.ISized)__src_29).Count);
             foreach (var __loopVar_30 in __src_29)
@@ -265,7 +265,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler
 #line (105, 5) - (105, 59) 12 "src/Sharpy.Stdlib.Tests/Spy/compiler/operand_order_tests.spy"
             var a = np.Array(new Sharpy.List<Sharpy.List<double>>() { new Sharpy.List<double>() { 10.0d, 20.0d, 30.0d }, new Sharpy.List<double>() { 40.0d, 50.0d, 60.0d } });
 #line hidden
-            var __arg_35 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.Take0(xs);
+            var __arg_35 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take0(xs);
             Sharpy.List<int> __src_33 = xs;
             var __comp_32 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_33).Count);
             foreach (var __loopVar_34 in __src_33)

@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using hmac = global::Sharpy.HmacModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Hmac
+namespace Sharpy.Stdlib.Tests.Spy.Hmac.HmacTests
 {
     [global::Sharpy.SharpyModule("hmac.hmac_tests")]
-    public static partial class HmacTests
+    public static partial class HmacTestsModule
     {
     }
 
-    public partial class HmacTestsTests
+    public partial class HmacTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestHmacSha256KnownValue()

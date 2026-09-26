@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using csv = global::Sharpy.CsvModule;
+using csv = global::Sharpy.CsvModule.CsvModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.CSV
+namespace Sharpy.Stdlib.Tests.Spy.CSV.CsvDictTests
 {
     [global::Sharpy.SharpyModule("csv.csv_dict_tests")]
-    public static partial class CsvDictTests
+    public static partial class CsvDictTestsModule
     {
     }
 
-    public partial class CsvDictTestsTests
+    public partial class CsvDictTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDictReaderAutoDetectsFieldnamesFromFirstRow()

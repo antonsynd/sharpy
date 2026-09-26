@@ -7,38 +7,41 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ModuleOverloadByArity
+namespace ModuleOverloadByArity
 {
-    public static string Greet(string name)
+    public static partial class ModuleOverloadByArityModule
     {
-#line (2, 5) - (2, 29) 8 "module_overload_by_arity.spy"
-        return "Hello, " + name;
+        public static string Greet(string name)
+        {
+#line (2, 5) - (2, 29) 12 "module_overload_by_arity.spy"
+            return "Hello, " + name;
 #line hidden
-    }
+        }
 
-    public static string Greet(string name, string greeting)
-    {
-#line (5, 5) - (5, 35) 8 "module_overload_by_arity.spy"
-        return greeting + ", " + name;
+        public static string Greet(string name, string greeting)
+        {
+#line (5, 5) - (5, 35) 12 "module_overload_by_arity.spy"
+            return greeting + ", " + name;
 #line hidden
-    }
+        }
 
-    public static string Greet(string name, string greeting, string punctuation)
-    {
-#line (8, 5) - (8, 49) 8 "module_overload_by_arity.spy"
-        return greeting + ", " + name + punctuation;
+        public static string Greet(string name, string greeting, string punctuation)
+        {
+#line (8, 5) - (8, 49) 12 "module_overload_by_arity.spy"
+            return greeting + ", " + name + punctuation;
 #line hidden
-    }
+        }
 
-    public static void Main()
-    {
-#line (11, 5) - (11, 26) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World"));
-#line (12, 5) - (12, 32) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World", "Hi"));
-#line (13, 5) - (13, 38) 8 "module_overload_by_arity.spy"
-        global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.Greet("World", "Hey", "!"));
+        public static void Main()
+        {
+#line (11, 5) - (11, 26) 12 "module_overload_by_arity.spy"
+            global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.ModuleOverloadByArityModule.Greet("World"));
+#line (12, 5) - (12, 32) 12 "module_overload_by_arity.spy"
+            global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.ModuleOverloadByArityModule.Greet("World", "Hi"));
+#line (13, 5) - (13, 38) 12 "module_overload_by_arity.spy"
+            global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.ModuleOverloadByArityModule.Greet("World", "Hey", "!"));
 #line hidden
+        }
     }
 }
 #line default

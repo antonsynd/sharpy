@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using functools = global::Sharpy.Functools;
+using functools = global::Sharpy.Functools.FunctoolsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Functools
+namespace Sharpy.Stdlib.Tests.Spy.Functools.FunctoolsTests
 {
     [global::Sharpy.SharpyModule("functools.functools_tests")]
-    public static partial class FunctoolsTests
+    public static partial class FunctoolsTestsModule
     {
     }
 
-    public partial class FunctoolsTestsTests
+    public partial class FunctoolsTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestReduceSumWithoutInitial()

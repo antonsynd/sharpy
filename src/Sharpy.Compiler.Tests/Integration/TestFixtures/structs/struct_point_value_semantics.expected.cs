@@ -7,8 +7,31 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class StructPointValueSemantics
+namespace StructPointValueSemantics
 {
+    public static partial class StructPointValueSemanticsModule
+    {
+        public static void Main()
+        {
+#line (16, 5) - (16, 23) 12 "struct_point_value_semantics.spy"
+            var p1 = new global::StructPointValueSemantics.Point(10, 20);
+#line (17, 5) - (17, 12) 12 "struct_point_value_semantics.spy"
+            var p2 = p1;
+#line (18, 5) - (18, 18) 12 "struct_point_value_semantics.spy"
+            p2.Move(5, 5);
+#line (20, 5) - (20, 16) 12 "struct_point_value_semantics.spy"
+            global::Sharpy.Builtins.Print(p1.X);
+#line (21, 5) - (21, 16) 12 "struct_point_value_semantics.spy"
+            global::Sharpy.Builtins.Print(p1.Y);
+#line (22, 5) - (22, 16) 12 "struct_point_value_semantics.spy"
+            global::Sharpy.Builtins.Print(p2.X);
+#line (23, 5) - (23, 16) 12 "struct_point_value_semantics.spy"
+            global::Sharpy.Builtins.Print(p2.Y);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Point")]
     public struct Point
     {
         public int X;
@@ -32,25 +55,6 @@ public static partial class StructPointValueSemantics
             this.Y = y;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (16, 5) - (16, 23) 8 "struct_point_value_semantics.spy"
-        var p1 = new global::StructPointValueSemantics.Point(10, 20);
-#line (17, 5) - (17, 12) 8 "struct_point_value_semantics.spy"
-        var p2 = p1;
-#line (18, 5) - (18, 18) 8 "struct_point_value_semantics.spy"
-        p2.Move(5, 5);
-#line (20, 5) - (20, 16) 8 "struct_point_value_semantics.spy"
-        global::Sharpy.Builtins.Print(p1.X);
-#line (21, 5) - (21, 16) 8 "struct_point_value_semantics.spy"
-        global::Sharpy.Builtins.Print(p1.Y);
-#line (22, 5) - (22, 16) 8 "struct_point_value_semantics.spy"
-        global::Sharpy.Builtins.Print(p2.X);
-#line (23, 5) - (23, 16) 8 "struct_point_value_semantics.spy"
-        global::Sharpy.Builtins.Print(p2.Y);
-#line hidden
     }
 }
 #line default

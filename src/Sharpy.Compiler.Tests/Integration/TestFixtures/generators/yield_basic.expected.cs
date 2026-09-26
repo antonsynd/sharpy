@@ -6,34 +6,37 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class YieldBasic
+namespace YieldBasic
 {
-    public static System.Collections.Generic.IEnumerable<int> CountUp(int n)
+    public static partial class YieldBasicModule
     {
-#line (2, 5) - (2, 10) 8 "yield_basic.spy"
-        var i = 0;
-#line (3, 5) - (5, 15) 8 "yield_basic.spy"
-        while (i < n)
-#line hidden
+        public static System.Collections.Generic.IEnumerable<int> CountUp(int n)
         {
-#line (4, 9) - (4, 17) 12 "yield_basic.spy"
-            yield return i;
-#line (5, 9) - (5, 15) 12 "yield_basic.spy"
-            i = i + 1;
+#line (2, 5) - (2, 10) 12 "yield_basic.spy"
+            var i = 0;
+#line (3, 5) - (5, 15) 12 "yield_basic.spy"
+            while (i < n)
 #line hidden
+            {
+#line (4, 9) - (4, 17) 16 "yield_basic.spy"
+                yield return i;
+#line (5, 9) - (5, 15) 16 "yield_basic.spy"
+                i = i + 1;
+#line hidden
+            }
         }
-    }
 
-    public static void Main()
-    {
-#line (8, 5) - (9, 17) 8 "yield_basic.spy"
-        foreach (var __loopVar_0 in global::YieldBasic.CountUp(5))
-#line hidden
+        public static void Main()
         {
-            var x = __loopVar_0;
-#line (9, 9) - (9, 17) 12 "yield_basic.spy"
-            global::Sharpy.Builtins.Print(x);
+#line (8, 5) - (9, 17) 12 "yield_basic.spy"
+            foreach (var __loopVar_0 in global::YieldBasic.YieldBasicModule.CountUp(5))
 #line hidden
+            {
+                var x = __loopVar_0;
+#line (9, 9) - (9, 17) 16 "yield_basic.spy"
+                global::Sharpy.Builtins.Print(x);
+#line hidden
+            }
         }
     }
 }

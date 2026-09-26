@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using itertools = global::Sharpy.Itertools;
+using itertools = global::Sharpy.Itertools.ItertoolsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Itertools
+namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsInfiniteTests
 {
     [global::Sharpy.SharpyModule("itertools.itertools_infinite_tests")]
-    public static partial class ItertoolsInfiniteTests
+    public static partial class ItertoolsInfiniteTestsModule
     {
     }
 
-    public partial class ItertoolsInfiniteTestsTests
+    public partial class ItertoolsInfiniteTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestCountDefaultStartStepStartsAtZeroStepOne()

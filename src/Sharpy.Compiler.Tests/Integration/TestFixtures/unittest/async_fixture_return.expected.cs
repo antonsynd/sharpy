@@ -7,47 +7,50 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class AsyncFixtureReturn
+namespace AsyncFixtureReturn
 {
-    public static void Main()
+    public static partial class AsyncFixtureReturnModule
     {
-#line (10, 5) - (10, 16) 8 "async_fixture_return.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static void Main()
+        {
+#line (10, 5) - (10, 16) 12 "async_fixture_return.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
-    }
-}
-
-public class ResourceFixture : Xunit.IAsyncLifetime
-{
-    public int Value { get; private set; } = default!;
-
-    public async System.Threading.Tasks.Task InitializeAsync()
-    {
-        Value = 42;
-        await global::System.Threading.Tasks.Task.CompletedTask;
+        }
     }
 
-    public System.Threading.Tasks.Task DisposeAsync()
+    public class ResourceFixture : Xunit.IAsyncLifetime
     {
-        return global::System.Threading.Tasks.Task.CompletedTask;
-    }
-}
+        public int Value { get; private set; } = default!;
 
-public partial class AsyncFixtureReturnTests : Xunit.IClassFixture<ResourceFixture>
-{
-    private readonly ResourceFixture _resourceFixture;
-    public AsyncFixtureReturnTests(ResourceFixture resourceFixture)
-    {
-        _resourceFixture = resourceFixture;
+        public async System.Threading.Tasks.Task InitializeAsync()
+        {
+            Value = 42;
+            await global::System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        public System.Threading.Tasks.Task DisposeAsync()
+        {
+            return global::System.Threading.Tasks.Task.CompletedTask;
+        }
     }
 
-    [Xunit.FactAttribute]
-    public async System.Threading.Tasks.Task TestUsesResource()
+    public partial class AsyncFixtureReturnModuleTests : Xunit.IClassFixture<ResourceFixture>
     {
-        int resource = _resourceFixture.Value;
-#line (7, 5) - (7, 27) 8 "async_fixture_return.spy"
-        Xunit.Assert.Equal(42, resource);
+        private readonly ResourceFixture _resourceFixture;
+        public AsyncFixtureReturnModuleTests(ResourceFixture resourceFixture)
+        {
+            _resourceFixture = resourceFixture;
+        }
+
+        [Xunit.FactAttribute]
+        public async System.Threading.Tasks.Task TestUsesResource()
+        {
+            int resource = _resourceFixture.Value;
+#line (7, 5) - (7, 27) 12 "async_fixture_return.spy"
+            Xunit.Assert.Equal(42, resource);
 #line hidden
+        }
     }
 }
 #line default

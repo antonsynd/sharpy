@@ -6,8 +6,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AccessorTypeGenericControl
+namespace AccessorTypeGenericControl
 {
+    public static partial class AccessorTypeGenericControlModule
+    {
+        public static void Main()
+        {
+#line (18, 5) - (18, 32) 12 "accessor_type_generic_control.spy"
+            global::AccessorTypeGenericControl.Holder<int> h = new global::AccessorTypeGenericControl.Holder<int>(3);
+#line (19, 5) - (19, 15) 12 "accessor_type_generic_control.spy"
+            h.Item = 9;
+#line (20, 5) - (20, 18) 12 "accessor_type_generic_control.spy"
+            global::Sharpy.Builtins.Print(h.Item);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Holder")]
     public class Holder<T>
     {
         protected T _V;
@@ -35,17 +50,6 @@ public static partial class AccessorTypeGenericControl
             this._V = v;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (18, 5) - (18, 32) 8 "accessor_type_generic_control.spy"
-        global::AccessorTypeGenericControl.Holder<int> h = new global::AccessorTypeGenericControl.Holder<int>(3);
-#line (19, 5) - (19, 15) 8 "accessor_type_generic_control.spy"
-        h.Item = 9;
-#line (20, 5) - (20, 18) 8 "accessor_type_generic_control.spy"
-        global::Sharpy.Builtins.Print(h.Item);
-#line hidden
     }
 }
 #line default

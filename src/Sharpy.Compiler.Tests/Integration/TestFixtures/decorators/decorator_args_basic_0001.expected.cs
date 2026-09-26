@@ -7,21 +7,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DecoratorArgsBasic0001
+namespace DecoratorArgsBasic0001
 {
-    [Obsolete("Use new_greet instead")]
-    public static string Greet()
+    public static partial class DecoratorArgsBasic0001Module
     {
-#line (3, 5) - (3, 20) 8 "decorator_args_basic_0001.spy"
-        return "hello";
+        [Obsolete("Use new_greet instead")]
+        public static string Greet()
+        {
+#line (3, 5) - (3, 20) 12 "decorator_args_basic_0001.spy"
+            return "hello";
 #line hidden
-    }
+        }
 
-    public static void Main()
-    {
-#line (6, 5) - (6, 19) 8 "decorator_args_basic_0001.spy"
-        global::Sharpy.Builtins.Print(global::DecoratorArgsBasic0001.Greet());
+        public static void Main()
+        {
+#line (6, 5) - (6, 19) 12 "decorator_args_basic_0001.spy"
+            global::Sharpy.Builtins.Print(global::DecoratorArgsBasic0001.DecoratorArgsBasic0001Module.Greet());
 #line hidden
+        }
     }
 }
 #line default

@@ -7,30 +7,33 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class FibonacciRecursive
+namespace FibonacciRecursive
 {
-    public static int Fibonacci(int n)
+    public static partial class FibonacciRecursiveModule
     {
-#line (2, 5) - (3, 18) 8 "fibonacci_recursive.spy"
-        if (n <= 1)
-#line hidden
+        public static int Fibonacci(int n)
         {
-#line (3, 9) - (3, 18) 12 "fibonacci_recursive.spy"
-            return n;
+#line (2, 5) - (3, 18) 12 "fibonacci_recursive.spy"
+            if (n <= 1)
+#line hidden
+            {
+#line (3, 9) - (3, 18) 16 "fibonacci_recursive.spy"
+                return n;
+#line hidden
+            }
+
+#line (4, 5) - (4, 48) 12 "fibonacci_recursive.spy"
+            return global::FibonacciRecursive.FibonacciRecursiveModule.Fibonacci(n - 1) + global::FibonacciRecursive.FibonacciRecursiveModule.Fibonacci(n - 2);
 #line hidden
         }
 
-#line (4, 5) - (4, 48) 8 "fibonacci_recursive.spy"
-        return global::FibonacciRecursive.Fibonacci(n - 1) + global::FibonacciRecursive.Fibonacci(n - 2);
+        public static int Result = global::FibonacciRecursive.FibonacciRecursiveModule.Fibonacci(10);
+        public static void Main()
+        {
+#line (9, 5) - (9, 18) 12 "fibonacci_recursive.spy"
+            global::Sharpy.Builtins.Print(global::FibonacciRecursive.FibonacciRecursiveModule.Result);
 #line hidden
-    }
-
-    public static int Result = global::FibonacciRecursive.Fibonacci(10);
-    public static void Main()
-    {
-#line (9, 5) - (9, 18) 8 "fibonacci_recursive.spy"
-        global::Sharpy.Builtins.Print(global::FibonacciRecursive.Result);
-#line hidden
+        }
     }
 }
 #line default

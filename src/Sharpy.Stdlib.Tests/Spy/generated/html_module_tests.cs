@@ -11,139 +11,11 @@ using Sharpy.Stdlib.Tests.Spy;
 using html = global::Sharpy.Html;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.HTML
+namespace Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests
 {
     [global::Sharpy.SharpyModule("html.html_module_tests")]
-    public static partial class HtmlModuleTests
+    public static partial class HtmlModuleTestsModule
     {
-        public class TestParser : global::Sharpy.HTMLParser
-        {
-            public Sharpy.List<string> Events;
-            public override void HandleStarttag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
-#line 14 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (15, 9) - (15, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests._ToStringList(attrs));
-#line (16, 9) - (16, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
-#line hidden
-            }
-
-            public override void HandleEndtag(string tag)
-#line 19 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (20, 9) - (20, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
-#line hidden
-            }
-
-            public override void HandleStartendtag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
-#line 23 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (24, 9) - (24, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests._ToStringList(attrs));
-#line (25, 9) - (25, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"startendtag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
-#line hidden
-            }
-
-            public override void HandleData(string data)
-#line 28 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (29, 9) - (29, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
-#line hidden
-            }
-
-            public override void HandleComment(string data)
-#line 32 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (33, 9) - (33, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"comment:{(global::Sharpy.Builtins.Str(data))}"));
-#line hidden
-            }
-
-            public override void HandleEntityref(string name)
-#line 36 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (37, 9) - (37, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"entityref:{(global::Sharpy.Builtins.Str(name))}"));
-#line hidden
-            }
-
-            public override void HandleCharref(string name)
-#line 40 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (41, 9) - (41, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"charref:{(global::Sharpy.Builtins.Str(name))}"));
-#line hidden
-            }
-
-            public override void HandleDecl(string decl)
-#line 44 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (45, 9) - (45, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"decl:{(global::Sharpy.Builtins.Str(decl))}"));
-#line hidden
-            }
-
-            public override void HandlePi(string data)
-#line 48 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (49, 9) - (49, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"pi:{(global::Sharpy.Builtins.Str(data))}"));
-#line hidden
-            }
-
-            public TestParser(bool convertCharrefs = true) : base(convertCharrefs: convertCharrefs)
-#line 9 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (11, 9) - (11, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events = new Sharpy.List<string>()
-#line hidden
-                {
-                };
-            }
-        }
-
-        public class DefaultHandlerParser : global::Sharpy.HTMLParser
-        {
-            public Sharpy.List<string> Events;
-            public override void HandleStarttag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
-#line 60 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (61, 9) - (61, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))}"));
-#line hidden
-            }
-
-            public override void HandleEndtag(string tag)
-#line 64 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (65, 9) - (65, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
-#line hidden
-            }
-
-            public override void HandleData(string data)
-#line 68 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (69, 9) - (69, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
-#line hidden
-            }
-
-            public DefaultHandlerParser(bool convertCharrefs = true) : base(convertCharrefs: convertCharrefs)
-#line 55 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            {
-#line (57, 9) - (57, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                this.Events = new Sharpy.List<string>()
-#line hidden
-                {
-                };
-            }
-        }
-
         internal static Sharpy.List<string> _ToStringList(Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
         {
 #line (73, 5) - (73, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
@@ -178,7 +50,137 @@ namespace Sharpy.Stdlib.Tests.Spy.HTML
         }
     }
 
-    public partial class HtmlModuleTestsTests
+    [global::Sharpy.SharpyModuleType("html.html_module_tests", "TestParser")]
+    public class TestParser : global::Sharpy.HTMLParser
+    {
+        public Sharpy.List<string> Events;
+        public override void HandleStarttag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
+#line 14 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (15, 9) - (15, 59) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.HtmlModuleTestsModule._ToStringList(attrs));
+#line (16, 9) - (16, 59) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
+#line hidden
+        }
+
+        public override void HandleEndtag(string tag)
+#line 19 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (20, 9) - (20, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
+#line hidden
+        }
+
+        public override void HandleStartendtag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
+#line 23 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (24, 9) - (24, 59) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            string attrStr = global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests.HtmlModuleTestsModule._ToStringList(attrs));
+#line (25, 9) - (25, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"startendtag:{(global::Sharpy.Builtins.Str(tag))} [{(global::Sharpy.Builtins.Str(attrStr))}]"));
+#line hidden
+        }
+
+        public override void HandleData(string data)
+#line 28 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (29, 9) - (29, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
+#line hidden
+        }
+
+        public override void HandleComment(string data)
+#line 32 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (33, 9) - (33, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"comment:{(global::Sharpy.Builtins.Str(data))}"));
+#line hidden
+        }
+
+        public override void HandleEntityref(string name)
+#line 36 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (37, 9) - (37, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"entityref:{(global::Sharpy.Builtins.Str(name))}"));
+#line hidden
+        }
+
+        public override void HandleCharref(string name)
+#line 40 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (41, 9) - (41, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"charref:{(global::Sharpy.Builtins.Str(name))}"));
+#line hidden
+        }
+
+        public override void HandleDecl(string decl)
+#line 44 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (45, 9) - (45, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"decl:{(global::Sharpy.Builtins.Str(decl))}"));
+#line hidden
+        }
+
+        public override void HandlePi(string data)
+#line 48 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (49, 9) - (49, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"pi:{(global::Sharpy.Builtins.Str(data))}"));
+#line hidden
+        }
+
+        public TestParser(bool convertCharrefs = true) : base(convertCharrefs: convertCharrefs)
+#line 9 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (11, 9) - (11, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events = new Sharpy.List<string>()
+#line hidden
+            {
+            };
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("html.html_module_tests", "DefaultHandlerParser")]
+    public class DefaultHandlerParser : global::Sharpy.HTMLParser
+    {
+        public Sharpy.List<string> Events;
+        public override void HandleStarttag(string tag, Sharpy.List<global::System.ValueTuple<string, string?>> attrs)
+#line 60 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (61, 9) - (61, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"starttag:{(global::Sharpy.Builtins.Str(tag))}"));
+#line hidden
+        }
+
+        public override void HandleEndtag(string tag)
+#line 64 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (65, 9) - (65, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"endtag:{(global::Sharpy.Builtins.Str(tag))}"));
+#line hidden
+        }
+
+        public override void HandleData(string data)
+#line 68 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (69, 9) - (69, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events.Append(FormattableString.Invariant($"data:{(global::Sharpy.Builtins.Str(data))}"));
+#line hidden
+        }
+
+        public DefaultHandlerParser(bool convertCharrefs = true) : base(convertCharrefs: convertCharrefs)
+#line 55 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+        {
+#line (57, 9) - (57, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+            this.Events = new Sharpy.List<string>()
+#line hidden
+            {
+            };
+        }
+    }
+
+    public partial class HtmlModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestEscapeScriptTag()

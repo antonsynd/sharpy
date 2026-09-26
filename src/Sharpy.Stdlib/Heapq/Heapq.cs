@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.Heapq
 {
     /// <summary>
     /// Heap queue algorithm (priority queue).
     /// </summary>
-    public static partial class Heapq
+    public static partial class HeapqModule
     {
         /// <summary>
         /// Push item onto heap, maintaining the heap invariant.
@@ -22,7 +22,7 @@ namespace Sharpy
             where T : global::System.IComparable<T>
         {
             heap.Append(item);
-            global::Sharpy.Heapq._SiftUp<T>(heap, global::Sharpy.Builtins.Len(heap) - 1);
+            global::Sharpy.Heapq.HeapqModule._SiftUp<T>(heap, global::Sharpy.Builtins.Len(heap) - 1);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace Sharpy
             {
                 heap[0] = heap[lastIdx];
                 heap.Pop();
-                global::Sharpy.Heapq._SiftDown<T>(heap, 0);
+                global::Sharpy.Heapq.HeapqModule._SiftDown<T>(heap, 0);
             }
             else
             {
@@ -62,7 +62,7 @@ namespace Sharpy
             int i = global::Sharpy.Builtins.FloorDiv(n, 2) - 1;
             while (i >= 0)
             {
-                global::Sharpy.Heapq._SiftDown<T>(x, i);
+                global::Sharpy.Heapq.HeapqModule._SiftDown<T>(x, i);
                 i = i - 1;
             }
         }
@@ -80,7 +80,7 @@ namespace Sharpy
 
             T result = heap.GetItemUnchecked(0);
             heap[0] = item;
-            global::Sharpy.Heapq._SiftDown<T>(heap, 0);
+            global::Sharpy.Heapq.HeapqModule._SiftDown<T>(heap, 0);
             return result;
         }
 
@@ -94,7 +94,7 @@ namespace Sharpy
             {
                 T result = heap.GetItemUnchecked(0);
                 heap[0] = item;
-                global::Sharpy.Heapq._SiftDown<T>(heap, 0);
+                global::Sharpy.Heapq.HeapqModule._SiftDown<T>(heap, 0);
                 return result;
             }
 
@@ -194,7 +194,7 @@ namespace Sharpy
         public static Sharpy.List<T> Merge<T>(Sharpy.List<T> list1, Sharpy.List<T> list2, Sharpy.List<T> list3)
             where T : global::System.IComparable<T>
         {
-            return global::Sharpy.Heapq.Merge<T>(global::Sharpy.Heapq.Merge<T>(list1, list2), list3);
+            return global::Sharpy.Heapq.HeapqModule.Merge<T>(global::Sharpy.Heapq.HeapqModule.Merge<T>(list1, list2), list3);
         }
 
         /// <summary>

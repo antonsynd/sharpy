@@ -8,107 +8,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.HashlibModule
 {
     /// <summary>
     /// Secure hash and message digest algorithms (MD5, SHA-1, SHA-2 family).
     /// </summary>
-    public static partial class HashlibModule
+    public static partial class HashlibModuleModule
     {
-        /// <summary>
-        /// Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API.
-        /// </summary>
-        public class HashObject
-        {
-            protected Sharpy.List<byte> _Data;
-            protected global::System.Func<global::System.Security.Cryptography.HashAlgorithm> _Factory;
-            protected Sharpy.List<byte> _ComputeHash()
-            {
-                using (var algorithm = this._Factory())
-                {
-                    return algorithm.ComputeHash(this._Data.ToArray());
-                }
-            }
-
-            /// <summary>
-            /// Append data to the hash object. The data is encoded as UTF-8.
-            /// </summary>
-            public void Update(string data)
-            {
-                Sharpy.List<byte> newBytes = global::System.Text.Encoding.UTF8.GetBytes(data);
-                foreach (var __loopVar_0 in newBytes)
-                {
-                    var b = __loopVar_0;
-                    this._Data.Append(b);
-                }
-            }
-
-            /// <summary>
-            /// Return the hex-encoded string of the hash digest.
-            /// </summary>
-            public string Hexdigest()
-            {
-                Sharpy.List<byte> hashBytes = this._ComputeHash();
-                global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
-                foreach (var __loopVar_1 in hashBytes)
-                {
-                    var b = __loopVar_1;
-                    sb.Append(b.ToString("x2"));
-                }
-
-                return sb.ToString();
-            }
-
-            /// <summary>
-            /// Return the raw hash digest as a list of integers (byte values 0-255).
-            /// </summary>
-            public Sharpy.List<int> Digest()
-            {
-                Sharpy.List<byte> hashBytes = this._ComputeHash();
-                Sharpy.List<int> result = new Sharpy.List<int>()
-                {
-                };
-                foreach (var __loopVar_2 in hashBytes)
-                {
-                    var b = __loopVar_2;
-                    result.Append(global::Sharpy.Builtins.Int(b));
-                }
-
-                return result;
-            }
-
-            /// <summary>
-            /// Return a copy of the hash object with the same accumulated data.
-            /// </summary>
-            public global::Sharpy.HashlibModule.HashObject Copy()
-            {
-                global::Sharpy.HashlibModule.HashObject newObj = new global::Sharpy.HashlibModule.HashObject(this.Name, this.DigestSize, this._Factory);
-                foreach (var __loopVar_3 in this._Data)
-                {
-                    var b = __loopVar_3;
-                    newObj._Data.Append(b);
-                }
-
-                return newObj;
-            }
-
-            public string Name { get; }
-            public int DigestSize { get; }
-
-            /// <summary>
-            /// Create a new hash object for the specified algorithm.
-            /// </summary>
-            public HashObject(string algorithmName, int digestSize, global::System.Func<global::System.Security.Cryptography.HashAlgorithm> factory)
-            {
-                this.Name = algorithmName;
-                this.DigestSize = digestSize;
-                this._Data = new Sharpy.List<byte>()
-                {
-                };
-                this._Factory = factory;
-            }
-        }
-
         /// <summary>
         /// Return a new hash object for MD5, optionally initialized with data.
         /// </summary>
@@ -217,6 +123,101 @@ namespace Sharpy
         public static global::Sharpy.HashlibModule.HashObject Blake2s(string data = "")
         {
             throw new global::Sharpy.ValueError("unsupported hash type 'blake2s'");
+        }
+    }
+
+    /// <summary>
+    /// Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API.
+    /// </summary>
+    [global::Sharpy.SharpyModuleType("hashlib", "HashObject")]
+    public class HashObject
+    {
+        protected Sharpy.List<byte> _Data;
+        protected global::System.Func<global::System.Security.Cryptography.HashAlgorithm> _Factory;
+        protected Sharpy.List<byte> _ComputeHash()
+        {
+            using (var algorithm = this._Factory())
+            {
+                return algorithm.ComputeHash(this._Data.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Append data to the hash object. The data is encoded as UTF-8.
+        /// </summary>
+        public void Update(string data)
+        {
+            Sharpy.List<byte> newBytes = global::System.Text.Encoding.UTF8.GetBytes(data);
+            foreach (var __loopVar_0 in newBytes)
+            {
+                var b = __loopVar_0;
+                this._Data.Append(b);
+            }
+        }
+
+        /// <summary>
+        /// Return the hex-encoded string of the hash digest.
+        /// </summary>
+        public string Hexdigest()
+        {
+            Sharpy.List<byte> hashBytes = this._ComputeHash();
+            global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
+            foreach (var __loopVar_1 in hashBytes)
+            {
+                var b = __loopVar_1;
+                sb.Append(b.ToString("x2"));
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Return the raw hash digest as a list of integers (byte values 0-255).
+        /// </summary>
+        public Sharpy.List<int> Digest()
+        {
+            Sharpy.List<byte> hashBytes = this._ComputeHash();
+            Sharpy.List<int> result = new Sharpy.List<int>()
+            {
+            };
+            foreach (var __loopVar_2 in hashBytes)
+            {
+                var b = __loopVar_2;
+                result.Append(global::Sharpy.Builtins.Int(b));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return a copy of the hash object with the same accumulated data.
+        /// </summary>
+        public global::Sharpy.HashlibModule.HashObject Copy()
+        {
+            global::Sharpy.HashlibModule.HashObject newObj = new global::Sharpy.HashlibModule.HashObject(this.Name, this.DigestSize, this._Factory);
+            foreach (var __loopVar_3 in this._Data)
+            {
+                var b = __loopVar_3;
+                newObj._Data.Append(b);
+            }
+
+            return newObj;
+        }
+
+        public string Name { get; }
+        public int DigestSize { get; }
+
+        /// <summary>
+        /// Create a new hash object for the specified algorithm.
+        /// </summary>
+        public HashObject(string algorithmName, int digestSize, global::System.Func<global::System.Security.Cryptography.HashAlgorithm> factory)
+        {
+            this.Name = algorithmName;
+            this.DigestSize = digestSize;
+            this._Data = new Sharpy.List<byte>()
+            {
+            };
+            this._Factory = factory;
         }
     }
 }

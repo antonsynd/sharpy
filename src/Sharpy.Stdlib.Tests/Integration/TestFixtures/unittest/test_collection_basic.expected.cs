@@ -7,8 +7,19 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestCollectionBasic
+namespace TestCollectionBasic
 {
+    public static partial class TestCollectionBasicModule
+    {
+        public static void Main()
+        {
+#line (22, 5) - (22, 16) 12 "test_collection_basic.spy"
+            global::Sharpy.Builtins.Print("ok");
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "TestDatabaseOps")]
     [Xunit.CollectionAttribute("database")]
     public class TestDatabaseOps
     {
@@ -36,6 +47,7 @@ public static partial class TestCollectionBasic
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "TestMoreDatabaseOps")]
     [Xunit.CollectionAttribute("database")]
     public class TestMoreDatabaseOps
     {
@@ -49,13 +61,6 @@ public static partial class TestCollectionBasic
             Xunit.Assert.Equal(7, x);
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (22, 5) - (22, 16) 8 "test_collection_basic.spy"
-        global::Sharpy.Builtins.Print("ok");
-#line hidden
     }
 }
 #line default

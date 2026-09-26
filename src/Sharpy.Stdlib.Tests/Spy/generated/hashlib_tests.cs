@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using hashlib = global::Sharpy.HashlibModule;
+using hashlib = global::Sharpy.HashlibModule.HashlibModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Hashlib
+namespace Sharpy.Stdlib.Tests.Spy.Hashlib.HashlibTests
 {
     [global::Sharpy.SharpyModule("hashlib.hashlib_tests")]
-    public static partial class HashlibTests
+    public static partial class HashlibTestsModule
     {
     }
 
-    public partial class HashlibTestsTests
+    public partial class HashlibTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSha256HelloProducesKnownHash()

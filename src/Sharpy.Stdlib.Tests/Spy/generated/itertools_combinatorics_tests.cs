@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using itertools = global::Sharpy.Itertools;
+using itertools = global::Sharpy.Itertools.ItertoolsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Itertools
+namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsCombinatoricsTests
 {
     [global::Sharpy.SharpyModule("itertools.itertools_combinatorics_tests")]
-    public static partial class ItertoolsCombinatoricsTests
+    public static partial class ItertoolsCombinatoricsTestsModule
     {
     }
 
-    public partial class ItertoolsCombinatoricsTestsTests
+    public partial class ItertoolsCombinatoricsTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestCombinationsEmptyPoolRZeroReturnsSingleEmptyTuple()

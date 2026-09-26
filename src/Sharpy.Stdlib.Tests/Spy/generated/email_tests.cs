@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using email = global::Sharpy.EmailModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Email
+namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
 {
     [global::Sharpy.SharpyModule("email.email_tests")]
-    public static partial class EmailTests
+    public static partial class EmailTestsModule
     {
     }
 
-    public partial class EmailTestsTests
+    public partial class EmailTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestEmptyMessageHasNoHeaders()

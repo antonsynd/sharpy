@@ -6,8 +6,31 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DataclassDefaults
+namespace DataclassDefaults
 {
+    public static partial class DataclassDefaultsModule
+    {
+        public static void Main()
+        {
+#line (8, 5) - (8, 23) 12 "dataclass_defaults.spy"
+            var c1 = new global::DataclassDefaults.Config("app");
+#line (9, 5) - (9, 14) 12 "dataclass_defaults.spy"
+            global::Sharpy.Builtins.Print(c1);
+#line (10, 5) - (10, 19) 12 "dataclass_defaults.spy"
+            global::Sharpy.Builtins.Print(c1.Name);
+#line (11, 5) - (11, 20) 12 "dataclass_defaults.spy"
+            global::Sharpy.Builtins.Print(c1.Debug);
+#line (12, 5) - (12, 22) 12 "dataclass_defaults.spy"
+            global::Sharpy.Builtins.Print(c1.Retries);
+#line (13, 5) - (13, 32) 12 "dataclass_defaults.spy"
+            var c2 = new global::DataclassDefaults.Config("app", true, 5);
+#line (14, 5) - (14, 14) 12 "dataclass_defaults.spy"
+            global::Sharpy.Builtins.Print(c2);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Config")]
     public class Config
     {
         public string Name { get; set; }
@@ -39,25 +62,6 @@ public static partial class DataclassDefaults
         {
             return $"Config(name={Name}, debug={Debug}, retries={Retries})";
         }
-    }
-
-    public static void Main()
-    {
-#line (8, 5) - (8, 23) 8 "dataclass_defaults.spy"
-        var c1 = new global::DataclassDefaults.Config("app");
-#line (9, 5) - (9, 14) 8 "dataclass_defaults.spy"
-        global::Sharpy.Builtins.Print(c1);
-#line (10, 5) - (10, 19) 8 "dataclass_defaults.spy"
-        global::Sharpy.Builtins.Print(c1.Name);
-#line (11, 5) - (11, 20) 8 "dataclass_defaults.spy"
-        global::Sharpy.Builtins.Print(c1.Debug);
-#line (12, 5) - (12, 22) 8 "dataclass_defaults.spy"
-        global::Sharpy.Builtins.Print(c1.Retries);
-#line (13, 5) - (13, 32) 8 "dataclass_defaults.spy"
-        var c2 = new global::DataclassDefaults.Config("app", true, 5);
-#line (14, 5) - (14, 14) 8 "dataclass_defaults.spy"
-        global::Sharpy.Builtins.Print(c2);
-#line hidden
     }
 }
 #line default

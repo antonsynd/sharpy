@@ -7,8 +7,33 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class InheritanceWithOverride
+namespace InheritanceWithOverride
 {
+    public static partial class InheritanceWithOverrideModule
+    {
+        public static void Main()
+        {
+#line (44, 5) - (44, 33) 12 "inheritance_with_override.spy"
+            var dog = new global::InheritanceWithOverride.Dog("Rex", "Shepherd");
+#line (45, 5) - (45, 32) 12 "inheritance_with_override.spy"
+            var cat = new global::InheritanceWithOverride.Cat("Whiskers", true);
+#line (46, 5) - (46, 31) 12 "inheritance_with_override.spy"
+            var animal = new global::InheritanceWithOverride.Animal("Generic");
+#line (48, 5) - (48, 19) 12 "inheritance_with_override.spy"
+            animal.Speak();
+#line (49, 5) - (49, 16) 12 "inheritance_with_override.spy"
+            dog.Speak();
+#line (50, 5) - (50, 16) 12 "inheritance_with_override.spy"
+            cat.Speak();
+#line (51, 5) - (51, 26) 12 "inheritance_with_override.spy"
+            global::Sharpy.Builtins.Print(dog.GetLegs());
+#line (52, 5) - (52, 26) 12 "inheritance_with_override.spy"
+            global::Sharpy.Builtins.Print(cat.GetLegs());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Animal")]
     public class Animal
     {
         public string Name;
@@ -39,6 +64,7 @@ public static partial class InheritanceWithOverride
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Dog")]
     public class Dog : global::InheritanceWithOverride.Animal
     {
         public string Breed;
@@ -61,6 +87,7 @@ public static partial class InheritanceWithOverride
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Cat")]
     public class Cat : global::InheritanceWithOverride.Animal
     {
         public bool Indoor;
@@ -81,27 +108,6 @@ public static partial class InheritanceWithOverride
             this.Indoor = indoor;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (44, 5) - (44, 33) 8 "inheritance_with_override.spy"
-        var dog = new global::InheritanceWithOverride.Dog("Rex", "Shepherd");
-#line (45, 5) - (45, 32) 8 "inheritance_with_override.spy"
-        var cat = new global::InheritanceWithOverride.Cat("Whiskers", true);
-#line (46, 5) - (46, 31) 8 "inheritance_with_override.spy"
-        var animal = new global::InheritanceWithOverride.Animal("Generic");
-#line (48, 5) - (48, 19) 8 "inheritance_with_override.spy"
-        animal.Speak();
-#line (49, 5) - (49, 16) 8 "inheritance_with_override.spy"
-        dog.Speak();
-#line (50, 5) - (50, 16) 8 "inheritance_with_override.spy"
-        cat.Speak();
-#line (51, 5) - (51, 26) 8 "inheritance_with_override.spy"
-        global::Sharpy.Builtins.Print(dog.GetLegs());
-#line (52, 5) - (52, 26) 8 "inheritance_with_override.spy"
-        global::Sharpy.Builtins.Print(cat.GetLegs());
-#line hidden
     }
 }
 #line default

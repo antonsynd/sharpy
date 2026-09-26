@@ -8,26 +8,6 @@ import csv
 
 ## Functions
 
-### `csv.writerow(row: list[str])`
-
-Write a single row of fields to the CSV output.
-
-### `csv.writerows(rows: list[list[str]])`
-
-Write multiple rows of fields to the CSV output.
-
-### `csv.writeheader()`
-
-Write the field names as a header row.
-
-### `csv.writerow(row: dict[str, str])`
-
-Write a single row from a dictionary in field name order.
-
-### `csv.writerows(rows: list[dict[str, str]])`
-
-Write multiple rows from dictionaries.
-
 ### `csv.reader(lines: list[str]) -> CsvReader`
 
 Create a CSV reader from a list of lines.
@@ -43,3 +23,39 @@ Create a CSV DictReader from a list of lines.
 ### `csv.dict_writer(output: TextWriter, fieldnames: list[str]) -> CsvDictWriter`
 
 Create a CSV DictWriter that writes to a TextWriter.
+
+## CsvReader
+
+Reads CSV data from a list of lines, parsing each line into a list of fields.
+
+## CsvWriter
+
+Writes CSV data to a TextWriter.
+
+### `writerow(row: list[str])`
+
+Write a single row of fields to the CSV output.
+
+### `writerows(rows: list[list[str]])`
+
+Write multiple rows of fields to the CSV output.
+
+## CsvDictReader
+
+Reads CSV data and maps each row to a dictionary keyed by field names.
+
+## CsvDictWriter
+
+Writes CSV data from dictionaries keyed by field names.
+
+### `writeheader()`
+
+Write the field names as a header row.
+
+### `writerow(row: dict[str, str])`
+
+Write a single row from a dictionary in field name order.
+
+### `writerows(rows: list[dict[str, str]])`
+
+Write multiple rows from dictionaries.

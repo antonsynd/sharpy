@@ -9,52 +9,58 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using json = global::Sharpy.Json;
-using math = global::Sharpy.MathModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.JSON
+namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests
 {
     [global::Sharpy.SharpyModule("json.json_typed_deserialization_tests")]
-    public static partial class JsonTypedDeserializationTests
+    public static partial class JsonTypedDeserializationTestsModule
     {
-        public class SimpleRecord
-        {
-            public string Name = "";
-            public int Age = 0;
-            public bool Active = false;
-        }
-
-        public class NestedRecord
-        {
-            public string Label = "";
-            public global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord Inner = new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord();
-        }
-
-        public class RecordWithList
-        {
-            public string Name = "";
-            public Sharpy.List<int> Scores = new Sharpy.List<int>()
-            {
-            };
-        }
-
-        public class RecordWithDict
-        {
-            public string Name = "";
-            public Sharpy.Dict<string, int> Metadata = new Sharpy.Dict<string, int>()
-            {
-            };
-        }
-
-        public class RecordWithOptional
-        {
-            public string Name = "";
-            public Optional<string> Nickname = Optional<string>.None;
-            public int Count = 0;
-        }
     }
 
-    public partial class JsonTypedDeserializationTestsTests : global::System.IDisposable
+    [global::Sharpy.SharpyModuleType("json.json_typed_deserialization_tests", "SimpleRecord")]
+    public class SimpleRecord
+    {
+        public string Name = "";
+        public int Age = 0;
+        public bool Active = false;
+    }
+
+    [global::Sharpy.SharpyModuleType("json.json_typed_deserialization_tests", "NestedRecord")]
+    public class NestedRecord
+    {
+        public string Label = "";
+        public global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord Inner = new global::Sharpy.Stdlib.Tests.Spy.JSON.JsonTypedDeserializationTests.SimpleRecord();
+    }
+
+    [global::Sharpy.SharpyModuleType("json.json_typed_deserialization_tests", "RecordWithList")]
+    public class RecordWithList
+    {
+        public string Name = "";
+        public Sharpy.List<int> Scores = new Sharpy.List<int>()
+        {
+        };
+    }
+
+    [global::Sharpy.SharpyModuleType("json.json_typed_deserialization_tests", "RecordWithDict")]
+    public class RecordWithDict
+    {
+        public string Name = "";
+        public Sharpy.Dict<string, int> Metadata = new Sharpy.Dict<string, int>()
+        {
+        };
+    }
+
+    [global::Sharpy.SharpyModuleType("json.json_typed_deserialization_tests", "RecordWithOptional")]
+    public class RecordWithOptional
+    {
+        public string Name = "";
+        public Optional<string> Nickname = Optional<string>.None;
+        public int Count = 0;
+    }
+
+    public partial class JsonTypedDeserializationTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
@@ -347,7 +353,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDumpsThenLoadsTRoundTripsNonFinite()
         {
 #line (201, 5) - (201, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-            var text = json.Dumps((object?)new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.Inf, global::Sharpy.MathModule.Nan, -global::Sharpy.MathModule.Inf });
+            var text = json.Dumps((object?)new Sharpy.List<double>() { 1.0d, global::Sharpy.MathModule.MathModuleModule.Inf, global::Sharpy.MathModule.MathModuleModule.Nan, -global::Sharpy.MathModule.MathModuleModule.Inf });
 #line (202, 5) - (202, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
             Xunit.Assert.Equal("[1.0, Infinity, NaN, -Infinity]", text);
 #line (203, 5) - (203, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"

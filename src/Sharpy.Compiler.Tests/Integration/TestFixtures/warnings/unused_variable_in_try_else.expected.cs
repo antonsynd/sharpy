@@ -7,39 +7,42 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class UnusedVariableInTryElse
+namespace UnusedVariableInTryElse
 {
-    public static void Main()
+    public static partial class UnusedVariableInTryElseModule
     {
-#line (3, 5) - (8, 27) 8 "unused_variable_in_try_else.spy"
+        public static void Main()
         {
-#line hidden
-            bool __trySucceeded_0 = false;
-            try
+#line (3, 5) - (8, 27) 12 "unused_variable_in_try_else.spy"
             {
-#line (4, 9) - (4, 24) 16 "unused_variable_in_try_else.spy"
-                global::Sharpy.Builtins.Print("trying");
 #line hidden
-                __trySucceeded_0 = true;
-            }
-            catch (global::System.Exception e)
-            {
-#line (6, 9) - (6, 24) 16 "unused_variable_in_try_else.spy"
-                global::Sharpy.Builtins.Print("caught");
+                bool __trySucceeded_0 = false;
+                try
+                {
+#line (4, 9) - (4, 24) 20 "unused_variable_in_try_else.spy"
+                    global::Sharpy.Builtins.Print("trying");
 #line hidden
+                    __trySucceeded_0 = true;
+                }
+                catch (global::System.Exception e)
+                {
+#line (6, 9) - (6, 24) 20 "unused_variable_in_try_else.spy"
+                    global::Sharpy.Builtins.Print("caught");
+#line hidden
+                }
+
+                if (__trySucceeded_0)
+                {
+#line (8, 9) - (8, 27) 20 "unused_variable_in_try_else.spy"
+                    int cleanup = 42;
+#line hidden
+                }
             }
 
-            if (__trySucceeded_0)
-            {
-#line (8, 9) - (8, 27) 16 "unused_variable_in_try_else.spy"
-                int cleanup = 42;
+#line (9, 5) - (9, 18) 12 "unused_variable_in_try_else.spy"
+            global::Sharpy.Builtins.Print("done");
 #line hidden
-            }
         }
-
-#line (9, 5) - (9, 18) 8 "unused_variable_in_try_else.spy"
-        global::Sharpy.Builtins.Print("done");
-#line hidden
     }
 }
 #line default

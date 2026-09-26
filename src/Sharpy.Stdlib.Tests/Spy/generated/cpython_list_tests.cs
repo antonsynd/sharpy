@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Cpython
+namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests
 {
     [global::Sharpy.SharpyModule("cpython.cpython_list_tests")]
-    public static partial class CpythonListTests
+    public static partial class CpythonListTestsModule
     {
         internal static bool _PopRaises(Sharpy.List<int> a, int i)
         {
@@ -128,7 +128,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
         }
     }
 
-    public partial class CpythonListTestsTests
+    public partial class CpythonListTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestAppend()
@@ -231,13 +231,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (87, 5) - (87, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(new Sharpy.List<int>() { 0 }, a);
 #line (88, 5) - (88, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._PopRaises(new Sharpy.List<int>() { 0 }, 5));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._PopRaises(new Sharpy.List<int>() { 0 }, 5));
 #line (89, 5) - (89, 13) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             a.Pop(0);
 #line (90, 5) - (90, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(a));
 #line (91, 5) - (91, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._PopEmptyRaises(a));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._PopEmptyRaises(a));
 #line hidden
         }
 
@@ -265,7 +265,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (110, 5) - (110, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(a));
 #line (112, 5) - (112, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._RemoveRaises(a, 0));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._RemoveRaises(a, 0));
 #line hidden
         }
 
@@ -284,7 +284,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (128, 5) - (128, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(1, u.Index(1));
 #line (129, 5) - (129, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._IndexRaises(u, 2));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._IndexRaises(u, 2));
 #line (131, 5) - (131, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Sharpy.List<int> a = new Sharpy.List<int>()
 #line hidden
@@ -548,18 +548,18 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (247, 5) - (247, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(0, u[-5]);
 #line (248, 5) - (248, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(u, 5));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(u, 5));
 #line (249, 5) - (249, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(u, -6));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(u, -6));
 #line (251, 5) - (251, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Sharpy.List<int> empty = new Sharpy.List<int>()
 #line hidden
             {
             };
 #line (252, 5) - (252, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(empty, 0));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(empty, 0));
 #line (253, 5) - (253, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(empty, -1));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(empty, -1));
 #line (255, 5) - (255, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Sharpy.List<int> a = new Sharpy.List<int>()
 #line hidden
@@ -576,9 +576,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (259, 5) - (259, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(11, a[-1]);
 #line (260, 5) - (260, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(a, -3));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(a, -3));
 #line (261, 5) - (261, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._GetitemRaises(a, 3));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._GetitemRaises(a, 3));
 #line hidden
         }
 
@@ -607,18 +607,18 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (281, 5) - (281, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Xunit.Assert.Equal(new Sharpy.List<int>() { 100, 200 }, a);
 #line (282, 5) - (282, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._SetitemRaises(a, -3));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._SetitemRaises(a, -3));
 #line (283, 5) - (283, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._SetitemRaises(a, 2));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._SetitemRaises(a, 2));
 #line (285, 5) - (285, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
             Sharpy.List<int> empty = new Sharpy.List<int>()
 #line hidden
             {
             };
 #line (286, 5) - (286, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._SetitemRaises(empty, 0));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._SetitemRaises(empty, 0));
 #line (287, 5) - (287, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests._SetitemRaises(empty, -1));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests.CpythonListTestsModule._SetitemRaises(empty, -1));
 #line hidden
         }
 

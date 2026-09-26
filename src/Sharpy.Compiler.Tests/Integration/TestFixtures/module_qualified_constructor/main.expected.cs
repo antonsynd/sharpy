@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.Main
 {
-    public static partial class Program
+    public static partial class MainModule
     {
         public static void Main()
         {
@@ -44,55 +44,58 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Test;
 
-namespace Sharpy.Test
+namespace Sharpy.Test.Shapes
 {
     [global::Sharpy.SharpyModule("shapes")]
-    public static partial class Shapes
+    public static partial class ShapesModule
     {
-        public class Point
-        {
-            public int X;
-            public int Y;
-            public override string ToString()
-#line 9 "shapes.spy"
-            {
-#line (10, 9) - (10, 40) 16 "shapes.spy"
-                return FormattableString.Invariant($"({(global::Sharpy.Builtins.Str(this.X))}, {(global::Sharpy.Builtins.Str(this.Y))})");
-#line hidden
-            }
+    }
 
-            public Point(int x, int y)
-#line 5 "shapes.spy"
-            {
-#line (6, 9) - (6, 19) 16 "shapes.spy"
-                this.X = x;
-#line (7, 9) - (7, 19) 16 "shapes.spy"
-                this.Y = y;
+    [global::Sharpy.SharpyModuleType("shapes", "Point")]
+    public class Point
+    {
+        public int X;
+        public int Y;
+        public override string ToString()
+#line 9 "shapes.spy"
+        {
+#line (10, 9) - (10, 40) 12 "shapes.spy"
+            return FormattableString.Invariant($"({(global::Sharpy.Builtins.Str(this.X))}, {(global::Sharpy.Builtins.Str(this.Y))})");
 #line hidden
-            }
         }
 
-        public class Color
+        public Point(int x, int y)
+#line 5 "shapes.spy"
         {
-            public string Name;
-            public int Alpha;
-            public override string ToString()
-#line 20 "shapes.spy"
-            {
-#line (21, 9) - (21, 44) 16 "shapes.spy"
-                return FormattableString.Invariant($"{(global::Sharpy.Builtins.Str(this.Name))}@{(global::Sharpy.Builtins.Str(this.Alpha))}");
+#line (6, 9) - (6, 19) 12 "shapes.spy"
+            this.X = x;
+#line (7, 9) - (7, 19) 12 "shapes.spy"
+            this.Y = y;
 #line hidden
-            }
+        }
+    }
 
-            public Color(string name, int alpha = 255)
-#line 16 "shapes.spy"
-            {
-#line (17, 9) - (17, 25) 16 "shapes.spy"
-                this.Name = name;
-#line (18, 9) - (18, 27) 16 "shapes.spy"
-                this.Alpha = alpha;
+    [global::Sharpy.SharpyModuleType("shapes", "Color")]
+    public class Color
+    {
+        public string Name;
+        public int Alpha;
+        public override string ToString()
+#line 20 "shapes.spy"
+        {
+#line (21, 9) - (21, 44) 12 "shapes.spy"
+            return FormattableString.Invariant($"{(global::Sharpy.Builtins.Str(this.Name))}@{(global::Sharpy.Builtins.Str(this.Alpha))}");
 #line hidden
-            }
+        }
+
+        public Color(string name, int alpha = 255)
+#line 16 "shapes.spy"
+        {
+#line (17, 9) - (17, 25) 12 "shapes.spy"
+            this.Name = name;
+#line (18, 9) - (18, 27) 12 "shapes.spy"
+            this.Alpha = alpha;
+#line hidden
         }
     }
 }

@@ -7,48 +7,51 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class AssertApprox
+namespace AssertApprox
 {
-    public static void Main()
+    public static partial class AssertApproxModule
     {
-#line (20, 5) - (20, 16) 8 "assert_approx.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static void Main()
+        {
+#line (20, 5) - (20, 16) 12 "assert_approx.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
-    }
-}
-
-public partial class AssertApproxTests
-{
-    [Xunit.FactAttribute]
-    public void TestApproxDefault()
-    {
-#line (5, 5) - (5, 37) 8 "assert_approx.spy"
-        Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7);
-#line hidden
+        }
     }
 
-    [Xunit.FactAttribute]
-    public void TestApproxPlaces()
+    public partial class AssertApproxModuleTests
     {
-#line (9, 5) - (9, 48) 8 "assert_approx.spy"
-        Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 10);
+        [Xunit.FactAttribute]
+        public void TestApproxDefault()
+        {
+#line (5, 5) - (5, 37) 12 "assert_approx.spy"
+            Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7);
 #line hidden
-    }
+        }
 
-    [Xunit.FactAttribute]
-    public void TestApproxAbs()
-    {
-#line (13, 5) - (13, 47) 8 "assert_approx.spy"
-        Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 1e-9d);
+        [Xunit.FactAttribute]
+        public void TestApproxPlaces()
+        {
+#line (9, 5) - (9, 48) 12 "assert_approx.spy"
+            Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 10);
 #line hidden
-    }
+        }
 
-    [Xunit.FactAttribute]
-    public void TestApproxLeft()
-    {
-#line (17, 5) - (17, 37) 8 "assert_approx.spy"
-        Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7);
+        [Xunit.FactAttribute]
+        public void TestApproxAbs()
+        {
+#line (13, 5) - (13, 47) 12 "assert_approx.spy"
+            Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 1e-9d);
 #line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestApproxLeft()
+        {
+#line (17, 5) - (17, 37) 12 "assert_approx.spy"
+            Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7);
+#line hidden
+        }
     }
 }
 #line default

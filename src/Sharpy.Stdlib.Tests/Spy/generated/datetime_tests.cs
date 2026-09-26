@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using datetime = global::Sharpy.Datetime;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Datetime
+namespace Sharpy.Stdlib.Tests.Spy.Datetime.DatetimeTests
 {
     [global::Sharpy.SharpyModule("datetime.datetime_tests")]
-    public static partial class DatetimeTests
+    public static partial class DatetimeTestsModule
     {
     }
 
-    public partial class DatetimeTestsTests
+    public partial class DatetimeTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDateConstructorSetsYearMonthDay2024115()

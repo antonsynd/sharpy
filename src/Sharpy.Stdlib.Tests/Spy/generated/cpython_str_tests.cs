@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Cpython
+namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests
 {
     [global::Sharpy.SharpyModule("cpython.cpython_str_tests")]
-    public static partial class CpythonStrTests
+    public static partial class CpythonStrTestsModule
     {
         internal static bool _IndexRaises(string s, string sub)
         {
@@ -52,7 +52,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
         }
     }
 
-    public partial class CpythonStrTestsTests
+    public partial class CpythonStrTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestLower()
@@ -478,9 +478,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (258, 5) - (258, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
             Xunit.Assert.Equal(9, global::Sharpy.StringExtensions.Index("abcdefghiabc", "abc", 1));
 #line (259, 5) - (259, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._IndexRaises("abcdefghiabc", "hib"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests.CpythonStrTestsModule._IndexRaises("abcdefghiabc", "hib"));
 #line (260, 5) - (260, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._IndexRaises("abcdefghi", "ghix"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests.CpythonStrTestsModule._IndexRaises("abcdefghi", "ghix"));
 #line hidden
         }
 
@@ -496,7 +496,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (273, 5) - (273, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
             Xunit.Assert.Equal(0, global::Sharpy.StringExtensions.Rindex("abcdefghiabc", "abc", 0, -1));
 #line (274, 5) - (274, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests._RindexRaises("abcdefghiabc", "hib"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests.CpythonStrTestsModule._RindexRaises("abcdefghiabc", "hib"));
 #line hidden
         }
 

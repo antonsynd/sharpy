@@ -7,8 +7,19 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestFixtureClass
+namespace TestFixtureClass
 {
+    public static partial class TestFixtureClassModule
+    {
+        public static void Main()
+        {
+#line (26, 5) - (26, 16) 12 "test_fixture_class.spy"
+            global::Sharpy.Builtins.Print("ok");
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "TestGreetingCase")]
     public class TestGreetingCase
     {
         public TestGreetingCase()
@@ -35,48 +46,41 @@ public static partial class TestFixtureClass
         }
     }
 
-    public static void Main()
+    public class GreetingFixture
     {
-#line (26, 5) - (26, 16) 8 "test_fixture_class.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public string Value { get; private set; } = default!;
+
+        public GreetingFixture()
+        {
+            Value = "hello";
+        }
+    }
+
+    public partial class TestFixtureClassModuleTests : Xunit.IClassFixture<GreetingFixture>
+    {
+        private readonly GreetingFixture _greetingFixture;
+        public TestFixtureClassModuleTests(GreetingFixture greetingFixture)
+        {
+            _greetingFixture = greetingFixture;
+        }
+
+        [Xunit.FactAttribute]
+        public void TestUsesGreeting()
+        {
+            string greeting = _greetingFixture.Value;
+#line (19, 5) - (19, 32) 12 "test_fixture_class.spy"
+            Xunit.Assert.Equal("hello", greeting);
 #line hidden
-    }
-}
+        }
 
-public class GreetingFixture
-{
-    public string Value { get; private set; } = default!;
-
-    public GreetingFixture()
-    {
-        Value = "hello";
-    }
-}
-
-public partial class TestFixtureClassTests : Xunit.IClassFixture<GreetingFixture>
-{
-    private readonly GreetingFixture _greetingFixture;
-    public TestFixtureClassTests(GreetingFixture greetingFixture)
-    {
-        _greetingFixture = greetingFixture;
-    }
-
-    [Xunit.FactAttribute]
-    public void TestUsesGreeting()
-    {
-        string greeting = _greetingFixture.Value;
-#line (19, 5) - (19, 32) 8 "test_fixture_class.spy"
-        Xunit.Assert.Equal("hello", greeting);
+        [Xunit.FactAttribute]
+        public void TestGreetingLength()
+        {
+            string greeting = _greetingFixture.Value;
+#line (23, 5) - (23, 31) 12 "test_fixture_class.spy"
+            Xunit.Assert.Equal(5, greeting.Length);
 #line hidden
-    }
-
-    [Xunit.FactAttribute]
-    public void TestGreetingLength()
-    {
-        string greeting = _greetingFixture.Value;
-#line (23, 5) - (23, 31) 8 "test_fixture_class.spy"
-        Xunit.Assert.Equal(5, greeting.Length);
-#line hidden
+        }
     }
 }
 #line default

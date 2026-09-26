@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using tarfile = global::Sharpy.TarfileModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Tarfile
+namespace Sharpy.Stdlib.Tests.Spy.Tarfile.TarfileTests
 {
     [global::Sharpy.SharpyModule("tarfile.tarfile_tests")]
-    public static partial class TarfileTests
+    public static partial class TarfileTestsModule
     {
     }
 
-    public partial class TarfileTestsTests : global::System.IDisposable
+    public partial class TarfileTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
@@ -179,7 +179,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tarfile
             }
 
 #line (78, 5) - (78, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(outDir + "/source.txt"));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(outDir + "/source.txt"));
 #line (79, 5) - (79, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
             var content = "";
 #line (80, 5) - (81, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"

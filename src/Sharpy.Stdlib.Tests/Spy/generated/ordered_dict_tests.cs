@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.OrderedDictTests
 {
     [global::Sharpy.SharpyModule("collections.ordered_dict_tests")]
-    public static partial class OrderedDictTests
+    public static partial class OrderedDictTestsModule
     {
     }
 
-    public partial class OrderedDictTestsTests
+    public partial class OrderedDictTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestOrderedDictContainsExistingKeyReturnsTrue()

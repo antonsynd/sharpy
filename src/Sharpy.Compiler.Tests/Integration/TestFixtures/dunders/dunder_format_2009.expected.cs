@@ -7,8 +7,33 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderFormat2009
+namespace DunderFormat2009
 {
+    public static partial class DunderFormat2009Module
+    {
+        public static void Main()
+        {
+#line (33, 5) - (33, 20) 12 "dunder_format_2009.spy"
+            var m = new global::DunderFormat2009.Money(1250);
+#line (34, 5) - (34, 18) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Str(m));
+#line (35, 5) - (35, 18) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(m, ""))}"));
+#line (36, 5) - (36, 22) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(m, ".2f"))}"));
+#line (37, 5) - (37, 31) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Format(m, ">10.1f"));
+#line (38, 5) - (38, 31) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.StringExtensions.Format("{:,.3f}", m));
+#line (39, 5) - (39, 28) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(new global::DunderFormat2009.Loud(5), ".2f"))}"));
+#line (40, 5) - (40, 30) 12 "dunder_format_2009.spy"
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(new global::DunderFormat2009.Tag("x"), "spec"))}"));
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Money")]
     public class Money : System.IFormattable
     {
         public int Cents;
@@ -47,6 +72,7 @@ public static partial class DunderFormat2009
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Loud")]
     public class Loud : global::DunderFormat2009.Money, System.IFormattable
     {
         public override string ToString(string? spec, global::System.IFormatProvider? formatProvider = null)
@@ -63,6 +89,7 @@ public static partial class DunderFormat2009
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Tag")]
     public struct Tag : System.IFormattable
     {
         public string Name;
@@ -79,27 +106,6 @@ public static partial class DunderFormat2009
         {
             this.Name = name;
         }
-    }
-
-    public static void Main()
-    {
-#line (33, 5) - (33, 20) 8 "dunder_format_2009.spy"
-        var m = new global::DunderFormat2009.Money(1250);
-#line (34, 5) - (34, 18) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Str(m));
-#line (35, 5) - (35, 18) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(m, ""))}"));
-#line (36, 5) - (36, 22) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(m, ".2f"))}"));
-#line (37, 5) - (37, 31) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Format(m, ">10.1f"));
-#line (38, 5) - (38, 31) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.StringExtensions.Format("{:,.3f}", m));
-#line (39, 5) - (39, 28) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(new global::DunderFormat2009.Loud(5), ".2f"))}"));
-#line (40, 5) - (40, 30) 8 "dunder_format_2009.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(new global::DunderFormat2009.Tag("x"), "spec"))}"));
-#line hidden
     }
 }
 #line default

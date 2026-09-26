@@ -7,44 +7,47 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class AssertRaisesMatchCapture
+namespace AssertRaisesMatchCapture
 {
-    public static void Main()
+    public static partial class AssertRaisesMatchCaptureModule
     {
-#line (10, 5) - (10, 16) 8 "assert_raises_match_capture.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static void Main()
+        {
+#line (10, 5) - (10, 16) 12 "assert_raises_match_capture.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
     }
-}
 
-public partial class AssertRaisesMatchCaptureTests
-{
-    [Xunit.FactAttribute]
-    public void TestMatchCapture()
+    public partial class AssertRaisesMatchCaptureModuleTests
     {
-#line (5, 5) - (6, 39) 8 "assert_raises_match_capture.spy"
-        ValueError exc = null!;
-#line hidden
-        bool __raised_0 = false;
-        try
+        [Xunit.FactAttribute]
+        public void TestMatchCapture()
         {
-#line (6, 9) - (6, 39) 12 "assert_raises_match_capture.spy"
-            throw new global::Sharpy.ValueError("bad input");
+#line (5, 5) - (6, 39) 12 "assert_raises_match_capture.spy"
+            ValueError exc = null!;
 #line hidden
-        }
-        catch (ValueError __caught_1)
-        {
-            __raised_0 = true;
-            exc = __caught_1;
-        }
+            bool __raised_0 = false;
+            try
+            {
+#line (6, 9) - (6, 39) 16 "assert_raises_match_capture.spy"
+                throw new global::Sharpy.ValueError("bad input");
+#line hidden
+            }
+            catch (ValueError __caught_1)
+            {
+                __raised_0 = true;
+                exc = __caught_1;
+            }
 
-        if (!__raised_0)
-            throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-        if (!(global::System.Text.RegularExpressions.Regex.IsMatch(exc.Message, "bad")))
-            throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad" + ", but it was: " + exc.Message);
-#line (7, 5) - (7, 36) 8 "assert_raises_match_capture.spy"
-        Xunit.Assert.Equal("bad input", global::Sharpy.Builtins.Str(exc));
+            if (!__raised_0)
+                throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+            if (!(global::System.Text.RegularExpressions.Regex.IsMatch(exc.Message, "bad")))
+                throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad" + ", but it was: " + exc.Message);
+#line (7, 5) - (7, 36) 12 "assert_raises_match_capture.spy"
+            Xunit.Assert.Equal("bad input", global::Sharpy.Builtins.Str(exc));
 #line hidden
+        }
     }
 }
 #line default

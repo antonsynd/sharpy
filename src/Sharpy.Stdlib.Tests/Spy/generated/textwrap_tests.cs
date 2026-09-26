@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using textwrap = global::Sharpy.Textwrap;
+using textwrap = global::Sharpy.Textwrap.TextwrapModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Textwrap
+namespace Sharpy.Stdlib.Tests.Spy.Textwrap.TextwrapTests
 {
     [global::Sharpy.SharpyModule("textwrap.textwrap_tests")]
-    public static partial class TextwrapTests
+    public static partial class TextwrapTestsModule
     {
     }
 
-    public partial class TextwrapTestsTests
+    public partial class TextwrapTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestWrapBasicWordWrap()

@@ -7,8 +7,37 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ClassWithInit
+namespace ClassWithInit
 {
+    public static partial class ClassWithInitModule
+    {
+        public static void Main()
+        {
+#line (26, 5) - (26, 66) 12 "class_with_init.spy"
+            var converter = new global::ClassWithInit.TemperatureConverter(0.0d, "Water freezing point");
+#line (27, 5) - (27, 35) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(converter.GetCelsius());
+#line (28, 5) - (28, 37) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(converter.ToFahrenheit());
+#line (29, 5) - (29, 33) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(converter.ToKelvin());
+#line (31, 5) - (31, 28) 12 "class_with_init.spy"
+            converter.Adjust(100.0d);
+#line (32, 5) - (32, 35) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(converter.GetCelsius());
+#line (33, 5) - (33, 37) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(converter.ToFahrenheit());
+#line (35, 5) - (35, 60) 12 "class_with_init.spy"
+            var second = new global::ClassWithInit.TemperatureConverter(25.0d, "Room temperature");
+#line (36, 5) - (36, 32) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(second.GetCelsius());
+#line (37, 5) - (37, 30) 12 "class_with_init.spy"
+            global::Sharpy.Builtins.Print(second.ToKelvin());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "TemperatureConverter")]
     public class TemperatureConverter
     {
         public double Celsius;
@@ -56,31 +85,6 @@ public static partial class ClassWithInit
             global::Sharpy.Builtins.Print(this.Name);
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (26, 5) - (26, 66) 8 "class_with_init.spy"
-        var converter = new global::ClassWithInit.TemperatureConverter(0.0d, "Water freezing point");
-#line (27, 5) - (27, 35) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(converter.GetCelsius());
-#line (28, 5) - (28, 37) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(converter.ToFahrenheit());
-#line (29, 5) - (29, 33) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(converter.ToKelvin());
-#line (31, 5) - (31, 28) 8 "class_with_init.spy"
-        converter.Adjust(100.0d);
-#line (32, 5) - (32, 35) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(converter.GetCelsius());
-#line (33, 5) - (33, 37) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(converter.ToFahrenheit());
-#line (35, 5) - (35, 60) 8 "class_with_init.spy"
-        var second = new global::ClassWithInit.TemperatureConverter(25.0d, "Room temperature");
-#line (36, 5) - (36, 32) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(second.GetCelsius());
-#line (37, 5) - (37, 30) 8 "class_with_init.spy"
-        global::Sharpy.Builtins.Print(second.ToKelvin());
-#line hidden
     }
 }
 #line default

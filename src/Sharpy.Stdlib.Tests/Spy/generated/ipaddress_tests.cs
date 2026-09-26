@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using ipaddress = global::Sharpy.IpaddressModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Ipaddress
+namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
 {
     [global::Sharpy.SharpyModule("ipaddress.ipaddress_tests")]
-    public static partial class IpaddressTests
+    public static partial class IpaddressTestsModule
     {
     }
 
-    public partial class IpaddressTestsTests
+    public partial class IpaddressTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestIpv4AddressFromString()

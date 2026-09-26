@@ -12,10 +12,10 @@ using yaml = global::Sharpy.Yaml;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Yaml
+namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 {
     [global::Sharpy.SharpyModule("yaml.yaml_module_tests")]
-    public static partial class YamlModuleTests
+    public static partial class YamlModuleTestsModule
     {
         internal static double _LoadFloat(string text)
         {
@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml
         }
     }
 
-    public partial class YamlModuleTestsTests : global::System.IDisposable
+    public partial class YamlModuleTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
@@ -312,15 +312,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml
         public void TestSafeLoadResolvesNonFloat32ExactValues()
         {
 #line (141, 5) - (141, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Equal(0.1d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("0.1"));
+            Xunit.Assert.Equal(0.1d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests.YamlModuleTestsModule._LoadFloat("0.1"));
 #line (142, 5) - (142, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Equal(3.141592653589793d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("3.141592653589793"));
+            Xunit.Assert.Equal(3.141592653589793d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests.YamlModuleTestsModule._LoadFloat("3.141592653589793"));
 #line (143, 5) - (143, 66) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Equal(2.718281828459045d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("2.718281828459045"));
+            Xunit.Assert.Equal(2.718281828459045d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests.YamlModuleTestsModule._LoadFloat("2.718281828459045"));
 #line (144, 5) - (144, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Equal(1e20d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("1.0e+20"));
+            Xunit.Assert.Equal(1e20d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests.YamlModuleTestsModule._LoadFloat("1.0e+20"));
 #line (145, 5) - (145, 72) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Equal(-0.30000000000000004d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests._LoadFloat("-0.30000000000000004"));
+            Xunit.Assert.Equal(-0.30000000000000004d, global::Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests.YamlModuleTestsModule._LoadFloat("-0.30000000000000004"));
 #line hidden
         }
 

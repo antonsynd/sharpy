@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using random = global::Sharpy.RandomModule;
+using random = global::Sharpy.RandomModule.RandomModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Random
+namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
 {
     [global::Sharpy.SharpyModule("random.random_additional2_tests")]
-    public static partial class RandomAdditional2Tests
+    public static partial class RandomAdditional2TestsModule
     {
     }
 
-    public partial class RandomAdditional2TestsTests
+    public partial class RandomAdditional2TestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSeedProducesIdenticalSequenceMultipleValues()

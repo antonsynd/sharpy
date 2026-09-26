@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 {
     [global::Sharpy.SharpyModule("collections.collections_module_tests")]
-    public static partial class CollectionsModuleTests
+    public static partial class CollectionsModuleTestsModule
     {
     }
 
-    public partial class CollectionsModuleTestsTests
+    public partial class CollectionsModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDequeAppendAndPopWorksLikeStack()

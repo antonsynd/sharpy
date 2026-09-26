@@ -7,8 +7,42 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Attribute = global::System.Attribute;
 
-public static partial class BracketAttrCustomReflection
+namespace BracketAttrCustomReflection
 {
+    public static partial class BracketAttrCustomReflectionModule
+    {
+        public static void Main()
+        {
+#line (18, 5) - (18, 20) 12 "bracket_attr_custom_reflection.spy"
+            var lib = new global::BracketAttrCustomReflection.Library();
+#line (19, 5) - (19, 23) 12 "bracket_attr_custom_reflection.spy"
+            object obj = lib;
+#line (20, 5) - (20, 23) 12 "bracket_attr_custom_reflection.spy"
+            var t = obj.GetType();
+#line (21, 5) - (21, 47) 12 "bracket_attr_custom_reflection.spy"
+            var attrs = global::System.Attribute.GetCustomAttributes(t);
+#line (22, 5) - (26, 31) 12 "bracket_attr_custom_reflection.spy"
+            foreach (var __loopVar_0 in attrs)
+#line hidden
+            {
+                var a = __loopVar_0;
+#line (23, 9) - (23, 39) 16 "bracket_attr_custom_reflection.spy"
+                var author = a is AuthorAttribute __coerce_temp_1 ? Optional<AuthorAttribute>.Some(__coerce_temp_1) : default;
+#line (24, 9) - (26, 31) 16 "bracket_attr_custom_reflection.spy"
+                if (author.IsSome)
+#line hidden
+                {
+#line (25, 13) - (25, 31) 20 "bracket_attr_custom_reflection.spy"
+                    global::Sharpy.Builtins.Print(author.Unwrap().Name);
+#line (26, 13) - (26, 31) 20 "bracket_attr_custom_reflection.spy"
+                    global::Sharpy.Builtins.Print(author.Unwrap().Year);
+#line hidden
+                }
+            }
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "AuthorAttribute")]
     public class AuthorAttribute : global::System.Attribute
     {
         public string Name;
@@ -24,39 +58,10 @@ public static partial class BracketAttrCustomReflection
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Library")]
     [AuthorAttribute("Alice", 2026)]
     public class Library
     {
-    }
-
-    public static void Main()
-    {
-#line (18, 5) - (18, 20) 8 "bracket_attr_custom_reflection.spy"
-        var lib = new global::BracketAttrCustomReflection.Library();
-#line (19, 5) - (19, 23) 8 "bracket_attr_custom_reflection.spy"
-        object obj = lib;
-#line (20, 5) - (20, 23) 8 "bracket_attr_custom_reflection.spy"
-        var t = obj.GetType();
-#line (21, 5) - (21, 47) 8 "bracket_attr_custom_reflection.spy"
-        var attrs = global::System.Attribute.GetCustomAttributes(t);
-#line (22, 5) - (26, 31) 8 "bracket_attr_custom_reflection.spy"
-        foreach (var __loopVar_0 in attrs)
-#line hidden
-        {
-            var a = __loopVar_0;
-#line (23, 9) - (23, 39) 12 "bracket_attr_custom_reflection.spy"
-            var author = a is AuthorAttribute __coerce_temp_1 ? Optional<AuthorAttribute>.Some(__coerce_temp_1) : default;
-#line (24, 9) - (26, 31) 12 "bracket_attr_custom_reflection.spy"
-            if (author.IsSome)
-#line hidden
-            {
-#line (25, 13) - (25, 31) 16 "bracket_attr_custom_reflection.spy"
-                global::Sharpy.Builtins.Print(author.Unwrap().Name);
-#line (26, 13) - (26, 31) 16 "bracket_attr_custom_reflection.spy"
-                global::Sharpy.Builtins.Print(author.Unwrap().Year);
-#line hidden
-            }
-        }
     }
 }
 #line default

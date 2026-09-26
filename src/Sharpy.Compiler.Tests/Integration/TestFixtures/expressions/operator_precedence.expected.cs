@@ -6,23 +6,26 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class OperatorPrecedence
+namespace OperatorPrecedence
 {
-    public static void Main()
+    public static partial class OperatorPrecedenceModule
     {
-#line (4, 5) - (4, 23) 8 "operator_precedence.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.CheckedIntPow((int)(2), (int)(9)));
-#line (6, 5) - (6, 21) 8 "operator_precedence.spy"
-        global::Sharpy.Builtins.Print(2 + 3 * 4);
-#line (8, 5) - (8, 23) 8 "operator_precedence.spy"
-        global::Sharpy.Builtins.Print((2 + 3) * 4);
-#line (10, 5) - (10, 26) 8 "operator_precedence.spy"
-        int? x = null;
-#line (11, 5) - (11, 25) 8 "operator_precedence.spy"
-        int y = x ?? 5 + 3;
-#line (12, 5) - (12, 13) 8 "operator_precedence.spy"
-        global::Sharpy.Builtins.Print(y);
+        public static void Main()
+        {
+#line (4, 5) - (4, 23) 12 "operator_precedence.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.CheckedIntPow((int)(2), (int)(9)));
+#line (6, 5) - (6, 21) 12 "operator_precedence.spy"
+            global::Sharpy.Builtins.Print(2 + 3 * 4);
+#line (8, 5) - (8, 23) 12 "operator_precedence.spy"
+            global::Sharpy.Builtins.Print((2 + 3) * 4);
+#line (10, 5) - (10, 26) 12 "operator_precedence.spy"
+            int? x = null;
+#line (11, 5) - (11, 25) 12 "operator_precedence.spy"
+            int y = x ?? 5 + 3;
+#line (12, 5) - (12, 13) 12 "operator_precedence.spy"
+            global::Sharpy.Builtins.Print(y);
 #line hidden
+        }
     }
 }
 #line default

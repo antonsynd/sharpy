@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using sys = global::Sharpy.Sys;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Sys
+namespace Sharpy.Stdlib.Tests.Spy.Sys.SysModuleTests
 {
     [global::Sharpy.SharpyModule("sys.sys_module_tests")]
-    public static partial class SysModuleTests
+    public static partial class SysModuleTestsModule
     {
     }
 
-    public partial class SysModuleTestsTests
+    public partial class SysModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestStdoutIsNotNone()

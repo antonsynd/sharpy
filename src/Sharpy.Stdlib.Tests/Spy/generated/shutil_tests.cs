@@ -8,18 +8,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using os = global::Sharpy.OsModule;
-using shutil = global::Sharpy.ShutilModule;
+using os = global::Sharpy.OsModule.OsModuleModule;
+using shutil = global::Sharpy.ShutilModule.ShutilModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Shutil
+namespace Sharpy.Stdlib.Tests.Spy.Shutil.ShutilTests
 {
     [global::Sharpy.SharpyModule("shutil.shutil_tests")]
-    public static partial class ShutilTests
+    public static partial class ShutilTestsModule
     {
     }
 
-    public partial class ShutilTestsTests : global::System.IDisposable
+    public partial class ShutilTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
@@ -42,7 +42,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (29, 5) - (29, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var result = shutil.Copy(src, dst);
 #line (30, 5) - (30, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(dst));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(dst));
 #line (31, 5) - (31, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var content = "";
 #line (32, 5) - (33, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
@@ -85,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (46, 5) - (46, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var expected = destdir + "/src.txt";
 #line (47, 5) - (47, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(expected));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(expected));
 #line (48, 5) - (48, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             Xunit.Assert.Equal(expected, result);
 #line hidden
@@ -170,9 +170,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (81, 5) - (81, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             Xunit.Assert.Equal(dstDir, result);
 #line (82, 5) - (82, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(dstDir + "/a.txt"));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(dstDir + "/a.txt"));
 #line (83, 5) - (83, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(dstDir + "/sub/b.txt"));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(dstDir + "/sub/b.txt"));
 #line (84, 5) - (84, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var content = "";
 #line (85, 5) - (86, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
@@ -240,7 +240,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (106, 5) - (106, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             shutil.Rmtree(d);
 #line (107, 5) - (107, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isdir(d));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(d));
 #line hidden
         }
 
@@ -286,9 +286,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (124, 5) - (124, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var result = shutil.Move(src, dst);
 #line (125, 5) - (125, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Exists(src));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(src));
 #line (126, 5) - (126, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(dst));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(dst));
 #line (127, 5) - (127, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var content = "";
 #line (128, 5) - (129, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
@@ -329,11 +329,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line (141, 5) - (141, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             var result = shutil.Move(srcDir, dstDir);
 #line (142, 5) - (142, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isdir(srcDir));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(srcDir));
 #line (143, 5) - (143, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(dstDir));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(dstDir));
 #line (144, 5) - (144, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(dstDir + "/f.txt"));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(dstDir + "/f.txt"));
 #line (145, 5) - (145, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             Xunit.Assert.Equal(dstDir, result);
 #line hidden
@@ -373,7 +373,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil
 #line hidden
             {
 #line (161, 9) - (161, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(result!));
+                Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(result!));
 #line hidden
             }
         }

@@ -7,8 +7,25 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class GenericClass0005
+namespace GenericClass0005
 {
+    public static partial class GenericClass0005Module
+    {
+        public static void Main()
+        {
+#line (12, 5) - (12, 27) 12 "generic_class_0005.spy"
+            var intBox = new global::GenericClass0005.Box<int>(42);
+#line (13, 5) - (13, 25) 12 "generic_class_0005.spy"
+            global::Sharpy.Builtins.Print(intBox.Get());
+#line (15, 5) - (15, 32) 12 "generic_class_0005.spy"
+            var strBox = new global::GenericClass0005.Box<string>("hello");
+#line (16, 5) - (16, 25) 12 "generic_class_0005.spy"
+            global::Sharpy.Builtins.Print(strBox.Get());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Box")]
     public class Box<T>
     {
         public T Item;
@@ -27,19 +44,6 @@ public static partial class GenericClass0005
             this.Item = value;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (12, 5) - (12, 27) 8 "generic_class_0005.spy"
-        var intBox = new global::GenericClass0005.Box<int>(42);
-#line (13, 5) - (13, 25) 8 "generic_class_0005.spy"
-        global::Sharpy.Builtins.Print(intBox.Get());
-#line (15, 5) - (15, 32) 8 "generic_class_0005.spy"
-        var strBox = new global::GenericClass0005.Box<string>("hello");
-#line (16, 5) - (16, 25) 8 "generic_class_0005.spy"
-        global::Sharpy.Builtins.Print(strBox.Get());
-#line hidden
     }
 }
 #line default

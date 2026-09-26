@@ -7,23 +7,26 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class UnusedExceptVariable
+namespace UnusedExceptVariable
 {
-    public static void Main()
+    public static partial class UnusedExceptVariableModule
     {
-#line (3, 5) - (6, 24) 8 "unused_except_variable.spy"
-        try
-#line hidden
+        public static void Main()
         {
-#line (4, 9) - (4, 24) 12 "unused_except_variable.spy"
-            global::Sharpy.Builtins.Print("trying");
+#line (3, 5) - (6, 24) 12 "unused_except_variable.spy"
+            try
 #line hidden
-        }
-        catch (global::System.Exception e)
-        {
-#line (6, 9) - (6, 24) 12 "unused_except_variable.spy"
-            global::Sharpy.Builtins.Print("caught");
+            {
+#line (4, 9) - (4, 24) 16 "unused_except_variable.spy"
+                global::Sharpy.Builtins.Print("trying");
 #line hidden
+            }
+            catch (global::System.Exception e)
+            {
+#line (6, 9) - (6, 24) 16 "unused_except_variable.spy"
+                global::Sharpy.Builtins.Print("caught");
+#line hidden
+            }
         }
     }
 }

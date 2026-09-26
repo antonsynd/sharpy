@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using calendar = global::Sharpy.CalendarModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Calendar
+namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
 {
     [global::Sharpy.SharpyModule("calendar.calendar_tests")]
-    public static partial class CalendarTests
+    public static partial class CalendarTestsModule
     {
     }
 
-    public partial class CalendarTestsTests
+    public partial class CalendarTestsModuleTests
     {
         [Xunit.TheoryAttribute]
         [Xunit.InlineDataAttribute(2024, true)]

@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using logging = global::Sharpy.Logging;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Logging
+namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 {
     [global::Sharpy.SharpyModule("logging.logging_module_tests")]
-    public static partial class LoggingModuleTests
+    public static partial class LoggingModuleTestsModule
     {
     }
 
-    public partial class LoggingModuleTestsTests
+    public partial class LoggingModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestConstantsHaveCorrectValues()

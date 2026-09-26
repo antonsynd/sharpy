@@ -12,14 +12,14 @@ using @operator = global::Sharpy.Operator;
 using subprocess = global::Sharpy.SubprocessModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Subprocess
+namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 {
     [global::Sharpy.SharpyModule("subprocess.subprocess_module_tests")]
-    public static partial class SubprocessModuleTests
+    public static partial class SubprocessModuleTestsModule
     {
     }
 
-    public partial class SubprocessModuleTestsTests
+    public partial class SubprocessModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestConstantsMatchPython()

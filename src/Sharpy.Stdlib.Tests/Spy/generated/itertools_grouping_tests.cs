@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using itertools = global::Sharpy.Itertools;
+using itertools = global::Sharpy.Itertools.ItertoolsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Itertools
+namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsGroupingTests
 {
     [global::Sharpy.SharpyModule("itertools.itertools_grouping_tests")]
-    public static partial class ItertoolsGroupingTests
+    public static partial class ItertoolsGroupingTestsModule
     {
     }
 
-    public partial class ItertoolsGroupingTestsTests
+    public partial class ItertoolsGroupingTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestGroupbyEmptyIterableReturnsEmpty()

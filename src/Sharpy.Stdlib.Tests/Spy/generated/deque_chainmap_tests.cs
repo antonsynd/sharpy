@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
 {
     [global::Sharpy.SharpyModule("collections.deque_chainmap_tests")]
-    public static partial class DequeChainmapTests
+    public static partial class DequeChainmapTestsModule
     {
     }
 
-    public partial class DequeChainmapTestsTests
+    public partial class DequeChainmapTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDequeConstructFromEmptyIsEmpty()

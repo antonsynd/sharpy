@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using difflib = global::Sharpy.DifflibModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Difflib
+namespace Sharpy.Stdlib.Tests.Spy.Difflib.DifflibModuleTests
 {
     [global::Sharpy.SharpyModule("difflib.difflib_module_tests")]
-    public static partial class DifflibModuleTests
+    public static partial class DifflibModuleTestsModule
     {
     }
 
-    public partial class DifflibModuleTestsTests
+    public partial class DifflibModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestSequenceMatcherRatioMatchesPython()

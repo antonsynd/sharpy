@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using colorsys = global::Sharpy.Colorsys;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Colorsys
+namespace Sharpy.Stdlib.Tests.Spy.Colorsys.ColorsysTests
 {
     [global::Sharpy.SharpyModule("colorsys.colorsys_tests")]
-    public static partial class ColorsysTests
+    public static partial class ColorsysTestsModule
     {
     }
 
-    public partial class ColorsysTestsTests
+    public partial class ColorsysTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestRgbToHsvTypicalValue()

@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.Functools
 {
     /// <summary>
     /// Higher-order functions and operations on callable objects.
     /// </summary>
-    public static partial class Functools
+    public static partial class FunctoolsModule
     {
         /// <summary>
         /// Apply function of two arguments cumulatively to the items of iterable, so as to reduce the iterable to a single value.

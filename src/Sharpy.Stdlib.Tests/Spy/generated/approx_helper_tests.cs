@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Unittest
+namespace Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests
 {
     [global::Sharpy.SharpyModule("unittest.approx_helper_tests")]
-    public static partial class ApproxHelperTests
+    public static partial class ApproxHelperTestsModule
     {
         internal static void _AssertClose(double actual, double expected)
         {
@@ -26,15 +26,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Unittest
         }
     }
 
-    public partial class ApproxHelperTestsTests
+    public partial class ApproxHelperTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestApproxPassesInNonTestHelper()
         {
 #line (18, 5) - (18, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(0.1d + 0.2d, 0.3d);
+            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests.ApproxHelperTestsModule._AssertClose(0.1d + 0.2d, 0.3d);
 #line (19, 5) - (19, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 1.0d);
+            global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests.ApproxHelperTestsModule._AssertClose(1.0d, 1.0d);
 #line hidden
         }
 
@@ -48,7 +48,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Unittest
 #line hidden
             {
 #line (26, 9) - (26, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
-                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests._AssertClose(1.0d, 2.0d);
+                global::Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests.ApproxHelperTestsModule._AssertClose(1.0d, 2.0d);
 #line hidden
             }
             catch (global::Sharpy.AssertionError)

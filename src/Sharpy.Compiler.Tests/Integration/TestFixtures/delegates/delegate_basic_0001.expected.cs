@@ -6,18 +6,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DelegateBasic0001
+namespace DelegateBasic0001
 {
-    public delegate string Greeter(string name);
-    public static void Main()
+    public static partial class DelegateBasic0001Module
     {
-#line (5, 5) - (5, 52) 8 "delegate_basic_0001.spy"
-        global::DelegateBasic0001.Greeter greet = name => "Hello, " + name;
-#line (6, 5) - (6, 28) 8 "delegate_basic_0001.spy"
-        var result = greet("World");
-#line (7, 5) - (7, 18) 8 "delegate_basic_0001.spy"
-        global::Sharpy.Builtins.Print(result);
+        public static void Main()
+        {
+#line (5, 5) - (5, 52) 12 "delegate_basic_0001.spy"
+            global::DelegateBasic0001.Greeter greet = name => "Hello, " + name;
+#line (6, 5) - (6, 28) 12 "delegate_basic_0001.spy"
+            var result = greet("World");
+#line (7, 5) - (7, 18) 12 "delegate_basic_0001.spy"
+            global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
     }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Greeter")]
+    public delegate string Greeter(string name);
 }
 #line default

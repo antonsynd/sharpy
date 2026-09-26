@@ -7,49 +7,52 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class GenericFunction
+namespace GenericFunction
 {
-    public static T Identity<T>(T x)
+    public static partial class GenericFunctionModule
     {
-#line (3, 5) - (3, 14) 8 "generic_function.spy"
-        return x;
+        public static T Identity<T>(T x)
+        {
+#line (3, 5) - (3, 14) 12 "generic_function.spy"
+            return x;
 #line hidden
-    }
+        }
 
-    public static T Swap<T>(T a, T b)
-    {
-#line (6, 5) - (6, 17) 8 "generic_function.spy"
-        T temp = a;
-#line (7, 5) - (7, 10) 8 "generic_function.spy"
-        a = b;
-#line (8, 5) - (8, 14) 8 "generic_function.spy"
-        return a;
+        public static T Swap<T>(T a, T b)
+        {
+#line (6, 5) - (6, 17) 12 "generic_function.spy"
+            T temp = a;
+#line (7, 5) - (7, 10) 12 "generic_function.spy"
+            a = b;
+#line (8, 5) - (8, 14) 12 "generic_function.spy"
+            return a;
 #line hidden
-    }
+        }
 
-    public static void Main()
-    {
-#line (12, 5) - (12, 41) 8 "generic_function.spy"
-        int resultInt = Identity<int>(42);
-#line (13, 5) - (13, 22) 8 "generic_function.spy"
-        global::Sharpy.Builtins.Print(resultInt);
-#line (16, 5) - (16, 17) 8 "generic_function.spy"
-        int x = 42;
-#line (17, 5) - (17, 18) 8 "generic_function.spy"
-        int y = 100;
-#line (18, 5) - (18, 35) 8 "generic_function.spy"
-        int result = Swap<int>(x, y);
-#line (19, 5) - (19, 18) 8 "generic_function.spy"
-        global::Sharpy.Builtins.Print(result);
-#line (22, 5) - (22, 21) 8 "generic_function.spy"
-        double a = 3.14d;
-#line (23, 5) - (23, 21) 8 "generic_function.spy"
-        double b = 2.71d;
-#line (24, 5) - (24, 41) 8 "generic_function.spy"
-        double resultF = Swap<double>(a, b);
-#line (25, 5) - (25, 20) 8 "generic_function.spy"
-        global::Sharpy.Builtins.Print(resultF);
+        public static void Main()
+        {
+#line (12, 5) - (12, 41) 12 "generic_function.spy"
+            int resultInt = Identity<int>(42);
+#line (13, 5) - (13, 22) 12 "generic_function.spy"
+            global::Sharpy.Builtins.Print(resultInt);
+#line (16, 5) - (16, 17) 12 "generic_function.spy"
+            int x = 42;
+#line (17, 5) - (17, 18) 12 "generic_function.spy"
+            int y = 100;
+#line (18, 5) - (18, 35) 12 "generic_function.spy"
+            int result = Swap<int>(x, y);
+#line (19, 5) - (19, 18) 12 "generic_function.spy"
+            global::Sharpy.Builtins.Print(result);
+#line (22, 5) - (22, 21) 12 "generic_function.spy"
+            double a = 3.14d;
+#line (23, 5) - (23, 21) 12 "generic_function.spy"
+            double b = 2.71d;
+#line (24, 5) - (24, 41) 12 "generic_function.spy"
+            double resultF = Swap<double>(a, b);
+#line (25, 5) - (25, 20) 12 "generic_function.spy"
+            global::Sharpy.Builtins.Print(resultF);
 #line hidden
+        }
     }
 }
 #line default

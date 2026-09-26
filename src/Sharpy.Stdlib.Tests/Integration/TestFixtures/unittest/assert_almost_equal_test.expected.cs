@@ -7,32 +7,35 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class AssertAlmostEqualTest
+namespace AssertAlmostEqualTest
 {
-    public static void Main()
+    public static partial class AssertAlmostEqualTestModule
     {
-#line (12, 5) - (12, 16) 8 "assert_almost_equal_test.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static void Main()
+        {
+#line (12, 5) - (12, 16) 12 "assert_almost_equal_test.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
-    }
-}
-
-public partial class AssertAlmostEqualTestTests
-{
-    [Xunit.FactAttribute]
-    public void TestAlmostEqualDefault()
-    {
-#line (5, 5) - (5, 45) 8 "assert_almost_equal_test.spy"
-        Xunit.Assert.Equal(3.14159265d, 3.14159d, 7);
-#line hidden
+        }
     }
 
-    [Xunit.FactAttribute]
-    public void TestAlmostEqualPlaces()
+    public partial class AssertAlmostEqualTestModuleTests
     {
-#line (9, 5) - (9, 50) 8 "assert_almost_equal_test.spy"
-        Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 3);
+        [Xunit.FactAttribute]
+        public void TestAlmostEqualDefault()
+        {
+#line (5, 5) - (5, 45) 12 "assert_almost_equal_test.spy"
+            Xunit.Assert.Equal(3.14159265d, 3.14159d, 7);
 #line hidden
+        }
+
+        [Xunit.FactAttribute]
+        public void TestAlmostEqualPlaces()
+        {
+#line (9, 5) - (9, 50) 12 "assert_almost_equal_test.spy"
+            Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 3);
+#line hidden
+        }
     }
 }
 #line default

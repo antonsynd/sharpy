@@ -7,34 +7,37 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class SetComprehension
+namespace SetComprehension
 {
-    public static void Main()
+    public static partial class SetComprehensionModule
     {
-#line (3, 5) - (3, 43) 8 "set_comprehension.spy"
-        Sharpy.List<int> items = new Sharpy.List<int>()
+        public static void Main()
+        {
+#line (3, 5) - (3, 43) 12 "set_comprehension.spy"
+            Sharpy.List<int> items = new Sharpy.List<int>()
 #line hidden
-        {
-            1,
-            2,
-            2,
-            3,
-            3,
-            3
-        };
-        Sharpy.List<int> __src_1 = items;
-        var __comp_0 = new Sharpy.Set<int>(((global::Sharpy.ISized)__src_1).Count);
-        foreach (var __loopVar_2 in __src_1)
-        {
-            var x = __loopVar_2;
-            __comp_0.Add(x);
-        }
+            {
+                1,
+                2,
+                2,
+                3,
+                3,
+                3
+            };
+            Sharpy.List<int> __src_1 = items;
+            var __comp_0 = new Sharpy.Set<int>(((global::Sharpy.ISized)__src_1).Count);
+            foreach (var __loopVar_2 in __src_1)
+            {
+                var x = __loopVar_2;
+                __comp_0.Add(x);
+            }
 
-#line (4, 5) - (4, 43) 8 "set_comprehension.spy"
-        Sharpy.Set<int> result = __comp_0;
-#line (5, 5) - (5, 23) 8 "set_comprehension.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
+#line (4, 5) - (4, 43) 12 "set_comprehension.spy"
+            Sharpy.Set<int> result = __comp_0;
+#line (5, 5) - (5, 23) 12 "set_comprehension.spy"
+            global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
 #line hidden
+        }
     }
 }
 #line default

@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using csv = global::Sharpy.CsvModule;
+using csv = global::Sharpy.CsvModule.CsvModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.CSV
+namespace Sharpy.Stdlib.Tests.Spy.CSV.CsvReaderWriterTests
 {
     [global::Sharpy.SharpyModule("csv.csv_reader_writer_tests")]
-    public static partial class CsvReaderWriterTests
+    public static partial class CsvReaderWriterTestsModule
     {
     }
 
-    public partial class CsvReaderWriterTestsTests
+    public partial class CsvReaderWriterTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestReaderEmptyLinesReturnsNoRows()

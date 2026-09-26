@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using os = global::Sharpy.OsModule;
+using os = global::Sharpy.OsModule.OsModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Pathlib
+namespace Sharpy.Stdlib.Tests.Spy.Pathlib.PathlibAdditionalTests
 {
     [global::Sharpy.SharpyModule("pathlib.pathlib_additional_tests")]
-    public static partial class PathlibAdditionalTests
+    public static partial class PathlibAdditionalTestsModule
     {
     }
 
-    public partial class PathlibAdditionalTestsTests : global::System.IDisposable
+    public partial class PathlibAdditionalTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]

@@ -10,14 +10,14 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Configparser
+namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
 {
     [global::Sharpy.SharpyModule("configparser.configparser_tests")]
-    public static partial class ConfigparserTests
+    public static partial class ConfigparserTestsModule
     {
     }
 
-    public partial class ConfigparserTestsTests
+    public partial class ConfigparserTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestReadStringBasicKeyValue()

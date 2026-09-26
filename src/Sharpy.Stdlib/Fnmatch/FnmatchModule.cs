@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.FnmatchModule
 {
     /// <summary>
     /// Unix shell-style filename pattern matching.
     /// </summary>
-    public static partial class FnmatchModule
+    public static partial class FnmatchModuleModule
     {
         /// <summary>
         /// Test whether filename matches pattern.
@@ -36,7 +36,7 @@ namespace Sharpy
                 pat = pat.ToLowerInvariant();
             }
 
-            return global::Sharpy.FnmatchModule.Fnmatchcase(name, pat);
+            return global::Sharpy.FnmatchModule.FnmatchModuleModule.Fnmatchcase(name, pat);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            string regexPattern = global::Sharpy.FnmatchModule.Translate(pat);
+            string regexPattern = global::Sharpy.FnmatchModule.FnmatchModuleModule.Translate(pat);
             return global::System.Text.RegularExpressions.Regex.IsMatch(name, regexPattern);
         }
 
@@ -80,7 +80,7 @@ namespace Sharpy
                 matchPat = matchPat.ToLowerInvariant();
             }
 
-            string regexPattern = global::Sharpy.FnmatchModule.Translate(matchPat);
+            string regexPattern = global::Sharpy.FnmatchModule.FnmatchModuleModule.Translate(matchPat);
             global::System.Text.RegularExpressions.Regex regex = new global::System.Text.RegularExpressions.Regex(regexPattern);
             Sharpy.List<string> result = new Sharpy.List<string>()
             {

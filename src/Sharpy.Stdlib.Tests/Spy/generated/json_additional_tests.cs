@@ -12,14 +12,14 @@ using json = global::Sharpy.Json;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.JSON
+namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonAdditionalTests
 {
     [global::Sharpy.SharpyModule("json.json_additional_tests")]
-    public static partial class JsonAdditionalTests
+    public static partial class JsonAdditionalTestsModule
     {
     }
 
-    public partial class JsonAdditionalTestsTests
+    public partial class JsonAdditionalTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestLoadsIntMaxValueReturnsInt()

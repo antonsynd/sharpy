@@ -6,24 +6,27 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class OutInlineDeclaration
+namespace OutInlineDeclaration
 {
-    public static bool TryParse(string s, out int result)
+    public static partial class OutInlineDeclarationModule
     {
-#line (2, 5) - (2, 20) 8 "out_inline_declaration.spy"
-        result = global::Sharpy.Builtins.Int(s);
-#line (3, 5) - (3, 17) 8 "out_inline_declaration.spy"
-        return true;
+        public static bool TryParse(string s, out int result)
+        {
+#line (2, 5) - (2, 20) 12 "out_inline_declaration.spy"
+            result = global::Sharpy.Builtins.Int(s);
+#line (3, 5) - (3, 17) 12 "out_inline_declaration.spy"
+            return true;
 #line hidden
-    }
+        }
 
-    public static void Main()
-    {
-#line (6, 5) - (6, 46) 8 "out_inline_declaration.spy"
-        var success = global::OutInlineDeclaration.TryParse("42", out int value);
-#line (7, 5) - (7, 26) 8 "out_inline_declaration.spy"
-        global::Sharpy.Builtins.Print(success, value);
+        public static void Main()
+        {
+#line (6, 5) - (6, 46) 12 "out_inline_declaration.spy"
+            var success = global::OutInlineDeclaration.OutInlineDeclarationModule.TryParse("42", out int value);
+#line (7, 5) - (7, 26) 12 "out_inline_declaration.spy"
+            global::Sharpy.Builtins.Print(success, value);
 #line hidden
+        }
     }
 }
 #line default

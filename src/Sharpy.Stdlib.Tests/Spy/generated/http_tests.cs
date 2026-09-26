@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using http = global::Sharpy.HttpModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.HTTP
+namespace Sharpy.Stdlib.Tests.Spy.HTTP.HttpTests
 {
     [global::Sharpy.SharpyModule("http.http_tests")]
-    public static partial class HttpTests
+    public static partial class HttpTestsModule
     {
     }
 
-    public partial class HttpTestsTests
+    public partial class HttpTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestOkHasCorrectValue()

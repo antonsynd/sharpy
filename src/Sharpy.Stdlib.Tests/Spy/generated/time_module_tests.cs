@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using time = global::Sharpy.TimeModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Time
+namespace Sharpy.Stdlib.Tests.Spy.Time.TimeModuleTests
 {
     [global::Sharpy.SharpyModule("time.time_module_tests")]
-    public static partial class TimeModuleTests
+    public static partial class TimeModuleTestsModule
     {
     }
 
-    public partial class TimeModuleTestsTests
+    public partial class TimeModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestTimeReturnsReasonableEpoch()

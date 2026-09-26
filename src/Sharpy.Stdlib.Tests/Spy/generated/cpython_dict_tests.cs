@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Cpython
+namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests
 {
     [global::Sharpy.SharpyModule("cpython.cpython_dict_tests")]
-    public static partial class CpythonDictTests
+    public static partial class CpythonDictTestsModule
     {
         internal static bool _GetitemRaises(Sharpy.Dict<string, int> d, string k)
         {
@@ -52,7 +52,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
         }
     }
 
-    public partial class CpythonDictTestsTests
+    public partial class CpythonDictTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestBool()
@@ -410,14 +410,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
                 }
             };
 #line (161, 5) - (161, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._GetitemRaises(d, "z"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests.CpythonDictTestsModule._GetitemRaises(d, "z"));
 #line (162, 5) - (162, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
             Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
 #line hidden
             {
             };
 #line (163, 5) - (163, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._GetitemRaises(empty, "anything"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests.CpythonDictTestsModule._GetitemRaises(empty, "anything"));
 #line hidden
         }
 
@@ -471,7 +471,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython
 #line (192, 5) - (192, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
             Xunit.Assert.Equal(2, d["b"]);
 #line (193, 5) - (193, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests._PopRaises(d, "missing"));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests.CpythonDictTestsModule._PopRaises(d, "missing"));
 #line hidden
         }
 

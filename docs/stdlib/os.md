@@ -6,16 +6,6 @@ Miscellaneous operating system interfaces.
 import os
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `st_size` | `long` |  |
-| `st_mtime` | `float` |  |
-| `st_ctime` | `float` |  |
-| `st_atime` | `float` |  |
-| `st_mode` | `int` |  |
-
 ## Functions
 
 ### `os.remove(path: str)`
@@ -141,3 +131,17 @@ Return the size of a file, reported by os.stat().
 ### `os.expanduser(path: str) -> str`
 
 Expand ~ and ~user constructions.
+
+## StatResult
+
+Result of os.stat(), similar to Python's os.stat_result.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `st_size` | `long` |  |
+| `st_mtime` | `float` |  |
+| `st_ctime` | `float` |  |
+| `st_atime` | `float` |  |
+| `st_mode` | `int` |  |

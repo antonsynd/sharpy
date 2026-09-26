@@ -12,10 +12,10 @@ using json = global::Sharpy.Json;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.JSON
+namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests
 {
     [global::Sharpy.SharpyModule("json.json_encoder_decoder_tests")]
-    public static partial class JsonEncoderDecoderTests
+    public static partial class JsonEncoderDecoderTestsModule
     {
         internal static Sharpy.Dict<string, object> _TagHook(Sharpy.Dict<string, object> d)
         {
@@ -25,14 +25,15 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
             return d;
 #line hidden
         }
-
-        public class Unserializable
-        {
-            public int Marker = 0;
-        }
     }
 
-    public partial class JsonEncoderDecoderTestsTests
+    [global::Sharpy.SharpyModuleType("json.json_encoder_decoder_tests", "Unserializable")]
+    public class Unserializable
+    {
+        public int Marker = 0;
+    }
+
+    public partial class JsonEncoderDecoderTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestEncoderEncodeBasicTypesWorks()
@@ -221,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestDecoderWithObjectHookAppliesHookToAllDicts()
         {
 #line (101, 5) - (101, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-            var decoder = new global::Sharpy.JSONDecoder(objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests._TagHook!);
+            var decoder = new global::Sharpy.JSONDecoder(objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests.JsonEncoderDecoderTestsModule._TagHook!);
 #line (102, 5) - (102, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
             object result = decoder.Decode("{\"a\": {\"b\": 1}}");
 #line (103, 5) - (107, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
@@ -280,7 +281,7 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON
         public void TestLoadsObjectHookParameterAppliesHook()
         {
 #line (124, 5) - (124, 68) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-            object result = json.Loads("{\"x\": 1}", objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests._TagHook!);
+            object result = json.Loads("{\"x\": 1}", objectHook: global::Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests.JsonEncoderDecoderTestsModule._TagHook!);
 #line (125, 5) - (129, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
             switch (result)
 #line hidden

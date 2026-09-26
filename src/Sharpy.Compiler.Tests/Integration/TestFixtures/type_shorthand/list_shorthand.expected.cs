@@ -7,42 +7,45 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ListShorthand
+namespace ListShorthand
 {
-    public static int SumList(Sharpy.List<int> items)
+    public static partial class ListShorthandModule
     {
-#line (3, 5) - (3, 20) 8 "list_shorthand.spy"
-        int total = 0;
-#line (4, 5) - (5, 29) 8 "list_shorthand.spy"
-        foreach (var __loopVar_0 in items)
-#line hidden
+        public static int SumList(Sharpy.List<int> items)
         {
-            var item = __loopVar_0;
-#line (5, 9) - (5, 29) 12 "list_shorthand.spy"
-            total = total + item;
+#line (3, 5) - (3, 20) 12 "list_shorthand.spy"
+            int total = 0;
+#line (4, 5) - (5, 29) 12 "list_shorthand.spy"
+            foreach (var __loopVar_0 in items)
+#line hidden
+            {
+                var item = __loopVar_0;
+#line (5, 9) - (5, 29) 16 "list_shorthand.spy"
+                total = total + item;
+#line hidden
+            }
+
+#line (6, 5) - (6, 18) 12 "list_shorthand.spy"
+            return total;
 #line hidden
         }
 
-#line (6, 5) - (6, 18) 8 "list_shorthand.spy"
-        return total;
-#line hidden
-    }
-
-    public static void Main()
-    {
-#line (9, 5) - (9, 38) 8 "list_shorthand.spy"
-        Sharpy.List<int> numbers = new Sharpy.List<int>()
-#line hidden
+        public static void Main()
         {
-            1,
-            2,
-            3,
-            4,
-            5
-        };
-#line (10, 5) - (10, 29) 8 "list_shorthand.spy"
-        global::Sharpy.Builtins.Print(global::ListShorthand.SumList(numbers));
+#line (9, 5) - (9, 38) 12 "list_shorthand.spy"
+            Sharpy.List<int> numbers = new Sharpy.List<int>()
 #line hidden
+            {
+                1,
+                2,
+                3,
+                4,
+                5
+            };
+#line (10, 5) - (10, 29) 12 "list_shorthand.spy"
+            global::Sharpy.Builtins.Print(global::ListShorthand.ListShorthandModule.SumList(numbers));
+#line hidden
+        }
     }
 }
 #line default

@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.Textwrap
 {
     /// <summary>
     /// Text wrapping and filling utilities.
     /// </summary>
-    public static partial class Textwrap
+    public static partial class TextwrapModule
     {
         /// <summary>
         /// Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -28,7 +28,7 @@ namespace Sharpy
             Sharpy.List<string> result = new Sharpy.List<string>()
             {
             };
-            string collapsed = global::Sharpy.Textwrap._CollapseWhitespace(text);
+            string collapsed = global::Sharpy.Textwrap.TextwrapModule._CollapseWhitespace(text);
             if (collapsed.Length == 0)
             {
                 return result;
@@ -90,7 +90,7 @@ namespace Sharpy
         /// </summary>
         public static string Fill(string text, int width = 70)
         {
-            Sharpy.List<string> lines = global::Sharpy.Textwrap.Wrap(text, width);
+            Sharpy.List<string> lines = global::Sharpy.Textwrap.TextwrapModule.Wrap(text, width);
             return global::Sharpy.StringExtensions.Join("\n", lines);
         }
 
@@ -110,12 +110,12 @@ namespace Sharpy
             foreach (var __loopVar_1 in lines)
             {
                 var line = __loopVar_1;
-                if (line.Length == 0 || global::Sharpy.Textwrap._IsWhitespaceOnly(line))
+                if (line.Length == 0 || global::Sharpy.Textwrap.TextwrapModule._IsWhitespaceOnly(line))
                 {
                     continue;
                 }
 
-                string leadingWs = global::Sharpy.Textwrap._GetLeadingWhitespace(line);
+                string leadingWs = global::Sharpy.Textwrap.TextwrapModule._GetLeadingWhitespace(line);
                 if (!hasPrefix)
                 {
                     commonPrefix = leadingWs;
@@ -123,7 +123,7 @@ namespace Sharpy
                 }
                 else
                 {
-                    commonPrefix = global::Sharpy.Textwrap._CommonPrefix(commonPrefix, leadingWs);
+                    commonPrefix = global::Sharpy.Textwrap.TextwrapModule._CommonPrefix(commonPrefix, leadingWs);
                 }
 
                 if (commonPrefix.Length == 0)
@@ -183,11 +183,11 @@ namespace Sharpy
             }
 
             global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
-            Sharpy.List<string> lines = global::Sharpy.Textwrap._SplitKeepEnds(text);
+            Sharpy.List<string> lines = global::Sharpy.Textwrap.TextwrapModule._SplitKeepEnds(text);
             foreach (var __loopVar_2 in lines)
             {
                 var line = __loopVar_2;
-                if (!global::Sharpy.Textwrap._IsWhitespaceOnly(line))
+                if (!global::Sharpy.Textwrap.TextwrapModule._IsWhitespaceOnly(line))
                 {
                     sb.Append(prefix);
                 }
@@ -209,7 +209,7 @@ namespace Sharpy
             }
 
             string placeholder = " [...]";
-            string collapsed = global::Sharpy.Textwrap._CollapseWhitespace(text);
+            string collapsed = global::Sharpy.Textwrap.TextwrapModule._CollapseWhitespace(text);
             if (collapsed.Length <= width)
             {
                 return collapsed;

@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyManipulationTests
 {
     [global::Sharpy.SharpyModule("numpy.numpy_manipulation_tests")]
-    public static partial class NumpyManipulationTests
+    public static partial class NumpyManipulationTestsModule
     {
     }
 
-    public partial class NumpyManipulationTestsTests
+    public partial class NumpyManipulationTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestConcatenate1d()

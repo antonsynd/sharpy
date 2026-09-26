@@ -7,8 +7,55 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AccessModifiers
+namespace AccessModifiers
 {
+    public static partial class AccessModifiersModule
+    {
+        public static void Main()
+        {
+#line (78, 5) - (78, 67) 12 "access_modifiers.spy"
+            global::AccessModifiers.SavingsAccount savings = new global::AccessModifiers.SavingsAccount(101, 5000.0d, 1000.0d);
+#line (79, 5) - (79, 30) 12 "access_modifiers.spy"
+            global::Sharpy.Builtins.Print(savings.AccountId);
+#line (80, 5) - (80, 37) 12 "access_modifiers.spy"
+            global::Sharpy.Builtins.Print(savings.GetInternalId());
+#line (82, 5) - (82, 27) 12 "access_modifiers.spy"
+            savings.Deposit(500.0d);
+#line (83, 5) - (83, 27) 12 "access_modifiers.spy"
+            global::Sharpy.Builtins.Print(savings.Balance);
+#line (85, 5) - (85, 45) 12 "access_modifiers.spy"
+            bool success = savings.Withdraw(800.0d);
+#line (86, 5) - (87, 20) 12 "access_modifiers.spy"
+            if (success)
+#line hidden
+            {
+#line (87, 9) - (87, 20) 16 "access_modifiers.spy"
+                global::Sharpy.Builtins.Print(4200);
+#line hidden
+            }
+
+#line (89, 5) - (89, 36) 12 "access_modifiers.spy"
+            global::Sharpy.Builtins.Print(savings.WithdrawalCount);
+#line (91, 5) - (91, 69) 12 "access_modifiers.spy"
+            global::AccessModifiers.CheckingAccount checking = new global::AccessModifiers.CheckingAccount(102, 1000.0d, 500.0d);
+#line (92, 5) - (92, 28) 12 "access_modifiers.spy"
+            checking.Deposit(250.0d);
+#line (93, 5) - (93, 28) 12 "access_modifiers.spy"
+            global::Sharpy.Builtins.Print(checking.Balance);
+#line (95, 5) - (95, 56) 12 "access_modifiers.spy"
+            bool withdrawSuccess = checking.Withdraw(1100.0d);
+#line (96, 5) - (97, 19) 12 "access_modifiers.spy"
+            if (withdrawSuccess)
+#line hidden
+            {
+#line (97, 9) - (97, 19) 16 "access_modifiers.spy"
+                global::Sharpy.Builtins.Print(150);
+#line hidden
+            }
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Account")]
     public abstract class Account
     {
         public double Balance;
@@ -73,6 +120,7 @@ public static partial class AccessModifiers
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "SavingsAccount")]
     public class SavingsAccount : global::AccessModifiers.Account
     {
         public double WithdrawalLimit;
@@ -119,6 +167,7 @@ public static partial class AccessModifiers
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "CheckingAccount")]
     public class CheckingAccount : global::AccessModifiers.Account
     {
         public double OverdraftLimit;
@@ -163,49 +212,6 @@ public static partial class AccessModifiers
         {
 #line (61, 9) - (61, 41) 12 "access_modifiers.spy"
             this.OverdraftLimit = overdraft;
-#line hidden
-        }
-    }
-
-    public static void Main()
-    {
-#line (78, 5) - (78, 67) 8 "access_modifiers.spy"
-        global::AccessModifiers.SavingsAccount savings = new global::AccessModifiers.SavingsAccount(101, 5000.0d, 1000.0d);
-#line (79, 5) - (79, 30) 8 "access_modifiers.spy"
-        global::Sharpy.Builtins.Print(savings.AccountId);
-#line (80, 5) - (80, 37) 8 "access_modifiers.spy"
-        global::Sharpy.Builtins.Print(savings.GetInternalId());
-#line (82, 5) - (82, 27) 8 "access_modifiers.spy"
-        savings.Deposit(500.0d);
-#line (83, 5) - (83, 27) 8 "access_modifiers.spy"
-        global::Sharpy.Builtins.Print(savings.Balance);
-#line (85, 5) - (85, 45) 8 "access_modifiers.spy"
-        bool success = savings.Withdraw(800.0d);
-#line (86, 5) - (87, 20) 8 "access_modifiers.spy"
-        if (success)
-#line hidden
-        {
-#line (87, 9) - (87, 20) 12 "access_modifiers.spy"
-            global::Sharpy.Builtins.Print(4200);
-#line hidden
-        }
-
-#line (89, 5) - (89, 36) 8 "access_modifiers.spy"
-        global::Sharpy.Builtins.Print(savings.WithdrawalCount);
-#line (91, 5) - (91, 69) 8 "access_modifiers.spy"
-        global::AccessModifiers.CheckingAccount checking = new global::AccessModifiers.CheckingAccount(102, 1000.0d, 500.0d);
-#line (92, 5) - (92, 28) 8 "access_modifiers.spy"
-        checking.Deposit(250.0d);
-#line (93, 5) - (93, 28) 8 "access_modifiers.spy"
-        global::Sharpy.Builtins.Print(checking.Balance);
-#line (95, 5) - (95, 56) 8 "access_modifiers.spy"
-        bool withdrawSuccess = checking.Withdraw(1100.0d);
-#line (96, 5) - (97, 19) 8 "access_modifiers.spy"
-        if (withdrawSuccess)
-#line hidden
-        {
-#line (97, 9) - (97, 19) 12 "access_modifiers.spy"
-            global::Sharpy.Builtins.Print(150);
 #line hidden
         }
     }

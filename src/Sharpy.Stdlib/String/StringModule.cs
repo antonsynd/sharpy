@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.StringModule
 {
     /// <summary>
     /// Common string constants (ascii_letters, digits, punctuation, etc.).
     /// </summary>
-    public static partial class StringModule
+    public static partial class StringModuleModule
     {
         public static string AsciiLowercase = "abcdefghijklmnopqrstuvwxyz";
         public static string AsciiUppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

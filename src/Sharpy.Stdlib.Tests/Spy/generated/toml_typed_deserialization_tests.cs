@@ -11,34 +11,38 @@ using Sharpy.Stdlib.Tests.Spy;
 using toml = global::Sharpy.Toml;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Toml
+namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests
 {
     [global::Sharpy.SharpyModule("toml.toml_typed_deserialization_tests")]
-    public static partial class TomlTypedDeserializationTests
+    public static partial class TomlTypedDeserializationTestsModule
     {
-        public class ServerConfig
-        {
-            public string Host = "";
-            public long Port = 0;
-            public bool Debug = false;
-        }
-
-        public class AppConfig
-        {
-            public string Title = "";
-            public global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig Server = new global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig();
-        }
-
-        public class DeployConfig
-        {
-            public string Name = "";
-            public Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig> Servers = new Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>()
-            {
-            };
-        }
     }
 
-    public partial class TomlTypedDeserializationTestsTests
+    [global::Sharpy.SharpyModuleType("toml.toml_typed_deserialization_tests", "ServerConfig")]
+    public class ServerConfig
+    {
+        public string Host = "";
+        public long Port = 0;
+        public bool Debug = false;
+    }
+
+    [global::Sharpy.SharpyModuleType("toml.toml_typed_deserialization_tests", "AppConfig")]
+    public class AppConfig
+    {
+        public string Title = "";
+        public global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig Server = new global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig();
+    }
+
+    [global::Sharpy.SharpyModuleType("toml.toml_typed_deserialization_tests", "DeployConfig")]
+    public class DeployConfig
+    {
+        public string Name = "";
+        public Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig> Servers = new Sharpy.List<global::Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests.ServerConfig>()
+        {
+        };
+    }
+
+    public partial class TomlTypedDeserializationTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestLoadsTSimpleConfigDeserializes()

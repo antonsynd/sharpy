@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyFftTests
 {
     [global::Sharpy.SharpyModule("numpy.numpy_fft_tests")]
-    public static partial class NumpyFftTests
+    public static partial class NumpyFftTestsModule
     {
     }
 
-    public partial class NumpyFftTestsTests
+    public partial class NumpyFftTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestFftfreqEvenLength()

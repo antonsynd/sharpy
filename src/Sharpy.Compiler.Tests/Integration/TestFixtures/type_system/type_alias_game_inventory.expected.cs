@@ -7,8 +7,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class TypeAliasGameInventory
+namespace TypeAliasGameInventory
 {
+    public static partial class TypeAliasGameInventoryModule
+    {
+        public static void Main()
+        {
+#line (61, 5) - (61, 40) 12 "type_alias_game_inventory.spy"
+            global::TypeAliasGameInventory.Inventory inventory = new global::TypeAliasGameInventory.Inventory();
+#line (63, 5) - (63, 56) 12 "type_alias_game_inventory.spy"
+            global::TypeAliasGameInventory.Weapon sword = new global::TypeAliasGameInventory.Weapon(1, "Iron Sword", 50, 100.0d);
+#line (64, 5) - (64, 53) 12 "type_alias_game_inventory.spy"
+            global::TypeAliasGameInventory.Weapon axe = new global::TypeAliasGameInventory.Weapon(2, "Battle Axe", 70, 85.5d);
+#line (65, 5) - (65, 58) 12 "type_alias_game_inventory.spy"
+            global::TypeAliasGameInventory.Weapon dagger = new global::TypeAliasGameInventory.Weapon(3, "Steel Dagger", 30, 95.0d);
+#line (67, 5) - (67, 32) 12 "type_alias_game_inventory.spy"
+            inventory.AddWeapon(sword);
+#line (68, 5) - (68, 30) 12 "type_alias_game_inventory.spy"
+            inventory.AddWeapon(axe);
+#line (69, 5) - (69, 33) 12 "type_alias_game_inventory.spy"
+            inventory.AddWeapon(dagger);
+#line (71, 5) - (71, 34) 12 "type_alias_game_inventory.spy"
+            global::Sharpy.Builtins.Print(inventory.WeaponCount);
+#line (72, 5) - (72, 34) 12 "type_alias_game_inventory.spy"
+            global::Sharpy.Builtins.Print(inventory.TotalDamage);
+#line (73, 5) - (73, 42) 12 "type_alias_game_inventory.spy"
+            global::Sharpy.Builtins.Print(inventory.GetAverageDamage());
+#line (75, 5) - (75, 25) 12 "type_alias_game_inventory.spy"
+            sword.DisplayInfo();
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Item")]
     public abstract class Item
     {
         public int Id;
@@ -41,6 +72,7 @@ public static partial class TypeAliasGameInventory
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Weapon")]
     public class Weapon : global::TypeAliasGameInventory.Item
     {
         public int Damage;
@@ -68,6 +100,7 @@ public static partial class TypeAliasGameInventory
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Inventory")]
     public class Inventory
     {
         public int WeaponCount;
@@ -108,33 +141,6 @@ public static partial class TypeAliasGameInventory
             this.TotalDamage = 0;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (61, 5) - (61, 40) 8 "type_alias_game_inventory.spy"
-        global::TypeAliasGameInventory.Inventory inventory = new global::TypeAliasGameInventory.Inventory();
-#line (63, 5) - (63, 56) 8 "type_alias_game_inventory.spy"
-        global::TypeAliasGameInventory.Weapon sword = new global::TypeAliasGameInventory.Weapon(1, "Iron Sword", 50, 100.0d);
-#line (64, 5) - (64, 53) 8 "type_alias_game_inventory.spy"
-        global::TypeAliasGameInventory.Weapon axe = new global::TypeAliasGameInventory.Weapon(2, "Battle Axe", 70, 85.5d);
-#line (65, 5) - (65, 58) 8 "type_alias_game_inventory.spy"
-        global::TypeAliasGameInventory.Weapon dagger = new global::TypeAliasGameInventory.Weapon(3, "Steel Dagger", 30, 95.0d);
-#line (67, 5) - (67, 32) 8 "type_alias_game_inventory.spy"
-        inventory.AddWeapon(sword);
-#line (68, 5) - (68, 30) 8 "type_alias_game_inventory.spy"
-        inventory.AddWeapon(axe);
-#line (69, 5) - (69, 33) 8 "type_alias_game_inventory.spy"
-        inventory.AddWeapon(dagger);
-#line (71, 5) - (71, 34) 8 "type_alias_game_inventory.spy"
-        global::Sharpy.Builtins.Print(inventory.WeaponCount);
-#line (72, 5) - (72, 34) 8 "type_alias_game_inventory.spy"
-        global::Sharpy.Builtins.Print(inventory.TotalDamage);
-#line (73, 5) - (73, 42) 8 "type_alias_game_inventory.spy"
-        global::Sharpy.Builtins.Print(inventory.GetAverageDamage());
-#line (75, 5) - (75, 25) 8 "type_alias_game_inventory.spy"
-        sword.DisplayInfo();
-#line hidden
     }
 }
 #line default

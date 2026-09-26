@@ -6,8 +6,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ListBackingMemberReceiverStaysChecked
+namespace ListBackingMemberReceiverStaysChecked
 {
+    public static partial class ListBackingMemberReceiverStaysCheckedModule
+    {
+        public static void Main()
+        {
+#line (14, 5) - (14, 20) 12 "list_backing_member_receiver_stays_checked.spy"
+            global::ListBackingMemberReceiverStaysChecked.Bag b = new global::ListBackingMemberReceiverStaysChecked.Bag();
+#line (15, 5) - (15, 21) 12 "list_backing_member_receiver_stays_checked.spy"
+            global::Sharpy.Builtins.Print(b.First());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Bag")]
     public class Bag
     {
         public Sharpy.List<int> Items;
@@ -31,15 +44,6 @@ public static partial class ListBackingMemberReceiverStaysChecked
                 3
             };
         }
-    }
-
-    public static void Main()
-    {
-#line (14, 5) - (14, 20) 8 "list_backing_member_receiver_stays_checked.spy"
-        global::ListBackingMemberReceiverStaysChecked.Bag b = new global::ListBackingMemberReceiverStaysChecked.Bag();
-#line (15, 5) - (15, 21) 8 "list_backing_member_receiver_stays_checked.spy"
-        global::Sharpy.Builtins.Print(b.First());
-#line hidden
     }
 }
 #line default

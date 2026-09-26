@@ -10,21 +10,21 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Os
+namespace Sharpy.Stdlib.Tests.Spy.Os.OsPathTests
 {
     [global::Sharpy.SharpyModule("os.os_path_tests")]
-    public static partial class OsPathTests
+    public static partial class OsPathTestsModule
     {
     }
 
-    public partial class OsPathTestsTests : global::System.IDisposable
+    public partial class OsPathTestsModuleTests : global::System.IDisposable
     {
         private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
         [Xunit.FactAttribute]
         public void TestJoinTwoParts()
         {
 #line (15, 5) - (15, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.Join("/a", "b"));
+            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.OsPathModuleModule.Join("/a", "b"));
 #line hidden
         }
 
@@ -32,7 +32,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestJoinMultipleParts()
         {
 #line (20, 5) - (20, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("a/b/c", global::Sharpy.OsPathModule.Join("a", "b", "c"));
+            Xunit.Assert.Equal("a/b/c", global::Sharpy.OsPathModule.OsPathModuleModule.Join("a", "b", "c"));
 #line hidden
         }
 
@@ -52,7 +52,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
             }
 
 #line (28, 5) - (28, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Exists(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(path));
 #line hidden
         }
 
@@ -61,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         {
             string tmpPath = _tmpPathFixture.Value;
 #line (33, 5) - (33, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Exists(tmpPath));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(tmpPath));
 #line hidden
         }
 
@@ -70,7 +70,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         {
             string tmpPath = _tmpPathFixture.Value;
 #line (38, 5) - (38, 55) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Exists(tmpPath + "/nonexistent_path"));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Exists(tmpPath + "/nonexistent_path"));
 #line hidden
         }
 
@@ -90,7 +90,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
             }
 
 #line (46, 5) - (46, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(path));
 #line hidden
         }
 
@@ -99,7 +99,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         {
             string tmpPath = _tmpPathFixture.Value;
 #line (51, 5) - (51, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isfile(tmpPath));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(tmpPath));
 #line hidden
         }
 
@@ -108,7 +108,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         {
             string tmpPath = _tmpPathFixture.Value;
 #line (56, 5) - (56, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(tmpPath));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(tmpPath));
 #line hidden
         }
 
@@ -128,7 +128,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
             }
 
 #line (64, 5) - (64, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isdir(path));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(path));
 #line hidden
         }
 
@@ -136,7 +136,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestIsabsReturnsTrueForAbsolute()
         {
 #line (69, 5) - (69, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isabs("/usr/local"));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isabs("/usr/local"));
 #line hidden
         }
 
@@ -144,7 +144,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestIsabsReturnsFalseForRelative()
         {
 #line (74, 5) - (74, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.False(global::Sharpy.OsPathModule.Isabs("a/b/c"));
+            Xunit.Assert.False(global::Sharpy.OsPathModule.OsPathModuleModule.Isabs("a/b/c"));
 #line hidden
         }
 
@@ -152,7 +152,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestBasenameReturnsFilename()
         {
 #line (79, 5) - (79, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("c.txt", global::Sharpy.OsPathModule.Basename("/a/b/c.txt"));
+            Xunit.Assert.Equal("c.txt", global::Sharpy.OsPathModule.OsPathModuleModule.Basename("/a/b/c.txt"));
 #line hidden
         }
 
@@ -160,7 +160,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestDirnameReturnsDirectory()
         {
 #line (84, 5) - (84, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.Dirname("/a/b/c.txt"));
+            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.OsPathModuleModule.Dirname("/a/b/c.txt"));
 #line hidden
         }
 
@@ -168,7 +168,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestSplitReturnsHeadAndTail()
         {
 #line (89, 5) - (89, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var (head, tail) = global::Sharpy.OsPathModule.Split("/a/b/c.txt");
+            var (head, tail) = global::Sharpy.OsPathModule.OsPathModuleModule.Split("/a/b/c.txt");
 #line (90, 5) - (90, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
             Xunit.Assert.Equal("/a/b", head);
 #line (91, 5) - (91, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
@@ -180,7 +180,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestSplitextReturnsRootAndExt()
         {
 #line (96, 5) - (96, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var (root, ext) = global::Sharpy.OsPathModule.Splitext("/a/b/c.tar.gz");
+            var (root, ext) = global::Sharpy.OsPathModule.OsPathModuleModule.Splitext("/a/b/c.tar.gz");
 #line (97, 5) - (97, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
             Xunit.Assert.Equal("/a/b/c.tar", root);
 #line (98, 5) - (98, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
@@ -192,7 +192,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestSplitextNoExtension()
         {
 #line (103, 5) - (103, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var (root, ext) = global::Sharpy.OsPathModule.Splitext("/a/b/c");
+            var (root, ext) = global::Sharpy.OsPathModule.OsPathModuleModule.Splitext("/a/b/c");
 #line (104, 5) - (104, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
             Xunit.Assert.Equal("/a/b/c", root);
 #line (105, 5) - (105, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
@@ -204,9 +204,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestAbspathReturnsFullPath()
         {
 #line (110, 5) - (110, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var result = global::Sharpy.OsPathModule.Abspath(".");
+            var result = global::Sharpy.OsPathModule.OsPathModuleModule.Abspath(".");
 #line (111, 5) - (111, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isabs(result));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isabs(result));
 #line hidden
         }
 
@@ -214,7 +214,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestNormpathCollapsesDotdot()
         {
 #line (116, 5) - (116, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("a/c", global::Sharpy.OsPathModule.Normpath("a/b/../c"));
+            Xunit.Assert.Equal("a/c", global::Sharpy.OsPathModule.OsPathModuleModule.Normpath("a/b/../c"));
 #line hidden
         }
 
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestNormpathRemovesDots()
         {
 #line (121, 5) - (121, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("a/b", global::Sharpy.OsPathModule.Normpath("a/./b"));
+            Xunit.Assert.Equal("a/b", global::Sharpy.OsPathModule.OsPathModuleModule.Normpath("a/./b"));
 #line hidden
         }
 
@@ -230,7 +230,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestNormpathEmptyReturnsDot()
         {
 #line (126, 5) - (126, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal(".", global::Sharpy.OsPathModule.Normpath(""));
+            Xunit.Assert.Equal(".", global::Sharpy.OsPathModule.OsPathModuleModule.Normpath(""));
 #line hidden
         }
 
@@ -250,7 +250,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
             }
 
 #line (134, 5) - (134, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal(5, global::Sharpy.OsPathModule.Getsize(path));
+            Xunit.Assert.Equal(5, global::Sharpy.OsPathModule.OsPathModuleModule.Getsize(path));
 #line hidden
         }
 
@@ -264,7 +264,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
             try
             {
 #line (140, 9) - (140, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-                global::Sharpy.OsPathModule.Getsize(tmpPath + "/nonexistent");
+                global::Sharpy.OsPathModule.OsPathModuleModule.Getsize(tmpPath + "/nonexistent");
 #line hidden
             }
             catch (FileNotFoundError)
@@ -280,11 +280,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestExpanduserExpandsTilde()
         {
 #line (145, 5) - (145, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var result = global::Sharpy.OsPathModule.Expanduser("~");
+            var result = global::Sharpy.OsPathModule.OsPathModuleModule.Expanduser("~");
 #line (146, 5) - (146, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
             Xunit.Assert.NotEqual("~", result);
 #line (147, 5) - (147, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isabs(result));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isabs(result));
 #line hidden
         }
 
@@ -292,7 +292,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestExpanduserExpandsTildeSlash()
         {
 #line (152, 5) - (152, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            var result = global::Sharpy.OsPathModule.Expanduser("~/foo");
+            var result = global::Sharpy.OsPathModule.OsPathModuleModule.Expanduser("~/foo");
 #line (153, 5) - (153, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
             Xunit.Assert.EndsWith("foo", result);
 #line (154, 5) - (154, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
@@ -304,7 +304,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os
         public void TestExpanduserNoTildeUnchanged()
         {
 #line (159, 5) - (159, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.Expanduser("/a/b"));
+            Xunit.Assert.Equal("/a/b", global::Sharpy.OsPathModule.OsPathModuleModule.Expanduser("/a/b"));
 #line hidden
         }
 

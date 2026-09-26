@@ -7,24 +7,27 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
 
-public static partial class TestDescription
+namespace TestDescription
 {
-    public static void Main()
+    public static partial class TestDescriptionModule
     {
-#line (6, 5) - (6, 16) 8 "test_description.spy"
-        global::Sharpy.Builtins.Print("ok");
+        public static void Main()
+        {
+#line (6, 5) - (6, 16) 12 "test_description.spy"
+            global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
     }
-}
 
-public partial class TestDescriptionTests
-{
-    [Xunit.FactAttribute(DisplayName = "my test description")]
-    public void TestWithDesc()
+    public partial class TestDescriptionModuleTests
     {
-#line (3, 5) - (3, 19) 8 "test_description.spy"
-        Xunit.Assert.Equal(1, 1);
+        [Xunit.FactAttribute(DisplayName = "my test description")]
+        public void TestWithDesc()
+        {
+#line (3, 5) - (3, 19) 12 "test_description.spy"
+            Xunit.Assert.Equal(1, 1);
 #line hidden
+        }
     }
 }
 #line default

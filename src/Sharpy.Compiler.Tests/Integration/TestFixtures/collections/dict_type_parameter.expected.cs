@@ -7,28 +7,31 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DictTypeParameter
+namespace DictTypeParameter
 {
-    public static void Main()
+    public static partial class DictTypeParameterModule
     {
-#line (4, 5) - (4, 56) 8 "dict_type_parameter.spy"
-        Sharpy.Dict<string, int> scores = new Sharpy.Dict<string, int>()
-#line hidden
+        public static void Main()
         {
-            {
-                "alice",
-                100
-            },
-            {
-                "bob",
-                85
-            }
-        };
-#line (5, 5) - (5, 27) 8 "dict_type_parameter.spy"
-        global::Sharpy.Builtins.Print(scores["alice"]);
-#line (6, 5) - (6, 25) 8 "dict_type_parameter.spy"
-        global::Sharpy.Builtins.Print(scores["bob"]);
+#line (4, 5) - (4, 56) 12 "dict_type_parameter.spy"
+            Sharpy.Dict<string, int> scores = new Sharpy.Dict<string, int>()
 #line hidden
+            {
+                {
+                    "alice",
+                    100
+                },
+                {
+                    "bob",
+                    85
+                }
+            };
+#line (5, 5) - (5, 27) 12 "dict_type_parameter.spy"
+            global::Sharpy.Builtins.Print(scores["alice"]);
+#line (6, 5) - (6, 25) 12 "dict_type_parameter.spy"
+            global::Sharpy.Builtins.Print(scores["bob"]);
+#line hidden
+        }
     }
 }
 #line default

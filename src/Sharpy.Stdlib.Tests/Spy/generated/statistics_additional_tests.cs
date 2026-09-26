@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using statistics = global::Sharpy.Statistics;
+using statistics = global::Sharpy.Statistics.StatisticsModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Statistics
+namespace Sharpy.Stdlib.Tests.Spy.Statistics.StatisticsAdditionalTests
 {
     [global::Sharpy.SharpyModule("statistics.statistics_additional_tests")]
-    public static partial class StatisticsAdditionalTests
+    public static partial class StatisticsAdditionalTestsModule
     {
     }
 
-    public partial class StatisticsAdditionalTestsTests
+    public partial class StatisticsAdditionalTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestPstdevSingleElementReturnsZero()

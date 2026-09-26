@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.MathModule
 {
     /// <summary>
     /// Mathematical functions (trigonometric, logarithmic, etc.).
     /// </summary>
-    public static partial class MathModule
+    public static partial class MathModuleModule
     {
         public static double Pi = 3.141592653589793d;
         public static double E = 2.718281828459045d;
@@ -194,7 +194,7 @@ namespace Sharpy
         /// </summary>
         public static double Degrees(double x)
         {
-            return x * (180.0d / global::Sharpy.MathModule.Pi);
+            return x * (180.0d / global::Sharpy.MathModule.MathModuleModule.Pi);
         }
 
         /// <summary>
@@ -202,7 +202,7 @@ namespace Sharpy
         /// </summary>
         public static double Radians(double x)
         {
-            return x * (global::Sharpy.MathModule.Pi / 180.0d);
+            return x * (global::Sharpy.MathModule.MathModuleModule.Pi / 180.0d);
         }
 
         /// <summary>
@@ -364,7 +364,7 @@ namespace Sharpy
         /// </summary>
         public static long Perm(int n)
         {
-            return global::Sharpy.MathModule.Factorial(n);
+            return global::Sharpy.MathModule.MathModuleModule.Factorial(n);
         }
 
         /// <summary>
@@ -410,7 +410,7 @@ namespace Sharpy
 
             a = global::System.Math.Abs(a);
             b = global::System.Math.Abs(b);
-            return global::Sharpy.Builtins.FloorDiv(a, global::Sharpy.MathModule.Gcd(a, b)) * b;
+            return global::Sharpy.Builtins.FloorDiv(a, global::Sharpy.MathModule.MathModuleModule.Gcd(a, b)) * b;
         }
 
         /// <summary>

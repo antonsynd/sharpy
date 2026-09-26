@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using np = global::Sharpy.Numpy;
-using math = global::Sharpy.MathModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Numpy
+namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyLinalgTests
 {
     [global::Sharpy.SharpyModule("numpy.numpy_linalg_tests")]
-    public static partial class NumpyLinalgTests
+    public static partial class NumpyLinalgTestsModule
     {
         public static void AssertAlmostEqual(double actual, double expected, double tol = 1e-9d)
         {
@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy
         }
     }
 
-    public partial class NumpyLinalgTestsTests
+    public partial class NumpyLinalgTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestDotVectorVector()

@@ -6,8 +6,27 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DataclassMultiwordKeywordArgument1504
+namespace DataclassMultiwordKeywordArgument1504
 {
+    public static partial class DataclassMultiwordKeywordArgument1504Module
+    {
+        public static void Main()
+        {
+#line (16, 5) - (16, 58) 12 "dataclass_multiword_keyword_argument_1504.spy"
+            global::DataclassMultiwordKeywordArgument1504.TwoWord t = new global::DataclassMultiwordKeywordArgument1504.TwoWord(name: "web", maxConnections: 10);
+#line (17, 5) - (17, 18) 12 "dataclass_multiword_keyword_argument_1504.spy"
+            global::Sharpy.Builtins.Print(t.Name);
+#line (18, 5) - (18, 29) 12 "dataclass_multiword_keyword_argument_1504.spy"
+            global::Sharpy.Builtins.Print(t.MaxConnections);
+#line (19, 5) - (19, 36) 12 "dataclass_multiword_keyword_argument_1504.spy"
+            global::DataclassMultiwordKeywordArgument1504.TwoWord u = new global::DataclassMultiwordKeywordArgument1504.TwoWord("db", 20);
+#line (20, 5) - (20, 29) 12 "dataclass_multiword_keyword_argument_1504.spy"
+            global::Sharpy.Builtins.Print(u.MaxConnections);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "TwoWord")]
     public class TwoWord
     {
         public string Name { get; set; }
@@ -37,21 +56,6 @@ public static partial class DataclassMultiwordKeywordArgument1504
         {
             return $"TwoWord(name={Name}, max_connections={MaxConnections})";
         }
-    }
-
-    public static void Main()
-    {
-#line (16, 5) - (16, 58) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        global::DataclassMultiwordKeywordArgument1504.TwoWord t = new global::DataclassMultiwordKeywordArgument1504.TwoWord(name: "web", maxConnections: 10);
-#line (17, 5) - (17, 18) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        global::Sharpy.Builtins.Print(t.Name);
-#line (18, 5) - (18, 29) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        global::Sharpy.Builtins.Print(t.MaxConnections);
-#line (19, 5) - (19, 36) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        global::DataclassMultiwordKeywordArgument1504.TwoWord u = new global::DataclassMultiwordKeywordArgument1504.TwoWord("db", 20);
-#line (20, 5) - (20, 29) 8 "dataclass_multiword_keyword_argument_1504.spy"
-        global::Sharpy.Builtins.Print(u.MaxConnections);
-#line hidden
     }
 }
 #line default

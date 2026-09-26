@@ -8,18 +8,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using itertools = global::Sharpy.Itertools;
-using math = global::Sharpy.MathModule;
+using itertools = global::Sharpy.Itertools.ItertoolsModule;
+using math = global::Sharpy.MathModule.MathModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Itertools
+namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsAdditionalTests
 {
     [global::Sharpy.SharpyModule("itertools.itertools_additional_tests")]
-    public static partial class ItertoolsAdditionalTests
+    public static partial class ItertoolsAdditionalTestsModule
     {
     }
 
-    public partial class ItertoolsAdditionalTestsTests
+    public partial class ItertoolsAdditionalTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestCountDefaultStartAndStep()

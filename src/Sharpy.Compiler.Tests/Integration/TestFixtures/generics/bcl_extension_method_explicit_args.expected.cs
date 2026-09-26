@@ -7,44 +7,47 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class BclExtensionMethodExplicitArgs
+namespace BclExtensionMethodExplicitArgs
 {
-    public static void Main()
+    public static partial class BclExtensionMethodExplicitArgsModule
     {
-#line (11, 5) - (11, 22) 8 "bcl_extension_method_explicit_args.spy"
-        var lst = new global::System.Collections.Generic.List<int>();
-#line (12, 5) - (12, 15) 8 "bcl_extension_method_explicit_args.spy"
-        lst.Add(3);
-#line (13, 5) - (13, 15) 8 "bcl_extension_method_explicit_args.spy"
-        lst.Add(4);
-#line (16, 5) - (17, 17) 8 "bcl_extension_method_explicit_args.spy"
-        foreach (var __loopVar_0 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x)))
-#line hidden
+        public static void Main()
         {
-            var s = __loopVar_0;
-#line (17, 9) - (17, 17) 12 "bcl_extension_method_explicit_args.spy"
-            global::Sharpy.Builtins.Print(s);
+#line (11, 5) - (11, 22) 12 "bcl_extension_method_explicit_args.spy"
+            var lst = new global::System.Collections.Generic.List<int>();
+#line (12, 5) - (12, 15) 12 "bcl_extension_method_explicit_args.spy"
+            lst.Add(3);
+#line (13, 5) - (13, 15) 12 "bcl_extension_method_explicit_args.spy"
+            lst.Add(4);
+#line (16, 5) - (17, 17) 12 "bcl_extension_method_explicit_args.spy"
+            foreach (var __loopVar_0 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x)))
 #line hidden
-        }
+            {
+                var s = __loopVar_0;
+#line (17, 9) - (17, 17) 16 "bcl_extension_method_explicit_args.spy"
+                global::Sharpy.Builtins.Print(s);
+#line hidden
+            }
 
-#line (22, 5) - (23, 17) 8 "bcl_extension_method_explicit_args.spy"
-        foreach (var __loopVar_1 in lst.Cast<int>())
+#line (22, 5) - (23, 17) 12 "bcl_extension_method_explicit_args.spy"
+            foreach (var __loopVar_1 in lst.Cast<int>())
 #line hidden
-        {
-            var c = __loopVar_1;
-#line (23, 9) - (23, 17) 12 "bcl_extension_method_explicit_args.spy"
-            global::Sharpy.Builtins.Print(c);
+            {
+                var c = __loopVar_1;
+#line (23, 9) - (23, 17) 16 "bcl_extension_method_explicit_args.spy"
+                global::Sharpy.Builtins.Print(c);
 #line hidden
-        }
+            }
 
-#line (26, 5) - (27, 17) 8 "bcl_extension_method_explicit_args.spy"
-        foreach (var __loopVar_2 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x * 2)))
+#line (26, 5) - (27, 17) 12 "bcl_extension_method_explicit_args.spy"
+            foreach (var __loopVar_2 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x * 2)))
 #line hidden
-        {
-            var t = __loopVar_2;
-#line (27, 9) - (27, 17) 12 "bcl_extension_method_explicit_args.spy"
-            global::Sharpy.Builtins.Print(t);
+            {
+                var t = __loopVar_2;
+#line (27, 9) - (27, 17) 16 "bcl_extension_method_explicit_args.spy"
+                global::Sharpy.Builtins.Print(t);
 #line hidden
+            }
         }
     }
 }

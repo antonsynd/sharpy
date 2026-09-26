@@ -8,17 +8,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using heapq = global::Sharpy.Heapq;
+using heapq = global::Sharpy.Heapq.HeapqModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Heapq
+namespace Sharpy.Stdlib.Tests.Spy.Heapq.HeapqTests
 {
     [global::Sharpy.SharpyModule("heapq.heapq_tests")]
-    public static partial class HeapqTests
+    public static partial class HeapqTestsModule
     {
     }
 
-    public partial class HeapqTestsTests
+    public partial class HeapqTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestHeappushMaintainsMinHeap()

@@ -7,8 +7,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class DunderStrAdd
+namespace DunderStrAdd
 {
+    public static partial class DunderStrAddModule
+    {
+        public static void Main()
+        {
+#line (19, 5) - (19, 31) 12 "dunder_str_add.spy"
+            global::DunderStrAdd.Vector v1 = new global::DunderStrAdd.Vector(1, 2);
+#line (20, 5) - (20, 31) 12 "dunder_str_add.spy"
+            global::DunderStrAdd.Vector v2 = new global::DunderStrAdd.Vector(3, 4);
+#line (21, 5) - (21, 26) 12 "dunder_str_add.spy"
+            global::DunderStrAdd.Vector v3 = v1 + v2;
+#line (22, 5) - (22, 14) 12 "dunder_str_add.spy"
+            global::Sharpy.Builtins.Print(v1);
+#line (23, 5) - (23, 14) 12 "dunder_str_add.spy"
+            global::Sharpy.Builtins.Print(v2);
+#line (24, 5) - (24, 14) 12 "dunder_str_add.spy"
+            global::Sharpy.Builtins.Print(v3);
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Vector")]
     public class Vector
     {
         public int X;
@@ -37,23 +58,6 @@ public static partial class DunderStrAdd
             this.Y = y;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (19, 5) - (19, 31) 8 "dunder_str_add.spy"
-        global::DunderStrAdd.Vector v1 = new global::DunderStrAdd.Vector(1, 2);
-#line (20, 5) - (20, 31) 8 "dunder_str_add.spy"
-        global::DunderStrAdd.Vector v2 = new global::DunderStrAdd.Vector(3, 4);
-#line (21, 5) - (21, 26) 8 "dunder_str_add.spy"
-        global::DunderStrAdd.Vector v3 = v1 + v2;
-#line (22, 5) - (22, 14) 8 "dunder_str_add.spy"
-        global::Sharpy.Builtins.Print(v1);
-#line (23, 5) - (23, 14) 8 "dunder_str_add.spy"
-        global::Sharpy.Builtins.Print(v2);
-#line (24, 5) - (24, 14) 8 "dunder_str_add.spy"
-        global::Sharpy.Builtins.Print(v3);
-#line hidden
     }
 }
 #line default

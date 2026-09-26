@@ -10,10 +10,10 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using requests = global::Sharpy.Requests;
 
-namespace Sharpy.Stdlib.Tests.Spy.Requests
+namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsResponseTests
 {
     [global::Sharpy.SharpyModule("requests.requests_response_tests")]
-    public static partial class RequestsResponseTests
+    public static partial class RequestsResponseTestsModule
     {
     }
 }

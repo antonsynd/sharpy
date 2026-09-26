@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using datetime = global::Sharpy.Datetime;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Datetime
+namespace Sharpy.Stdlib.Tests.Spy.Datetime.DatetimeTimeTests
 {
     [global::Sharpy.SharpyModule("datetime.datetime_time_tests")]
-    public static partial class DatetimeTimeTests
+    public static partial class DatetimeTimeTestsModule
     {
     }
 
-    public partial class DatetimeTimeTestsTests
+    public partial class DatetimeTimeTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestTimeHourOnlyOtherDefaultToZero()

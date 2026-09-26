@@ -8,19 +8,19 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using os = global::Sharpy.OsModule;
-using tempfile = global::Sharpy.TempfileModule;
+using os = global::Sharpy.OsModule.OsModuleModule;
+using tempfile = global::Sharpy.TempfileModule.TempfileModuleModule;
 using xml = global::Sharpy.Xml;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.XML
+namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 {
     [global::Sharpy.SharpyModule("xml.xml_module_tests")]
-    public static partial class XmlModuleTests
+    public static partial class XmlModuleTestsModule
     {
     }
 
-    public partial class XmlModuleTestsTests
+    public partial class XmlModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestFromstringSimpleElementReturnsParsedElement()

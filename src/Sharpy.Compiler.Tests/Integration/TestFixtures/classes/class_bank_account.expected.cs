@@ -7,8 +7,37 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ClassBankAccount
+namespace ClassBankAccount
 {
+    public static partial class ClassBankAccountModule
+    {
+        public static void Main()
+        {
+#line (30, 5) - (30, 41) 12 "class_bank_account.spy"
+            var account = new global::ClassBankAccount.BankAccount("Alice", 1000);
+#line (31, 5) - (31, 33) 12 "class_bank_account.spy"
+            global::Sharpy.Builtins.Print(account.GetBalance());
+#line (33, 5) - (33, 25) 12 "class_bank_account.spy"
+            account.Deposit(500);
+#line (34, 5) - (34, 33) 12 "class_bank_account.spy"
+            global::Sharpy.Builtins.Print(account.GetBalance());
+#line (36, 5) - (36, 43) 12 "class_bank_account.spy"
+            bool success = account.Withdraw(300);
+#line (37, 5) - (37, 19) 12 "class_bank_account.spy"
+            global::Sharpy.Builtins.Print(success);
+#line (38, 5) - (38, 33) 12 "class_bank_account.spy"
+            global::Sharpy.Builtins.Print(account.GetBalance());
+#line (40, 5) - (40, 25) 12 "class_bank_account.spy"
+            account.Deactivate();
+#line (41, 5) - (41, 25) 12 "class_bank_account.spy"
+            account.Deposit(100);
+#line (42, 5) - (42, 33) 12 "class_bank_account.spy"
+            global::Sharpy.Builtins.Print(account.GetBalance());
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "BankAccount")]
     public class BankAccount
     {
         public int Balance;
@@ -73,31 +102,6 @@ public static partial class ClassBankAccount
             this.IsActive = true;
 #line hidden
         }
-    }
-
-    public static void Main()
-    {
-#line (30, 5) - (30, 41) 8 "class_bank_account.spy"
-        var account = new global::ClassBankAccount.BankAccount("Alice", 1000);
-#line (31, 5) - (31, 33) 8 "class_bank_account.spy"
-        global::Sharpy.Builtins.Print(account.GetBalance());
-#line (33, 5) - (33, 25) 8 "class_bank_account.spy"
-        account.Deposit(500);
-#line (34, 5) - (34, 33) 8 "class_bank_account.spy"
-        global::Sharpy.Builtins.Print(account.GetBalance());
-#line (36, 5) - (36, 43) 8 "class_bank_account.spy"
-        bool success = account.Withdraw(300);
-#line (37, 5) - (37, 19) 8 "class_bank_account.spy"
-        global::Sharpy.Builtins.Print(success);
-#line (38, 5) - (38, 33) 8 "class_bank_account.spy"
-        global::Sharpy.Builtins.Print(account.GetBalance());
-#line (40, 5) - (40, 25) 8 "class_bank_account.spy"
-        account.Deactivate();
-#line (41, 5) - (41, 25) 8 "class_bank_account.spy"
-        account.Deposit(100);
-#line (42, 5) - (42, 33) 8 "class_bank_account.spy"
-        global::Sharpy.Builtins.Print(account.GetBalance());
-#line hidden
     }
 }
 #line default

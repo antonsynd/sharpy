@@ -12,10 +12,10 @@ using @operator = global::Sharpy.Operator;
 using sqlite3 = global::Sharpy.Sqlite3;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
+namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
 {
     [global::Sharpy.SharpyModule("sqlite3.sqlite3_row_tests")]
-    public static partial class Sqlite3RowTests
+    public static partial class Sqlite3RowTestsModule
     {
         internal static bool _EqInt(object value, long expected)
         {
@@ -65,15 +65,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         }
     }
 
-    public partial class Sqlite3RowTestsTests
+    public partial class Sqlite3RowTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestIndexAccessFirstElement()
         {
 #line (64, 5) - (64, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (65, 5) - (65, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row[0], 1));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row[0], 1));
 #line hidden
         }
 
@@ -81,7 +81,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestIndexAccessSecondElement()
         {
 #line (70, 5) - (70, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (71, 5) - (71, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row[1], "Alice"));
 #line hidden
@@ -91,7 +91,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestIndexAccessThirdElement()
         {
 #line (76, 5) - (76, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (77, 5) - (77, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row[2], 9.5d));
 #line hidden
@@ -101,7 +101,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestNegativeIndexLastElement()
         {
 #line (84, 5) - (84, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (85, 5) - (85, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row[-1], 9.5d));
 #line hidden
@@ -111,9 +111,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestNegativeIndexFirstElement()
         {
 #line (90, 5) - (90, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (91, 5) - (91, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row[-3], 1));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row[-3], 1));
 #line hidden
         }
 
@@ -121,7 +121,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestNegativeIndexSecondFromEnd()
         {
 #line (96, 5) - (96, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (97, 5) - (97, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row[-2], "Alice"));
 #line hidden
@@ -131,7 +131,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestIndexTooLargeThrowsIndexError()
         {
 #line (104, 5) - (104, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (105, 5) - (106, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             bool __raised_0 = false;
 #line hidden
@@ -154,7 +154,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestIndexTooNegativeThrowsIndexError()
         {
 #line (111, 5) - (111, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (112, 5) - (113, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             bool __raised_1 = false;
 #line hidden
@@ -177,7 +177,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestColumnNameAccessValidName()
         {
 #line (120, 5) - (120, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (121, 5) - (121, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row["name"], "Alice"));
 #line hidden
@@ -187,7 +187,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestColumnNameAccessCaseInsensitive()
         {
 #line (126, 5) - (126, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (127, 5) - (127, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row["NAME"], "Alice"));
 #line (128, 5) - (128, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
@@ -201,9 +201,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestColumnNameAccessAllColumns()
         {
 #line (134, 5) - (134, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (135, 5) - (135, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row["id"], 1));
+            Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row["id"], 1));
 #line (136, 5) - (136, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.True(@operator.Eq(row["name"], "Alice"));
 #line (137, 5) - (137, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
@@ -215,7 +215,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestColumnNameAccessInvalidNameThrowsIndexError()
         {
 #line (142, 5) - (142, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (143, 5) - (144, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             bool __raised_2 = false;
 #line hidden
@@ -238,7 +238,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestKeysReturnsColumnNames()
         {
 #line (151, 5) - (151, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (152, 5) - (152, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             var keys = row.Keys();
 #line (153, 5) - (153, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
@@ -256,7 +256,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestCountReturnsNumberOfColumns()
         {
 #line (163, 5) - (163, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (164, 5) - (164, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(row));
 #line hidden
@@ -266,7 +266,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestToStringContainsColumnNamesAndValues()
         {
 #line (171, 5) - (171, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (172, 5) - (172, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             string s = global::Sharpy.Builtins.Str(row);
 #line (173, 5) - (173, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
@@ -324,7 +324,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestToStringStringValueIsQuoted()
         {
 #line (199, 5) - (199, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (200, 5) - (200, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             string s = global::Sharpy.Builtins.Str(row);
 #line (201, 5) - (201, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
@@ -353,7 +353,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
             {
                 case global::Sharpy.Sqlite3Row row:
 #line (216, 13) - (216, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row["id"], 1));
+                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row["id"], 1));
 #line (217, 13) - (217, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     Xunit.Assert.True(@operator.Eq(row["name"], "test"));
 #line hidden
@@ -454,7 +454,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
                 {
                     case global::Sharpy.Sqlite3Row r:
 #line (260, 17) - (260, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(r["id"], 1));
+                        Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(r["id"], 1));
 #line hidden
                         break;
                     default:
@@ -474,9 +474,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
         public void TestRowTypeAnnotationResolvesAndMemberAccessWorks()
         {
 #line (274, 5) - (274, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._MakeRow();
+            var row = global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._MakeRow();
 #line (275, 5) - (275, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Equal(3, global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._RowKeyCount(row));
+            Xunit.Assert.Equal(3, global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._RowKeyCount(row));
 #line hidden
         }
 
@@ -501,11 +501,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3
             {
                 case global::Sharpy.Sqlite3Row row:
 #line (290, 13) - (290, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row[0], 42));
+                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row[0], 42));
 #line (291, 13) - (291, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row[-1], 42));
+                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row[-1], 42));
 #line (292, 13) - (292, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests._EqInt(row["val"], 42));
+                    Xunit.Assert.True(global::Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests.Sqlite3RowTestsModule._EqInt(row["val"], 42));
 #line (293, 13) - (293, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(row));
 #line (294, 13) - (294, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"

@@ -8,18 +8,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using os = global::Sharpy.OsModule;
-using tempfile = global::Sharpy.TempfileModule;
+using os = global::Sharpy.OsModule.OsModuleModule;
+using tempfile = global::Sharpy.TempfileModule.TempfileModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Tempfile
+namespace Sharpy.Stdlib.Tests.Spy.Tempfile.TempfileTests
 {
     [global::Sharpy.SharpyModule("tempfile.tempfile_tests")]
-    public static partial class TempfileTests
+    public static partial class TempfileTestsModule
     {
     }
 
-    public partial class TempfileTestsTests
+    public partial class TempfileTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestGettempdirReturnsNonEmptyPath()
@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (29, 5) - (29, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             string result = tempfile.Gettempdir();
 #line (30, 5) - (30, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(result));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(result));
 #line hidden
         }
 
@@ -57,7 +57,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (43, 5) - (43, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             string d = tempfile.Mkdtemp();
 #line (44, 5) - (44, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isdir(d));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isdir(d));
 #line (45, 5) - (45, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             os.Rmdir(d);
 #line hidden
@@ -69,7 +69,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (50, 5) - (50, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             string d = tempfile.Mkdtemp();
 #line (51, 5) - (51, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.StartsWith("tmp", global::Sharpy.OsPathModule.Basename(d));
+            Xunit.Assert.StartsWith("tmp", global::Sharpy.OsPathModule.OsPathModuleModule.Basename(d));
 #line (52, 5) - (52, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             os.Rmdir(d);
 #line hidden
@@ -81,7 +81,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (57, 5) - (57, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             string d = tempfile.Mkdtemp("myapp_");
 #line (58, 5) - (58, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.StartsWith("myapp_", global::Sharpy.OsPathModule.Basename(d));
+            Xunit.Assert.StartsWith("myapp_", global::Sharpy.OsPathModule.OsPathModuleModule.Basename(d));
 #line (59, 5) - (59, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             os.Rmdir(d);
 #line hidden
@@ -109,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (75, 5) - (75, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             var (fd, path) = tempfile.Mkstemp();
 #line (76, 5) - (76, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.True(global::Sharpy.OsPathModule.Isfile(path));
+            Xunit.Assert.True(global::Sharpy.OsPathModule.OsPathModuleModule.Isfile(path));
 #line (77, 5) - (77, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             Xunit.Assert.Equal(0, fd);
 #line (78, 5) - (78, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
@@ -123,7 +123,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (83, 5) - (83, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             var (_fd, path) = tempfile.Mkstemp();
 #line (84, 5) - (84, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            Xunit.Assert.StartsWith("tmp", global::Sharpy.OsPathModule.Basename(path));
+            Xunit.Assert.StartsWith("tmp", global::Sharpy.OsPathModule.OsPathModuleModule.Basename(path));
 #line (85, 5) - (85, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             os.Remove(path);
 #line hidden
@@ -135,7 +135,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tempfile
 #line (90, 5) - (90, 50) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             var (_fd, path) = tempfile.Mkstemp("data_", ".csv");
 #line (91, 5) - (91, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-            string name = global::Sharpy.OsPathModule.Basename(path);
+            string name = global::Sharpy.OsPathModule.OsPathModuleModule.Basename(path);
 #line (92, 5) - (92, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
             Xunit.Assert.StartsWith("data_", name);
 #line (93, 5) - (93, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"

@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using collections = global::Sharpy.Collections;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Collections
+namespace Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests
 {
     [global::Sharpy.SharpyModule("collections.counter_complete_tests")]
-    public static partial class CounterCompleteTests
+    public static partial class CounterCompleteTestsModule
     {
     }
 
-    public partial class CounterCompleteTestsTests
+    public partial class CounterCompleteTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestCounterContainsExistingKeyReturnsTrue()

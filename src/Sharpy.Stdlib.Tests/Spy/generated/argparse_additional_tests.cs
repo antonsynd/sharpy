@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using @operator = global::Sharpy.Operator;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Argparse
+namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 {
     [global::Sharpy.SharpyModule("argparse.argparse_additional_tests")]
-    public static partial class ArgparseAdditionalTests
+    public static partial class ArgparseAdditionalTestsModule
     {
     }
 
-    public partial class ArgparseAdditionalTestsTests
+    public partial class ArgparseAdditionalTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestFormatHelpNonEmptyWhenNoArgs()

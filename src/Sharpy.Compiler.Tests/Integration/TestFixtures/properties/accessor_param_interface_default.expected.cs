@@ -6,8 +6,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class AccessorParamInterfaceDefault
+namespace AccessorParamInterfaceDefault
 {
+    public static partial class AccessorParamInterfaceDefaultModule
+    {
+        public static void Main()
+        {
+#line (15, 5) - (15, 28) 12 "accessor_param_interface_default.spy"
+            global::AccessorParamInterfaceDefault.IVolume s = new global::AccessorParamInterfaceDefault.Speaker();
+#line (16, 5) - (16, 17) 12 "accessor_param_interface_default.spy"
+            s.Volume = 4;
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "IVolume")]
     public interface IVolume
     {
         int Volume
@@ -21,17 +34,9 @@ public static partial class AccessorParamInterfaceDefault
         }
     }
 
+    [global::Sharpy.SharpyModuleType("__main__", "Speaker")]
     public class Speaker : global::AccessorParamInterfaceDefault.IVolume
     {
-    }
-
-    public static void Main()
-    {
-#line (15, 5) - (15, 28) 8 "accessor_param_interface_default.spy"
-        global::AccessorParamInterfaceDefault.IVolume s = new global::AccessorParamInterfaceDefault.Speaker();
-#line (16, 5) - (16, 17) 8 "accessor_param_interface_default.spy"
-        s.Volume = 4;
-#line hidden
     }
 }
 #line default

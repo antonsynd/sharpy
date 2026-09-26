@@ -11,14 +11,14 @@ using Sharpy.Stdlib.Tests.Spy;
 using uuid = global::Sharpy.UuidModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Uuid
+namespace Sharpy.Stdlib.Tests.Spy.Uuid.UuidModuleTests
 {
     [global::Sharpy.SharpyModule("uuid.uuid_module_tests")]
-    public static partial class UuidModuleTests
+    public static partial class UuidModuleTestsModule
     {
     }
 
-    public partial class UuidModuleTestsTests
+    public partial class UuidModuleTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestUuid4GeneratesValidVersion4()

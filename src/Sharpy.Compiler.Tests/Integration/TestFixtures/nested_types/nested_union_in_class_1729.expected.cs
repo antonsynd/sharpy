@@ -6,8 +6,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class NestedUnionInClass1729
+namespace NestedUnionInClass1729
 {
+    public static partial class NestedUnionInClass1729Module
+    {
+        public static void Main()
+        {
+#line (18, 5) - (18, 24) 12 "nested_union_in_class_1729.spy"
+            global::NestedUnionInClass1729.Outer o = new global::NestedUnionInClass1729.Outer();
+#line (19, 5) - (19, 41) 12 "nested_union_in_class_1729.spy"
+            global::Sharpy.Builtins.Print(o.Area(new global::NestedUnionInClass1729.Outer.Shape.Circle(2)));
+#line (20, 5) - (20, 41) 12 "nested_union_in_class_1729.spy"
+            global::Sharpy.Builtins.Print(o.Area(new global::NestedUnionInClass1729.Outer.Shape.Square(4)));
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Outer")]
     public class Outer
     {
         public abstract class Shape
@@ -54,11 +69,11 @@ public static partial class NestedUnionInClass1729
             switch (s)
 #line hidden
             {
-                case Outer.Shape.Circle(var r):
+                case global::NestedUnionInClass1729.Outer.Shape.Circle(var r):
 #line (12, 17) - (12, 34) 20 "nested_union_in_class_1729.spy"
                     return r * r * 3;
 #line hidden
-                case Outer.Shape.Square(var side):
+                case global::NestedUnionInClass1729.Outer.Shape.Square(var side):
 #line (14, 17) - (14, 36) 20 "nested_union_in_class_1729.spy"
                     return side * side;
 #line hidden
@@ -66,17 +81,6 @@ public static partial class NestedUnionInClass1729
                     throw new System.InvalidOperationException("Unreachable: exhaustive match");
             }
         }
-    }
-
-    public static void Main()
-    {
-#line (18, 5) - (18, 24) 8 "nested_union_in_class_1729.spy"
-        global::NestedUnionInClass1729.Outer o = new global::NestedUnionInClass1729.Outer();
-#line (19, 5) - (19, 41) 8 "nested_union_in_class_1729.spy"
-        global::Sharpy.Builtins.Print(o.Area(new Outer.Shape.Circle(2)));
-#line (20, 5) - (20, 41) 8 "nested_union_in_class_1729.spy"
-        global::Sharpy.Builtins.Print(o.Area(new Outer.Shape.Square(4)));
-#line hidden
     }
 }
 #line default

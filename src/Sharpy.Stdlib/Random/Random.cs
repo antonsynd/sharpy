@@ -8,12 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-namespace Sharpy
+namespace Sharpy.RandomModule
 {
     /// <summary>
     /// Generate pseudo-random numbers with various distributions.
     /// </summary>
-    public static partial class RandomModule
+    public static partial class RandomModuleModule
     {
         public static global::System.Random _Random = new global::System.Random();
         /// <summary>
@@ -29,7 +29,7 @@ namespace Sharpy
         /// </summary>
         public static double NextDouble()
         {
-            return global::Sharpy.RandomModule._Random.NextDouble();
+            return global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Sharpy
         /// </summary>
         public static int Randint(int a, int b)
         {
-            return global::Sharpy.RandomModule._Random.Next(a, b + 1);
+            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(a, b + 1);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Sharpy
         /// </summary>
         public static double Uniform(double a, double b)
         {
-            return a + (global::Sharpy.RandomModule._Random.NextDouble() * (b - a));
+            return a + (global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble() * (b - a));
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Sharpy
                 throw new global::Sharpy.IndexError("Cannot choose from an empty sequence");
             }
 
-            int index = global::Sharpy.RandomModule._Random.Next(global::Sharpy.Builtins.Len(seq));
+            int index = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(global::Sharpy.Builtins.Len(seq));
             return seq[index];
         }
 
@@ -76,7 +76,7 @@ namespace Sharpy
             int i = n - 1;
             while (i > 0)
             {
-                int j = global::Sharpy.RandomModule._Random.Next(i + 1);
+                int j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i + 1);
                 T temp = x[i];
                 x[i] = x[j];
                 x[j] = temp;
@@ -94,7 +94,7 @@ namespace Sharpy
                 throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() (0, {(global::Sharpy.Builtins.Str(stop))})"));
             }
 
-            return global::Sharpy.RandomModule._Random.Next(stop);
+            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(stop);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Sharpy
                     throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
                 }
 
-                return start + global::Sharpy.RandomModule._Random.Next(width);
+                return start + global::Sharpy.RandomModule.RandomModuleModule._Random.Next(width);
             }
 
             int n = 0;
@@ -133,7 +133,7 @@ namespace Sharpy
                 throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() ({(global::Sharpy.Builtins.Str(start))}, {(global::Sharpy.Builtins.Str(stop))}, {(global::Sharpy.Builtins.Str(step))})"));
             }
 
-            return start + step * global::Sharpy.RandomModule._Random.Next(n);
+            return start + step * global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n);
         }
 
         /// <summary>
@@ -141,8 +141,8 @@ namespace Sharpy
         /// </summary>
         public static double Gauss(double mu, double sigma)
         {
-            double u1 = global::Sharpy.RandomModule._Random.NextDouble();
-            double u2 = global::Sharpy.RandomModule._Random.NextDouble();
+            double u1 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
+            double u2 = global::Sharpy.RandomModule.RandomModuleModule._Random.NextDouble();
             double z0 = global::System.Math.Sqrt(-2.0d * global::System.Math.Log(u1)) * global::System.Math.Cos(2.0d * 3.141592653589793d * u2);
             return mu + sigma * z0;
         }
@@ -167,7 +167,7 @@ namespace Sharpy
                 throw new global::Sharpy.ValueError("number of bits must be <= 30 for int return");
             }
 
-            return global::Sharpy.RandomModule._Random.Next(1 << k);
+            return global::Sharpy.RandomModule.RandomModuleModule._Random.Next(1 << k);
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace Sharpy
             int i = 0;
             while (i < k)
             {
-                result.Append(population[global::Sharpy.RandomModule._Random.Next(n)]);
+                result.Append(population[global::Sharpy.RandomModule.RandomModuleModule._Random.Next(n)]);
                 i = i + 1;
             }
 
@@ -214,7 +214,7 @@ namespace Sharpy
             int i = 0;
             while (i < k)
             {
-                int j = global::Sharpy.RandomModule._Random.Next(i, n);
+                int j = global::Sharpy.RandomModule.RandomModuleModule._Random.Next(i, n);
                 T temp = pool[i];
                 pool[i] = pool[j];
                 pool[j] = temp;

@@ -7,8 +7,150 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class MatchSubjectCastNarrowingNoDeadArm
+namespace MatchSubjectCastNarrowingNoDeadArm
 {
+    public static partial class MatchSubjectCastNarrowingNoDeadArmModule
+    {
+        public static void FromIdentifier(object r)
+        {
+#line (25, 5) - (25, 33) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            if (!((object?)r is double))
+#line hidden
+            {
+                throw new global::Sharpy.AssertionError();
+            }
+
+#line (26, 5) - (30, 27) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            switch (r)
+#line hidden
+            {
+                case double f:
+#line (28, 13) - (28, 21) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print(f);
+#line hidden
+                    break;
+                default:
+#line (30, 13) - (30, 27) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print("other");
+#line hidden
+                    break;
+            }
+        }
+
+        public static void FromIndex(Sharpy.Dict<string, object> d)
+        {
+#line (35, 5) - (35, 40) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            if (!((object?)d["key"] is double))
+#line hidden
+            {
+                throw new global::Sharpy.AssertionError();
+            }
+
+#line (36, 5) - (40, 27) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            switch (d["key"])
+#line hidden
+            {
+                case double fv:
+#line (38, 13) - (38, 22) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print(fv);
+#line hidden
+                    break;
+                default:
+#line (40, 13) - (40, 27) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print("other");
+#line hidden
+                    break;
+            }
+        }
+
+        public static void FromMember(global::MatchSubjectCastNarrowingNoDeadArm.Holder h)
+        {
+#line (43, 5) - (43, 39) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            if (!((object?)h.Value is double))
+#line hidden
+            {
+                throw new global::Sharpy.AssertionError();
+            }
+
+#line (44, 5) - (48, 27) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            switch (h.Value)
+#line hidden
+            {
+                case double mv:
+#line (46, 13) - (46, 22) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print(mv);
+#line hidden
+                    break;
+                default:
+#line (48, 13) - (48, 27) 20 "match_subject_cast_narrowing_no_dead_arm.spy"
+                    global::Sharpy.Builtins.Print("other");
+#line hidden
+                    break;
+            }
+        }
+
+        public static string FromMatchExpression(object r)
+        {
+#line (51, 5) - (51, 33) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            if (!((object?)r is double))
+#line hidden
+            {
+                throw new global::Sharpy.AssertionError();
+            }
+
+#line (52, 5) - (56, 1) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            return r switch
+#line hidden
+            {
+                double f => "expr-float",
+                var _ => "expr-other"
+            };
+        }
+
+        public static string FromOptionalMatchExpression(Optional<string> x)
+        {
+#line (62, 5) - (66, 1) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            if (x.IsSome)
+#line hidden
+            {
+#line (63, 9) - (66, 1) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
+                return x.Unwrap() switch
+#line hidden
+                {
+                    string s => "opt " + s,
+                    var _ => "opt-other"
+                };
+            }
+
+#line (66, 5) - (66, 23) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            return "opt-none";
+#line hidden
+        }
+
+        public static void Main()
+        {
+#line (69, 5) - (69, 25) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromIdentifier(3.5d);
+#line (71, 5) - (71, 31) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
+#line hidden
+            {
+            };
+#line (72, 5) - (72, 20) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            d["key"] = 1.25d;
+#line (73, 5) - (73, 18) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromIndex(d);
+#line (75, 5) - (75, 29) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromMember(new global::MatchSubjectCastNarrowingNoDeadArm.Holder(2.5d));
+#line (76, 5) - (76, 39) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromMatchExpression(4.75d));
+#line (77, 5) - (77, 54) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
+            global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromOptionalMatchExpression(Optional<string>.Some("hi")));
+#line hidden
+        }
+    }
+
+    [global::Sharpy.SharpyModuleType("__main__", "Holder")]
     public class Holder
     {
         public object Value;
@@ -19,144 +161,6 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
             this.Value = value;
 #line hidden
         }
-    }
-
-    public static void FromIdentifier(object r)
-    {
-#line (25, 5) - (25, 33) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!((object?)r is double))
-#line hidden
-        {
-            throw new global::Sharpy.AssertionError();
-        }
-
-#line (26, 5) - (30, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        switch (r)
-#line hidden
-        {
-            case double f:
-#line (28, 13) - (28, 21) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print(f);
-#line hidden
-                break;
-            default:
-#line (30, 13) - (30, 27) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print("other");
-#line hidden
-                break;
-        }
-    }
-
-    public static void FromIndex(Sharpy.Dict<string, object> d)
-    {
-#line (35, 5) - (35, 40) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!((object?)d["key"] is double))
-#line hidden
-        {
-            throw new global::Sharpy.AssertionError();
-        }
-
-#line (36, 5) - (40, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        switch (d["key"])
-#line hidden
-        {
-            case double fv:
-#line (38, 13) - (38, 22) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print(fv);
-#line hidden
-                break;
-            default:
-#line (40, 13) - (40, 27) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print("other");
-#line hidden
-                break;
-        }
-    }
-
-    public static void FromMember(global::MatchSubjectCastNarrowingNoDeadArm.Holder h)
-    {
-#line (43, 5) - (43, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!((object?)h.Value is double))
-#line hidden
-        {
-            throw new global::Sharpy.AssertionError();
-        }
-
-#line (44, 5) - (48, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        switch (h.Value)
-#line hidden
-        {
-            case double mv:
-#line (46, 13) - (46, 22) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print(mv);
-#line hidden
-                break;
-            default:
-#line (48, 13) - (48, 27) 16 "match_subject_cast_narrowing_no_dead_arm.spy"
-                global::Sharpy.Builtins.Print("other");
-#line hidden
-                break;
-        }
-    }
-
-    public static string FromMatchExpression(object r)
-    {
-#line (51, 5) - (51, 33) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (!((object?)r is double))
-#line hidden
-        {
-            throw new global::Sharpy.AssertionError();
-        }
-
-#line (52, 5) - (56, 1) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        return r switch
-#line hidden
-        {
-            double f => "expr-float",
-            var _ => "expr-other"
-        };
-    }
-
-    public static string FromOptionalMatchExpression(Optional<string> x)
-    {
-#line (62, 5) - (66, 1) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        if (x.IsSome)
-#line hidden
-        {
-#line (63, 9) - (66, 1) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
-            return x.Unwrap() switch
-#line hidden
-            {
-                string s => "opt " + s,
-                var _ => "opt-other"
-            };
-        }
-
-#line (66, 5) - (66, 23) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        return "opt-none";
-#line hidden
-    }
-
-    public static void Main()
-    {
-#line (69, 5) - (69, 25) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::MatchSubjectCastNarrowingNoDeadArm.FromIdentifier(3.5d);
-#line (71, 5) - (71, 31) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
-#line hidden
-        {
-        };
-#line (72, 5) - (72, 20) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        d["key"] = 1.25d;
-#line (73, 5) - (73, 18) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::MatchSubjectCastNarrowingNoDeadArm.FromIndex(d);
-#line (75, 5) - (75, 29) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::MatchSubjectCastNarrowingNoDeadArm.FromMember(new global::MatchSubjectCastNarrowingNoDeadArm.Holder(2.5d));
-#line (76, 5) - (76, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.FromMatchExpression(4.75d));
-#line (77, 5) - (77, 54) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.FromOptionalMatchExpression(Optional<string>.Some("hi")));
-#line hidden
     }
 }
 #line default

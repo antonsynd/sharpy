@@ -10,14 +10,14 @@ using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.IO
+namespace Sharpy.Stdlib.Tests.Spy.IO.IoStringioTests
 {
     [global::Sharpy.SharpyModule("io.io_stringio_tests")]
-    public static partial class IoStringioTests
+    public static partial class IoStringioTestsModule
     {
     }
 
-    public partial class IoStringioTestsTests
+    public partial class IoStringioTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestEmptyConstructorGetvalueIsEmpty()

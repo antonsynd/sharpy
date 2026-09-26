@@ -8,18 +8,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Sharpy.Stdlib.Tests.Spy;
-using bisect = global::Sharpy.BisectModule;
-using random = global::Sharpy.RandomModule;
+using bisect = global::Sharpy.BisectModule.BisectModuleModule;
+using random = global::Sharpy.RandomModule.RandomModuleModule;
 using Xunit;
 
-namespace Sharpy.Stdlib.Tests.Spy.Cpython
+namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonBisectTests
 {
     [global::Sharpy.SharpyModule("cpython.cpython_bisect_tests")]
-    public static partial class CpythonBisectTests
+    public static partial class CpythonBisectTestsModule
     {
     }
 
-    public partial class CpythonBisectTestsTests
+    public partial class CpythonBisectTestsModuleTests
     {
         [Xunit.FactAttribute]
         public void TestPrecomputedBisectRight()

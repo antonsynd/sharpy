@@ -7,18 +7,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 
-public static partial class ForLoopRange
+namespace ForLoopRange
 {
-    public static void Main()
+    public static partial class ForLoopRangeModule
     {
-#line (2, 5) - (3, 17) 8 "for_loop_range.spy"
-        foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(5))
-#line hidden
+        public static void Main()
         {
-            var i = __loopVar_0;
-#line (3, 9) - (3, 17) 12 "for_loop_range.spy"
-            global::Sharpy.Builtins.Print(i);
+#line (2, 5) - (3, 17) 12 "for_loop_range.spy"
+            foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(5))
 #line hidden
+            {
+                var i = __loopVar_0;
+#line (3, 9) - (3, 17) 16 "for_loop_range.spy"
+                global::Sharpy.Builtins.Print(i);
+#line hidden
+            }
         }
     }
 }
