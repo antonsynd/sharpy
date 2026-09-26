@@ -985,6 +985,67 @@ internal partial class ProjectCompiler
             }
         }
 
+        ReportModuleNamespacesShadowingClrTypes(config);
+
         return !_diagnostics.HasErrors;
+    }
+
+    /// <summary>
+    /// SPY0615's compilation-wide arm (#2039): a namespace one module declares shadows a .NET type of
+    /// that full name for EVERY file of the compilation, not only its own — RootNamespace <c>System</c>
+    /// with <c>random.spy</c> breaks <c>main.spy</c>'s <c>System.Random</c> (CS0118 behind SPY0908).
+    /// Each module's declared namespaces (own and enclosing) are compared against every other file's
+    /// referenced type names — an analyzed unit's from its per-file SemanticInfo, a cache-served unit's
+    /// from its cold build — and a hit is reported at the shadowing module's first line, naming the
+    /// using file. A module whose OWN C# spells the type was already reported by the per-file arm
+    /// (CodeGenInfoComputer), so it is skipped here; one report per shadowed name, at the module
+    /// declaring it most directly.
+    /// </summary>
+    private void ReportModuleNamespacesShadowingClrTypes(ProjectConfig config)
+    {
+        var modules = new List<(Model.CompilationUnit Unit, IReadOnlyList<string> NamespaceParts, IReadOnlySet<string> Names)>();
+        foreach (var unit in _projectModel!.Units.Values)
+        {
+            var layout = (unit.Ast != null ? unit.FileSemanticInfo?.GetModuleLayout(unit.Ast) ?? SemanticInfo.GetModuleLayout(unit.Ast) : null)
+                ?? unit.CachedModuleLayout;
+            var names = (IReadOnlySet<string>?)unit.FileSemanticInfo?.ReferencedClrTypeNames() ?? unit.CachedReferencedClrTypeNames;
+            if (layout == null || names == null)
+                continue;
+            modules.Add((unit, layout.NamespaceParts(config.RootNamespace), names));
+        }
+        if (modules.Count < 2)
+            return;
+
+        var sourceRoot = ComputeSourceRootPath(config);
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var shadowing in modules
+                     .OrderBy(m => m.NamespaceParts.Count)
+                     .ThenBy(m => m.Unit.FilePath, StringComparer.Ordinal))
+        {
+            if (shadowing.NamespaceParts.Count == 0
+                || CodeGenInfoComputer.ShadowedClrTypeName(shadowing.NamespaceParts, shadowing.Names) != null)
+                continue;
+
+            foreach (var user in modules.OrderBy(m => m.Unit.FilePath, StringComparer.Ordinal))
+            {
+                if (ReferenceEquals(user.Unit, shadowing.Unit))
+                    continue;
+                var shadowed = CodeGenInfoComputer.ShadowedClrTypeName(shadowing.NamespaceParts, user.Names);
+                if (shadowed == null || !reported.Add(shadowed))
+                    continue;
+
+                var usingFile = Path.GetRelativePath(sourceRoot, user.Unit.FilePath).Replace('\\', '/');
+                var bag = new DiagnosticBag();
+                bag.AddError(
+                    CodeGenInfoComputer.NamespaceShadowsClrTypeMessage(shadowing.NamespaceParts, shadowed, usingFile),
+                    line: 1, column: 1,
+                    code: DiagnosticCodes.SemanticOverflow.ModuleNamespaceShadowsClrType,
+                    phase: CompilerPhase.CodeGeneration);
+                MergeWithPhase(shadowing.Unit.Diagnostics, bag, CompilerPhase.CodeGeneration, shadowing.Unit.FilePath);
+                MergeWithPhase(_diagnostics, bag, CompilerPhase.CodeGeneration, shadowing.Unit.FilePath);
+                shadowing.Unit.Phase = CompilationPhase.Failed;
+                break;
+            }
+        }
     }
 }

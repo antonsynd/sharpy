@@ -1482,22 +1482,87 @@ public class SemanticInfo : ISemanticQuery
     public bool IsTypeReference(Expression expr) => _typeReferenceNodes.ContainsKey(expr);
 
     /// <summary>
-    /// The .NET types this file names by an identifier or a type-denoting expression (<c>x.Foo</c>
-    /// as a receiver or callee) — read by the module-namespace/imported-type collision check (#2039).
+    /// The full names of the .NET types this file's generated C# can spell — named by an identifier,
+    /// or carried anywhere inside a recorded expression, annotation or denoted type (a type argument
+    /// the file never writes, <c>[make_foo()]</c> → <c>List&lt;Lib.Foo&gt;</c>, included) — each with
+    /// its declaring types, since <c>global::A.B.C</c> binds <c>A.B</c> first. Read by the
+    /// module-namespace shadow check (SPY0615, #2039) per file and, through the incremental cache,
+    /// across the compilation. Generic names keep their arity suffix (<c>List`1</c>): C# never binds
+    /// a namespace for a name written with type arguments, so those cannot be shadowed.
     /// </summary>
-    internal IEnumerable<Type> ReferencedClrTypes()
+    internal SortedSet<string> ReferencedClrTypeNames()
     {
+        var names = new SortedSet<string>(StringComparer.Ordinal);
+        var visited = new HashSet<SemanticType>(ReferenceEqualityComparer.Instance);
+
+        void AddClrType(Type? type)
+        {
+            // The keyword-spelled types (`long`, `string`, `object`, …) are never reached by name lookup.
+            if (type == null || type.IsPrimitive || type == typeof(string) || type == typeof(object)
+                || type == typeof(decimal) || type == typeof(void))
+                return;
+            for (var t = type; t != null; t = t.DeclaringType)
+                names.Add((t.FullName ?? t.Name).Replace('+', '.'));
+        }
+
+        void Walk(SemanticType? type)
+        {
+            if (type == null || !visited.Add(type))
+                return;
+            AddClrType(type.ClrType);
+            switch (type)
+            {
+                case GenericType generic:
+                    AddClrType(generic.GenericDefinition?.ClrType);
+                    generic.TypeArguments.ForEach(Walk);
+                    break;
+                case OptionalType optional:
+                    Walk(optional.UnderlyingType);
+                    break;
+                case NullableType nullable:
+                    Walk(nullable.UnderlyingType);
+                    break;
+                case ResultType result:
+                    Walk(result.OkType);
+                    Walk(result.ErrorType);
+                    break;
+                case FunctionType function:
+                    function.ParameterTypes.ForEach(Walk);
+                    Walk(function.ReturnType);
+                    break;
+                case TupleType tuple:
+                    tuple.ElementTypes.ForEach(Walk);
+                    break;
+                case GenericFunctionType genericFunction:
+                    genericFunction.TypeArguments.ForEach(Walk);
+                    break;
+                case ConstructorReferenceType constructorReference:
+                    AddClrType(constructorReference.Symbol?.ClrType);
+                    break;
+                case UnionType union:
+                    AddClrType(union.Symbol?.ClrType);
+                    union.CaseTypes.ForEach(Walk);
+                    break;
+                case TaskType task:
+                    Walk(task.ResultType);
+                    break;
+            }
+        }
+
         foreach (var symbol in _identifierSymbols.Values)
         {
             if (symbol is TypeSymbol { ClrType: { } bare })
-                yield return bare;
+                AddClrType(bare);
         }
 
-        foreach (var expr in _typeReferenceNodes.Keys)
-        {
-            if (GetExpressionType(expr) is UserDefinedType { Symbol: TypeSymbol { ClrType: { } qualified } })
-                yield return qualified;
-        }
+        foreach (var type in _expressionTypes.Values)
+            Walk(type);
+        foreach (var type in _typeAnnotations.Values)
+            Walk(type);
+        foreach (var type in _denotedTypes.Values)
+            Walk(type);
+
+        return names;
     }
 
     /// <summary>

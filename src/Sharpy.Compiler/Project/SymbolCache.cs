@@ -644,6 +644,12 @@ internal record FileCacheEntry
 
     /// <summary>The file's recorded members class <c>&lt;X&gt;</c> (#2039); see <see cref="LayoutNamespaceSegments"/>.</summary>
     public string? LayoutMembersClassName { get; init; }
+
+    /// <summary>
+    /// The full names of the .NET types the file's C# spells (#2039, SPY0615): a module added or
+    /// renamed in a warm build can declare a namespace that shadows a type only this served file uses.
+    /// </summary>
+    public List<string>? ReferencedClrTypeNames { get; init; }
 }
 
 /// <summary>

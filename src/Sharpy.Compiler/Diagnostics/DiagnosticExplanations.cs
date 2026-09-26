@@ -396,15 +396,18 @@ public static partial class DiagnosticExplanations
             "`x: object = None` when any value may appear.");
 
         Add(dict, DiagnosticCodes.SemanticOverflow.ModuleNamespaceShadowsClrType,
-            "Module namespace is the name of a .NET type it uses", "Semantic",
+            "Module namespace is the name of a .NET type the program uses", "Semantic",
             "Every module is a C# namespace: the project's root namespace, the module's directories, then " +
-            "its file stem ('foo.spy' in RootNamespace 'App' is 'App.Foo'). When that is also the full name " +
-            "of a .NET type the module uses — 'from app import Foo' naming the referenced class 'App.Foo' — C# " +
-            "resolves the name to the namespace declared in the compiled source, so the type cannot be " +
-            "reached from any spelling.",
+            "its file stem ('foo.spy' in RootNamespace 'App' is 'App.Foo'). When that namespace, or one " +
+            "enclosing it, is also the full name of a .NET type used anywhere in the compilation — " +
+            "'from app import Foo' in any module naming the referenced class 'App.Foo', or a type only " +
+            "inferred ('[make_foo()]' is a list of 'App.Foo') — C# resolves the name to the namespace " +
+            "declared in the compiled source, so the type cannot be reached from any spelling. Reported at " +
+            "the module whose namespace shadows the type, naming the file that uses it.",
             "# RootNamespace App, file foo.spy, referencing an assembly that declares class App.Foo\n" +
             "from app import Foo   # SPY0615\n\ndef main() -> None:\n    print(Foo())",
-            "Rename the source file so its namespace differs from the type's full name (foo.spy -> foo_main.spy).");
+            "Rename the source file (or the directory) so no module namespace equals the type's full name " +
+            "(foo.spy -> foo_main.spy).");
 
         return dict;
     }

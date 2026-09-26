@@ -1572,53 +1572,81 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// A module whose namespace is also the full name of a .NET type it uses (#2039): C# resolves a
-    /// name declared in the compiled source before a same-named type from a referenced assembly, so
-    /// every reference to the type — <c>global::Sharpy.TimeModule.Time()</c> from
-    /// <c>Sharpy/time_module.spy</c> importing <c>Sharpy.TimeModule</c>, or <c>App.Foo</c> from
-    /// <c>foo.spy</c> in RootNamespace <c>App</c> — binds the namespace (CS0234 behind SPY0908), and no
-    /// C# spelling reaches the type short of an extern alias. Refused by name (SPY0615). The types
-    /// compared are the ones the module names: from-imported, or resolved at an identifier or a
-    /// type-denoting expression. Rung 4 by necessity: this is a C# name-lookup conflict between the
-    /// module's own namespace and a referenced type, which no CLR surface of either can express.
+    /// A module whose namespace — or a namespace enclosing it — is also the full name of a .NET type
+    /// the compiled program uses (#2039): C# resolves a name declared in the compiled source before a
+    /// same-named type from a referenced assembly, so every reference to the type —
+    /// <c>global::Sharpy.TimeModule.Time()</c> from <c>Sharpy/time_module.spy</c> importing
+    /// <c>Sharpy.TimeModule</c>, or <c>App.Foo</c> with <c>foo.spy</c> in RootNamespace <c>App</c> —
+    /// binds the namespace (CS0234/CS0118 behind SPY0908), and no C# spelling reaches the type short of
+    /// an extern alias. Refused by name (SPY0615). This per-file arm compares the types THIS module's
+    /// C# spells (<see cref="SemanticInfo.ReferencedClrTypeNames"/>); the shadow is compilation-wide,
+    /// so the project compiler's arm compares every module's namespaces against every OTHER file's
+    /// types (<c>ProjectCompiler.ReportModuleNamespacesShadowingClrTypes</c>). Rung 4 by necessity:
+    /// this is a C# name-lookup conflict between a source-declared namespace and a referenced type,
+    /// which no CLR surface of either can express.
     /// </summary>
     private void DetectNamespaceShadowingAnImportedClrType(Module module, ModuleLayout layout)
     {
-        var namespaceName = string.Join(".", layout.NamespaceParts(_rootNamespace));
-        if (namespaceName.Length == 0)
+        var namespaceParts = layout.NamespaceParts(_rootNamespace);
+        if (namespaceParts.Count == 0 || _semanticInfo == null)
+            return;
+        var shadowed = ShadowedClrTypeName(namespaceParts, _semanticInfo.ReferencedClrTypeNames());
+        if (shadowed == null)
             return;
 
-        static string ClrName(Type type) => (type.FullName ?? type.Name).Replace('+', '.');
-
-        // A from-import is reported at its statement; any other use at the module's first line.
+        // A from-import of the type is reported at its statement; any other use at the module's first line.
+        var (line, column) = (1, 1);
         foreach (var stmt in module.Body)
         {
             if (stmt.UnwrapDecorated() is not FromImportStatement fromImport)
                 continue;
-            foreach (var imported in fromImport.Names)
+            if (fromImport.Names.Any(imported =>
+                    _symbolTable.Lookup(imported.AsName ?? imported.Name) is TypeSymbol { ClrType: { } clrType }
+                    && (clrType.FullName ?? clrType.Name).Replace('+', '.') == shadowed))
             {
-                if (_symbolTable.Lookup(imported.AsName ?? imported.Name) is TypeSymbol { ClrType: { } clrType }
-                    && ClrName(clrType) == namespaceName)
-                {
-                    ReportNamespaceShadowsClrType(namespaceName, fromImport.LineStart, fromImport.ColumnStart);
-                    return;
-                }
+                (line, column) = (fromImport.LineStart, fromImport.ColumnStart);
+                break;
             }
         }
 
-        if (_semanticInfo?.ReferencedClrTypes().Any(t => ClrName(t) == namespaceName) == true)
-            ReportNamespaceShadowsClrType(namespaceName, 1, 1);
-    }
-
-    private void ReportNamespaceShadowsClrType(string namespaceName, int line, int column)
-        => _diagnostics.AddError(
-            $"This module is emitted as the C# namespace '{namespaceName}', which is also the full name of " +
-            $"the .NET type '{namespaceName}' it uses; C# would resolve every reference to the type to the " +
-            "namespace. Rename the source file (the last namespace segment is its stem).",
-            line: line,
-            column: column,
+        _diagnostics.AddError(NamespaceShadowsClrTypeMessage(namespaceParts, shadowed, usingFile: null),
+            line: line, column: column,
             code: DiagnosticCodes.SemanticOverflow.ModuleNamespaceShadowsClrType,
             phase: CompilerPhase.CodeGeneration);
+    }
+
+    /// <summary>
+    /// The namespace a module declares — its own (<paramref name="namespaceParts"/> joined) or an
+    /// enclosing one, own first — that is also one of <paramref name="referencedClrTypeNames"/>, or null.
+    /// </summary>
+    internal static string? ShadowedClrTypeName(IReadOnlyList<string> namespaceParts, IReadOnlySet<string> referencedClrTypeNames)
+    {
+        for (var count = namespaceParts.Count; count >= 1; count--)
+        {
+            var declared = string.Join(".", namespaceParts.Take(count));
+            if (referencedClrTypeNames.Contains(declared))
+                return declared;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The SPY0615 message; <paramref name="usingFile"/> names the file that uses the type when it is
+    /// another module's.
+    /// </summary>
+    internal static string NamespaceShadowsClrTypeMessage(IReadOnlyList<string> namespaceParts, string shadowed, string? usingFile)
+    {
+        var ownNamespace = string.Join(".", namespaceParts);
+        var declares = ownNamespace == shadowed
+            ? $"This module is emitted as the C# namespace '{ownNamespace}'"
+            : $"This module is emitted as the C# namespace '{ownNamespace}', which declares the enclosing namespace '{shadowed}'";
+        var user = usingFile == null ? "it uses" : $"that '{usingFile}' uses";
+        var rename = ownNamespace == shadowed
+            ? "Rename the source file (the last namespace segment is its stem)."
+            : "Rename the directory (or root namespace) that spells it.";
+        return $"{declares}, which is also the full name of the .NET type '{shadowed}' {user}; C# would " +
+            $"resolve every reference to the type to the namespace. {rename}";
+    }
 
     /// <summary>
     /// The layout seeds of the module namespace (#2039, Decision 28 (h)): a top-level function,

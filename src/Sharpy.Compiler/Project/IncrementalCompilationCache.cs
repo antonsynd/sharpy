@@ -142,7 +142,10 @@ internal class IncrementalCompilationCache
     //      type; FileCacheEntry carries the file's own layout in place of v36's DeclaresEntryMain (the
     //      entry type of a warm exe build, #2094). A v38 entry restores a type with no sibling bit, so
     //      a warm consumer would spell a sibling type inside <X>.
-    internal const int CurrentSchemaVersion = 39;
+    // v40: FileCacheEntry carries the .NET type names the file's C# spells (#2039, SPY0615). A v39
+    //      entry carries none, so a module added in a warm build would not see that a served file
+    //      uses the type its namespace shadows (SPY0908 where the cold build refuses).
+    internal const int CurrentSchemaVersion = 40;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
@@ -339,6 +342,9 @@ internal class IncrementalCompilationCache
     /// The file's own recorded module layout (#2039), for the warm build that serves the file without
     /// an AST (the exe's entry type, #2094).
     /// </param>
+    /// <param name="referencedClrTypeNames">
+    /// The .NET type names the file's C# spells, for the compilation-wide SPY0615 check (#2039).
+    /// </param>
     public void SaveFileCache(
         string filePath,
         List<Symbol> symbols,
@@ -347,7 +353,8 @@ internal class IncrementalCompilationCache
         string? modulePath = null,
         List<CachedDiagnostic>? diagnostics = null,
         SemanticBinding? binding = null,
-        ModuleLayout? layout = null)
+        ModuleLayout? layout = null,
+        IEnumerable<string>? referencedClrTypeNames = null)
     {
         EnsureFileCacheLoaded();
 
@@ -394,7 +401,8 @@ internal class IncrementalCompilationCache
             GeneratorOutputs = generatorOutputs,
             Diagnostics = diagnostics,
             LayoutNamespaceSegments = layout?.NamespaceSegments.ToList(),
-            LayoutMembersClassName = layout?.MembersClassName
+            LayoutMembersClassName = layout?.MembersClassName,
+            ReferencedClrTypeNames = referencedClrTypeNames?.ToList()
         };
 
         _fileCache[normalizedPath] = entry;

@@ -82,11 +82,14 @@ enclosing class (CS0542); a type spelled like it, like the test class, or like a
 be a second declaration of that name in the module namespace. A function named like its *file*
 (`def thing` in `thing.spy`) is no collision: its class is `ThingModule`.
 
-A module whose namespace is also the full name of a .NET type it uses is refused with `SPY0615`:
-C# resolves the name to the namespace declared in the compiled source, so the type could never be
-reached. In a project with root namespace `App` that references an assembly declaring the class
-`App.Foo`, the module `foo.spy` doing `from app import Foo` is refused; rename the file (its stem is
-the namespace's last segment).
+A module whose namespace, or a namespace enclosing it, is also the full name of a .NET type used
+anywhere in the compilation is refused with `SPY0615`: C# resolves the name to the namespace declared
+in the compiled source, for every file, so the type could never be reached. In a project with root
+namespace `App` that references an assembly declaring the class `App.Foo`, the module `foo.spy` is
+refused when any module does `from app import Foo` — or reaches `App.Foo` only as an inferred type,
+`[make_foo()]` — and so is `foo/bar.spy`, whose namespace `App.Foo.Bar` declares `App.Foo`. The error
+is reported at the shadowing module and names the file that uses the type; rename the file (its stem
+is the namespace's last segment) or the directory.
 
 An executable names its one entry point explicitly — the entry module's members class
 (`Merge.Main.MainModule`) — so a non-entry module's function that happens to emit as `Main`

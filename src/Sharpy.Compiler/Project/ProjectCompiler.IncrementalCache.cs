@@ -86,7 +86,8 @@ internal partial class ProjectCompiler
                     unit.ModulePath,
                     cachedDiagnostics.Count > 0 ? cachedDiagnostics : null,
                     _projectModel!.SemanticBinding,
-                    unit.Ast != null ? SemanticInfo.GetModuleLayout(unit.Ast) : null);
+                    unit.Ast != null ? SemanticInfo.GetModuleLayout(unit.Ast) : null,
+                    unit.FileSemanticInfo?.ReferencedClrTypeNames());
 
                 savedCount++;
             }

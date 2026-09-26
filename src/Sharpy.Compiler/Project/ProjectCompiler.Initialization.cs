@@ -83,6 +83,8 @@ internal partial class ProjectCompiler
             {
                 servedUnit.CachedModuleLayout = new ModuleLayout(
                     cachedFile.LayoutNamespaceSegments ?? new List<string>(), members);
+                servedUnit.CachedReferencedClrTypeNames = new HashSet<string>(
+                    cachedFile.ReferencedClrTypeNames ?? new List<string>(), StringComparer.Ordinal);
             }
             if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols, semanticBinding))
             {

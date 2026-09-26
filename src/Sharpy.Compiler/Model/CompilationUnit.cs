@@ -106,6 +106,13 @@ public class CompilationUnit
     internal ModuleLayout? CachedModuleLayout { get; set; }
 
     /// <summary>
+    /// For a unit served from the incremental cache: the full names of the .NET types its cold build's
+    /// C# spells (<see cref="SemanticInfo.ReferencedClrTypeNames"/>) — read by the compilation-wide
+    /// module-namespace shadow check (SPY0615, #2039).
+    /// </summary>
+    internal IReadOnlySet<string>? CachedReferencedClrTypeNames { get; set; }
+
+    /// <summary>
     /// Per-file SymbolTable used during name resolution.
     /// Cleared after merge into the global table to avoid holding stale references.
     /// </summary>
