@@ -1,0 +1,1 @@
+SPY0500: @lru_cache cannot be combined with 'async' on 'f'

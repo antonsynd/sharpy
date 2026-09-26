@@ -82,6 +82,11 @@ public class DiagnosticFileProvenanceTests
 
         all.Where(d => d.Phase == CompilerPhase.CodeGeneration)
             .Should().OnlyContain(d => !string.IsNullOrEmpty(d.FilePath), $"[{producer}]");
+
+        // #2028: the verdict is the bag's. The emitter cell's module is not imported, so its dropped
+        // C# leaves a program Roslyn accepts — only a bag-keyed verdict fails it.
+        result.Success.Should().Be(!all.Any(d => d.IsError),
+            $"[{producer}] a build is successful iff its bag holds no error (#2028)\n{Describe(all)}");
     }
 
     /// <summary>

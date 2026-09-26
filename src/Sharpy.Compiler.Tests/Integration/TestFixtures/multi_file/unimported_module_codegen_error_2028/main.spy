@@ -1,0 +1,8 @@
+# #2028: `thing` is refused while its C# is emitted (SPY0500), and nothing here references it, so
+# the rest compiles cleanly and only a bag-keyed verdict fails the build. The module is imported
+# (never used) so that `sharpyc run main.spy`, which compiles the import closure, refuses it too; the
+# truly un-imported cell is project-only and lives in BuildVerdictMatrixTests.
+import thing
+
+def main() -> None:
+    print(7)

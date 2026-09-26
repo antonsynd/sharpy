@@ -1,0 +1,6 @@
+@lru_cache
+async def f() -> int:
+    return 1
+
+def helper() -> int:
+    return 7
