@@ -36,7 +36,7 @@ print(describe("hello"))  # Resolves to describe(str) in lib
 ```
 
 *Implementation*
-- *✅ Native - C# supports method overloading directly. Each overload emits as a separate static method in the module class.*
+- *✅ Native - C# supports method overloading directly. Each overload emits as a separate static method in the module's members class (`<Stem>Module`, see [module_system.md](module_system.md#package-structure)).*
 
 ## Basic Method Overloading
 

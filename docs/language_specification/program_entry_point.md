@@ -110,5 +110,9 @@ def main():
 ```
 
 *Implementation: ✅ Native*
-- *`main()` compiles directly to C# `Main()` method*
-- *Module-level declarations become static members of the module class*
+- *`main()` compiles directly to C# `Main()` in the entry module's members class (`main.spy` →
+  `namespace [<Root>.]Main { static partial class MainModule { Main() } }`), which the compiler names as
+  the program's one entry point — a non-entry module's function emitted as `Main` is never a second one
+  (see [module_system.md](module_system.md#package-structure))*
+- *Module-level functions, variables and constants become static members of the members class; types
+  are declared beside it in the module's namespace*

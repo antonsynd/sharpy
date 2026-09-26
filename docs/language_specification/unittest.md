@@ -144,7 +144,7 @@ Xunit.Assert.Equal(0.3, 0.1 + 0.2, 7);
 
 ## Module-Level Test Functions
 
-Module-level `@test` functions are collected into a generated test class (separate from the module class). This is required because xUnit discovers tests as instance methods on public classes.
+Module-level `@test` functions are collected into a generated test class (separate from the module's members class). This is required because xUnit discovers tests as instance methods on public classes.
 
 ```python
 x: int = 42
@@ -154,29 +154,33 @@ def test_value():
     assert x == 42
 ```
 
-Generated C#:
+Generated C# (`my_module.spy`):
 ```csharp
-public static class MyModule
+namespace MyModule
 {
-    public static int X = 42;
-}
-
-public class MyModuleTests
-{
-    [Xunit.FactAttribute]
-    public void TestValue()
+    public static partial class MyModuleModule
     {
-        Xunit.Assert.Equal(42, MyModule.X);
+        public static int X = 42;
+    }
+
+    public class MyModuleModuleTests
+    {
+        [Xunit.FactAttribute]
+        public void TestValue()
+        {
+            Xunit.Assert.Equal(42, global::MyModule.MyModuleModule.X);
+        }
     }
 }
 ```
 
-In a project, the test class and any `@test.fixture` classes are declared beside the module class
-in the module's namespace (packages are C# namespaces — see
-[module_system.md](module_system.md#package-structure)). The test class is named after the module
-class: `src/pkg/lib.spy` in root namespace `Merge` emits `Merge.Pkg.Lib`, `Merge.Pkg.LibTests` and,
-for `@test.fixture def greeting`, `Merge.Pkg.GreetingFixture`; a package's `src/pkg/__init__.spy`
-emits `Merge.Pkg.PkgModule` and `Merge.Pkg.PkgModuleTests`.
+The test class and any `@test.fixture` classes are declared beside the members class in the
+module's namespace (every module is a C# namespace — see
+[module_system.md](module_system.md#package-structure)). The test class is named after the members
+class: `src/pkg/lib.spy` in root namespace `Merge` emits `Merge.Pkg.Lib.LibModule`,
+`Merge.Pkg.Lib.LibModuleTests` and, for `@test.fixture def greeting`, `Merge.Pkg.Lib.GreetingFixture`;
+a package's `src/pkg/__init__.spy` emits `Merge.Pkg.PkgModule` and `Merge.Pkg.PkgModuleTests`. A
+module type spelled like the test class or a fixture class is refused (`SPY0522`).
 
 ## TestCase Base Class
 
