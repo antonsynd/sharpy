@@ -39,6 +39,7 @@ namespace Sharpy
         /// <summary>
         /// Base exception for socket-related errors. Corresponds to Python's socket.error.
         /// </summary>
+        [global::Sharpy.SharpyName("error")]
         public class Error : global::System.Exception
         {
             public int Errno;
@@ -70,6 +71,7 @@ namespace Sharpy
         /// <summary>
         /// Raised when a socket operation times out. Corresponds to Python's socket.timeout.
         /// </summary>
+        [global::Sharpy.SharpyName("timeout")]
         public class Timeout : global::Sharpy.SocketModule.Error
         {
             /// <summary>
@@ -90,6 +92,7 @@ namespace Sharpy
         /// <summary>
         /// Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror.
         /// </summary>
+        [global::Sharpy.SharpyName("gaierror")]
         public class Gaierror : global::Sharpy.SocketModule.Error
         {
             /// <summary>
@@ -110,6 +113,7 @@ namespace Sharpy
         /// <summary>
         /// Raised for legacy address-related errors. Corresponds to Python's socket.herror.
         /// </summary>
+        [global::Sharpy.SharpyName("herror")]
         public class Herror : global::Sharpy.SocketModule.Error
         {
             /// <summary>
@@ -131,6 +135,7 @@ namespace Sharpy
         /// Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
         /// Supports TCP and UDP communication, socket options, and timeout handling.
         /// </summary>
+        [global::Sharpy.SharpyName("socket")]
         public sealed class Socket : global::System.IDisposable
         {
             private global::System.Net.Sockets.Socket _Socket;
