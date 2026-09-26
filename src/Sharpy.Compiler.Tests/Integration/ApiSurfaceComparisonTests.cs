@@ -64,8 +64,8 @@ public class ApiSurfaceComparisonTests
         ["tarfile_module"] = "tarfile",
         ["tempfile_module"] = "tempfile",
         ["textwrap"] = "textwrap",
-        ["threading_module"] = "threading",
-        ["time_module"] = "time",
+        ["threading_stub"] = "threading",
+        ["time_stub"] = "time",
         ["urllib_module"] = "urllib",
         ["uuid_module"] = "uuid",
         ["xml_module"] = "xml",
@@ -104,7 +104,7 @@ public class ApiSurfaceComparisonTests
         "base64_module", "calendar_module", "struct_module", "zlib_module",
         "heapq", "random_module", "re_module", "hashlib_module", "functools", "statistics",
         "itertools", "tempfile_module",
-        "difflib_module", "socket_module", "threading_module",
+        "difflib_module", "socket_module", "threading_stub",
     };
 
     [Fact]

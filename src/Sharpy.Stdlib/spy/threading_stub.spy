@@ -1,4 +1,6 @@
 """Thread-based concurrency primitives, similar to Python's threading module."""
+# Named *_stub, not *_module: a `threading_module` stem is the namespace Sharpy.ThreadingModule, which would
+# shadow the hand-written ThreadingModule this module delegates to (SPY0615, #2039).
 
 from sharpy import Thread, Lock, RLock, Event, Semaphore, BoundedSemaphore, Barrier, Timer
 from sharpy import BrokenBarrierError

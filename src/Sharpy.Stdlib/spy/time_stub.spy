@@ -1,4 +1,6 @@
 """Time access and conversions."""
+# Named *_stub, not *_module: a `time_module` stem is the namespace Sharpy.TimeModule, which would
+# shadow the hand-written TimeModule this module delegates to (SPY0615, #2039).
 
 from sharpy import TimeModule
 
