@@ -16,9 +16,10 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// name (<c>Inst+D</c>, <c>SharpyApp.Pkg+Shapes+Box</c>).
 /// </summary>
 /// <remarks>
-/// <para>Cells: type kind ×13 (plain, nested, snake-named, backtick-escaped, generic, struct,
+/// <para>Cells: type kind ×16 (plain, nested, snake-named, backtick-escaped, generic, struct,
 /// <c>__str__</c>-only, <c>__repr__</c>-only, dataclass, nested snake, subclass, interface
-/// implementation, three-deep nesting) × site ×14 (print, str, repr, f"{x}", f"{x!r}", f"{x!s}",
+/// implementation, three-deep nesting, a union's data case, its unit case, a snake-named union's
+/// snake-named case — python's twin of a case is a class nested in a class) × site ×14 (print, str, repr, f"{x}", f"{x!r}", f"{x!s}",
 /// format(x, ""), "{}".format, "{!r}".format, [x], (x, 1), {"k": x}, [[x]], str([x])) × module ×3
 /// (the entry file, an imported module <c>shapes</c>, a package module <c>pkg.shapes</c>), plus
 /// module ×4: a class merged with its module (<c>thing.spy</c>'s <c>Thing</c> and a type nested in
@@ -49,6 +50,10 @@ public class PythonNameChannelMatrixTests : IntegrationTestBase
         ("subclass", "class Base:\n    pass\n\nclass Sub(Base):\n    pass\n", "Sub()"),
         ("interface_impl", "interface IShape:\n    def area(self) -> int: ...\n\nclass Sq(IShape):\n    def area(self) -> int:\n        return 4\n", "Sq()"),
         ("deep_nested", "class A1:\n    class B1:\n        class C1:\n            pass\n", "A1.B1.C1()"),
+        // A union case is a type nested in its union (python's twin: a class nested in a class).
+        ("union_case", "union Shape:\n    case Circle(r: int)\n    case Dot\n", "Shape.Circle(1)"),
+        ("union_unit_case", "", "Shape.Dot()"),
+        ("snake_union_case", "union my_shape:\n    case big_circle(r: int)\n", "my_shape.big_circle(1)"),
     };
 
     private static readonly (string Site, string Statement)[] Sites =
@@ -260,6 +265,48 @@ public class PythonNameChannelMatrixTests : IntegrationTestBase
         "{'k': <__main__.A1.B1.C1 object>}",
         "[[<__main__.A1.B1.C1 object>]]",
         "[<__main__.A1.B1.C1 object>]",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "<__main__.Shape.Circle object>",
+        "[<__main__.Shape.Circle object>]",
+        "(<__main__.Shape.Circle object>, 1)",
+        "{'k': <__main__.Shape.Circle object>}",
+        "[[<__main__.Shape.Circle object>]]",
+        "[<__main__.Shape.Circle object>]",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "<__main__.Shape.Dot object>",
+        "[<__main__.Shape.Dot object>]",
+        "(<__main__.Shape.Dot object>, 1)",
+        "{'k': <__main__.Shape.Dot object>}",
+        "[[<__main__.Shape.Dot object>]]",
+        "[<__main__.Shape.Dot object>]",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "<__main__.my_shape.big_circle object>",
+        "[<__main__.my_shape.big_circle object>]",
+        "(<__main__.my_shape.big_circle object>, 1)",
+        "{'k': <__main__.my_shape.big_circle object>}",
+        "[[<__main__.my_shape.big_circle object>]]",
+        "[<__main__.my_shape.big_circle object>]",
     };
 
     // python3 3.12, module layout, address stripped (generator: scratchpad oracle/gen.py).
@@ -447,6 +494,48 @@ public class PythonNameChannelMatrixTests : IntegrationTestBase
         "{'k': <shapes.A1.B1.C1 object>}",
         "[[<shapes.A1.B1.C1 object>]]",
         "[<shapes.A1.B1.C1 object>]",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "<shapes.Shape.Circle object>",
+        "[<shapes.Shape.Circle object>]",
+        "(<shapes.Shape.Circle object>, 1)",
+        "{'k': <shapes.Shape.Circle object>}",
+        "[[<shapes.Shape.Circle object>]]",
+        "[<shapes.Shape.Circle object>]",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "<shapes.Shape.Dot object>",
+        "[<shapes.Shape.Dot object>]",
+        "(<shapes.Shape.Dot object>, 1)",
+        "{'k': <shapes.Shape.Dot object>}",
+        "[[<shapes.Shape.Dot object>]]",
+        "[<shapes.Shape.Dot object>]",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "<shapes.my_shape.big_circle object>",
+        "[<shapes.my_shape.big_circle object>]",
+        "(<shapes.my_shape.big_circle object>, 1)",
+        "{'k': <shapes.my_shape.big_circle object>}",
+        "[[<shapes.my_shape.big_circle object>]]",
+        "[<shapes.my_shape.big_circle object>]",
     };
 
     // python3 3.12, package layout, address stripped (generator: scratchpad oracle/gen.py).
@@ -634,6 +723,48 @@ public class PythonNameChannelMatrixTests : IntegrationTestBase
         "{'k': <pkg.shapes.A1.B1.C1 object>}",
         "[[<pkg.shapes.A1.B1.C1 object>]]",
         "[<pkg.shapes.A1.B1.C1 object>]",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "<pkg.shapes.Shape.Circle object>",
+        "[<pkg.shapes.Shape.Circle object>]",
+        "(<pkg.shapes.Shape.Circle object>, 1)",
+        "{'k': <pkg.shapes.Shape.Circle object>}",
+        "[[<pkg.shapes.Shape.Circle object>]]",
+        "[<pkg.shapes.Shape.Circle object>]",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "<pkg.shapes.Shape.Dot object>",
+        "[<pkg.shapes.Shape.Dot object>]",
+        "(<pkg.shapes.Shape.Dot object>, 1)",
+        "{'k': <pkg.shapes.Shape.Dot object>}",
+        "[[<pkg.shapes.Shape.Dot object>]]",
+        "[<pkg.shapes.Shape.Dot object>]",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "<pkg.shapes.my_shape.big_circle object>",
+        "[<pkg.shapes.my_shape.big_circle object>]",
+        "(<pkg.shapes.my_shape.big_circle object>, 1)",
+        "{'k': <pkg.shapes.my_shape.big_circle object>}",
+        "[[<pkg.shapes.my_shape.big_circle object>]]",
+        "[<pkg.shapes.my_shape.big_circle object>]",
     };
 
     // python3 3.12, merged layout, address stripped (generator: scratchpad oracle/gen.py).
@@ -760,11 +891,11 @@ public class PythonNameChannelMatrixTests : IntegrationTestBase
     [Fact]
     public void Matrix_IsTotal()
     {
-        Kinds.Should().HaveCount(13);
+        Kinds.Should().HaveCount(16);
         Sites.Should().HaveCount(14);
-        PythonEntry.Should().HaveCount(13 * 14);
-        PythonModule.Should().HaveCount(13 * 14);
-        PythonPackage.Should().HaveCount(13 * 14);
+        PythonEntry.Should().HaveCount(16 * 14);
+        PythonModule.Should().HaveCount(16 * 14);
+        PythonPackage.Should().HaveCount(16 * 14);
         PythonMerged.Should().HaveCount(2 * 14);
     }
 }
