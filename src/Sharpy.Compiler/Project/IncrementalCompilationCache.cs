@@ -138,8 +138,10 @@ internal class IncrementalCompilationCache
     // v38: CachedSymbol carries a union's cases (#2071). A v37 entry restores a union with no
     //      cases, so a warm consumer's `case Shape.Circle(r)` is SPY0202 where the cold build matches.
     // v39: CachedCodeGenInfo carries the module-as-namespace layout (#2039) — NamespaceSegments and
-    //      MembersClassName on a module symbol, IsNamespaceSibling on a type. A v38 entry restores a
-    //      type with no sibling bit, so a warm consumer would spell a sibling type inside <X>.
+    //      MembersClassName on a module symbol, IsNamespaceSibling (and its NamespaceSegments) on a
+    //      type; FileCacheEntry carries the file's own layout in place of v36's DeclaresEntryMain (the
+    //      entry type of a warm exe build, #2094). A v38 entry restores a type with no sibling bit, so
+    //      a warm consumer would spell a sibling type inside <X>.
     internal const int CurrentSchemaVersion = 39;
 
     private readonly string _cacheFilePath;
@@ -333,9 +335,9 @@ internal class IncrementalCompilationCache
     /// <param name="generatedCSharp">The generated C# code.</param>
     /// <param name="dependencies">The file paths this file depends on (imports).</param>
     /// <param name="modulePath">Optional module path for this file.</param>
-    /// <param name="declaresEntryMain">
-    /// <see cref="Shared.ModuleIdentifiers.DeclaresEntryMain"/> of the file's body, for the warm build
-    /// that serves the file without an AST (#2013).
+    /// <param name="layout">
+    /// The file's own recorded module layout (#2039), for the warm build that serves the file without
+    /// an AST (the exe's entry type, #2094).
     /// </param>
     public void SaveFileCache(
         string filePath,
@@ -345,7 +347,7 @@ internal class IncrementalCompilationCache
         string? modulePath = null,
         List<CachedDiagnostic>? diagnostics = null,
         SemanticBinding? binding = null,
-        bool declaresEntryMain = false)
+        ModuleLayout? layout = null)
     {
         EnsureFileCacheLoaded();
 
@@ -391,7 +393,8 @@ internal class IncrementalCompilationCache
             ModulePath = modulePath,
             GeneratorOutputs = generatorOutputs,
             Diagnostics = diagnostics,
-            DeclaresEntryMain = declaresEntryMain
+            LayoutNamespaceSegments = layout?.NamespaceSegments.ToList(),
+            LayoutMembersClassName = layout?.MembersClassName
         };
 
         _fileCache[normalizedPath] = entry;

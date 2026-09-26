@@ -75,6 +75,15 @@ internal partial class ProjectCompiler
             // _restoredSymbols.Values, re-TryDefine-ing earlier files' symbols
             // into every later file's module scope (#1309).
             var keysBefore = new HashSet<string>(_restoredSymbols.Keys);
+
+            // The file's own layout, recorded by its cold build (#2039): a served unit has no AST to
+            // key the layout on, and the exe's entry type reads it when the entry is served (#2094).
+            if (_incrementalCache.GetFileCache(filePath) is { LayoutMembersClassName: { } members } cachedFile
+                && _projectModel!.GetUnit(filePath) is { } servedUnit)
+            {
+                servedUnit.CachedModuleLayout = new ModuleLayout(
+                    cachedFile.LayoutNamespaceSegments ?? new List<string>(), members);
+            }
             if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols, semanticBinding))
             {
                 restoredByFile.Add((filePath, _restoredSymbols

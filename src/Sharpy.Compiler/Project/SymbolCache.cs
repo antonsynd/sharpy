@@ -634,11 +634,16 @@ internal record FileCacheEntry
     public List<CachedDiagnostic>? Diagnostics { get; init; }
 
     /// <summary>
-    /// Whether the file declares the entry-point <c>main()</c>
-    /// (<see cref="Shared.ModuleIdentifiers.DeclaresEntryMain"/>), which decides its module class
-    /// name. A warm build serves the file without an AST, so the SPY0526 check reads this (#2013).
+    /// The file's own recorded module layout (#2039): its namespace segments and members class
+    /// <c>&lt;X&gt;</c>. A warm build serves the file without an AST — so without the node-keyed
+    /// layout — and the exe's entry type (#2094) is read from here when the served file is the entry.
+    /// Replaces v36's DeclaresEntryMain, which lost its last reader when the entry bit stopped naming
+    /// a class (#2039).
     /// </summary>
-    public bool DeclaresEntryMain { get; init; }
+    public List<string>? LayoutNamespaceSegments { get; init; }
+
+    /// <summary>The file's recorded members class <c>&lt;X&gt;</c> (#2039); see <see cref="LayoutNamespaceSegments"/>.</summary>
+    public string? LayoutMembersClassName { get; init; }
 }
 
 /// <summary>

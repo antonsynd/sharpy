@@ -100,6 +100,12 @@ public class CompilationUnit
     public SemanticInfo? FileSemanticInfo { get; internal set; }
 
     /// <summary>
+    /// For a unit served from the incremental cache (no AST, so no node-keyed layout): the module
+    /// layout its cold build recorded (#2039) — read for the exe's entry type (#2094).
+    /// </summary>
+    internal ModuleLayout? CachedModuleLayout { get; set; }
+
+    /// <summary>
     /// Per-file SymbolTable used during name resolution.
     /// Cleared after merge into the global table to avoid holding stale references.
     /// </summary>

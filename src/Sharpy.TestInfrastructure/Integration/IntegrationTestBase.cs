@@ -301,6 +301,9 @@ public abstract class IntegrationTestBase
             runtimePath = SharedReferences.Value.RuntimePath;
 
             var compilation = SharedBaseCompilation.Value.AddSyntaxTrees(syntaxTree);
+            // The compiler names the exe's entry point (#2094); the harness names the same one.
+            if (compileResult.EntryTypeName != null)
+                compilation = compilation.WithOptions(compilation.Options.WithMainTypeName(compileResult.EntryTypeName));
             var additionalPaths = GetAdditionalReferenceAssemblyPaths().ToList();
             if (additionalPaths.Count > 0)
             {
@@ -639,7 +642,8 @@ public abstract class IntegrationTestBase
                 FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles),
                 projectWarnings,
                 executionTimeoutMs,
-                result.Diagnostics.GetAll().ToList());
+                result.Diagnostics.GetAll().ToList(),
+                result.EntryTypeName);
         }
         catch (Exception ex)
         {
@@ -748,7 +752,8 @@ public abstract class IntegrationTestBase
                 generatedReport,
                 compilationWarnings,
                 executionTimeoutMs,
-                rawDiagnostics);
+                rawDiagnostics,
+                result.EntryTypeName);
         }
         catch (Exception ex)
         {
@@ -863,7 +868,8 @@ public abstract class IntegrationTestBase
         string generatedCSharpReport,
         List<string> compilationWarnings,
         int executionTimeoutMs,
-        List<CompilerDiagnostic>? rawDiagnostics = null)
+        List<CompilerDiagnostic>? rawDiagnostics = null,
+        string? entryTypeName = null)
     {
         string? runtimePath;
 
@@ -882,11 +888,16 @@ public abstract class IntegrationTestBase
             allReferences.AddRange(
                 additionalPaths.Where(File.Exists).Select(p => MetadataReference.CreateFromFile(p)));
 
+            // The compiler names the exe's entry point (#2094); the harness deploys what the compiler
+            // would, so it names the same one.
+            var options = new CSharpCompilationOptions(OutputKind.ConsoleApplication);
+            if (entryTypeName != null)
+                options = options.WithMainTypeName(entryTypeName);
             var compilation = CSharpCompilation.Create(
                 "SharpyTestProject",
                 syntaxTrees,
                 allReferences,
-                new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+                options);
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);

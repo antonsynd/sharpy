@@ -18,6 +18,28 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
+    /// The reflection name of the entry module's members class — the one C# entry point of an exe
+    /// (#2094): the layout semantic analysis recorded on the entry unit's root, under the project's
+    /// root namespace (<c>Thing.ThingModule</c>, <c>SharpyApp.Main.MainModule</c>). Null for a
+    /// library (no entry file) or when analysis did not reach the entry unit. Read by the assembly
+    /// compiler (<c>WithMainTypeName</c>) and the CLI's self-contained publish (#2039).
+    /// </summary>
+    internal static string? EntryTypeNameOf(Model.ProjectModel model)
+    {
+        foreach (var unit in model.Units.Values)
+        {
+            if (!IsEntryPointFileForTypeCheck(unit.FilePath, model.Config))
+                continue;
+            // A cache-served entry unit has no AST; its cold build recorded the layout (#2039).
+            var layout = (unit.Ast != null ? model.SemanticInfo?.GetModuleLayout(unit.Ast) : null)
+                ?? unit.CachedModuleLayout;
+            if (layout != null)
+                return layout.MembersClassFullName(model.Config.RootNamespace);
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Determine if a file is the entry point for validation and code generation.
     /// Used during type checking and code generation phases.
     /// </summary>

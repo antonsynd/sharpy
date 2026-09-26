@@ -51,7 +51,8 @@ public class GeneratedCodeNetSuppressionTests : IDisposable
     }
 
     // Two emitter-time refusals (SPY0500): @lru_cache on an async function, at module level and on a
-    // method. The refused unit's C# is dropped, so Phase 7 compiles the rest with no entry point.
+    // method. The refused unit's C# is dropped, so Phase 7 compiles the rest without the entry type
+    // the compiler names (#2094): Roslyn answers CS1555 (it was CS5001 before the entry was named).
     // SPY0520 (a type named like its module class), which this test used to drive, retired when every
     // module became a namespace (#2039); SPY0523 is reported before code generation, so the build
     // never reaches Phase 7 and cannot exercise the net.
@@ -94,7 +95,7 @@ public class GeneratedCodeNetSuppressionTests : IDisposable
         // populated only by an assembly compile that actually happened and that Roslyn actually
         // rejected — so its contents prove the SPY0908 absence is the gate's doing, and prove the
         // leak corpus the #1146 sweeps depend on did not silently shrink.
-        Assert.Contains(result.SuppressedGeneratedCodeDiagnostics, d => d.Code == "CS5001");
+        Assert.Contains(result.SuppressedGeneratedCodeDiagnostics, d => d.Code == "CS1555");
         Assert.DoesNotContain(
             result.SuppressedGeneratedCodeDiagnostics,
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);

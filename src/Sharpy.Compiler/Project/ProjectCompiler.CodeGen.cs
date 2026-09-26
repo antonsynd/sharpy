@@ -306,7 +306,8 @@ internal partial class ProjectCompiler
         // file. The suppressed CS errors stay observable (debug log + AssemblyCompilationResult).
         var compilationAlreadyFailed = _diagnostics.HasErrors;
         var assemblyResult = assemblyCompiler.CompileToAssembly(
-            generatedCSharp, generated.Trees, config, compilationAlreadyFailed);
+            generatedCSharp, generated.Trees, config, compilationAlreadyFailed,
+            entryTypeName: EntryTypeNameOf(_projectModel!));
 
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)

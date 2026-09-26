@@ -67,7 +67,8 @@ internal class AssemblyCompiler
         Dictionary<string, string> csharpSources,
         IReadOnlyDictionary<string, SyntaxTree> prebuiltTrees,
         ProjectConfig projectConfig,
-        bool compilationAlreadyFailed = false)
+        bool compilationAlreadyFailed = false,
+        string? entryTypeName = null)
     {
         _logger.LogInfo($"Compiling {csharpSources.Count} C# files to assembly");
         var metrics = new CompilationMetrics(
@@ -139,18 +140,19 @@ internal class AssemblyCompiler
                 ? OutputKind.ConsoleApplication
                 : OutputKind.DynamicallyLinkedLibrary;
 
-            // Create compilation
+            // Create compilation. An exe names its one entry point — the entry module's members class,
+            // from the recorded layout (#2039) — so no other static Main (a non-entry `def Main`) is
+            // ever a second candidate (CS0017, #2094). A library has none.
             metrics.StartPhase(CompilerPhaseNames.RoslynCompilation);
             var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
-            var compilation = CSharpCompilation.Create(
-                assemblyName,
-                syntaxTrees,
-                references,
-                new CSharpCompilationOptions(outputKind)
-                    .WithOptimizationLevel(projectConfig.Configuration == "Release"
-                        ? OptimizationLevel.Release
-                        : OptimizationLevel.Debug)
-                    .WithPlatform(Platform.AnyCpu));
+            var options = new CSharpCompilationOptions(outputKind)
+                .WithOptimizationLevel(projectConfig.Configuration == "Release"
+                    ? OptimizationLevel.Release
+                    : OptimizationLevel.Debug)
+                .WithPlatform(Platform.AnyCpu);
+            if (outputKind == OutputKind.ConsoleApplication && entryTypeName != null)
+                options = options.WithMainTypeName(entryTypeName);
+            var compilation = CSharpCompilation.Create(assemblyName, syntaxTrees, references, options);
             metrics.EndPhase();
 
             // Emit to memory first; the image reaches disk only when the build succeeded (#2028).

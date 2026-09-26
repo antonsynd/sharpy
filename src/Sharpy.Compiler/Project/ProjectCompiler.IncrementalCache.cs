@@ -86,7 +86,7 @@ internal partial class ProjectCompiler
                     unit.ModulePath,
                     cachedDiagnostics.Count > 0 ? cachedDiagnostics : null,
                     _projectModel!.SemanticBinding,
-                    unit.Ast != null && ModuleIdentifiers.DeclaresEntryMain(unit.Ast.Body));
+                    unit.Ast != null ? SemanticInfo.GetModuleLayout(unit.Ast) : null);
 
                 savedCount++;
             }

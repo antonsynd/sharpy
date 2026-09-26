@@ -456,6 +456,12 @@ public class ProjectCompilationResult
     /// Available for tooling and analysis.
     /// </summary>
     public Model.ProjectModel? ProjectModel { get; init; }
+
+    /// <summary>
+    /// The reflection name of the entry module's members class — the exe's one C# entry point
+    /// (#2039, #2094), from the recorded layout. Null for a library.
+    /// </summary>
+    public string? EntryTypeName => ProjectModel == null ? null : Project.ProjectCompiler.EntryTypeNameOf(ProjectModel);
 }
 
 /// <summary>

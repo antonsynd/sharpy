@@ -177,9 +177,7 @@ public sealed class CompilerApi
             ProjectConfig = config,
             OutputAssemblyPath = result.OutputAssemblyPath,
             ProjectMetrics = result.Metrics,
-            EntryTypeName = entryAst != null && model?.SemanticInfo?.GetModuleLayout(entryAst) is { } entryLayout
-                ? entryLayout.MembersClassFullName(config.RootNamespace)
-                : null
+            EntryTypeName = result.EntryTypeName
         };
     }
 

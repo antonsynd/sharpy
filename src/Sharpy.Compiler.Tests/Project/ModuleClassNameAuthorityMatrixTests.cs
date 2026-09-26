@@ -84,6 +84,9 @@ public class ModuleClassNameAuthorityMatrixTests
             "def_program" or "init" => entry
                 ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
                 : (Array.Empty<string>(), "MainModule", "Program"),
+            // exe_app: the static Main of the non-entry main.spy is no second entry point — the
+            // compiler names the entry module's members class as THE entry (#2094); the backticked
+            // spelling keeps its literal `Main` (ruling 13).
             "def_Main" or "def_escaped_Main" => entry
                 ? (new[] { DiagnosticCodes.Validation.MissingMainFunction }, null, null)
                 : (Array.Empty<string>(), "MainModule", "Main"),
@@ -181,6 +184,45 @@ public class ModuleClassNameAuthorityMatrixTests
 
     [Fact]
     public void Matrix_IsTotal() => Cells().Should().HaveCount(24, "3 kinds × 8 contents");
+
+    /// <summary>
+    /// #2094: a non-entry module's top-level function emitted as <c>Main</c> (<c>def Main</c>, or
+    /// <c>def `Main`</c>, whose backticks keep the literal spelling) is a static <c>Main</c> C# would
+    /// take as a second entry point (CS0017 behind SPY0908 at 855beadb6). The compiler names the exe's
+    /// ONE entry point — the entry module's members class, from the recorded layout — so the program
+    /// runs. The library cell is the control: it has no entry type at all.
+    /// </summary>
+    [Theory]
+    [InlineData("def Main() -> int:\n    return 3\n", "Main", "exe")]
+    [InlineData("def `Main`() -> int:\n    return 3\n", "`Main`", "exe")]
+    [InlineData("def Main() -> int:\n    return 3\n", "Main", "library")]
+    public void NonEntryFunctionEmittedAsMain_IsNotASecondEntryPoint(string util, string callee, string outputType)
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Entry").WithOutputType(outputType);
+        if (outputType == "exe")
+        {
+            helper.WithEntryPoint("app.spy");
+            helper.AddSourceFile("app.spy", $"from util import {callee}\n\ndef main() -> None:\n    print({callee}())\n");
+        }
+        helper.AddSourceFile("util.spy", util);
+        helper.CreateProjectFile();
+        var result = helper.Compile();
+
+        result.Success.Should().BeTrue(Describe(result));
+        if (outputType == "library")
+        {
+            result.EntryTypeName.Should().BeNull("a library has no entry point to name");
+            return;
+        }
+
+        result.EntryTypeName.Should().Be("Entry.App.AppModule");
+        var util_cs = result.GeneratedCSharpFiles.Single(kv => Path.GetFileName(kv.Key) == "util.cs").Value;
+        util_cs.Should().Contain("public static int Main()", "the literal spelling is kept (ruling 13); only the entry choice changed");
+        var exec = helper.CompileAndExecute();
+        exec.Success.Should().BeTrue($"{exec.Exception} {string.Join("\n", exec.CompilationErrors)}");
+        exec.StandardOutput.Trim().Should().Be("3");
+    }
 
     private ProjectCompilationHelper CreateProject(string kind, string content, bool besideProgramDirectory)
     {
