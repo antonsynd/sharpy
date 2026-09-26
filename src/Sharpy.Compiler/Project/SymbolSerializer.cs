@@ -1097,6 +1097,39 @@ internal static class SymbolSerializer
     }
 
     /// <summary>
+    /// The index of the bracket closing the one at <paramref name="open"/>, counting <c>[</c>/<c>(</c>
+    /// depth as <see cref="ParseTypeArguments"/> does; -1 when unbalanced.
+    /// </summary>
+    private static int MatchingClose(string s, int open)
+    {
+        var depth = 0;
+        for (var i = open; i < s.Length; i++)
+        {
+            if (s[i] == '[' || s[i] == '(')
+                depth++;
+            else if ((s[i] == ']' || s[i] == ')') && --depth == 0)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>The first <paramref name="c"/> outside every <c>[</c>/<c>(</c> pair; -1 when none.</summary>
+    private static int IndexAtDepthZero(string s, char c)
+    {
+        var depth = 0;
+        for (var i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '[' || s[i] == '(')
+                depth++;
+            else if (s[i] == ']' || s[i] == ')')
+                depth--;
+            else if (s[i] == c && depth == 0)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
     /// Parses a comma-separated list of type IDs, handling nested brackets.
     /// </summary>
     private static List<SemanticType> ParseTypeArguments(string argsStr)
@@ -1530,7 +1563,13 @@ internal static class SymbolSerializer
                 },
                 value =>
                 {
-                    var arrowIndex = value.IndexOf("->", StringComparison.Ordinal);
+                    // The arrow that follows the parameter list's own closing paren — a function-typed
+                    // parameter carries an arrow of its own, and the first one in the payload is ITS
+                    // (a cached `((int) -> int) -> float` decoded as returning int, #2027).
+                    var close = MatchingClose(value, 0);
+                    var arrowIndex = close >= 0 && string.CompareOrdinal(value, close + 1, "->", 0, 2) == 0
+                        ? close + 1
+                        : -1;
                     if (arrowIndex < 0)
                         return SemanticType.Unknown;
                     var innerStr = value[1..(arrowIndex - 1)];
@@ -1595,7 +1634,10 @@ internal static class SymbolSerializer
                 tt => $"[{string.Join(",", tt.ElementTypes.Select(Serialize))}]",
                 value =>
                 {
-                    var inner = value.TrimStart('[').TrimEnd(']');
+                    // Exactly the outer pair: a last element that is itself bracketed (`list[P]`) ends
+                    // the payload in `]]`, and trimming every `]` cut the element's own bracket and then
+                    // its last character (`…lib.spy` → `…lib.sp`, an origin that relinks to nothing).
+                    var inner = value.Length >= 2 && value[0] == '[' && value[^1] == ']' ? value[1..^1] : value;
                     return new TupleType { ElementTypes = ParseTypeArguments(inner) };
                 });
 
@@ -1619,14 +1661,25 @@ internal static class SymbolSerializer
                 tpt => tpt.Name,
                 value => new TypeParameterType { Name = value });
 
+            // Format: ok!err, split at the first `!` outside brackets — an ok type holding a Result of its
+            // own (`(int !ValueError) !KeyError` has ok `tuple[int !ValueError]`) carries a `!` first, and
+            // the first-`!` split decoded it as garbage (#2027). A Result directly in ok position is
+            // parenthesized, since its `!` would otherwise sit at depth 0; err-position nesting needs
+            // nothing (the first depth-0 `!` is still the outer one). A type payload always starts with
+            // its codec prefix, never `(`.
             Register<ResultType>("result",
-                rt => $"{Serialize(rt.OkType)}!{Serialize(rt.ErrorType)}",
+                rt => rt.OkType is ResultType
+                    ? $"({Serialize(rt.OkType)})!{Serialize(rt.ErrorType)}"
+                    : $"{Serialize(rt.OkType)}!{Serialize(rt.ErrorType)}",
                 value =>
                 {
-                    var bangIndex = value.IndexOf('!', StringComparison.Ordinal);
+                    var bangIndex = IndexAtDepthZero(value, '!');
                     if (bangIndex < 0)
                         return SemanticType.Unknown;
-                    return new ResultType { OkType = Deserialize(value[..bangIndex]), ErrorType = Deserialize(value[(bangIndex + 1)..]) };
+                    var okStr = value[..bangIndex];
+                    if (okStr.Length >= 2 && okStr[0] == '(' && MatchingClose(okStr, 0) == okStr.Length - 1)
+                        okStr = okStr[1..^1];
+                    return new ResultType { OkType = Deserialize(okStr), ErrorType = Deserialize(value[(bangIndex + 1)..]) };
                 });
 
             // GenericFunctionType: serialize as the underlying function with type args marker

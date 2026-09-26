@@ -834,7 +834,10 @@ def main() -> None:
 
     private const string UpcastDef = "def upcast(e: Exception) -> str:\n    return str(e)\n\n\n";
 
-    private static readonly string[] UdtPositions = { "return", "parameter", "field", "property", "lambda" };
+    // `tuplelist` and `hof` are composite positions whose payload nests one encoded type in another:
+    // a tuple whose last element is bracketed (the decoder trimmed every trailing `]`), and a function
+    // type with a function-typed parameter (the decoder split on the first `->`, the parameter's).
+    private static readonly string[] UdtPositions = { "return", "parameter", "field", "property", "lambda", "tuplelist", "hof" };
 
     public static IEnumerable<object[]> UdtKindTimesPosition()
         => from kind in UdtKinds.Keys from position in UdtPositions select new object[] { kind, position };
@@ -846,6 +849,9 @@ def main() -> None:
         "field" => $"class Box:\n    item: {k.Type}\n\n    def __init__(self) -> None:\n        self.item = {k.Value}\n",
         "property" => $"class Box:\n    property get item: {k.Type}\n\n    def __init__(self) -> None:\n        self.item = {k.Value}\n",
         "lambda" => $"def apply(f: ({k.Type}) -> None) -> None:\n    f({k.Value})\n",
+        "tuplelist" => $"def make() -> tuple[int, list[{k.Type}]]:\n    return (0, [{k.Value}])\n",
+        "hof" => $"def feed(f: ({k.Type}) -> None) -> None:\n    f({k.Value})\n\n\n"
+            + $"def feeder() -> (({k.Type}) -> None) -> None:\n    return feed\n",
         _ => throw new ArgumentOutOfRangeException(nameof(position)),
     };
 
@@ -860,9 +866,10 @@ def main() -> None:
     {
         var entry = position switch
         {
-            "return" => "make",
+            "return" or "tuplelist" => "make",
             "parameter" => "take",
             "field" or "property" => "Box",
+            "hof" => "feeder",
             _ => "apply",
         };
         var head = (position == "parameter" ? k.MainImport : "") + $"from lib import {entry}\n\n\n" + k.Prelude;
@@ -874,21 +881,27 @@ def main() -> None:
                 return (initial,
                     head + $"def main() -> None:\n    take({k.Local})\n",
                     head + "def main() -> None:\n    take(1)\n");
-            case "lambda":
+            case "lambda" or "hof":
                 {
-                    var uses = new List<string> { $"    apply(lambda v: print({M(k.Member)}))" };
+                    var call = position == "hof" ? "feeder()" : "apply";
+                    var uses = new List<string> { $"    {call}(lambda v: print({M(k.Member)}))" };
                     if (k.Operator != null)
-                        uses.Add($"    apply(lambda v: print({M(k.Operator)}))");
+                        uses.Add($"    {call}(lambda v: print({M(k.Operator)}))");
                     if (k.Iterable)
-                        uses.Add("    apply(lambda v: print(list(v)))");
+                        uses.Add($"    {call}(lambda v: print(list(v)))");
                     return (initial,
                         head + "def main() -> None:\n" + string.Join("\n", uses) + "\n",
                         head + "def expect_bool(b: bool) -> None:\n    print(b)\n\n\n"
-                            + $"def main() -> None:\n    apply(lambda v: expect_bool({M(k.Probe)}))\n");
+                            + $"def main() -> None:\n    {call}(lambda v: expect_bool({M(k.Probe)}))\n");
                 }
             default:
                 {
-                    var access = position == "return" ? "make()" : "Box().item";
+                    var access = position switch
+                    {
+                        "return" => "make()",
+                        "tuplelist" => "make()[1][0]",
+                        _ => "Box().item",
+                    };
                     var uses = new List<string> { $"    v = {access}", $"    print({M(k.Member)})" };
                     if (k.Operator != null)
                         uses.Add($"    print({M(k.Operator)})");

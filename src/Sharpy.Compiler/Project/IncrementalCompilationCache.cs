@@ -145,7 +145,9 @@ internal class IncrementalCompilationCache
     // v40: FileCacheEntry carries the .NET type names the file's C# spells (#2039, SPY0615). A v39
     //      entry carries none, so a module added in a warm build would not see that a served file
     //      uses the type its namespace shadows (SPY0908 where the cold build refuses).
-    internal const int CurrentSchemaVersion = 40;
+    // v41: a Result held directly in ok position is parenthesized (#2027) — a v40 entry writes a
+    //      nested ok Result the depth-aware decoder cannot split.
+    internal const int CurrentSchemaVersion = 41;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

@@ -78,6 +78,8 @@ public class UdtCodecIdentityTotalityTests
 
     private static UserDefinedType Udt(TypeSymbol symbol) => new() { Name = symbol.Name, Symbol = symbol };
 
+    private static GenericType ListOf(SemanticType element) => new() { Name = "list", TypeArguments = { element } };
+
     /// <summary>
     /// Every concrete SemanticType, classified. A COMPOSITE entry builds one specimen per type slot
     /// around a given inner type; a LEAF entry holds no type. Unclassified or ghost entries fail.
@@ -196,6 +198,50 @@ public class UdtCodecIdentityTotalityTests
     }
 
     /// <summary>
+    /// Composition: every slot nested in every slot, around a <c>list[Point]</c> (whose payload ends in
+    /// <c>]</c>), round-trips with the UDT bound. One level deep hides a decoder that mis-splits a
+    /// payload holding another composite's delimiters — the tuple decoder trimmed every trailing
+    /// <c>]</c> (and then the origin's last character), the function decoder split on the first
+    /// <c>-&gt;</c> (a function-typed parameter's), the Result decoder on the first <c>!</c> (#2027).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SlotsTimesSlots))]
+    public void ACachedUdt_TwoSlotsDeep_IsRelinkedToItsSymbol(string outer, string inner)
+    {
+        var restored = RoundTrip(Specimen(outer, Specimen(inner, ListOf(Udt(UserClass)))));
+
+        var relinked = new RestoredTypeRelinker(Resolver).Relink(restored);
+
+        TypesIn<UserDefinedType>(relinked).Should().ContainSingle($"'{inner}' inside '{outer}' holds one Point")
+            .Which.Symbol.Should().BeSameAs(UserClass, $"'{inner}' inside '{outer}' must round-trip it");
+    }
+
+    public static IEnumerable<object[]> SlotsTimesSlots()
+        => from o in Slots() from i in Slots() select new[] { o[0], i[0] };
+
+    /// <summary>
+    /// The written shape <c>(list[Point] !str) !int</c> — its ok type is a one-tuple holding a Result,
+    /// so the ok payload carries a bracketed <c>!</c> ahead of the outer one (three slots deep, which
+    /// the two-deep matrix does not reach).
+    /// </summary>
+    [Fact]
+    public void AResultInsideABracketedOkType_RoundTrips()
+    {
+        var inner = new ResultType { OkType = ListOf(Udt(UserClass)), ErrorType = SemanticType.Str };
+        var written = new ResultType { OkType = new TupleType { ElementTypes = { inner } }, ErrorType = SemanticType.Int };
+
+        var relinked = new RestoredTypeRelinker(Resolver).Relink(RoundTrip(written));
+
+        var outer = relinked.Should().BeOfType<ResultType>().Subject;
+        outer.ErrorType.Should().Be(SemanticType.Int);
+        var tuple = outer.OkType.Should().BeOfType<TupleType>().Subject;
+        var restoredInner = tuple.ElementTypes.Should().ContainSingle().Which.Should().BeOfType<ResultType>().Subject;
+        restoredInner.ErrorType.Should().Be(SemanticType.Str);
+        restoredInner.OkType.Should().BeOfType<GenericType>().Which.TypeArguments.Should().ContainSingle()
+            .Which.Should().BeOfType<UserDefinedType>().Which.Symbol.Should().BeSameAs(UserClass);
+    }
+
+    /// <summary>
     /// Positive control, the pre-#2027 codec: a payload carrying only the name decodes with no
     /// origin, and the relink binds nothing — the cell this suite would miss if origin never travelled.
     /// </summary>
@@ -264,17 +310,18 @@ public class UdtCodecIdentityTotalityTests
            || (t != typeof(string) && typeof(IEnumerable).IsAssignableFrom(t)
                && t.IsGenericType && typeof(SemanticType).IsAssignableFrom(t.GetGenericArguments()[0]));
 
-    /// <summary>Every UDT reachable through SemanticType-valued public members — by reflection, not the walker.</summary>
-    private static List<UserDefinedType> UdtsIn(SemanticType type)
+    private static List<UserDefinedType> UdtsIn(SemanticType type) => TypesIn<UserDefinedType>(type);
+
+    /// <summary>Every <typeparamref name="T"/> reachable through SemanticType-valued public members — by reflection, not the walker.</summary>
+    private static List<T> TypesIn<T>(SemanticType type) where T : SemanticType
     {
-        var found = new List<UserDefinedType>();
+        var found = new List<T>();
         void Visit(SemanticType t)
         {
-            if (t is UserDefinedType udt)
-            {
-                found.Add(udt);
+            if (t is T match)
+                found.Add(match);
+            if (t is UserDefinedType)
                 return;
-            }
             foreach (var p in t.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (p.GetIndexParameters().Length > 0 || !IsTypeSlot(p.PropertyType))
