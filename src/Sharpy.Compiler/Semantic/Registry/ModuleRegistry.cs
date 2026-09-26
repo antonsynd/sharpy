@@ -207,6 +207,15 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Whether a loaded assembly declares <paramref name="moduleName"/> as a Sharpy module by
+    /// attribute (<c>[SharpyModule]</c> / <c>[SharpyModuleType]</c>).
+    /// </summary>
+    public bool IsAttributeDeclaredModule(string moduleName)
+    {
+        return _discovery.IsAttributeDeclaredModule(moduleName);
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

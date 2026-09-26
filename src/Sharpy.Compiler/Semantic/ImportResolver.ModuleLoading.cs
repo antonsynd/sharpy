@@ -905,8 +905,12 @@ internal partial class ImportResolver
         if (cached != null)
             return cached;
 
-        // Check if this is a .NET namespace (e.g., "system" -> "System")
-        if (_moduleRegistry.IsNetNamespace(moduleName))
+        // Check if this is a .NET namespace (e.g., "system" -> "System"). A name a referenced
+        // assembly declares as a Sharpy module by attribute is that module, even when its
+        // namespace spells the same: a single-file library `util.spy` is namespace `Util` holding
+        // `[SharpyModule("util")] UtilModule`, and read as the bare namespace its functions were
+        // unreachable (members class dropped) while a project library's `Lib.Util` was not.
+        if (_moduleRegistry.IsNetNamespace(moduleName) && !_moduleRegistry.IsAttributeDeclaredModule(moduleName))
         {
             return ResolveNetNamespaceModule(moduleName, cacheKey);
         }

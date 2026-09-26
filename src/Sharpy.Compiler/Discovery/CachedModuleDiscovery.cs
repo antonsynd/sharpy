@@ -536,6 +536,27 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Whether a loaded assembly declares <paramref name="moduleName"/> as a Sharpy module by
+    /// attribute — a <c>[SharpyModule("name")]</c> members class or a
+    /// <c>[SharpyModuleType("name", …)]</c> type — rather than the namespace-derived name
+    /// discovery gives an unstamped CLR type.
+    /// </summary>
+    public bool IsAttributeDeclaredModule(string moduleName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            if (lazy.Value.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && (moduleOverloads.CSharpClassName != null
+                    || moduleOverloads.Types.Any(t => t.IsModuleType)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

@@ -111,4 +111,88 @@ public class LibraryReferenceMatrixTests
 
     [Fact]
     public void Matrix_IsTotal() => Cells().Should().HaveCount(6);
+
+    /// <summary>
+    /// The same consumer reading a SINGLE-FILE library (<c>sharpyc build X.spy -t library</c>, P14c
+    /// ruling 12's uniform layout): the module is namespace <c>X</c> holding
+    /// <c>[SharpyModule("x")] XModule</c>, so the import name also spells a CLR namespace of the
+    /// referenced assembly. Prior commit: import resolution took the namespace path first, which
+    /// drops the members class — every function reference was SPY0908 CS0103/CS0234, a module
+    /// variable was SPY0301, and the generic <c>Shapes[T]</c> cell moved from SPY0300 (BASE) to
+    /// SPY0908. A project library's module lives under its root namespace and never collided.
+    /// </summary>
+    public static IEnumerable<object[]> SingleFileCells() => new[]
+    {
+        new object[] { "sf_a_functions", "util.spy",
+            "def helper() -> int:\n    return 42\n",
+            "from util import helper\nimport util\n\ndef main() -> None:\n    print(helper(), util.helper())\n",
+            "42 42" },
+        new object[] { "sf_b_types_only", "things.spy",
+            "class Box:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n",
+            "from things import Box\nimport things\n\ndef main() -> None:\n    print(Box(3).v, things.Box(4).v)\n",
+            "3 4" },
+        new object[] { "sf_c_generic_named_like_module", "shapes.spy",
+            "class Shapes[T]:\n    v: T\n    def __init__(self, v: T) -> None:\n        self.v = v\n\ndef helper() -> int:\n    return 42\n",
+            "from shapes import Shapes, helper\nimport shapes\n\ndef main() -> None:\n    print(Shapes[int](3).v, helper(), shapes.helper())\n",
+            "3 42 42" },
+        new object[] { "sf_d_enum", "colors.spy",
+            "enum Col:\n    RED = 1\n    GREEN = 2\n\ndef pick() -> Col:\n    return Col.GREEN\n",
+            "from colors import Col, pick\nimport colors\n\ndef main() -> None:\n    print(Col.RED, pick(), colors.pick())\n",
+            "Col.RED Col.GREEN Col.GREEN" },
+        // A flat module (no package, no __init__) exporting a module variable, a class without
+        // __init__ and a function reading the variable.
+        new object[] { "sf_e_module_variable", "consts.spy",
+            "limit: int = 7\n\nclass Plain:\n    def m(self) -> int:\n        return limit\n\ndef twice() -> int:\n    return limit * 2\n",
+            "from consts import limit, Plain, twice\nimport consts\n\ndef main() -> None:\n    print(limit, Plain().m(), twice(), consts.limit)\n",
+            "7 7 14 7" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SingleFileCells))]
+    public void ReferencedSingleFileLibrary_IsImportable_ColdAndWarm(
+        string name, string libraryFile, string library, string consumer, string expected)
+    {
+        var libDir = Path.Combine(Path.GetTempPath(), "sharpy_sflib_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(libDir);
+        try
+        {
+            var libPath = Path.Combine(libDir, libraryFile);
+            File.WriteAllText(libPath, library);
+            // The CLI's `build -t library` options; one assembly name per cell (see above).
+            var assemblyName = "SfLib_" + name;
+            var libResult = new CompilerApi().Compile(library,
+                CompilerOptionsFactory.ForCli(outputType: "library", assemblyName: assemblyName,
+                    outputAssemblyPath: Path.Combine(libDir, assemblyName + ".dll")),
+                libPath);
+            libResult.Success.Should().BeTrue(
+                $"[{name}] library: {string.Join("\n", libResult.Diagnostics.Select(d => d.ToString()))}");
+
+            using var app = new ProjectCompilationHelper(_output);
+            app.WithRootNamespace("App").WithEntryPoint("main.spy").WithIncremental();
+            app.WithAssemblyReference(libResult.OutputAssemblyPath!);
+            app.AddSourceFile("main.spy", consumer);
+            app.AddSourceFile("other.spy", "def value() -> int:\n    return 1\n");
+            app.CreateProjectFile();
+
+            var cold = app.CompileAndExecute();
+            cold.Success.Should().BeTrue($"[{name}] cold: {string.Join("\n", cold.CompilationErrors)}");
+            cold.StandardOutput.Trim().Should().Be(expected, $"[{name}] cold");
+
+            app.UpdateSourceFile("other.spy", "def value() -> int:\n    return 2\n");
+            var warm = app.CompileAndExecute();
+            warm.Success.Should().BeTrue($"[{name}] warm: {string.Join("\n", warm.CompilationErrors)}");
+            app.AssertWarmBuildSkipped(app.LastCompilationResult!, "main.spy");
+            warm.StandardOutput.Trim().Should().Be(expected, $"[{name}] warm ≡ cold");
+        }
+        finally
+        {
+            try
+            { Directory.Delete(libDir, recursive: true); }
+            catch (IOException) { /* best effort */ }
+            catch (UnauthorizedAccessException) { /* best effort */ }
+        }
+    }
+
+    [Fact]
+    public void SingleFileMatrix_IsTotal() => SingleFileCells().Should().HaveCount(5);
 }
