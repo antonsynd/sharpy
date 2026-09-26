@@ -857,7 +857,7 @@ public partial class Parser
                 }
                 else
                 {
-                    throw ReportError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
+                    throw ReportError($"Unexpected token in {(startToken.Value.StartsWith('t') ? "t-string" : "f-string")}: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
                 }
             }
         }

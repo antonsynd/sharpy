@@ -740,6 +740,41 @@ line2""""""";
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y" && t.Line == 2);
     }
 
+    /// <summary>
+    /// Every hole diagnostic spells the string kind (CPython 3.14: <c>t"{x)}"</c> →
+    /// <c>t-string: unmatched ')'</c>): (source with <c>P</c> for the prefix, message with <c>K</c> for the
+    /// kind). A df-string is an f-string.
+    /// </summary>
+    public static TheoryData<string, string, string, string> KindSpelledCells()
+    {
+        var cells = new (string Source, string Message)[]
+        {
+            ("P\"hello", "Unterminated K"),
+            ("P\"hello }\"", "Unmatched '}' in K"),
+            ("P\"{x!q}\"", "Invalid K conversion '!q'. Expected '!r', '!s', or '!a' followed by '}' or ':'."),
+            ("P\"{x!r\"", "Unterminated K expression: expected '}' or ':' after the conversion flag"),
+            ("P\"{x)}\"", "K: unmatched ')'"),
+            ("P\"{x]}\"", "K: unmatched ']'"),
+        };
+        var data = new TheoryData<string, string, string, string>();
+        foreach (var (prefix, kind) in new[] { ("f", "f-string"), ("t", "t-string"), ("df", "f-string") })
+        {
+            foreach (var (source, message) in cells)
+                data.Add(prefix, kind, source, message);
+        }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(KindSpelledCells))]
+    public void HoleDiagnostic_SpellsTheStringKind(string prefix, string kind, string source, string message)
+    {
+        var lexer = new LexerNs.Lexer("v = " + source.Replace("P", prefix, StringComparison.Ordinal) + "\n");
+        lexer.TokenizeAll();
+        var error = lexer.Diagnostics.GetErrors().Should().ContainSingle().Subject;
+        error.Message.Should().Be(message.Replace("K", kind, StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("`x`")]
     [InlineData("Color.`red`")]

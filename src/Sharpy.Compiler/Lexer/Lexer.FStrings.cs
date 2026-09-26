@@ -12,6 +12,9 @@ public partial class Lexer
         public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
         public bool IsTString { get; set; }     // PEP 750: template string (t"...") — same scanning, different AST
 
+        /// <summary>The string kind every hole diagnostic spells (CPython: <c>t-string: unmatched ')'</c>).</summary>
+        public string Kind => IsTString ? "t-string" : "f-string";
+
         /// <summary>
         /// The replacement fields currently open, innermost on top. Empty = reading literal text.
         /// A field is pushed at each unescaped <c>{</c> (both a top-level hole and a nested hole
@@ -519,12 +522,12 @@ public partial class Lexer
     /// </summary>
     private Token NextFStringToken()
     {
+        var context = _fstringStack.Peek();
         if (_position >= _source.Length)
         {
-            throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+            throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
         }
 
-        var context = _fstringStack.Peek();
         var startLine = _line;
         var startColumn = _column;
         var startPosition = _position;
@@ -576,7 +579,7 @@ public partial class Lexer
             SkipHoleTrivia(field);
 
             if (_position >= _source.Length)
-                throw ReportError("Unterminated f-string expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
+                throw ReportError($"Unterminated {context.Kind} expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
 
             current = _source[_position];
             startLine = _line;
@@ -664,13 +667,13 @@ public partial class Lexer
                     // The flag itself is valid (!r/!s/!a); the replacement field is just missing its
                     // closing '}' or ':' format spec. Report the real cause, not a bogus bad-flag.
                     throw ReportError(
-                        "Unterminated f-string expression: expected '}' or ':' after the conversion flag",
+                        $"Unterminated {context.Kind} expression: expected '}}' or ':' after the conversion flag",
                         _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
                 }
 
                 var badChar = _position + 1 < _source.Length ? _source[_position + 1].ToString() : "";
                 throw ReportError(
-                    $"Invalid f-string conversion '!{badChar}'. Expected '!r', '!s', or '!a' followed by '}}' or ':'.",
+                    $"Invalid {context.Kind} conversion '!{badChar}'. Expected '!r', '!s', or '!a' followed by '}}' or ':'.",
                     _line, _column, DiagnosticCodes.Lexer.InvalidFStringConversion);
             }
 
@@ -709,7 +712,7 @@ public partial class Lexer
             else if (current == ')' || current == ']')
             {
                 if (field.ParenDepth == 0)
-                    throw ReportError($"f-string: unmatched '{current}'", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
+                    throw ReportError($"{context.Kind}: unmatched '{current}'", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
                 field.ParenDepth--;
             }
 
@@ -809,7 +812,7 @@ public partial class Lexer
                 else
                 {
                     // Unmatched closing brace in f-string
-                    throw ReportError("Unmatched '}' in f-string", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
+                    throw ReportError($"Unmatched '}}' in {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
                 }
             }
             // Handle escape sequences
@@ -818,7 +821,7 @@ public partial class Lexer
                 _position++;
                 _column++;
                 if (_position >= _source.Length)
-                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
 
                 sb.Append(ProcessEscapeSequence());
             }
@@ -827,7 +830,7 @@ public partial class Lexer
             {
                 if (!context.IsTriple)
                 {
-                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
 
                 // PEP 822: For dedented f-strings, if the newline is followed by
@@ -855,7 +858,7 @@ public partial class Lexer
             {
                 if (!context.IsTriple)
                 {
-                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
 
                 if (context.DedentAmount > 0 && IsPreCloseNewline(context))
@@ -896,7 +899,7 @@ public partial class Lexer
         }
 
         // Reached end of source while in f-string
-        throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+        throw ReportError($"Unterminated {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
     }
 
     /// <summary>
@@ -909,7 +912,7 @@ public partial class Lexer
     private Token NextFStringSpecToken(FStringContext context, FStringField field, bool atSpecStart)
     {
         if (_position >= _source.Length)
-            throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+            throw ReportError($"Unterminated format specification in {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
 
         var startLine = _line;
         var startColumn = _column;
@@ -975,7 +978,7 @@ public partial class Lexer
         }
 
         if (_position >= _source.Length)
-            throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+            throw ReportError($"Unterminated format specification in {context.Kind}", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
 
         return CreateToken(TokenType.FStringFormatSpec, sb.ToString(), startLine, startColumn, startPosition);
     }
