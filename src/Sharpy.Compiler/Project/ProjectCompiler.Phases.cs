@@ -915,7 +915,8 @@ internal partial class ProjectCompiler
                     moduleRegistry: _moduleRegistry,
                     features: fileFeatures,
                     referenceClosure: BuildReferenceClosure(config),
-                    moduleIdentityFilePath: unit.FilePath);
+                    moduleIdentityFilePath: unit.FilePath,
+                    sourceRootPath: ComputeSourceRootPath(config));
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

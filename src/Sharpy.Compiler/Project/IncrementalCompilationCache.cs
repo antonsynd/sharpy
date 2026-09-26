@@ -137,7 +137,10 @@ internal class IncrementalCompilationCache
     //      the warm build would type every cached user-defined type's members as Unknown again.
     // v38: CachedSymbol carries a union's cases (#2071). A v37 entry restores a union with no
     //      cases, so a warm consumer's `case Shape.Circle(r)` is SPY0202 where the cold build matches.
-    internal const int CurrentSchemaVersion = 38;
+    // v39: CachedCodeGenInfo carries the module-as-namespace layout (#2039) — NamespaceSegments and
+    //      MembersClassName on a module symbol, IsNamespaceSibling on a type. A v38 entry restores a
+    //      type with no sibling bit, so a warm consumer would spell a sibling type inside <X>.
+    internal const int CurrentSchemaVersion = 39;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

@@ -114,6 +114,10 @@ internal class FileCompilationPipeline
     /// The file's NAME, for module-class derivation (SPY0523). Defaults to <paramref name="filePath"/>;
     /// pass the real path explicitly when <paramref name="filePath"/> is nulled for #1087 (#1433).
     /// </param>
+    /// <param name="sourceRootPath">
+    /// The project's source root, for the recorded module-as-namespace layout (#2039). Null when
+    /// unknown: the module is then its own namespace.
+    /// </param>
     public TypeCheckResult TypeCheck(
         Module module,
         string? filePath,
@@ -129,7 +133,8 @@ internal class FileCompilationPipeline
         ModuleRegistry? moduleRegistry = null,
         Shared.FeatureFlags? features = null,
         Discovery.ReferenceClosure? referenceClosure = null,
-        string? moduleIdentityFilePath = null)
+        string? moduleIdentityFilePath = null,
+        string? sourceRootPath = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -142,7 +147,12 @@ internal class FileCompilationPipeline
             // What the file is CALLED, as distinct from whose symbols these are (#1433). Callers
             // that null `filePath` for the #1087 symbol contract still pass the real name here.
             ModuleIdentityFilePath = moduleIdentityFilePath ?? filePath,
+            // The project's source root: the recorded module layout's namespace segments (#2039).
+            SourceRootPath = sourceRootPath,
             SemanticBinding = effectiveBinding,
+            // Import resolution wrote each from-import's source file and the .NET-module marks to
+            // the shared binding, not the per-file one (#2039).
+            ImportFactsBinding = _semanticBinding,
             MaxErrors = semanticMaxErrors,
             DeferredCycleSymbols = deferredCycleSymbols,
             DeferredCycleFiles = deferredCycleFiles,

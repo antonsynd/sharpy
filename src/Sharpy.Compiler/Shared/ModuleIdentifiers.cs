@@ -38,6 +38,38 @@ internal static class ModuleIdentifiers
         => NameMangler.Transform(stem, NameContext.Type) + "Module";
 
     /// <summary>
+    /// The namespace a module's members class and its sibling types live in under the
+    /// module-as-namespace layout (#2039, Decision 28 (a)): the directory segments
+    /// (<see cref="ModuleNamespaceSegments"/>) followed by the module's own stem — <c>pkg/thing.spy</c>
+    /// → [Pkg, Thing]; a package's <c>pkg/__init__.spy</c> is the package itself → [Pkg]. With no
+    /// source root (single-file compilation) the file is its own namespace: <c>thing.spy</c> → [Thing]
+    /// (ruling 12, uniform). Relative to the project/root namespace, which is not included.
+    /// </summary>
+    public static List<string> LayoutNamespaceSegments(string? sourceRoot, string filePath)
+    {
+        var segments = ModuleNamespaceSegments(sourceRoot, filePath);
+        var stem = Path.GetFileNameWithoutExtension(filePath);
+        if (stem != DunderNames.Init)
+            segments.Add(NameMangler.ToNamespacePart(stem));
+        return segments;
+    }
+
+    /// <summary>
+    /// <c>&lt;X&gt;</c> of a source file under the module-as-namespace layout (#2039): the members
+    /// class of <c>thing.spy</c> is <c>ThingModule</c>, of <c>pkg/__init__.spy</c> <c>PkgModule</c>
+    /// (<see cref="MembersClassName"/> of the stem, or of the package directory). Uniform in every mode
+    /// — an entry <c>main.spy</c> is <c>MainModule</c> (its <c>Main()</c> is no longer its own class's
+    /// name, so no <c>Program</c> special case).
+    /// </summary>
+    public static string LayoutMembersClassName(string filePath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(filePath);
+        return stem == DunderNames.Init
+            ? ModuleClassName(filePath, willGenerateMainMethod: false)
+            : MembersClassName(stem);
+    }
+
+    /// <summary>
     /// The module class name a source file emits: the mangled file stem;
     /// <see cref="MembersClassName"/> of the directory for <c>__init__.spy</c> (<c>pkg/__init__.spy</c>
     /// → <c>PkgModule</c>, in namespace <c>…Pkg</c>, #1948); <c>Program</c> for a <c>main.spy</c> that generates the entry point

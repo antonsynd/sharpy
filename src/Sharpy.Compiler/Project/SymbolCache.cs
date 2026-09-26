@@ -578,6 +578,15 @@ internal record CachedCodeGenInfo
     public bool StripsOverrideKeyword { get; init; }
 
     public bool ImplementsInterfaceMethod { get; init; }
+
+    /// <summary>For an imported module symbol: its layout namespace segments (#2039).</summary>
+    public List<string>? NamespaceSegments { get; init; }
+
+    /// <summary>For an imported module symbol: its members class <c>&lt;X&gt;</c> (#2039).</summary>
+    public string? MembersClassName { get; init; }
+
+    /// <summary>For a type symbol: whether it is emitted beside its module's members class (#2039).</summary>
+    public bool IsNamespaceSibling { get; init; }
 }
 
 /// <summary>

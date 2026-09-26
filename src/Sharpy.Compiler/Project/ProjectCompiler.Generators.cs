@@ -544,10 +544,19 @@ internal partial class ProjectCompiler
                 SemanticInfo.MarkAsGenerated(generatedStmt, genSource.GeneratorName);
                 existingStatements.Add(generatedStmt);
             }
-            targetUnit.Ast = targetUnit.Ast with
+            var previousAst = targetUnit.Ast;
+            targetUnit.Ast = previousAst with
             {
                 Body = System.Collections.Immutable.ImmutableArray.CreateRange(existingStatements)
             };
+
+            // The file's recorded layout is keyed on its Module root, which `with` just replaced
+            // (#2039): carry it onto the new root the emitter will read.
+            if (SemanticInfo.GetModuleLayout(previousAst) is { } ownLayout)
+            {
+                SemanticInfo.SetModuleLayout(targetUnit.Ast, ownLayout);
+                targetUnit.FileSemanticInfo?.SetModuleLayout(targetUnit.Ast, ownLayout);
+            }
 
             // Invalidate cached C# so codegen re-processes this file
             targetUnit.GeneratedCSharp = null;
@@ -570,7 +579,8 @@ internal partial class ProjectCompiler
                 maxErrors: _maxErrors,
                 existingDiagnostics: _diagnostics,
                 cancellationToken: cancellationToken,
-                moduleRegistry: _moduleRegistry);
+                moduleRegistry: _moduleRegistry,
+                sourceRootPath: ComputeSourceRootPath(config));
 
             foreach (var error in typeCheckResult.TypeChecker.Diagnostics.GetErrors())
             {

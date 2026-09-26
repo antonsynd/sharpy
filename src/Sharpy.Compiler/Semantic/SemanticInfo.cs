@@ -305,6 +305,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, EnumMemberAccessLowering> _enumMemberAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // The module-as-namespace layout of a module the file names without a ModuleSymbol (#2039,
+    // Decision 28 (e)): keyed on the file's own Module root (the module being emitted has no
+    // ModuleSymbol) and on each FromImportStatement (its source module). Recorded by
+    // CodeGenInfoComputer, read by the emitter — Critical Rule 2 pattern (b).
+    private readonly ConcurrentDictionary<Node, ModuleLayout> _moduleLayouts =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbol AND the scrutinee union's substituted
     // type-argument vector. Used when a PositionalPattern/TypePattern/PropertyPattern/MemberAccessPattern
     // matches a union case. The vector is what the emitter needs to spell the closed case type
@@ -1510,6 +1517,14 @@ public class SemanticInfo : ISemanticQuery
     public EnumMemberAccessLowering? GetEnumMemberAccessLowering(MemberAccess access) =>
         _enumMemberAccessLowerings.TryGetValue(access, out var lowering) ? lowering : null;
 
+    /// <summary>Records the module layout of <paramref name="node"/> — the own <see cref="Module"/> root, or a <see cref="FromImportStatement"/>'s source module (#2039).</summary>
+    public void SetModuleLayout(Node node, ModuleLayout layout) =>
+        _moduleLayouts[node] = layout;
+
+    /// <summary>The recorded module layout of <paramref name="node"/>, or null (#2039).</summary>
+    public ModuleLayout? GetModuleLayout(Node node) =>
+        _moduleLayouts.TryGetValue(node, out var layout) ? layout : null;
+
     public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
         _returnLowerings[ret] = lowering;
 
@@ -2149,6 +2164,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._enumMemberAccessLowerings)
             _enumMemberAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._moduleLayouts)
+            _moduleLayouts.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
@@ -2889,6 +2907,23 @@ public enum InterpolationKind
     /// <summary><c>!a</c> — <c>Builtins.Ascii(v)</c>.</summary>
     Ascii
 }
+
+/// <summary>
+/// A module's place in the module-as-namespace layout (#2039, Decision 28 (a)/(e)):
+/// <see cref="NamespaceSegments"/> (relative to the root namespace — <c>pkg/thing.spy</c> →
+/// [Pkg, Thing]) holds the members class <see cref="MembersClassName"/> (<c>&lt;X&gt;</c> =
+/// <c>ThingModule</c>) and the module's top-level types beside it. <see cref="TestClassName"/> and
+/// <see cref="FixtureClassNames"/> are the other classes the module emits into that namespace (the
+/// test class <c>&lt;X&gt;Tests</c> when the module declares tests, one <c>&lt;Name&gt;Fixture</c>
+/// per <c>@test.fixture</c>); every module-level collision check seeds the namespace with them.
+/// Recorded by <c>CodeGenInfoComputer</c>. Not on the incremental-cache wire (a per-node fact); an
+/// imported module's layout crosses files on its <see cref="ModuleSymbol"/>'s CodeGenInfo.
+/// </summary>
+public sealed record ModuleLayout(
+    IReadOnlyList<string> NamespaceSegments,
+    string MembersClassName,
+    string? TestClassName = null,
+    IReadOnlyList<string>? FixtureClassNames = null);
 
 /// <summary>
 /// How an f-string / t-string hole is lowered: its base rendering (<see cref="Kind"/>) and, when

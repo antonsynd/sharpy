@@ -1002,6 +1002,11 @@ def main() -> None:
         ["ClrMethodName"] = "RoundTrips",
         ["StripsOverrideKeyword"] = "RoundTrips",
         ["ImplementsInterfaceMethod"] = "RoundTrips",
+        // #2039: the module-as-namespace layout — read cross-file (a warm consumer spells an imported
+        // module's <X> and a sibling type from them), so carried through CachedCodeGenInfo (schema 39).
+        ["NamespaceSegments"] = "RoundTrips",
+        ["MembersClassName"] = "RoundTrips",
+        ["IsNamespaceSibling"] = "RoundTrips",
 
         // --- Same-file-only: read by the emitter for the file that declares the symbol ---
         ["IsCompileTimeConstant"] = "same-file-only — read at RoslynEmitter.Statements.Assignments.cs module-level const path (#1460)",
@@ -1071,6 +1076,9 @@ def main() -> None:
             ImportKind = ImportKind.FromImportWithAlias,
             OriginalImportName = "original_import",
             ClrMethodName = "ClrMethod",
+            NamespaceSegments = new List<string> { "Pkg", "Thing" },
+            MembersClassName = "ThingModule",
+            IsNamespaceSibling = true,
             OverridesClrBaseMember = true,
             ForwardingConstructors = new List<FunctionSymbol>(),
             SelfInterfaceBridges = new List<SelfInterfaceBridgeSpec>(),
@@ -1114,6 +1122,10 @@ def main() -> None:
         Check("ImportKind", original.ImportKind, cgi.ImportKind);
         Check("OriginalImportName", original.OriginalImportName, cgi.OriginalImportName);
         Check("ClrMethodName", original.ClrMethodName, cgi.ClrMethodName);
+        Check("NamespaceSegments", string.Join(".", original.NamespaceSegments!),
+            cgi.NamespaceSegments == null ? null : string.Join(".", cgi.NamespaceSegments));
+        Check("MembersClassName", original.MembersClassName, cgi.MembersClassName);
+        Check("IsNamespaceSibling", original.IsNamespaceSibling, cgi.IsNamespaceSibling);
 
         failures.Should().BeEmpty(
             "a property declared as RoundTrips must survive SymbolSerializer. If the serializer no "

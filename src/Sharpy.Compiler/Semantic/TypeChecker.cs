@@ -560,6 +560,20 @@ internal partial class TypeChecker
     public string? ModuleIdentityFilePath { get; set; }
 
     /// <summary>
+    /// The project's source root (the common directory of its sources), from which the module's
+    /// namespace segments are derived for the recorded layout fact (#2039). Null when unknown — a
+    /// module is then its own namespace ([Stem]).
+    /// </summary>
+    public string? SourceRootPath { get; set; }
+
+    /// <summary>
+    /// The binding import resolution wrote to (a from-import's resolved source file, the .NET-module
+    /// marks) — the shared project binding, where <see cref="SemanticBinding"/> may be a per-file one.
+    /// Read for the recorded layout of an imported module (#2039). Null: <see cref="SemanticBinding"/>.
+    /// </summary>
+    public SemanticBinding? ImportFactsBinding { get; set; }
+
+    /// <summary>
     /// Optional module registry for inline CLR namespace resolution (e.g., `System`.Console).
     /// When set, backtick-escaped identifiers that fail symbol-table lookup are resolved against
     /// the registry's known .NET namespaces lazily, without requiring an explicit import.
@@ -721,7 +735,8 @@ internal partial class TypeChecker
             var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics, _semanticInfo);
             // The file's NAME, not its symbol identity (#1433): module-class derivation must keep
             // working for an entry file whose symbol paths are nulled for the #1087 contract.
-            codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath, _isEntryPoint);
+            codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath, _isEntryPoint,
+                SourceRootPath, ImportFactsBinding);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");

@@ -563,7 +563,10 @@ internal static class SymbolSerializer
             OriginalImportName = cgi.OriginalImportName,
             ClrMethodName = cgi.ClrMethodName,
             StripsOverrideKeyword = cgi.StripsOverrideKeyword,
-            ImplementsInterfaceMethod = cgi.ImplementsInterfaceMethod
+            ImplementsInterfaceMethod = cgi.ImplementsInterfaceMethod,
+            NamespaceSegments = cgi.NamespaceSegments?.ToList(),
+            MembersClassName = cgi.MembersClassName,
+            IsNamespaceSibling = cgi.IsNamespaceSibling
         };
     }
 
@@ -1044,7 +1047,10 @@ internal static class SymbolSerializer
             OriginalImportName = cached.OriginalImportName,
             ClrMethodName = cached.ClrMethodName,
             StripsOverrideKeyword = cached.StripsOverrideKeyword,
-            ImplementsInterfaceMethod = cached.ImplementsInterfaceMethod
+            ImplementsInterfaceMethod = cached.ImplementsInterfaceMethod,
+            NamespaceSegments = cached.NamespaceSegments,
+            MembersClassName = cached.MembersClassName,
+            IsNamespaceSibling = cached.IsNamespaceSibling
         };
     }
 

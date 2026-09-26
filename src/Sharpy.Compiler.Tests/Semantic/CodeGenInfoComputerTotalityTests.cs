@@ -466,6 +466,19 @@ public class CodeGenInfoComputerTotalityTests
         nameof(DelegateDef),
     };
 
+    // --- MarkNamespaceSiblings / DetectLayoutSeedCollisions (#2039) ---
+
+    // Every top-level type declaration kind is a namespace sibling of the module's members class.
+    private static readonly HashSet<string> MarkNamespaceSiblings_Handled = new()
+    {
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(InterfaceDef),
+        nameof(EnumDef),
+        nameof(UnionDef),
+        nameof(DelegateDef),
+    };
+
     [Fact]
     public void SetDeclaredTypeNames_SwitchArms_MatchClassification()
     {
@@ -485,6 +498,74 @@ public class CodeGenInfoComputerTotalityTests
         Assert.True(SetDeclaredTypeNames_Handled.SetEquals(typeDeclaring),
             "a type-declaring statement kind has no [SharpyName] fact: "
             + string.Join(", ", typeDeclaring.Except(SetDeclaredTypeNames_Handled)));
+    }
+
+    // Every top-level declaration that lands in the module namespace (a member of <X>, or a type
+    // beside it) is checked against the namespace's seeds.
+    private static readonly HashSet<string> DetectLayoutSeedCollisions_Handled = new(MarkNamespaceSiblings_Handled)
+    {
+        nameof(FunctionDef),
+        nameof(VariableDeclaration),
+    };
+
+    private static readonly HashSet<string> LayoutSites_NonDeclarations = new()
+    {
+        nameof(ExpressionStatement),
+        nameof(DecoratedStatement),
+        nameof(Assignment),
+        nameof(AssertStatement),
+        nameof(PassStatement),
+        nameof(BreakStatement),
+        nameof(ContinueStatement),
+        nameof(ReturnStatement),
+        nameof(YieldStatement),
+        nameof(RaiseStatement),
+        nameof(IfStatement),
+        nameof(WhileStatement),
+        nameof(ForStatement),
+        nameof(TryStatement),
+        nameof(WithStatement),
+        nameof(DeferStatement),
+        nameof(TypeAlias),
+        nameof(PropertyDef),
+        nameof(ImportStatement),
+        nameof(FromImportStatement),
+        nameof(MatchStatement),
+        nameof(EventDef),
+    };
+
+    private static readonly HashSet<string> MarkNamespaceSiblings_Skipped = new(LayoutSites_NonDeclarations)
+    {
+        nameof(FunctionDef),
+        nameof(VariableDeclaration),
+    };
+
+    private static readonly HashSet<string> DetectLayoutSeedCollisions_Skipped = new(LayoutSites_NonDeclarations);
+
+    [Theory]
+    [InlineData("MarkNamespaceSiblings")]
+    [InlineData("DetectLayoutSeedCollisions")]
+    public void LayoutSites_AllStatementSubtypes_AreClassified_AndMatchTheSwitch(string method)
+    {
+        var (handled, skipped) = method == "MarkNamespaceSiblings"
+            ? (MarkNamespaceSiblings_Handled, MarkNamespaceSiblings_Skipped)
+            : (DetectLayoutSeedCollisions_Handled, DetectLayoutSeedCollisions_Skipped);
+
+        var all = GetConcreteStatementNames();
+        var classified = new HashSet<string>(handled);
+        classified.UnionWith(skipped);
+        var unclassified = all.Where(n => !classified.Contains(n)).ToList();
+        var phantom = classified.Where(n => !all.Contains(n)).ToList();
+        Assert.Empty(unclassified);
+        Assert.Empty(phantom);
+        Assert.Empty(handled.Intersect(skipped));
+
+        var switchArms = SwitchArmScan.CaseTypeNames(SourceFile, method);
+        Assert.NotEmpty(switchArms);
+        Assert.True(switchArms.SetEquals(handled),
+            $"{method} switch arms differ from expected.\n" +
+            $"  Extra: {string.Join(", ", switchArms.Except(handled))}\n" +
+            $"  Missing: {string.Join(", ", handled.Except(switchArms))}");
     }
 
     // --- Cross-method union covers the Statement universe ---

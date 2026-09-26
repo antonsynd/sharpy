@@ -215,6 +215,32 @@ public sealed record CodeGenInfo
     public EqualityParameterShape? OperatorParameterShape { get; init; }
 
     /// <summary>
+    /// For an imported <see cref="ModuleSymbol"/> (<c>import thing</c>): the namespace its members
+    /// class and sibling types live in, relative to the root namespace — <c>pkg/thing.spy</c> →
+    /// [Pkg, Thing] (<see cref="Shared.ModuleIdentifiers.LayoutNamespaceSegments"/>); for a .NET
+    /// (discovered) module, its reflected namespace. Recorded once at <c>CodeGenInfoComputer</c> so
+    /// every emitter family reads the one layout (#2039, Decision 28 (e)). Null for any other symbol.
+    /// </summary>
+    public IReadOnlyList<string>? NamespaceSegments { get; init; }
+
+    /// <summary>
+    /// For an imported <see cref="ModuleSymbol"/>: <c>&lt;X&gt;</c>, the class its functions, variables
+    /// and constants live in — <c>ThingModule</c> for <c>thing.spy</c>
+    /// (<see cref="Shared.ModuleIdentifiers.LayoutMembersClassName"/>); for a .NET module, its
+    /// reflected module class. Null for any other symbol (#2039).
+    /// </summary>
+    public string? MembersClassName { get; init; }
+
+    /// <summary>
+    /// For a type symbol: true when the type is a top-level declaration of a Sharpy module, which the
+    /// module-as-namespace layout emits BESIDE the module's members class in the module namespace
+    /// rather than nested inside it (#2039, Decision 28 (a)). False for a nested type and for a type
+    /// discovered from a .NET assembly. Set for the declaring file's own top-level types and for a type
+    /// from-imported out of a Sharpy module.
+    /// </summary>
+    public bool IsNamespaceSibling { get; init; }
+
+    /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>
     public string GetVersionedCSharpName()
