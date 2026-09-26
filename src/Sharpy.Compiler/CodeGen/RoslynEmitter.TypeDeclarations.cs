@@ -641,9 +641,11 @@ internal partial class RoslynEmitter
                     }
                     else
                     {
-                        _context.ReportAt(funcDef,
+                        // A tripwire: a module-level interface's methods always have symbols.
+                        var position = DeclarationPosition.Of(funcDef);
+                        _context.AddError(
                             $"Cannot resolve interface method '{funcDef.Name}' from interface '{interfaceName}' for abstract stub generation",
-                            DiagnosticCodes.CodeGen.EmitError);
+                            DiagnosticCodes.CodeGen.EmitError, position?.Line, position?.Column);
                     }
                 }
             }

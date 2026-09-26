@@ -255,30 +255,11 @@ internal partial class RoslynEmitter
         // property projecting its rows into object arrays.
         moduleDeclarations.AddRange(GenerateParametrizeMemberDataProperties(statements));
 
-        // main() is required for entry points — no synthesized Main() needed.
-        // If there's a main function with bare executable statements, report an error.
-        if (hasMainFunction && executableStatements.Count > 0)
-        {
-            // There's a main function and also module-level statements
-            // Filter to only truly executable statements (not variable declarations with type annotations)
-            // VariableDeclaration nodes are typed declarations, not executable statements
-            // Note: Use Parser.Ast.VariableDeclaration to avoid conflict with SyntaxFactory.VariableDeclaration
-            var trulyExecutableStatements = executableStatements
-                .Where(s => s is not Parser.Ast.VariableDeclaration)
-                .ToList();
-
-            if (trulyExecutableStatements.Count > 0)
-            {
-                // This is an error - when main() is defined, it will be automatically invoked
-                // Users should not have executable statements alongside a main function definition
-                _context.ReportAt(trulyExecutableStatements[0],
-                    "Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.",
-                    DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
-            }
-            // else: Only VariableDeclaration statements remain, which are legitimate typed declarations
-            // These will be handled by generating them as local variables in a synthesized static constructor or similar
-        }
-        else if (!_context.IsEntryPoint && executableStatements.Count > 0)
+        // main() is required for entry points — no synthesized Main() needed. A module-level
+        // executable statement never reaches here: ModuleLevelValidator refuses every one (SPY0340)
+        // before emission, so beside main() only typed redeclarations remain (#2032 retired the
+        // emitter's duplicate SPY0340, which no program could reach).
+        if (!hasMainFunction && !_context.IsEntryPoint && executableStatements.Count > 0)
         {
             // Non-entry-point files with executable statements: ignore them
             // Module-level executable code should only run in the entry point

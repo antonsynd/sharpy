@@ -17,10 +17,16 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// (SPY0340 and both SPY0520 arms in <c>RoslynEmitter.ModuleClass.cs</c>) passed no location, so
 /// SPY0520 rendered with no line or caret, and two sites (<c>RoslynEmitter.TypeDeclarations.cs</c>,
 /// <c>RoslynEmitter.Expressions.cs</c>) went around <c>CodeGenContext</c> to the raw bag and dropped
-/// the path. The cure is one helper that takes the node, <c>CodeGenContext.ReportAt</c>. This scan
-/// parses every file under <c>src/Sharpy.Compiler/CodeGen/</c> and classifies every reporting
-/// invocation: <c>ReportAt</c> (a path and a position by construction), a <c>_context.Add*</c>
-/// call or an <c>EmitNotImplemented*</c> call that passes a line and a column, or a violation.</para>
+/// the path. This scan parses every file under <c>src/Sharpy.Compiler/CodeGen/</c> (recursively) and
+/// classifies every reporting invocation: a <c>_context.Add*</c> call or an
+/// <c>EmitNotImplemented*</c> call that passes a line and a column (neither the literal
+/// <c>null</c>), or a violation. <c>CodeGenContext</c> stamps the path on every <c>Add*</c>.</para>
+///
+/// <para>There is no helper trusted "by construction": a <c>ReportAt(node, …)</c> helper stood here
+/// until every one of its sites proved unreachable (the SPY0340 duplicate beside main, which
+/// <c>ModuleLevelValidator</c> refuses first, and two tripwires the checker pre-empts), and its body
+/// was exempt from the scan, so dropping its line and column left the roster green. Each remaining
+/// site now passes its position where the scan can see it.</para>
 ///
 /// <para>The site count is pinned to a literal measured at the commit that introduced the guard,
 /// so a new reporting site is a deliberate edit that has to be classified here.</para>
@@ -35,9 +41,11 @@ public class EmitterDiagnosticLocationRosterTests
     /// The number of reporting invocations under <c>CodeGen/</c>, measured when the guard landed. A
     /// new site must be classified (located, and in range or rostered below) and this literal bumped
     /// in the same edit. 28 → 26 at #2039: the two SPY0520 arms left with the module-class merge
-    /// (every module is a namespace; a type named like its file is an ordinary sibling type).
+    /// (every module is a namespace; a type named like its file is an ordinary sibling type). 26 → 25:
+    /// the emitter's SPY0340 duplicate, which no program reaches (ModuleLevelValidator refuses every
+    /// module-level executable statement first), was deleted with <c>ReportAt</c>.
     /// </summary>
-    private const int ReportingSiteCount = 26;
+    private const int ReportingSiteCount = 25;
 
     /// <summary>
     /// Reporting method names. <c>Add</c> counts only on a receiver that is a diagnostic bag.
@@ -45,7 +53,7 @@ public class EmitterDiagnosticLocationRosterTests
     private static readonly HashSet<string> ReportingMethods = new(StringComparer.Ordinal)
     {
         "AddError", "AddWarning", "AddInfo", "AddErrorWithRelatedLocations", "AddPhaseError",
-        "EmitNotImplementedExpression", "EmitNotImplementedStatement", "ReportAt",
+        "EmitNotImplementedExpression", "EmitNotImplementedStatement",
     };
 
     /// <summary>
@@ -54,7 +62,6 @@ public class EmitterDiagnosticLocationRosterTests
     private static readonly HashSet<string> HelperDefinitions = new(StringComparer.Ordinal)
     {
         "CodeGenContext.cs/AddError", "CodeGenContext.cs/AddWarning", "CodeGenContext.cs/AddInfo",
-        "CodeGenContext.cs/ReportAt",
         "RoslynEmitter.cs/EmitNotImplementedExpression", "RoslynEmitter.cs/EmitNotImplementedStatement",
     };
 
@@ -63,12 +70,8 @@ public class EmitterDiagnosticLocationRosterTests
     /// keyed <c>"File/Method/code"</c>. Recorded, not renumbered: changing a code is a user-visible
     /// move of its own.
     /// </summary>
-    private static readonly Dictionary<string, string> CodeRangeViolations = new(StringComparer.Ordinal)
-    {
-        ["RoslynEmitter.ModuleClass.cs/GenerateModuleMembers/DiagnosticCodes.Semantic.ModuleLevelExecutableStatement"] =
-            "SPY0340, a semantic-range code, raised by the emitter for module-level statements beside main() " +
-            "(ModuleLevelValidator reports the same code at semantic time). Recorded by plan-0ca7b7 Phase 1 Task 3 (#2032).",
-    };
+    // Empty: its one entry, the emitter's SPY0340 duplicate, was deleted as unreachable (#2032).
+    private static readonly Dictionary<string, string> CodeRangeViolations = new(StringComparer.Ordinal);
 
     [Fact]
     [Trait("Category", "Conformance")]
@@ -118,8 +121,9 @@ public class EmitterDiagnosticLocationRosterTests
     }
 
     /// <summary>
-    /// The instrument: the classifier flags a location-less context call, a bag call that bypasses
-    /// the context, and an out-of-range code, and passes a <c>ReportAt</c> call and a located one.
+    /// The instrument: the classifier flags a location-less context call, one whose line and column
+    /// are the literal <c>null</c>, a bag call that bypasses the context, and an out-of-range code, and
+    /// passes a located one.
     /// </summary>
     [Fact]
     [Trait("Category", "Conformance")]
@@ -133,14 +137,16 @@ public class EmitterDiagnosticLocationRosterTests
                     _context.AddError("a", code: DiagnosticCodes.CodeGen.EmitError);
                     _context.Diagnostics.AddError("b", 1, 2, code: DiagnosticCodes.CodeGen.EmitError);
                     _context.AddError("c", DiagnosticCodes.CodeGen.EmitError, n.LineStart, n.ColumnStart);
-                    _context.ReportAt(n, "d", DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
+                    _context.AddError("d", DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, n.LineStart, n.ColumnStart);
                     EmitNotImplementedExpression("e", DiagnosticCodes.CodeGen.UnsupportedFeature);
+                    _context.AddError("f", DiagnosticCodes.CodeGen.EmitError, null, null);
+                    EmitNotImplementedStatement("g", DiagnosticCodes.CodeGen.UnsupportedFeature, line: null, column: n.ColumnStart);
                 }
             }
             """;
         var sites = ScanFile("Probe.cs", source).ToList();
 
-        Assert.Equal(5, sites.Count);
+        Assert.Equal(7, sites.Count);
         Assert.False(sites[0].Located);
         Assert.True(sites[0].ViaHelper);
         Assert.False(sites[1].ViaHelper);
@@ -149,6 +155,9 @@ public class EmitterDiagnosticLocationRosterTests
         Assert.False(InRange(sites[3].Code));
         Assert.False(sites[4].Located);
         Assert.True(InRange(sites[4].Code));
+        Assert.True(sites[5].ViaHelper);
+        Assert.False(sites[5].Located);
+        Assert.False(sites[6].Located);
     }
 
     private readonly record struct Site(
@@ -164,7 +173,7 @@ public class EmitterDiagnosticLocationRosterTests
         if (!Directory.Exists(codegenDir))
             throw new DirectoryNotFoundException($"CodeGen directory not found at '{codegenDir}'.");
 
-        return Directory.GetFiles(codegenDir, "*.cs")
+        return Directory.GetFiles(codegenDir, "*.cs", SearchOption.AllDirectories)
             .OrderBy(f => f, StringComparer.Ordinal)
             .SelectMany(f => ScanFile(Path.GetFileName(f), File.ReadAllText(f)))
             .ToList();
@@ -197,26 +206,28 @@ public class EmitterDiagnosticLocationRosterTests
             var positional = args.Where(a => a.NameColon == null).ToList();
             string Named(string n) => args.FirstOrDefault(a => a.NameColon?.Name.Identifier.Text == n)?.Expression.ToString() ?? "";
 
+            // (message, code, line, column) for both helper families. A position is passed when both
+            // arguments are present and neither is the literal `null` (or `default`).
+            static bool Passed(string arg) => arg is not ("" or "null" or "default");
+            bool Positioned() => positional.Count >= 4
+                ? Passed(positional[2].Expression.ToString()) && Passed(positional[3].Expression.ToString())
+                : Passed(Named("line")) && Passed(Named("column"));
+
             bool viaHelper;
             bool located;
             string code;
             switch (name)
             {
-                case "ReportAt":
-                    viaHelper = receiver == "_context";
-                    located = true;
-                    code = positional.Count >= 3 ? positional[2].Expression.ToString() : Named("code");
-                    break;
                 case "EmitNotImplementedExpression":
                 case "EmitNotImplementedStatement":
                     viaHelper = receiver == null;
-                    located = positional.Count >= 4 || (Named("line") != "" && Named("column") != "");
+                    located = Positioned();
                     code = positional.Count >= 2 ? positional[1].Expression.ToString() : Named("code");
                     break;
                 default:
-                    // The context's own Add* helpers: (message, code, line, column).
+                    // The context's own Add* helpers.
                     viaHelper = receiver == "_context";
-                    located = viaHelper && (positional.Count >= 4 || (Named("line") != "" && Named("column") != ""));
+                    located = viaHelper && Positioned();
                     code = viaHelper && positional.Count >= 2 ? positional[1].Expression.ToString() : Named("code");
                     break;
             }

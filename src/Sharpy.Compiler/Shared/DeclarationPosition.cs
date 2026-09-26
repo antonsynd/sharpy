@@ -6,8 +6,8 @@ namespace Sharpy.Compiler.Shared;
 /// Where a declaration is, for a diagnostic to point at. A collision names two declarations and
 /// both positions are real source locations; carrying only a line (all these walks tracked
 /// before #1388) forced every consumer to render column 0. Shared by the semantic collision walks
-/// (<c>CodeGenInfoComputer</c>) and the emitter's one reporting helper
-/// (<c>CodeGenContext.ReportAt</c>, #2032), so both point at the same token.
+/// (<c>CodeGenInfoComputer</c>) and the emitter's declaration-anchored tripwires (#2032), so both
+/// point at the same token.
 /// </summary>
 internal readonly record struct DeclarationPosition(int Line, int Column)
 {

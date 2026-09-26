@@ -740,9 +740,10 @@ internal partial class RoslynEmitter
         }
         catch (OverflowException)
         {
-            _context.ReportAt(literal,
+            // A tripwire: the checker refuses an out-of-range literal first (SPY0210).
+            _context.AddError(
                 $"Integer literal '{literal.Value}' is too large for a 64-bit integer",
-                DiagnosticCodes.CodeGen.EmitError);
+                DiagnosticCodes.CodeGen.EmitError, literal.LineStart, literal.ColumnStart);
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
         }
 
