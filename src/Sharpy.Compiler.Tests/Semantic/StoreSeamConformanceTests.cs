@@ -335,8 +335,12 @@ public class StoreSeamConformanceTests
     /// <c>CheckUnpackingTargets</c> routine, so that per-element admission now flows through
     /// <c>CheckStarValueElements</c>' own <c>EnterStore(TupleElement, …)</c> at the nested recursion
     /// level; the redundant nested call site drops out (48 pushes + 14 clears, measured by this scan).
+    /// 62 -> 63 (#2004/#2075, 8ff676203): a lambda whose target's return annotation failed
+    /// (<c>g: () -> None? = lambda: None()</c>) checks its body in its own error-recovery arm, which
+    /// pushes the recovered slot through <c>EnterStore(LambdaBody, …)</c> like the admitted arm above
+    /// it (49 pushes + 14 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 62;
+    private const int ExpectedSeamCallSiteCount = 63;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {
