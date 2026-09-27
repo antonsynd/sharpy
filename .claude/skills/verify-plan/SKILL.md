@@ -4,7 +4,7 @@ description: Verify a plan for accuracy, architectural soundness, and adequacy (
 argument-hint: "<path/to/plan.md>"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding; every dimension below applies it. **Stance: refute** — for each claim, look for the input that shows it wrong; a dimension passes only after naming what was tried. A plan whose file paths are all accurate can still fail: a bug-fix plan that patches one cell of a class is **NEEDS REVISION**, however correct its references.
+Read `docs/design/verification-contract.md` before proceeding (§10–§11 included); every dimension below applies it. **Stance: refute** — for each claim, look for the input that shows it wrong; a dimension passes only after naming what was tried. A plan whose file paths are all accurate can still fail: a bug-fix plan that patches one cell of a class is **NEEDS REVISION**, however correct its references.
 
 Reads the plan, extracts every verifiable claim, checks each against the codebase at a named sha, grades the plan's *adequacy* against the defect class it claims to fix, and edits the plan directly: corrections inline, a stamp at the top, a Verification Summary at the end.
 
@@ -25,6 +25,7 @@ Read the plan file completely before proceeding. Record `git rev-parse --short H
 - An ICE claim (SPY0908 / CS-leak) is confirmed or refuted with **`run`**, never `emit` — `emit csharp` succeeds on broken C#, and `emit diagnostics` cannot see the C# stage. A failing `run` cannot show warnings; use `emit diagnostics` for those.
 - `python3 -c "..."` for every claimed Python behavior; `print(x)` is never a type probe — bind to a deliberately wrong annotation (`b: bool = expr`).
 - `gh` needs `dangerouslyDisableSandbox: true` (TLS in the sandbox).
+- **Run the mechanical check first:** `python3 build_tools/check_plan_refs.py <plan> --issues` (`--issues` needs `gh`, so run it outside the sandbox). It verifies every repo path, `file:line` reference, `SPY` code, PascalCase symbol and `#issue` the plan names and prints what is missing, past end-of-file or ambiguous. Dimension 1 reads its report; re-read by hand only what it flags and the references a decision rests on. Spend the model's time on Dimensions 4, 6, 7 and 9 — those change decisions.
 
 ## Verification Dimensions
 
@@ -32,7 +33,7 @@ Check each dimension in order. For each claim, verify against the codebase with 
 
 ### 1. Structural Accuracy
 
-Verify every concrete reference in the plan:
+Start from the `check_plan_refs.py` report (probing rules above); verify by hand only what it flags and every reference a Design Decision or the Defect Class rests on:
 - **File paths**: Glob confirms every referenced file/directory exists
 - **Function/method/class/type names**: Grep confirms they exist where claimed
 - **Parameter signatures**: read the actual code and compare
@@ -132,6 +133,18 @@ Flag as warning per guard, with the mutation named. Flag as error: a plan whose 
 
 Flag as warning: any missing item; add it as a Missing Step.
 
+### 9. Scope & Convergence
+
+`verification-contract.md` §10–§11:
+
+- **One group** — the plan's `## Scope` block names one non-chore group; chores riding along touch no seam the group touches (grep the chores' files against the group's). A second group, or an output/layout-changing phase sharing a gate with anything, is an error unless `override: <owner's words>` is recorded.
+- **Generator first** — if the Defect Class matrix has ≥2 axes × ≥3 values, or the group is a residue (second suffix), Phase 1 builds a differential/generative harness with an allowlist ratchet, and the hand matrix covers only the axis the generator cannot reach (the plan says which). Missing = error; hand matrices found the next axis on six consecutive format-engine rounds.
+- **Filing rule** — the plan names the class trackers it posts cells to and instructs no implementer to `gh issue create`; cells go to the findings ledger and the lead files by class. A Phase 0 that says "file the siblings" one per cell is a warning; correct it inline.
+- **Fidelity scope** — every Python-parity cell names its row in `python-fidelity-scope.md`; a DEVIATION-by-default surface without a promotion ruling is an error (the plan is fixing a non-bug).
+- **Filing budget** — the plan states the expected verify cost (matrices, gates) and the prober's budget (matrix + ≤2 axis changes).
+
+Flag as error: a second group, a missing generator where required, a DEVIATION surface planned as a bug. Flag as warning: the rest; correct inline.
+
 ## Output
 
 After verification, edit the plan file directly.
@@ -142,12 +155,13 @@ After verification, edit the plan file directly.
 <!-- Verified by /verify-plan on YYYY-MM-DD @ <sha> -->
 <!-- Verification result: [PASS / PASS WITH CORRECTIONS / NEEDS REVISION] -->
 <!-- Adequacy: [CLASS / CELL / N/A] -->
+<!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
 
 Result:
 - **PASS** — no errors; at most minor suggestions
 - **PASS WITH CORRECTIONS** — errors found and corrected inline; the plan is now accurate
-- **NEEDS REVISION** — architectural or correctness issues that need the author's judgment, **or Dimension 6 failed** (a cell-only bug-fix plan is NEEDS REVISION however accurate its references)
+- **NEEDS REVISION** — architectural or correctness issues that need the author's judgment, **or Dimension 6 failed** (a cell-only bug-fix plan is NEEDS REVISION however accurate its references), **or Dimension 9 failed** (a second non-chore group without an override, a residue group without its generator, a DEVIATION-by-default surface planned as a bug)
 
 Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a `CELL` plan for bug-fix inputs unless the user explicitly overrides; `N/A` is for plans with no bug/ICE/regression input.
 
@@ -170,6 +184,11 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 - **Cure:** [seam / sweep / harness / N patches] — <meta-class row>
 - **Harness:** [named + allowlist delta / "Phase N adds one" / missing]
 - **Layer:** [every decision rung-justified / rung-4 without justification: <decision, and the rung that could carry it>]
+
+### Scope & convergence
+- **Group:** [one / MULTI: <groups> / override: <words>] · **Alone:** [yes/no — required? yes/no] · **Gates:** N
+- **Generator:** [existing <name> / built first in Phase N / not required: <axis> / MISSING — expected: <harness shape>]
+- **Trackers named:** [#… / MISSING] · **Fidelity rows:** [named / DEVIATION surface planned: <issue>]
 
 ### Falsifiability
 - <guard name>: mutation [named: … / MISSING — expected: …]; exemption [not subject / IS subject]; positive control [yes / n/a / MISSING]; by-direction probe [specified / MISSING]

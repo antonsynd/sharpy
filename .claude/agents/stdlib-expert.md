@@ -93,4 +93,4 @@ Read test output from `.claude/tmp/dotnet-serialized-latest.log` instead of re-r
 > made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
 > with `dangerouslyDisableSandbox: true`.
 
-Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.
+Sibling cell found → never spot-fix it silently, and never `gh issue create` it yourself. Inside the plan's contract: add it to the Defect Class table and fix it at the seam. Outside it: append one line to the round's findings ledger (`<scratchpad>/findings-ledger.md`: cell · program · observed · expected @ sha · lane · reach · candidate class · found-by) — the lead files by class (verification-contract.md §10). A `python3` divergence on a DEVIATION-by-default surface (docs/design/python-fidelity-scope.md) is a deviation-ledger row, not a finding.

@@ -4,7 +4,7 @@ description: Read every open GitHub issue with comments, batch them into class-l
 argument-hint: "[--charter <path>] [--since <sha>] [--issues 123,456]"
 ---
 
-Read `docs/design/verification-contract.md` §1 (class contract, standard cures) before proceeding. This skill runs in **two owner turns**: an analysis turn that ends in a decision list, and an application turn after the owner rules. Never post to GitHub or write the charter before the owner has ruled.
+Read `docs/design/verification-contract.md` §1 (class contract, standard cures), §10 (file by class, lanes) and §11 (one group per plan) and `docs/design/python-fidelity-scope.md` (which Python surfaces are compared) before proceeding. This skill runs in **two owner turns**: an analysis turn that ends in a decision list, and an application turn after the owner rules. Never post to GitHub or write the charter before the owner has ruled.
 
 **Usage:**
 - `/batch-issues` — read all open issues, batch, present groups + per-issue recommendations + decisions
@@ -32,19 +32,20 @@ for f in $S/issues/issue-*.json; do jq -r '"=== #\(.number) \(.title)\nLABELS: \
 ```
 Read `all-issues.txt` in ≤450-line chunks with the Read tool (a single `cat` over 60 KB gets persisted out of context).
 
-### 3. Anchor every recommendation on a real seam (grep, not dotnet)
-For each non-parked issue, confirm by grep that the seam the issue names exists and note the file:line; where the recommendation hinges on a design fact (is a merge a feature? is there an error sentinel? what does a lowering switch fall through to?) read the ~40 lines around it. **No `dotnet build`/`test` during batching** — if a premise is doubtful, probe with the built binary (`src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run`, lock-free) and record `measured @ <sha>`; otherwise the plan author measures. Verify Python behavior with `python3 -c` for any Python-semantics claim you make.
+### 3. Anchor placement on the class, not on a seam hypothesis
+For each non-parked issue, confirm the CLASS by reading: the contract sentence (what is uniform across which axis) and the axes. Read code only where a placement or a ruling hinges on a design fact (is a merge a feature? is there an error sentinel?). **Do not write per-issue seam `file:line` / cure hypotheses** into the charter or the comments — the plan author locates and measures the seam, and grep-only seam notes were refuted at `/create-plan` a third to a half of the time (14 of 30 premises on plan-0ca7b7), costing a re-derivation at every later stage. Record a seam only when you MEASURED it with the built binary (`src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run`, lock-free), written `measured @ <sha>`. **No `dotnet build`/`test` during batching.** Verify Python behavior with `python3 -c` only for a claim that decides a placement or a ruling, and check the surface's row in `python-fidelity-scope.md` first — a DEVIATION-by-default surface is not a bug to place.
 
 ### 4. Classify
-1. **Duplicates and fold-ins** — same cell filed twice → close the later as duplicate; a multi-cell issue whose cells belong to other open issues → post each cell on its home and close the multi-cell issue; a cell of a broader open issue → fold and close. One open issue per cell.
+1. **Duplicates and fold-ins** — same cell filed twice → close the later as duplicate; a multi-cell issue whose cells belong to other open issues → post each cell on its home and close the multi-cell issue; a cell of a broader open issue → fold and close. One open issue per CLASS; each cell appears once, on its class tracker.
+1b. **Lane, reach, scope** — assign every issue a lane (`silent-wrong`, `ice`, `false-refusal`, `missing-refusal`, `runtime-throw`, `message`, `tooling`) and a reach (`program` = an ordinary program hits it; `probe` = needs an escaped spelling, a wrong-annotation probe or a `python3` message diff). Check the surface against `python-fidelity-scope.md`: a divergence on a DEVIATION-by-default surface (message text beyond the type name, which operand a refusal names, any surface the table does not list) is a cell for its class tracker or a `docs/deviations.yaml` row and closes as folded — unless a D-number proposes promoting the surface. A cell-only issue whose class has an open tracker is posted on the tracker and closed as folded (contract §10).
 2. **Class groups** — name the violated contract ("every X reaches the same verdict in every position Y") and the cell matrix (axes × values), the standing harness that should have caught it (or "none; the plan adds one"), and the cure seam. An issue's repro list is a symptom report; the group's matrix is the deliverable. Prefer extending an existing matrix test over forking one.
-3. **Order** — silent-wrong first, then ICEs on common shapes, then refusal parity, then vocabulary; Core-only groups early (no compiler blast radius); groups that turn silent acceptance into refusals late (own matrix, measured gate). Record hard dependencies (who builds the carrier/helper another group reads).
-4. **Decisions** — anything where two readings lead to materially different work: policy (refuse vs rename vs relax), diagnostic identity (reuse vs new code), semantics (Python fidelity vs .NET), infrastructure (a new sentinel/switch). Each decision gets a **D-number**.
+3. **Order** — silent-wrong first, then ICEs on common shapes, then refusal parity, then vocabulary; Core-only groups early (no compiler blast radius); groups that turn silent acceptance into refusals late (own matrix, measured gate). Record hard dependencies (who builds the carrier/helper another group reads). **Scope per plan (contract §11):** one non-chore group per `/create-plan`; mark a group that changes printed output or emitted layout `alone`; a residue group (second suffix — P11b, P14c) or a matrix of ≥2 axes × ≥3 values gets a `Generator:` row as its FIRST task (a differential/generative harness with an allowlist ratchet), never another hand matrix — hand matrices found the next axis six rounds running on the format engine.
+4. **Decisions** — anything where two readings lead to materially different work: policy (refuse vs rename vs relax), diagnostic identity (reuse vs new code), semantics (Python fidelity vs .NET), infrastructure (a new sentinel/switch). Each decision gets a **D-number**. For a group whose surfaces are DEVIATION-by-default in `python-fidelity-scope.md`, the FIRST decision is promote-or-record; no seam is discussed until it is ruled.
 5. **Parked** — the predecessor's parked list is carried unchanged unless an issue's own comments promote it.
 
 ### 5. Present (message 1)
 Three headers at most; bullets, not paragraphs:
-- **Groups table** — order, group name, issues, one-line why-here; order rationale and hard dependencies below it.
+- **Groups table** — order, group name, lane, alone?, generator?, issues, one-line why-here; order rationale and hard dependencies below it. Above it, the census line with **open count per lane** and the **last round's filed/closed ratio** (issues created since the round's base sha vs. the issues it closed) — the trend the owner reads.
 - **Per-issue notes** — grouped; one or two sentences each: what it is + the class-level recommendation (seam, matrix, guard). Name duplicates/fold-ins to action.
 - **Decisions** — numbered D1…Dn, one line each: the question, the options, your recommendation. Offer the page as an artifact in one line if the write-up exceeds ~150 lines.
 
@@ -67,8 +68,9 @@ Apply in this order; every step is idempotent and reported.
 2. **File the tracking issues the rulings create** (a new phase, a new cell the ruling exposes, a design the owner scheduled "next"): `gh issue create --body-file`; body = Class / Ruling / Acceptance / charter pointer. Capture the numbers before writing the charter.
 3. **Write the charter** from `charter-template.md` (this directory) to `.claude/plans/remediation-round-<date>-batching.md` (gitignored). When extending a charter, add the new groups/rulings/changelog entry and update the census; never delete a ruling — supersede it with a strike-through and a pointer. Census line = `N open = P parked + B batched`, and it must reconcile with `gh issue list … | jq length` after the closures.
 4. **Post one comment per batched issue** (`comment-templates.md`): header with date + sha + charter path + §, group + order, the class contract in one sentence, the cure seam/matrix, and — on the decision's issue — the ruling text with the rejected alternatives. Write bodies to files, post in one loop, report `posted=N failed=[…]`.
-5. **Close duplicates/fold-ins** with `gh issue close --reason "not planned" --comment` naming the home issue; resolved design notes close with `--reason completed`.
-6. **Recount**: `gh issue list --state open | jq length` must equal the charter's census; fix the charter if not.
+4b. **Label** every batched issue: `gh issue edit N --add-label lane:<lane> --add-label reach:<reach>` (labels exist after one run of `build_tools/ensure_issue_labels.sh`); the one issue per class gets `class-tracker`.
+5. **Close duplicates/fold-ins** with `gh issue close --reason "not planned" --comment` naming the home issue; a cell-only issue whose class has a tracker is posted on the tracker (cell comment template) and closed the same way; resolved design notes close with `--reason completed`.
+6. **Recount**: `gh issue list --state open | jq length` must equal the charter's census, and the per-lane counts (`gh issue list --state open --label lane:<x>`) must match the census line; fix the charter if not.
 7. **Memory**: write a `project_issue_batching_<date>.md` memory (state, rulings with "do not re-ask", order, next step) and add its index line; add a `feedback_` memory only for a NEW owner preference about the flow itself.
 8. **Do not commit.** The charter is gitignored; nothing in the tree changes. If skill files changed, say so and leave the commit to the owner.
 
@@ -81,3 +83,6 @@ Lead with the census and the order; list the rulings by code in one line each; l
 - Never re-litigate a parked design or a rejected alternative recorded in a ruling; cite the ruling instead.
 - Rulings are the owner's words; quote the chosen option and the rejected ones, do not paraphrase the sentiment.
 - Everything measured carries `@ <sha>`; everything grepped says "grep-only".
+- Never write a seam hypothesis into the charter or a comment; a seam is recorded only with `measured @ <sha>`.
+- Never place a residue group without a `Generator:` first row, and never let a second non-chore group share a plan (contract §11).
+- Never batch a DEVIATION-by-default surface as a bug; it is a tracker cell or a ledger row until an owner ruling promotes the surface.

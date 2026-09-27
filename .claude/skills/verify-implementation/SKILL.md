@@ -4,10 +4,10 @@ description: Verify completed plan implementation with refuting auditors, a cont
 argument-hint: "<path/to/plan.md>"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding; every audit below applies it.
+Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class and §11 one-group-per-plan included); every audit below applies it.
 **Stance: refute, not confirm** — an auditor reports NOT REFUTED only after naming what it tried.
 
-Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes what they find, and commits the fixes.
+Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here — the 2026-09-26 round grew eight fix lanes and thirty worktrees by widening, and its own fixes filed ten more issues.
 
 ## Argument Handling
 
@@ -303,8 +303,11 @@ with `dangerouslyDisableSandbox: true`.
    (mistyped if the message is wrong), silence means Unknown. `print(x)` is never a type probe.
 
 3. When every spelling you vary on one axis agrees, CHANGE AXIS — agreement is evidence the
-   defect is not on that axis. Include the warm path (second compile of the same project with
-   --incremental, or the LSP route) if the plan's blast-radius line names warm/cold.
+   defect is not on that axis. BUDGET (contract §10): the plan's matrix plus at most TWO axis
+   changes; stop there and say which axes you did not reach. Include the warm path (second compile
+   of the same project with --incremental, or the LSP route) if the plan's blast-radius line names
+   warm/cold. Before probing a python3 divergence, check the surface's row in
+   docs/design/python-fidelity-scope.md: a DEVIATION-by-default surface is a ledger row, not a cell.
 
 4. For fixtures the range added, confirm the .expected output would differ with the bug present:
    revert the production hunk in a worktree (`git worktree add ../sharpy.worktrees/wt-verify-cells $HEAD`,
@@ -313,8 +316,10 @@ with `dangerouslyDisableSandbox: true`.
 
 Remove your worktree when done. Output a per-cell verdict table:
 | axis values | in issue repro? | command | expected | observed @ $HEAD | verdict (PASS / FAIL / ICE / UNTYPED) |
-Then: cells probed / passed / failed, whether you built the matrix, and NOT REFUTED with what
-you tried. Every FAIL cell is a sibling-cell finding — do not fix it; report it.
+Then: cells probed / passed / failed, whether you built the matrix, the axis changes you spent (≤2),
+and NOT REFUTED with what you tried. Group every FAIL cell under its CLASS (contract sentence +
+lane + reach) — the lead files one issue per class, never one per cell. Do not fix anything; do not
+run `gh issue create`.
 ```
 
 Provide the plan's Defect Class section (or `no matrix in plan`), the issues' repro lists, and the list of files the range touched.
@@ -352,8 +357,8 @@ Address every item:
 | MISSING / PARTIAL implementation | Implement yourself or delegate; docs/spec halves included |
 | Regression | Fix the root cause — never modify `.expected` files |
 | Pre-existing red | Leave it; cite the issue/class it belongs to in the report |
-| One-arm fix | Move the check to the shared seam, or file the class issue and add the cells to the plan's Defect Class table — a second arm patch is not a remediation |
-| Sibling-cell FAIL | Same rule: **a remediation that patches the cell the prober found is itself a finding**. Widen to the class or file the class issue with every failing cell listed |
+| One-arm fix | File the class issue (lead, contract §10: one per class, cell table, lane/reach labels) and add the cells to the plan's Defect Class table. Moving the check to the seam is the NEXT plan's work, not this round's — a widening here restarts the sibling cascade |
+| Sibling-cell FAIL | Same rule: **a remediation that patches the cell the prober found is itself a finding, and so is widening the class inside the verify round.** File by class with every failing cell listed; the class returns to `/batch-issues` |
 | Vacuous / inverted / inert guard | Rewrite so it goes red when broken (parameterize the falsifiable arm; add the positive control); if the fix is inert, find the fallback path and fix that |
 | Refusal restricting working code | Revert or narrow the refusal; add the working program as a fixture |
 | Stale allowlist entry | Delete it in the fix's commit; **never widen an allowlist to absorb a new failure** |
@@ -368,7 +373,7 @@ Address every item:
 
 1. **Priority**: build failures > regressions > missing implementations > one-arm fixes and sibling cells > vacuous guards > conventions > missing tests > formatting/cleanup
 2. **Never modify `.expected` files** to make tests pass — fix the implementation
-3. **Cell patches are findings**: if a fix you are about to write touches only the cell an auditor found, stop — widen to the seam or file the class issue (contract §1)
+3. **Cell patches AND in-round widenings are findings**: if a fix you are about to write touches only the cell an auditor found, stop and file the class issue (contract §1, §10). If the fix would move a check to a new seam or add a matrix axis, it is a plan, not a remediation — file it. This round fixes regressions, vacuous/inverted/inert guards, missing deliverables, stale artifacts and formatting
 4. **Never widen an allowlist** to absorb a new failure; entries drain on fix and are never added without an issue reference
 5. **Every guard added during remediation gets the mutation step** — break it → red, restore → green, both outcomes in the commit body (contract §2)
 6. **Verify each fix by running**, not by reading: the relevant tests via the wrapper, and the program's output for anything that records a fact codegen consumes (contract §4)
@@ -393,6 +398,8 @@ Check the session's tool list; with team tools absent, delegate via background `
 | General implementation | `implementer` |
 
 Provide each agent with: the specific finding, the relevant plan section (including the Defect Class contract), the file(s) involved, the acceptance criterion, and — for any test — the requirement to report `broken → red / restored → green` in the commit body. Agents stage with explicit pathspecs and report `git status`; the lead re-checks `git diff --stat` after each wave.
+
+Fix agents never run `gh issue create`: anything they see beside the regression they are fixing goes to `<scratchpad>/findings-ledger.md` (cell · program · observed · expected @ sha · lane · reach · candidate class · found-by); the lead de-duplicates against the ledger, the plan's Defect Class table and `gh issue list --label class-tracker --state open`, then files one issue per class with `lane:*` / `reach:*` / `class-tracker` labels (contract §10). Message-text, refusal operand order and other DEVIATION-by-default surfaces (`docs/design/python-fidelity-scope.md`) become tracker comments or `docs/deviations.yaml` rows.
 
 ## Final Verification
 
@@ -477,11 +484,14 @@ Issues to Close: per row — criterion, evidence `@ sha`, CLOSEABLE / NOT YET.
 |--------|-------------|----------|
 | abc1234 | ... | missing-impl / regression / seam-fix / guard-fix / regen / cleanup |
 
-### Issues Created
+### Issues Created (one per class — contract §10)
 
-| Issue | Title | Reason |
-|-------|-------|--------|
-| #NNN | ... | sibling cell / class issue / TODO without issue / deferred work |
+| Issue | Class (contract) | Cells | Lane | Reach | Tracker existed? |
+|-------|------------------|-------|------|-------|------------------|
+| #NNN | ... | N | lane:… | reach:… | new / posted on #MMM |
+
+- Ledger: cells recorded N → issues filed M → tracker comments K → deviation rows J
+- **Round ratio:** filed M / closed C; open count per lane after this round (`gh issue list --state open --label lane:<x>`)
 
 ### Unresolved Items
 

@@ -84,7 +84,7 @@ When verifying a feature:
 3. **Inspect generated code** - `emit csharp` for codegen
 4. **Verify error messages** - Compile invalid code, check diagnostics
 5. **Edge cases** - Empty, single-element, boundary conditions
-6. **Cells beyond the repro list** - probe sibling cells of the plan's Defect Class matrix; change axis when the spellings you vary all agree
+6. **Cells beyond the repro list** - probe sibling cells of the plan's Defect Class matrix; change axis when the spellings you vary all agree — budget: the matrix plus at most two axis changes (verification-contract.md §10); report FAIL cells grouped by class (contract sentence + lane + reach), never one finding per cell, and check `docs/design/python-fidelity-scope.md` before calling a `python3` divergence a defect
 7. **Control run** - same suite at the base sha before attributing any red
 
 ## Component Test Locations

@@ -4,7 +4,7 @@ description: Implement a verified plan with coordinated agents, lead-owned gates
 argument-hint: "<path/to/plan.md> [--exclude \"section1,section2\"]"
 ---
 
-Read `docs/design/verification-contract.md` before proceeding; every step below applies it.
+Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class and §11 one-group-per-plan included); every step below applies it.
 
 Implement a verified plan using coordinated compiler agents. Reads the plan, decomposes it into ordered commit-sized tasks, spawns the right agents, runs the whole-solution gate from the lead, and lands incremental commits whose guards have been shown to fail when broken.
 
@@ -35,6 +35,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
   - `CLASS` or `N/A` → proceed
   - `CELL` and any plan input is a bug/ICE/regression issue → **refuse**: "This plan patches a cell, not its class (see the plan's Adequacy verdict). Add a Defect Class section — contract, matrix, standard cure — and re-run `/verify-plan`, or say `override` to implement it as a cell fix knowingly." Proceed only on an explicit override, and record the override in the plan file.
   - Stamp without an Adequacy line (verified before 2026-08-26) → treat as `N/A` for feature plans, and as `CELL` for bug-fix plans unless the plan already has a Defect Class section.
+- Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule.
 
 ### 3. Report git status
 - Run `git status --short`. If there are uncommitted changes, REPORT them to the user and ask whether to proceed — do **not** stash, restore, or clean; the tree may hold a peer's work.
@@ -89,7 +90,7 @@ Break the plan into commit-sized tasks (via `TaskCreate` or the plan-file checkl
 
 ## Implementation Workflow
 
-Assign tasks (via `TaskUpdate` `owner`, or by naming the owner on the checklist line) and monitor (via `TaskList`, or by re-reading the checklist and the agents' reports). After **each agent wave**: run `git diff --stat` and `git status --short`, compare against the wave's declared scope, and commit the lead's own work in small slices. A working-tree delta nobody claims is a finding — ask before touching it.
+Assign tasks (via `TaskUpdate` `owner`, or by naming the owner on the checklist line) and monitor (via `TaskList`, or by re-reading the checklist and the agents' reports). After **each agent wave**: run `git diff --stat` and `git status --short`, compare against the wave's declared scope, and commit the lead's own work in small slices. A working-tree delta nobody claims is a finding — ask before touching it. Also pick the guard with the largest claimed red count in the wave's commit bodies and **re-run its recorded mutation yourself** (break → red, restore → green, via `cp`); a recorded pair that does not reproduce is a finding for that lane, not a note — two guards and one per-lane format check were vacuous in the 2026-09-26 round despite recorded pairs.
 
 ### Agent Instructions
 
@@ -107,7 +108,7 @@ CRITICAL RULES:
 - Verify Python behavior with `python3 -c "..."` before implementing Python semantics
 - Language spec is authoritative — check docs/language_specification/ before implementing; spec examples you add are executed before commit
 - TODO/BUG/FIXME comments must reference GitHub issues (create the issue first)
-- Fix the class, not the cell: when you discover a sibling cell of the defect you are fixing, FILE the issue AND add it to the plan's Defect Class table — never spot-fix it silently
+- Fix the class, not the cell — and never spot-fix a sibling silently. A cell INSIDE the plan's contract goes into the Defect Class table and is fixed at the seam in this plan. A cell OUTSIDE it is appended to the round's findings ledger (`<scratchpad>/findings-ledger.md`: cell · program · observed · expected @ sha · lane · reach · candidate class · found-by); you never run `gh issue create` — the lead files by class once per wave (contract §10). A `python3` divergence on a DEVIATION-by-default surface (`docs/design/python-fidelity-scope.md`) is a deviation-ledger row, not a finding
 - Language before compiler (layer ladder, CLAUDE.md › Core & Stdlib Conventions): if a task's Semantic/CodeGen change is expressible at a lower rung — `.spy` source, Core/Stdlib C# in the dunder table's spelling (operator overloads, `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `Contains(T)`, `IEnumerable<T>`) discovered by reflection, or a CLR-identity bridge rule — STOP and report before coding; never land a name-keyed (`BuiltinNames.X`) rule silently
 
 SHARED TREE (verbatim from docs/design/verification-contract.md §9):
@@ -149,13 +150,13 @@ WORKFLOW:
     (mark your task completed via TaskUpdate if the harness has it)
 ```
 
-### Gap Discovery
+### Gap Discovery (lanes record, the lead files — contract §10)
 
-During implementation, if agents discover:
-- **Tech debt**: create a GitHub issue with `gh issue create --title "..." --body "..."` (`dangerouslyDisableSandbox: true`; check for duplicates first with `gh issue list --search "..."`)
-- **Bugs / sibling cells**: create a GitHub issue and add it to the plan's Defect Class table; add a `// BUG(#NNN): ...` comment only where a workaround remains in code
-- **Missing features**: create a GitHub issue and add a `// TODO(#NNN): ...` comment
-- Every TODO/FIXME/BUG comment MUST reference an issue number
+Agents never run `gh issue create`. Everything they find outside their task goes to the round's **findings ledger** (`<scratchpad>/findings-ledger.md`, one line per cell: cell · program · observed · expected @ sha · lane · reach · candidate class · found-by). After each wave the lead:
+1. De-duplicates the ledger against itself, the plan's Defect Class table, the plan's "Class trackers" list and `gh issue list --label class-tracker --state open` (parallel lanes filed the same cell three times within 48 hours in the 2026-09 rounds).
+2. Files **one issue per class** with a cell table (tracking-issue body in `.claude/skills/batch-issues/comment-templates.md`), labeled `lane:<lane>` `reach:<reach>` `class-tracker` — or posts the cell on the existing tracker (cell comment template). Lane `message`/`tooling`, `reach:probe`, and DEVIATION-by-default surfaces (`docs/design/python-fidelity-scope.md`) are tracker comments or `docs/deviations.yaml` rows, never new issues. Tech debt and missing features follow the same path (one issue per class of debt, not per site).
+3. Hands the issue numbers back so `// BUG(#NNN)` / `// TODO(#NNN)` comments can be written where a workaround remains — every TODO/FIXME/BUG comment MUST reference an issue number.
+4. Records the ledger totals in the final report: cells recorded → issues filed (per class) → tracker comments → ledger rows.
 
 ### Guard Delivery Rule
 
@@ -202,8 +203,10 @@ After final verification:
 ### Guards mutation-tested
 - N red-when-broken · M vacuous → [filed as #… / fixed in <hash>]
 
-### Sibling cells found
-- (each cell → issue number, added to the plan's Defect Class table)
+### Findings ledger (contract §10)
+- Cells recorded: N → issues filed: M (one per class, lane/reach labels: #…) → tracker comments: K → deviation-ledger rows: J
+- In-contract cells added to the Defect Class table and fixed here: (list)
+- Round ratio: filed M / issues this plan closes at verify: C
 
 ### What Was Deferred
 - (items deferred with GitHub issue numbers)

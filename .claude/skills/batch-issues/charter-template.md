@@ -9,7 +9,7 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 
 **Predecessor:** `<previous charter path>` — its §2 done ledger, §4 rulings <R-x…R-y> and §6 notes remain authoritative and are NOT copied here. Rulings in this round continue the sequence at <R-next>.
 
-**Census (<date> @ <sha>, tree <clean|dirty>, dev <==|!=> origin/dev, version <v> <==|!=> tag):** <N> open at batching; <k> closed by fold/duplicate/resolution (<list>); <m> filed by rulings (<list>). **<N'> open = <P> parked + <B> batched** (every batched issue appears in exactly one group in §3). All open issues read in full on <date>; <no dotnet run | probes @ sha in scratchpad path>.
+**Census (<date> @ <sha>, tree <clean|dirty>, dev <==|!=> origin/dev, version <v> <==|!=> tag):** <N> open at batching; <k> closed by fold/duplicate/resolution (<list>); <m> filed by rulings (<list>). **<N'> open = <P> parked + <B> batched** (every batched issue appears in exactly one group in §3). All open issues read in full on <date>; <no dotnet run | probes @ sha in scratchpad path>. **Open by lane:** silent-wrong <n> · ice <n> · false-refusal <n> · missing-refusal <n> · runtime-throw <n> · message <n> · tooling <n>; **reach:program** <n>. **Last round:** filed <f> / closed <c> (<plan id>).
 
 **Standing round rules** (from CLAUDE.md / verification-contract.md — restate in every plan):
 - Fix the class, not the cell (Rule 11); every batch names its violated contract and cell matrix.
@@ -18,16 +18,18 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 - Verify Python behavior first with `python3 -c` (3.12). Spec is authoritative; spec edits ship with executed examples. New SPY codes need `DiagnosticExplanations` entries.
 - Regen generated artifacts EARLY; the `check_*_staleness.sh` scripts are the gate.
 - New node-keyed `SemanticInfo` dictionaries join `MergeFrom`; new symbol-keyed facts freeze at `MaterializeCodeGenInfo`.
+- One non-chore group per plan, one gate; output- or layout-changing groups land alone; a residue group builds its generator FIRST (contract §11).
+- File by class, label at creation: a cell outside a task's contract is a comment on its class tracker or ONE class issue with a cell table; lanes append to the findings ledger, the lead files; DEVIATION-by-default surfaces are ledger rows (contract §10, `python-fidelity-scope.md`).
 
 ---
 
 ## 1. Execution order (authoritative)
 
-| Order | Group | Plan file | Issues |
-|---|---|---|---|
-| 0 | **chores** (§3.0; independent, one commit each) | — | <#…> |
-| 1 | **P<n> — <name>** | — | <#… (R-xx)> |
-| … | … | … | … |
+| Order | Group | Lane | Alone? | Generator | Plan file | Issues |
+|---|---|---|---|---|---|---|
+| 0 | **chores** (§3.0; independent, one commit each) | mixed | — | — | — | <#…> |
+| 1 | **P<n> — <name>** | <lane> | <yes: output/layout change / no> | <harness name / required first / n-a> | — | <#… (R-xx)> |
+| … | … | … | … | … | … | … |
 | — | parked / roadmap (<P>) | — | <#…> |
 | — | release | — | <version vs tag> — `/bump-version` before any release-destined push |
 
@@ -47,8 +49,8 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 - **#N** — <seam; one-line cure; direction record or mutation>.
 
 ### 3.<k> P<n> — <name>
-**Contract:** <one sentence: what is uniform across which axis>. **Matrix:** <axes × values>. **Standing harness:** <name | none; the plan adds one>. <Class guard to add, if any.>
-- **#N** (<R-xx if ruled>) — <what is measured; the seam file:line; the cure; cells; allowlist rows that drain>.
+**Contract:** <one sentence: what is uniform across which axis>. **Matrix:** <axes × values>. **Lane / reach:** <lane · program|probe>. **Fidelity-scope row:** <COMPARED row | DEVIATION-by-default → promote-or-record decision D<n>>. **Standing harness:** <name | none; the plan adds one>. **Generator:** <existing harness the cells join | REQUIRED FIRST (residue group / ≥2 axes × ≥3 values) | not required: <the axis a generator cannot enumerate>>. **Class tracker:** #<N>.
+- **#N** (<R-xx if ruled>) — <lane · reach>; <cells measured @ sha | unmeasured>; <placement note; allowlist rows that drain>. No seam hypotheses (contract §10; skill §3).
 
 ### 3.<last> Parked / roadmap (<P>) — unchanged
 <#… — every standing ruling in the predecessor §3.10 holds; carry-over notes.>
@@ -78,6 +80,7 @@ Copy verbatim, fill every `<…>`, delete nothing. Sections are numbered so plan
 - **Snapshot/regen-sensitive:** <groups>.
 - **Allowlist drains as acceptance:** <issue → allowlist rows / KnownRed / N/A cells>.
 - **Probe archive:** <path @ sha | none — grep-only>.
+- **Fidelity-scope rows touched / promoted:** <rows; ruling ids>.
 
 ---
 

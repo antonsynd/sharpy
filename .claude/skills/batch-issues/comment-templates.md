@@ -11,7 +11,7 @@ Header (every comment):
 ```
 <header>
 
-<Contract in one sentence.> <Seam file:line or grep fact.> <Cure: one function / one carrier / one matrix; which existing matrix test it extends.> <Cells: axes × values.> <Allowlist rows / KnownRed / N/A cells that drain as acceptance.>
+<Contract in one sentence.> **Lane / reach:** <lane · program|probe>. <Cells: axes × values; which existing matrix test or generator they join.> <Allowlist rows / KnownRed / N/A cells that drain as acceptance.> **Class tracker:** #<N> (or: this issue is the tracker). No seam hypothesis — the plan measures the seam.
 ```
 
 ## Ruling comment (the decision's issue)
@@ -26,6 +26,12 @@ Header (every comment):
 
 ```
 <header> **#<other> cell <k> folded in:** <the cell, its measured verdict @ sha, why it belongs to this class>.
+```
+
+## Cell comment (a cell posted on its class tracker; the cell issue, if any, closes as folded)
+
+```
+<header> **Cell:** <axis values> — <program, ≤5 lines> → observed `<…>` @ <sha>; expected `<…>` (<python3 | spec §>). Lane <lane>, reach <program|probe>. Found by <round / lane / prober>.
 ```
 
 ## Closure comments (`gh issue close N --reason <r> --comment "…"`)
@@ -44,9 +50,15 @@ Header (every comment):
 ## Ruling R-<xx> (owner, <date>)
 <chosen mechanism>. Rejected: <alternatives>.
 
+## Cells
+| axis values | program | observed @ sha | expected | lane | reach | found by |
+|---|---|---|---|---|---|---|
+
 ## Acceptance
 - <guard / matrix / mutation record>
 - <allowlist or direction record>
+
+Labels: `class-tracker`, `lane:<lane>`, `reach:<reach>`.
 
 Charter: `.claude/plans/remediation-round-<date>-batching.md` §<3.x> — <group>[ phase <k>]. Sibling: #<n>.
 ```
