@@ -237,7 +237,7 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.GeneratorCycleDetected, "Source generator cycle detected", "CodeGen",
             "A source generator attribute was applied to another source generator class, creating a cycle. " +
             "Generators cannot decorate other generators.",
-            "@[GenerateRepr]\nclass MyGenerator(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput: ...",
+            "@[GenerateRepr]\nclass MyGenerator(SourceGenerator):\n    @override\n    def generate(self, context: GeneratorContext) -> GeneratorOutput: ...",
             "Remove the generator attribute from the generator class.");
 
         Add(dict, DiagnosticCodes.CodeGen.GeneratorEmptyOutput, "Source generator returned empty output", "CodeGen",

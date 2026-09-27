@@ -74,7 +74,7 @@ public class DiagnosticFileProvenanceTests
         {
             ("gen.spy",
                 "from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput\n\n"
-                + "class MyGen(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput:\n"
+                + "class MyGen(SourceGenerator):\n    @override\n    def generate(self, context: GeneratorContext) -> GeneratorOutput:\n"
                 + "        return GeneratorOutput('')\n"),
         },
     };

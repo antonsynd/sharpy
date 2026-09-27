@@ -51,6 +51,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class MyGen(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('')
 ");
@@ -78,6 +79,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput, ClassInfo, MethodInfo
 
 class DescribeGen(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         target: ClassInfo = context.target_class
         first: MethodInfo = target.methods[0]
@@ -109,6 +111,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class MyGen(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('')
 ");
@@ -155,6 +158,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class MyGen(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('')
 ");
@@ -228,6 +232,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class AddGreeting(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('def greeting() -> str:\n    return ""generated!""\n')
 ");
@@ -274,6 +279,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class AddClass(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('class Generated:\n    n: int = 5\n')
 ");
@@ -312,6 +318,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class AddDerived(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('class GenChild(Point):\n    pass\n')
 ");
@@ -346,6 +353,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class AddIface(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('interface IChild(ISized):\n    pass\n')
 ");
@@ -387,6 +395,7 @@ def main():
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class AddDecorated(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         return GeneratorOutput('@[staticmethod]\nclass GenChild(Point):\n    pass\n')
 ");

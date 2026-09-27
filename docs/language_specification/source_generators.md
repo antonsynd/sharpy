@@ -56,6 +56,7 @@ Generators are written in Sharpy by subclassing `SourceGenerator` from the `shar
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class GenerateEquals(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None:
@@ -75,9 +76,10 @@ def __eq__(self, other: object) -> bool:
 
 ### `generate` Method Signature
 
-The `generate` method is **abstract** and must be overridden:
+The `generate` method is **abstract** and must be overridden, with `@override` like any override of a base method (see [dotnet_interop.md](dotnet_interop.md#subclassing-net-types)):
 
 ```python
+@override
 def generate(self, context: GeneratorContext) -> GeneratorOutput
 ```
 
@@ -103,6 +105,7 @@ The compiler builds a `GeneratorContext` for each trigger and passes it to `gene
 Exactly one of `target_class` / `target_function` is non-`None`. Generators that want to apply to both must check explicitly:
 
 ```python
+@override
 def generate(self, context: GeneratorContext) -> GeneratorOutput:
     if context.target_class is not None:
         return self._generate_for_class(context.target_class)
@@ -236,6 +239,7 @@ Generator definitions and their use sites **must live in different files**:
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class GenerateEquals(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput: ...
 
 # point.spy — Stage 2
@@ -311,6 +315,7 @@ Cached output is stored in `obj/{Config}/.sharpy-symbols` (schema v13) and reuse
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class GenerateEquals(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None or len(cls.fields) == 0:
@@ -348,6 +353,7 @@ def main() -> int:
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class Serializable(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None:

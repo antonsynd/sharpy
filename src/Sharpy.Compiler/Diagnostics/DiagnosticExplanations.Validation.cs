@@ -528,16 +528,16 @@ public static partial class DiagnosticExplanations
             "A class that extends SourceGenerator must declare exactly one method named 'generate' " +
             "with the signature '(self, context: GeneratorContext) -> GeneratorOutput'. The generator " +
             "engine invokes this method at compile time and expects the exact shape.",
-            "class MyGen(SourceGenerator):\n    def generate(self) -> GeneratorOutput: ...   # missing context param",
+            "class MyGen(SourceGenerator):\n    @override\n    def generate(self) -> GeneratorOutput: ...   # missing context param",
             "Declare 'generate' with the full signature:\n" +
-            "class MyGen(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput:\n        return GeneratorOutput(\"\")");
+            "class MyGen(SourceGenerator):\n    @override\n    def generate(self, context: GeneratorContext) -> GeneratorOutput:\n        return GeneratorOutput(\"\")");
 
         Add(dict, DiagnosticCodes.Validation.AbstractGenerator,
             "Source generator class cannot be abstract",
             "Validation",
             "Source generator classes are instantiated by the compiler at compile time, so they must be " +
             "concrete. An @abstract class cannot be invoked as a generator.",
-            "@abstract\nclass MyGen(SourceGenerator):\n    def generate(self, context: GeneratorContext) -> GeneratorOutput: ...",
+            "@abstract\nclass MyGen(SourceGenerator):\n    @override\n    def generate(self, context: GeneratorContext) -> GeneratorOutput: ...",
             "Remove the @abstract decorator, or move the abstract logic to a regular base class and have " +
             "the generator extend it concretely.");
 

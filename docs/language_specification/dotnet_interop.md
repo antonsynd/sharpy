@@ -130,6 +130,25 @@ def main() -> None:
 
 The `tuple` receiver is exempt: its `.item1` / `.Item1` element spellings are typed from the tuple's element types.
 
+## Subclassing .NET Types
+
+A Sharpy class may extend a .NET class. Overriding one of its `abstract` or `virtual` methods follows the same rule as overriding a Sharpy base method: the override **requires** `@override` (see [inheritance.md](inheritance.md) and [dunder_invocation_rules.md](dunder_invocation_rules.md)), whether the base came from a .NET namespace or from a Sharpy module. The base method is found by the snake_case name, so `compare` overrides `Comparer<T>.Compare`. The only methods exempt are `__str__`, `__eq__` and `__hash__`, which implicitly override `System.Object` members at any depth. Implementing a .NET interface is not an override.
+
+```python
+import system.collections.generic as scg
+
+class Descending(scg.Comparer[int]):
+    @override
+    def compare(self, x: int, y: int) -> int:
+        return y - x
+
+def main() -> None:
+    c: scg.Comparer[int] = Descending()
+    print(c.compare(1, 2))    # 1
+```
+
+Leaving out `@override` is an error (SPY0248: "Method 'compare' overrides an abstract method in base class 'Comparer' and requires the @override decorator").
+
 ## Nested .NET types
 
 A nested .NET type — a type declared inside another, such as `System.Environment.SpecialFolder` — is reached through its declaring type. The chain denotes a type, so it works in every position a type does: as a value (an enum member), as a type annotation, and as an `isinstance` operand.

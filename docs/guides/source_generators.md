@@ -41,6 +41,7 @@ The compiler automatically detects which files define generators (any file conta
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class GenerateEquals(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None:
@@ -131,6 +132,7 @@ def main() -> int:
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class GenerateRepr(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None:
@@ -205,6 +207,7 @@ from sharpy.generators import (
 )
 
 class Serializable(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None:
@@ -325,6 +328,7 @@ Generator diagnostics are surfaced through the normal compiler diagnostic pipeli
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class Builder(SourceGenerator):
+    @override
     def generate(self, context: GeneratorContext) -> GeneratorOutput:
         cls = context.target_class
         if cls is None or len(cls.fields) == 0:
@@ -439,6 +443,7 @@ def main() -> int:
 A generator may be invoked on a class, struct, or function. Structs populate `target_class` (as `ClassInfo`). Always check `target_class` / `target_function` before dereferencing:
 
 ```python
+@override
 def generate(self, context: GeneratorContext) -> GeneratorOutput:
     cls = context.target_class
     if cls is None:
