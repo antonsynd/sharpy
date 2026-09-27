@@ -435,7 +435,8 @@ internal partial class TypeChecker
             // A member declared by a CLR-backed base is overridden implicitly (#1122): the
             // requirement defers to that decision, so whether the import route bridged the base's
             // members (a [SharpyModule]-stamped module) or left them to reflection (a bare CLR
-            // namespace) does not decide whether the same override is refused.
+            // namespace) does not decide whether the same override is refused. Whether a CLR-base
+            // override should instead REQUIRE @override is the open convention question #2138.
             bool isImplicitClrOverride = baseMethod != null
                 && (baseOwner?.ClrType != null || baseMethod.ClrMethodName != null)
                 && IsImplicitClrBaseOverride(functionDef);
