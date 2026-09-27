@@ -46,9 +46,11 @@ public class LibraryReferenceMatrixTests
             new[] { ("lib.spy", "def lib_fn() -> int:\n    return 4\n") },
             "from lib import lib_fn\n\ndef main() -> None:\n    print(lib_fn())\n", "4", null! },
         new object[] { "b_package_module",
-            // util.spy keeps the common source root at src/, so the module is pkg.lib (a library of
-            // pkg/lib.spy alone roots at src/pkg/ and names it lib).
-            new[] { ("pkg/lib.spy", "def lib_fn() -> int:\n    return 5\n"), ("util.spy", "def u() -> int:\n    return 0\n") },
+            // libref_b_root.spy keeps the common source root at src/, so the module is pkg.lib (a
+            // library of pkg/lib.spy alone roots at src/pkg/ and names it lib). Its stem is
+            // collision-proof: a common stem (`util`) loaded into the test process can capture an
+            // unrelated compilation's local module of that name (#2113).
+            new[] { ("pkg/lib.spy", "def lib_fn() -> int:\n    return 5\n"), ("libref_b_root.spy", "def u() -> int:\n    return 0\n") },
             "from pkg.lib import lib_fn\n\ndef main() -> None:\n    print(lib_fn())\n", "5", null! },
         // A module declaring a type named like its file (thing.spy + `class Thing`): #2006 stamped the
         // merged module class [SharpyModule]; with no merge (#2039) its members class ThingModule is.
@@ -120,30 +122,35 @@ public class LibraryReferenceMatrixTests
     /// drops the members class — every function reference was SPY0908 CS0103/CS0234, a module
     /// variable was SPY0301, and the generic <c>Shapes[T]</c> cell moved from SPY0300 (BASE) to
     /// SPY0908. A project library's module lives under its root namespace and never collided.
+    /// Stems are <c>sflib_</c>-prefixed: a single-file library's top-level namespace stays loaded in
+    /// the test process, and <c>ModuleRegistry.IsNetNamespace</c> scans every loaded assembly, so a
+    /// common stem (<c>util</c>) captured a later, unrelated compilation's LOCAL <c>util.spy</c>
+    /// (IncrementalCompilationTests, order-dependent; the pre-existing precedence class #2113).
     /// </summary>
     public static IEnumerable<object[]> SingleFileCells() => new[]
     {
-        new object[] { "sf_a_functions", "util.spy",
+        new object[] { "sf_a_functions", "sflib_util.spy",
             "def helper() -> int:\n    return 42\n",
-            "from util import helper\nimport util\n\ndef main() -> None:\n    print(helper(), util.helper())\n",
+            "from sflib_util import helper\nimport sflib_util\n\ndef main() -> None:\n    print(helper(), sflib_util.helper())\n",
             "42 42" },
-        new object[] { "sf_b_types_only", "things.spy",
+        new object[] { "sf_b_types_only", "sflib_things.spy",
             "class Box:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n",
-            "from things import Box\nimport things\n\ndef main() -> None:\n    print(Box(3).v, things.Box(4).v)\n",
+            "from sflib_things import Box\nimport sflib_things\n\ndef main() -> None:\n    print(Box(3).v, sflib_things.Box(4).v)\n",
             "3 4" },
-        new object[] { "sf_c_generic_named_like_module", "shapes.spy",
-            "class Shapes[T]:\n    v: T\n    def __init__(self, v: T) -> None:\n        self.v = v\n\ndef helper() -> int:\n    return 42\n",
-            "from shapes import Shapes, helper\nimport shapes\n\ndef main() -> None:\n    print(Shapes[int](3).v, helper(), shapes.helper())\n",
+        // The generic class spells its module's namespace (SflibShapes).
+        new object[] { "sf_c_generic_named_like_module", "sflib_shapes.spy",
+            "class SflibShapes[T]:\n    v: T\n    def __init__(self, v: T) -> None:\n        self.v = v\n\ndef helper() -> int:\n    return 42\n",
+            "from sflib_shapes import SflibShapes, helper\nimport sflib_shapes\n\ndef main() -> None:\n    print(SflibShapes[int](3).v, helper(), sflib_shapes.helper())\n",
             "3 42 42" },
-        new object[] { "sf_d_enum", "colors.spy",
+        new object[] { "sf_d_enum", "sflib_colors.spy",
             "enum Col:\n    RED = 1\n    GREEN = 2\n\ndef pick() -> Col:\n    return Col.GREEN\n",
-            "from colors import Col, pick\nimport colors\n\ndef main() -> None:\n    print(Col.RED, pick(), colors.pick())\n",
+            "from sflib_colors import Col, pick\nimport sflib_colors\n\ndef main() -> None:\n    print(Col.RED, pick(), sflib_colors.pick())\n",
             "Col.RED Col.GREEN Col.GREEN" },
         // A flat module (no package, no __init__) exporting a module variable, a class without
         // __init__ and a function reading the variable.
-        new object[] { "sf_e_module_variable", "consts.spy",
+        new object[] { "sf_e_module_variable", "sflib_consts.spy",
             "limit: int = 7\n\nclass Plain:\n    def m(self) -> int:\n        return limit\n\ndef twice() -> int:\n    return limit * 2\n",
-            "from consts import limit, Plain, twice\nimport consts\n\ndef main() -> None:\n    print(limit, Plain().m(), twice(), consts.limit)\n",
+            "from sflib_consts import limit, Plain, twice\nimport sflib_consts\n\ndef main() -> None:\n    print(limit, Plain().m(), twice(), sflib_consts.limit)\n",
             "7 7 14 7" },
     };
 
