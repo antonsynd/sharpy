@@ -7,16 +7,17 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
-/// A CLR base's members, and the override rule that reads them, are the same whichever import
-/// route resolved the base (refs #2039, #1122). A <c>[SharpyModule]</c>-stamped module
-/// (<c>sharpy.generators</c>, <c>json</c>) bridges its types' members into the symbol; a bare CLR
-/// namespace (<c>system.collections.generic</c>, or <c>sharpy.generators</c> when Sharpy.Core is not
-/// a discovery reference) leaves them to reflection. Overriding an abstract/virtual member of
-/// either WITHOUT <c>@override</c> is the implicit CLR override (#1122) on both routes — once the
-/// stamped route bridged the members, the "requires @override" rule read them and refused
-/// <c>SourceGenerator.generate</c>, which ran while <c>sharpy.generators</c> took the namespace route.
-/// Cells: base form × {no @override, @override} × {single-file run, project}; every cell executes
-/// and dispatches through the base-typed reference.
+/// The override rule reads a base member identically whether the base is Sharpy- or CLR-declared,
+/// on every import route (#2138 owner ruling; refs #2039, #1122): overriding an abstract/virtual
+/// member of a CLR base REQUIRES <c>@override</c>, exactly as for a Sharpy base; the only exemption
+/// is <c>__str__</c>/<c>__eq__</c>/<c>__hash__</c>. A <c>[SharpyModule]</c>-stamped module
+/// (<c>sharpy.generators</c>, <c>json</c>, <c>threading</c>) bridges its types' members into the
+/// symbol; a bare CLR namespace (<c>system.collections.generic</c>, <c>sharpy</c>, or
+/// <c>sharpy.generators</c> when Sharpy.Core is not a discovery reference) leaves them to
+/// reflection, where the member is found through the one forward name rule
+/// (<c>compare</c> → <c>Compare</c>).
+/// Cells: base form × {no @override → SPY0248, @override → runs} × {single-file run, project};
+/// every running cell dispatches through the base-typed reference.
 /// </summary>
 [Collection("HeavyCompilation")]
 public class ClrBaseOverrideRouteMatrixTests : StdlibAwareIntegrationTestBase
@@ -60,6 +61,19 @@ def main():
     print(enc.encode(object()))
 ";
 
+    private const string StampedStdlibThread = @"
+import threading
+
+class T(threading.Thread):
+{0}    def run(self) -> None:
+        print(""ran"")
+
+def main():
+    t: threading.Thread = T()
+    t.start()
+    t.join()
+";
+
     private const string ClrNamespaceAbstract = @"
 import system.collections.generic as scg
 
@@ -72,38 +86,54 @@ def main():
     print(c.compare(1, 2))
 ";
 
-    // The pre-existing namespace-route refusal of @override on a CLR base (the route's symbol
-    // carries no members, so the @override check finds none; #2138) — pinned, not endorsed.
-    private const string NoMatchingBaseMethod = "is marked @override but no matching method exists in base class";
+    // The same stdlib JSONEncoder, reached through the bare `sharpy` namespace. Its @override form
+    // is not a running cell: constructing it ICEs on the namespace route's constructor surface
+    // (CS7036, filed separately), independent of the override rule.
+    private const string ClrNamespaceStdlibVirtual = @"
+import sharpy
+
+class E(sharpy.JSONEncoder):
+{0}    def default(self, obj: object) -> object:
+        return ""custom""
+
+def main():
+    enc: sharpy.JSONEncoder = E()
+    print(enc.encode(object()))
+";
+
+    private const string RequiresOverride = "and requires the @override decorator";
 
     /// <summary>
     /// form, source template, @override?, expected stdout (null = refused with
-    /// <see cref="NoMatchingBaseMethod"/>), with Sharpy.Core and Sharpy.Stdlib as discovery
+    /// <see cref="RequiresOverride"/>), with Sharpy.Core and Sharpy.Stdlib as discovery
     /// references — the CLI's channel (<c>CliHelpers.GetDefaultReferences</c>).
     /// </summary>
     public static IEnumerable<object?[]> Cells()
     {
-        yield return new object?[] { "sg_from", SourceGeneratorFromImport, false, "MyGen" };
+        yield return new object?[] { "sg_from", SourceGeneratorFromImport, false, null };
         yield return new object?[] { "sg_from", SourceGeneratorFromImport, true, "MyGen" };
-        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, false, "MyGen" };
+        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, false, null };
         yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, true, "MyGen" };
-        yield return new object?[] { "json_stamped", StampedStdlibVirtual, false, "\"custom\"" };
+        yield return new object?[] { "json_stamped", StampedStdlibVirtual, false, null };
         yield return new object?[] { "json_stamped", StampedStdlibVirtual, true, "\"custom\"" };
-        yield return new object?[] { "scg_namespace", ClrNamespaceAbstract, false, "1" };
-        yield return new object?[] { "scg_namespace", ClrNamespaceAbstract, true, null };
+        yield return new object?[] { "thread_stamped", StampedStdlibThread, false, null };
+        yield return new object?[] { "thread_stamped", StampedStdlibThread, true, "ran" };
+        yield return new object?[] { "scg_namespace", ClrNamespaceAbstract, false, null };
+        yield return new object?[] { "scg_namespace", ClrNamespaceAbstract, true, "1" };
+        yield return new object?[] { "json_namespace", ClrNamespaceStdlibVirtual, false, null };
     }
 
     /// <summary>
     /// The SAME <c>SourceGenerator</c> on the bare-namespace route: without Sharpy.Core as a
     /// discovery reference nothing declares <c>sharpy.generators</c> by attribute, so it resolves as
-    /// the CLR namespace <c>Sharpy.Generators</c>.
+    /// the CLR namespace <c>Sharpy.Generators</c> and its members are read by reflection.
     /// </summary>
     public static IEnumerable<object?[]> NamespaceRouteCells()
     {
-        yield return new object?[] { "sg_from", SourceGeneratorFromImport, false, "MyGen" };
-        yield return new object?[] { "sg_from", SourceGeneratorFromImport, true, null };
-        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, false, "MyGen" };
-        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, true, null };
+        yield return new object?[] { "sg_from", SourceGeneratorFromImport, false, null };
+        yield return new object?[] { "sg_from", SourceGeneratorFromImport, true, "MyGen" };
+        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, false, null };
+        yield return new object?[] { "sg_qualified", SourceGeneratorModuleQualified, true, "MyGen" };
     }
 
     private static string Render(string template, bool decorated) =>
@@ -116,8 +146,8 @@ def main():
 
         if (expected == null)
         {
-            success.Should().BeFalse($"{form}: @override on a namespace-route CLR base is refused today");
-            errors.Should().Contain(NoMatchingBaseMethod, form);
+            success.Should().BeFalse($"{form}: a CLR-base override without @override is refused (#2138)");
+            errors.Should().Contain(RequiresOverride, form);
             return;
         }
 
@@ -157,10 +187,39 @@ def main():
         AssertCell(form, decorated, expected, result.Success, result.StandardOutput, result.CompilationErrors);
     }
 
-    // Boundaries of the implicit override: only a method the #1122 detector itself emits as
-    // `override` (same name AND arity, member declared by the CLR base) is exempt from @override.
+    // The spec's exemption: __str__/__eq__/__hash__ implicitly override System.Object at any depth,
+    // on a CLR-derived class too — accepted with and without @override.
     [Theory]
-    [InlineData("arity_mismatch", @"
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectDunder_OnClrDerivedClass_IsOptional(bool decorated)
+    {
+        var source = Render(@"
+import system.collections.generic as scg
+
+class Rev(scg.Comparer[int]):
+    @override
+    def compare(self, x: int, y: int) -> int:
+        return y - x
+{0}    def __str__(self) -> str:
+        return ""rev""
+{0}    def __eq__(self, other: object) -> bool:
+        return True
+{0}    def __hash__(self) -> int:
+        return 7
+
+def main():
+    o: object = Rev()
+    print(str(o), o == Rev(), hash(o))
+", decorated);
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"@override={decorated}: {string.Join("; ", result.CompilationErrors)}");
+        result.StandardOutput.Trim().Should().Be("rev True 7");
+    }
+
+    // Diagnostics that are not the missing-@override rule keep their shape.
+    [Theory]
+    [InlineData("arity_mismatch_bridged", "requires the @override decorator", @"
 from json import JSONEncoder
 
 class E(JSONEncoder):
@@ -170,7 +229,7 @@ class E(JSONEncoder):
 def main():
     print(type(E()).__name__)
 ")]
-    [InlineData("sharpy_intermediate", @"
+    [InlineData("sharpy_intermediate", "overrides a virtual method in base class 'A' and requires the @override decorator", @"
 from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
 
 class A(SourceGenerator):
@@ -185,10 +244,32 @@ class B(A):
 def main():
     print(type(B()).__name__)
 ")]
-    public void NotImplicit_StillRequiresOverride(string form, string source)
+    [InlineData("not_virtual", "is not marked @virtual or @abstract", @"
+from json import JSONEncoder
+
+class E(JSONEncoder):
+    @override
+    def encode(self, obj: object) -> str:
+        return ""bad""
+
+def main():
+    print(type(E()).__name__)
+")]
+    [InlineData("no_such_member", "is marked @override but no matching method exists in base class", @"
+import system.collections.generic as scg
+
+class Rev(scg.Comparer[int]):
+    @override
+    def frobnicate(self, x: int) -> int:
+        return x
+
+def main():
+    print(type(Rev()).__name__)
+")]
+    public void OtherOverrideDiagnostics_Unchanged(string form, string message, string source)
     {
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse(form);
-        string.Join("; ", result.CompilationErrors).Should().Contain("requires the @override decorator", form);
+        string.Join("; ", result.CompilationErrors).Should().Contain(message, form);
     }
 }

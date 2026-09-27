@@ -6,7 +6,8 @@ namespace Sharpy.Compiler.Semantic;
 /// Decides whether a <c>.spy</c> instance method overrides an abstract/virtual member of a
 /// CLR-backed base type (#1122). The decision is a pure function of the derived method's shape,
 /// the resolved base-type chain, and a CLR reflection probe, so it lives here as a testable static
-/// helper called by <c>TypeChecker.ProcessClrOverrideMetadata</c>. Keeping it separate from the
+/// helper called by <c>TypeChecker.FindClrOverrideTarget</c> — the one decision the override rule
+/// (#2138) and the emitter's <c>override</c> modifier both read. Keeping it separate from the
 /// TypeChecker's mutable pass state (and from the Discovery layer that owns reflection) lets the D2
 /// matching rule be unit-tested against synthetic hierarchies and fake probes.
 /// </summary>
@@ -39,25 +40,52 @@ internal static class ClrBaseOverrideDetector
         IReadOnlyList<TypeSymbol> baseTypes,
         Func<Type, string, int, bool>? clrMemberProbe = null)
     {
-        if (isStatic || isInitConstructor || isAlreadyOverride)
+        if (isAlreadyOverride)
             return false;
+
+        Func<Type, string, int, bool?>? kindProbe = clrMemberProbe == null
+            ? null
+            : (type, name, n) => clrMemberProbe(type, name, n) ? false : null;
+        return FindClrOverrideTarget(methodName, isStatic, isInitConstructor, arity, baseTypes, kindProbe) != null;
+    }
+
+    /// <summary>
+    /// The CLR-base member the described derived instance method overrides, or <c>null</c> when it
+    /// overrides none — the one decision the override rule (#2138: <c>@override</c> required, and
+    /// accepted) and the emitter's <c>override</c> modifier both read. Static methods and
+    /// constructors never qualify.
+    /// </summary>
+    /// <param name="clrMemberProbe">
+    /// Reflection probe (<c>clrType, sharpyName, arity → abstract? / null</c>) for CLR base types
+    /// whose members are not bridged into the <see cref="TypeSymbol"/> (a bare CLR-namespace import);
+    /// <c>true</c> = abstract, <c>false</c> = virtual, <c>null</c> = no overridable member.
+    /// </param>
+    public static ClrOverrideTarget? FindClrOverrideTarget(
+        string methodName,
+        bool isStatic,
+        bool isInitConstructor,
+        int arity,
+        IReadOnlyList<TypeSymbol> baseTypes,
+        Func<Type, string, int, bool?>? clrMemberProbe = null)
+    {
+        if (isStatic || isInitConstructor)
+            return null;
 
         foreach (var baseType in baseTypes)
         {
-            // 1. Eagerly-discovered bridged members (some CLR types populate their Methods list).
-            if (FindOverriddenClrBaseMember(methodName, arity, baseType) != null)
-                return true;
+            // 1. Bridged members (a [SharpyModule]-stamped module's types populate Methods).
+            var bridged = FindOverriddenClrBaseMember(methodName, arity, baseType);
+            if (bridged != null)
+                return new ClrOverrideTarget(baseType, bridged.IsAbstract);
 
-            // 2. CLR base types whose members are not eagerly discovered into the bridged symbol
-            //    (e.g. directly-imported base classes like SourceGenerator): probe via reflection
-            //    in the Discovery layer. The result is materialized onto CodeGenInfo; the emitter
-            //    never reflects.
+            // 2. CLR base types whose members are not bridged (a bare CLR-namespace import): probe
+            //    via reflection in the Discovery layer. The emitter never reflects.
             if (baseType.ClrType != null && clrMemberProbe != null
-                && clrMemberProbe(baseType.ClrType, methodName, arity))
-                return true;
+                && clrMemberProbe(baseType.ClrType, methodName, arity) is { } isAbstract)
+                return new ClrOverrideTarget(baseType, isAbstract);
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>
@@ -93,3 +121,6 @@ internal static class ClrBaseOverrideDetector
         return null;
     }
 }
+
+/// <summary>A CLR-base member overridden by a <c>.spy</c> method: its owning base and whether it is abstract.</summary>
+internal readonly record struct ClrOverrideTarget(TypeSymbol Owner, bool IsAbstract);

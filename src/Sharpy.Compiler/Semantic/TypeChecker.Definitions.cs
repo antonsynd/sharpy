@@ -432,18 +432,23 @@ internal partial class TypeChecker
         if (_currentClass != null && !_currentMethodIsOverride && currentClassBaseType != null)
         {
             var (baseMethod, baseOwner) = FindMethodInHierarchy(currentClassBaseType, functionDef.Name);
-            // A member declared by a CLR-backed base is overridden implicitly (#1122): the
-            // requirement defers to that decision, so whether the import route bridged the base's
-            // members (a [SharpyModule]-stamped module) or left them to reflection (a bare CLR
-            // namespace) does not decide whether the same override is refused. Whether a CLR-base
-            // override should instead REQUIRE @override is the open convention question #2138.
-            bool isImplicitClrOverride = baseMethod != null
-                && (baseOwner?.ClrType != null || baseMethod.ClrMethodName != null)
-                && IsImplicitClrBaseOverride(functionDef);
-            if (baseMethod != null && !isImplicitClrOverride
-                && (baseMethod.IsVirtual || baseMethod.IsAbstract || baseMethod.IsOverride))
+            bool? baseIsAbstract = baseMethod != null
+                && (baseMethod.IsVirtual || baseMethod.IsAbstract || baseMethod.IsOverride)
+                    ? baseMethod.IsAbstract
+                    : null;
+
+            // A CLR base's members are read identically on every import route (#2138): a bare
+            // CLR-namespace import bridges none into the base's symbol, so the member is found by
+            // the one CLR-override decision instead — @override is required either way.
+            if (baseMethod == null && FindClrOverrideTarget(functionDef) is { } clrTarget)
             {
-                var methodKind = baseMethod.IsAbstract ? "an abstract" : "a virtual";
+                baseIsAbstract = clrTarget.IsAbstract;
+                baseOwner = clrTarget.Owner;
+            }
+
+            if (baseIsAbstract is { } isAbstract)
+            {
+                var methodKind = isAbstract ? "an abstract" : "a virtual";
                 AddError(
                     $"Method '{functionDef.Name}' overrides {methodKind} method in base class '{baseOwner?.Name ?? currentClassBaseType.Name}' and requires the @override decorator",
                     functionDef.LineStart,
@@ -494,7 +499,15 @@ internal partial class TypeChecker
                 }
             }
 
-            if (baseMethod == null)
+            // A CLR base whose members are not bridged (a bare CLR-namespace import) is read through
+            // the one CLR-override decision (#2138): `compare` finds `Comparer<T>.Compare`.
+            bool overridesClrMember = baseMethod == null && FindClrOverrideTarget(functionDef) != null;
+
+            if (overridesClrMember)
+            {
+                // Accepted: the method overrides an abstract/virtual CLR-base member.
+            }
+            else if (baseMethod == null)
             {
                 // No matching method in base class or interfaces
                 AddError(
@@ -924,23 +937,12 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Detects whether an instance method overrides an abstract/virtual member of a CLR-backed
-    /// base type (#1122) and records the fact in <see cref="SemanticBinding"/> so code generation
-    /// emits the <c>override</c> modifier. Detection is Pythonic — no <c>@override</c> decorator is
-    /// required; for a CLR-abstract member an override is the only legal meaning, and for a
-    /// CLR-virtual member Python same-name semantics (Axiom 2) mean the method overrides.
+    /// Records that an instance method overrides an abstract/virtual member of a CLR-backed base
+    /// type (#1122) in <see cref="SemanticBinding"/>, so code generation emits the <c>override</c>
+    /// modifier from the same decision the override rule read (<see cref="FindClrOverrideTarget"/>).
+    /// Since #2138 such a method must carry <c>@override</c> — <see cref="ValidateOverrideRequirements"/>
+    /// refuses the omission — so for an accepted program the fact and the decorator coincide.
     /// </summary>
-    /// <remarks>
-    /// Scope guard (D2): fires only for class instance methods whose base chain contains a
-    /// CLR-backed type, and only when the matched base member is declared by that CLR base
-    /// (<see cref="TypeSymbol.ClrType"/> != null, or the bridged member carries
-    /// <see cref="FunctionSymbol.ClrMethodName"/>). Pure-Sharpy hierarchies keep today's
-    /// decorator-driven override behavior. Matching is conservative: instance methods only
-    /// (not static, not <c>__init__</c>), by Sharpy-facing name plus parameter arity (excluding
-    /// the implicit <c>self</c>/<c>cls</c> receiver), and the base member must be abstract or
-    /// virtual. Sealed base members are not tracked on bridged symbols (only IsVirtual/IsAbstract
-    /// are), so a rare override of a sealed CLR member relies on the C# compiler to reject it.
-    /// </remarks>
     private void ProcessClrOverrideMetadata(FunctionDef functionDef)
     {
         // Class instance methods only (not module-level/nested functions, structs, or interfaces).
@@ -955,20 +957,28 @@ internal partial class TypeChecker
         if (currentSymbol == null)
             return;
 
-        if (!currentSymbol.IsOverride && IsImplicitClrBaseOverride(functionDef))
+        if (FindClrOverrideTarget(functionDef) != null)
             SemanticBinding.MarkOverridesClrBaseMember(currentSymbol);
     }
 
     /// <summary>
-    /// Whether <paramref name="functionDef"/>, a method of the current class, overrides an
-    /// abstract/virtual member of a CLR-backed base implicitly (#1122) — the one decision read by
-    /// both <see cref="ProcessClrOverrideMetadata"/> (emit <c>override</c>) and
-    /// <see cref="ValidateOverrideRequirements"/> (no <c>@override</c> required).
+    /// The abstract/virtual CLR-base member <paramref name="functionDef"/>, a method of the current
+    /// class, overrides, or <c>null</c> — the one decision read by both
+    /// <see cref="ValidateOverrideRequirements"/> (#2138: <c>@override</c> required, and accepted,
+    /// on every import route) and <see cref="ProcessClrOverrideMetadata"/> (emit <c>override</c>).
     /// </summary>
-    private bool IsImplicitClrBaseOverride(FunctionDef functionDef)
+    /// <remarks>
+    /// Matching is conservative: class instance methods only (not static, not <c>__init__</c>), by
+    /// Sharpy-facing name plus parameter arity (excluding the implicit <c>self</c>/<c>cls</c>
+    /// receiver), and the base member must be abstract or virtual and declared by a CLR-backed base.
+    /// A bridged base (a <c>[SharpyModule]</c>-stamped module's type) is read from its Methods; an
+    /// unbridged one (a bare CLR-namespace import) by reflection through the one forward name rule
+    /// (<see cref="Discovery.ClrTypeHelper.FindOverridableClrMember"/>).
+    /// </remarks>
+    private ClrOverrideTarget? FindClrOverrideTarget(FunctionDef functionDef)
     {
         if (_currentClass is not { TypeKind: TypeKind.Class })
-            return false;
+            return null;
 
         bool isStatic = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
             || functionDef.Parameters.Length == 0
@@ -981,14 +991,13 @@ internal partial class TypeChecker
 
         var baseTypes = TypeHierarchyService.GetAllBaseTypes(_currentClass, SemanticBinding);
 
-        return ClrBaseOverrideDetector.ShouldEmitClrOverride(
+        return ClrBaseOverrideDetector.FindClrOverrideTarget(
             functionDef.Name,
             isStatic,
             isInitConstructor: functionDef.Name == DunderNames.Init,
-            isAlreadyOverride: false,
             arity,
             baseTypes,
-            clrMemberProbe: Discovery.ClrTypeHelper.HasOverridableClrMember);
+            clrMemberProbe: Discovery.ClrTypeHelper.FindOverridableClrMember);
     }
 
     /// <summary>

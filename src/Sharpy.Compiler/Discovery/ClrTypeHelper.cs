@@ -357,27 +357,29 @@ internal static class ClrTypeHelper
         return result;
     }
 
-    // Caches (CLR type, Sharpy member name, arity) -> whether an overridable member matches.
-    private static readonly ConcurrentDictionary<(Type, string, int), bool> _overridableMemberCache = new();
+    // Caches (CLR type, Sharpy member name, arity) -> the matching overridable member's kind
+    // (true = abstract, false = virtual), or null when none matches.
+    private static readonly ConcurrentDictionary<(Type, string, int), bool?> _overridableMemberCache = new();
 
     /// <summary>
-    /// Returns true when <paramref name="clrType"/> exposes an abstract or virtual (non-sealed)
-    /// instance method whose reverse-mangled Sharpy name equals <paramref name="sharpyMethodName"/>
-    /// and whose parameter count equals <paramref name="arity"/> (#1122). Used by the TypeChecker to
-    /// decide whether a <c>.spy</c> method overrides a CLR-base member for directly-imported base
-    /// classes (e.g. <c>SourceGenerator</c>) whose members are not eagerly discovered into the
-    /// bridged <see cref="TypeSymbol"/>. Reflection lives here (Discovery), never in the emitter
-    /// (#974); the decision is materialized onto <c>CodeGenInfo</c> for code generation to read.
+    /// Finds an abstract or virtual (non-sealed) instance method of <paramref name="clrType"/> named
+    /// by the one forward member rule from <paramref name="sharpyMethodName"/>
+    /// (<c>NameMangling.ToPascalCase</c>, R-CG: <c>compare</c> → <c>Compare</c>) whose parameter count
+    /// equals <paramref name="arity"/>, and returns whether it is abstract (<c>true</c>) or virtual
+    /// (<c>false</c>); <c>null</c> when none matches (#1122, #2138). The TypeChecker's override rule
+    /// reads it for a CLR base whose members are not bridged into its <see cref="TypeSymbol"/> (a
+    /// bare CLR-namespace import). Reflection lives here (Discovery), never in the emitter (#974).
     /// Members declared on <see cref="object"/> are excluded — those (ToString/Equals/GetHashCode)
     /// are handled by the dunder-override path.
     /// </summary>
-    internal static bool HasOverridableClrMember(Type clrType, string sharpyMethodName, int arity)
+    internal static bool? FindOverridableClrMember(Type clrType, string sharpyMethodName, int arity)
     {
         var key = (clrType, sharpyMethodName, arity);
         if (_overridableMemberCache.TryGetValue(key, out var cached))
             return cached;
 
-        var result = false;
+        bool? result = null;
+        var clrName = NameMangler.ToPascalCase(sharpyMethodName).TrimStart('@');
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
         foreach (var method in clrType.GetMethods(flags))
         {
@@ -389,9 +391,9 @@ internal static class ClrTypeHelper
                 continue;
             if (method.GetParameters().Length != arity)
                 continue;
-            if (NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method) == sharpyMethodName)
+            if (method.Name == clrName)
             {
-                result = true;
+                result = method.IsAbstract;
                 break;
             }
         }
