@@ -432,7 +432,15 @@ internal partial class TypeChecker
         if (_currentClass != null && !_currentMethodIsOverride && currentClassBaseType != null)
         {
             var (baseMethod, baseOwner) = FindMethodInHierarchy(currentClassBaseType, functionDef.Name);
-            if (baseMethod != null && (baseMethod.IsVirtual || baseMethod.IsAbstract || baseMethod.IsOverride))
+            // A member declared by a CLR-backed base is overridden implicitly (#1122): the
+            // requirement defers to that decision, so whether the import route bridged the base's
+            // members (a [SharpyModule]-stamped module) or left them to reflection (a bare CLR
+            // namespace) does not decide whether the same override is refused.
+            bool isImplicitClrOverride = baseMethod != null
+                && (baseOwner?.ClrType != null || baseMethod.ClrMethodName != null)
+                && IsImplicitClrBaseOverride(functionDef);
+            if (baseMethod != null && !isImplicitClrOverride
+                && (baseMethod.IsVirtual || baseMethod.IsAbstract || baseMethod.IsOverride))
             {
                 var methodKind = baseMethod.IsAbstract ? "an abstract" : "a virtual";
                 AddError(
@@ -946,6 +954,21 @@ internal partial class TypeChecker
         if (currentSymbol == null)
             return;
 
+        if (!currentSymbol.IsOverride && IsImplicitClrBaseOverride(functionDef))
+            SemanticBinding.MarkOverridesClrBaseMember(currentSymbol);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="functionDef"/>, a method of the current class, overrides an
+    /// abstract/virtual member of a CLR-backed base implicitly (#1122) — the one decision read by
+    /// both <see cref="ProcessClrOverrideMetadata"/> (emit <c>override</c>) and
+    /// <see cref="ValidateOverrideRequirements"/> (no <c>@override</c> required).
+    /// </summary>
+    private bool IsImplicitClrBaseOverride(FunctionDef functionDef)
+    {
+        if (_currentClass is not { TypeKind: TypeKind.Class })
+            return false;
+
         bool isStatic = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
             || functionDef.Parameters.Length == 0
             || functionDef.Parameters[0].Name != PythonNames.Self;
@@ -957,17 +980,14 @@ internal partial class TypeChecker
 
         var baseTypes = TypeHierarchyService.GetAllBaseTypes(_currentClass, SemanticBinding);
 
-        if (ClrBaseOverrideDetector.ShouldEmitClrOverride(
-                currentSymbol.Name,
-                isStatic,
-                isInitConstructor: functionDef.Name == DunderNames.Init,
-                isAlreadyOverride: currentSymbol.IsOverride,
-                arity,
-                baseTypes,
-                clrMemberProbe: Discovery.ClrTypeHelper.HasOverridableClrMember))
-        {
-            SemanticBinding.MarkOverridesClrBaseMember(currentSymbol);
-        }
+        return ClrBaseOverrideDetector.ShouldEmitClrOverride(
+            functionDef.Name,
+            isStatic,
+            isInitConstructor: functionDef.Name == DunderNames.Init,
+            isAlreadyOverride: false,
+            arity,
+            baseTypes,
+            clrMemberProbe: Discovery.ClrTypeHelper.HasOverridableClrMember);
     }
 
     /// <summary>
