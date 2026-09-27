@@ -6,7 +6,8 @@
 > agent definitions under `.claude/agents/` carry the parts that apply to them.
 > **Companions:** [gap-discovery-contracts.md](gap-discovery-contracts.md) (the standing class
 > harnesses and their ratchet), [spy0908-policy.md](spy0908-policy.md) (SPY0908 is a net, not an
-> error channel).
+> error channel), [python-fidelity-scope.md](python-fidelity-scope.md) (which Python surfaces are
+> compared and filed as bugs, and which divergences are deviation-ledger rows).
 
 Every item below is a rule, the incident that taught it, and the **mechanical check** — what to
 run and what result is red. A verifier that cannot name the check it ran has not applied the
@@ -226,3 +227,67 @@ defect that was a renamed parameter.
 *Check:* every agent prompt in the round contains the block; the lead's `git diff --stat` after
 each wave matches the wave's declared scope. Red = an agent prompt without the block, or a
 working-tree delta nobody claims.
+
+## 10. File by class, label at creation
+
+A defect found outside the task's own contract is filed **by class**, never by cell, and every
+issue a round creates carries its **lane** and **reach** labels when it is created. Three cases:
+
+- **Inside the contract** (a cell of the plan's own matrix): it is the plan's work — fix it at the
+  seam and add the cell to the matrix; no issue.
+- **Outside the contract, lane `silent-wrong` / `ice` / `false-refusal` / `missing-refusal` /
+  `runtime-throw`, and `reach:program`**: look for the class's open tracker first
+  (`gh issue list --label class-tracker --state open`, the round charter §3, the plan's Defect
+  Class table). If one exists, post the cell there as a comment. If none exists, file ONE issue
+  that names the contract and carries a cell table; later cells join it as comments.
+- **Lane `message` / `tooling`, or `reach:probe`, or a DEVIATION-by-default surface
+  ([python-fidelity-scope.md](python-fidelity-scope.md))**: a comment on the class tracker, or a
+  `docs/deviations.yaml` row — never a new issue.
+
+Implementers and auditors do not run `gh issue create` themselves: they append to the round's
+**findings ledger** (`<scratchpad>/findings-ledger.md`, one line per cell: cell · program ·
+observed · expected @ sha · lane · reach · candidate class · found-by), and the lead files once per
+wave after de-duplicating against the ledger, the plan's table and the open trackers. The
+**sibling-cell prober** has a budget: the plan's matrix plus at most two axis changes; its findings
+are one issue per class with every failing cell listed, never one issue per cell.
+
+Labels (created once with `build_tools/ensure_issue_labels.sh`): `lane:silent-wrong`, `lane:ice`,
+`lane:false-refusal`, `lane:missing-refusal`, `lane:runtime-throw`, `lane:message`, `lane:tooling`;
+`reach:program` (an ordinary program a Python programmer would write hits it), `reach:probe`
+(needs an escaped spelling, a wrong-annotation probe, or a `python3` message diff to notice);
+`class-tracker` on the one issue per class.
+
+*Why:* 2026-09-06 → 09-26: 323 issues filed — 149 by verify rounds, 100 by implementers, 59 at
+batching, 11 by standing sweeps, 1 from usage; 130 were siblings of a class already in flight and
+112 pre-existing cells outside it; three cells were filed twice within 48 hours by parallel lanes;
+the open count went 61 → 189 in six days under one plan while its closures waited on verification.
+The filing rate was set by the instruments' aperture ("file every sibling, never fold"; "change
+axis when the cells agree", with no stop) — not by the compiler getting worse: 9 of the 323 were
+regressions, all caught within two days.
+
+*Check:* every issue created in a round has a `lane:` and a `reach:` label and either carries a
+cell table (it IS the tracker) or names its tracker in its first line. Red = a cell-only issue whose
+class already has an open tracker; an unlabeled issue; a `gh issue create` run by a lane agent; a
+prober report with more than two axis changes or one issue per cell.
+
+## 11. One group per plan; generators before hand matrices
+
+A plan implements **one non-chore group** of the charter and lands on **one gate**. Chores may
+ride along only when they touch no seam the group touches. A group that changes printed output or
+emitted layout (snapshot churn) is always alone. A plan whose Defect Class matrix has two or more
+axes with three or more values each, or whose group is a **residue** of an earlier group (a second
+suffix: P11b, P14c), builds a **generative or differential harness** over the matrix as its FIRST
+task and uses its allowlist as the ratchet; a hand-written matrix test is allowed only for the axis
+the generator cannot enumerate, and the plan says which axis that is.
+
+*Why:* plan-0ca7b7 bundled six groups (42 tasks, four gates); its planning, implementation and
+verification filed 89 issues in two days against zero closures, and the verify round needed eight
+fix lanes and thirty worktrees. The format engine took six sub-plans of hand matrices (P11 → P11f,
+31 issues), each finding the next axis, and converged only once `FormatSpecDifferentialTests`
+generated the cells (allowlist 0 rows). Module layout had no generator and recurred in every round
+from 2026-09-03 to 09-26.
+
+*Check:* `/verify-plan` Dimension 9 grades scope and convergence; `/implement-plan` refuses a
+multi-group plan without an explicit override; every round report states `filed / closed` and the
+open count per lane. Red = a second non-chore group in a plan, an output- or layout-changing phase
+sharing a gate, or a residue group without a generator task.

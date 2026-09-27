@@ -41,6 +41,8 @@ Each of these exists because violating it has crashed sessions or destroyed work
 10. **Every active diagnostic code needs a `DiagnosticExplanations` entry** (`Diagnostics/DiagnosticExplanations.cs`, guarded by `DiagnosticExplanationsTests`).
 11. **Fix the class, not the cell** — name the violated contract and the cell matrix; an issue's repro list is a symptom report, not a test plan. Contract and standard cures: [docs/design/verification-contract.md](docs/design/verification-contract.md) §1, harnesses: [gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md).
 12. **Guards are falsifiable** — mutation-test every new test/guard/harness (break the guarded thing → red, restore → green, both recorded in the commit body); the exemption is never the subject; absence assertions need a positive control; refusals are verified by direction against the prior commit (`run`, not `emit`). [verification-contract.md](docs/design/verification-contract.md) §2–§3.
+13. **One group per plan, one gate** — chores ride along only when seam-free; a group that changes printed output or emitted layout lands alone; a residue group (P11b, P14c) or a ≥2-axis × ≥3-value matrix builds a generative/differential harness FIRST and drains its allowlist, never another hand matrix. [verification-contract.md](docs/design/verification-contract.md) §11.
+14. **File by class, label at creation** — a cell outside the task's contract is a comment on its class tracker or ONE class issue with a cell table, labeled `lane:*` + `reach:*`; lane agents append to the findings ledger and never `gh issue create`, the lead files per wave; the sibling-cell prober's budget is the matrix plus two axis changes; a divergence on a DEVIATION-by-default Python surface is a `docs/deviations.yaml` row, not an issue. [verification-contract.md](docs/design/verification-contract.md) §10, [python-fidelity-scope.md](docs/design/python-fidelity-scope.md).
 
 ## Axioms
 
@@ -129,6 +131,8 @@ dotnet test --filter "DisplayName~test_name"                          # By test 
 **Programmatic tests** inherit `IntegrationTestBase` and assert on `CompileAndExecute(source)` (`result.Success`, `result.StandardOutput`). Multi-file tests use `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()` then `Compile()`).
 
 **Gap-discovery sweeps** are standing conformance harnesses that hunt whole defect classes (contracts and roster: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md); run via `/gap-analysis`). They **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite; every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — stale entries fail); allowlists must trend to empty. Never add an entry without an issue reference; never close a member bug by patching one cell — enforce the class contract. Allowlist rows citing closed issues are gated by `build_tools/check_allowlist_issue_state.sh`.
+
+**Python-fidelity scope:** which Python surfaces are compared and filed as bugs, and which divergences are `docs/deviations.yaml` rows by default (message text beyond the type name, which operand a refusal names, any surface the table does not list), is fixed by [docs/design/python-fidelity-scope.md](docs/design/python-fidelity-scope.md); promotion is an owner ruling at `/batch-issues`.
 
 **Spec blocks** are gated by `build_tools/check_spec_blocks.sh` (every fenced Sharpy block in the language spec must compile or carry a marker).
 
