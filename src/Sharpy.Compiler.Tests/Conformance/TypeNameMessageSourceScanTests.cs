@@ -47,20 +47,16 @@ public class TypeNameMessageSourceScanTests
     /// Authority + identity + bug-throw + exempt candidates at landing (measured). Re-measure —
     /// never adjust to pass — when a sanctioned site is added or removed, and say why in the commit.
     /// 8 → 10 when the scan learned <c>.ToString()</c> on a Type receiver and the per-TFM parse:
-    /// PyFormat.PyClassRepr's own <c>type.ToString()</c> (authority) and the TypedLoadContract row
-    /// of <see cref="Exemptions"/> (pending; 9 once that row is dropped).
+    /// PyFormat.PyClassRepr's own <c>type.ToString()</c> (authority) and a pending TypedLoadContract
+    /// exemption; 10 → 9 when TypedLoadContract.MissingFieldMessage routed through PyTypeName (#2099).
     /// </summary>
-    private const int ExpectedSanctionedCandidates = 10;
+    private const int ExpectedSanctionedCandidates = 9;
 
     /// <summary>
     /// Sites that spell a CLR type name into text on purpose: (repository-relative path, the
     /// candidate's code, why + issue). Empty at landing.
     /// </summary>
-    private static readonly (string Path, string Code, string Reason)[] Exemptions =
-    [
-        // routed by the stdlib lane (refs #2099)
-        ("src/Sharpy.Stdlib/TypedLoadContract.cs", "target.Name", "routed by the stdlib lane (refs #2099)"),
-    ];
+    private static readonly (string Path, string Code, string Reason)[] Exemptions = [];
 
     /// <summary>
     /// The preprocessor symbols each target framework compiles Core and Stdlib under — the
