@@ -316,8 +316,8 @@ overload_resolution.md::8ea322663a  # SPY0353 first #1952
 overload_resolution.md::9c88e1a396  # SPY0220 first #1952
 overload_resolution.md::b4729efa50  # SPY0220 first #1952
 overload_resolution.md::e5437cb11f  # SPY0220 first #1952
-parameter_modifiers.md::4579cd7cd3  # SPY0204 first #1952
-parameter_modifiers.md::b8922611be  # SPY0600 first #1952
+parameter_modifiers.md::4579cd7cd3  # SPY0204 first #2145
+parameter_modifiers.md::b8922611be  # SPY0600 first #2144
 partial_application.md::2625b8a12d  # SPY0343 first #1952
 partial_application.md::4560aa456d  # SPY0131 first #1952
 partial_application.md::4eebfbb667  # SPY0200 first #1952
@@ -470,7 +470,7 @@ unittest.md::6eebbd151e  # SPY0200 first #1952
 unittest.md::9f701ad433  # SPY0200 first #1952
 unittest.md::b2994e6e1a  # SPY0200 first #1952
 unittest.md::ca895c8300  # SPY0203 first #1952
-variable_scoping.md::d7d337bec9  # SPY0200 first #1952
+variable_scoping.md::d7d337bec9  # SPY0200 first #2144
 walrus_operator.md::10c0b894cd  # SPY0100 first #1952
 walrus_operator.md::23d4574ab6  # SPY0340 first #1952
 walrus_operator.md::246ab314ee  # SPY0600 first #1952
