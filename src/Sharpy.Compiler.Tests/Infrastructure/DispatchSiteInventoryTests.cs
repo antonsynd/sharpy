@@ -241,6 +241,18 @@ public class DispatchSiteInventoryTests
         // Parser internals
         ["Parser/Parser.cs::Parser.DelSteerFor"] = "refusal-net:FileBasedIntegrationTests",
         ["Parser/AstDumper.cs::AstDumper.DumpComprehensionClause"] = "refusal-net:FileBasedIntegrationTests",
+        // P21a (#1974): the `let` target-shape refusal. Arms admit exactly the binding shapes (a name,
+        // a tuple of targets, a starred or sole-spread name); the default arm IS the refusal
+        // (SPY0107 at the offending element). The refusal matrix in LetStatementParserTests asserts
+        // code and @line:col for member, index, self-member, call, tuple-element and annotated
+        // targets (per-guard mutation 742849c21 M18: default arm bypassed -> 7 red).
+        ["Parser/Parser.Definitions.cs::Parser.RefuseNonNameLetTarget"] = "refusal-net:LetStatementParserTests",
+        // P21a (#1974): the one type-body statement classifier (class/struct/interface/union). Its
+        // `let` arms refuse with SPY0340 and are netted by LetPositionRefusalTests (exactly one
+        // diagnostic per host x spelling). The default arm is NOT a contractual ignore — executable
+        // statements still fall through to the emitter's SPY0510 ICE — so the row is a refusal-net
+        // for the arms that exist, and the default's remaining gap is TODO(#2148) at the site.
+        ["Semantic/Validation/TypeBodyStatementValidator.cs::TypeBodyStatementValidator.ClassifyTypeBodyStatement"] = "refusal-net:LetPositionRefusalTests",
         // Import resolution
         ["Semantic/ImportResolver.ModuleLoading.cs::ImportResolver.ResolveModuleImports"] = "refusal-net:FileBasedIntegrationTests",
         // Package resolution
@@ -397,6 +409,11 @@ public class DispatchSiteInventoryTests
         ["Sharpy.Lsp/Handlers/SemanticTokensHandler.cs::SharpySemanticTokensHandler.CollectStatementTokens"] = "guarded-by:SemanticTokensDispatchTotalityTests",
         ["Sharpy.Lsp/Handlers/SemanticTokensHandler.cs::SharpySemanticTokensHandler.CollectExpressionTokens"] = "guarded-by:SemanticTokensDispatchTotalityTests",
         ["Sharpy.Lsp/Handlers/SemanticTokensHandler.cs::SharpySemanticTokensHandler.CollectComprehensionClauseTokens"] = "guarded-by:SemanticTokensDispatchTotalityTests",
+        // P21a (#1974): declaration tokens under a `let` target. Arms mirror the shapes the parser
+        // admits (RefuseNonNameLetTarget: name, tuple, star, sole spread); the default arm is
+        // unreachable from the parser and falls back to the keywordless expression walk. Netted by
+        // SemanticTokensTests' let region (name, annotated, starred and nested-tuple targets).
+        ["Sharpy.Lsp/Handlers/SemanticTokensHandler.cs::SharpySemanticTokensHandler.CollectLetTargetTokens"] = "refusal-net:SemanticTokensTests",
         ["Sharpy.Lsp/Handlers/CodeLensHandler.cs::SharpyCodeLensHandler.Handle"] = "guarded-by:CodeLensDocumentLinkDispatchTotalityTests",
         ["Sharpy.Lsp/Handlers/DocumentSymbolHandler.cs::SharpyDocumentSymbolHandler.ConvertStatement"] = "guarded-by:DocumentSymbolDispatchTotalityTests",
         ["Sharpy.Lsp/Handlers/DocumentSymbolHandler.cs::SharpyDocumentSymbolHandler.ConvertClassMember"] = "guarded-by:DocumentSymbolDispatchTotalityTests",
