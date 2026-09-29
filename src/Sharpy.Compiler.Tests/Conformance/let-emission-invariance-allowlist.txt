@@ -1,0 +1,19 @@
+# let-emission invariance allowlist (ratchet ledger) — LetEmissionInvarianceTests.
+#
+# One fixture stem per line (the FileBasedIntegrationTests name, e.g. `basics/hello_world`),
+# followed by ` # #<issue> <reason>`. A single-file fixture whose `let` twin (let prefixed at every
+# function-scope store the checker records as Declares, and every function-scope non-const
+# annotated declaration) emits C# that differs from the original fails the suite UNLESS its stem
+# is listed here. A listed stem whose twin is identical again also fails: delete the line when
+# the issue is fixed.
+#
+# The contract (#1974 Stage 1, Design Decision 1): a declaring store and its `let` twin reach the
+# same emitter arm, so the emitted C# is byte-identical. A difference means the emitter decided
+# something from a fact other than TargetBinding — a finding, never a relaxation.
+#
+# Rules for adding an entry:
+#   1. It MUST cite a filed GitHub issue that explains the difference.
+#   2. It MUST correspond to a real measured difference — never allowlist speculatively.
+#
+# Ships EMPTY. DO NOT DELETE THIS FILE: its presence arms the ratchet, and the sweep throws if it
+# is missing.
