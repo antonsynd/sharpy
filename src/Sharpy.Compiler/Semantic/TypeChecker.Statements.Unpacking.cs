@@ -122,7 +122,7 @@ internal partial class TypeChecker
             }
 
             var restType = hasStar
-                ? StarRestElementType(tupleType, targetsBefore, targetsAfter, targets[starIndex], position)
+                ? StarRestElementType(tupleType, targetsBefore, targetsAfter, targets[starIndex], position, introduces)
                 : SemanticType.Unknown;
             for (int i = 0; i < targets.Length; i++)
             {
@@ -176,7 +176,7 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType StarRestElementType(
         TupleType source, int targetsBefore, int targetsAfter,
-        Expression starTarget, UnpackingPosition position)
+        Expression starTarget, UnpackingPosition position, bool introduces)
     {
         var restTypes = new List<SemanticType>();
         for (int ri = targetsBefore; ri < source.ElementTypes.Count - targetsAfter; ri++)
@@ -191,8 +191,14 @@ internal partial class TypeChecker
         if (starTarget is StarExpression { Operand: Identifier starId })
         {
             restName = starId.Name;
-            var predecessor = (_symbolTable.Lookup(starId.Name, searchParents: false)
-                ?? _symbolTable.Lookup(starId.Name, searchParents: true)) as VariableSymbol;
+            // In an assignment the starred leaf is a statement store like any other leaf, so its
+            // slot is the binding StatementStorePredecessor gives it — none for a `let` or a refused
+            // const (#1974). The positional introducers (for / with / comprehension) keep the
+            // name-directed slot they had.
+            var predecessor = position == UnpackingPosition.Assignment
+                ? StatementStorePredecessor(starId.Name, introduces).Predecessor
+                : (_symbolTable.Lookup(starId.Name, searchParents: false)
+                    ?? _symbolTable.Lookup(starId.Name, searchParents: true)) as VariableSymbol;
             if (predecessor != null
                 && DeclaredBindingType(predecessor) is GenericType
                 { Name: BuiltinNames.List, TypeArguments: { Count: > 0 } declaredArgs })
@@ -232,7 +238,18 @@ internal partial class TypeChecker
     {
         switch (target)
         {
+            case StarExpression { Operand: Identifier starId } starExpr when position == UnpackingPosition.Assignment:
+                // The starred leaf of an ASSIGNMENT is a statement store like every other leaf: it
+                // writes through to an existing binding, is refused on a const and on a bare class
+                // attribute, and is fresh under `let` (#1974, #2149). It used to always declare, so
+                // `a, *rest = …` over a module `rest` left the module binding untouched.
+                var starBound = BindAssignmentUnpackingIdentifier(
+                    starId, elemType, siblings, perElement, introduces, starLeaf: starExpr);
+                _semanticInfo.SetExpressionType(starExpr, starBound ?? elemType);
+                break;
+
             case StarExpression { Operand: Identifier starId } starExpr:
+                // A positional introducer's starred leaf (for / with / comprehension) is fresh.
                 DefineUnpackingSymbol(starId, elemType, TargetBindingKind.Declares, predecessor: null);
                 _semanticInfo.SetExpressionType(starExpr, elemType);
                 break;
@@ -268,29 +285,68 @@ internal partial class TypeChecker
     /// refusal of a store that reaches a <c>const</c>, come from
     /// <see cref="StatementStorePredecessor"/> — before it, a star store to a const crashed
     /// (SPY0909 "already defined" in the same scope, CS0131 through an outer const) instead of
-    /// reporting SPY0225 (#1974).
+    /// reporting SPY0225 (#1974). It binds the starred leaf too (<paramref name="starLeaf"/>), whose
+    /// fresh type is the derived <c>list[T]</c> and whose write-through value is checked against the
+    /// existing binding's declared type. A bare store to a class attribute is refused by name
+    /// (SPY0606, R-Y) exactly as the flat tuple binder refuses it — this binder is reached by every
+    /// star-path leaf and every nested tuple leaf, which had no such refusal (#2149).
     /// </summary>
-    private void BindAssignmentUnpackingIdentifier(
+    /// <returns>The bound type, or null when the store was refused.</returns>
+    private SemanticType? BindAssignmentUnpackingIdentifier(
         Identifier id, SemanticType elemType,
-        ImmutableArray<Expression> siblings, IReadOnlyList<SemanticType>? perElement, bool introduces)
+        ImmutableArray<Expression> siblings, IReadOnlyList<SemanticType>? perElement, bool introduces,
+        StarExpression? starLeaf = null)
     {
+        if (!introduces)
+        {
+            if (TryRefuseBareClassAttributeStore(
+                    id.Name, id, BareStoreForm.TupleElement, id.LineStart, id.ColumnStart, id.Span))
+            {
+                return null;
+            }
+
+            RecordModuleAccessCrossingClassMember(id.Name, id);
+        }
+
+        // A hoisted def/class of the name in this scope: a duplicate definition (SPY0204), as the
+        // single-name store reports it — Scope.Define would otherwise throw (SPY0909, #1974).
+        if (TryReportNonVariableRedefinition(id.Name, id.LineStart, id.ColumnStart, id.Span))
+            return null;
+
         var store = StatementStorePredecessor(id.Name, introduces);
         if (store.RefusedConstant != null)
         {
             ReportStatementStoreToConstant(id.Name, introduces, " in tuple unpacking",
                 id.LineStart, id.ColumnStart, id.Span);
-            return;
+            return null;
         }
 
         var predecessor = store.Predecessor;
 
-        var boundType = predecessor != null
-            ? DeclaredBindingType(predecessor)
-            : NonStarTargetType(siblings, id, perElement, elemType);
+        SemanticType boundType;
+        if (predecessor != null)
+        {
+            boundType = DeclaredBindingType(predecessor);
+
+            // The starred leaf's list was never checked against a slot (the star's middle values
+            // are checked slot-free), so a write-through store checks it here, at the seam.
+            if (starLeaf != null
+                && boundType is not UnknownType && elemType is not UnknownType
+                && !IsAssignable(elemType, boundType)
+                && !CheckStore(StorePosition.TupleElement, null, elemType, boundType, starLeaf, starLeaf.Span))
+            {
+                return null;
+            }
+        }
+        else
+        {
+            boundType = starLeaf != null ? elemType : NonStarTargetType(siblings, id, perElement, elemType);
+        }
 
         DefineUnpackingSymbol(id, boundType,
             predecessor != null ? TargetBindingKind.Rebinds : TargetBindingKind.Declares,
             predecessor);
+        return boundType;
     }
 
     /// <summary>Defines (or rebinds) one unpacking-target identifier symbol and records its facts.</summary>

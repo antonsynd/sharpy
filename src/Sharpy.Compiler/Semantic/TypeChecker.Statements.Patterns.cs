@@ -1652,6 +1652,15 @@ internal partial class TypeChecker
                 if (!introduces)
                     RecordModuleAccessCrossingClassMember(tupleTargetId.Name, tupleTargetId);
 
+                // A hoisted def/class of the name in this scope makes the element a duplicate
+                // definition (SPY0204), exactly as the single-name store reports it — Scope.Define
+                // would otherwise throw (SPY0909, #1974 Design Decision 3).
+                if (TryReportNonVariableRedefinition(tupleTargetId.Name,
+                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, tupleTargetId.Span))
+                {
+                    continue;
+                }
+
                 // The one introduce-vs-write-through decision (#1974).
                 var store = StatementStorePredecessor(tupleTargetId.Name, introduces);
                 if (store.RefusedConstant != null)

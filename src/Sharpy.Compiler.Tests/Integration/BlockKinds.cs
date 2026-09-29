@@ -306,17 +306,6 @@ internal static class BlockKinds
     }
 
     /// <summary>
-    /// The same-scope-def entries (<see cref="DefIce"/>): a tuple, star or star-leaf store over a
-    /// nested <c>def</c> of the same name crashes (SPY0909 "Symbol 'x' is already defined in this
-    /// scope") where the single-name spellings report SPY0204 — the tuple and star binders never
-    /// ask <c>TryReportNonVariableRedefinition</c>. Measured red in every kind.
-    /// </summary>
-    private const string DefIce = "#1974 (P21a: tuple/star binders over a same-scope def crash SPY0909 instead of SPY0204)";
-
-    /// <summary>The star-leaf entries: see the roster summary.</summary>
-    private const string StarLeaf = "#1974 (P21a: the star leaf never writes through — BindUnpackingLeaf's star arm has no predecessor lookup or const refusal)";
-
-    /// <summary>
     /// Ratcheted known-red cells (verification-contract §1: an allowlist entry cites an issue and is
     /// deleted when fixed). The #1560 cells have been empty since the 2026-08-27 round: <c>for-else</c>/<c>while-else</c>
     /// bodies are type-checked (#1659) and their UseBeforeAssign cells flipped to
@@ -330,50 +319,14 @@ internal static class BlockKinds
     /// binder's included — is refused SPY0225.
     /// </para>
     /// <para>
-    /// The star-LEAF entries are red-first (#1974, P21a): when the predecessor's name is the STARRED
-    /// target (<c>y, *x = e</c>, flat or nested), the star arm of <c>BindUnpackingLeaf</c> records
-    /// <c>Declares</c> with no predecessor lookup. A bare store therefore never writes through (the
-    /// predecessor keeps its value — silent wrong) and is never refused by a const (an outer const:
-    /// no SPY0225; a same-scope const: SPY0909 "already defined", as for the <c>let</c> spellings).
-    /// Each entry is a "*" kind, measured red in EVERY applicable kind. All drain when the star arm
-    /// asks <c>StatementStorePredecessor</c>; the roster must end empty.
+    /// The star-leaf and same-scope-def entries (#1974, P21a) drained when the starred leaf of an
+    /// assignment went through the same seam as every other leaf (<c>BindUnpackingLeaf</c> →
+    /// <c>BindAssignmentUnpackingIdentifier</c> → <c>StatementStorePredecessor</c>) and every leaf
+    /// binder asked <c>TryReportNonVariableRedefinition</c> (SPY0204).
     /// </para>
     /// </summary>
-
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
-        [("*", "BindingLaw/bare-star-leaf/same-scope")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/enclosing-block")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/enclosing-function")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/module-variable")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/module-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/enclosing-function-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-star-leaf/same-scope-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/same-scope")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-block")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-function")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/module-variable")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/module-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-function-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-nested-star-leaf/same-scope-const")] = StarLeaf,
-        [("*", "BindingLaw/let-star-leaf/same-scope-const")] = StarLeaf,
-        [("*", "BindingLaw/let-nested-star-leaf/same-scope-const")] = StarLeaf,
-        [("*", "BindingLaw/bare-tuple/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/let-tuple/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/bare-star/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/let-star/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/bare-star-leaf/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/let-star-leaf/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/bare-nested-star-leaf/same-scope-def")] = DefIce,
-        [("*", "BindingLaw/let-nested-star-leaf/same-scope-def")] = DefIce,
-        [("*", "BindingLawRecorded/bare-star-leaf/same-scope")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-star-leaf/enclosing-block")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-star-leaf/enclosing-function")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-star-leaf/module-variable")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-nested-star-leaf/same-scope")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-nested-star-leaf/enclosing-block")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-nested-star-leaf/enclosing-function")] = StarLeaf,
-        [("*", "BindingLawRecorded/bare-nested-star-leaf/module-variable")] = StarLeaf,
     };
 
     /// <summary>

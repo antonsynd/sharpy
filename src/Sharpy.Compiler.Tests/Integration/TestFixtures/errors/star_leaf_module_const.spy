@@ -1,0 +1,8 @@
+# #1974 (P21a): a bare starred leaf that reaches a module const is refused SPY0225 like every other
+# leaf. It crashed at base (SPY0908) and then ran silently. Positive control:
+# basics/star_leaf_writes_through.spy writes through to a module variable.
+const TAIL: list[int] = [1]
+
+def main():
+    first, *TAIL = [5, 6]
+    print(first)

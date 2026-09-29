@@ -1,0 +1,2 @@
+SPY0225: Cannot reassign constant variable 'TAIL' in tuple unpacking @7:13
+!count 1

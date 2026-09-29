@@ -1,0 +1,12 @@
+# #2149 (R-Y): a bare starred leaf naming a class attribute inside a method is refused SPY0606, as
+# the flat tuple element already is. Before, it declared a local silently. Positive control:
+# `let head, *count = ...` is the explicit new local (LetIntroduceSeamTests).
+class C:
+    count: list[int] = []
+
+    def m(self) -> int:
+        head, *count = [1, 2, 3]
+        return head
+
+def main():
+    print(C().m())

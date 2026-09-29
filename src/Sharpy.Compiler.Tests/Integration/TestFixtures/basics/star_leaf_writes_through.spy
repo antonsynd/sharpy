@@ -1,0 +1,25 @@
+# #1974 (P21a): the starred leaf of an assignment is a statement store like every other leaf. A
+# bare store writes through to the existing binding — a module variable (read back through a
+# module function) and a local in an enclosing scope — and a `let` store is fresh. Before the fix
+# the starred leaf always declared a new local, so the module and outer bindings were never
+# written.
+rest: list[int] = [0]
+
+def show() -> None:
+    print(rest)
+
+def main():
+    first, *rest = [1, 2, 3]
+    print(first)
+    show()
+
+    tail: list[int] = [9]
+    if True:
+        head, *tail = [4, 5, 6]
+        print(head, tail)
+    print(tail)
+
+    if True:
+        let h, *tail = [7, 8]
+        print(h, tail)
+    print(tail)

@@ -1,0 +1,19 @@
+# #1974 (P21a, Design Decision 3): a tuple or starred leaf naming a hoisted def of the same scope
+# is a duplicate definition (SPY0204) in every binder — the flat tuple binder and the star-path
+# binder — exactly as the single-name store `helper = 5` reports it. Both crashed with SPY0909
+# "already defined" before.
+def flat() -> None:
+    def helper() -> int:
+        return 1
+    helper, other = 5, 6
+    print(other)
+
+def starred() -> None:
+    def tail() -> int:
+        return 1
+    first, *tail = [5, 6]
+    print(first)
+
+def main():
+    flat()
+    starred()
