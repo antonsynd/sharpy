@@ -964,9 +964,17 @@ public record ModifiedArgument : Expression
 
     /// <summary>
     /// The type annotation for an inline out declaration (e.g., int in out value: int).
-    /// Must be non-null when InlineName is set.
+    /// Non-null when InlineName is set, except for <c>out let value</c> (<see cref="IsLet"/>),
+    /// whose type flows from the callee's parameter.
     /// </summary>
     public TypeAnnotation? InlineType { get; init; }
+
+    /// <summary>
+    /// True for the inline declaration <c>out let x</c> / <c>out let x: T</c> (#1974, R-BM): the
+    /// name is always a fresh binding, never a write-through to an existing one. Set only by the
+    /// parser, which refuses <c>let</c> after <c>ref</c> / <c>in</c>.
+    /// </summary>
+    public bool IsLet { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -979,9 +987,12 @@ public record ModifiedArgument : Expression
         {
             Debug.Assert(Modifier == ParameterModifier.Out,
                 "ModifiedArgument: inline declarations are only valid with Out modifier");
-            Debug.Assert(InlineType != null,
-                "ModifiedArgument: InlineType must be set when InlineName is set");
+            Debug.Assert(InlineType != null || IsLet,
+                "ModifiedArgument: InlineType must be set when InlineName is set (except for 'out let')");
         }
+
+        Debug.Assert(!IsLet || (Modifier == ParameterModifier.Out && InlineName != null),
+            "ModifiedArgument: 'let' is only valid as the inline declaration 'out let x'");
     }
 
     /// <inheritdoc/>

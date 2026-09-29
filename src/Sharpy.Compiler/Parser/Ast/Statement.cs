@@ -65,12 +65,25 @@ public record Assignment : Statement
     public Expression Value { get; init; } = null!;
     public AssignmentOperator Operator { get; init; } = AssignmentOperator.Assign;
 
+    /// <summary>
+    /// True when the statement was spelled with the <c>let</c> keyword — <c>let x = e</c>,
+    /// <c>let a, b = e</c>, <c>let first, *rest = e</c> — so every name under <see cref="Target"/>
+    /// introduces a fresh block-scoped binding (#1974). Set only by the parser. The unannotated
+    /// <c>let</c> is deliberately an <see cref="Assignment"/>, not a <see cref="VariableDeclaration"/>:
+    /// it then reaches the same declaring code-generation arm as a keywordless <c>x = e</c> that
+    /// introduces a name, so the two emit identical C#. When set, <see cref="Node.LineStart"/> /
+    /// <see cref="Node.ColumnStart"/> are the <c>let</c> token's; the target keeps its own position.
+    /// </summary>
+    public bool IsLet { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
         Debug.Assert(Target != null, "Assignment.Target cannot be null");
         Debug.Assert(Value != null, "Assignment.Value cannot be null");
+        Debug.Assert(!IsLet || Operator == AssignmentOperator.Assign,
+            "Assignment: a let statement takes '=' only (the parser refuses an augmented operator)");
     }
 
     /// <inheritdoc/>
@@ -121,6 +134,18 @@ public record VariableDeclaration : Statement
     public TypeAnnotation? Type { get; init; }
     public Expression? InitialValue { get; init; }
     public bool IsConst { get; init; }
+
+    /// <summary>
+    /// True when the declaration was spelled <c>let x: T = e</c> (#1974). Set only by the parser.
+    /// A <c>let</c> declaration always has both a <see cref="Type"/> and an
+    /// <see cref="InitialValue"/> — the unannotated <c>let x = e</c> is an
+    /// <see cref="Assignment"/> with <see cref="Assignment.IsLet"/>, so a typeless <c>let</c>
+    /// declaration is unconstructible. When set, <see cref="Node.LineStart"/> /
+    /// <see cref="Node.ColumnStart"/> are the <c>let</c> token's (as <c>const</c> does) and
+    /// <see cref="NameLineStart"/> / <see cref="NameColumnStart"/> the name's.
+    /// </summary>
+    public bool IsLet { get; init; }
+
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
 
     /// <inheritdoc/>
@@ -128,6 +153,8 @@ public record VariableDeclaration : Statement
     {
         base.ValidateInvariants();
         Debug.Assert(!string.IsNullOrEmpty(Name), "VariableDeclaration.Name cannot be null or empty");
+        Debug.Assert(!IsLet || (!IsConst && InitialValue != null && Type != null),
+            "VariableDeclaration: a let declaration is never const and always has a type and an initializer");
     }
 
     /// <inheritdoc/>
