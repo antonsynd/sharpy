@@ -407,7 +407,6 @@ spread_operator.md::e5d8a121d4  # SPY0354 first #1952
 spread_operator.md::e8958ecbca  # SPY0200 first #1952
 spread_operator.md::f941071bcb  # SPY0200 first #1952
 spread_operator.md::fb9842596b  # SPY0200 first #1952
-statements.md::2f914a4ced  # SPY0103 first #1952
 string_literals.md::72c254d6de  # SPY0104 first #1952
 string_literals.md::e54aa52089  # SPY0103 first #1952
 string_operators.md::d7b437356b  # SPY0222 first #1952

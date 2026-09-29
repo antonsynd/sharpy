@@ -1,0 +1,12 @@
+# The shadowing example from docs/language_specification/statements.md ("Shadowing"), verbatim.
+# `let` inside the `if` block is a fresh block-local variable, so the outer `x` still prints 5
+# after the block. The write-through reading (a bare `x = 10`) would print 10 twice (#1974, P21a).
+
+def main() -> None:
+    let x = 5
+    if x > 0:
+        let x = 10          # New block-local 'x'; the outer 'x' is untouched
+        print(x)            # 10
+    print(x)                # 5
+    x = 7                   # Bare '=' writes through to the outer 'x'
+    print(x)                # 7

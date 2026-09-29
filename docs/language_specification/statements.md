@@ -39,64 +39,96 @@ def my_function() -> None:
 
 ## Variable Declaration and Assignment
 
-Variables in Sharpy must be declared and assigned in a single statement. There are three syntactic forms:
+A local variable is declared with `let`, a constant with `const`, and bare `=` assigns:
 
-| Form | Syntax | Type Determination |
-|------|--------|-------------------|
-| Explicit type | `x: int = 5` | Type annotation specifies type |
-| Inferred type | `x = 5` | Type inferred from initializer |
-| Explicit inference | `x: auto = 5` | Type inferred from initializer (explicit) |
+| Form | Syntax | Meaning |
+|------|--------|---------|
+| Inferred declaration | `let x = 5` | New local; type inferred from the initializer |
+| Annotated declaration | `let x: int = 5` | New local; type given by the annotation |
+| Constant | `const NAME[: T] = e` | Assign-once binding (see [Constants](#constants)) |
+| Assignment | `x = e` | Writes through to the nearest existing binding of `x` |
 
-**Form 1: Explicit Type Annotation**
-
-The type is explicitly specified:
+`let` always introduces a **fresh, mutable, block-scoped** binding. It takes an initializer
+(`let x: int` without one is SPY0104) and a name or a tuple of names as its target
+(`let a, b = 1, 2`, `let first, *rest = items`). A `let` of a name that is already bound — in the
+same block, an enclosing block, the enclosing function, or the module — is a new variable that
+shadows the old one for the rest of its block; it never assigns the old one. `let` is only allowed
+inside a function body (see [Module-Level Declaration Rules](#module-level-declaration-rules)).
 
 ```python
-count: int = 0
-name: str = "Alice"
-items: list[int] = [1, 2, 3]
-user: User | None = None
+def main() -> None:
+    let count = 0                  # Inferred as int
+    let name: str = "Alice"        # Annotated
+    let a, b = 1, 2                # Tuple target
+    let first, *rest = [1, 2, 3]   # Starred target
+    count = count + 1              # Bare '=' writes through to 'count'
+    print(count, name, a, b, first, rest)   # 1 Alice 1 2 1 [2, 3]
 ```
 
-**Form 2: Type Inference (Implicit)**
-
-The type is inferred from the initializer expression:
+**Shadowing.** Because `let` is always fresh, it is how a block introduces its own variable
+under a name that is already in use; bare `=` of that name inside the block would instead assign
+the outer variable:
 
 ```python
-count = 0              # Inferred as int
-name = "Alice"         # Inferred as str
-items = [1, 2, 3]      # Inferred as list[int]
-pi = 3.14159           # Inferred as float
+def main() -> None:
+    let x = 5
+    if x > 0:
+        let x = 10          # New block-local 'x'; the outer 'x' is untouched
+        print(x)            # 10
+    print(x)                # 5
+    x = 7                   # Bare '=' writes through to the outer 'x'
+    print(x)                # 7
 ```
 
-**Form 3: Type Inference (Explicit with `auto`)**
-
-The `auto` keyword explicitly requests type inference. This is functionally equivalent to Form 2 but makes the inference explicit:
+**Stage 1 transition (#1974).** Sharpy is moving to `let`-only declarations in stages. In Stage 1,
+which is the current language, the keywordless forms still declare: bare `x = e` on a name that is
+not yet bound declares it, and annotated `x: T = e` declares a new variable (shadowing any existing
+one), exactly as before `let` existed. Stage 2 (#1974) makes `let` required for a new local and
+makes bare `=` write-through only. The keywordless forms are shown below because Stage 1 code
+still uses them:
 
 ```python
-count: auto = 0        # Inferred as int
-name: auto = "Alice"   # Inferred as str
-items: auto = [1, 2, 3]  # Inferred as list[int]
+def main() -> None:
+    count: int = 0         # Annotated declaration (Stage 1)
+    name = "Alice"         # Bare '=' on a new name declares it (Stage 1)
+    items = [1, 2, 3]      # Inferred as list[int]
+    count = count + len(items)
+    print(count, name)     # 3 Alice
 ```
 
-**When to Use `auto`:**
-
-The `auto` keyword is primarily useful for variable shadowing, where you want to redeclare a variable with a different type:
+**`auto` (deprecated; use `let`).** `x: auto = e` is the Stage 1 spelling of `let x = e`; `auto`
+is retired in Stage 2 (#1974):
 
 ```python
-x: int = 5
-x = 10                 # Assignment to existing int variable
-x: str = "hello"       # Shadowing: new variable of type str
-x: auto = [1, 2, 3]    # Shadowing: new variable, type inferred as list[int]
+def main() -> None:
+    count: auto = 0          # Deprecated: write 'let count = 0'
+    items: auto = [1, 2, 3]  # Deprecated: write 'let items = [1, 2, 3]'
+    print(count, items)      # 0 [1, 2, 3]
 ```
 
 ## Module-Level Declaration Rules
 
-At module level (outside any function or class), variable declarations have additional constraints:
+At module level (outside any function or class), variable declarations have additional constraints.
+
+### `let` Is a Local Declaration
+
+`let` declares a local binding, so it is refused at module level (SPY0340, with the steer "module-scope
+bindings are `const`: use 'const NAME[: T] = ...'"). Module-scope bindings are `const`:
+
+<!-- spec-sweep: fragment -->
+```python
+let limit = 10          # ERROR (SPY0340): use 'const LIMIT = 10'
+const LIMIT = 10        # ✅ Module-scope binding
+```
+
+`let` is likewise refused in a class, struct or interface body (SPY0340, with the steer "declare a
+field as 'x: T = ...' or a constant as 'const X = ...'"), and in a union or enum body it is the
+body grammar's parser error.
 
 ### Type Annotation Required
 
-Module-level variables MUST have explicit type annotations:
+In Stage 1, annotated module-level variables are still accepted; Stage 2 (#1974) makes module scope
+`const`-only. Module-level variables MUST have explicit type annotations:
 
 ```python
 # ✅ Valid module-level declarations
@@ -146,13 +178,15 @@ timestamp: int = get_current_time()
 
 ### Inside Functions
 
-Inside functions (including `main()`), type inference works normally:
+Inside functions (including `main()`), `let` declares with type inference (and, in Stage 1, so
+does bare `=` on a new name):
 
 ```python
 def main():
-    x = 42              # ✅ OK - inferred as int
-    name = "hello"      # ✅ OK - inferred as str
-    result = compute()  # ✅ OK - inferred from return type
+    let x = 42              # ✅ OK - inferred as int
+    let result = compute()  # ✅ OK - inferred from return type
+    name = "hello"          # ✅ OK in Stage 1 - inferred as str
+    print(x, result, name)  # 42 42 hello
 ```
 
 ## Bare Declarations
@@ -193,25 +227,32 @@ class Person:
         self.age = age
 ```
 
-## No `let` or `var` Keywords
+## Declaration Keywords
 
-Sharpy does not use `let`, `var`, or similar keywords for variable declaration. The three forms above are the only ways to declare variables:
+Sharpy has two declaration keywords: `let` for a fresh, mutable, block-scoped local and `const` for
+an assign-once binding. There is no mutability axis — `var`, `val` and `let mut` are not Sharpy
+syntax:
 
 ```python
-# ❌ Invalid - these keywords don't exist in Sharpy
-let x = 5              # ERROR: unexpected 'let'
-var y = 10             # ERROR: unexpected 'var'
-val z = 15             # ERROR: unexpected 'val'
+def main() -> None:
+    let x = 5              # Fresh binding, type inferred
+    let y: int = 10        # Fresh binding, type explicit
+    const Z = 15           # Assign-once
+    x = x + y + Z          # Bare '=' writes through to 'x'
+    print(x)               # 30
+```
 
-# ✅ Valid
-x = 5                  # Type inferred
-y: int = 10            # Type explicit
-z: auto = 15           # Type inferred (explicit)
+<!-- spec-sweep: error SPY0103 -->
+```python
+def main() -> None:
+    var y = 10             # ERROR (SPY0103): 'var' is not a keyword
+    val z = 15             # ERROR (SPY0103): 'val' is not a keyword
 ```
 
 ## Constants
 
-Constants are declared with `const` and must have a compile-time constant initializer:
+Constants are declared with `const` and are assign-once. The initializer may be any expression: a
+compile-time constant lowers to C# `const`, anything else to `static readonly`:
 
 ```python
 # Module-level constants
@@ -219,6 +260,10 @@ const PI: float = 3.14159
 const MAX_SIZE: int = 1000
 const APP_NAME = "MyApp"       # Type inferred as str
 const DEBUG: bool = True
+const ANSWER: int = compute()  # Runtime initializer: emits 'static readonly'
+
+def main() -> None:
+    print(PI, MAX_SIZE, APP_NAME, DEBUG, ANSWER)   # 3.14159 1000 MyApp True 42
 ```
 
 **Class-Level Constants:**
@@ -261,4 +306,6 @@ X = 10                 # ERROR: cannot assign to constant
 ```
 
 *Implementation*
-- *✅ Native - Direct mapping to C# variable declarations and `const`.*
+- *✅ Native - Direct mapping to C# variable declarations and `const`. `let x = e` emits the same C#
+  local declaration as a Stage 1 keywordless declaration (`var x = e`, or the annotated type); a
+  `let` that shadows is versioned like an annotated shadow (`x_1`).*
