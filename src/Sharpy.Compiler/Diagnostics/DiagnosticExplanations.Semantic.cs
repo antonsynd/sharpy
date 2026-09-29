@@ -967,10 +967,18 @@ public static partial class DiagnosticExplanations
 
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
-        Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
-            "An executable statement (like a function call or expression) was found at module level. Only declarations (functions, classes, variables, imports) are allowed at module level. Executable code must be inside the main() function.",
-            "print(\"hello\")  # at module level\n\ndef main():\n    pass",
-            "Move executable code into the main() function:\ndef main():\n    print(\"hello\")");
+        Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Statement in a declaration-only position", "Semantic",
+            "A statement that is not a declaration was found where only declarations are allowed. "
+            + "At module level, only declarations (functions, classes, typed variables, constants, imports) "
+            + "are allowed; executable code (a function call, an expression, a bare assignment, control flow) "
+            + "must be inside the main() function. A `let` binding is local by definition, so it is refused "
+            + "both at module level, where module-scope bindings are `const`, and in a class, struct or "
+            + "interface body, where members are fields ('x: T = ...') or constants ('const X = ...').",
+            "let limit = 10  # at module level: a let binding is local\n\ndef main():\n    print(\"hello\")",
+            "Declare a module-scope binding with const, and move executable code into main():\n"
+            + "const LIMIT: int = 10\n\ndef main():\n    print(LIMIT)\n\n"
+            + "In a class body, declare a field or a constant instead of a let:\n"
+            + "class Counter:\n    count: int = 0\n    const STEP: int = 1");
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation, "Module-level variable without type annotation", "Semantic",
             "A variable at module level is missing its type annotation. Module-level variables must always have explicit type annotations.",

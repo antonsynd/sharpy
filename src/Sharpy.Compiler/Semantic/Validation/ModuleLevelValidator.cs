@@ -10,6 +10,8 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 1. Entry point files MUST have a main() function
 /// 2. Module-level variable declarations MUST have type annotations
 /// 3. No bare executable statements at module level
+/// 4. No <c>let</c> at module level — module scope is <c>const</c>-only (#1974, R-BL); the
+///    type-body twin of this refusal is <c>TypeBodyStatementValidator</c>
 ///
 /// This validator runs early in the pipeline (Order 50) to catch structural
 /// errors before other validators attempt to process invalid code.
@@ -18,6 +20,11 @@ internal class ModuleLevelValidator : SemanticValidatorBase
 {
     public override string Name => "ModuleLevelValidator";
     public override int Order => 50; // Very early, before signature validation (150)
+
+    /// <summary>The SPY0340 text for a module-level <c>let</c> — the R-BL steer to <c>const</c> (#1974).</summary>
+    internal const string ModuleLetMessage =
+        "`let` declares a local binding and is not allowed at module level; "
+        + "module-scope bindings are `const`: use 'const NAME[: T] = ...'";
 
     private ICompilerLogger _logger = NullLogger.Instance;
     private SemanticContext _context = null!;
@@ -32,6 +39,7 @@ internal class ModuleLevelValidator : SemanticValidatorBase
         bool hasEscapedMain = false;
         var executableStatements = new List<Statement>();
         var untypedVariables = new List<VariableDeclaration>();
+        var letStatements = new List<Statement>();
 
         // First pass: categorize all top-level statements
         foreach (var topLevel in module.Body)
@@ -67,6 +75,15 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                 case EventDef eventDef:
                     // Events are not allowed at module level — only inside class/struct/interface
                     executableStatements.Add(eventDef);
+                    break;
+
+                // `let` introduces a LOCAL binding; module scope is const-only (#1974, R-BL). Both
+                // shapes must be claimed before the arms below: the annotated `let x: T = e` would
+                // otherwise pass the VariableDeclaration arm as a valid module variable, and the bare
+                // `let x = e` would get the generic executable-statement text without the steer.
+                case Assignment { IsLet: true }:
+                case VariableDeclaration { IsLet: true }:
+                    letStatements.Add(stmt);
                     break;
 
                 case VariableDeclaration varDecl:
@@ -109,6 +126,16 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                 $"Top-level variable '{varDecl.Name}' requires a type annotation",
                 varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation,
                 span: varDecl.Span);
+        }
+
+        // A module-level `let` is refused under the same code as any other non-declaration
+        // statement at module level, with the ruled steer to `const` (R-BL).
+        foreach (var stmt in letStatements)
+        {
+            AddError(_context,
+                ModuleLetMessage,
+                stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement,
+                span: stmt.Span);
         }
 
         // Executable statements are never allowed at module level.
