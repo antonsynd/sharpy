@@ -740,6 +740,8 @@ public partial class Parser
             IsNameBacktickEscaped = name.IsNameBacktickEscaped,
             InlineType = inlineType,
             IsLet = true,
+            LetLine = letToken.Line,
+            LetColumn = letToken.Column,
             LineStart = modToken.Line,
             ColumnStart = modToken.Column,
             LineEnd = inlineType?.LineEnd ?? name.LineEnd,

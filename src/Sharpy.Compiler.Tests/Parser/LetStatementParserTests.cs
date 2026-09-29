@@ -267,6 +267,18 @@ public class LetStatementParserTests
     }
 
     [Fact]
+    public void OutLet_RecordsTheLetTokensOwnPosition()
+    {
+        // The statement start is the `out` token (col 3); the extra whitespace makes the `let`
+        // column (9) underivable from `out` or from the name (col 15), so only a recorded position
+        // can put a keyword highlight on it.
+        var arg = OnlyArgument("f(out   let   v)\n");
+        AssertAt(arg, 1, 3);
+        (arg.LetLine, arg.LetColumn).Should().Be((1, 9));
+        AssertName(arg.Argument, "v", 1, 15);
+    }
+
+    [Fact]
     public void OutLetBacktickedName_KeepsTheEscape()
     {
         var arg = OnlyArgument("f(out let `let`)\n");

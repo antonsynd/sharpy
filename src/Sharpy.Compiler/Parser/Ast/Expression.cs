@@ -976,6 +976,17 @@ public record ModifiedArgument : Expression
     /// </summary>
     public bool IsLet { get; init; }
 
+    /// <summary>
+    /// 1-based line of the <c>let</c> token when <see cref="IsLet"/> is set, else 0. Position-only
+    /// (like <see cref="Node.LineStart"/>, which is the modifier token's): the whitespace between
+    /// <c>out</c>, <c>let</c> and the name is arbitrary, so a consumer that highlights <c>let</c>
+    /// cannot derive it from the other positions.
+    /// </summary>
+    public int LetLine { get; init; }
+
+    /// <summary>1-based column of the <c>let</c> token when <see cref="IsLet"/> is set, else 0.</summary>
+    public int LetColumn { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
