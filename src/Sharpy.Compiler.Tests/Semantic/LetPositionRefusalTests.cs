@@ -15,8 +15,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// The <c>errors/let_*</c> fixtures are the file-based twins.
 /// </summary>
 /// <remarks>
-/// A union body is ranged separately: the union grammar admits only <c>case</c>, <c>def</c> and
-/// <c>pass</c>, so a <c>let</c> there is the parser's single refusal before semantic analysis runs.
+/// Union and enum bodies are ranged separately: their grammars admit only cases/methods and members,
+/// so a <c>let</c> there is the parser's single refusal before semantic analysis runs.
 /// </remarks>
 [Collection("HeavyCompilation")]
 public class LetPositionRefusalTests : IntegrationTestBase
@@ -97,6 +97,29 @@ public class LetPositionRefusalTests : IntegrationTestBase
         var diagnostic = result.RawDiagnostics[0];
         diagnostic.Code.Should().Be(DiagnosticCodes.Parser.ExpectedToken);
         diagnostic.Message.Should().Contain("Expected Case, got Let");
+        diagnostic.Line.Should().Be(3, "the diagnostic is at the `let` token");
+        diagnostic.Column.Should().Be(5, "the diagnostic is at the `let` token");
+    }
+
+    /// <summary>
+    /// The enum host: its grammar admits only members (<c>NAME = value</c>), so every <c>let</c>
+    /// spelling is the parser's ONE refusal at the <c>let</c> token — no SPY0340 and no recovery
+    /// cascade after it.
+    /// </summary>
+    [Theory]
+    [InlineData("let x = 5")]
+    [InlineData("let x: int = 5")]
+    [InlineData("let a, b = 1, 2")]
+    public void Let_InAnEnumBody_IsTheEnumGrammarsSingleRefusal(string letLine)
+    {
+        var result = CompileAndExecute($"enum E:\n    A = 1\n    {letLine}\n\ndef main():\n    print(1)\n");
+
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().ContainSingle(
+            $"an enum-body `let` is exactly one diagnostic of any severity; got: {Describe(result)}");
+        var diagnostic = result.RawDiagnostics[0];
+        diagnostic.Code.Should().Be(DiagnosticCodes.Parser.ExpectedIdentifier);
+        diagnostic.Message.Should().Contain("Expected identifier, got Let");
         diagnostic.Line.Should().Be(3, "the diagnostic is at the `let` token");
         diagnostic.Column.Should().Be(5, "the diagnostic is at the `let` token");
     }

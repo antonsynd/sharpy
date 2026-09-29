@@ -82,8 +82,9 @@ internal sealed class TypeBodyStatementValidator : ValidatingAstWalker
                 break;
 
             default:
-                // Members, nested declarations, and (for now) every other statement fall through
-                // untouched — see the class summary.
+                // Members and nested declarations fall through untouched, and so (for now) does
+                // every other statement — see the class summary.
+                // TODO(#2148): refuse the remaining executable statement kinds here.
                 break;
         }
     }

@@ -1,0 +1,9 @@
+# #1974: an enum body admits only members (NAME = value), so a `let` there is the enum grammar's
+# single refusal at the `let` token — never SPY0340 (semantic analysis does not run) and never a
+# recovery cascade. The member beside it is the positive control.
+enum Color:
+    RED = 1
+    let shade = 0
+
+def main():
+    print(1)
