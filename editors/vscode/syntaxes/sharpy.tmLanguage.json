@@ -185,7 +185,7 @@
         },
         {
           "name": "storage.type.sharpy",
-          "match": "\\b(type|const|auto)\\b"
+          "match": "\\b(type|const|auto|let)\\b"
         },
         {
           "name": "keyword.other.sharpy",
