@@ -15,6 +15,9 @@ There are three syntactic forms:
 The type is explicitly specified. This form can be used both at module level (static fields) and inside functions:
 
 ```python
+class User:
+    name: str = ""
+
 # Module level (static fields) - explicit type REQUIRED
 counter: int = 0
 config: str = "default"
@@ -70,17 +73,25 @@ def main():
 Sharpy allows variable declarations without initialization. The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600):
 
 ```spy
-def main() -> None:
+def choose(condition: bool) -> None:
     x: int
     if condition:
         x = 1
     else:
         x = 2
     print(x)  # OK — x is assigned on all paths
+```
 
+<!-- spec-sweep: error SPY0600 -->
+```spy
+def never_assigned() -> None:
     y: int
     print(y)  # ERROR SPY0600 — y is used before being assigned
+```
 
+<!-- spec-sweep: error SPY0600 -->
+```spy
+def one_path(condition: bool) -> None:
     z: int
     if condition:
         z = 1
@@ -132,18 +143,23 @@ def loop_else(items: list[int]) -> None:
         x = -1
     print(x)              # OK — the else body assigned x on the no-break path
 
-def deferred() -> None:
-    x: int
-    defer:
-        print(x)          # OK — runs at scope exit, after `x = 7`
-    x = 7
-
 def closures() -> None:
     x: int
     def inner() -> None:
         print(x)          # OK — inner() runs after `x = 3` below, not where it's defined
     x = 3
     inner()
+```
+
+`defer` is an experimental feature ([#1023](https://github.com/antonsynd/sharpy/issues/1023)); without `--enable-feature=defer` it is refused (SPY0331):
+
+<!-- spec-sweep: error SPY0331 -->
+```spy
+def deferred() -> None:
+    x: int
+    defer:
+        print(x)          # OK — runs at scope exit, after `x = 7`
+    x = 7
 ```
 
 <!-- spec-sweep: error SPY0600 -->
@@ -155,7 +171,13 @@ def never_assigned() -> None:
     inner()
 ```
 
+<!-- spec-sweep: error SPY0600 -->
 ```spy
+def risky(flag: bool) -> int:
+    if flag:
+        raise ValueError("boom")
+    return 1
+
 def handler_reads_try_body() -> None:
     y: int
     try:

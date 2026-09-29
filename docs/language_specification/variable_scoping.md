@@ -4,6 +4,7 @@
 
 Sharpy does not support Python's `global` or `nonlocal` keywords. This aligns with C# scoping semantics:
 
+<!-- spec-sweep: error SPY0134 -->
 ```python
 # ❌ Invalid - these keywords don't exist in Sharpy
 global x       # ERROR: unexpected 'global'
@@ -30,6 +31,9 @@ Sharpy uses C#-style block scoping: **all compound statement bodies introduce a 
 **Note on `try`/`except`/`else`/`finally`**: Variables declared in the `try` body are **not** visible in `except`, `else`, or `finally` handlers. If a variable must be accessible across all clauses, declare it before the `try` statement:
 
 ```python
+def risky_operation() -> int:
+    return int("42")
+
 result: int = 0
 try:
     result = risky_operation()
@@ -48,14 +52,26 @@ finally:
 The walrus operator (`:=`) assigns to the *containing scope*. In most cases this is the enclosing function or module. However, inside block-scoped constructs like comprehensions, the walrus variable is scoped to that block:
 
 ```python
-# Walrus in if-statement: variable persists in containing scope
-if (match := pattern.search(text)) is not None:
-    print(match)  # OK
-print(match)      # OK - walrus assigned in containing scope
+import re
 
-# Walrus in comprehension: variable is comprehension-local
-results = [y * 2 for x in items if (y := transform(x)) > 0]
-print(y)          # ERROR: 'y' does not exist in this scope
+def main() -> None:
+    pattern = re.compile("[0-9]+")
+    text = "order 66"
+    # Walrus in if-statement: variable persists in containing scope
+    if (m := pattern.search(text)) is not None:
+        print(m)  # OK
+    print(m)      # OK - walrus assigned in containing scope
+```
+
+```python
+def transform(v: int) -> int:
+    return v - 1
+
+def main() -> None:
+    items = [1, 2, 3]
+    # Walrus in comprehension: variable is comprehension-local
+    results = [y * 2 for x in items if (y := transform(x)) > 0]
+    print(y)          # ERROR: 'y' does not exist in this scope
 ```
 
 **Note:** This differs from Python 3.8+, where walrus in comprehensions leaks to the outer scope. In Sharpy, the syntactic boundary equals the semantic boundary—comprehension delimiters (`[...]`, `{...}`) which fully contain all variables declared within.
@@ -81,6 +97,12 @@ x = 0
 for i in range(5):      # 'i' is block-scoped
     x += i              # Modifies outer 'x'
 print(x)                # 10
+```
+
+<!-- spec-sweep: error SPY0200 -->
+```python
+for i in range(5):
+    print(i)
 print(i)                # ERROR: 'i' is block-scoped
 ```
 
@@ -116,6 +138,7 @@ def main():
 
 Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name`, or `ClassName.name` for a `const` or `@static` member. This matches Python's class-scope semantics. The rule is about **members**, not about the lines of the body in front of you: a field or property the class inherits, and a property the body declares, are members too and get the same treatment (see [Inherited members and properties](#inherited-members-and-properties-are-members-too)).
 
+<!-- spec-sweep: error SPY0606 -->
 ```python
 class Counter:
     count: int = 0
@@ -134,6 +157,7 @@ class Counter:
 instance field reached through the type name is a different error (SPY0290), so the diagnostic
 offers `ClassName.name` only when it compiles:
 
+<!-- spec-sweep: error SPY0606 -->
 ```python
 class Registry:
     @static
@@ -150,6 +174,7 @@ class Registry:
 A bare name in a class body is a member in every write position, so each is refused by name rather
 than silently declaring a local:
 
+<!-- spec-sweep: error SPY0606 -->
 ```python
 class Counter:
     count: int = 0
@@ -165,6 +190,7 @@ class Counter:
 A bare store to a class `const` says so, and offers only the shadowing local — a constant cannot be
 assigned through any spelling:
 
+<!-- spec-sweep: error SPY0606 -->
 ```python
 class C:
     const K: int = 1
@@ -199,6 +225,7 @@ sent looking for a declaration in the body in front of them. In C# a bare `v = 7
 writes the inherited field; in Python it declares a local; a Sharpy program that spells it is a
 mistake either way, and the typed shadowing local is still one annotation away:
 
+<!-- spec-sweep: error SPY0606 -->
 ```python
 class Base:
     v: int = 5
@@ -264,6 +291,7 @@ a bare use inside a method binds the **module** variable, exactly as Python does
 ```python
 # Simple assignment
 x = 10
+count = 1
 
 # Multiple assignment (unpacking)
 x, y = 10, 20

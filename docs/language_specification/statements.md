@@ -4,10 +4,37 @@
 
 Any expression can be a statement:
 
+<!-- spec-sweep: fragment -->
 ```python
 print("Hello")
 obj.method()
 list.append(item)
+```
+
+The examples in the rest of this page use these declarations:
+
+<!-- spec-sweep: prelude -->
+```python
+class User:
+    name: str = ""
+
+class Config:
+    debug: bool = False
+
+def load_config() -> Config:
+    return Config()
+
+def generate_data() -> list[int]:
+    return [1, 2, 3]
+
+def get_current_time() -> int:
+    return 0
+
+def compute() -> int:
+    return 42
+
+def my_function() -> None:
+    pass
 ```
 
 ## Variable Declaration and Assignment
@@ -77,7 +104,10 @@ counter: int = 0
 name: str = "default"
 items: list[int] = []
 data: Config | None = None
+```
 
+<!-- spec-sweep: fragment -->
+```python
 # ❌ Invalid - no type annotation at module level
 x = 42                  # ERROR: requires type annotation
 name = "hello"          # ERROR: requires type annotation
@@ -89,6 +119,7 @@ name = "hello"          # ERROR: requires type annotation
 
 Bare expression statements are not allowed at module level:
 
+<!-- spec-sweep: fragment -->
 ```python
 # ❌ NOT allowed at module level
 print("hello")          # ERROR: executable statement not allowed
@@ -129,15 +160,20 @@ def main():
 Sharpy allows variable declarations without initialization (bare declarations). The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600). See `variable_declaration.md` for details.
 
 ```spy
-x: int
-if condition:
-    x = 1
-else:
-    x = 2
-print(x)  # OK — assigned on all paths
+def choose(condition: bool) -> None:
+    x: int
+    if condition:
+        x = 1
+    else:
+        x = 2
+    print(x)  # OK — assigned on all paths
+```
 
-y: int
-print(y)  # ERROR SPY0600 — used before being assigned
+<!-- spec-sweep: error SPY0600 -->
+```spy
+def never_assigned() -> None:
+    y: int
+    print(y)  # ERROR SPY0600 — used before being assigned
 ```
 
 **Class and struct fields** can also be declared without initialization if they are assigned in `__init__`:
@@ -204,19 +240,21 @@ class HttpStatus:
     const NOT_FOUND: int = 404
     const INTERNAL_ERROR: int = 500
 
-# Access via class name (constants are implicitly static)
-print(Math.PI)           # 3.14159265358979
-print(HttpStatus.OK)     # 200
+def main() -> None:
+    # Access via class name (constants are implicitly static)
+    print(Math.PI)           # 3.14159265358979
+    print(HttpStatus.OK)     # 200
 
-# Cannot access via instance (they're static, not per-instance)
-m = Math()
-print(m.PI)              # Works but discouraged; prefer Math.PI
+    # Cannot access via instance (they're static, not per-instance)
+    m = Math()
+    print(m.PI)              # Works but discouraged; prefer Math.PI
 ```
 
 **Note:** There is no such thing as a per-instance constant. Use a read-only property (`property get`) with a backing field or `@final` field (if added in a future version) for per-instance immutability.
 
 Constants cannot be reassigned:
 
+<!-- spec-sweep: error SPY0225 -->
 ```python
 const X: int = 5
 X = 10                 # ERROR: cannot assign to constant

@@ -6,6 +6,7 @@ Sharpy supports pass-by-reference semantics for function parameters using space-
 
 ## Syntax
 
+<!-- spec-sweep: fragment -->
 ```python
 def function_name(param: ref T, param: out T, param: in T) -> ReturnType:
     ...
@@ -49,7 +50,7 @@ The `out` modifier designates an output-only parameter. The callee must assign a
 ```python
 def try_parse(s: str, result: out int) -> bool:
     """Try to parse a string as an integer."""
-    if s.is_digit():
+    if s.isdigit():
         result = int(s)
         return True
     result = 0  # Must assign even on failure path
@@ -72,6 +73,10 @@ if try_parse("42", out value):
 Variables can be declared inline at the call site:
 
 ```python
+def try_parse(s: str, result: out int) -> bool:
+    result = int(s) if s.isdigit() else 0
+    return s.isdigit()
+
 # Declare and assign in one statement
 if try_parse("42", out value: int):
     print(value)
@@ -90,15 +95,20 @@ struct LargeData:
     matrix: list[list[float]]
     metadata: dict[str, object]
 
+def compute_result(matrix: list[list[float]]) -> float:
+    return sum(sum(row) for row in matrix)
+
 def analyze(data: in LargeData) -> float:
     """Analyze data without copying the large struct."""
     # data.matrix = []  # ERROR: Cannot modify `in` parameter
     return compute_result(data.matrix)
 
-# Usage - `in` keyword optional at call site
-large = LargeData(...)
-result = analyze(large)       # OK: in keyword implied
-result = analyze(in large)    # OK: explicit in keyword
+def main() -> None:
+    # Usage - `in` keyword optional at call site
+    metadata: dict[str, object] = {}
+    large = LargeData([[1.0, 2.0], [3.0]], metadata)
+    result = analyze(large)       # OK: in keyword implied
+    result = analyze(in large)    # OK: explicit in keyword
 ```
 
 **Rules:**
@@ -111,12 +121,14 @@ result = analyze(in large)    # OK: explicit in keyword
 Parameter modifiers can be combined with nullable types:
 
 ```python
+_cache: dict[str, int?] = {}
+
 def try_get_value(key: str, value: out int?) -> bool:
     """Get a value that might be None."""
     if key in _cache:
         value = _cache[key]  # May be None
         return True
-    value = None
+    value = None()
     return False
 ```
 
@@ -140,6 +152,7 @@ def process(value: ref int):
 
 When declaring function types, parameter modifiers are part of the signature:
 
+<!-- spec-sweep: error SPY0104 -->
 ```python
 # Function type with ref parameter
 SwapFunc = (ref int, ref int) -> None
@@ -155,6 +168,7 @@ TryParseFunc = (str, out int) -> bool
 - `in` parameters cannot be reassigned (even to same value)
 - Lambda parameters cannot have modifiers (use regular functions)
 
+<!-- spec-sweep: error SPY0103 -->
 ```python
 # ❌ Invalid combinations
 def foo(values: ref int = 5): ...       # ERROR: ref with default
@@ -171,9 +185,10 @@ Sharpy parameter modifiers map directly to C# parameter modifiers:
 ```python
 from system import Int32
 
-# C# signature: bool Int32.TryParse(string s, out int result)
-if Int32.try_parse("42", out value: int):
-    print(value)
+def main() -> None:
+    # C# signature: bool Int32.TryParse(string s, out int result)
+    if Int32.try_parse("42", out value: int):
+        print(value)
 ```
 
 **Sharpy methods callable from C#:**
@@ -186,8 +201,12 @@ SharryModule.Swap(ref x, ref y);
 
 ## C# Emission
 
+<!-- spec-sweep: prelude -->
 ```python
 # Sharpy
+struct LargeStruct:
+    value: float
+
 def swap(a: ref int, b: ref int):
     temp = a
     a = b
@@ -226,6 +245,9 @@ public static float Calculate(in LargeStruct data)
 
 ```python
 # Sharpy
+x = 10
+y = 20
+large_data = LargeStruct(1.5)
 swap(ref x, ref y)
 try_parse("42", out value: int)
 calculate(in large_data)
