@@ -152,6 +152,7 @@ def process(value: ref int):
 
 When declaring function types, parameter modifiers are part of the signature:
 
+<!-- function types with parameter modifiers are not implemented yet: #2145 -->
 <!-- spec-sweep: error SPY0104 -->
 ```python
 # Function type with ref parameter
