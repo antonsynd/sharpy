@@ -9,7 +9,7 @@ The following are reserved keywords in Sharpy:
 | `and` | Boolean AND |
 | `as` | Aliasing for imports |
 | `assert` | Assertion statement |
-| `auto` | Inferred type for shadowing |
+| `auto` | Deprecated — use `let` (retired in Stage 2, #1974) |
 | `break` | Break statement for loops |
 | `case` | Pattern matching case |
 | `class` | Class declaration |
@@ -31,6 +31,7 @@ The following are reserved keywords in Sharpy:
 | `interface` | Interface declaration |
 | `is` | Identity comparison |
 | `lambda` | Lambda expression |
+| `let` | Fresh block-scoped binding (local variable declaration) |
 | `match` | Pattern matching |
 | `maybe` | Optional from nullable expressions |
 | `None` | None/null literal |
