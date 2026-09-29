@@ -7,6 +7,23 @@ public sealed class AstNormalizer : AstVisitor<Node>
 {
     public static readonly AstNormalizer Instance = new();
 
+    /// <summary>
+    /// Prefix of the exception <see cref="DefaultVisit"/> throws for a node type with no arm here.
+    /// Before it existed, the generic visitor's default returned <c>default!</c> — a silent
+    /// <see langword="null"/> in place of the node — so a missing arm surfaced far away (an NRE in
+    /// the unparser, or two nulls comparing equal in a round-trip property). The arm-coverage guard
+    /// (UnparserExhaustivenessTests.AllConcreteNodeTypesHaveAstNormalizerArms) matches this
+    /// prefix; reference it, never restate it.
+    /// </summary>
+    public const string NoArmSentinel = "AstNormalizer: no arm for node type";
+
+    /// <summary>
+    /// Every concrete node type has its own arm; reaching the default is a missing arm, and it is
+    /// reported loudly instead of returning <see langword="null"/>.
+    /// </summary>
+    public override Node DefaultVisit(Node node) =>
+        throw new InvalidOperationException($"{NoArmSentinel} {node?.GetType().Name ?? "<null>"}");
+
     public Module NormalizeModule(Module module) =>
         (Module)Visit(module);
 
@@ -121,6 +138,22 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitIndexAccess(IndexAccess node) =>
         Zero(node) with { Object = (Expression)Visit(node.Object), Index = (Expression)Visit(node.Index) };
 
+    public override Node VisitMultiAxisAccess(MultiAxisAccess node) =>
+        Zero(node) with
+        {
+            Object = (Expression)Visit(node.Object),
+            Dimensions = node.Dimensions.Select(d => (SubscriptDimension)Visit(d)).ToImmutableArray()
+        };
+
+    public override Node VisitSubscriptDimension(SubscriptDimension node) =>
+        Zero(node) with
+        {
+            Index = node.Index != null ? (Expression)Visit(node.Index) : null,
+            Start = node.Start != null ? (Expression)Visit(node.Start) : null,
+            Stop = node.Stop != null ? (Expression)Visit(node.Stop) : null,
+            Step = node.Step != null ? (Expression)Visit(node.Step) : null
+        };
+
     public override Node VisitSliceAccess(SliceAccess node) =>
         Zero(node) with
         {
@@ -190,6 +223,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitMaybeExpression(MaybeExpression node) =>
         Zero(node) with { Operand = (Expression)Visit(node.Operand) };
 
+    public override Node VisitQuestionMarkExpression(QuestionMarkExpression node) =>
+        Zero(node) with { Operand = (Expression)Visit(node.Operand) };
+
     public override Node VisitStarExpression(StarExpression node) =>
         Zero(node) with { Operand = (Expression)Visit(node.Operand) };
 
@@ -217,6 +253,13 @@ public sealed class AstNormalizer : AstVisitor<Node>
     #endregion
 
     #region Statements - Simple
+
+    public override Node VisitDecoratedStatement(DecoratedStatement node) =>
+        Zero(node) with
+        {
+            Decorators = NormalizeDecorators(node.Decorators),
+            Statement = (Statement)Visit(node.Statement)
+        };
 
     public override Node VisitExpressionStatement(ExpressionStatement node) =>
         Zero(node) with { Expression = (Expression)Visit(node.Expression) };
@@ -564,6 +607,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
 
     private ImmutableArray<ComprehensionClause> VisitClauses(ImmutableArray<ComprehensionClause> clauses) =>
         clauses.Select(c => (ComprehensionClause)Visit(c)).ToImmutableArray();
+
+    public override Node VisitTypeAnnotation(TypeAnnotation node) => NormalizeType(node)!;
 
     private static TypeAnnotation? NormalizeType(TypeAnnotation? type)
     {

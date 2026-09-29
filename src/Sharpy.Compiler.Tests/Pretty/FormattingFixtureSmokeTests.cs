@@ -63,4 +63,28 @@ public class FormattingFixtureSmokeTests
             exception.Should().BeNull($"fixture '{name}' should normalize and unparse without crashing");
         }
     }
+
+    /// <summary>
+    /// The shapes whose normalizer arm was missing (#1974 P21a gate red: the <c>let_declarations</c>
+    /// fixture's <c>@suppress</c>'d statement). Keywordless on purpose — the crash was never about
+    /// <c>let</c>: the normalizer returned null for a <c>DecoratedStatement</c> and the unparser
+    /// dereferenced it. Each source is normalized, unparsed, and re-parsed to the same normalized
+    /// tree, so a "fix" that returned a placeholder node would still be red.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    @suppress(SPY0451)\n    unused = 9\n")]
+    [InlineData("def main():\n    @suppress(SPY0451)\n    let unused = 9\n")]
+    [InlineData("def f(r: Result[int, str]) -> Result[int, str]:\n    return Ok(r? + 1)\n")]
+    public void FormerlyUnarmedShapes_NormalizeUnparseAndReparseEqual(string source)
+    {
+        var module = new SharpyParser(new SharpyLexer(source).TokenizeAll()).ParseModule();
+        var normalized = AstNormalizer.Instance.NormalizeModule(module);
+
+        var text = Unparser.Unparse(normalized);
+
+        var reparsed = new SharpyParser(new SharpyLexer(text).TokenizeAll()).ParseModule();
+        StructuralEqualityComparer.Instance
+            .Equals(normalized, AstNormalizer.Instance.NormalizeModule(reparsed))
+            .Should().BeTrue($"the unparsed text must re-parse to the same tree:\n{text}");
+    }
 }

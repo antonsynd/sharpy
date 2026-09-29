@@ -110,40 +110,84 @@ public class UnparserExhaustivenessTests
             + "Add a switch arm in StructuralEqualityComparer.Equals for each listed node type.");
     }
 
+    /// <summary>
+    /// Mechanical arm-coverage guard for <see cref="AstNormalizer"/>, built like
+    /// <see cref="AllConcreteNodeTypesHaveComparerArms"/>. The fact it replaces was vacuous twice
+    /// over: a default instance already has <c>LineStart == 0</c>, so "the normalizer zeroed the
+    /// position" held with no arm at all; and a missing arm returned <see langword="null"/> (the
+    /// generic visitor's <c>default!</c>), whose <c>.LineStart</c> threw into a bare
+    /// <c>catch</c> that skipped the type. DecoratedStatement, MultiAxisAccess, SubscriptDimension,
+    /// QuestionMarkExpression and TypeAnnotation all had no arm and all passed (#1974 P21a gate:
+    /// a <c>@suppress</c>-decorated statement in a Formatting fixture crashed the smoke test).
+    /// Now: each instance gets a NON-zero position first; a missing arm is the loud
+    /// <see cref="AstNormalizer.NoArmSentinel"/> naming the instance's OWN type (a sentinel for a
+    /// degenerate <c>null!</c> child names "&lt;null&gt;" and proves the arm ran); a
+    /// <see langword="null"/> result is a missing arm; a surviving position is a failure.
+    /// </summary>
     [Fact]
-    public void AllConcreteNodeTypesAreCoveredByAstNormalizer()
+    public void AllConcreteNodeTypesHaveAstNormalizerArms()
     {
         var nodeType = typeof(Node);
-        var assembly = nodeType.Assembly;
-
-        var concreteNodeTypes = assembly.GetTypes()
+        var concreteNodeTypes = nodeType.Assembly.GetTypes()
             .Where(t => t.IsSubclassOf(nodeType) && !t.IsAbstract)
             .OrderBy(t => t.Name)
             .ToList();
 
+        // The scan below can only SEE a missing arm through the loud default: without it, the
+        // generic visitor's default walks the default instance's children, meets a degenerate
+        // null! member and throws an NRE that is indistinguishable from "the arm ran" (measured:
+        // with the pre-fix null default restored, this fact stayed green). So the loud default is
+        // itself asserted — removing it is red here, not a silent return to vacuity.
+        var defaultVisit = typeof(AstNormalizer).GetMethod(nameof(AstNormalizer.DefaultVisit), new[] { typeof(Node) })!;
+        Assert.True(defaultVisit.DeclaringType == typeof(AstNormalizer),
+            "AstNormalizer must override DefaultVisit to throw AstNormalizer.NoArmSentinel; the generic "
+            + "default returns null and hides every missing arm from this guard.");
+
         var normalizer = AstNormalizer.Instance;
-        var failures = new List<string>();
+        var missingArm = new List<string>();
+        var notZeroed = new List<string>();
+        var visited = 0;
 
         foreach (var type in concreteNodeTypes)
         {
+            var instance = CreateDefaultInstance(type);
+            if (instance == null)
+                continue;
+
+            // Plant a position the arm must erase, so "zeroed" is an observation, not the default.
+            typeof(Node).GetProperty(nameof(Node.LineStart))!.SetValue(instance, 7);
+            typeof(Node).GetProperty(nameof(Node.ColumnStart))!.SetValue(instance, 3);
+            visited++;
+
+            Node? normalized;
             try
             {
-                var instance = CreateDefaultInstance(type);
-                if (instance == null)
-                    continue;
-
-                var normalized = normalizer.Visit(instance);
-                if (normalized.LineStart != 0 || normalized.ColumnStart != 0)
-                    failures.Add(type.Name);
+                normalized = normalizer.Visit(instance);
+            }
+            catch (InvalidOperationException ex)
+                when (ex.Message == $"{AstNormalizer.NoArmSentinel} {type.Name}")
+            {
+                missingArm.Add(type.Name);
+                continue;
             }
             catch
             {
-                // Can't construct — skip
+                // The arm exists and ran into a degenerate null! member of the default instance.
+                continue;
             }
+
+            if (normalized is null)
+                missingArm.Add($"{type.Name} (returned null)");
+            else if (normalized.LineStart != 0 || normalized.ColumnStart != 0)
+                notZeroed.Add(type.Name);
         }
 
-        Assert.True(failures.Count == 0,
-            $"AstNormalizer did not zero positions for: {string.Join(", ", failures)}");
+        // Positive control: the universe is real, not an empty loop that passes vacuously.
+        Assert.True(visited > 50, $"only {visited} node types were constructible — the guard is not measuring anything");
+        Assert.True(missingArm.Count == 0,
+            $"AstNormalizer has no arm for: {string.Join(", ", missingArm)}. Add a Visit override for each listed node type.");
+        Assert.True(notZeroed.Count == 0,
+            $"AstNormalizer did not zero positions for: {string.Join(", ", notZeroed)}");
     }
 
     private static Node? CreateDefaultInstance(Type type)
