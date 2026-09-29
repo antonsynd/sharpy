@@ -107,7 +107,9 @@ internal static class BlockKinds
     /// The spelling axis. <c>let-tuple</c> (literal RHS) reaches the inline binder of
     /// <c>CheckTupleUnpackingElements</c>; <c>let-star</c> reaches <c>BindAssignmentUnpackingIdentifier</c>
     /// — the two tuple binder sites besides the identifier arm, so a seam that gates only one arm
-    /// leaves the other spelling red.
+    /// leaves the other spelling red. <c>bare-star</c> is the write-through control on the star
+    /// binder: its store to a const must be refused SPY0225 like the other binders' (lead ruling,
+    /// P21a: in contract — the star binder had no const refusal and crashed instead).
     /// </summary>
     public static readonly Spelling[] Spellings =
     {
@@ -117,6 +119,7 @@ internal static class BlockKinds
         new("let-annotated", WritesThrough: false, IsLet: true, (n, v) => $"let {n}: int = {v}"),
         new("let-tuple", WritesThrough: false, IsLet: true, (n, v) => $"let {n}, y = {v}, 3"),
         new("let-star", WritesThrough: false, IsLet: true, (n, v) => $"let {n}, *rest = [{v}, 3]"),
+        new("bare-star", WritesThrough: true, IsLet: false, (n, v) => $"{n}, *rest = [{v}, 3]"),
     };
 
     public enum PredecessorScope { None, SameScope, EnclosingBlock, EnclosingFunction, Module }
@@ -133,6 +136,7 @@ internal static class BlockKinds
         new("module-variable", PredecessorScope.Module, IsConst: false),
         new("module-const", PredecessorScope.Module, IsConst: true),
         new("same-scope-const", PredecessorScope.SameScope, IsConst: true),
+        new("enclosing-function-const", PredecessorScope.EnclosingFunction, IsConst: true),
     };
 
     /// <summary>The law: the store writes through iff its spelling does AND a binding exists to write to.</summary>
@@ -276,12 +280,20 @@ internal static class BlockKinds
     /// checker ignores <c>IsLet</c> until P21a Phase 2 Task 1 lands the introduce seam, so an
     /// unannotated, tuple or starred <c>let</c> over an existing binding writes through (prints the
     /// predecessor-overwriting value, records <c>Rebinds</c>) or, over a module const, is refused
-    /// SPY0225. Each entry is a "*" kind: measured red in EVERY applicable kind. The starred
-    /// <c>let</c> over a same-scope const is an SPY0909 ICE, not SPY0225 — its binder has no const
-    /// refusal (findings ledger). All drain when the seam lands; the roster must end empty.
+    /// SPY0225. Each entry is a "*" kind: measured red in EVERY applicable kind.
+    /// </para>
+    /// <para>
+    /// The star-binder const entries (<see cref="StarConst"/>) are a second reason, ruled in the
+    /// P21a contract by the lead: <c>BindAssignmentUnpackingIdentifier</c> has no const refusal, so a
+    /// star store that reaches a const crashes instead of reporting SPY0225 — SPY0909 "already
+    /// defined" in the same scope, SPY0908 (CS0131) through a write-through to an outer const. The
+    /// seam that unifies the three binders carries the refusal. All entries drain when the seam
+    /// lands; the roster must end empty.
     /// </para>
     /// </summary>
     private const string LetSeam = "#1974 (P21a Phase 2 Task 1: the checker ignores IsLet)";
+
+    private const string StarConst = "#1974 (P21a Phase 2 Task 1: the star binder has no const refusal — SPY0909/SPY0908 ICE, not SPY0225)";
 
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
@@ -300,7 +312,13 @@ internal static class BlockKinds
         [("*", "BindingLaw/let-star/enclosing-function")] = LetSeam,
         [("*", "BindingLaw/let-star/module-variable")] = LetSeam,
         [("*", "BindingLaw/let-star/module-const")] = LetSeam,
-        [("*", "BindingLaw/let-star/same-scope-const")] = LetSeam + " — SPY0909 ICE: the star binder has no const refusal",
+        [("*", "BindingLaw/let/enclosing-function-const")] = LetSeam,
+        [("*", "BindingLaw/let-tuple/enclosing-function-const")] = LetSeam,
+        [("*", "BindingLaw/let-star/enclosing-function-const")] = LetSeam,
+        [("*", "BindingLaw/let-star/same-scope-const")] = StarConst,
+        [("*", "BindingLaw/bare-star/same-scope-const")] = StarConst,
+        [("*", "BindingLaw/bare-star/module-const")] = StarConst,
+        [("*", "BindingLaw/bare-star/enclosing-function-const")] = StarConst,
         [("*", "BindingLawRecorded/let/same-scope")] = LetSeam,
         [("*", "BindingLawRecorded/let/enclosing-block")] = LetSeam,
         [("*", "BindingLawRecorded/let/enclosing-function")] = LetSeam,
@@ -316,6 +334,9 @@ internal static class BlockKinds
         [("*", "BindingLawRecorded/let-star/enclosing-function")] = LetSeam,
         [("*", "BindingLawRecorded/let-star/module-variable")] = LetSeam,
         [("*", "BindingLawRecorded/let-star/module-const")] = LetSeam,
+        [("*", "BindingLawRecorded/let/enclosing-function-const")] = LetSeam,
+        [("*", "BindingLawRecorded/let-tuple/enclosing-function-const")] = LetSeam,
+        [("*", "BindingLawRecorded/let-star/enclosing-function-const")] = LetSeam,
     };
 
     /// <summary>

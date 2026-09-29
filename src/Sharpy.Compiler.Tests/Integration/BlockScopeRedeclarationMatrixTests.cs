@@ -167,8 +167,10 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
     /// const. The expectation is <see cref="BlockKinds.BindingLaw"/>'s, computed from the
     /// spelling's law. Mutations (recorded in the commit bodies): with the checker ignoring
     /// <c>IsLet</c> (P21a Phase 1 state) every <c>let</c>/<c>let-tuple</c>/<c>let-star</c> cell over
-    /// a non-const or module-const predecessor is red — it prints the write-through value or is
-    /// refused SPY0225 by the module const.
+    /// any existing predecessor except a same-scope const is red — it prints the write-through
+    /// value, or is refused SPY0225 by an outer const it should shadow; and every star store that
+    /// the law refuses (a const reached by <c>bare-star</c>, or a same-scope const under <c>let-star</c>)
+    /// is an ICE instead of SPY0225, because the star binder has no const refusal.
     /// </summary>
     [Theory]
     [MemberData(nameof(BindingLawCellIds))]
@@ -187,22 +189,23 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// The binding-law matrix is total over its axes, anchored to LITERAL counts (a count derived
-    /// from the same enumeration would be vacuous): 16 store kinds × 6 spellings × 7 predecessors,
-    /// less the 2 function-body predecessors that are not applicable; 112 refusals (same-scope
-    /// const × every spelling × 16 kinds, and the bare store to a module const × 16 kinds); 62
-    /// write-through runs (bare × same scope 16, enclosing block 15, enclosing function 15, module
-    /// variable 16).
+    /// from the same enumeration would be vacuous): 16 store kinds × 7 spellings × 8 predecessors,
+    /// less the 3 function-body predecessors that are not applicable (× 7 spellings); 174 refusals
+    /// (same-scope const × 7 spellings × 16 kinds = 112; the two write-through spellings to a
+    /// module const × 16 kinds = 32 and to an enclosing-function const × 15 kinds = 30); 124
+    /// write-through runs (2 write-through spellings × (same scope 16 + enclosing block 15 +
+    /// enclosing function 15 + module variable 16)).
     /// </summary>
     [Fact]
     public void BindingLaw_MatrixIsTotalOverItsAxes()
     {
         var cells = BlockKinds.BindingLawCells().ToList();
         Assert.Equal(16, BlockKinds.StoreKinds.Length);
-        Assert.Equal(6, BlockKinds.Spellings.Length);
-        Assert.Equal(7, BlockKinds.Predecessors.Length);
-        Assert.Equal(16 * 6 * 7 - 2 * 6, cells.Count);
-        Assert.Equal(112, cells.Count(c => c.ExpectedCode == "SPY0225"));
-        Assert.Equal(62, cells.Count(c => c.ExpectedCode == null && BlockKinds.StoreWritesThrough(c.Spelling, c.Predecessor)));
+        Assert.Equal(7, BlockKinds.Spellings.Length);
+        Assert.Equal(8, BlockKinds.Predecessors.Length);
+        Assert.Equal(16 * 7 * 8 - 3 * 7, cells.Count);
+        Assert.Equal(174, cells.Count(c => c.ExpectedCode == "SPY0225"));
+        Assert.Equal(124, cells.Count(c => c.ExpectedCode == null && BlockKinds.StoreWritesThrough(c.Spelling, c.Predecessor)));
         Assert.Equal(cells.Count, cells.Select(c => $"{c.Kind}/{c.Cell}").Distinct().Count());
     }
 
