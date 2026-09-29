@@ -242,6 +242,9 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 var varMods = ModDeclaration | genMod;
                 if (v.IsConst)
                     varMods |= ModReadonly;
+                // `let x: T = e` (#1974): the statement starts at the `let` token.
+                if (v.IsLet)
+                    PushNameToken(tokens, v.LineStart, v.ColumnStart, LetKeywordLength, TKeyword, 0);
                 PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.NameColumnEnd - v.NameColumnStart, TVariable, varMods);
                 CollectDecorators(v.Decorators, tokens);
                 if (v.InitialValue != null)
@@ -320,7 +323,19 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case Assignment assignStmt:
-                CollectExpressionTokens(assignStmt.Target, tokens, parameterNames, semanticQuery);
+                if (assignStmt.IsLet)
+                {
+                    // `let x = e` / `let a, *rest = e` (#1974): the statement starts at the `let`
+                    // token, and every name under the target is a declaration, exactly like the
+                    // VariableDeclaration name above. A keywordless `x = e` target stays a plain
+                    // expression walk (no variable token).
+                    PushNameToken(tokens, assignStmt.LineStart, assignStmt.ColumnStart, LetKeywordLength, TKeyword, 0);
+                    CollectLetTargetTokens(assignStmt.Target, tokens, ModDeclaration | genMod, parameterNames, semanticQuery);
+                }
+                else
+                {
+                    CollectExpressionTokens(assignStmt.Target, tokens, parameterNames, semanticQuery);
+                }
                 CollectExpressionTokens(assignStmt.Value, tokens, parameterNames, semanticQuery);
                 break;
 
@@ -400,6 +415,43 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     CollectStatementList(eventDef.Body, tokens, eventParameterNames, semanticQuery);
                     break;
                 }
+        }
+    }
+
+    /// <summary>Source length of the <c>let</c> keyword (#1974).</summary>
+    private const int LetKeywordLength = 3;
+
+    /// <summary>
+    /// Pushes a <see cref="TVariable"/> declaration token for every name under a <c>let</c>
+    /// target (#1974). The parser admits exactly these shapes (<c>RefuseNonNameLetTarget</c>):
+    /// a name, a tuple of targets (nested included), and a starred name.
+    /// </summary>
+    private static void CollectLetTargetTokens(
+        Expression target,
+        System.Collections.Generic.List<RawToken> tokens,
+        int modifiers,
+        HashSet<string>? parameterNames,
+        ISemanticQuery? semanticQuery)
+    {
+        switch (target)
+        {
+            case Identifier id:
+                PushNameToken(tokens, id.LineStart, id.ColumnStart, SymbolExtents.SourceNameLength(id.Name, id.IsNameBacktickEscaped), TVariable, modifiers);
+                break;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    CollectLetTargetTokens(element, tokens, modifiers, parameterNames, semanticQuery);
+                break;
+            case StarExpression star:
+                CollectLetTargetTokens(star.Operand, tokens, modifiers, parameterNames, semanticQuery);
+                break;
+            case SpreadElement spread:
+                CollectLetTargetTokens(spread.Value, tokens, modifiers, parameterNames, semanticQuery);
+                break;
+            default:
+                // Unreachable from the parser; tokenize it as the keywordless target would be.
+                CollectExpressionTokens(target, tokens, parameterNames, semanticQuery);
+                break;
         }
     }
 
@@ -755,6 +807,14 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 PushNameToken(tokens, modArg.LineStart, modArg.ColumnStart, modLen, TKeyword, 0);
                 if (modArg.InlineType != null)
                     CollectTypeAnnotationTokens(modArg.InlineType, tokens);
+                if (modArg.IsLet)
+                {
+                    // `out let v[: T]` (#1974): `let` is a keyword at its own recorded position
+                    // (the node starts at `out`), and the inline name is a fresh declaration.
+                    PushNameToken(tokens, modArg.LetLine, modArg.LetColumn, LetKeywordLength, TKeyword, 0);
+                    CollectLetTargetTokens(modArg.Argument, tokens, ModDeclaration, parameterNames, semanticQuery);
+                    break;
+                }
                 // Recurse into the argument expression
                 CollectExpressionTokens(modArg.Argument, tokens, parameterNames, semanticQuery);
                 break;

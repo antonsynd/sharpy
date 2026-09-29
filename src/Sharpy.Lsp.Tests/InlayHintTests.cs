@@ -254,6 +254,58 @@ public class InlayHintTests : IDisposable
     }
 
     [Fact]
+    public async Task Let_Unannotated_ShowsInferredTypeHintAsync()
+    {
+        // `let x = 5` (#1974): the declared name gets the inferred type, right after `x` (col 8).
+        var source = "def main():\n    let x = 5\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int32");
+        typeHints[0].Position.Should().Be(new Position(1, 9));
+    }
+
+    [Fact]
+    public async Task Let_Annotated_ShowsNoTypeHint_WhileSiblingDeclarationDoesAsync()
+    {
+        // `let x: int = 5` carries its own annotation. The sibling `y = 6` is the positive
+        // control proving hints are produced for this document at all.
+        var source = "def main():\n    let x: int = 5\n    y = 6\n    print(x + y)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle("only the unannotated sibling is hinted")
+            .Which.Position.Should().Be(new Position(2, 5));
+    }
+
+    [Fact]
+    public async Task Let_OverAModuleName_IsADeclarationAsync()
+    {
+        // The twin of ModuleLevelName_SameTypeWriteThrough_IsARebindingNotADeclarationAsync: the
+        // bare `x = 5` writes through to the module `x`, but `let x = 5` introduces a fresh local,
+        // so both bindings hint.
+        var source = "x = 42\ndef main():\n    let x = 5\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Select(h => h.Position).Should().BeEquivalentTo(
+            new[] { new Position(0, 1), new Position(2, 9) });
+    }
+
+    [Fact]
+    public async Task Let_ShadowingASameFunctionName_InANestedBlock_IsADeclarationAsync()
+    {
+        // `x = 1` then `let x = 5` inside the `if`: the name is already bound in this function's
+        // lexical scope, but the `let` still introduces a fresh (shadowing) local.
+        var source = "def main():\n    x = 1\n    if x > 0:\n        let x = 5\n        print(x)\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Select(h => h.Position).Should().BeEquivalentTo(
+            new[] { new Position(1, 5), new Position(3, 13) });
+    }
+
+    [Fact]
     public async Task AnnotatedVariable_NoTypeHintAsync()
     {
         var source = "x: int = 42\ndef main():\n    print(x)";

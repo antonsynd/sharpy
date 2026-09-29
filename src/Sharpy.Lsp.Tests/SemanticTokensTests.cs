@@ -782,6 +782,108 @@ def main():
 
     #endregion
 
+    #region let declarations (#1974)
+
+    private const string TryParseHeader =
+        "def try_parse(s: str, result: out int) -> bool:\n" +
+        "    result = int(s)\n" +
+        "    return True\n" +
+        "def main():\n";
+
+    private static RawToken Keyword(int line, int col, int length) => new(line, col, length, TKeyword, 0);
+
+    private static RawToken Declaration(int line, int col, int length) => new(line, col, length, TVariable, ModDeclaration);
+
+    [Fact]
+    public void Let_UnannotatedName_KeywordAndDeclarationTokens()
+    {
+        // "    let x = 5": `let` at 0-based col 4, `x` at col 8.
+        var tokens = CollectTokensFrom("def main():\n    let x = 5\n    print(x)");
+        tokens.Where(t => t.Line == 1).Should().BeEquivalentTo(
+            new[] { Keyword(1, 4, 3), Declaration(1, 8, 1) },
+            "`let` is a keyword token and the let-declared name a declaration token");
+    }
+
+    [Fact]
+    public void Let_AnnotatedName_KeywordAndDeclarationTokens()
+    {
+        var tokens = CollectTokensFrom("def main():\n    let x: int = 5\n    print(x)");
+        tokens.Where(t => t.Line == 1).Should().BeEquivalentTo(
+            new[] { Keyword(1, 4, 3), Declaration(1, 8, 1) },
+            "`let x: T = e` tokenizes like `let x = e`; the annotation is left to the client grammar");
+    }
+
+    [Fact]
+    public void Let_TupleWithStarredTarget_EveryNameIsADeclaration()
+    {
+        // "    let a, *rest = [1, 2, 3]": a at col 8, rest at col 12 (after the `*`).
+        var tokens = CollectTokensFrom("def main():\n    let a, *rest = [1, 2, 3]\n    print(a)");
+        tokens.Where(t => t.Line == 1).Should().BeEquivalentTo(
+            new[] { Keyword(1, 4, 3), Declaration(1, 8, 1), Declaration(1, 12, 4) });
+    }
+
+    [Fact]
+    public void Let_NestedTupleTarget_EveryNameIsADeclaration()
+    {
+        // "    let (a, b), c = ((1, 2), 3)": a at col 9, b at col 12, c at col 16.
+        var tokens = CollectTokensFrom("def main():\n    let (a, b), c = ((1, 2), 3)\n    print(a)");
+        tokens.Where(t => t.Line == 1).Should().BeEquivalentTo(
+            new[] { Keyword(1, 4, 3), Declaration(1, 9, 1), Declaration(1, 12, 1), Declaration(1, 16, 1) });
+    }
+
+    [Fact]
+    public void Let_NameSpelledLikeAParameter_IsOneDeclarationToken()
+    {
+        // The let target is not walked as a read: a name that matches a parameter must not also
+        // get a parameter token at the same position.
+        var tokens = CollectTokensFrom("def f(x: int) -> None:\n    if x > 0:\n        let x = 5\n        print(x)");
+        tokens.Where(t => t.Line == 2).Should().BeEquivalentTo(
+            new[] { Keyword(2, 8, 3), Declaration(2, 12, 1) });
+    }
+
+    [Fact]
+    public void KeywordlessAssignment_GetsNoKeywordToken()
+    {
+        // Positive control for the IsLet key: the same statement without `let` has no keyword token.
+        var tokens = CollectTokensFrom("def main():\n    x = 5\n    print(x)");
+        tokens.Should().NotContain(t => t.Line == 1 && t.TokenType == TKeyword);
+    }
+
+    [Fact]
+    public void OutLet_InlineName_IsADeclarationToken()
+    {
+        // "    try_parse(\"42\", out let v)": `out` at col 20, `v` at col 28.
+        var tokens = CollectTokensFrom(TryParseHeader + "    try_parse(\"42\", out let v)\n    print(v)");
+        var callLine = tokens.Where(t => t.Line == 4).ToList();
+        callLine.Should().Contain(Keyword(4, 20, 3), "`out` keeps its keyword token");
+        callLine.Should().Contain(Keyword(4, 24, 3), "`let` is a keyword token at its own position");
+        callLine.Should().Contain(Declaration(4, 28, 1), "the `out let` name is a declaration token");
+        callLine.Should().NotContain(t => t.TokenType == TParameter, "the inline name is not a read");
+    }
+
+    [Fact]
+    public void OutLet_WideSpacing_KeywordTokenSitsOnTheLetToken()
+    {
+        // "    try_parse(\"42\", out   let   v)": `let` at col 26, `v` at col 32 — not derivable
+        // from `out` or the name, so the token reads the parser-recorded `let` position.
+        var tokens = CollectTokensFrom(TryParseHeader + "    try_parse(\"42\", out   let   v)\n    print(v)");
+        tokens.Where(t => t.Line == 4 && t.TokenType is TKeyword or TVariable).Should().BeEquivalentTo(
+            new[] { Keyword(4, 20, 3), Keyword(4, 26, 3), Declaration(4, 32, 1) });
+    }
+
+    [Fact]
+    public void OutLet_AnnotatedInlineName_IsADeclarationToken()
+    {
+        var tokens = CollectTokensFrom(TryParseHeader + "    try_parse(\"42\", out let v: int)\n    print(v)");
+        var callLine = tokens.Where(t => t.Line == 4).ToList();
+        callLine.Should().Contain(Keyword(4, 20, 3));
+        callLine.Should().Contain(Keyword(4, 24, 3));
+        callLine.Should().Contain(Declaration(4, 28, 1));
+        callLine.Should().Contain(new RawToken(4, 31, 3, TType, 0), "the inline annotation keeps its type token");
+    }
+
+    #endregion
+
     #region QuestionMark (early-return) operator tokens
 
     [Fact]

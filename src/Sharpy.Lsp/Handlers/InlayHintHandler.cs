@@ -104,7 +104,11 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 // BindingScope, but a store to a name that exists in an ENCLOSING scope — the
                 // module or the enclosing function — writes through to that binding
                 // (variable_scoping.md §Write-Through Assignment) and is not a declaration.
-                var isDeclaring = scope.TryDeclare(assignTarget.Name)
+                // A `let` (#1974) introduces a fresh binding even when this scope already bound
+                // the name (`x = 1` then `let x = 5` in a nested block shadows), so the lexical
+                // first-binding test does not gate it; the checker's record still does.
+                var isFirstLexicalBinding = scope.TryDeclare(assignTarget.Name);
+                var isDeclaring = (isFirstLexicalBinding || assignment.IsLet)
                     && assignment.Operator == AssignmentOperator.Assign
                     && analysis.SemanticInfo?.GetTargetBinding(assignTarget)?.Kind != TargetBindingKind.Rebinds;
 

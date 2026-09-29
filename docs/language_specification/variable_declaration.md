@@ -1,76 +1,85 @@
 # Variable Declaration and Assignment
 
-Variables in Sharpy must be declared and assigned in a single statement. Variable declarations with type inference (Forms 2 and 3 below) are only allowed inside functions; module-level declarations require explicit type annotations.
+A local variable is declared with `let`; module-scope and class-scope values are declared with
+`const` (or, in Stage 1, an annotated declaration). Bare `=` assigns to an existing binding.
 
-There are three syntactic forms:
+| Form | Syntax | Where | Meaning |
+|------|--------|-------|---------|
+| Inferred `let` | `let x = 5` | Function bodies | New local; type inferred from the initializer |
+| Annotated `let` | `let x: int = 5` | Function bodies | New local; type given by the annotation |
+| Constant | `const NAME[: T] = e` | Module, class, function | Assign-once binding |
+| Assignment | `x = e` | Anywhere a statement is allowed | Writes through to the nearest existing `x` |
 
-| Form | Syntax | Type Determination |
-|------|--------|-------------------|
-| Explicit type | `x: int = 5` | Type annotation specifies type |
-| Inferred type | `x = 5` | Type inferred from initializer |
-| Explicit inference | `x: auto = 5` | Type inferred from initializer (explicit) |
+**Form 1: `let` with Type Inference**
 
-**Form 1: Explicit Type Annotation**
+`let` introduces a fresh, mutable, block-scoped local whose type is inferred from the initializer:
 
-The type is explicitly specified. This form can be used both at module level (static fields) and inside functions:
+```python
+def main() -> None:
+    let count = 0              # Inferred as int
+    let name = "Alice"         # Inferred as str
+    let items = [1, 2, 3]      # Inferred as list[int]
+    let pi = 3.14159           # Inferred as float
+    print(count, name, items, pi)   # 0 Alice [1, 2, 3] 3.14159
+```
+
+**Form 2: `let` with a Type Annotation**
 
 ```python
 class User:
     name: str = ""
 
-# Module level (static fields) - explicit type REQUIRED
+def main() -> None:
+    let count: int = 0
+    let items: list[int] = [1, 2, 3]
+    let user: User | None = None
+    print(count, items, user is None)   # 0 [1, 2, 3] True
+```
+
+A `let` always takes an initializer and is always a new variable, even when the name is already
+bound — it shadows the existing binding for the rest of its block rather than assigning it (see
+[Variable Shadowing](variable_scoping.md#variable-shadowing)). `let` is refused at module level and
+in class, struct and interface bodies (SPY0340): module-scope bindings are `const`, and fields are
+declared `x: T = ...`. In a union or enum body a `let` is that body grammar's parser error.
+
+**Stage 1: keywordless declarations (#1974)**
+
+In Stage 1 — the current language — the forms that predate `let` still declare. An annotated
+`x: T = e` declares a new variable (inside a function, or at module level as a static field), and
+bare `x = e` on a name that is not yet bound declares it inside a function. Stage 2 (#1974) makes
+`let` required for a new local, bare `=` write-through only, and module scope `const`-only:
+
+```python
+# Module level (static fields) - explicit type REQUIRED in Stage 1
 counter: int = 0
 config: str = "default"
 
 def main():
-    # Inside functions - explicit type allowed
-    count: int = 0
-    name: str = "Alice"
-    items: list[int] = [1, 2, 3]
-    user: User | None = None
+    count: int = 0         # Annotated declaration
+    name = "Alice"         # Bare '=' on a new name declares it
+    count = count + 1      # Bare '=' on an existing name assigns it
+    print(counter, config, count, name)   # 0 default 1 Alice
 ```
 
-**Form 2: Type Inference (Implicit)**
+Bare `=` never declares at module level: `count = 0` there is an executable statement (SPY0340).
 
-The type is inferred from the initializer expression. This form is **only allowed inside functions**, not at module level:
+**Deprecated: `auto`**
+
+`x: auto = e` is the Stage 1 spelling of `let x = e`. It is deprecated — write `let` — and is
+retired in Stage 2 (#1974):
 
 ```python
 def main():
-    count = 0              # Inferred as int
-    name = "Alice"         # Inferred as str
-    items = [1, 2, 3]      # Inferred as list[int]
-    pi = 3.14159           # Inferred as float
-
-# ❌ NOT allowed at module level:
-# count = 0              # ERROR: module-level requires type annotation
-```
-
-**Form 3: Type Inference (Explicit with `auto`)**
-
-The `auto` keyword explicitly requests type inference. This is functionally equivalent to Form 2 but makes the inference explicit. Like Form 2, this is **only allowed inside functions**:
-
-```python
-def main():
-    count: auto = 0        # Inferred as int
-    name: auto = "Alice"   # Inferred as str
-    items: auto = [1, 2, 3]  # Inferred as list[int]
-```
-
-**When to Use `auto`:**
-
-The `auto` keyword is primarily useful for variable shadowing, where you want to redeclare a variable with a different type:
-
-```python
-def main():
-    x: int = 5
-    x = 10                 # Assignment to existing int variable
-    x: str = "hello"       # Shadowing: new variable of type str
-    x: auto = [1, 2, 3]    # Shadowing: new variable, type inferred as list[int]
+    count: auto = 0          # Deprecated: 'let count = 0'
+    items: auto = [1, 2, 3]  # Deprecated: 'let items = [1, 2, 3]'
+    print(count, items)      # 0 [1, 2, 3]
 ```
 
 ## Bare Declarations (Declare-Then-Assign)
 
-Sharpy allows variable declarations without initialization. The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600):
+Sharpy allows variable declarations without initialization, spelled `x: T` (a `let` always takes
+an initializer — `let x: int` is SPY0104). The variable must be assigned on all control-flow paths
+before it is read — use-before-assign is a compile-time error (SPY0600):
 
 ```spy
 def choose(condition: bool) -> None:
@@ -190,4 +199,9 @@ def handler_reads_try_body() -> None:
 
 ## Module-Level vs Function-Level Variables
 
-See [Program Entry Point](program_entry_point.md) for details on module-level declarations vs executable statements inside `main()`.
+A function-level variable is declared with `let` (or, in Stage 1, a keywordless declaration) and
+lives until the end of its block. A module-level `let` is refused (SPY0340, "module-scope bindings
+are `const`: use 'const NAME[: T] = ...'"); module-scope values are `const`, and in Stage 1 an
+annotated module declaration (`counter: int = 0`) is still accepted. See
+[Program Entry Point](program_entry_point.md) for details on module-level declarations vs executable
+statements inside `main()`.

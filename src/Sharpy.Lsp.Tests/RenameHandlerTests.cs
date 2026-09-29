@@ -301,6 +301,70 @@ public class RenameHandlerTests : IDisposable
         refEdit!.NewText.Should().Be("value");
     }
 
+    private static IReadOnlyList<(int Line, int Start, int End, string Text)> EditSpans(WorkspaceEdit? result)
+    {
+        result.Should().NotBeNull("rename should produce edits");
+        var uri = DocumentUri.From("file:///test.spy");
+        result!.Changes.Should().ContainKey(uri);
+        return result.Changes![uri]
+            .Select(e => (e.Range.Start.Line, e.Range.Start.Character, e.Range.End.Character, e.NewText))
+            .ToList();
+    }
+
+    /// <summary>
+    /// A <c>let</c>-declared local (#1974) renames at its name, not at the <c>let</c> keyword that
+    /// starts the statement, and at every read.
+    /// </summary>
+    [Fact]
+    public async Task Rename_LetVariable_RenamesDeclarationAndEveryRead()
+    {
+        // Line 1: "    let count = 5"          count at col 8 (col 4 is `let`)
+        // Line 2: "    print(count)"           count at col 10
+        // Line 3: "    total = count + 1"      count at col 12
+        var source = "def main():\n    let count = 5\n    print(count)\n    total = count + 1\n    print(total)";
+
+        var edits = EditSpans(await RenameAsync(source, 1, 8, "n"));
+
+        edits.Should().BeEquivalentTo(new[]
+        {
+            (1, 8, 13, "n"),
+            (2, 10, 15, "n"),
+            (3, 12, 17, "n"),
+        });
+    }
+
+    /// <summary>The annotated spelling, renamed from a read site.</summary>
+    [Fact]
+    public async Task Rename_AnnotatedLetVariable_RenamesFromAReadSite()
+    {
+        // Line 1: "    let count: int = 5"     count at col 8
+        // Line 2: "    print(count)"           count at col 10
+        var source = "def main():\n    let count: int = 5\n    print(count)";
+
+        var edits = EditSpans(await RenameAsync(source, 2, 10, "n"));
+
+        edits.Should().BeEquivalentTo(new[] { (1, 8, 13, "n"), (2, 10, 15, "n") });
+    }
+
+    /// <summary>
+    /// A <c>let</c> that shadows an outer local is its own symbol: renaming it rewrites the inner
+    /// reads and leaves the outer binding and its reads alone.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ShadowingLet_LeavesTheOuterBindingAlone()
+    {
+        // Line 1: "    x = 1"                  outer x at col 4
+        // Line 2: "    if x > 0:"              outer read at col 7
+        // Line 3: "        let x = 5"          inner x at col 12
+        // Line 4: "        print(x)"           inner read at col 14
+        // Line 5: "    print(x)"               outer read at col 10
+        var source = "def main():\n    x = 1\n    if x > 0:\n        let x = 5\n        print(x)\n    print(x)";
+
+        var edits = EditSpans(await RenameAsync(source, 3, 12, "inner"));
+
+        edits.Should().BeEquivalentTo(new[] { (3, 12, 13, "inner"), (4, 14, 15, "inner") });
+    }
+
     /// <summary>
     /// Regression test for #597: Rename from a const declaration site.
     /// `const y: int = 10` is parsed as a VariableDeclaration with IsConst=true.
