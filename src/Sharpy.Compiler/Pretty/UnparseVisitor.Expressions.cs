@@ -360,6 +360,8 @@ internal sealed partial class UnparseVisitor
         _w.Write(" ");
         if (node.InlineName != null)
         {
+            if (node.IsLet)
+                _w.Write("let ");
             WriteName(node.InlineName, node.IsNameBacktickEscaped);
             if (node.InlineType != null)
             {

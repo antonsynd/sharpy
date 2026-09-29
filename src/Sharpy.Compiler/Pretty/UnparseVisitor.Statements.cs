@@ -21,6 +21,8 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitAssignment(Assignment node)
     {
+        if (node.IsLet)
+            _w.Write("let ");
         Visit(node.Target);
         _w.Write(" ");
         _w.Write(AssignmentOperatorText(node.Operator));
@@ -34,6 +36,8 @@ internal sealed partial class UnparseVisitor
         WriteDecorators(node.Decorators);
         if (node.IsConst)
             _w.Write("const ");
+        if (node.IsLet)
+            _w.Write("let ");
         WriteName(node.Name, node.IsNameBacktickEscaped);
         if (node.Type != null)
         {

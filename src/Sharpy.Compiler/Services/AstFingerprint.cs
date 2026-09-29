@@ -102,8 +102,11 @@ public static class AstFingerprint
                 fa.Module == fb.Module && fa.ImportAll == fb.ImportAll
                 && ImportAliasesEqual(fa.Names, fb.Names),
             (VariableDeclaration va, VariableDeclaration vb) =>
-                va.Name == vb.Name && va.IsConst == vb.IsConst
+                va.Name == vb.Name && va.IsConst == vb.IsConst && va.IsLet == vb.IsLet
                 && TypeAnnotationEquals(va.Type, vb.Type),
+            // A top-level `let x = e` and `x = e` are both refused, with different diagnostics
+            // (#1974), so the let flag is part of a top-level assignment's signature.
+            (Assignment aa, Assignment ab) => aa.IsLet == ab.IsLet,
             (TypeAlias ta, TypeAlias tb) => ta.Name == tb.Name,
             _ => a.GetType() == b.GetType() // For other statement types, just check type match
         };
@@ -289,11 +292,14 @@ public static class AstFingerprint
             (ExpressionStatement ea, ExpressionStatement eb) =>
                 ExpressionEquals(ea.Expression, eb.Expression),
             (VariableDeclaration va, VariableDeclaration vb) =>
-                va.Name == vb.Name && va.IsConst == vb.IsConst
+                va.Name == vb.Name && va.IsConst == vb.IsConst && va.IsLet == vb.IsLet
                 && TypeAnnotationEquals(va.Type, vb.Type)
                 && ExpressionEquals(va.InitialValue, vb.InitialValue),
+            // `let x = e` introduces a fresh binding where `x = e` may write through (#1974):
+            // flipping the keyword changes the body's meaning, so it must change the fingerprint.
             (Assignment aa, Assignment ab) =>
-                ExpressionEquals(aa.Target, ab.Target)
+                aa.IsLet == ab.IsLet
+                && ExpressionEquals(aa.Target, ab.Target)
                 && ExpressionEquals(aa.Value, ab.Value),
             (PassStatement, PassStatement) => true,
             (BreakStatement, BreakStatement) => true,

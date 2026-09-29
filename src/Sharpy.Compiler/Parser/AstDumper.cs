@@ -88,6 +88,9 @@ internal class AstDumper : AstVisitor
         var (indent, prefix, depth) = CaptureContext();
         var childPrefix = _childPrefix;
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}Assignment @ L{node.LineStart}:C{node.ColumnStart}");
+        // Printed only when set, so every keywordless program's dump is unchanged by `let` (#1974).
+        if (node.IsLet)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}IsLet: True");
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operator: {node.Operator}");
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
         VisitChild(node.Target, depth + 2, false);
@@ -103,6 +106,9 @@ internal class AstDumper : AstVisitor
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Name: {node.Name}");
         DumpDecorators(node.Decorators, depth, indent, childPrefix);
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}IsConst: {node.IsConst}");
+        // Printed only when set, so every keywordless program's dump is unchanged by `let` (#1974).
+        if (node.IsLet)
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}IsLet: True");
         if (node.Type != null)
         {
             _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Type:");

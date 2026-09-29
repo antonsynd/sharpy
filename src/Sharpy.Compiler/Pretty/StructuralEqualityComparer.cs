@@ -236,6 +236,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 
     private bool ModifiedArgumentEquals(ModifiedArgument a, ModifiedArgument b) =>
         a.Modifier == b.Modifier
+        && a.IsLet == b.IsLet
         && a.InlineName == b.InlineName
         && a.IsNameBacktickEscaped == b.IsNameBacktickEscaped
         && NullableTypeEquals(a.InlineType, b.InlineType)
@@ -260,12 +261,13 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     }
 
     private bool AssignmentEquals(Assignment a, Assignment b) =>
-        a.Operator == b.Operator && Equals(a.Target, b.Target) && Equals(a.Value, b.Value);
+        a.Operator == b.Operator && a.IsLet == b.IsLet && Equals(a.Target, b.Target) && Equals(a.Value, b.Value);
 
     private bool VarDeclEquals(VariableDeclaration a, VariableDeclaration b) =>
         a.Name == b.Name
         && a.IsNameBacktickEscaped == b.IsNameBacktickEscaped
         && a.IsConst == b.IsConst
+        && a.IsLet == b.IsLet
         && NullableTypeEquals(a.Type, b.Type)
         && NullableNodeEquals(a.InitialValue, b.InitialValue)
         && DecoratorsEqual(a.Decorators, b.Decorators);

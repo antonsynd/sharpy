@@ -275,4 +275,56 @@ public class StructuralEqualityComparerTests
         };
         Assert.False(Comparer.Equals(decorated, plain));
     }
+
+    // #1974: IsLet is syntax that changes meaning (fresh binding vs write-through), so it is part
+    // of structural equality on all three nodes that carry it. Each flip has an equal-flag
+    // positive control, so a comparer that ignored the flag would fail the flip, not the control.
+
+    private static Assignment LetAssignment(bool isLet, int line = 1) => new()
+    {
+        Target = new Identifier { Name = "x", LineStart = line },
+        Value = new IntegerLiteral { Value = "1", LineStart = line },
+        IsLet = isLet,
+        LineStart = line
+    };
+
+    [Fact]
+    public void Assignment_IsLetFlipped_ReturnsFalse()
+    {
+        Assert.True(Comparer.Equals(LetAssignment(isLet: true, line: 1), LetAssignment(isLet: true, line: 7)));
+        Assert.False(Comparer.Equals(LetAssignment(isLet: true), LetAssignment(isLet: false)));
+    }
+
+    private static VariableDeclaration LetDeclaration(bool isLet, int line = 1) => new()
+    {
+        Name = "x",
+        Type = new TypeAnnotation { Name = "int" },
+        InitialValue = new IntegerLiteral { Value = "1", LineStart = line },
+        IsLet = isLet,
+        LineStart = line
+    };
+
+    [Fact]
+    public void VariableDeclaration_IsLetFlipped_ReturnsFalse()
+    {
+        Assert.True(Comparer.Equals(LetDeclaration(isLet: true, line: 1), LetDeclaration(isLet: true, line: 7)));
+        Assert.False(Comparer.Equals(LetDeclaration(isLet: true), LetDeclaration(isLet: false)));
+    }
+
+    private static ModifiedArgument OutArgument(bool isLet, int line = 1) => new()
+    {
+        Modifier = ParameterModifier.Out,
+        Argument = new Identifier { Name = "v", LineStart = line },
+        InlineName = "v",
+        InlineType = new TypeAnnotation { Name = "int" },
+        IsLet = isLet,
+        LineStart = line
+    };
+
+    [Fact]
+    public void ModifiedArgument_IsLetFlipped_ReturnsFalse()
+    {
+        Assert.True(Comparer.Equals(OutArgument(isLet: true, line: 1), OutArgument(isLet: true, line: 7)));
+        Assert.False(Comparer.Equals(OutArgument(isLet: true), OutArgument(isLet: false)));
+    }
 }

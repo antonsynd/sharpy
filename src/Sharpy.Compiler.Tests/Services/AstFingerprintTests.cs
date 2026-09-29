@@ -140,4 +140,39 @@ public class AstFingerprintTests
 
         result.Kind.Should().Be(AstChangeKind.Structural);
     }
+
+    // #1974: `let x = e` introduces a fresh binding where `x = e` may write through, so flipping
+    // the keyword on an otherwise identical file changes the program and MUST change the
+    // fingerprint. The same-source cases are the positive control that a `let` body compares equal
+    // to itself (the flag is compared, not merely present). A tuple-target row is deliberately
+    // absent: ExpressionEquals has no TupleLiteral arm, so any tuple store is conservatively
+    // "changed" even against itself and could not show the flag being compared.
+
+    [Theory]
+    [InlineData("def main():\n    let x = 1\n    print(x)", "def main():\n    x = 1\n    print(x)")]
+    [InlineData("def main():\n    let x: int = 1\n    print(x)", "def main():\n    x: int = 1\n    print(x)")]
+    public void Classify_LetFlippedInAFunctionBody_ReturnsBodyOnly(string withLet, string withoutLet)
+    {
+        AstFingerprint.Classify(_api.Parse(withLet).Ast!, _api.Parse(withLet).Ast!)
+            .Kind.Should().Be(AstChangeKind.NoChange);
+
+        var result = AstFingerprint.Classify(_api.Parse(withLet).Ast!, _api.Parse(withoutLet).Ast!);
+
+        result.Kind.Should().Be(AstChangeKind.BodyOnly);
+        result.FunctionName.Should().Be("main");
+    }
+
+    [Fact]
+    public void Classify_LetFlippedAtTopLevel_ReturnsStructural()
+    {
+        // A top-level `let` is refused with a different diagnostic from a top-level `x = e`, and a
+        // top-level `let x: T = e` from `x: T = e` — the flag is part of the top-level signature.
+        var bare = _api.Parse("let x = 1").Ast!;
+        var keywordless = _api.Parse("x = 1").Ast!;
+        AstFingerprint.Classify(bare, _api.Parse("let x = 1").Ast!).Kind.Should().Be(AstChangeKind.NoChange);
+        AstFingerprint.Classify(bare, keywordless).Kind.Should().Be(AstChangeKind.Structural);
+
+        var annotated = _api.Parse("let x: int = 1").Ast!;
+        AstFingerprint.Classify(annotated, _api.Parse("x: int = 1").Ast!).Kind.Should().Be(AstChangeKind.Structural);
+    }
 }
