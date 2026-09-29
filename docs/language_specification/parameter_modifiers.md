@@ -70,20 +70,31 @@ if try_parse("42", out value):
 
 ### Inline Declaration with `out`
 
-Variables can be declared inline at the call site:
+Variables can be declared inline at the call site. `out let name` declares a fresh variable whose
+type comes from the parameter, and `out let name: T` declares one with an explicit type; like every
+`let`, both are always a new variable. `out name: T` also declares inline, and a plain `out name`
+passes a variable that already exists:
 
 ```python
 def try_parse(s: str, result: out int) -> bool:
     result = int(s) if s.isdigit() else 0
     return s.isdigit()
 
-# Declare and assign in one statement
-if try_parse("42", out value: int):
-    print(value)
+# 'out let' declares a fresh variable; its type (int) comes from the parameter
+if try_parse("7", out let n):
+    print(n)                          # 7
 
-# Type can be inferred
-if try_parse("42", out value: auto):
-    print(value)
+# 'out let' with an explicit type
+if try_parse("8", out let m: int):
+    print(m)                          # 8
+
+# Inline declaration with an explicit type
+if try_parse("42", out value: int):
+    print(value)                      # 42
+
+# Deprecated: 'out v: auto' is the Stage 1 spelling of 'out let v' (retired in Stage 2, #1974)
+if try_parse("9", out v: auto):
+    print(v)                          # 9
 ```
 
 ## `in T` — Readonly Reference
@@ -266,7 +277,7 @@ Calculate(in largeData);  // or just Calculate(largeData)
 - *`out T` → `out T` parameter — parsed, type-checked, emitted*
 - *`in T` → `in T` parameter — parsed, type-checked, emitted*
 - *Call site `ref`/`out`/`in` keywords map directly to C#*
-- *Inline `out` declaration (`out value: int`, `out value: auto`) — parsed, type-checked, emitted*
+- *Inline `out` declaration (`out let value`, `out let value: int`, `out value: int`; deprecated `out value: auto`) — parsed, type-checked, emitted*
 
 ## See Also
 
