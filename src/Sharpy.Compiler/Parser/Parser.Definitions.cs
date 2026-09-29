@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
@@ -19,6 +20,12 @@ public partial class Parser
         // 1. Assignment (x = value, x += value)
         // 2. Variable declaration (x: int = value or x: int)
         // 3. Expression statement
+        // Each of 1 and 2 may be prefixed by `let` (#1974): `let <target> = e` is an Assignment and
+        // `let x: T = e` a VariableDeclaration, both with IsLet. This method is the ONE parser
+        // construction site for Assignment and non-const VariableDeclaration — every statement
+        // dispatcher (plain, decorated/@suppress, keyword-qualifier, try/maybe expression, inline
+        // defer body) ends here — so `let` is recognised here and nowhere else.
+        var letToken = TryConsumeLet();
 
         // Check for star expression at the start: *rest, x = items
         Expression expr;
@@ -97,6 +104,14 @@ public partial class Parser
                     Span = CombineSpans(elements[0].Span, elements[^1].Span)
                 };
 
+                // Refused before the value is parsed so error recovery resumes at this
+                // statement's end rather than inside the next one.
+                var canonicalTuple = AstHelper.CanonicalizeStoreTarget(tuple);
+                if (letToken != null)
+                {
+                    RefuseLetAugmentedOperator();
+                    RefuseNonNameLetTarget(canonicalTuple);
+                }
                 var op = TokenTypeToAssignmentOperator(Current.Type);
                 Advance();
                 var value = ParseExpressionOrBareTuple();
@@ -104,15 +119,24 @@ public partial class Parser
 
                 return new Assignment
                 {
-                    Target = AstHelper.CanonicalizeStoreTarget(tuple),
+                    Target = canonicalTuple,
                     Value = value,
                     Operator = op,
-                    LineStart = startLine,
-                    ColumnStart = startColumn,
+                    IsLet = letToken != null,
+                    LineStart = letToken?.Line ?? startLine,
+                    ColumnStart = letToken?.Column ?? startColumn,
                     LineEnd = value.LineEnd,
                     ColumnEnd = value.ColumnEnd,
-                    Span = CombineSpans(tuple.Span, value.Span)
+                    Span = CombineSpans(letToken != null ? GetSpanFromToken(letToken) : tuple.Span, value.Span)
                 };
+            }
+
+            if (letToken != null)
+            {
+                // `let a, b: T = e` — only a single name can be annotated, with or without `let`.
+                if (Current.Type == TokenType.Colon)
+                    throw ReportError("Invalid type annotation target — only a single name can be annotated ('let x: T = ...')", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, span: CurrentSpan);
+                RefuseLetWithoutInitializer(annotated: false);
             }
 
             // If not an assignment, this is an error (tuple expression statements not allowed)
@@ -122,6 +146,13 @@ public partial class Parser
         // Check for assignment operators
         if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.AtAssign)
         {
+            // Store targets are canonical from here on (#1170): `(a) = 1` binds `a`.
+            var target = AstHelper.CanonicalizeStoreTarget(expr);
+            if (letToken != null)
+            {
+                RefuseLetAugmentedOperator();
+                RefuseNonNameLetTarget(target);
+            }
             var op = TokenTypeToAssignmentOperator(Current.Type);
             Advance();
             var value = ParseExpression();
@@ -129,15 +160,15 @@ public partial class Parser
 
             return new Assignment
             {
-                // Store targets are canonical from here on (#1170): `(a) = 1` binds `a`.
-                Target = AstHelper.CanonicalizeStoreTarget(expr),
+                Target = target,
                 Value = value,
                 Operator = op,
-                LineStart = expr.LineStart,
-                ColumnStart = expr.ColumnStart,
+                IsLet = letToken != null,
+                LineStart = letToken?.Line ?? expr.LineStart,
+                ColumnStart = letToken?.Column ?? expr.ColumnStart,
                 LineEnd = value.LineEnd,
                 ColumnEnd = value.ColumnEnd,
-                Span = CombineSpans(expr.Span, value.Span)
+                Span = CombineSpans(letToken != null ? GetSpanFromToken(letToken) : expr.Span, value.Span)
             };
         }
 
@@ -147,7 +178,11 @@ public partial class Parser
             // `(a): int = 1` is valid Python (the parentheses are redundant); a tuple or any
             // other shape is not an annotatable name (python3: "only single target can be annotated").
             if (AstHelper.CanonicalizeStoreTarget(expr) is not Identifier id)
+            {
+                if (letToken != null)
+                    RefuseNonNameLetTarget(AstHelper.CanonicalizeStoreTarget(expr));
                 throw ReportError("Invalid type annotation target", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, span: CurrentSpan);
+            }
 
             Advance();  // Skip :
             var type = ParseTypeAnnotation();
@@ -157,6 +192,14 @@ public partial class Parser
             {
                 Advance();
                 initialValue = ParseExpression();
+            }
+            else if (letToken != null)
+            {
+                // `let x: T` — a let always binds a value; `let x: T += 1` is refused as an
+                // augmented operator rather than a missing initializer.
+                if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.AtAssign)
+                    RefuseLetAugmentedOperator();
+                RefuseLetWithoutInitializer(annotated: true);
             }
 
             ExpectStatementEnd();
@@ -173,14 +216,29 @@ public partial class Parser
                 Type = type,
                 InitialValue = initialValue,
                 IsConst = false,
-                LineStart = id.LineStart,
-                ColumnStart = id.ColumnStart,
+                IsLet = letToken != null,
+                // Like `const`, a `let` declaration starts at its keyword; the name keeps its own
+                // position in Name* (LSP EffectiveNameLine/Column reads the name).
+                LineStart = letToken?.Line ?? id.LineStart,
+                ColumnStart = letToken?.Column ?? id.ColumnStart,
                 LineEnd = Previous.Line,
                 ColumnEnd = Previous.Column + Previous.Length,
                 Span = initialValue != null
-                    ? CombineSpans(id.Span, initialValue.Span)
+                    ? CombineSpans(letToken != null ? GetSpanFromToken(letToken) : id.Span, initialValue.Span)
                     : id.Span  // TypeAnnotation doesn't have Span yet (A.12)
             };
+        }
+
+        // A `let` whose target is followed by neither '=' nor ':' binds nothing (`let x`). The
+        // walrus is the one operator the target parse itself consumes (`x := 1` is an expression),
+        // so `let x := 1` is named here as the operator refusal, at the walrus.
+        if (letToken != null)
+        {
+            if (expr is WalrusExpression walrus)
+                throw ReportError(
+                    "'let' takes '=' only, got ':=' — a let introduces a new binding ('let x = ...')",
+                    walrus.LineStart, walrus.ColumnStart, DiagnosticCodes.Parser.UnexpectedToken, span: walrus.Span);
+            RefuseLetWithoutInitializer(annotated: false);
         }
 
         ExpectStatementEnd();
@@ -194,6 +252,97 @@ public partial class Parser
             ColumnEnd = expr.ColumnEnd,
             Span = expr.Span
         };
+    }
+
+    /// <summary>
+    /// Consumes a leading <c>let</c> keyword (#1974) and returns its token, or returns
+    /// <see langword="null"/> when the statement does not start with <c>let</c>. The keyword must
+    /// be followed by something that can start a store target — a name, <c>*</c>, <c>(</c> or
+    /// <c>[</c>; anything else (<c>let = 5</c>, a bare <c>let</c>) is the identifier <c>let</c>
+    /// written without its backtick escape, refused here with the steer to <c>`let`</c>.
+    /// </summary>
+    private Token? TryConsumeLet()
+    {
+        // `let.x = 1` is the keyword-qualifier spelling (#1091): the statement dispatcher routes a
+        // keyword-then-dot here, and the target parse reads `let` as the IDENTIFIER qualifier —
+        // never a `let` statement (it stays SPY0200 "Undefined identifier 'let'", as before `let`
+        // was a keyword).
+        if (Current.Type != TokenType.Let || Peek().Type == TokenType.Dot)
+            return null;
+
+        var letToken = Current;
+        Advance();
+        if (Current.Type is not (TokenType.Identifier or TokenType.Star or TokenType.LeftParen or TokenType.LeftBracket))
+        {
+            throw ReportError(
+                $"Expected a name after 'let', got {Current.Type} — 'let' is a keyword; write `let` in backticks to use it as a name",
+                letToken.Line, letToken.Column, DiagnosticCodes.Parser.ExpectedIdentifier,
+                span: GetSpanFromToken(letToken));
+        }
+
+        return letToken;
+    }
+
+    /// <summary>
+    /// <c>let</c> introduces a binding with <c>=</c> only: <c>let x += 1</c> (and every other
+    /// augmented operator, and <c>:=</c>) has no existing binding to update. Called with
+    /// <see cref="Current"/> on the operator token.
+    /// </summary>
+    private void RefuseLetAugmentedOperator()
+    {
+        if (Current.Type == TokenType.Assign)
+            return;
+
+        throw ReportError(
+            $"'let' takes '=' only, got '{Current.Value}' — a let introduces a new binding ('let x = ...')",
+            Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
+    }
+
+    /// <summary>
+    /// <c>let x</c> / <c>let x: T</c> / <c>let a, b</c> — a <c>let</c> always binds a value.
+    /// Reported where the <c>=</c> was expected.
+    /// </summary>
+    [DoesNotReturn]
+    private void RefuseLetWithoutInitializer(bool annotated)
+    {
+        var example = annotated ? "'let x: T = ...'" : "'let x = ...'";
+        throw ReportError(
+            $"'let' requires an initializer ({example})",
+            Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+    }
+
+    /// <summary>
+    /// A <c>let</c> target is a name or a (possibly nested, possibly starred) tuple of names —
+    /// the only shapes that introduce bindings. A member or index target (<c>let self.x = 1</c>,
+    /// <c>let xs[0] = 1</c>) stores into an existing object, so it is refused under the parser's
+    /// target-shape code, at the offending element. Runs on the CANONICAL target
+    /// (<see cref="AstHelper.CanonicalizeStoreTarget"/>), so <c>let (x) = e</c> and
+    /// <c>let [a, b] = e</c> are names.
+    /// </summary>
+    private void RefuseNonNameLetTarget(Expression target)
+    {
+        switch (target)
+        {
+            case Identifier:
+                return;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    RefuseNonNameLetTarget(element);
+                return;
+            case StarExpression star:
+                RefuseNonNameLetTarget(star.Operand);
+                return;
+            case SpreadElement spread:
+                // The sole-starred `(*a)` keeps its SpreadElement through canonicalization and is
+                // refused by the store-target authority exactly as the keywordless spelling is.
+                RefuseNonNameLetTarget(spread.Value);
+                return;
+            default:
+                throw ReportError(
+                    "'let' target must be a name or a tuple of names",
+                    target.LineStart, target.ColumnStart, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget,
+                    span: target.Span);
+        }
     }
 
     /// <summary>
