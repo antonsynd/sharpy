@@ -44,10 +44,10 @@ public static partial class DiagnosticExplanations
             "def main():\n    1, 2, 3",
             "If you meant to create a tuple, assign it to a variable:\n  t: tuple[int, int, int] = (1, 2, 3)");
 
-        Add(dict, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, "Invalid type annotation target", "Parser",
-            "A type annotation was applied to an expression that cannot have one. Type annotations can only be applied to simple variable names.",
-            "x[0]: int = 42",
-            "Use a type annotation only on simple names:\n  x: list[int] = [42]");
+        Add(dict, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, "Invalid declaration target", "Parser",
+            "A declaration was applied to a target that cannot be declared. A type annotation ('x: T = ...') can only be applied to a single simple name, and a 'let' declaration ('let x = ...') introduces new names only — its target must be a name or a (possibly nested or starred) tuple of names. A member ('self.x'), index ('xs[0]') or call target stores into an existing object, so it cannot be annotated or declared with 'let'.",
+            "x[0]: int = 42\nlet self.count = 0\nlet a, b: int = 1, 2",
+            "Annotate or 'let'-declare only names; store into an existing attribute or element without the annotation or 'let':\n  x: list[int] = [42]\n  self.count = 0\n  let a, b = 1, 2");
 
         Add(dict, DiagnosticCodes.Parser.PositionalAfterKeyword, "Positional argument after keyword argument", "Parser",
             "A positional argument appeared after a keyword argument in a function call. Once you use a keyword argument, all subsequent arguments must also be keyword arguments.",
