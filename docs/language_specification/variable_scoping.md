@@ -11,7 +11,7 @@ global x       # ERROR: unexpected 'global'
 nonlocal y     # ERROR: unexpected 'nonlocal'
 ```
 
-Assignment to a name bound in an enclosing scope — including an enclosing function's local — writes through to that binding; use a new name or an annotated declaration (`x: T = ...`) to shadow instead. This applies uniformly to blocks and nested functions (C# closure semantics).
+Assignment to a name bound in an enclosing scope — including an enclosing function's local — writes through to that binding; use `let` (`let x = ...`) or a new name to shadow instead. In Stage 1 an annotated declaration (`x: T = ...`) also shadows (#1974). This applies uniformly to blocks and nested functions (C# closure semantics).
 
 ## Block Scoping
 
@@ -122,17 +122,20 @@ def main():
     print(adder())       # 11 — lambda sees the updated value
 ```
 
-To create a **new** local that shadows an outer name, use an annotated declaration:
+To create a **new** local that shadows an outer name, use `let`:
 
 ```python
 def main():
-    x: int = 1
+    let x = 1
     def shadow_it():
-        x: str = "hello"  # New local — does NOT modify outer 'x'
-        print(x)          # "hello"
+        let x = 2         # New local — does NOT modify outer 'x'
+        print(x)          # 2
     shadow_it()
     print(x)              # 1 — outer 'x' unchanged
 ```
+
+A bare `x = 2` in `shadow_it` would instead write through and print `2` twice. In Stage 1 an
+annotated declaration (`x: int = 2`) also creates the new local (#1974).
 
 ## Class-Body Names Are Not Visible by Bare Name Inside Methods
 
@@ -149,9 +152,13 @@ class Counter:
 
     def correct(self) -> None:
         self.count += 1       # OK — instance attribute via self
-        count: int = 99       # OK — annotated declaration creates a new local
+        let count = 99        # OK — 'let' creates a new local
         print(count)          # 99
 ```
+
+The SPY0606 refusal steers to the member spelling first (`self.count = ...` for an instance
+attribute, `ClassName.count = ...` for a `const` or `@static` one), then to `let count = ...` for a
+new local, then to the Stage 1 annotated `count: <type> = ...`.
 
 `ClassName.name` is the spelling for a **type-level** member — a `const` or an `@static` field. An
 instance field reached through the type name is a different error (SPY0290), so the diagnostic
@@ -223,7 +230,7 @@ whether it is a field or a property. The bare read is SPY0200 with the same `sel
 bare store is SPY0606 in every store form — the refusal names the inheritance so the reader is not
 sent looking for a declaration in the body in front of them. In C# a bare `v = 7` in a method
 writes the inherited field; in Python it declares a local; a Sharpy program that spells it is a
-mistake either way, and the typed shadowing local is still one annotation away:
+mistake either way, and the shadowing local is still one `let` away:
 
 <!-- spec-sweep: error SPY0606 -->
 ```python
@@ -241,7 +248,7 @@ class Derived(Base):
         return self.v         # OK
 
     def shadow(self) -> int:
-        v: int = 7            # OK — a typed declaration is a new local
+        let v = 7             # OK — 'let' declares a new local
         print(v)              # 7
         return self.v         # 5 — the inherited field is untouched
 ```
@@ -324,17 +331,27 @@ def main():
 
 ## Variable Shadowing
 
-Variables can be redeclared in the same scope with a different type using explicit type annotation:
+`let` always introduces a new variable, so a name can be redeclared in the same scope, with the same
+or a different type; the new variable shadows the old one for the rest of the scope:
 
 ```python
-x: int = 5              # Initial declaration
-x = 10                  # Assignment (same type)
-x: str = "hello"        # Shadowing (new type, requires annotation)
+def main():
+    let x = 5               # Initial declaration
+    x = 10                  # Assignment (same type)
+    let x = "hello"         # Shadowing: a new variable of type str
+    print(x)                # hello
+```
 
-# With auto keyword for type inference
-x: int = 5
-x: auto = "hello"       # Shadowing with inferred type
+Stage 1 also accepts the keywordless shadowing forms, which Stage 2 retires (#1974): an annotated
+declaration shadows, and `x: auto = e` is the deprecated spelling of `let x = e`:
+
+```python
+def main():
+    x: int = 5
+    x: str = "hello"        # Stage 1: an annotated declaration shadows
+    x: auto = [1, 2, 3]     # Deprecated: write 'let x = [1, 2, 3]'
+    print(x)                # [1, 2, 3]
 ```
 
 *Implementation:*
-- *🔄 Lowered — `LocalNameAllocator` assigns C# spellings with monotonic integer versioning (`x`, `x_1`, `x_2`) during `CodeGenInfoComputer.ComputeForModule`. Rebinding chains link each redefinition to its predecessor; chain members share the root's spelling. The emitter reads `CodeGenInfo` and `TargetBinding` and owns no local-slot state.*
+- *🔄 Lowered — `LocalNameAllocator` assigns C# spellings with monotonic integer versioning (`x`, `x_1`, `x_2`) during `CodeGenInfoComputer.ComputeForModule`. Rebinding chains link each redefinition to its predecessor; chain members share the root's spelling. A `let` target never joins a chain: `let` re-points the trigger that starts a new binding (formerly only the annotation), and the allocator is unchanged — a `let` shadow is versioned exactly like an annotated one. The emitter reads `CodeGenInfo` and `TargetBinding` and owns no local-slot state.*
