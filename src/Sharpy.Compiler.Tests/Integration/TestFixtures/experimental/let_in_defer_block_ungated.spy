@@ -1,0 +1,13 @@
+# #1974 (P21a): ungated twin of let_in_defer_block — without a `.features` sidecar enabling `defer`,
+# the same program is refused SPY0331 at the `defer` statement.
+def run() -> None:
+    x = "outer"
+    if True:
+        defer:
+            let x = "deferred"
+            print(x)
+        print(x)
+    print(x)
+
+def main():
+    run()

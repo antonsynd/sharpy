@@ -1,0 +1,3 @@
+# Without a `.features` sidecar enabling `defer`, the let-in-defer program is gated (SPY0331).
+SPY0331: the 'defer' statement requires experimental feature 'defer' @6:9
+!count 1
