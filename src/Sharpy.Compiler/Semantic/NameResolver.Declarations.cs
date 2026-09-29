@@ -176,6 +176,11 @@ internal partial class NameResolver
             {
                 ResolveMethodDeclaration(method, typeSymbol);
             }
+            else if (statement is VariableDeclaration { IsLet: true })
+            {
+                // A `let` in a type body is refused (SPY0340) by TypeBodyStatementValidator; it
+                // must not also register a field (#1974).
+            }
             else if (statement is VariableDeclaration field)
             {
                 ResolveFieldDeclaration(field, typeSymbol);
@@ -262,6 +267,11 @@ internal partial class NameResolver
             if (statement is FunctionDef method)
             {
                 ResolveMethodDeclaration(method, typeSymbol);
+            }
+            else if (statement is VariableDeclaration { IsLet: true })
+            {
+                // A `let` in a type body is refused (SPY0340) by TypeBodyStatementValidator; it
+                // must not also register a field (#1974).
             }
             else if (statement is VariableDeclaration field)
             {

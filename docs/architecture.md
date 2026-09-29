@@ -103,6 +103,7 @@ SemanticType (abstract)
 Pluggable validators implement `ISemanticValidator` with an `Order` property (lower runs first). **Responsibility split**: the TypeChecker handles type mismatches and in-progress inference; the ValidationPipeline handles self-contained AST analyses that don't need active inference state. Base classes: `ValidatingAstWalker` (visitor-pattern traversal — override `VisitXxx`) or `SemanticValidatorBase` (custom traversal — override `Validate()`).
 
 - **Order 50**: `ModuleLevelValidator` — Entry point validation
+- **Order 51**: `TypeBodyStatementValidator` — Statements in a class/struct/interface/union body (`let` → SPY0340 with the field steer)
 - **Order 52**: `CircularImportUsageValidator` — Circular import usage detection
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 56**: `TransitionWarningValidator` — Transition hints for Python/C# behavioral differences
