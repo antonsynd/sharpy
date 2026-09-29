@@ -1,0 +1,13 @@
+# #1974 (P21a): a `let` inside a `defer` block is fresh in that block — it prints its own value at
+# scope exit and leaves the outer binding untouched.
+def run() -> None:
+    x = "outer"
+    if True:
+        defer:
+            let x = "deferred"
+            print(x)
+        print(x)
+    print(x)
+
+def main():
+    run()

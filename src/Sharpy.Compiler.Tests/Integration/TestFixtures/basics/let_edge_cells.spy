@@ -1,0 +1,47 @@
+# #1974 (P21a) edge cells for `let`. Every cell prints a value the write-through reading would not.
+const SCALE: int = 100
+
+def initializer_reads_outer() -> None:
+    # The initializer reads the OUTER x (C# `var x = x` would be CS0841): 11 inside, 1 after.
+    x = 1
+    if True:
+        let x = x + 10
+        print(x)
+    print(x)
+    # `let x = x` copies the outer value; the copy is independent of it.
+    if True:
+        let x = x
+        x += 5
+        print(x)
+    print(x)
+
+def twice_in_one_block() -> None:
+    # A second `let` of the same name in one block is a fresh binding: the lambda still sees
+    # the first one.
+    let x = 1
+    get: () -> int = lambda: x
+    let x = 2
+    print(x, get())
+
+def in_match_arm(n: int) -> None:
+    x = "outer"
+    match n:
+        case 1:
+            let x = "arm"
+            print(x)
+        case _:
+            print("other")
+    print(x)
+
+def shadow_outer_const() -> None:
+    # An OUTER const is shadowed, not refused (the same-scope const is SPY0225).
+    if True:
+        let SCALE = 7
+        print(SCALE)
+    print(SCALE)
+
+def main():
+    initializer_reads_outer()
+    twice_in_one_block()
+    in_match_arm(1)
+    shadow_outer_const()

@@ -1,0 +1,18 @@
+# #1974 (R-BM): `out let v` over an existing `v` is a FRESH binding — the outer `v` prints
+# unchanged after the block. The control `out u` writes through to the existing `u`.
+def try_parse(s: str, result: out int) -> bool:
+    result = int(s)
+    return True
+
+def main():
+    v: int = 1
+    if True:
+        ok = try_parse("42", out let v)
+        print(v)
+    print(v)
+
+    u: int = 1
+    if True:
+        ok = try_parse("42", out u)
+        print(u)
+    print(u)

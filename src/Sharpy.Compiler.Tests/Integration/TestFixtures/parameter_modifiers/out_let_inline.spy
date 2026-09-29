@@ -1,0 +1,11 @@
+# #1974 (R-BM): `out let v` declares a fresh binding typed by the callee's out parameter;
+# `out let v: int` declares it with an explicit type.
+def try_parse(s: str, result: out int) -> bool:
+    result = int(s)
+    return True
+
+def main():
+    if try_parse("41", out let v):
+        print(v + 1)
+    ok = try_parse("7", out let w: int)
+    print(ok, w * 6)

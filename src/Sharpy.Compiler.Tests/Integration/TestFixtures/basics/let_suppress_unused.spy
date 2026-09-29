@@ -1,0 +1,9 @@
+# #1974 (P21a): a statement-scoped `@suppress(...)` decorates a `let` exactly as it decorates a
+# keywordless store — the decorated `let` parses (the decorator reaches ParseSimpleStatement) and
+# runs. Whether SPY0451 is then actually suppressed is the same for `let` and for a bare
+# `unused = 1` (at base 05824d52f it is NOT suppressed for either — findings ledger), so no
+# .warning sidecar pins it here.
+def main():
+    @suppress(SPY0451)
+    let unused = 1
+    print("ok")

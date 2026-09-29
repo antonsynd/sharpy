@@ -1,0 +1,13 @@
+# #1974 (P21a): every name under a `let` tuple target is fresh — flat and nested. The block prints
+# the inner values, the outer bindings print unchanged after it; a bare tuple store would write
+# through and print the inner values twice.
+def main():
+    a = 1
+    b = "b"
+    c = 3.5
+    if True:
+        let a, b = 10, "B"
+        print(a, b)
+        let a, (b, c) = 20, ("BB", 7.5)
+        print(a, b, c)
+    print(a, b, c)

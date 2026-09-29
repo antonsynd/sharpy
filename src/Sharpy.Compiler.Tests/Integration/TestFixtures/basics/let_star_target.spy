@@ -1,0 +1,9 @@
+# #1974 (P21a): a starred `let` target binds a fresh name and a fresh list. The block prints the
+# inner values, the outer bindings print unchanged after it.
+def main():
+    first = 0
+    rest: list[int] = [9]
+    if True:
+        let first, *rest = [1, 2, 3]
+        print(first, rest)
+    print(first, rest)

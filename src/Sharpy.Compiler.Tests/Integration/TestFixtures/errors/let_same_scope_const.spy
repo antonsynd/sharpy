@@ -1,0 +1,7 @@
+# #1974 (P21a): a `let` of a name a SAME-scope const already binds is a redefinition of the
+# constant — SPY0225, like the annotated `LIMIT: int = 2`. Positive control: an OUTER const is
+# shadowed (basics/let_edge_cells.spy, `shadow_outer_const`).
+def main():
+    const LIMIT: int = 1
+    let LIMIT = 2
+    print(LIMIT)

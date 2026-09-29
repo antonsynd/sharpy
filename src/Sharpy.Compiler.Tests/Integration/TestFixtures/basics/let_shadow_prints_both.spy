@@ -1,0 +1,15 @@
+# #1974 (P21a): `let` introduces a fresh block-scoped binding even over an existing name. Each
+# block prints the inner value, and the OUTER value prints after the block; a write-through
+# (bare `x = 2`) would print the inner value twice.
+def main():
+    x = 1
+    if True:
+        let x = 2
+        print(x)
+    print(x)
+
+    label: str = "outer"
+    for i in [1]:
+        let label: str = "inner"
+        print(label)
+    print(label)
