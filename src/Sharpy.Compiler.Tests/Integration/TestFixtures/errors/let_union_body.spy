@@ -1,0 +1,9 @@
+# #1974: a union body admits only `case`, `def` and `pass`, so a `let` there is the union grammar's
+# single refusal at the `let` token — never SPY0340 (semantic analysis does not run) and never a
+# recovery cascade. The case beside it is the positive control.
+union Shape:
+    case Circle(radius: int)
+    let sides = 0
+
+def main():
+    print(1)

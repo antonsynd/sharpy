@@ -15,8 +15,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// The <c>errors/let_*</c> fixtures are the file-based twins.
 /// </summary>
 /// <remarks>
-/// A union body is not a host here: the union grammar admits only <c>case</c>, <c>def</c> and
-/// <c>pass</c>, so a <c>let</c> there is a parser refusal before semantic analysis runs.
+/// A union body is ranged separately: the union grammar admits only <c>case</c>, <c>def</c> and
+/// <c>pass</c>, so a <c>let</c> there is the parser's single refusal before semantic analysis runs.
 /// </remarks>
 [Collection("HeavyCompilation")]
 public class LetPositionRefusalTests : IntegrationTestBase
@@ -76,6 +76,29 @@ public class LetPositionRefusalTests : IntegrationTestBase
         diagnostic.Message.Should().Contain(host.Steer);
         diagnostic.Line.Should().Be(host.Line, "the diagnostic is at the `let` token");
         diagnostic.Column.Should().Be(host.Column, "the diagnostic is at the `let` token");
+    }
+
+    /// <summary>
+    /// The union host: its grammar admits only <c>case</c>, <c>def</c> and <c>pass</c>, so every
+    /// <c>let</c> spelling is the parser's ONE refusal at the <c>let</c> token — no SPY0340 (semantic
+    /// analysis never runs) and no recovery cascade after it.
+    /// </summary>
+    [Theory]
+    [InlineData("let x = 5")]
+    [InlineData("let x: int = 5")]
+    [InlineData("let a, b = 1, 2")]
+    public void Let_InAUnionBody_IsTheUnionGrammarsSingleRefusal(string letLine)
+    {
+        var result = CompileAndExecute($"union U:\n    case A(v: int)\n    {letLine}\n\ndef main():\n    print(1)\n");
+
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().ContainSingle(
+            $"a union-body `let` is exactly one diagnostic of any severity; got: {Describe(result)}");
+        var diagnostic = result.RawDiagnostics[0];
+        diagnostic.Code.Should().Be(DiagnosticCodes.Parser.ExpectedToken);
+        diagnostic.Message.Should().Contain("Expected Case, got Let");
+        diagnostic.Line.Should().Be(3, "the diagnostic is at the `let` token");
+        diagnostic.Column.Should().Be(5, "the diagnostic is at the `let` token");
     }
 
     [Fact]
