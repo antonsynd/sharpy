@@ -434,6 +434,7 @@ public partial class Parser
             if (IsAtEnd)
                 break;
 
+            var itemStart = _position;
             try
             {
                 var stmt = ParseStatement();
@@ -455,7 +456,7 @@ public partial class Parser
                 }
 
                 // Panic-mode recovery: synchronize to next statement boundary
-                Synchronize();
+                Synchronize(itemStart);
             }
             SkipNewlines();
         }
@@ -529,6 +530,7 @@ public partial class Parser
             if (IsAtEnd)
                 break;
 
+            var itemStart = _position;
             try
             {
                 var stmt = ParseStatement();
@@ -538,7 +540,7 @@ public partial class Parser
             {
                 if (_diagnostics.ErrorCount >= _maxErrors)
                     break;
-                Synchronize();
+                Synchronize(itemStart);
             }
             SkipNewlines();
         }
@@ -621,13 +623,25 @@ public partial class Parser
     /// Also handles skipping over indented blocks that belong to broken definitions
     /// (e.g., a malformed function header followed by its indented body).
     /// </summary>
-    private void Synchronize()
+    /// <param name="itemStartPosition">
+    /// <see cref="_position"/> where the calling loop began the item that just failed. Required at
+    /// every call site: recovery may only resume AT the current token when the failed item consumed
+    /// at least one token. An item that failed on its own first token would, if resumed there, be
+    /// retried on the same token by the next loop iteration and fail identically — a SPY0906 loop
+    /// stall. That is guaranteed in a loop with its own grammar (an enum member or union case loop
+    /// meeting a statement keyword such as <c>let</c>, <c>const</c> or <c>return</c>) and in any
+    /// loop meeting a token no statement can start with (a stray <c>Dedent</c>).
+    /// </param>
+    private void Synchronize(int itemStartPosition)
     {
         // If we're already at a statement boundary and the current token starts
         // a new statement, return immediately so the parser can try it.
         // This handles the case where e.g. Expect(TokenType.Indent) fails right
         // after a newline -- the next definition's keyword is already Current.
-        if ((Previous.Type == TokenType.Newline || Previous.Type == TokenType.Dedent)
+        // Only when the failed item made progress: otherwise Current IS the token the item
+        // failed on, and resuming there re-fails it (see itemStartPosition).
+        if (_position > itemStartPosition
+            && (Previous.Type == TokenType.Newline || Previous.Type == TokenType.Dedent)
             && IsSyncToken(Current.Type))
         {
             return;

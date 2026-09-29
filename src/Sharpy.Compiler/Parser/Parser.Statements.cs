@@ -1304,6 +1304,7 @@ public partial class Parser
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
 
+            var itemStart = _position;
             try
             {
                 statements.Add(ParseStatement());
@@ -1317,7 +1318,7 @@ public partial class Parser
                     break;
 
                 // Panic-mode recovery: synchronize to next statement boundary
-                Synchronize();
+                Synchronize(itemStart);
             }
             SkipNewlines();
         }

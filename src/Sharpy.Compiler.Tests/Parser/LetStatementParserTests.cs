@@ -386,4 +386,98 @@ public class LetStatementParserTests
     }
 
     #endregion
+
+    #region Recovery totality — no loop stall in any body grammar
+
+    /// <summary>
+    /// Body kinds with their own grammar, each with a statement as a NON-first line.
+    /// <c>{S}</c> is replaced by the statement under test.
+    /// </summary>
+    private static readonly (string Kind, string Template)[] Bodies =
+    {
+        ("union", "union U:\n    case A(v: int)\n    {S}\n"),
+        ("enum", "enum E:\n    A = 1\n    {S}\n"),
+        ("interface", "interface I:\n    def m(self) -> int\n    {S}\n"),
+        ("struct", "struct S:\n    a: int\n    {S}\n"),
+        ("class", "class C:\n    a: int = 1\n    {S}\n"),
+        ("match arm body", "def main():\n    match 1:\n        case 1:\n            print(1)\n            {S}\n"),
+        ("match case list", "def main():\n    match 1:\n        case 1:\n            pass\n        {S}\n"),
+        ("function", "def main():\n    print(1)\n    {S}\n"),
+    };
+
+    /// <summary>
+    /// Statements that start with a sync token (every keyword IsSyncToken lists that can begin a
+    /// one-line statement), plus a plain identifier statement as the control.
+    /// </summary>
+    private static readonly string[] SyncStatements =
+    {
+        "let x = 5", "const X = 5", "return 1", "import os", "assert True", "raise E()",
+        "type T = int", "pass", "x = 5",
+    };
+
+    public static TheoryData<string, string> BodyTimesSyncStatement()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (kind, _) in Bodies)
+            foreach (var statement in SyncStatements)
+                data.Add(kind, statement);
+        return data;
+    }
+
+    private static IReadOnlyList<CompilerDiagnostic> ParserDiagnostics(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var parser = new ParserNs.Parser(lexer.TokenizeAll());
+        parser.ParseModule();
+        return parser.Diagnostics.GetAll();
+    }
+
+    /// <summary>
+    /// A panic-mode recovery that resumes AT the token the failed item started on re-fails it on
+    /// the next iteration: a SPY0906 loop stall plus a cascade. Reserving <c>let</c> as a sync
+    /// token exposed it in the enum/union loops (their grammar cannot start with a statement
+    /// keyword), but every sync-token keyword stalled there at 05824d52f (measured: const, return,
+    /// import, assert, raise, type), and the match case list stalled on a stray Dedent even for a
+    /// plain <c>x = 5</c>. The cure is one invariant in <c>Synchronize</c> (resume at the current
+    /// token only when the failed item consumed a token), so the matrix spans every sync statement
+    /// in every body grammar.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(BodyTimesSyncStatement))]
+    public void SyncStatementInAnyBody_NeverStallsTheParser(string kind, string statement)
+    {
+        var template = Bodies.Single(b => b.Kind == kind).Template;
+        var diagnostics = ParserDiagnostics(template.Replace("{S}", statement));
+        diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.ParserLoopStall,
+            string.Join(" | ", diagnostics.Select(d => $"{d.Code} {d.Message} @{d.Line}:{d.Column}")));
+    }
+
+    /// <summary>
+    /// The parser-diagnostic count (errors + warnings) the base apphost @ 05824d52f reported for the
+    /// SAME text, where `let` was a plain identifier (so `let x = 5` was the identifier statement
+    /// `let` followed by junk). Measured with `emit diagnostics` filtered to SPY01xx + SPY0906.
+    /// </summary>
+    public static TheoryData<string, int> LetBaseParserDiagnosticCounts => new()
+    {
+        { "union", 1 },
+        { "enum", 1 },
+        { "interface", 1 },
+        { "struct", 1 },
+        { "class", 1 },
+        { "match arm body", 1 },
+        { "match case list", 3 },
+        { "function", 1 },
+    };
+
+    [Theory]
+    [MemberData(nameof(LetBaseParserDiagnosticCounts))]
+    public void LetInAnyBody_ReportsNoMoreParserDiagnosticsThanBase(string kind, int baseCount)
+    {
+        var template = Bodies.Single(b => b.Kind == kind).Template;
+        var diagnostics = ParserDiagnostics(template.Replace("{S}", "let x = 5"));
+        diagnostics.Count.Should().BeLessThanOrEqualTo(baseCount,
+            string.Join(" | ", diagnostics.Select(d => $"{d.Code} {d.Message} @{d.Line}:{d.Column}")));
+    }
+
+    #endregion
 }

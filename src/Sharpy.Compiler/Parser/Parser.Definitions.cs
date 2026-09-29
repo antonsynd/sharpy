@@ -1102,6 +1102,7 @@ public partial class Parser
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
 
+            var itemStart = _position;
             try
             {
                 // Handle pass statement in empty enum
@@ -1149,7 +1150,7 @@ public partial class Parser
                 // Error already recorded. Skip to the next line within the enum body.
                 if (_diagnostics.ErrorCount >= _maxErrors)
                     break;
-                Synchronize();
+                Synchronize(itemStart);
             }
             SkipNewlines();
         }
@@ -1218,6 +1219,7 @@ public partial class Parser
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
 
+            var itemStart = _position;
             try
             {
                 // Handle pass statement in empty union body
@@ -1322,7 +1324,7 @@ public partial class Parser
                 // Error already recorded. Skip to the next line within the union body.
                 if (_diagnostics.ErrorCount >= _maxErrors)
                     break;
-                Synchronize();
+                Synchronize(itemStart);
             }
             SkipNewlines();
         }
