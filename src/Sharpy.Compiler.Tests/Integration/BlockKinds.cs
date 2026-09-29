@@ -99,9 +99,15 @@ internal static class BlockKinds
     /// the store always introduces a fresh binding (every <c>let</c> form, #1974; and, in Stage 1,
     /// the annotated <c>x: T = e</c>, which shadows today). <see cref="Store"/> spells the store of
     /// <c>name</c> with the int <c>value</c>; the tuple and star forms also bind a fresh <c>y</c> /
-    /// <c>rest</c>, which no predecessor ever names.
+    /// <c>rest</c>, which no predecessor ever names. <see cref="SlotType"/> is the stored name's
+    /// type — <c>list[int]</c> for the star-LEAF spellings, where the name is the starred target
+    /// and receives a list — and <see cref="Literal"/> spells an int value in that slot.
     /// </summary>
-    public sealed record Spelling(string Id, bool WritesThrough, bool IsLet, System.Func<string, string, string> Store);
+    public sealed record Spelling(
+        string Id, bool WritesThrough, bool IsLet, System.Func<string, string, string> Store, string SlotType = "int")
+    {
+        public string Literal(string value) => SlotType == "int" ? value : $"[{value}]";
+    }
 
     /// <summary>
     /// The spelling axis. <c>let-tuple</c> (literal RHS) reaches the inline binder of
@@ -122,6 +128,12 @@ internal static class BlockKinds
         new("let-star", WritesThrough: false, IsLet: true, (n, v) => $"let {n}, *rest = [{v}, 3]"),
         new("bare-tuple", WritesThrough: true, IsLet: false, (n, v) => $"{n}, y = {v}, 3"),
         new("bare-star", WritesThrough: true, IsLet: false, (n, v) => $"{n}, *rest = [{v}, 3]"),
+        // The star-LEAF position (#1974, P21a): the predecessor's name is the starred target, not
+        // the head — the star arm of BindUnpackingLeaf, flat and nested.
+        new("bare-star-leaf", WritesThrough: true, IsLet: false, (n, v) => $"y, *{n} = [0, {v}]", "list[int]"),
+        new("let-star-leaf", WritesThrough: false, IsLet: true, (n, v) => $"let y, *{n} = [0, {v}]", "list[int]"),
+        new("bare-nested-star-leaf", WritesThrough: true, IsLet: false, (n, v) => $"y, (z, *{n}) = 0, [0, {v}]", "list[int]"),
+        new("let-nested-star-leaf", WritesThrough: false, IsLet: true, (n, v) => $"let y, (z, *{n}) = 0, [0, {v}]", "list[int]"),
     };
 
     public enum PredecessorScope { None, SameScope, EnclosingBlock, EnclosingFunction, Module }
@@ -194,14 +206,14 @@ internal static class BlockKinds
     public static BindingLawCell BindingLaw(string kind, Spelling spelling, Predecessor predecessor)
     {
         var scope = predecessor.Scope;
-        var plant = (predecessor.IsConst ? "const " : "") + "x: int = 1";
+        var plant = (predecessor.IsConst ? "const " : "") + $"x: {spelling.SlotType} = {spelling.Literal("1")}";
 
         var inner = new System.Collections.Generic.List<string>();
         if (scope == PredecessorScope.SameScope)
         {
             inner.Add(plant);
             if (!predecessor.IsConst)
-                inner.Add("get: () -> int = lambda: x");
+                inner.Add($"get: () -> {spelling.SlotType} = lambda: x");
         }
 
         inner.Add(spelling.Store("x", "2"));
@@ -230,7 +242,7 @@ internal static class BlockKinds
             mainBody = "    if True:\n" + string.Concat(mainBody.Split('\n').Select(l => l.Length == 0 ? "" : "    " + l + "\n"));
 
         var modulePrefix = scope == PredecessorScope.Module
-            ? plant + "\n\ndef outer_x() -> int:\n    return x\n\n"
+            ? plant + $"\n\ndef outer_x() -> {spelling.SlotType}:\n    return x\n\n"
             : "";
 
         string? expectedOutput = null;
@@ -241,9 +253,9 @@ internal static class BlockKinds
         }
         else
         {
-            var lines = new System.Collections.Generic.List<string> { "2" };
+            var lines = new System.Collections.Generic.List<string> { spelling.Literal("2") };
             if (scope != PredecessorScope.None)
-                lines.Add(StoreWritesThrough(spelling, predecessor) ? "2" : "1");
+                lines.Add(spelling.Literal(StoreWritesThrough(spelling, predecessor) ? "2" : "1"));
             expectedOutput = string.Join("\n", lines);
         }
 
@@ -283,9 +295,44 @@ internal static class BlockKinds
     /// every predecessor, and every write-through store that reaches a <c>const</c> — the star
     /// binder's included — is refused SPY0225.
     /// </para>
+    /// <para>
+    /// The star-LEAF entries are red-first (#1974, P21a): when the predecessor's name is the STARRED
+    /// target (<c>y, *x = e</c>, flat or nested), the star arm of <c>BindUnpackingLeaf</c> records
+    /// <c>Declares</c> with no predecessor lookup. A bare store therefore never writes through (the
+    /// predecessor keeps its value — silent wrong) and is never refused by a const (an outer const:
+    /// no SPY0225; a same-scope const: SPY0909 "already defined", as for the <c>let</c> spellings).
+    /// Each entry is a "*" kind, measured red in EVERY applicable kind. All drain when the star arm
+    /// asks <c>StatementStorePredecessor</c>; the roster must end empty.
+    /// </para>
     /// </summary>
+    private const string StarLeaf = "#1974 (P21a: the star leaf never writes through — BindUnpackingLeaf's star arm has no predecessor lookup or const refusal)";
+
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
+        [("*", "BindingLaw/bare-star-leaf/same-scope")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/enclosing-block")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/enclosing-function")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/module-variable")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/module-const")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/enclosing-function-const")] = StarLeaf,
+        [("*", "BindingLaw/bare-star-leaf/same-scope-const")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/same-scope")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-block")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-function")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/module-variable")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/module-const")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/enclosing-function-const")] = StarLeaf,
+        [("*", "BindingLaw/bare-nested-star-leaf/same-scope-const")] = StarLeaf,
+        [("*", "BindingLaw/let-star-leaf/same-scope-const")] = StarLeaf,
+        [("*", "BindingLaw/let-nested-star-leaf/same-scope-const")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-star-leaf/same-scope")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-star-leaf/enclosing-block")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-star-leaf/enclosing-function")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-star-leaf/module-variable")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-nested-star-leaf/same-scope")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-nested-star-leaf/enclosing-block")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-nested-star-leaf/enclosing-function")] = StarLeaf,
+        [("*", "BindingLawRecorded/bare-nested-star-leaf/module-variable")] = StarLeaf,
     };
 
     /// <summary>

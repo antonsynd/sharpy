@@ -128,22 +128,37 @@ public class TargetBindingRecordingTests
                 {
                     var store = nodes.OfType<Assignment>().Last(s => s.Target is TupleLiteral);
                     store.IsLet.Should().Be(spelling.IsLet, spelling.Id);
-                    foreach (var element in ((TupleLiteral)store.Target).Elements)
-                    {
-                        var id = element switch
-                        {
-                            Identifier i => i,
-                            StarExpression { Operand: Identifier i } => i,
-                            _ => throw new System.InvalidOperationException($"unexpected tuple target element {element.GetType().Name}"),
-                        };
+                    foreach (var id in TupleTargetNames((TupleLiteral)store.Target))
                         result.Add((id.Name, id, a.Info.GetIdentifierSymbol(id) as VariableSymbol));
-                    }
 
                     break;
                 }
         }
 
         return result;
+    }
+
+    /// <summary>Every identifier a tuple target binds, nested tuples and starred leaves included.</summary>
+    private static System.Collections.Generic.IEnumerable<Identifier> TupleTargetNames(TupleLiteral tuple)
+    {
+        foreach (var element in tuple.Elements)
+        {
+            switch (element)
+            {
+                case Identifier i:
+                    yield return i;
+                    break;
+                case StarExpression { Operand: Identifier i }:
+                    yield return i;
+                    break;
+                case TupleLiteral nested:
+                    foreach (var i in TupleTargetNames(nested))
+                        yield return i;
+                    break;
+                default:
+                    throw new System.InvalidOperationException($"unexpected tuple target element {element.GetType().Name}");
+            }
+        }
     }
 
     [Fact]
