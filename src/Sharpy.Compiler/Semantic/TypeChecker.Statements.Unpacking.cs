@@ -36,10 +36,15 @@ internal partial class TypeChecker
     /// checked under the DECLARED slot of the target it lands on, so a bare <c>None</c> types under
     /// that slot instead of as <c>void</c> (#1707, #1812). Null for for/with/comprehension.
     /// </param>
+    /// <param name="introduces">
+    /// True for a <c>let</c> assignment target (#1974): every name bound at every depth is a fresh
+    /// binding (see <see cref="StatementStorePredecessor"/>). Only the assignment position reads it;
+    /// the <c>for</c>/<c>with</c>/comprehension targets are introducers by position.
+    /// </param>
     private void CheckUnpackingTargets(
         ImmutableArray<Expression> targets, SemanticType source,
         UnpackingPosition position, int errLine, int errCol, Text.TextSpan? errSpan,
-        Expression? valueNode = null, bool nested = false)
+        Expression? valueNode = null, bool nested = false, bool introduces = false)
     {
         // A bare sole-starred group `(*a)` survives canonicalization as a SpreadElement (a comma
         // `(*a,)` or a list display `[*a]` would have become a StarExpression). Python refuses it in
@@ -92,7 +97,7 @@ internal partial class TypeChecker
             if (valueNodes != null && valueNodes.Count >= targetsBefore + targetsAfter
                 && (hasStar || valueNodes.Count == targets.Length))
             {
-                perElement = CheckStarValueElements(targets, valueNodes, targetsBefore, targetsAfter);
+                perElement = CheckStarValueElements(targets, valueNodes, targetsBefore, targetsAfter, introduces);
                 RecomposeTupleLiteralType(valueNode, valueNodes);
                 source = new TupleType { ElementTypes = perElement.ToList() };
                 _semanticInfo.SetExpressionType(valueNode, source);
@@ -130,7 +135,7 @@ internal partial class TypeChecker
                     elemType = tupleType.ElementTypes[arity - targetsAfter + (i - starIndex - 1)];
 
                 BindUnpackingLeaf(targets[i], elemType, position, targets, starIndex, perElement,
-                    ValueNodeForTarget(valueNodes, i, starIndex, targetsBefore, targetsAfter));
+                    ValueNodeForTarget(valueNodes, i, starIndex, targetsBefore, targetsAfter), introduces);
             }
         }
         else if (hasStar && SequenceElementType(source) is { } seqElem)
@@ -139,7 +144,7 @@ internal partial class TypeChecker
             for (int i = 0; i < targets.Length; i++)
             {
                 var elemType = i == starIndex ? listType : seqElem;
-                BindUnpackingLeaf(targets[i], elemType, position, targets, starIndex, perElement, null);
+                BindUnpackingLeaf(targets[i], elemType, position, targets, starIndex, perElement, null, introduces);
             }
         }
         else
@@ -223,7 +228,7 @@ internal partial class TypeChecker
     private void BindUnpackingLeaf(
         Expression target, SemanticType elemType, UnpackingPosition position,
         ImmutableArray<Expression> siblings, int starIndex,
-        IReadOnlyList<SemanticType>? perElement, Expression? valueNode)
+        IReadOnlyList<SemanticType>? perElement, Expression? valueNode, bool introduces)
     {
         switch (target)
         {
@@ -233,7 +238,7 @@ internal partial class TypeChecker
                 break;
 
             case Identifier id when position == UnpackingPosition.Assignment:
-                BindAssignmentUnpackingIdentifier(id, elemType, siblings, perElement);
+                BindAssignmentUnpackingIdentifier(id, elemType, siblings, perElement, introduces);
                 break;
 
             case Identifier id:
@@ -246,7 +251,7 @@ internal partial class TypeChecker
             case TupleLiteral nested:
                 CheckUnpackingTargets(nested.Elements, elemType, position,
                     nested.LineStart, nested.ColumnStart, nested.Span,
-                    valueNode: valueNode, nested: true);
+                    valueNode: valueNode, nested: true, introduces: introduces);
                 break;
 
             default:
@@ -259,14 +264,25 @@ internal partial class TypeChecker
     /// <summary>
     /// The assignment-position identifier binding: a target with a declared binding is a STORE into
     /// it and keeps its declared type (#1706); a fresh target takes its own element's checked type
-    /// (via <see cref="NonStarTargetType"/>) or the derived slice type.
+    /// (via <see cref="NonStarTargetType"/>) or the derived slice type. The predecessor, and the
+    /// refusal of a store that reaches a <c>const</c>, come from
+    /// <see cref="StatementStorePredecessor"/> — before it, a star store to a const crashed
+    /// (SPY0909 "already defined" in the same scope, CS0131 through an outer const) instead of
+    /// reporting SPY0225 (#1974).
     /// </summary>
     private void BindAssignmentUnpackingIdentifier(
         Identifier id, SemanticType elemType,
-        ImmutableArray<Expression> siblings, IReadOnlyList<SemanticType>? perElement)
+        ImmutableArray<Expression> siblings, IReadOnlyList<SemanticType>? perElement, bool introduces)
     {
-        var predecessor = (_symbolTable.Lookup(id.Name, searchParents: false)
-            ?? _symbolTable.Lookup(id.Name, searchParents: true)) as VariableSymbol;
+        var store = StatementStorePredecessor(id.Name, introduces);
+        if (store.RefusedConstant != null)
+        {
+            ReportStatementStoreToConstant(id.Name, introduces, " in tuple unpacking",
+                id.LineStart, id.ColumnStart, id.Span);
+            return;
+        }
+
+        var predecessor = store.Predecessor;
 
         var boundType = predecessor != null
             ? DeclaredBindingType(predecessor)

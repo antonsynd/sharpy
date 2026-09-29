@@ -278,67 +278,14 @@ internal static class BlockKinds
     /// (#1656); the <c>defer</c> entry drained when the CFG builder gained a scope-exit model for
     /// defer bodies (#1657, f2d5270b7).
     /// <para>
-    /// The binding-law entries (#1974, P21a) are red-first: the parser reads <c>let</c> but the
-    /// checker ignores <c>IsLet</c> until P21a Phase 2 Task 1 lands the introduce seam, so an
-    /// unannotated, tuple or starred <c>let</c> over an existing binding writes through (prints the
-    /// predecessor-overwriting value, records <c>Rebinds</c>) or, over a module const, is refused
-    /// SPY0225. Each entry is a "*" kind: measured red in EVERY applicable kind.
-    /// </para>
-    /// <para>
-    /// The star-binder const entries (<see cref="StarConst"/>) are a second reason, ruled in the
-    /// P21a contract by the lead: <c>BindAssignmentUnpackingIdentifier</c> has no const refusal, so a
-    /// star store that reaches a const crashes instead of reporting SPY0225 — SPY0909 "already
-    /// defined" in the same scope, SPY0908 (CS0131) through a write-through to an outer const. The
-    /// seam that unifies the three binders carries the refusal. All entries drain when the seam
-    /// lands; the roster must end empty.
+    /// The binding-law entries (#1974, P21a) were red-first and drained when the introduce seam
+    /// (<c>TypeChecker.StatementStorePredecessor</c>) landed: every <c>let</c> spelling is fresh over
+    /// every predecessor, and every write-through store that reaches a <c>const</c> — the star
+    /// binder's included — is refused SPY0225.
     /// </para>
     /// </summary>
-    private const string LetSeam = "#1974 (P21a Phase 2 Task 1: the checker ignores IsLet)";
-
-    private const string StarConst = "#1974 (P21a Phase 2 Task 1: the star binder has no const refusal — SPY0909/SPY0908 ICE, not SPY0225)";
-
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
-        [("*", "BindingLaw/let/same-scope")] = LetSeam,
-        [("*", "BindingLaw/let/enclosing-block")] = LetSeam,
-        [("*", "BindingLaw/let/enclosing-function")] = LetSeam,
-        [("*", "BindingLaw/let/module-variable")] = LetSeam,
-        [("*", "BindingLaw/let/module-const")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/same-scope")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/enclosing-block")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/enclosing-function")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/module-variable")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/module-const")] = LetSeam,
-        [("*", "BindingLaw/let-star/same-scope")] = LetSeam,
-        [("*", "BindingLaw/let-star/enclosing-block")] = LetSeam,
-        [("*", "BindingLaw/let-star/enclosing-function")] = LetSeam,
-        [("*", "BindingLaw/let-star/module-variable")] = LetSeam,
-        [("*", "BindingLaw/let-star/module-const")] = LetSeam,
-        [("*", "BindingLaw/let/enclosing-function-const")] = LetSeam,
-        [("*", "BindingLaw/let-tuple/enclosing-function-const")] = LetSeam,
-        [("*", "BindingLaw/let-star/enclosing-function-const")] = LetSeam,
-        [("*", "BindingLaw/let-star/same-scope-const")] = StarConst,
-        [("*", "BindingLaw/bare-star/same-scope-const")] = StarConst,
-        [("*", "BindingLaw/bare-star/module-const")] = StarConst,
-        [("*", "BindingLaw/bare-star/enclosing-function-const")] = StarConst,
-        [("*", "BindingLawRecorded/let/same-scope")] = LetSeam,
-        [("*", "BindingLawRecorded/let/enclosing-block")] = LetSeam,
-        [("*", "BindingLawRecorded/let/enclosing-function")] = LetSeam,
-        [("*", "BindingLawRecorded/let/module-variable")] = LetSeam,
-        [("*", "BindingLawRecorded/let/module-const")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/same-scope")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/enclosing-block")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/enclosing-function")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/module-variable")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/module-const")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/same-scope")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/enclosing-block")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/enclosing-function")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/module-variable")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/module-const")] = LetSeam,
-        [("*", "BindingLawRecorded/let/enclosing-function-const")] = LetSeam,
-        [("*", "BindingLawRecorded/let-tuple/enclosing-function-const")] = LetSeam,
-        [("*", "BindingLawRecorded/let-star/enclosing-function-const")] = LetSeam,
     };
 
     /// <summary>

@@ -1621,9 +1621,13 @@ internal partial class TypeChecker
     /// a tuple-TYPED expression rather than a literal: there is no per-element node then, and the
     /// classification is type-only.
     /// </param>
+    /// <param name="introduces">
+    /// True for a <c>let</c> tuple (<c>let a, b = e</c>, #1974): every name under the target is a
+    /// fresh binding (see <see cref="StatementStorePredecessor"/>), including nested tuple targets.
+    /// </param>
     private void CheckTupleUnpackingElements(
         ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> valueTypes,
-        IReadOnlyList<Expression>? valueNodes = null)
+        IReadOnlyList<Expression>? valueNodes = null, bool introduces = false)
     {
         for (int i = 0; i < targets.Length; i++)
         {
@@ -1635,25 +1639,25 @@ internal partial class TypeChecker
             {
                 // Python class-scope rule (#1786, R-Y): an unpacking element is a store, refused
                 // by name like the plain form. Without this the element declared a fresh local and
-                // the program compiled silently.
-                if (TryRefuseBareClassAttributeStore(
+                // the program compiled silently. A `let` element is the explicit new local the
+                // refusal steers to (#1974), so it is exempt.
+                if (!introduces
+                    && TryRefuseBareClassAttributeStore(
                         tupleTargetId.Name, tupleTargetId, BareStoreForm.TupleElement,
                         tupleTargetId.LineStart, tupleTargetId.ColumnStart, tupleTargetId.Span))
                 {
                     continue;
                 }
 
-                RecordModuleAccessCrossingClassMember(tupleTargetId.Name, tupleTargetId);
+                if (!introduces)
+                    RecordModuleAccessCrossingClassMember(tupleTargetId.Name, tupleTargetId);
 
-                var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false)
-                    ?? _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
-
-                // Check if trying to reassign a constant
-                if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+                // The one introduce-vs-write-through decision (#1974).
+                var store = StatementStorePredecessor(tupleTargetId.Name, introduces);
+                if (store.RefusedConstant != null)
                 {
-                    AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
-                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                        span: tupleTargetId.Span);
+                    ReportStatementStoreToConstant(tupleTargetId.Name, introduces, " in tuple unpacking",
+                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, tupleTargetId.Span);
                     continue;
                 }
 
@@ -1664,7 +1668,7 @@ internal partial class TypeChecker
                 // admitted type-wise and the emitter printed an unsuffixed 2.5 (CS0029 behind
                 // SPY0908), and a genuinely mistyped element (`a: int; a, b = "x", 3`) was the
                 // same ICE.
-                var storePredecessor = existingSymbol as VariableSymbol;
+                var storePredecessor = store.Predecessor;
                 var declaredSlot = storePredecessor != null
                     ? DeclaredBindingType(storePredecessor)
                     : (SemanticType?)null;
@@ -1748,7 +1752,7 @@ internal partial class TypeChecker
 
                 // A fresh element with no declared slot and a void value goes through
                 // BestCommonType: `a, b = None, 1` refuses at `a` (R-AB, #1812).
-                if (existingSymbol == null && declaredSlot is null or UnknownType
+                if (storePredecessor == null && declaredSlot is null or UnknownType
                     && elementType is VoidType)
                 {
                     elementType = BestCommonType(
@@ -1778,7 +1782,7 @@ internal partial class TypeChecker
                 SemanticBinding.SetVariableType(newSymbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
 
-                if (existingSymbol is VariableSymbol predecessor)
+                if (storePredecessor is { } predecessor)
                 {
                     _semanticInfo.SetRebindingPredecessor(newSymbol, predecessor);
                     _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(TargetBindingKind.Rebinds));
@@ -1807,7 +1811,7 @@ internal partial class TypeChecker
                 CheckUnpackingTargets(nestedTuple.Elements, valueElemType,
                     UnpackingPosition.Assignment,
                     targetElem.LineStart, targetElem.ColumnStart, targetElem.Span,
-                    valueNode: valueElemNode, nested: true);
+                    valueNode: valueElemNode, nested: true, introduces: introduces);
             }
             else
             {
@@ -1878,17 +1882,17 @@ internal partial class TypeChecker
     /// </remarks>
     private IReadOnlyList<SemanticType> CheckStarValueElements(
         ImmutableArray<Expression> targets, IReadOnlyList<Expression> valueNodes,
-        int targetsBefore, int targetsAfter)
+        int targetsBefore, int targetsAfter, bool introduces)
     {
         var types = new List<SemanticType>(valueNodes.Count);
 
         for (int i = 0; i < valueNodes.Count; i++)
         {
             var target = StarTargetForValueIndex(targets, valueNodes.Count, i, targetsBefore, targetsAfter);
+            // The slot is the declared type of the binding the target writes through to — none for
+            // a fresh (`let`) target or a refused const, whose leaf binder reports it (#1974).
             var slot = target is Identifier id
-                && (_symbolTable.Lookup(id.Name, searchParents: false) as VariableSymbol
-                    ?? _symbolTable.Lookup(id.Name, searchParents: true) as VariableSymbol)
-                    is { } predecessor
+                && StatementStorePredecessor(id.Name, introduces).Predecessor is { } predecessor
                 ? DeclaredBindingType(predecessor)
                 : null;
 

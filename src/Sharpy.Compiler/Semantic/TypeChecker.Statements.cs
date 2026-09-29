@@ -56,8 +56,10 @@ internal partial class TypeChecker
         // Python class-scope rule (#1786, R-Y): a bare STORE to a name the enclosing class body
         // declares is refused by name, in EVERY assignment form. Before the target is resolved,
         // because the augmented and '??=' forms read their target first and would otherwise report
-        // the READ code (SPY0200) for a write.
+        // the READ code (SPY0200) for a write. A `let` target is exempt: it is the explicit new
+        // local the refusal's steer asks for (#1974), as the annotated form already is.
         if (assignment.Target is Identifier bareStoreTarget
+            && !assignment.IsLet
             && TryRefuseBareClassAttributeStore(
                 bareStoreTarget.Name, bareStoreTarget,
                 assignment.Operator switch
@@ -72,8 +74,9 @@ internal partial class TypeChecker
         }
 
         // The store REACHES a module variable a class body shadows: the write-through goes to the
-        // module slot, and a bare name in the emitted C# would write the field instead (#1786).
-        if (assignment.Target is Identifier shadowedStoreTarget)
+        // module slot, and a bare name in the emitted C# would write the field instead (#1786). A
+        // `let` store reaches no module slot — it declares a fresh local (#1974).
+        if (assignment.Target is Identifier shadowedStoreTarget && !assignment.IsLet)
             RecordModuleAccessCrossingClassMember(shadowedStoreTarget.Name, shadowedStoreTarget);
 
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
@@ -95,7 +98,7 @@ internal partial class TypeChecker
                 var placeholderTypes = Enumerable
                     .Repeat(SemanticType.Unknown, elemNodes.Count).ToList();
                 CheckTupleUnpackingElements(
-                    targetTuple.Elements, placeholderTypes, elemNodes);
+                    targetTuple.Elements, placeholderTypes, elemNodes, introduces: assignment.IsLet);
 
                 // Build the tuple's recorded type from the individually-checked elements.
                 RecomposeTupleLiteralType(assignment.Value, elemNodes);
@@ -111,7 +114,7 @@ internal partial class TypeChecker
                 CheckUnpackingTargets(targetTuple.Elements, SemanticType.Unknown,
                     UnpackingPosition.Assignment,
                     assignment.LineStart, assignment.ColumnStart, assignment.Span,
-                    valueNode: assignment.Value);
+                    valueNode: assignment.Value, introduces: assignment.IsLet);
                 return;
             }
 
@@ -140,7 +143,7 @@ internal partial class TypeChecker
             // NODES travel with the types so each element is a store the seam can classify by
             // value shape, not a bare type comparison (#1698, #1701).
             CheckTupleUnpackingElements(
-                targetTuple.Elements, tupleType2.ElementTypes, elemNodes);
+                targetTuple.Elements, tupleType2.ElementTypes, elemNodes, introduces: assignment.IsLet);
 
             return;
         }
@@ -148,34 +151,23 @@ internal partial class TypeChecker
         // Check if this is a simple assignment to an identifier (type inference and redefinition case)
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
         {
-            // Check current scope first
-            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
-
             // A hoisted def/class with this name makes the assignment a duplicate definition,
             // not a rebinding — Scope.Define would throw on the collision.
             if (TryReportNonVariableRedefinition(targetId.Name, assignment.LineStart, assignment.ColumnStart, assignment.Span))
                 return;
 
-            // Check if trying to reassign a constant in current scope
-            if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+            // The one introduce-vs-write-through decision (#1974): a bare store chains to the
+            // nearest existing variable in any scope and is refused on a const; a `let` store is
+            // fresh and is refused only by a same-scope const.
+            var store = StatementStorePredecessor(targetId.Name, introduces: assignment.IsLet);
+            if (store.RefusedConstant != null)
             {
-                AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                    span: assignment.Span);
+                ReportStatementStoreToConstant(targetId.Name, assignment.IsLet, reassignSuffix: "",
+                    assignment.LineStart, assignment.ColumnStart, assignment.Span);
                 return;
             }
 
-            // Also check parent scopes for consts (can't reassign outer scope const)
-            var parentSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
-            if (parentSymbol is VariableSymbol parentVar && parentVar.IsConstant)
-            {
-                AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
-                    span: assignment.Span);
-                return;
-            }
-
-            var storePredecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;
+            var storePredecessor = store.Predecessor;
             var storeTarget = storePredecessor != null ? DeclaredBindingType(storePredecessor) : SemanticType.Unknown;
             SemanticType inferredType;
             using (EnterStore(StorePosition.PlainStore, storeTarget, assignment.Value))
@@ -283,8 +275,9 @@ internal partial class TypeChecker
             _symbolTable.Define(newSymbol);
 
             // Link the rebinding — same scope or cross-scope write-through (owner ruling option 1).
-            var predecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;
-            if (predecessor != null && !predecessor.IsConstant && !ReferenceEquals(predecessor, newSymbol))
+            // A `let` store has no predecessor: a fresh chain root (#1974).
+            var predecessor = storePredecessor;
+            if (predecessor != null && !ReferenceEquals(predecessor, newSymbol))
             {
                 _semanticInfo.SetRebindingPredecessor(newSymbol, predecessor);
             }
@@ -960,6 +953,64 @@ internal partial class TypeChecker
         return unresolved.Count == 1
             ? $"the type of parameter {names}"
             : $"the types of parameters {names}";
+    }
+
+    /// <summary>
+    /// What a statement store of a name binds against — the result of
+    /// <see cref="StatementStorePredecessor"/>.
+    /// </summary>
+    /// <param name="Predecessor">The binding the store writes through to (chains to), or null when
+    /// the store declares a fresh binding.</param>
+    /// <param name="RefusedConstant">The <c>const</c> the store would reach, when it is refused
+    /// (SPY0225); <paramref name="Predecessor"/> is then null.</param>
+    private readonly record struct StatementStoreBinding(VariableSymbol? Predecessor, VariableSymbol? RefusedConstant);
+
+    /// <summary>
+    /// The ONE introduce-vs-write-through decision for a statement store of <paramref name="name"/>
+    /// (#1974). Every statement binder asks here instead of spelling the lookup itself: the
+    /// identifier arm of <see cref="CheckAssignment"/>, the tuple-element binder of
+    /// <see cref="CheckTupleUnpackingElements"/>, the star path's
+    /// <see cref="BindAssignmentUnpackingIdentifier"/> and its value-slot lookup in
+    /// <see cref="CheckStarValueElements"/>.
+    /// <list type="bullet">
+    ///   <item>A write-through store (<paramref name="introduces"/> false — bare <c>x = e</c>,
+    ///     <c>a, b = e</c>, <c>first, *rest = e</c>) chains to the nearest existing variable of the
+    ///     name in ANY enclosing scope (same scope, enclosing block, enclosing function, module), and
+    ///     is refused when that variable is a <c>const</c>.</item>
+    ///   <item>An introducing store (<paramref name="introduces"/> true — every <c>let</c> form) has
+    ///     no predecessor: it is a fresh binding even over an existing name, which the local-name
+    ///     allocator versions. It is refused only by a <c>const</c> of the name in the SAME scope (a
+    ///     redefinition, as <c>x: T = e</c> is); an outer <c>const</c> is shadowed.</item>
+    /// </list>
+    /// Stage 2 of #1974 turns a write-through store with no predecessor into a refusal HERE, so the
+    /// flip is one arm, not one per binder.
+    /// </summary>
+    private StatementStoreBinding StatementStorePredecessor(string name, bool introduces)
+    {
+        if (introduces)
+        {
+            return _symbolTable.Lookup(name, searchParents: false) is VariableSymbol { IsConstant: true } sameScopeConstant
+                ? new StatementStoreBinding(null, sameScopeConstant)
+                : new StatementStoreBinding(null, null);
+        }
+
+        var reached = _symbolTable.Lookup(name, searchParents: true) as VariableSymbol;
+        return reached is { IsConstant: true }
+            ? new StatementStoreBinding(null, reached)
+            : new StatementStoreBinding(reached, null);
+    }
+
+    /// <summary>
+    /// Reports SPY0225 for a statement store <see cref="StatementStorePredecessor"/> refused: a
+    /// redefinition for an introducing store, a reassignment for a write-through one.
+    /// </summary>
+    private void ReportStatementStoreToConstant(
+        string name, bool introduces, string reassignSuffix, int line, int column, Text.TextSpan? span)
+    {
+        AddError(introduces
+                ? $"Cannot redefine constant variable '{name}'"
+                : $"Cannot reassign constant variable '{name}'{reassignSuffix}",
+            line, column, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget, span: span);
     }
 
     private void CheckVariableDeclaration(VariableDeclaration varDecl)

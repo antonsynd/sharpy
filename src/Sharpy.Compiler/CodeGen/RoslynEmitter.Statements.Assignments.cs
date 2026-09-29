@@ -61,12 +61,7 @@ internal partial class RoslynEmitter
             && assign.Value is LambdaExpression lambdaWithDefaults
             && HasDefaultParameters(lambdaWithDefaults))
         {
-            var baseName = LocalBaseName(lambdaTargetId.Name, lambdaTargetId.IsNameBacktickEscaped);
-            var symbol = _context.LookupSymbol(lambdaTargetId.Name);
-            var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-            var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(lambdaTargetId)?.Kind == TargetBindingKind.Rebinds;
-
-            if (!existsAsModuleLevel && !existsAsLocal)
+            if (!StoreAssignsExistingSlot(lambdaTargetId))
             {
                 // First declaration — emit as local function
                 var localFuncName = GetMangledVariableName(lambdaTargetId, isNewDeclaration: true);
@@ -131,10 +126,8 @@ internal partial class RoslynEmitter
                 // to a live one is the recorded TargetBinding (#1560); a module-level variable is
                 // always assigned (it is a field).
                 var symbol = _context.LookupSymbol(name.Name);
-                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(name)?.Kind == TargetBindingKind.Rebinds;
 
-                if (existsAsModuleLevel || existsAsLocal)
+                if (StoreAssignsExistingSlot(name))
                 {
                     // Variable exists - just update it with a regular assignment
                     var currentName = GetMangledVariableName(name, isNewDeclaration: false);
@@ -445,14 +438,7 @@ internal partial class RoslynEmitter
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
 
                 // Check which variables already exist (mirrors simple assignment path)
-                var existenceFlags = identifiers.Select(id =>
-                {
-                    var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                    var symbol = _context.LookupSymbol(id.Name);
-                    var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                    var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-                    return existsAsModuleLevel || existsAsLocal;
-                }).ToList();
+                var existenceFlags = identifiers.Select(StoreAssignsExistingSlot).ToList();
 
                 bool allExist = existenceFlags.All(e => e);
                 bool noneExist = existenceFlags.All(e => !e);
@@ -1417,21 +1403,37 @@ internal partial class RoslynEmitter
         return fieldDeclaration;
     }
 
+    /// <summary>
+    /// Whether a statement store to <paramref name="target"/> assigns a slot that already exists
+    /// (true) or declares a fresh C# local (false) — the one answer for every identifier store site
+    /// (plain, lambda-with-defaults, in-place deconstruction, <see cref="GenerateStore"/>). The
+    /// checker's recorded <see cref="TargetBinding"/> decides (#1560): <c>Rebinds</c> assigns,
+    /// <c>Declares</c> declares, even when a module-level binding of the same name exists — a
+    /// <c>let</c> over a module variable is a fresh local (#1974), and a name-based lookup here
+    /// assigned the module's name instead (CS0103 behind SPY0908). Only a target the checker never
+    /// recorded (AST-only unit tests) falls back to the name: a module-level variable is a field,
+    /// so it is assigned.
+    /// </summary>
+    private bool StoreAssignsExistingSlot(Identifier target)
+    {
+        if (_context.SemanticInfo?.GetTargetBinding(target) is { } recorded)
+            return recorded.Kind == TargetBindingKind.Rebinds;
+
+        var symbol = _context.LookupSymbol(target.Name);
+        return symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+    }
+
     private StatementSyntax GenerateStore(Expression target, ExpressionSyntax value)
     {
         switch (target)
         {
             case Identifier id:
                 {
-                    var symbol = _context.LookupSymbol(id.Name);
-                    var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                    var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-
                     // A store to a runtime-checked local sets its assigned-flag inline (#1839):
                     // `n = Builtins.Assigned(ref __n_assigned, value)`.
                     value = MaybeWrapRuntimeAssignedStore(id, value);
 
-                    if (existsAsModuleLevel || existsAsLocal)
+                    if (StoreAssignsExistingSlot(id))
                     {
                         var currentName = GetMangledVariableName(id, isNewDeclaration: false);
                         return ExpressionStatement(
