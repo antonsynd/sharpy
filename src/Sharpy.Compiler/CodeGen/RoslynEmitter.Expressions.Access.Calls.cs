@@ -1233,9 +1233,10 @@ internal partial class RoslynEmitter
                 // Inline out declaration: out name: type → out type name
                 if (modArg.InlineName != null)
                 {
-                    // Map the type: "auto" → var, otherwise use TypeSyntaxMapper
+                    // Map the type: no annotation (`out let v`, #1974) or "auto" → var, otherwise
+                    // use TypeSyntaxMapper
                     TypeSyntax typeSyntax;
-                    if (modArg.InlineType!.Name == "auto")
+                    if (modArg.InlineType == null || modArg.InlineType.Name == "auto")
                     {
                         typeSyntax = IdentifierName("var");
                     }

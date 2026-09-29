@@ -242,12 +242,16 @@ internal partial class TypeChecker
 
     private SemanticType CheckModifiedArgument(ModifiedArgument modArg)
     {
-        // Handle inline out declarations: out value: int, out value: auto
+        // Handle inline out declarations: out value: int, out value: auto, out let value[: int]
         if (modArg.InlineName != null)
         {
-            // Resolve the inline type annotation via TypeResolver
-            // (TypeResolver returns UnknownType for "auto", which maps to C# var)
-            var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType, AnnotationPosition.Value);
+            // Resolve the inline type annotation via TypeResolver (TypeResolver returns UnknownType
+            // for "auto", which maps to C# var). An unannotated `out let v` has no annotation at
+            // all: its type flows from the callee through the same Unknown write-back as `auto`
+            // (#1974, R-BM).
+            var resolvedType = modArg.InlineType == null
+                ? SemanticType.Unknown
+                : _typeResolver.ResolveTypeAnnotation(modArg.InlineType, AnnotationPosition.Value);
 
             // Bind the name exactly as a walrus does (#1560 D1 §2, R3): an already-bound name is
             // REBOUND by a chained successor — the emitter then passes the existing C# local as
@@ -256,17 +260,26 @@ internal partial class TypeChecker
             if (TryReportNonVariableRedefinition(modArg.InlineName, modArg.Argument.LineStart, modArg.Argument.ColumnStart, modArg.Span))
                 return SemanticType.Unknown;
 
-            var candidate = _symbolTable.Lookup(modArg.InlineName, searchParents: false)
-                ?? _symbolTable.Lookup(modArg.InlineName, searchParents: true);
+            // `out let v` introduces (#1974, R-BM): it has no predecessor and, like a `let`
+            // statement, is refused only by a const of the name in the SAME scope; `out v: T`
+            // keeps today's rebinding of an existing variable.
+            var candidate = modArg.IsLet
+                ? _symbolTable.Lookup(modArg.InlineName, searchParents: false)
+                : _symbolTable.Lookup(modArg.InlineName, searchParents: false)
+                    ?? _symbolTable.Lookup(modArg.InlineName, searchParents: true);
             if (candidate is VariableSymbol { IsConstant: true })
             {
-                AddError($"Cannot reassign constant variable '{modArg.InlineName}'",
+                AddError(modArg.IsLet
+                        ? $"Cannot redefine constant variable '{modArg.InlineName}'"
+                        : $"Cannot reassign constant variable '{modArg.InlineName}'",
                     modArg.Argument.LineStart, modArg.Argument.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidAssignmentTarget, span: modArg.Span);
                 return SemanticType.Unknown;
             }
 
-            var predecessor = ExpressionRebindingPredecessor(candidate, modArg.IsNameBacktickEscaped);
+            var predecessor = modArg.IsLet
+                ? null
+                : ExpressionRebindingPredecessor(candidate, modArg.IsNameBacktickEscaped);
             var bindingType = resolvedType;
             if (predecessor != null)
             {
@@ -390,7 +403,10 @@ internal partial class TypeChecker
         foreach (var modArg in PendingAutoOutModifiedArguments(call))
         {
             AddError(
-                $"Cannot infer the type of 'auto' for '{modArg.InlineName}': the callee has no resolved signature",
+                (modArg.IsLet
+                    ? $"Cannot infer the type of 'out let {modArg.InlineName}'"
+                    : $"Cannot infer the type of 'auto' for '{modArg.InlineName}'")
+                + ": the callee has no resolved signature",
                 modArg.Argument.LineStart, modArg.Argument.ColumnStart,
                 code: DiagnosticCodes.Semantic.UndefinedMember, span: modArg.Span);
             MarkExpressionAsErrorRecovery(modArg.Argument,

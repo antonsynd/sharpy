@@ -12,7 +12,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <list type="bullet">
 ///   <item>the class-attribute rule (SPY0606): a <c>let</c> target inside a method is the explicit
 ///     new local, never refused, in the plain, annotated, tuple and starred spellings; the bare
-///     store stays refused and its steer now offers <c>let</c> before the annotated shadow.</item>
+///     store stays refused and its steer now offers <c>let</c> before the annotated shadow;</item>
+///   <item>inline <c>out let v[: T]</c> (R-BM): a fresh binding typed by the callee, discriminated
+///     from the rebinding <c>out v</c> / <c>out v: auto</c> controls by printing the OUTER value
+///     after the block.</item>
 /// </list>
 /// Every run cell prints a value the other reading would not.
 /// </summary>
@@ -60,6 +63,70 @@ public class LetIntroduceSeamTests : IntegrationTestBase
         var annotatedSteer = diagnostic.Message.IndexOf("'count: <type> = ...' to declare a shadowing local", StringComparison.Ordinal);
         letSteer.Should().BeGreaterThan(-1, diagnostic.Message);
         annotatedSteer.Should().BeGreaterThan(letSteer, "the let steer comes before the annotated shadow");
+    }
+
+    // ── out let (R-BM) ─────────────────────────────────────────────────────────────────────────
+
+    private const string TryParse =
+        "def try_parse(s: str, result: out int) -> bool:\n    result = int(s)\n    return True\n\n";
+
+    [Theory]
+    [InlineData("out let v", "42\n1")]         // fresh: the outer v is untouched
+    [InlineData("out let v: int", "42\n1")]    // fresh, explicitly typed
+    [InlineData("out v", "42\n42")]            // control: writes through to the outer v
+    [InlineData("out v: auto", "42\n42")]      // control: rebinds the outer v
+    public void OutArgument_OverAnOuterVariable_InABlock(string argument, string expected)
+    {
+        var run = CompileAndExecute(TryParse
+            + "def main():\n    v: int = 1\n    if True:\n"
+            + $"        ok = try_parse(\"42\", {argument})\n        print(v)\n    print(v)\n");
+
+        run.Success.Should().BeTrue(Describe(run));
+        run.StandardOutput.ReplaceLineEndings("\n").Trim().Should().Be(expected);
+    }
+
+    [Fact]
+    public void OutLet_WithNoPredecessor_DeclaresAndTakesTheCalleesType()
+    {
+        var run = CompileAndExecute(TryParse
+            + "def main():\n    if try_parse(\"41\", out let v):\n        print(v + 1)\n");
+
+        run.Success.Should().BeTrue(Describe(run));
+        run.StandardOutput.Trim().Should().Be("42");
+    }
+
+    [Fact]
+    public void OutLet_InSiblingBlocks_IsFreshInEach()
+    {
+        var run = CompileAndExecute(TryParse
+            + "def main():\n    if True:\n        ok = try_parse(\"42\", out let v)\n        print(v)\n"
+            + "    if True:\n        ok = try_parse(\"7\", out let v)\n        print(v)\n");
+
+        run.Success.Should().BeTrue(Describe(run));
+        run.StandardOutput.ReplaceLineEndings("\n").Trim().Should().Be("42\n7");
+    }
+
+    [Fact]
+    public void OutLet_OverASameScopeConst_IsSpy0225()
+    {
+        var run = CompileAndExecute(TryParse
+            + "def main():\n    const v: int = 1\n    ok = try_parse(\"42\", out let v)\n    print(v)\n");
+
+        run.Success.Should().BeFalse();
+        run.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.InvalidAssignmentTarget
+            && d.Message.Contains("Cannot redefine constant variable 'v'"), Describe(run));
+    }
+
+    [Fact]
+    public void OutLet_WithAnUnresolvedCallee_IsRefusedByName()
+    {
+        var run = CompileAndExecute(
+            "def main() -> None:\n    ok: bool = totally_undefined_function(\"42\", out let v)\n    print(v)\n");
+
+        run.Success.Should().BeFalse();
+        run.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedMember
+            && d.Message.Contains("Cannot infer the type of 'out let v'"), Describe(run));
+        run.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
     }
 
     private static string Describe(ExecutionResult result)
