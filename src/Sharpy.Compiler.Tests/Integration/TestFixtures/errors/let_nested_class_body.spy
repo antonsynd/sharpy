@@ -1,0 +1,10 @@
+# #1974: a class nested in a class is a type body too — its `let` is SPY0340 with the field steer.
+# The outer class's field is the positive control.
+class Outer:
+    size: int = 1
+
+    class Inner:
+        let depth: int = 2
+
+def main():
+    print(Outer().size)

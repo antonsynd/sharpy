@@ -1,0 +1,8 @@
+# #1974: `let` is not allowed in a struct body (SPY0340 with the field steer); without the refusal
+# the annotated form would register as a field. The field beside it is the positive control.
+struct Point:
+    x: int = 0
+    let y: int = 0
+
+def main():
+    print(Point().x)

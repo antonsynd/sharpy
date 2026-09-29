@@ -1,0 +1,11 @@
+# #1974: `let` is not allowed in a class body (SPY0340 with the field steer). The field and the
+# method beside it are the positive control: only the `let` is refused.
+class Counter:
+    total: int = 0
+    let count = 0
+
+    def bump(self) -> int:
+        return self.total + 1
+
+def main():
+    print(Counter().bump())

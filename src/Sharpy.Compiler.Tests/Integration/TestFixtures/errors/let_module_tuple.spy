@@ -1,0 +1,6 @@
+# #1974 (R-BL): a tuple-target `let` at module level is SPY0340 with the `const` steer.
+# Positive control: LetPositionRefusalTests runs a function-body `let`.
+let low, high = 1, 10
+
+def main():
+    print(1)

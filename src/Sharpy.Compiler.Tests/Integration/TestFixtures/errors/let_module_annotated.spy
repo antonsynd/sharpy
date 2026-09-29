@@ -1,0 +1,7 @@
+# #1974 (R-BL): the annotated `let x: T = e` at module level is SPY0340 with the `const` steer —
+# it must not be accepted as a typed module variable. Positive control: LetPositionRefusalTests
+# runs `const LIMIT: int = 10` at module level.
+let limit: int = 10
+
+def main():
+    print(limit)

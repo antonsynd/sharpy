@@ -1,0 +1,7 @@
+# #1974 (R-BL): `let` declares a local binding, so it is refused at module level (SPY0340) with the
+# steer to `const` — module scope is const-only. Positive control: LetPositionRefusalTests runs a
+# module-level `const` and a function-body `let`.
+let limit = 10
+
+def main():
+    print(1)

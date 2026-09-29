@@ -1,0 +1,9 @@
+# #1974: `let` is not allowed in an interface body (SPY0340 with the field steer). The method
+# beside it is the positive control.
+interface Shape:
+    let sides, corners = 4, 4
+
+    def area(self) -> float: ...
+
+def main():
+    print(1)
