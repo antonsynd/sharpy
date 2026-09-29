@@ -71,9 +71,11 @@ public class TargetBindingRecordingTests
     /// predecessor link otherwise — so every <c>let</c> target, at every kind and over every
     /// predecessor, is a fresh chain root. The store node itself carries the spelling's
     /// <c>IsLet</c>, so a cell cannot pass on a program the parser read as another spelling.
-    /// Mutation (commit body): with the checker ignoring <c>IsLet</c>, the <c>let</c>,
-    /// <c>let-tuple</c> and <c>let-star</c> cells over an existing non-const predecessor record
-    /// <c>Rebinds</c> and are red.
+    /// Mutations (commit bodies): with the checker ignoring <c>IsLet</c>, the <c>let</c>,
+    /// <c>let-tuple</c> and <c>let-star</c> cells over an existing predecessor record
+    /// <c>Rebinds</c> and are red; so are they with the seam's <c>introduces</c> gate deleted
+    /// (<c>StatementStorePredecessor</c> always looks up); gating only the identifier arm leaves
+    /// exactly the <c>let-tuple</c>/<c>let-star</c> cells red.
     /// </summary>
     [Theory]
     [MemberData(nameof(BindingLawRecordedCellIds))]

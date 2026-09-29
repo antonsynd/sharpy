@@ -170,7 +170,11 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
     /// any existing predecessor except a same-scope const is red — it prints the write-through
     /// value, or is refused SPY0225 by an outer const it should shadow; and every star store that
     /// the law refuses (a const reached by <c>bare-star</c>, or a same-scope const under <c>let-star</c>)
-    /// is an ICE instead of SPY0225, because the star binder has no const refusal.
+    /// is an ICE instead of SPY0225, because the star binder has no const refusal. Against the seam
+    /// (<c>TypeChecker.StatementStorePredecessor</c>): deleting its <c>introduces</c> gate turns
+    /// those same <c>let</c>/<c>let-tuple</c>/<c>let-star</c> cells red; passing
+    /// <c>introduces: false</c> from the tuple and star binders (the identifier arm alone gated)
+    /// turns exactly the <c>let-tuple</c>/<c>let-star</c> cells red.
     /// </summary>
     [Theory]
     [MemberData(nameof(BindingLawCellIds))]
