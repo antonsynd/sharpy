@@ -1015,6 +1015,9 @@ internal partial class TypeChecker
 
     private void CheckVariableDeclaration(VariableDeclaration varDecl)
     {
+        // `let x: T = e` (IsLet, #1974) takes exactly this path: a VariableDeclaration always
+        // declares a fresh binding, is refused by a same-scope const (SPY0225 below) and shadows an
+        // outer one — the same law StatementStorePredecessor gives the unannotated `let`.
         // A type body's const fields go into scope BEFORE any initializer is checked, so the body
         // resolves its own const dependency order exactly as C# does. Two defects came from their
         // absence. The declaration below found nothing in scope and built a SECOND VariableSymbol

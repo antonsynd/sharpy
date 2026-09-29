@@ -281,6 +281,9 @@ internal partial class TypeChecker
                 steers.Add($"'{member.TypeNameAccess} = ...' for the class attribute");
         }
 
+        // `let` is the explicit new-local spelling (#1974); the annotated shadow stays second until
+        // Stage 2 retires it as a declaration trigger.
+        steers.Add($"'let {targetName} = ...' to declare a new local");
         steers.Add($"'{targetName}: <type> = ...' to declare a shadowing local");
         message += $". Use {string.Join(", or ", steers)}";
 
