@@ -144,6 +144,85 @@ def main() -> None:
         result.StandardOutput.Should().Contain("[20, 30]");
     }
 
+    // ── let-assignment position (#1974, P21a) ──
+    // The shape rows: `let` reaches the same target routing as the bare assignment above. Whether
+    // a `let` store introduces or writes through is the binding law, ranged over kind × spelling ×
+    // predecessor by BlockScopeRedeclarationMatrixTests.BindingLaw_StoreOverPredecessor and
+    // TargetBindingRecordingTests.BindingLaw_StoreRecordsTheSpellingsBinding; these rows bind
+    // fresh names so they assert the shape alone.
+
+    [Fact]
+    public void LetAssignment_Identifier()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    let x = 10
+    let y: int = 11
+    print(x, y)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("10 11");
+    }
+
+    [Fact]
+    public void LetAssignment_Tuple()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    let a, c = 1, 2
+    let (d, (e, f)) = (3, (4, 5))
+    print(a, c, d, e, f)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("1 2 3 4 5");
+    }
+
+    [Fact]
+    public void LetAssignment_Starred()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    let first, *rest = [10, 20, 30]
+    print(first, rest)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("10 [20, 30]");
+    }
+
+    /// <summary>
+    /// A <c>let</c> target is a name or a tuple of names: an attribute or index target — alone or
+    /// as a tuple element — is a parser refusal (SPY0107), where the bare spelling of the same
+    /// target is a store that runs. Positive controls beside it: <see cref="Assignment_Attribute"/>,
+    /// <see cref="Assignment_Index"/>, <see cref="TupleElement_Attribute"/>,
+    /// <see cref="TupleElement_Index"/> (the bare spelling runs) and <see cref="LetAssignment_Identifier"/>
+    /// (the <c>let</c> spelling runs on a name).
+    /// </summary>
+    [Theory]
+    [InlineData("b.value", "attribute")]
+    [InlineData("xs[0]", "index")]
+    [InlineData("a, b.value", "tuple-element attribute")]
+    [InlineData("a, xs[0]", "tuple-element index")]
+    public void LetAssignment_NonName_Refused_SPY0107(string target, string desc)
+    {
+        var value = target.Contains(',') ? "1, 2" : "1";
+        var source = Preamble + $@"
+def main() -> None:
+    b: Box = Box(0)
+    xs: list[int] = [0]
+    let {target} = {value}
+    print(b.value, xs[0])
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"let with {desc} target should be refused");
+        result.RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Parser.InvalidTypeAnnotationTarget
+            && d.Message.Contains("'let' target must be a name or a tuple of names"),
+            $"let with {desc} target should produce SPY0107 with the let-target message");
+    }
+
     // ── For statement position ──
 
     [Fact]

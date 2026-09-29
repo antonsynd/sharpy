@@ -149,6 +149,64 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
     }
 
     // ================================================================
+    // The binding law (#1974, P21a): store kind × spelling × predecessor
+    // ================================================================
+
+    public static TheoryData<string> BindingLawCellIds()
+    {
+        var data = new TheoryData<string>();
+        foreach (var cell in BlockKinds.BindingLawCells())
+            data.Add($"{cell.Kind}/{cell.Cell}");
+        return data;
+    }
+
+    /// <summary>
+    /// A store of <c>x</c> in the cell's spelling, over the cell's predecessor, inside the cell's
+    /// kind, prints the stored value and then the PREDECESSOR's value — 2 when the store wrote
+    /// through, 1 when it introduced a fresh binding — or is refused SPY0225 when it reaches a
+    /// const. The expectation is <see cref="BlockKinds.BindingLaw"/>'s, computed from the
+    /// spelling's law. Mutations (recorded in the commit bodies): with the checker ignoring
+    /// <c>IsLet</c> (P21a Phase 1 state) every <c>let</c>/<c>let-tuple</c>/<c>let-star</c> cell over
+    /// a non-const or module-const predecessor is red — it prints the write-through value or is
+    /// refused SPY0225 by the module const.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(BindingLawCellIds))]
+    public void BindingLaw_StoreOverPredecessor(string id)
+    {
+        var cell = BlockKinds.BindingLawCellById(id);
+        var result = CompileAndExecute(cell.Source, features: BlockKinds.FeaturesFor(cell.Kind));
+        BlockKinds.Cell(cell.Kind, "BindingLaw/" + cell.Cell, () =>
+        {
+            if (cell.ExpectedCode != null)
+                AssertDiagnostic(id, result, cell.ExpectedCode);
+            else
+                AssertOutput(id, result, cell.ExpectedOutput!);
+        });
+    }
+
+    /// <summary>
+    /// The binding-law matrix is total over its axes, anchored to LITERAL counts (a count derived
+    /// from the same enumeration would be vacuous): 16 store kinds × 6 spellings × 7 predecessors,
+    /// less the 2 function-body predecessors that are not applicable; 112 refusals (same-scope
+    /// const × every spelling × 16 kinds, and the bare store to a module const × 16 kinds); 62
+    /// write-through runs (bare × same scope 16, enclosing block 15, enclosing function 15, module
+    /// variable 16).
+    /// </summary>
+    [Fact]
+    public void BindingLaw_MatrixIsTotalOverItsAxes()
+    {
+        var cells = BlockKinds.BindingLawCells().ToList();
+        Assert.Equal(16, BlockKinds.StoreKinds.Length);
+        Assert.Equal(6, BlockKinds.Spellings.Length);
+        Assert.Equal(7, BlockKinds.Predecessors.Length);
+        Assert.Equal(16 * 6 * 7 - 2 * 6, cells.Count);
+        Assert.Equal(112, cells.Count(c => c.ExpectedCode == "SPY0225"));
+        Assert.Equal(62, cells.Count(c => c.ExpectedCode == null && BlockKinds.StoreWritesThrough(c.Spelling, c.Predecessor)));
+        Assert.Equal(cells.Count, cells.Select(c => $"{c.Kind}/{c.Cell}").Distinct().Count());
+    }
+
+    // ================================================================
     // Cell 9: the kind's own binder spelled like a rebound outer local (#1647)
     // ================================================================
 

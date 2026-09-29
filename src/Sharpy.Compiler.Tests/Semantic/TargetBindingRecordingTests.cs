@@ -51,6 +51,99 @@ public class TargetBindingRecordingTests
         });
     }
 
+    // ================================================================
+    // The binding law (#1974, P21a): store kind × spelling × predecessor
+    // ================================================================
+
+    /// <summary>The binding-law cells that compile: a refused cell (SPY0225) records nothing the contract names.</summary>
+    public static TheoryData<string> BindingLawRecordedCellIds()
+    {
+        var data = new TheoryData<string>();
+        foreach (var cell in BlockKinds.BindingLawCells())
+            if (cell.ExpectedCode == null)
+                data.Add($"{cell.Kind}/{cell.Cell}");
+        return data;
+    }
+
+    /// <summary>
+    /// Every name the store binds records <c>Rebinds</c> with a predecessor link iff the spelling's
+    /// law writes through (<see cref="BlockKinds.StoreWritesThrough"/>), and <c>Declares</c> with NO
+    /// predecessor link otherwise — so every <c>let</c> target, at every kind and over every
+    /// predecessor, is a fresh chain root. The store node itself carries the spelling's
+    /// <c>IsLet</c>, so a cell cannot pass on a program the parser read as another spelling.
+    /// Mutation (commit body): with the checker ignoring <c>IsLet</c>, the <c>let</c>,
+    /// <c>let-tuple</c> and <c>let-star</c> cells over an existing non-const predecessor record
+    /// <c>Rebinds</c> and are red.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(BindingLawRecordedCellIds))]
+    public void BindingLaw_StoreRecordsTheSpellingsBinding(string id)
+    {
+        var cell = BlockKinds.BindingLawCellById(id);
+        var a = LocalBindingTestHarness.Analyze(cell.Source);
+        var writesThrough = BlockKinds.StoreWritesThrough(cell.Spelling, cell.Predecessor);
+
+        BlockKinds.Cell(cell.Kind, "BindingLawRecorded/" + cell.Cell, () =>
+        {
+            var bound = StoreBindings(a, cell.Spelling);
+            bound.Should().NotBeEmpty(id);
+            foreach (var (name, node, symbol) in bound)
+            {
+                // Only the stored name `x` can have a predecessor; `y` / `rest` never exist before.
+                var rebinds = writesThrough && name == "x";
+                a.BindingOf(node).Should().Be(rebinds ? TargetBindingKind.Rebinds : TargetBindingKind.Declares, $"{id}: {name}");
+                symbol.Should().NotBeNull($"{id}: {name} has a symbol");
+                var hasPredecessor = !ReferenceEquals(a.Info.GetRootBinding(symbol!), symbol);
+                hasPredecessor.Should().Be(rebinds, $"{id}: {name} predecessor link");
+            }
+        });
+    }
+
+    /// <summary>The names the cell's store binds, each with the node its binding is recorded on and its symbol.</summary>
+    private static System.Collections.Generic.List<(string Name, Node Node, VariableSymbol? Symbol)> StoreBindings(
+        LocalBindingTestHarness.Analysis a, BlockKinds.Spelling spelling)
+    {
+        var result = new System.Collections.Generic.List<(string, Node, VariableSymbol?)>();
+        var nodes = LocalBindingTestHarness.Descendants(a.Module).ToList();
+        switch (spelling.Id)
+        {
+            case "annotated" or "let-annotated":
+                {
+                    var decl = nodes.OfType<VariableDeclaration>().Last(d => d.Name == "x");
+                    decl.IsLet.Should().Be(spelling.IsLet, spelling.Id);
+                    result.Add(("x", decl, a.Info.GetDeclarationSymbol(decl) as VariableSymbol));
+                    break;
+                }
+            case "bare" or "let":
+                {
+                    var store = nodes.OfType<Assignment>().Last(s => s.Target is Identifier { Name: "x" });
+                    store.IsLet.Should().Be(spelling.IsLet, spelling.Id);
+                    var id = (Identifier)store.Target;
+                    result.Add(("x", id, a.Info.GetIdentifierSymbol(id) as VariableSymbol));
+                    break;
+                }
+            default:
+                {
+                    var store = nodes.OfType<Assignment>().Last(s => s.Target is TupleLiteral);
+                    store.IsLet.Should().Be(spelling.IsLet, spelling.Id);
+                    foreach (var element in ((TupleLiteral)store.Target).Elements)
+                    {
+                        var id = element switch
+                        {
+                            Identifier i => i,
+                            StarExpression { Operand: Identifier i } => i,
+                            _ => throw new System.InvalidOperationException($"unexpected tuple target element {element.GetType().Name}"),
+                        };
+                        result.Add((id.Name, id, a.Info.GetIdentifierSymbol(id) as VariableSymbol));
+                    }
+
+                    break;
+                }
+        }
+
+        return result;
+    }
+
     [Fact]
     public void NestedDefAssignmentToOuter_Rebinds()
     {
