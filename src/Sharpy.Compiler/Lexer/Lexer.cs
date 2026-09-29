@@ -110,6 +110,7 @@ public partial class Lexer
         // Type/Value
         { "auto", TokenType.Auto },
         { "const", TokenType.Const },
+        { "let", TokenType.Let },
         { "lambda", TokenType.Lambda },
         { "type", TokenType.Type },
 

@@ -88,6 +88,7 @@ public class LexerTests
     [InlineData("as", TokenType.As)]
     [InlineData("auto", TokenType.Auto)]
     [InlineData("const", TokenType.Const)]
+    [InlineData("let", TokenType.Let)]
     [InlineData("lambda", TokenType.Lambda)]
     [InlineData("True", TokenType.True)]
     [InlineData("False", TokenType.False)]
@@ -1498,6 +1499,20 @@ y = 2";
         token.Type.Should().Be(TokenType.Identifier);
         token.Value.Should().Be("System.Collections.Generic");
         token.IsBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Tokenize_LetKeyword_BacktickEscapedIsAnIdentifier()
+    {
+        // `let` is a keyword (#1974); the backtick escape is the ONE way to name an identifier
+        // `let`, so the escaped spelling must lex as an escaped Identifier, never as TokenType.Let.
+        var bare = SingleToken("let");
+        bare.Type.Should().Be(TokenType.Let);
+
+        var escaped = SingleToken("`let`");
+        escaped.Type.Should().Be(TokenType.Identifier);
+        escaped.Value.Should().Be("let");
+        escaped.IsBacktickEscaped.Should().BeTrue();
     }
 
     [Fact]

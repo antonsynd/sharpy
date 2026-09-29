@@ -695,6 +695,7 @@ public partial class Parser
         TokenType.Break => true,
         TokenType.Continue => true,
         TokenType.Const => true,
+        TokenType.Let => true,
         TokenType.Property => true,
         TokenType.Event => true,
         TokenType.Type => true,

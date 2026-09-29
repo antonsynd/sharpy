@@ -614,7 +614,7 @@ public partial class Parser
             // Import keywords
             TokenType.Import or TokenType.From or TokenType.As or
             // Type/Value keywords
-            TokenType.Auto or TokenType.Const or TokenType.Lambda or TokenType.Type or
+            TokenType.Auto or TokenType.Const or TokenType.Let or TokenType.Lambda or TokenType.Type or
             // Pattern matching
             TokenType.Match or TokenType.Case or
             // Async keywords

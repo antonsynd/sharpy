@@ -60,6 +60,10 @@ public enum TokenType
     // Keywords - Type/Value
     Auto,           // Type inference
     Const,
+    // `let` — fresh block-scoped binding (#1974). It must stay OUTSIDE the Assign…AtAssign
+    // range below: the parser classifies assignment operators by the ordinal comparison
+    // `Current.Type >= TokenType.Assign && Current.Type <= TokenType.AtAssign`.
+    Let,
     Lambda,
     Type,           // Type alias declaration
 

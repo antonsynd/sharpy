@@ -85,6 +85,7 @@ public class Phase010ExitCriteriaTests
             // Keywords - Type/Value
             { TokenType.Auto, "auto" },
             { TokenType.Const, "const" },
+            { TokenType.Let, "let" },
             { TokenType.Lambda, "lambda" },
             { TokenType.Type, "type" },
 
@@ -451,6 +452,7 @@ x = 1";
     [InlineData("as", TokenType.As)]
     [InlineData("auto", TokenType.Auto)]
     [InlineData("const", TokenType.Const)]
+    [InlineData("let", TokenType.Let)]
     [InlineData("lambda", TokenType.Lambda)]
     [InlineData("type", TokenType.Type)]
     [InlineData("match", TokenType.Match)]
