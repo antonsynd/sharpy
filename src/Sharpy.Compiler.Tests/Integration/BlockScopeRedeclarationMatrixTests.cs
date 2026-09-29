@@ -189,11 +189,11 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// The binding-law matrix is total over its axes, anchored to LITERAL counts (a count derived
-    /// from the same enumeration would be vacuous): 16 store kinds × 7 spellings × 8 predecessors,
-    /// less the 3 function-body predecessors that are not applicable (× 7 spellings); 174 refusals
-    /// (same-scope const × 7 spellings × 16 kinds = 112; the two write-through spellings to a
-    /// module const × 16 kinds = 32 and to an enclosing-function const × 15 kinds = 30); 124
-    /// write-through runs (2 write-through spellings × (same scope 16 + enclosing block 15 +
+    /// from the same enumeration would be vacuous): 16 store kinds × 8 spellings × 8 predecessors,
+    /// less the 3 function-body predecessors that are not applicable (× 8 spellings); 221 refusals
+    /// (same-scope const × 8 spellings × 16 kinds = 128; the three write-through spellings to a
+    /// module const × 16 kinds = 48 and to an enclosing-function const × 15 kinds = 45); 186
+    /// write-through runs (3 write-through spellings × (same scope 16 + enclosing block 15 +
     /// enclosing function 15 + module variable 16)).
     /// </summary>
     [Fact]
@@ -201,11 +201,11 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
     {
         var cells = BlockKinds.BindingLawCells().ToList();
         Assert.Equal(16, BlockKinds.StoreKinds.Length);
-        Assert.Equal(7, BlockKinds.Spellings.Length);
+        Assert.Equal(8, BlockKinds.Spellings.Length);
         Assert.Equal(8, BlockKinds.Predecessors.Length);
-        Assert.Equal(16 * 7 * 8 - 3 * 7, cells.Count);
-        Assert.Equal(174, cells.Count(c => c.ExpectedCode == "SPY0225"));
-        Assert.Equal(124, cells.Count(c => c.ExpectedCode == null && BlockKinds.StoreWritesThrough(c.Spelling, c.Predecessor)));
+        Assert.Equal(16 * 8 * 8 - 3 * 8, cells.Count);
+        Assert.Equal(221, cells.Count(c => c.ExpectedCode == "SPY0225"));
+        Assert.Equal(186, cells.Count(c => c.ExpectedCode == null && BlockKinds.StoreWritesThrough(c.Spelling, c.Predecessor)));
         Assert.Equal(cells.Count, cells.Select(c => $"{c.Kind}/{c.Cell}").Distinct().Count());
     }
 

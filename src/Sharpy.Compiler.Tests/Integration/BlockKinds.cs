@@ -107,9 +107,10 @@ internal static class BlockKinds
     /// The spelling axis. <c>let-tuple</c> (literal RHS) reaches the inline binder of
     /// <c>CheckTupleUnpackingElements</c>; <c>let-star</c> reaches <c>BindAssignmentUnpackingIdentifier</c>
     /// — the two tuple binder sites besides the identifier arm, so a seam that gates only one arm
-    /// leaves the other spelling red. <c>bare-star</c> is the write-through control on the star
-    /// binder: its store to a const must be refused SPY0225 like the other binders' (lead ruling,
-    /// P21a: in contract — the star binder had no const refusal and crashed instead).
+    /// leaves the other spelling red. <c>bare-tuple</c> and <c>bare-star</c> are the write-through
+    /// controls on those two binders: each must write through to every existing binding and be
+    /// refused SPY0225 on reaching a const (lead ruling, P21a: in contract — the star binder had no
+    /// const refusal and crashed instead).
     /// </summary>
     public static readonly Spelling[] Spellings =
     {
@@ -119,6 +120,7 @@ internal static class BlockKinds
         new("let-annotated", WritesThrough: false, IsLet: true, (n, v) => $"let {n}: int = {v}"),
         new("let-tuple", WritesThrough: false, IsLet: true, (n, v) => $"let {n}, y = {v}, 3"),
         new("let-star", WritesThrough: false, IsLet: true, (n, v) => $"let {n}, *rest = [{v}, 3]"),
+        new("bare-tuple", WritesThrough: true, IsLet: false, (n, v) => $"{n}, y = {v}, 3"),
         new("bare-star", WritesThrough: true, IsLet: false, (n, v) => $"{n}, *rest = [{v}, 3]"),
     };
 
