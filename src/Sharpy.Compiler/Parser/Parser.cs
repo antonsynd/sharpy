@@ -672,6 +672,69 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Parses the inline declaration <c>out let x</c> / <c>out let x: T</c> (#1974, R-BM) with
+    /// <see cref="Current"/> on the <c>let</c> token. <c>let</c> after <c>ref</c> or <c>in</c> is
+    /// refused by name here — the <see cref="Ast.ModifiedArgument"/> invariant
+    /// <c>IsLet ⇒ Modifier == Out</c> is never left to a runtime assertion. Without an annotation
+    /// the binding's type flows from the callee's parameter.
+    /// </summary>
+    private Ast.ModifiedArgument ParseOutLetArgument(Token modToken, Ast.ParameterModifier mod)
+    {
+        var letToken = Current;
+        if (mod != Ast.ParameterModifier.Out)
+        {
+            throw ReportError(
+                $"'let' declares a fresh inline variable only after 'out' ('out let x'); '{modToken.Value} let' is not valid",
+                letToken.Line, letToken.Column, DiagnosticCodes.Parser.UnexpectedToken, span: GetSpanFromToken(letToken));
+        }
+
+        Advance(); // consume `let`
+        var nameToken = Current;
+        // A backticked dotted name (`a.b`) is a member-access chain, not a name.
+        if (nameToken.Type != TokenType.Identifier
+            || (nameToken.IsBacktickEscaped && nameToken.Value.Contains('.', StringComparison.Ordinal)))
+        {
+            throw ReportError(
+                $"'out let' requires a name ('out let x' or 'out let x: T'), got {nameToken.Type}",
+                nameToken.Line, nameToken.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+        }
+
+        Advance(); // consume the name
+        var name = new Ast.Identifier
+        {
+            Name = nameToken.Value,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
+            LineStart = nameToken.Line,
+            ColumnStart = nameToken.Column,
+            LineEnd = nameToken.Line,
+            ColumnEnd = nameToken.Column + nameToken.Length,
+            Span = GetSpanFromToken(nameToken)
+        };
+
+        TypeAnnotation? inlineType = null;
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance(); // consume the colon
+            inlineType = ParseTypeAnnotation();
+        }
+
+        return new Ast.ModifiedArgument
+        {
+            Modifier = mod,
+            Argument = name,
+            InlineName = name.Name,
+            IsNameBacktickEscaped = name.IsNameBacktickEscaped,
+            InlineType = inlineType,
+            IsLet = true,
+            LineStart = modToken.Line,
+            ColumnStart = modToken.Column,
+            LineEnd = inlineType?.LineEnd ?? name.LineEnd,
+            ColumnEnd = inlineType?.ColumnEnd ?? name.ColumnEnd,
+            Span = CombineSpans(GetSpanFromToken(modToken), inlineType?.Span ?? name.Span)
+        };
+    }
+
+    /// <summary>
     /// Returns true if the given token type marks the start of a new statement,
     /// making it a valid synchronization point for error recovery.
     /// </summary>
@@ -1297,41 +1360,51 @@ public partial class Parser
                         : Current.Value == "ref" ? Ast.ParameterModifier.Ref
                         : Ast.ParameterModifier.Out;
                     Advance();
-                    var argExpr = ParseExpression();
 
-                    // Check for inline out declaration: out name: type
-                    if (mod == Ast.ParameterModifier.Out
-                        && argExpr is Ast.Identifier inlineId
-                        && Current.Type == TokenType.Colon)
+                    // Inline `out let x` / `out let x: T` (#1974, R-BM): always a fresh binding.
+                    // `let` is a keyword, so a Let token here can only start that declaration.
+                    if (Current.Type == TokenType.Let)
                     {
-                        Advance(); // consume the colon
-                        var inlineType = ParseTypeAnnotation();
-                        args.Add(new Ast.ModifiedArgument
-                        {
-                            Modifier = mod,
-                            Argument = argExpr,
-                            InlineName = inlineId.Name,
-                            IsNameBacktickEscaped = inlineId.IsNameBacktickEscaped,
-                            InlineType = inlineType,
-                            LineStart = modToken.Line,
-                            ColumnStart = modToken.Column,
-                            LineEnd = inlineType.LineEnd,
-                            ColumnEnd = inlineType.ColumnEnd,
-                            Span = CombineSpans(GetSpanFromToken(modToken), inlineType.Span)
-                        });
+                        args.Add(ParseOutLetArgument(modToken, mod));
                     }
                     else
                     {
-                        args.Add(new Ast.ModifiedArgument
+                        var argExpr = ParseExpression();
+
+                        // Check for inline out declaration: out name: type
+                        if (mod == Ast.ParameterModifier.Out
+                            && argExpr is Ast.Identifier inlineId
+                            && Current.Type == TokenType.Colon)
                         {
-                            Modifier = mod,
-                            Argument = argExpr,
-                            LineStart = modToken.Line,
-                            ColumnStart = modToken.Column,
-                            LineEnd = argExpr.LineEnd,
-                            ColumnEnd = argExpr.ColumnEnd,
-                            Span = CombineSpans(GetSpanFromToken(modToken), argExpr.Span)
-                        });
+                            Advance(); // consume the colon
+                            var inlineType = ParseTypeAnnotation();
+                            args.Add(new Ast.ModifiedArgument
+                            {
+                                Modifier = mod,
+                                Argument = argExpr,
+                                InlineName = inlineId.Name,
+                                IsNameBacktickEscaped = inlineId.IsNameBacktickEscaped,
+                                InlineType = inlineType,
+                                LineStart = modToken.Line,
+                                ColumnStart = modToken.Column,
+                                LineEnd = inlineType.LineEnd,
+                                ColumnEnd = inlineType.ColumnEnd,
+                                Span = CombineSpans(GetSpanFromToken(modToken), inlineType.Span)
+                            });
+                        }
+                        else
+                        {
+                            args.Add(new Ast.ModifiedArgument
+                            {
+                                Modifier = mod,
+                                Argument = argExpr,
+                                LineStart = modToken.Line,
+                                ColumnStart = modToken.Column,
+                                LineEnd = argExpr.LineEnd,
+                                ColumnEnd = argExpr.ColumnEnd,
+                                Span = CombineSpans(GetSpanFromToken(modToken), argExpr.Span)
+                            });
+                        }
                     }
                 }
                 // Check for keyword argument (also accept soft keywords match/case/type as kwarg names)
