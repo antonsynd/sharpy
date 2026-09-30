@@ -235,14 +235,33 @@ file_size() {
 # backgrounded job inherits the caller's pipes, and its stray `sleep` would then hold the
 # wrapper's stdout open for up to one poll interval AFTER the wrapper exits, hanging any caller
 # that reads to EOF. The marker file carries everything the main path needs to report.
+#
+# It guards exactly the run it was started for and dies with its wrapper (#2076). The main path
+# kills it only when the pipeline returns, so a wrapper killed mid-run (a caller's timeout, an
+# agent killed at a usage limit) used to leave it running, reparented to init — and because it
+# re-read the GLOBAL $LOCK_CHILD_FILE every poll, a LATER holder's child kept it alive forever,
+# and it then judged that holder's healthy run by its own dead run's log mtime and killed it
+# (reported as exit 4). With no holder at all it looped too: once the lock dir is gone the empty
+# read hits `continue`, forever. Hence both halves below: exit once the wrapper ($1) is gone, and
+# record the child pid ONCE, while the lock still names this wrapper, and never follow the pointer.
 watchdog() {
     # A subshell must never fire the holder's cleanup trap.
     trap - EXIT
-    local child_pid last now quiet
+    local wrapper_pid="$1" child_pid="" recorded last now quiet
     while :; do
         sleep "$WATCHDOG_POLL"
-        child_pid=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
-        case "$child_pid" in ''|*[!0-9]*) continue ;; esac
+        # The wrapper is gone: nobody is left to report a kill, and the lock may already
+        # belong to someone else.
+        kill -0 "$wrapper_pid" 2>/dev/null || return 0
+        if [ -z "$child_pid" ]; then
+            # The child writes its own pid just after this monitor starts (see the `bash -c`
+            # line below), so the first poll normally finds it. Accept it only while the lock is
+            # still this wrapper's: after that the pointer names someone else's run.
+            [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$wrapper_pid" ] || return 0
+            recorded=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+            case "$recorded" in ''|*[!0-9]*) continue ;; esac
+            child_pid="$recorded"
+        fi
         # Child finished on its own: nothing left to watch, and staying alive would only risk
         # signalling a recycled pid.
         kill -0 "$child_pid" 2>/dev/null || return 0
@@ -416,7 +435,7 @@ ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
 # starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
 # the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
 # no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
-watchdog >/dev/null 2>&1 &
+watchdog "$$" >/dev/null 2>&1 &
 WATCHDOG_PID=$!
 
 bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 | tee "$LOG_FILE"

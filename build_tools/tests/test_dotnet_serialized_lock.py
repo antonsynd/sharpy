@@ -74,6 +74,8 @@ class Rig:
             path.mkdir(parents=True, exist_ok=True)
         self.lock_dir = self.home / ".claude" / "locks" / "dotnet.lock"
         self.generation_file = self.home / ".claude" / "locks" / "dotnet.generation"
+        #: Process-group ids of everything started through :meth:`popen` (see there).
+        self.groups: list[int] = []
 
     # -- fake dotnet ------------------------------------------------------------------
 
@@ -104,15 +106,44 @@ class Rig:
         env.update(overrides)
         return env
 
+    def popen(self, argv: list[str], env: Optional[dict[str, str]] = None,
+              new_group: bool = True, **kwargs) -> subprocess.Popen:
+        """
+        Start *argv* as the leader of a NEW process group and record it for teardown.
+
+        Every process the wrapper forks — its watchdog subshell, the dotnet child, ``tee``, a
+        stub's ``sleep`` grandchild — inherits that group and keeps it after being reparented to
+        init, so the fixture's ``killpg`` reaps everything a probe started even when the probe
+        fails. Before this, a red run (or any run against a wrapper without the #2076 fix) left
+        orphaned watchdogs looping ``sleep 30`` forever — eight were found on the machine from
+        this file's own runs on 2026-09-30. Nothing outside the group is ever signalled.
+
+        ``new_group=False`` keeps the test runner's group, for a probe that SIGSTOPs a member:
+        once the wrapper dies its own group is ORPHANED (every member's parent is init), and the
+        kernel sends SIGHUP + SIGCONT to an orphaned group that contains a stopped process — the
+        stopped watchdog would be hung up and killed, and the probe would pass against the bug.
+        The runner's group is never orphaned. Such a probe must kill its own pids in ``finally``.
+        """
+        proc = subprocess.Popen(argv, env=env if env is not None else self.env(),
+                                cwd=str(self.root), start_new_session=new_group, **kwargs)
+        if new_group:
+            self.groups.append(proc.pid)
+        return proc
+
     def run(self, *args: str, timeout: float = 120, **env_overrides: str):
-        return subprocess.run(
-            [str(WRAPPER), *args], env=self.env(**env_overrides),
-            capture_output=True, text=True, timeout=timeout, cwd=str(self.root))
+        proc = self.popen([str(WRAPPER), *args], env=self.env(**env_overrides),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            raise
+        return subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
 
     def spawn(self, *args: str, **env_overrides: str) -> subprocess.Popen:
-        return subprocess.Popen(
-            [str(WRAPPER), *args], env=self.env(**env_overrides),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=str(self.root))
+        return self.popen([str(WRAPPER), *args], env=self.env(**env_overrides),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # -- lock introspection -----------------------------------------------------------
 
@@ -136,6 +167,13 @@ def rig(tmp_path: Path):
         pid = _read_pid(made.lock_dir / pidfile)
         if pid is not None and pid != os.getpid() and _alive(pid):
             _kill_tree(pid)
+    # ...and every process group the rig started, which is what catches the rest: a watchdog
+    # subshell, tee, a stub's grandchild. None of them is named by a pidfile.
+    for pgid in made.groups:
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except OSError:
+            pass  # the whole group already exited — the normal case for a green probe
 
 
 # --------------------------------------------------------------------------------------
@@ -496,7 +534,7 @@ class TestRecordChild:
         bench.chmod(0o755)
         rig.fake_dotnet('echo "Total: 1"')
 
-        holder = subprocess.Popen([str(bench)], env=rig.env(), cwd=str(rig.root))
+        holder = rig.popen([str(bench)])
         try:
             wait_for(started.exists, what="the fake bench_ab to record its benchmark child")
             benchmark_pid = rig.child_pid()
@@ -711,6 +749,213 @@ class TestStallWatchdog:
         assert "stat -f %m" in source and "stat -c %Y" in source, (
             "the watchdog's mtime read must keep the two-spelling stat fallback; a single "
             "spelling prints nothing on the other platform, which reads as 'no progress'")
+
+
+def _wrapper_subshells(parent: int) -> list[int]:
+    """
+    Children of wrapper *parent* that are still running the wrapper script itself.
+
+    Once the fake dotnet has exec'd (its sentinel exists) and ``tee`` has exec'd, the only child
+    of a holding wrapper whose command line EQUALS the wrapper's own is the background
+    ``watchdog`` subshell — a forked subshell keeps its parent's argv. The pipeline's first
+    element shows as the fake ``dotnet`` stub and the second as ``tee``. Equality, not a
+    ``dotnet-serialized`` substring: tee's argv is ``tee .../dotnet-serialized-0.log``.
+    """
+    out = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,command="],
+                         capture_output=True, text=True, check=True).stdout
+    rows = [line.split(None, 2) for line in out.splitlines()]
+    rows = [r for r in rows if len(r) == 3]
+    own = [r[2] for r in rows if r[0] == str(parent)]
+    if not own:
+        return []
+    return [int(r[0]) for r in rows if r[1] == str(parent) and r[2] == own[0]]
+
+
+class TestWatchdogScope:
+    """
+    A watchdog guards exactly the run it was started for and dies with its wrapper (#2076).
+
+    Observed 2026-09-24/25: orphaned watchdog subshells (``ppid == 1``, child ``sleep 30``)
+    accumulated for up to 21 h. The wrapper only kills its watchdog when the ``dotnet | tee``
+    pipeline returns normally, so a wrapper killed mid-run (a Bash-tool timeout, an agent killed
+    at a usage limit) leaves the watchdog behind. That watchdog re-read the GLOBAL
+    ``$LOCK_DIR/child`` every poll, so once a later holder recorded ITS child the orphan saw a
+    live pid, never exited, and compared its OWN dead run's log mtime against the stall
+    threshold — and then killed the later holder's healthy run, reported as exit 4.
+
+    The cure has two halves and each has its own probe:
+
+    * **dies with its wrapper** — :meth:`test_an_orphaned_watchdog_exits_while_its_child_runs`;
+    * **guards its own child only** — :meth:`test_the_watchdog_ignores_a_rewritten_child_pointer`
+      (the pid is latched once, so a rewrite of the global pointer is not followed);
+
+    and :meth:`test_an_orphaned_watchdog_never_signals_the_next_holder` is the issue's literal
+    end-to-end scenario, which either half alone cures.
+
+    Mutation-tested against ``.claude/scripts/dotnet-serialized`` (both runs recorded in the
+    commit body): reverting the whole watchdog fix reds all three; removing only the
+    wrapper-liveness exit reds the first; removing only the latch (re-reading the pointer every
+    poll) reds the second. Each restored → green.
+    """
+
+    def test_an_orphaned_watchdog_exits_while_its_child_runs(self, rig: Rig):
+        """
+        Kill the wrapper while its dotnet keeps running and keeps writing to the log. The child
+        is alive and the log is fresh, so nothing but the wrapper's death can tell the watchdog
+        its job is over — before #2076 it looped for as long as the orphaned child lived, and
+        then (see the end-to-end probe) for as long as ANYONE held the lock.
+        """
+        started = rig.root / "a_started"
+        rig.fake_dotnet(f': > "{started}"\nwhile :; do echo tick; sleep 0.2; done\n')
+
+        holder = rig.popen(
+            [str(WRAPPER), "test"],
+            env=rig.env(DOTNET_SERIALIZED_STALL_SECONDS="2", DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                        DOTNET_SERIALIZED_WATCHDOG_GRACE="1"),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        watchdog: Optional[int] = None
+        child: Optional[int] = None
+        try:
+            wait_for(started.exists, what="the fake dotnet to start")
+            child = rig.child_pid()
+            assert child is not None and _alive(child)
+            wait_for(lambda: len(_wrapper_subshells(holder.pid)) == 1,
+                     what="exactly one watchdog subshell under the holder")
+            watchdog = _wrapper_subshells(holder.pid)[0]
+            # Positive control: the thing whose absence is asserted below exists right now.
+            assert _alive(watchdog)
+
+            holder.kill()
+            holder.wait(timeout=30)
+            assert _alive(child), "the fake dotnet should have been orphaned, not reaped"
+
+            wait_for(lambda: not _alive(watchdog), timeout=10,
+                     what="the orphaned watchdog to exit with its wrapper (#2076)")
+            assert _alive(child), (
+                "the watchdog must simply exit — the orphaned child still holds the lock by "
+                "design (#1508), and is not the dead wrapper's watchdog's to kill")
+        finally:
+            for pid in (watchdog, child):
+                if pid is not None and _alive(pid):
+                    _kill_tree(pid)
+
+    def test_the_watchdog_ignores_a_rewritten_child_pointer(self, rig: Rig):
+        """
+        The watchdog guards the child it was started for, not whatever ``$LOCK_DIR/child``
+        names at the moment. Here the wrapper stays ALIVE (so the liveness exit cannot mask
+        anything) and its own child stalls; after the watchdog has had a poll to record its
+        child, the global pointer is rewritten to a decoy — the shape of a later holder
+        recording its child. The stalled run must be killed and reported (exit 4), and the
+        decoy must be untouched. Before #2076 the watchdog followed the pointer: it killed the
+        decoy and left the stalled run wedged.
+        """
+        started = rig.root / "a_started"
+        # exec: the recorded child IS the sleep, so no grandchild outlives it holding tee's pipe.
+        rig.fake_dotnet(f': > "{started}"\necho "Total: 1"\nexec sleep 120\n')
+
+        holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="4",
+                           DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                           DOTNET_SERIALIZED_WATCHDOG_GRACE="1")
+        decoy = rig.popen(["sleep", "120"])
+        child: Optional[int] = None
+        try:
+            wait_for(started.exists, what="the fake dotnet to start")
+            child = rig.child_pid()
+            assert child is not None and _alive(child)
+            # Polls land ~1 s apart from the watchdog's start, which precedes this sentinel; 2.5 s
+            # leaves at least one poll to record the child and none yet past the 4 s threshold.
+            time.sleep(2.5)
+            (rig.lock_dir / "child").write_text(f"{decoy.pid}\n", encoding="utf-8")
+
+            _, err = holder.communicate(timeout=30)
+
+            assert holder.returncode == 4, (
+                f"the stalled run was not killed (exit {holder.returncode}); stderr={err!r}")
+            assert f"killed PID {child} " in err, f"the wrong pid was reported: {err!r}"
+            assert decoy.poll() is None, "the watchdog signalled a pid it was not started for"
+        finally:
+            if holder.poll() is None:
+                holder.kill()
+                holder.wait(timeout=30)
+            if child is not None and _alive(child):
+                _kill_tree(child)
+            decoy.kill()
+            decoy.wait(timeout=30)
+
+    def test_an_orphaned_watchdog_never_signals_the_next_holder(self, rig: Rig):
+        """
+        The issue's literal scenario: kill the wrapper mid-run, let a second holder take the
+        lock, and the first watchdog must exit without signalling the second run.
+
+        Made deterministic with SIGSTOP. Unfrozen, the pre-#2076 orphan exited harmlessly if one
+        of its polls happened to land in the sub-second window where the pointer still named
+        the dead first child — so an unfrozen probe was a coin toss against the bug. Freezing
+        the orphan across the handover and thawing it once the second child is recorded and the
+        first log has been quiet past the threshold puts its next poll exactly where the
+        incident's did.
+        """
+        a_started = rig.root / "a_started"
+        b_started = rig.root / "b_started"
+        rig.fake_dotnet(
+            'case " $* " in\n'
+            f'  *" --first "*) : > "{a_started}"; while :; do echo tick; sleep 0.2; done ;;\n'
+            f'  *" --second "*) : > "{b_started}"; i=0\n'
+            '    while [ $i -lt 8 ]; do echo "progress $i"; sleep 1; i=$((i + 1)); done\n'
+            '    echo "Total: 1" ;;\n'
+            'esac\n')
+
+        first = rig.popen(
+            [str(WRAPPER), "test", "--first"],
+            env=rig.env(DOTNET_SERIALIZED_STALL_SECONDS="2", DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                        DOTNET_SERIALIZED_WATCHDOG_GRACE="1"),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            new_group=False)  # SIGSTOP below: see Rig.popen; the finally kills every pid
+        watchdog: Optional[int] = None
+        first_child: Optional[int] = None
+        second: Optional[subprocess.Popen] = None
+        try:
+            wait_for(a_started.exists, what="the first fake dotnet to start")
+            first_child = rig.child_pid()
+            assert first_child is not None and _alive(first_child)
+            wait_for(lambda: len(_wrapper_subshells(first.pid)) == 1,
+                     what="exactly one watchdog subshell under the first holder")
+            watchdog = _wrapper_subshells(first.pid)[0]
+            os.kill(watchdog, signal.SIGSTOP)
+
+            first.kill()
+            first.wait(timeout=30)
+            _kill_tree(first_child)
+            wait_for(lambda: not _alive(first_child), what="the first child to die")
+            first_child_died = time.time()
+
+            second = rig.spawn("test", "--second", DOTNET_SERIALIZED_STALL_SECONDS="600",
+                               DOTNET_SERIALIZED_WATCHDOG_POLL="1")
+            wait_for(b_started.exists, what="the second holder's fake dotnet to start")
+            second_child = rig.child_pid()
+            assert second_child is not None and _alive(second_child)
+            # Past the orphan's 2 s threshold on its own (dead) run's log, so a pre-#2076
+            # orphan would fire on its very next poll.
+            time.sleep(max(0.0, first_child_died + 3.0 - time.time()))
+            assert _alive(watchdog), "positive control: the orphan must still exist to be thawed"
+            os.kill(watchdog, signal.SIGCONT)
+
+            out, err = second.communicate(timeout=60)
+
+            assert second.returncode == 0, (
+                f"the second holder's run was signalled (exit {second.returncode}) — the #2076 "
+                f"orphan killed a healthy run; stderr={err!r}")
+            assert "progress 7" in out and "watchdog" not in err.lower()
+            wait_for(lambda: not _alive(watchdog), timeout=10,
+                     what="the orphaned watchdog to exit")
+        finally:
+            if watchdog is not None and _alive(watchdog):
+                os.kill(watchdog, signal.SIGCONT)
+                _kill_tree(watchdog)
+            if first_child is not None and _alive(first_child):
+                _kill_tree(first_child)
+            if second is not None and second.poll() is None:
+                second.kill()
+                second.wait(timeout=30)
 
 
 def test_the_portable_stat_fallback_resolves_on_this_platform(tmp_path: Path):
