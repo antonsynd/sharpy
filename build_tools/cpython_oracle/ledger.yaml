@@ -101,6 +101,14 @@ deviations:
   spec_ref: docs/stdlib/collections.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: collection-error-message-texts
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/design/python-fidelity-scope.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: comparison-chaining
   category: operators
   audience: csharp
@@ -301,6 +309,14 @@ deviations:
   spec_ref: docs/language_specification/dunder_methods.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: int-float-real-imag-members
+  category: types
+  audience: python
+  severity: error
+  code: SPY0203
+  spec_ref: docs/design/python-fidelity-scope.md
+  existing_diagnostic: SPY0203
+  planned_diagnostic: null
 - id: int-overflow-checked
   category: semantics
   audience: python
@@ -364,6 +380,14 @@ deviations:
   code: SPY0433
   spec_ref: docs/language_specification/function_default_parameters.md
   existing_diagnostic: SPY0433
+  planned_diagnostic: null
+- id: lru-cache-maxsize-saturates
+  category: stdlib
+  audience: python
+  severity: none
+  code: SPY0442
+  spec_ref: docs/language_specification/decorators.md
+  existing_diagnostic: SPY0442
   planned_diagnostic: null
 - id: match-statement-differences
   category: semantics
@@ -612,6 +636,14 @@ deviations:
   code: null
   spec_ref: docs/language_specification/bitwise_operators.md
   existing_diagnostic: SPY0348
+  planned_diagnostic: null
+- id: sort-refusal-operand-order
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/design/python-fidelity-scope.md
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: star-import-builtin-rebinding
   category: scoping
