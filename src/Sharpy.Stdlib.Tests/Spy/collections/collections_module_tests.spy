@@ -49,20 +49,20 @@ def test_deque_popleft_empty_throws_index_error():
 @test
 def test_deque_count_reflects_size():
     d: collections.Deque[int] = collections.Deque[int]()
-    n: int = d.count
+    n: int = len(d)
     assert n == 0
     d.append(1)
     d.append(2)
-    n = d.count
+    n = len(d)
     assert n == 2
     d.pop()
-    n = d.count
+    n = len(d)
     assert n == 1
 
 @test
 def test_deque_constructor_with_iterable_initializes_from_sequence():
     d: collections.Deque[int] = collections.Deque[int]([1, 2, 3])
-    n: int = d.count
+    n: int = len(d)
     assert n == 3
     assert d.popleft() == 1
 
@@ -70,14 +70,14 @@ def test_deque_constructor_with_iterable_initializes_from_sequence():
 def test_deque_clear_removes_all_elements():
     d: collections.Deque[int] = collections.Deque[int]([1, 2, 3])
     d.clear()
-    n: int = d.count
+    n: int = len(d)
     assert n == 0
 
 @test
 def test_deque_extend_adds_from_right():
     d: collections.Deque[int] = collections.Deque[int]([1])
     d.extend([2, 3, 4])
-    n: int = d.count
+    n: int = len(d)
     assert n == 4
     assert d.pop() == 4
 
@@ -85,7 +85,7 @@ def test_deque_extend_adds_from_right():
 def test_deque_extendleft_adds_from_left():
     d: collections.Deque[int] = collections.Deque[int]([4])
     d.extendleft([1, 2, 3])
-    n: int = d.count
+    n: int = len(d)
     assert n == 4
     # Extendleft reverses order: 3 is added first (leftmost), then 2, then 1
     assert d.popleft() == 3

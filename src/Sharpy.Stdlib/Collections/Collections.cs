@@ -121,9 +121,190 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Gets the number of elements in the deque.
+        /// The number of elements — <c>len(d)</c>. Explicit, as <c>List&lt;T&gt;</c> spells it, so the
+        /// public name <c>Count</c> is python's <c>d.count(x)</c> method: a public <c>Count</c>
+        /// property surfaced a non-python <c>d.count</c> attribute and sent <c>d.count(x)</c> to LINQ's
+        /// <c>Count(predicate)</c> extension (SPY0220, #2107).
         /// </summary>
-        public int Count => _list.Count;
+        int IReadOnlyCollection<T>.Count => _list.Count;
+
+        /// <inheritdoc/>
+        int ISized.Count => _list.Count;
+
+        /// <summary>
+        /// Return the number of elements equal to x.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// d = deque([1, 5, 1])
+        /// d.count(1)    # 2
+        /// </code>
+        /// </example>
+        public int Count(T x)
+        {
+            var comparer = EqualityComparer<T>.Default;
+            int n = 0;
+            foreach (var item in _list)
+            {
+                if (comparer.Equals(item, x))
+                {
+                    n++;
+                }
+            }
+
+            return n;
+        }
+
+        /// <summary>
+        /// Return the position of the first element equal to x, searching the slice
+        /// <c>[start:stop]</c> (python's slice clamping: a negative bound counts from the right, and
+        /// out-of-range bounds clamp to the deque). The position is relative to the whole deque.
+        /// Raises <c>ValueError: x is not in deque</c> when there is no such element.
+        /// </summary>
+        /// <param name="x">The value to search for.</param>
+        /// <param name="start">Start of the searched slice (default 0).</param>
+        /// <param name="stop">End of the searched slice (default: the end of the deque).</param>
+        /// <example>
+        /// <code>
+        /// d = deque([1, 5, 1, 3])
+        /// d.index(1)       # 0
+        /// d.index(1, 1)    # 2
+        /// </code>
+        /// </example>
+        public int Index(T x, int start = 0, int? stop = null)
+        {
+            int count = _list.Count;
+            int lo = ClampSliceBound(start, count);
+            int hi = stop is int s ? ClampSliceBound(s, count) : count;
+            var comparer = EqualityComparer<T>.Default;
+            var node = _list.First;
+            for (int i = 0; node != null && i < hi; i++, node = node.Next)
+            {
+                if (i >= lo && comparer.Equals(node.Value, x))
+                {
+                    return i;
+                }
+            }
+
+            throw new ValueError(Builtins.Repr(x) + " is not in deque");
+        }
+
+        /// <summary>
+        /// Remove the first element equal to x. Raises <c>ValueError: x is not in deque</c> when
+        /// there is no such element.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// d = deque([1, 5, 1])
+        /// d.remove(1)    # deque([5, 1])
+        /// </code>
+        /// </example>
+        public void Remove(T x)
+        {
+            if (!_list.Remove(x))
+            {
+                throw new ValueError(Builtins.Repr(x) + " is not in deque");
+            }
+        }
+
+        /// <summary>
+        /// Insert x before position i. As python's unbounded deque does, i is clamped like
+        /// <c>list.insert</c>: a negative i counts from the right, and an out-of-range i inserts at
+        /// the nearer end.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// d = deque([1, 2, 3])
+        /// d.insert(1, 9)    # deque([1, 9, 2, 3])
+        /// </code>
+        /// </example>
+        public void Insert(int i, T x)
+        {
+            int count = _list.Count;
+            int at = ClampSliceBound(i, count);
+            if (at == count)
+            {
+                _list.AddLast(x);
+                return;
+            }
+
+            _list.AddBefore(NodeAt(at), x);
+        }
+
+        /// <summary>
+        /// Reverse the elements of the deque in place and return None.
+        /// </summary>
+        // Without this member `d.reverse()` bound LINQ's Enumerable.Reverse extension, which returns a
+        // reversed copy and leaves the deque unchanged — a silent wrong (#2107).
+        public void Reverse()
+        {
+            var items = new T[_list.Count];
+            _list.CopyTo(items, 0);
+            _list.Clear();
+            foreach (var item in items)
+            {
+                _list.AddFirst(item);
+            }
+        }
+
+        /// <summary>
+        /// Rotate the deque n steps to the right (to the left when n is negative). Rotating one step
+        /// to the right is <c>d.appendleft(d.pop())</c>.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// d = deque([1, 2, 3, 4, 5])
+        /// d.rotate(2)     # deque([4, 5, 1, 2, 3])
+        /// d.rotate(-1)    # deque([5, 1, 2, 3, 4])
+        /// </code>
+        /// </example>
+        public void Rotate(int n = 1)
+        {
+            int count = _list.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            int right = Builtins.FloorMod(n, count);
+            if (right <= count / 2)
+            {
+                for (int k = 0; k < right; k++)
+                {
+                    var last = _list.Last!;
+                    _list.RemoveLast();
+                    _list.AddFirst(last);
+                }
+
+                return;
+            }
+
+            for (int k = 0; k < count - right; k++)
+            {
+                var first = _list.First!;
+                _list.RemoveFirst();
+                _list.AddLast(first);
+            }
+        }
+
+        /// <summary>
+        /// Return a shallow copy of the deque.
+        /// </summary>
+        public Deque<T> Copy() => new Deque<T>(_list);
+
+        /// <summary>
+        /// A slice bound or insertion position normalized as python normalizes them: a negative value
+        /// counts from the right, then the result is clamped to <c>[0, count]</c>.
+        /// </summary>
+        private static int ClampSliceBound(int i, int count)
+        {
+            if (i < 0)
+            {
+                i += count;
+            }
+
+            return i < 0 ? 0 : (i > count ? count : i);
+        }
 
         /// <summary>
         /// <c>d[i]</c> and <c>d[i] = x</c>, as python indexes a deque (#2035): a negative index counts

@@ -1,0 +1,15 @@
+# #2107: deque.remove(x) bound CollectionExtensions.Remove(IDictionary...) (SPY0908 CS7036) and
+# deque.index(x) was SPY0224; both are python deque methods. Expected: python3 3.12.13.
+from collections import deque
+
+def main() -> None:
+    d = deque[int]([1, 5])
+    d.remove(5)
+    print(d.index(1))
+    print(d)
+    e = deque[str](["a", "b", "a"])
+    print(e.index("a", 1), e.index("a", -1))
+    try:
+        e.remove("z")
+    except ValueError as ex:
+        print(ex)

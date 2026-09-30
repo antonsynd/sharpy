@@ -85,12 +85,6 @@ that supports adding and removing elements from either end.
     `len()` a count but left every truth position refused (SPY0220), because the truth
     classifier reads the dunder table's spelling, `ISized` (#1972).
 
-### Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `count` | `int` | Gets the number of elements in the deque. |
-
 ### `append(x: T)`
 
 Add x to the right side of the deque.
@@ -120,6 +114,74 @@ Extend the right side of the deque by appending elements from the iterable.
 ### `extendleft(iterable: Iterable[T])`
 
 Extend the left side of the deque by appending elements from the iterable.
+
+### `count(x: T) -> int`
+
+Return the number of elements equal to x.
+
+```python
+d = deque([1, 5, 1])
+d.count(1)    # 2
+```
+
+### `index(x: T, start: int = 0, stop: int | None = None) -> int`
+
+Return the position of the first element equal to x, searching the slice
+`[start:stop]` (python's slice clamping: a negative bound counts from the right, and
+out-of-range bounds clamp to the deque). The position is relative to the whole deque.
+Raises `ValueError: x is not in deque` when there is no such element.
+
+**Parameters:**
+
+- `x` (T) -- The value to search for.
+- `start` (int) -- Start of the searched slice (default 0).
+- `stop` (int | None) -- End of the searched slice (default: the end of the deque).
+
+```python
+d = deque([1, 5, 1, 3])
+d.index(1)       # 0
+d.index(1, 1)    # 2
+```
+
+### `remove(x: T)`
+
+Remove the first element equal to x. Raises `ValueError: x is not in deque` when
+there is no such element.
+
+```python
+d = deque([1, 5, 1])
+d.remove(1)    # deque([5, 1])
+```
+
+### `insert(i: int, x: T)`
+
+Insert x before position i. As python's unbounded deque does, i is clamped like
+`list.insert`: a negative i counts from the right, and an out-of-range i inserts at
+the nearer end.
+
+```python
+d = deque([1, 2, 3])
+d.insert(1, 9)    # deque([1, 9, 2, 3])
+```
+
+### `reverse()`
+
+Reverse the elements of the deque in place and return None.
+
+### `rotate(n: int = 1)`
+
+Rotate the deque n steps to the right (to the left when n is negative). Rotating one step
+to the right is `d.appendleft(d.pop())`.
+
+```python
+d = deque([1, 2, 3, 4, 5])
+d.rotate(2)     # deque([4, 5, 1, 2, 3])
+d.rotate(-1)    # deque([5, 1, 2, 3, 4])
+```
+
+### `copy() -> Deque[T]`
+
+Return a shallow copy of the deque.
 
 ### `__str__() -> str`
 

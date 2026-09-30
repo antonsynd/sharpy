@@ -131,22 +131,22 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
         {
 #line (51, 5) - (51, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
-#line (52, 5) - (52, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            int n = d.Count;
+#line (52, 5) - (52, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (53, 5) - (53, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(0, n);
 #line (54, 5) - (54, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Append(1);
 #line (55, 5) - (55, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Append(2);
-#line (56, 5) - (56, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            n = d.Count;
+#line (56, 5) - (56, 15) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            n = global::Sharpy.Builtins.Len(d);
 #line (57, 5) - (57, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(2, n);
 #line (58, 5) - (58, 12) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Pop();
-#line (59, 5) - (59, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            n = d.Count;
+#line (59, 5) - (59, 15) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            n = global::Sharpy.Builtins.Len(d);
 #line (60, 5) - (60, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(1, n);
 #line hidden
@@ -157,8 +157,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
         {
 #line (64, 5) - (64, 67) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>(new Sharpy.List<int>() { 1, 2, 3 });
-#line (65, 5) - (65, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            int n = d.Count;
+#line (65, 5) - (65, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (66, 5) - (66, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(3, n);
 #line (67, 5) - (67, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -173,8 +173,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>(new Sharpy.List<int>() { 1, 2, 3 });
 #line (72, 5) - (72, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Clear();
-#line (73, 5) - (73, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            int n = d.Count;
+#line (73, 5) - (73, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (74, 5) - (74, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(0, n);
 #line hidden
@@ -187,8 +187,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>(new Sharpy.List<int>() { 1 });
 #line (79, 5) - (79, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Extend(new Sharpy.List<int>() { 2, 3, 4 });
-#line (80, 5) - (80, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            int n = d.Count;
+#line (80, 5) - (80, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (81, 5) - (81, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(4, n);
 #line (82, 5) - (82, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -203,8 +203,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>(new Sharpy.List<int>() { 4 });
 #line (87, 5) - (87, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             d.Extendleft(new Sharpy.List<int>() { 1, 2, 3 });
-#line (88, 5) - (88, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            int n = d.Count;
+#line (88, 5) - (88, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (89, 5) - (89, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(4, n);
 #line (91, 5) - (91, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

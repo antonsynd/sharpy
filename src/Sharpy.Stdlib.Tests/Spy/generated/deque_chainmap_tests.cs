@@ -25,8 +25,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
         {
 #line (9, 5) - (9, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
-#line (10, 5) - (10, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (10, 5) - (10, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (11, 5) - (11, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(0, n);
 #line (12, 5) - (13, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
@@ -56,8 +56,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             d.Append(42);
 #line (19, 5) - (19, 12) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Pop();
-#line (20, 5) - (20, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (20, 5) - (20, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (21, 5) - (21, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(0, n);
 #line hidden
@@ -70,8 +70,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
 #line (28, 5) - (28, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Extend(new Sharpy.List<int>() { 1, 2, 3 });
-#line (29, 5) - (29, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (29, 5) - (29, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (30, 5) - (30, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(3, n);
 #line (31, 5) - (31, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
@@ -90,8 +90,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
 #line (38, 5) - (38, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Extendleft(new Sharpy.List<int>() { 1, 2, 3 });
-#line (39, 5) - (39, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (39, 5) - (39, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (40, 5) - (40, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(3, n);
 #line (41, 5) - (41, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
@@ -115,8 +115,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             };
 #line (49, 5) - (49, 20) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Extend(empty);
-#line (50, 5) - (50, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (50, 5) - (50, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (51, 5) - (51, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(2, n);
 #line hidden
@@ -134,8 +134,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             };
 #line (57, 5) - (57, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Extendleft(empty);
-#line (58, 5) - (58, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (58, 5) - (58, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (59, 5) - (59, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(2, n);
 #line hidden
@@ -152,8 +152,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DequeChainmapTests
             d.Append("x");
 #line (68, 5) - (68, 18) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             d.Append("y");
-#line (69, 5) - (69, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-            int n = d.Count;
+#line (69, 5) - (69, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+            int n = global::Sharpy.Builtins.Len(d);
 #line (70, 5) - (70, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
             Xunit.Assert.Equal(2, n);
 #line (71, 5) - (71, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"

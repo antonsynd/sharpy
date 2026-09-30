@@ -7,7 +7,7 @@ import collections
 @test
 def test_deque_construct_from_empty_is_empty():
     d: collections.Deque[int] = collections.Deque[int]()
-    n: int = d.count
+    n: int = len(d)
     assert n == 0
     with assert_raises(IndexError):
         d.pop()
@@ -17,7 +17,7 @@ def test_deque_append_after_pop_count_returns_to_zero():
     d: collections.Deque[int] = collections.Deque[int]()
     d.append(42)
     d.pop()
-    n: int = d.count
+    n: int = len(d)
     assert n == 0
 
 # --- Deque Extend Edge Cases ---
@@ -26,7 +26,7 @@ def test_deque_append_after_pop_count_returns_to_zero():
 def test_deque_extend_on_empty_adds_all_to_right():
     d: collections.Deque[int] = collections.Deque[int]()
     d.extend([1, 2, 3])
-    n: int = d.count
+    n: int = len(d)
     assert n == 3
     assert d.popleft() == 1
     assert d.popleft() == 2
@@ -36,7 +36,7 @@ def test_deque_extend_on_empty_adds_all_to_right():
 def test_deque_extendleft_on_empty_reverses_order():
     d: collections.Deque[int] = collections.Deque[int]()
     d.extendleft([1, 2, 3])
-    n: int = d.count
+    n: int = len(d)
     assert n == 3
     assert d.popleft() == 3
     assert d.popleft() == 2
@@ -47,7 +47,7 @@ def test_deque_extend_empty_iterable_no_change():
     d: collections.Deque[int] = collections.Deque[int]([1, 2])
     empty: list[int] = []
     d.extend(empty)
-    n: int = d.count
+    n: int = len(d)
     assert n == 2
 
 @test
@@ -55,7 +55,7 @@ def test_deque_extendleft_empty_iterable_no_change():
     d: collections.Deque[int] = collections.Deque[int]([1, 2])
     empty: list[int] = []
     d.extendleft(empty)
-    n: int = d.count
+    n: int = len(d)
     assert n == 2
 
 # --- Deque Clear and Rebuild ---
@@ -66,7 +66,7 @@ def test_deque_clear_and_rebuild_works_correctly():
     d.clear()
     d.append("x")
     d.append("y")
-    n: int = d.count
+    n: int = len(d)
     assert n == 2
     assert d.popleft() == "x"
     assert d.popleft() == "y"
