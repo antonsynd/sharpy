@@ -1927,3 +1927,80 @@ deviations:
                 return "S-str"
         print(S())     # S-str
         print([S()])   # [S-str]
+
+  # ============================================================
+  # DEVIATION-by-default surfaces (python-fidelity-scope.md; ruled 2026-09-27,
+  # lettered R-CI / R-CK / R-CM at the 2026-09-30 batching). Examples executed
+  # @ db8e05bf1 (Debug sharpyc) and python3 3.12.
+  # ============================================================
+
+  - id: collection-error-message-texts
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "Core collection refusals carry CPython's message text: `list index out of range`, `pop index out of range`, `list.remove(x): x not in list`, `max() iterable argument is empty`, `range() arg 3 must not be zero`."
+    sharpy_behavior: "The exception TYPE is python's (COMPARED); the message text beyond the type name is a deviation by default (R-CI, D1 of python-fidelity-scope.md; was #2108). Sharpy's texts name the offending value where python's do not: `list index 5 out of range`, `pop index 7 out of range`, `9 not in list`, `max() arg is an empty sequence` (CPython ≤3.11 text), `range() step argument must not be zero`. A spec section that quotes a message keeps that message COMPARED. `KeyError.__str__` (the repr of the key) is COMPARED and was fixed in plan-0ca7b7 verification."
+    spec_ref: docs/design/python-fidelity-scope.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        xs = [1]
+        try: xs[5]
+        except IndexError as e: print(e)      # list index out of range
+        try: xs.remove(9)
+        except ValueError as e: print(e)      # list.remove(x): x not in list
+      sharpy: |
+        xs = [1]
+        try:
+            print(xs[5])
+        except IndexError as e:
+            print(e)                          # list index 5 out of range
+        try:
+            xs.remove(9)
+        except ValueError as e:
+            print(e)                          # 9 not in list
+
+  - id: sort-refusal-operand-order
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "A refused ordering names its operands in timsort's probe order: `sorted([\"b\", None])` raises `TypeError: '<' not supported between instances of 'NoneType' and 'str'` (the later element is the left operand)."
+    sharpy_behavior: "The refusal is python's catchable TypeError at the first comparison (COMPARED, #2085), but WHICH operand is named follows the .NET stable merge sort's probe order (Axiom 1): `'<' not supported between instances of 'str' and 'NoneType'`. Operand order in a library refusal is a deviation by default (R-CK, D3 of python-fidelity-scope.md; was #2089). The `key=` CALL COUNT is COMPARED (once per element, #2090)."
+    spec_ref: docs/design/python-fidelity-scope.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        try: sorted(["b", None])
+        except TypeError as e: print(e)   # '<' not supported between instances of 'NoneType' and 'str'
+      sharpy: |
+        xs: list[str | None] = ["b", None]
+        try:
+            print(sorted(xs))
+        except TypeError as e:
+            print(e)                      # '<' not supported between instances of 'str' and 'NoneType'
+
+  - id: int-float-real-imag-members
+    code: SPY0203
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`int` and `float` expose the numeric-tower members `.real`, `.imag` (and `int` also `.numerator`, `.denominator`): `(5).real` is `5`, `(2.5).imag` is `0.0`, and `\"{0.real}\".format(5)` prints `5`."
+    sharpy_behavior: "Sharpy's `int`/`float` are the CLR primitives and do not expose these members: `n.real` is SPY0203 `Type 'int32' has no member 'real'` statically, and the `str.format` field `{0.real}` raises `AttributeError: 'int' object has no attribute 'real'` at runtime. An unlisted member surface is a deviation until promoted (R-CM, D5 of python-fidelity-scope.md; was #2059). `complex` keeps `.real`/`.imag`."
+    spec_ref: docs/design/python-fidelity-scope.md
+    existing_diagnostic: SPY0203
+    planned_diagnostic: null
+    example:
+      python: |
+        print((5).real, (2.5).imag)       # 5 0.0
+        print("{0.real}".format(5))       # 5
+      sharpy: |
+        n = 5
+        print(n.real)                     # SPY0203: Type 'int32' has no member 'real'
+        try:
+            print("{0.real}".format(5))
+        except AttributeError as e:
+            print(e)                      # 'int' object has no attribute 'real'

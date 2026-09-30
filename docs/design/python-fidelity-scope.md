@@ -45,15 +45,15 @@ promoted** — the aperture opens only by a ruling, never by an auditor's `pytho
 covers). Demotion never happens silently: a COMPARED surface the team decides not to match is a
 ruling too, with the `deviations.yaml` entry it creates.
 
-## Rulings (owner, 2026-09-27; R-letters assigned at the next `/batch-issues`)
+## Rulings (owner, 2026-09-27; R-letters assigned at the 2026-09-30 `/batch-issues`, charter `remediation-round-2026-09-20-batching.md` §4)
 
 | Decision | Ruling | What it decides today |
 |---|---|---|
-| D1 exception message text beyond the type name | **a — DEVIATION by default** | #2108 (collection message texts) and the message half of #2100 become ledger rows / tracker cells, not bugs; a spec section that quotes a message keeps it COMPARED |
-| D2 `str`/`repr` of Stdlib types | **b — COMPARED for all Stdlib types now, one tracker per type family** | #2104 (`HTTPStatus`, `ipaddress`, `Path`, `defaultdict` repr) is a bug; every Stdlib type family gets an `IRepr`/`ToString` pair asserted against python3 |
-| D3 evaluation order / count | **b — split:** operand order in refusals stays DEVIATION; `key=` call count is COMPARED | #2089 → ledger row; #2090 → bug (decorate-sort-undecorate in Core, once per element) |
-| D4 culture / locale / platform text | **b — COMPARED, invariant culture everywhere** | #2056 → bug in the direction "`str(dt)` becomes invariant"; the consistency rule (`str` ≡ plain f-string hole) follows |
-| D5 default for an unlisted surface | **a — DEVIATION until promoted by a ruling** | the next unforeseen long-tail cell is a ledger row, not an issue |
+| D1 exception message text beyond the type name | **R-CI: a — DEVIATION by default** | #2108 closed to the ledger row `collection-error-message-texts`; the message half of #2100 is a row, not a cell; a spec section that quotes a message keeps it COMPARED |
+| D2 `str`/`repr` of Stdlib types | **R-CJ: b — COMPARED for all Stdlib types now, one tracker per type family** | #2104 is the Stdlib repr tracker (P11g); every Stdlib type family gets an `IRepr`/`ToString` pair asserted against python3 |
+| D3 evaluation order / count | **R-CK: b — split:** operand order in refusals stays DEVIATION; `key=` call count is COMPARED | #2089 closed to the ledger row `sort-refusal-operand-order`; #2090 is the bug (P34, decorate-sort-undecorate in Core, once per element) |
+| D4 culture / locale / platform text | **R-CL: b — COMPARED, invariant culture everywhere** | #2056 is the bug (P35) in the direction "`str(dt)` becomes invariant"; the consistency rule (`str` ≡ plain f-string hole) follows |
+| D5 default for an unlisted surface | **R-CM: a — DEVIATION until promoted by a ruling** | the next unforeseen long-tail cell is a ledger row, not an issue; first row under it: `int-float-real-imag-members` (#2059, R-DC) |
 
 Rejected: D1 b (match every message text — unbounded, no control flow reads it); D2 a (per-family
 promotion — leaves a repr channel half-built); D3 a/c (all-deviation hides an observable side-effect
