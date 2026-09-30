@@ -6,6 +6,12 @@
 #   bash build_tools/regenerate_spy_tests.sh --check     # Diff against committed (CI mode)
 #   bash build_tools/regenerate_spy_tests.sh --dry-run   # Show what would be regenerated
 #
+# Compiler override (same knob as regenerate_spy_stdlib.sh): set SHARPYC to drive the emit with an
+# already-built binary instead of `dotnet run`, e.g. a worktree's or a base commit's apphost:
+#   SHARPYC=<repo>/src/Sharpy.Cli/bin/Debug/net10.0/sharpyc bash build_tools/regenerate_spy_tests.sh --check
+# A prebuilt binary also avoids the implicit build `dotnet run` performs, which runs OUTSIDE the
+# serialized dotnet lock (.claude/scripts/dotnet-serialized) while other agents hold it.
+#
 # Uses project compilation (sharpyc project tests.spyproj --emit-cs-to) to emit
 # all test modules in one pass, then syncs the output into Spy/generated/.
 
@@ -15,7 +21,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 SPY_DIR="$REPO_ROOT/src/Sharpy.Stdlib.Tests/Spy"
 GENERATED_DIR="$SPY_DIR/generated"
 SPYPROJ="$SPY_DIR/tests.spyproj"
-SHARPYC="dotnet run --project $REPO_ROOT/src/Sharpy.Cli --"
+SHARPYC="${SHARPYC:-dotnet run --project $REPO_ROOT/src/Sharpy.Cli --}"
 WORK_DIR=""
 
 cleanup() {
