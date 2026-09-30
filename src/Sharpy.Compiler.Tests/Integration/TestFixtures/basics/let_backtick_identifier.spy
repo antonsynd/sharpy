@@ -1,9 +1,11 @@
-# #1974 (P21a): the backtick escape keeps `let` usable as a name — a local, a parameter and a
-# keyword argument. Negative twin: errors/let_identifier_requires_backticks.
+# #1974 (P21a): the backtick escape keeps `let` usable as a name — a local and a parameter.
+# Negative twin: errors/let_identifier_requires_backticks. (A backticked KEYWORD ARGUMENT name
+# `f(`let`=7)` compiles and runs too, but the formatter drops its escape — #2157 — so that cell
+# lives in #2157's table rather than in this round-tripped fixture.)
 def double(`let`: int) -> int:
     return `let` * 2
 
 def main():
     `let` = 5
     print(`let`)
-    print(double(`let`=7))
+    print(double(`let`))

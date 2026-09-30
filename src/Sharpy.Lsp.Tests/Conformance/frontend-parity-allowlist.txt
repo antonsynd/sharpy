@@ -49,6 +49,7 @@ compile::errors/del_attribute_rejected
 compile::errors/del_slice_rejected
 compile::errors/del_nested_index_rejected
 compile::errors/del_target_list_mixed
+compile::errors/let_in_comprehension  # P21a: `let` in a comprehension element is a parse error; the partial-AST baseline adds SPY0200 for the unbound `x`
 compile::expressions/dict_spread_call
 compile::errors/inline_non_stub_body
 compile::async/async_invalid_keyword_error
