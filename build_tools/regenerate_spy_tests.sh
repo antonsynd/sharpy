@@ -133,11 +133,16 @@ fi
 
 echo "Project emission done. $emitted_count files emitted."
 
-# Build stems array from the emitted .cs files (respects spyproj Exclude patterns)
+# Build stems array from the emitted .cs files (respects spyproj Exclude patterns).
+# --emit-cs-to mirrors each source's path relative to tests.spyproj (collections/x.spy ->
+# $EMIT_DIR/collections/x.cs, #2060), so the emitted path is recorded alongside its stem;
+# generated/ stays flat, which the duplicate-stem guard above keeps collision-free.
 stems=()
+emitted_files=()
 while IFS= read -r f; do
     stem=$(basename "$f" .cs)
     stems+=("$stem")
+    emitted_files+=("$f")
 done < <(find "$EMIT_DIR" -name '*.cs' | sort)
 
 # --- Post-process and sync ---
@@ -148,10 +153,11 @@ escaped_root=$(printf '%s' "$REPO_ROOT" | sed 's/\\/\\\\/g; s/\./\\./g; s/\*/\\*
 
 errors=0
 
-for stem in "${stems[@]}"; do
-    emitted_file="$EMIT_DIR/${stem}.cs"
+for i in "${!stems[@]}"; do
+    stem="${stems[$i]}"
+    emitted_file="${emitted_files[$i]}"
     if [[ ! -f "$emitted_file" ]]; then
-        echo "ERROR: Expected emitted file not found: ${stem}.cs"
+        echo "ERROR: Expected emitted file not found: ${emitted_file#"$EMIT_DIR"/}"
         errors=1
         continue
     fi

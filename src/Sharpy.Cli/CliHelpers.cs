@@ -600,6 +600,43 @@ internal static class CliHelpers
         return false;
     }
 
+    /// <summary>
+    /// Maps one generated-C# unit to its output path under <paramref name="outputDir"/>, mirroring
+    /// the unit's key, which is its source path relative to the project directory (the module
+    /// root that also fixes the module's dotted name — <c>ProjectCompiler.GenerateCode</c>). So
+    /// <c>src/lib.spy</c> and <c>src/pkg/lib.spy</c> go to <c>src/lib.cs</c> and
+    /// <c>src/pkg/lib.cs</c>. Writing by file name alone sent both to <c>lib.cs</c>, and the second
+    /// silently overwrote the first (#2060).
+    /// A source outside the project directory (<c>SourceFile Include="../ext/*.spy"</c>) has a key
+    /// that climbs out (<c>../ext/outer.cs</c>); its leading <c>..</c> segments are dropped, the same
+    /// way <c>CompilationUnitFactory.ComputeModulePath</c> names that module <c>ext.outer</c>, so it
+    /// lands at <c>ext/outer.cs</c> inside the output directory, never outside it. A rooted key
+    /// (a source on another drive) keeps its path below the root.
+    /// </summary>
+    internal static string MirroredCSharpOutputPath(string outputDir, string unitKey)
+    {
+        var relative = Path.ChangeExtension(unitKey, ".cs");
+        var root = Path.GetPathRoot(relative);
+        if (!string.IsNullOrEmpty(root))
+            relative = relative.Substring(root.Length);
+
+        var segments = relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries);
+        var start = 0;
+        while (start < segments.Length - 1 && segments[start] is ".." or ".")
+            start++;
+
+        var outputRoot = Path.GetFullPath(outputDir);
+        var outputPath = Path.GetFullPath(Path.Combine(outputRoot, Path.Combine(segments[start..])));
+        var check = Path.GetRelativePath(outputRoot, outputPath);
+        if (Path.IsPathRooted(check) || check == ".." || check.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Generated C# key '{unitKey}' maps outside the output directory '{outputRoot}'.");
+
+        return outputPath;
+    }
+
     internal static string StripLineDirectives(string csharpCode)
     {
         var lines = csharpCode.Split('\n');

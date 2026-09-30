@@ -42,7 +42,7 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 - `-c, --configuration <Debug|Release>` - Build configuration (default: Debug)
 - `--incremental` - Enable incremental compilation (skip unchanged files)
 - `--clean` - Delete bin/ and obj/ directories before building
-- `--emit-cs-to <dir>` - Save generated C# code to directory
+- `--emit-cs-to <dir>` - Save generated C# code to directory, mirroring each source's path relative to the project directory (`pkg/lib.spy` → `<dir>/pkg/lib.cs`)
 
 ## Examples
 

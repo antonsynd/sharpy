@@ -25,7 +25,8 @@ cleanup() {
 trap cleanup EXIT
 
 # Mapping: emitted_filename:python_module_name:cs_relative_path
-# The emitted filename comes from --emit-cs-to (spy filename stem + .cs).
+# The emitted filename comes from --emit-cs-to, which mirrors each .spy path relative to
+# stdlib.spyproj (#2060); spy/ is flat, so that is the spy filename stem + .cs.
 # The python_module_name is the module users import — the hand-written partial's
 # [SharpyModule("...")] on the module's members class. The compiler stamps each
 # generated namespace-sibling type [SharpyModuleType("<stem>", ...)] with the FILE
