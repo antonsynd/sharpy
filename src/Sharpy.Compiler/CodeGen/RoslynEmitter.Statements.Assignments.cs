@@ -1435,11 +1435,15 @@ internal partial class RoslynEmitter
 
                     if (StoreAssignsExistingSlot(id))
                     {
+                        // A write-through to a module variable shadowed by a same-named class
+                        // member is module-qualified like every other store form (#1786): the
+                        // starred leaf writes through here since #1974, and an unqualified name
+                        // wrote the FIELD.
                         var currentName = GetMangledVariableName(id, isNewDeclaration: false);
                         return ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
-                                EscapedIdentifierName(currentName),
+                                StoreTargetName(id, currentName),
                                 value));
                     }
 

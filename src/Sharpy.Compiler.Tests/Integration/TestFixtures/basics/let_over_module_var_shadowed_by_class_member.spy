@@ -1,0 +1,49 @@
+# #1974 (P21a) + #1786: a method-body store to a name that is BOTH a module variable and a class
+# attribute. A `let` (plain, tuple element, star leaf) is a fresh local: the module variables and
+# the fields survive. A BARE star leaf writes through to the MODULE variable (#1786's
+# module-qualified store), never the field — at 76049711d it was SPY0908 CS0103, and between
+# d1a25fddd and the fix it silently wrote the field.
+count: int = 100
+pair: int = 200
+tail: list[int] = [300]
+
+class C:
+    count: int = 7
+    pair: int = 8
+    tail: list[int] = [9]
+
+    def plain(self) -> None:
+        let count = 5
+        print(count)
+
+    def tuple_element(self) -> None:
+        let pair, other = 6, 0
+        print(pair + other)
+
+    def star_leaf(self) -> None:
+        let first, *tail = 1, 2, 3
+        print(first, tail)
+
+    def module_reads(self) -> None:
+        print(count, pair, tail)
+
+    def bare_star_literal(self) -> None:
+        first, *tail = 1, 2, 3
+        print(first, tail, self.tail)
+
+    def bare_star_typed(self) -> None:
+        t = (4, 5, 6)
+        first, *tail = t
+        print(first, tail, self.tail)
+
+def main():
+    c = C()
+    c.plain()
+    c.tuple_element()
+    c.star_leaf()
+    c.module_reads()
+    print(c.count, c.pair, c.tail)
+    c.bare_star_literal()
+    print(tail, c.tail)
+    c.bare_star_typed()
+    print(tail, c.tail)
