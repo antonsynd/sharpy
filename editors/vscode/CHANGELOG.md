@@ -7,6 +7,13 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-29
+
+### Added
+- The `let` keyword is coloured as a keyword (TextMate grammar). The language server marks `let` as a keyword token and every `let`-declared name — single, tuple element, starred, and `out let` — as a declaration token; inlay hints show the inferred type on `let x = e` (#1974, Stage 1).
+
+Toolchain-side: `let` is a reserved keyword. `let <target>[: T] = e` introduces a fresh block-scoped binding even when the name already exists, `out let x[: T]` declares inline, and `let` at module or type-body scope is refused (SPY0340, steering to `const` / a field). Bare `x = e` and annotated `x: T = e` still declare in this stage; `auto` is deprecated in favour of `let`. The bare identifier `let` now needs backticks.
+
 ## [0.20.0] - 2026-09-16
 
 No extension-facing changes; version bumped with the toolchain. Toolchain-side (P4b, CLR interop residue): CLR-backed type names are emitted from their reflected type and qualified `global::` on every spelling; an aliased import binds the same symbol as the un-aliased one; one type-denoting-receiver classifier types `G[int].K` and nested static chains (`Environment.SpecialFolder.Desktop`) instead of leaking; CLR member access on a Sharpy builtin receiver exposes only its Sharpy names (`xs.Count` → SPY0203 with a `len(xs)` steer); a `.NET` `IDictionary`/`IReadOnlyDictionary` materializes into `dict[K,V]` like a sequence into `list[T]`; and the four builtin tagged-union case names are reserved against every qualified spelling (SPY0608) and every user re-declaration (SPY0212).
