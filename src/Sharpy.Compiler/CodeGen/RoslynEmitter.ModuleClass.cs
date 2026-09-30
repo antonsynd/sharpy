@@ -399,18 +399,15 @@ internal partial class RoslynEmitter
     /// module layout semantic analysis recorded on the <see cref="Module"/> root (#2039, Decision 28
     /// (e)). No emission — the recorded fact, read into <c>_moduleShape</c>.
     /// </summary>
-    private ModuleShape ComputeModuleShape(Module? module, List<Statement> statements)
+    private ModuleShape ComputeModuleShape(Module module, List<Statement> statements)
     {
         bool declaresEntryMain = ModuleIdentifiers.DeclaresEntryMain(statements);
 
-        // The AST-only unit-test path drives the emitter without semantic analysis recording a
-        // layout; it reads the same path authority the recorder does, so the two cannot disagree.
-        var layout = (module != null ? _context.SemanticInfo?.GetModuleLayout(module) : null)
-            ?? (string.IsNullOrEmpty(_context.SourceFilePath)
-                ? new ModuleLayout(Array.Empty<string>(), "Module")
-                : new ModuleLayout(
-                    ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, _context.SourceFilePath),
-                    ModuleIdentifiers.LayoutMembersClassName(_context.SourceFilePath)));
+        var layout = _context.SemanticInfo?.GetModuleLayout(module)
+            ?? throw new InternalCompilerErrorException("RoslynEmitter",
+                $"layout fact missing (#2102, Rule 2): no module layout recorded ("
+                + $"semanticInfo={(_context.SemanticInfo == null ? "null" : "set")}, file='{_context.SourceFilePath}')",
+                module);
         var namespaceParts = layout.NamespaceParts(_context.ProjectNamespace);
 
         // The emitted C# names of every top-level TYPE this module declares. A same-file type
@@ -439,12 +436,11 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// The shape of the module being emitted. <see cref="GenerateCompilationUnit"/> computes it before
-    /// any member is generated; the AST-only unit-test paths that emit a single declaration without a
-    /// compilation unit get the shape of a nameless module (no namespace, members class
-    /// <c>Module</c>).
+    /// any member is generated.
     /// </summary>
     private ModuleShape CurrentModuleShape
-        => _moduleShape ??= ComputeModuleShape(null, new List<Statement>());
+        => _moduleShape ?? throw new InternalCompilerErrorException("RoslynEmitter",
+            $"layout fact missing (#2102, Rule 2): no module shape — emission entered without GenerateCompilationUnit (file='{_context.SourceFilePath}')");
 
     /// <summary>
     /// The Sharpy module name for the [SharpyModule] attribute — the python dotted module path
@@ -860,7 +856,9 @@ internal partial class RoslynEmitter
         // Test class name: the recorded <X>Tests (#2039, F14), a sibling of <X> in the module
         // namespace. Always public; not static (xUnit instantiates the class per test method).
         var shape = CurrentModuleShape;
-        var testClassName = shape.Layout.TestClassName ?? shape.MembersClassName + "Tests";
+        var testClassName = shape.Layout.TestClassName
+            ?? throw new InternalCompilerErrorException("RoslynEmitter",
+                $"layout fact missing (#2102, Rule 2): no test class name recorded (file='{_context.SourceFilePath}')");
 
         // Compose class-level fixture wiring. Two mechanisms can coexist:
         //   - User fixtures: Xunit.IClassFixture<T> base types + ctor injection + readonly fields

@@ -3029,6 +3029,35 @@ public sealed record ModuleLayout(
     /// </summary>
     public string MembersClassFullName(string? rootNamespace)
         => string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
+
+    /// <summary>
+    /// The ONE layout authority for a module's own layout (#2039, #2102): its namespace segments and
+    /// <c>&lt;X&gt;</c> from its file path under <paramref name="sourceRoot"/>, the test class
+    /// <c>&lt;X&gt;Tests</c> when a top-level function carries a test decorator, and one
+    /// <c>&lt;Name&gt;Fixture</c> per <c>@test.fixture</c>. A module with no file identity (an LSP
+    /// single-document analysis, the REPL, a source-only compilation) is the nameless module: no
+    /// namespace segments, members class <see cref="ModuleIdentifiers.NamelessMembersClassName"/>.
+    /// <c>CodeGenInfoComputer</c> records it on the module root; the emitter only reads it.
+    /// </summary>
+    public static ModuleLayout ForModule(Module module, string? sourceRoot, string? filePath)
+    {
+        var hasPath = !string.IsNullOrEmpty(filePath);
+        var membersClass = hasPath
+            ? ModuleIdentifiers.LayoutMembersClassName(filePath!)
+            : ModuleIdentifiers.NamelessMembersClassName;
+        var functions = module.Body.Select(s => s.UnwrapDecorated()).OfType<FunctionDef>().ToList();
+        var fixtures = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var fixture in functions.Where(f =>
+                     f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture)))
+            fixtures.TryAdd(fixture.Name, NameMangler.ToPascalCase(fixture.Name) + "Fixture");
+        var hasTests = functions.Any(f => f.Decorators.Any(DecoratorNames.IsTestDecorator)
+            && !f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture));
+        return new ModuleLayout(
+            hasPath ? ModuleIdentifiers.LayoutNamespaceSegments(sourceRoot, filePath!) : new List<string>(),
+            membersClass,
+            hasTests ? membersClass + "Tests" : null,
+            fixtures.Count > 0 ? fixtures : null);
+    }
 }
 
 /// <summary>

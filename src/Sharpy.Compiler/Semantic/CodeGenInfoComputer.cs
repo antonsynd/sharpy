@@ -137,8 +137,10 @@ internal class CodeGenInfoComputer
         var layout = RecordOwnModuleLayout(module);
         MarkNamespaceSiblings(module, layout);
 
-        // Third pass: Detect module-level name collisions
-        DetectModuleLevelCollisions(module, layout);
+        // Third pass: Detect module-level name collisions. The nameless layout seeds no collision
+        // check: a source with no file identity (the LSP single-document analysis) is built under
+        // its real name elsewhere, so seeding `Module` would refuse there what the build accepts.
+        DetectModuleLevelCollisions(module, string.IsNullOrEmpty(_sourceFilePath) ? null : layout);
 
         // Fourth pass: name every local of every function-like scope. Runs last so that a chain
         // whose head is a module-level variable (write-through from a function) inherits the
@@ -187,26 +189,13 @@ internal class CodeGenInfoComputer
     /// no <see cref="ModuleSymbol"/>, #2039): its namespace segments, <c>&lt;X&gt;</c>, and the other
     /// classes it emits into that namespace — the test class <c>&lt;X&gt;Tests</c> when a top-level
     /// function carries a test decorator, and one <c>&lt;Name&gt;Fixture</c> per <c>@test.fixture</c>.
-    /// Null when the file has no name (nothing to derive a layout from).
+    /// A module with no file identity (an LSP single-document analysis, the REPL, a source-only
+    /// compilation) is the nameless module: no namespace segments, members class <c>Module</c>. It is
+    /// recorded like any other so the emitter never derives a layout of its own (#2102, Rule 2).
     /// </summary>
-    private ModuleLayout? RecordOwnModuleLayout(Module module)
+    private ModuleLayout RecordOwnModuleLayout(Module module)
     {
-        if (string.IsNullOrEmpty(_sourceFilePath))
-            return null;
-
-        var membersClass = ModuleIdentifiers.LayoutMembersClassName(_sourceFilePath);
-        var functions = module.Body.Select(s => s.UnwrapDecorated()).OfType<FunctionDef>().ToList();
-        var fixtures = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var fixture in functions.Where(f =>
-                     f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture)))
-            fixtures.TryAdd(fixture.Name, NameMangler.ToPascalCase(fixture.Name) + "Fixture");
-        var hasTests = functions.Any(f => f.Decorators.Any(DecoratorNames.IsTestDecorator)
-            && !f.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.TestFixture));
-        var layout = new ModuleLayout(
-            ModuleIdentifiers.LayoutNamespaceSegments(_sourceRootPath, _sourceFilePath),
-            membersClass,
-            hasTests ? membersClass + "Tests" : null,
-            fixtures.Count > 0 ? fixtures : null);
+        var layout = ModuleLayout.ForModule(module, _sourceRootPath, _sourceFilePath);
         _semanticInfo?.SetModuleLayout(module, layout);
         return layout;
     }
@@ -364,7 +353,48 @@ internal class CodeGenInfoComputer
                     NamespaceSegments = layout?.NamespaceSegments,
                     MembersClassName = layout?.MembersClassName
                 });
+                RecordSubmoduleLayouts(moduleSymbol, new HashSet<ModuleSymbol>(ReferenceEqualityComparer.Instance));
             }
+            else
+            {
+                // `import pkg.sub` binds the root package; the emitter walks to `sub` through its
+                // exports (#2102).
+                var root = effectiveName.Split('.')[0];
+                if (root != effectiveName && _symbolTable.Lookup(root) is ModuleSymbol rootModule)
+                    RecordSubmoduleLayouts(rootModule, new HashSet<ModuleSymbol>(ReferenceEqualityComparer.Instance));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Records the layout on every submodule reachable through <paramref name="module"/>'s exports
+    /// that carries none yet (<c>import pkg.sub</c>; <c>import pkg</c> then <c>pkg.sub.f()</c>): a
+    /// member access walks from the bound module to the submodule's symbol, and the emitter reads the
+    /// submodule's layout from it (#2039, #2102). Only project (file-backed) modules have a layout.
+    /// </summary>
+    private void RecordSubmoduleLayouts(ModuleSymbol module, HashSet<ModuleSymbol> visited)
+    {
+        if (!visited.Add(module))
+            return;
+        foreach (var export in module.Exports.Values)
+        {
+            if (export is not ModuleSymbol submodule)
+                continue;
+            if (_semanticBinding.GetCodeGenInfo(submodule) == null
+                && (_importFacts ?? _semanticBinding).GetCodeGenInfo(submodule) == null
+                && ImportedModuleLayout(submodule.FilePath, submodule.CSharpNamespace, submodule.CSharpClassName,
+                    submodule.IsNetModule) is { } layout)
+            {
+                SetCodeGenInfo(submodule, new CodeGenInfo
+                {
+                    CSharpName = submodule.Name.Replace(".", "_", StringComparison.Ordinal),
+                    OriginalName = submodule.Name,
+                    ImportKind = ImportKind.ModuleImport,
+                    NamespaceSegments = layout.NamespaceSegments,
+                    MembersClassName = layout.MembersClassName
+                });
+            }
+            RecordSubmoduleLayouts(submodule, visited);
         }
     }
 

@@ -489,8 +489,7 @@ internal partial class RoslynEmitter
 
         if (symbol is FunctionSymbol or VariableSymbol
             && GetCodeGenInfo(symbol) is { IsModuleLevel: true }
-            && _ownTopLevelMemberNames.Contains(symbol.Name)
-            && _moduleShape != null)
+            && _ownTopLevelMemberNames.Contains(symbol.Name))
         {
             return OwnModuleContainerSegments();
         }
@@ -502,7 +501,7 @@ internal partial class RoslynEmitter
     /// The namespace segments of THIS module's members class: the module namespace
     /// (<see cref="ModuleShape.NamespaceParts"/>) followed by <c>&lt;X&gt;</c> (#2039).
     /// </summary>
-    private string[] OwnModuleContainerSegments() => _moduleShape!.MembersClassPath;
+    private string[] OwnModuleContainerSegments() => CurrentModuleShape.MembersClassPath;
 
     /// <summary>
     /// A from-imported module-level member reference (function/variable/const), emitted fully

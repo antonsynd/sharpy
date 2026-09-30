@@ -216,11 +216,10 @@ internal partial class RoslynEmitter
             if (IsSyntheticModule(alias.Name))
                 continue;
 
-            // Convert Python module name to C# namespace/class path
+            // A CLR namespace import names its namespace; a stdlib module names its discovered class;
+            // a user module emits no directive at all (its members are global::-qualified from the
+            // recorded layout, #2039), so no module path is derived here (#2102).
             var isNetFramework = IsNetFrameworkNamespace(alias.Name);
-            var namespaceName = isNetFramework
-                ? ResolveClrNamespace(alias.Name)
-                : ModuleIdentifiers.DottedModulePath(alias.Name);
 
             if (alias.AsName != null)
             {
@@ -229,7 +228,7 @@ internal partial class RoslynEmitter
                 {
                     yield return UsingDirective(
                         NameEquals(escapedAlias),
-                        ParseQualifiedName(namespaceName));
+                        ParseQualifiedName(ResolveClrNamespace(alias.Name)));
                 }
                 else if (IsStdlibModule(alias.Name))
                 {
@@ -252,7 +251,7 @@ internal partial class RoslynEmitter
                 if (isNetFramework)
                 {
                     // import system.io -> using System.IO;
-                    yield return UsingDirective(ParseQualifiedName(namespaceName));
+                    yield return UsingDirective(ParseQualifiedName(ResolveClrNamespace(alias.Name)));
                 }
                 else if (IsStdlibModule(alias.Name))
                 {
@@ -381,18 +380,17 @@ internal partial class RoslynEmitter
     /// names — its module namespace followed by <c>&lt;X&gt;</c> (<c>from pkg.thing import f</c> →
     /// <c>Pkg.Thing.ThingModule</c>; <c>from pkg import f</c> → <c>Pkg.PkgModule</c>, #1948, #2039) —
     /// read from the source layout semantic analysis recorded on the import node (F6, Decision 28 (e)).
-    /// An import with no recorded layout (no resolved file) spells the module from its dotted name.
+    /// An import with no recorded layout is an internal error: the emitter derives no layout (#2102).
     /// </summary>
     private IEnumerable<string> FromImportMembersClassPath(FromImportStatement fromImport)
     {
         if (_context.SemanticInfo?.GetModuleLayout(fromImport) is { } layout)
             return layout.NamespaceSegments.Append(layout.MembersClassName);
 
-        var dottedName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
-        var stem = dottedName.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? dottedName;
-        return ModuleIdentifiers.DottedModulePath(dottedName)
-            .Split('.', StringSplitOptions.RemoveEmptyEntries)
-            .Append(ModuleIdentifiers.MembersClassName(stem));
+        throw new Sharpy.Compiler.Diagnostics.InternalCompilerErrorException("RoslynEmitter",
+            $"layout fact missing (#2102, Rule 2): no module layout recorded on 'from {fromImport.Module} import' "
+            + $"(semanticInfo={(_context.SemanticInfo == null ? "null" : "set")}, file='{_context.SourceFilePath}')",
+            fromImport);
     }
 
     /// <summary>

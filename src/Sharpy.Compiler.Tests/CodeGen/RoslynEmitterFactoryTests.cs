@@ -59,7 +59,12 @@ public class RoslynEmitterFactoryTests
         var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter = factory.Create(context);
-        var result = emitter.GenerateCompilationUnit(new Module());
+        // The emitter reads the module layout semantic analysis records (#2102); record it the way
+        // CodeGenInfoComputer does for a module with no file identity.
+        var module = new Module();
+        context.SemanticInfo = new SemanticInfo();
+        context.SemanticInfo.SetModuleLayout(module, ModuleLayout.ForModule(module, null, null));
+        var result = emitter.GenerateCompilationUnit(module);
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.Members);

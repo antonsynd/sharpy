@@ -26,6 +26,10 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter : ICodeEmitter
 {
     private readonly CodeGenContext _context;
+
+    /// <summary>The context this emitter reads its materialized facts from (test entry paths record into it).</summary>
+    internal CodeGenContext Context => _context;
+
     private readonly TypeSyntaxMapper _typeMapper;
     private readonly NameResolutionService _nameResolutionService;
     private readonly CancellationToken _cancellationToken;

@@ -34,7 +34,7 @@ public class RoslynEmitterNamespaceTests
     private string GenerateCode(RoslynEmitter emitter)
     {
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         return result.ToFullString();
     }
 

@@ -55,7 +55,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -90,7 +90,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -125,7 +125,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -160,7 +160,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -197,7 +197,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -231,7 +231,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -269,7 +269,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -305,7 +305,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -341,7 +341,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -395,7 +395,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -433,7 +433,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - should have only the inlined operator (no instance method)
@@ -471,7 +471,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - should have both operator == and complementary operator !=
@@ -507,7 +507,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - should have Equals(Point) without override, and operator==
@@ -544,7 +544,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - should have both operator != and complementary operator ==
@@ -582,7 +582,7 @@ public class RoslynEmitterOperatorTests
 
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert - should have IsTrue property, operator true, and operator false

@@ -788,17 +788,18 @@ internal class TypeSyntaxMapper
     /// <summary>
     /// The namespace segments (relative to the project namespace) a top-level Sharpy type is declared
     /// in: the fact semantic analysis recorded on its <see cref="CodeGenInfo"/> (#2039,
-    /// <see cref="CodeGenInfo.NamespaceSegments"/>). A type that carries no CodeGenInfo (a union or
-    /// delegate until #2006 materializes one) reads the same path authority the recorder does, from its
-    /// defining file, or its defining module's dotted name.
+    /// <see cref="CodeGenInfo.NamespaceSegments"/>). A type with no recorded namespace is an internal
+    /// error: the emitter derives no layout (#2102).
     /// </summary>
     private IReadOnlyList<string> TypeNamespaceSegments(TypeSymbol topLevelType)
     {
         if (_context.SemanticBinding.GetCodeGenInfo(topLevelType) is { IsNamespaceSibling: true, NamespaceSegments: { } recorded })
             return recorded;
-        if (!string.IsNullOrEmpty(topLevelType.DefiningFilePath))
-            return ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, topLevelType.DefiningFilePath);
-        return ModuleIdentifiers.DottedModulePath(topLevelType.DefiningModule ?? "").Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var info = _context.SemanticBinding.GetCodeGenInfo(topLevelType);
+        throw new Sharpy.Compiler.Diagnostics.InternalCompilerErrorException("TypeSyntaxMapper",
+            $"layout fact missing (#2102, Rule 2): no namespace recorded for type '{topLevelType.Name}' ({topLevelType.GetType().Name}, "
+            + $"hasCodeGenInfo={info != null}, sibling={info?.IsNamespaceSibling}, segs={(info?.NamespaceSegments == null ? "null" : "set")}, "
+            + $"definingFile='{topLevelType.DefiningFilePath}', definingModule='{topLevelType.DefiningModule}', file='{_context.SourceFilePath}')");
     }
 
     /// <summary>
@@ -817,16 +818,6 @@ internal class TypeSyntaxMapper
         var dot = chain.IndexOf('.', StringComparison.Ordinal);
         return dot < 0 ? qualifiedOuter : qualifiedOuter + chain[dot..];
     }
-
-    /// <summary>
-    /// The C# namespace (relative to the project namespace) a module identified by its FILE PATH is
-    /// declared in — <c>pkg/thing.spy</c> → <c>Pkg.Thing</c> — read from the one path authority the
-    /// layout recorder uses (<see cref="ModuleIdentifiers.LayoutNamespaceSegments"/>). For a module
-    /// reached without a recorded <see cref="CodeGenInfo"/> (a submodule reached through its parent
-    /// package's exports).
-    /// </summary>
-    internal IReadOnlyList<string> ModuleNamespaceFromFilePath(string filePath)
-        => ModuleIdentifiers.LayoutNamespaceSegments(_context.ProjectRootPath, filePath);
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.

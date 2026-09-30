@@ -599,7 +599,21 @@ public class SemanticBinding
     public void MergeFrom(SemanticBinding other)
     {
         foreach (var (symbol, info) in other._codeGenInfo)
-            _codeGenInfo.TryAdd(symbol, info);
+        {
+            if (_codeGenInfo.TryAdd(symbol, info))
+                continue;
+            // The module layout is recorded by the layout recorder (CodeGenInfoComputer) only. An
+            // entry written earlier by import resolution — an aliased from-import's clone — carries
+            // no layout; it gains the recorded one here, or the emitter would find none (#2102).
+            var existing = _codeGenInfo[symbol];
+            if (existing.NamespaceSegments == null && info.NamespaceSegments != null)
+                _codeGenInfo[symbol] = existing with
+                {
+                    IsNamespaceSibling = info.IsNamespaceSibling,
+                    NamespaceSegments = info.NamespaceSegments,
+                    MembersClassName = existing.MembersClassName ?? info.MembersClassName,
+                };
+        }
 
         // CLR-base-override marks are consumed at MaterializeCodeGenInfo, which runs on the
         // project-level binding after this merge — so per-file marks must carry across (#1122).

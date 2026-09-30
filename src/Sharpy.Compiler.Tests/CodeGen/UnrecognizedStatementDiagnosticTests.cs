@@ -76,7 +76,7 @@ public class UnrecognizedStatementDiagnosticTests
             Body = ImmutableArray.Create<Statement>(classDef)
         };
 
-        emitter.GenerateCompilationUnit(module);
+        emitter.GenerateRecordedCompilationUnit(module);
 
         context.Diagnostics.ShouldHaveErrorWithCode(DiagnosticCodes.CodeGen.UnrecognizedStatementType);
 

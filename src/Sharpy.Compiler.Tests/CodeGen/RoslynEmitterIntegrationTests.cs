@@ -98,7 +98,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -129,7 +129,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -172,7 +172,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -210,7 +210,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -241,7 +241,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -279,7 +279,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -317,7 +317,7 @@ public class RoslynEmitterIntegrationTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -359,7 +359,7 @@ public class RoslynEmitterIntegrationTests
 
         // Act — requires semantic analysis so the allocator assigns CodeGenInfo
         var emitter = CreateEmitterWithSemanticAnalysis(module);
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -415,7 +415,7 @@ public class RoslynEmitterIntegrationTests
         var emitter = CreateEmitterWithSemanticAnalysis(module);
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - verify naming is consistent (both preserve SCREAMING_SNAKE_CASE: BASE)
@@ -454,7 +454,7 @@ public class RoslynEmitterIntegrationTests
         var emitter = CreateEmitterWithSemanticAnalysis(module, isEntryPoint: false);
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -500,7 +500,7 @@ public class RoslynEmitterIntegrationTests
         var emitter = CreateEmitterWithSemanticAnalysis(module);
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 
@@ -590,7 +590,7 @@ public class RoslynEmitterIntegrationTests
         var emitter = CreateEmitterWithSemanticAnalysis(module, isEntryPoint: false);
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);
 

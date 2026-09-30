@@ -2137,21 +2137,16 @@ internal partial class RoslynEmitter
     /// The namespace segments (relative to the project namespace) and members class of a user module
     /// reached as a value (<c>import thing</c> / <c>thing.helper()</c>): the layout semantic analysis
     /// recorded on the imported <see cref="ModuleSymbol"/>'s CodeGenInfo (#2039, Decision 28 (e)). A
-    /// submodule reached through its package's exports carries no CodeGenInfo of its own and reads the
-    /// same path authority the recorder does, from its file — or its dotted name when it has none.
+    /// module symbol with no recorded layout is an internal error: the emitter derives no layout (#2102).
     /// </summary>
     private (IReadOnlyList<string> Namespace, string MembersClass) UserModuleLayout(
         ModuleSymbol module, string resolvedModuleName)
     {
         if (GetCodeGenInfo(module) is { NamespaceSegments: { } segments, MembersClassName: { } members })
             return (segments, members);
-        if (!string.IsNullOrEmpty(module.FilePath))
-            return (_typeMapper.ModuleNamespaceFromFilePath(module.FilePath),
-                ModuleIdentifiers.LayoutMembersClassName(module.FilePath));
-        var dotted = ModuleIdentifiers.DottedModulePath(resolvedModuleName)
-            .Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var stem = resolvedModuleName.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? resolvedModuleName;
-        return (dotted, ModuleIdentifiers.MembersClassName(stem));
+        throw new InternalCompilerErrorException("RoslynEmitter",
+            $"layout fact missing (#2102, Rule 2): no layout recorded on module symbol '{resolvedModuleName}' "
+            + $"(hasCodeGenInfo={GetCodeGenInfo(module) != null}, filePath='{module.FilePath}', file='{_context.SourceFilePath}')");
     }
 
     /// <summary>

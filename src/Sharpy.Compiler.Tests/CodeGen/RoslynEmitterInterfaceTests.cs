@@ -60,7 +60,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -106,7 +106,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -162,7 +162,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -198,7 +198,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -273,7 +273,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -324,7 +324,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -374,7 +374,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -425,7 +425,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -473,7 +473,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -502,7 +502,7 @@ public class RoslynEmitterInterfaceTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - Interfaces preserve exact casing (no transformation)

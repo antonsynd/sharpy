@@ -30,7 +30,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -63,7 +63,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -84,7 +84,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -149,7 +149,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -241,7 +241,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -284,7 +284,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -308,7 +308,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { interfaceDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Debug
@@ -344,7 +344,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { interfaceDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -368,7 +368,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { interfaceDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -388,7 +388,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { interfaceDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -416,7 +416,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { enumDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -443,7 +443,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { enumDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -469,7 +469,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { enumDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -525,7 +525,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { enumDef, mainFunc }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -620,7 +620,7 @@ struct Vector2:
 
         // Act
         var module = new Module { Body = new List<Statement> { enumDef, mainFunc }.ToImmutableArray() };
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
+        var compilationUnit = emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert

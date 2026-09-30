@@ -103,10 +103,16 @@ public class ModuleLayoutFactTests
     }
 
     [Fact]
-    public void OwnModule_WithoutAName_RecordsNoLayout()
+    public void OwnModule_WithoutAName_RecordsTheNamelessLayout()
     {
+        // #2102: a module with no file identity is recorded like any other (the emitter no longer
+        // invents a layout when none is recorded): no namespace, members class `Module`.
         var a = Analyze("def helper() -> int:\n    return 1\n", filePath: null!);
-        a.Info.GetModuleLayout(a.Module).Should().BeNull();
+        var layout = a.Info.GetModuleLayout(a.Module);
+        layout.Should().NotBeNull();
+        layout!.NamespaceSegments.Should().BeEmpty();
+        layout.MembersClassName.Should().Be("Module");
+        layout.TestClassName.Should().BeNull();
     }
 
     [Fact]

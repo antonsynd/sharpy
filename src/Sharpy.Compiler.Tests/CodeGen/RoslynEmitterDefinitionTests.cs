@@ -46,7 +46,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -74,7 +74,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -106,7 +106,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -131,7 +131,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -158,7 +158,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -200,7 +200,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -229,7 +229,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -258,7 +258,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
@@ -304,7 +304,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Act
         var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var compilationUnit = _emitter.GenerateRecordedCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert

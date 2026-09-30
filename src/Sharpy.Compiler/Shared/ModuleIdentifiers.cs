@@ -69,8 +69,15 @@ internal static class ModuleIdentifiers
         if (stem != DunderNames.Init)
             return MembersClassName(stem);
         var dirName = Path.GetFileName(Path.GetDirectoryName(filePath));
-        return string.IsNullOrEmpty(dirName) ? "Module" : MembersClassName(dirName);
+        return string.IsNullOrEmpty(dirName) ? NamelessMembersClassName : MembersClassName(dirName);
     }
+
+    /// <summary>
+    /// <c>&lt;X&gt;</c> of a module with no name to derive one from — a source with no file identity
+    /// (LSP single-document analysis, the REPL, a source-only compilation) or a root-level
+    /// <c>__init__.spy</c>. Recorded by the layout recorder like any other layout (#2102).
+    /// </summary>
+    public const string NamelessMembersClassName = "Module";
 
     /// <summary>
     /// The C# path a DOTTED module name spells (<c>my_pkg.sub_mod</c> → <c>MyPkg.SubMod</c>), each

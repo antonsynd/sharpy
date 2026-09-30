@@ -39,7 +39,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - Single-file (no ProjectNamespace) emits into global namespace
@@ -58,7 +58,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - every module is a namespace (#2039): single-file (no ProjectNamespace) emits
@@ -81,7 +81,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var code = emitter.GenerateCompilationUnit(module).ToFullString();
+        var code = emitter.GenerateRecordedCompilationUnit(module).ToFullString();
 
         // Assert
         Assert.Contains("class MyCustomModule", code);
@@ -98,7 +98,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -128,7 +128,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - .NET framework namespace imports normally without .Exports
@@ -155,7 +155,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - .NET framework namespace with alias
@@ -183,7 +183,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - .NET framework from-import emits per-name alias with global:: prefix
@@ -208,7 +208,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - .NET framework imports normally
@@ -241,7 +241,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - .NET framework imports normally without .Exports
@@ -278,7 +278,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert
@@ -313,7 +313,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - directory parts and then the stem are namespace segments (#1948, #2039); the members
@@ -333,7 +333,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - single-file (no ProjectNamespace): the file is its own namespace (#2039)
@@ -361,7 +361,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the directory and the stem are namespace segments (#1948, #2039)
@@ -380,7 +380,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - single-file (no ProjectNamespace): the file is its own namespace (#2039)
@@ -425,10 +425,10 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result1 = emitter.GenerateCompilationUnit(module1);
+        var result1 = emitter.GenerateRecordedCompilationUnit(module1);
         var code1 = result1.ToFullString();
 
-        var result2 = emitter.GenerateCompilationUnit(module2);
+        var result2 = emitter.GenerateRecordedCompilationUnit(module2);
         var code2 = result2.ToFullString();
 
         // Assert - should not throw and should generate valid code
@@ -478,7 +478,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the numeric directory is a valid namespace segment (NamespaceOf rejects a parse error)
@@ -493,7 +493,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the file is its own namespace (#2039); a leading digit gets a `_` prefix in both
@@ -519,7 +519,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the dashed/dotted directory is ONE valid namespace segment, followed by the stem
@@ -546,7 +546,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the numeric directory is a valid namespace segment; the stem follows it
@@ -564,7 +564,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - single-file: the file is its own namespace (#2039); the directory is not used
@@ -589,7 +589,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the project namespace and the file's own stem (no root path, so no directories)
@@ -605,7 +605,7 @@ public class RoslynEmitterModuleTests
         var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - Single-file (no ProjectNamespace) emits into global namespace
@@ -628,7 +628,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - #nullable enable should be present
@@ -646,7 +646,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - #nullable enable should appear before using statements
@@ -683,7 +683,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - should generate Optional<int> parameter
@@ -717,7 +717,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - should generate Optional<string> return type
@@ -758,7 +758,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - should generate Optional<Sharpy.List<int>>
@@ -802,7 +802,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - should generate Sharpy.List<Optional<int>>
@@ -852,7 +852,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - __init__.spy's module class is <Dir>Module inside the package's namespace (#1948)
@@ -890,7 +890,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - every directory is a namespace segment; __init__.spy's class is <Dir>Module (#1948)
@@ -931,7 +931,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - Non-Program module should have [SharpyModule] attribute
@@ -968,7 +968,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - the entry module's members class (MainModule, #2039 — the Program special case
@@ -1005,7 +1005,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - Attribute should have Python-style dotted module path
@@ -1041,7 +1041,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - __init__.spy attribute should use directory name, not "__init__"
@@ -1094,7 +1094,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module);
         var code = result.ToFullString();
 
         // Assert - no error, no merge (#2039, M2): class Animal is a sibling of the members class
@@ -1132,7 +1132,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var code = emitter.GenerateCompilationUnit(module).ToFullString();
+        var code = emitter.GenerateRecordedCompilationUnit(module).ToFullString();
 
         // Assert - no error (SPY0520 retired, #2039): the struct is a sibling of PointModule
         Assert.False(context.HasErrors);
@@ -1167,7 +1167,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var code = emitter.GenerateCompilationUnit(module).ToFullString();
+        var code = emitter.GenerateRecordedCompilationUnit(module).ToFullString();
 
         // Assert - no error (SPY0520 retired, #2039): the type is a sibling of the members class
         Assert.False(context.HasErrors);
@@ -1204,7 +1204,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var code = emitter.GenerateCompilationUnit(module).ToFullString();
+        var code = emitter.GenerateRecordedCompilationUnit(module).ToFullString();
 
         // Assert - no error (SPY0520 retired, #2039): the type is a sibling of the members class
         Assert.False(context.HasErrors);
@@ -1260,7 +1260,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module, (fromImport, new ModuleLayout(new[] { "Mypackage", "Helpers" }, "HelpersModule")));
         var code = result.ToFullString();
 
         // Assert - Should generate delegating method
@@ -1309,7 +1309,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module, (fromImport, new ModuleLayout(new[] { "Mypackage", "Config" }, "ConfigModule")));
         var code = result.ToFullString();
 
         // Assert - Should generate delegating property (SCREAMING_SNAKE_CASE preserved)
@@ -1359,7 +1359,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module, (fromImport, new ModuleLayout(new[] { "Mypackage", "Models" }, "ModelsModule")));
         var code = result.ToFullString();
 
         // Assert - Type re-export should be skipped, no error
@@ -1412,7 +1412,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var result = emitter.GenerateCompilationUnit(module);
+        var result = emitter.GenerateRecordedCompilationUnit(module, (fromImport, new ModuleLayout(new[] { "Helpers" }, "HelpersModule")));
         var code = result.ToFullString();
 
         // Assert - Regular modules should NOT generate delegating members
@@ -1476,7 +1476,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var cu = emitter.GenerateCompilationUnit(module);
+        var cu = emitter.GenerateRecordedCompilationUnit(module);
 
         // Assert - Widget is a top-level sibling, NOT nested in the module class
         var widget = cu.Members
@@ -1524,7 +1524,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var cu = emitter.GenerateCompilationUnit(module);
+        var cu = emitter.GenerateRecordedCompilationUnit(module);
 
         // Assert - all three are top-level siblings with [SharpyModuleType]
         var vec = cu.Members.OfType<StructDeclarationSyntax>().FirstOrDefault(s => s.Identifier.Text == "Vec");
@@ -1551,7 +1551,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var cu = emitter.GenerateCompilationUnit(module);
+        var cu = emitter.GenerateRecordedCompilationUnit(module);
 
         // Assert - Widget is a sibling of the members class, stamped [SharpyModuleType("__main__", ...)]
         var moduleClass = GetModuleClass(cu);
@@ -1595,7 +1595,7 @@ public class RoslynEmitterModuleTests
         };
 
         // Act
-        var cu = emitter.GenerateCompilationUnit(module);
+        var cu = emitter.GenerateRecordedCompilationUnit(module);
 
         // Assert - the function is a method on the module class
         var moduleClass = GetModuleClass(cu);
