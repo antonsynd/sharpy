@@ -1099,6 +1099,12 @@ public record PropertyObserver(ObserverKind Kind, string ParamName, ImmutableArr
     public int ParamNameLine { get; init; }
     public int ParamNameColumn { get; init; }
 
+    /// <summary>
+    /// True when the parameter was written backtick-escaped (<c>after_set(`class`):</c>); a syntax
+    /// fact read by the unparser and the structural comparer (#2157).
+    /// </summary>
+    public bool IsParamNameBacktickEscaped { get; init; }
+
     /// <summary>Character offset-based span. May be null if not tracked.</summary>
     public Text.TextSpan? Span { get; init; }
 }
@@ -1189,6 +1195,23 @@ public record ImportAlias
     public string Name { get; init; } = "";  // module.submodule
     public string? AsName { get; init; }  // Optional alias
 
+    /// <summary>
+    /// The dotted segments of <see cref="Name"/> as written (<c>import a.`b`</c> → <c>["a", "b"]</c>;
+    /// a from-import item is one segment). A #713 single backtick-escaped dotted token
+    /// (<c>import `System.Collections.Generic`</c>) is ONE segment. <see cref="Name"/> stays the
+    /// joined spelling every Semantic/LSP consumer reads. Empty when the node was not built by
+    /// the parser; consumers then fall back to <see cref="Name"/>.
+    /// </summary>
+    public ImmutableArray<string> NameParts { get; init; } = ImmutableArray<string>.Empty;
+
+    /// <summary>
+    /// Parallel to <see cref="NameParts"/>: true for each segment written backtick-escaped (#2157).
+    /// </summary>
+    public ImmutableArray<bool> BacktickEscapedParts { get; init; } = ImmutableArray<bool>.Empty;
+
+    /// <summary>True when <see cref="AsName"/> was written backtick-escaped (<c>import m as `x`</c>, #2157).</summary>
+    public bool IsAsNameBacktickEscaped { get; init; }
+
     // Source location
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }
@@ -1207,6 +1230,20 @@ public record ImportAlias
 public record FromImportStatement : Statement
 {
     public string Module { get; init; } = "";
+
+    /// <summary>
+    /// The dotted segments of <see cref="Module"/> after any leading relative-import dots, as
+    /// written (<c>from ..a.`b` import x</c> → <c>["a", "b"]</c>; <c>from . import x</c> → empty).
+    /// A #713 single backtick-escaped dotted token is ONE segment. <see cref="Module"/> stays the
+    /// joined spelling (leading dots included) every Semantic/LSP consumer reads.
+    /// </summary>
+    public ImmutableArray<string> ModuleParts { get; init; } = ImmutableArray<string>.Empty;
+
+    /// <summary>
+    /// Parallel to <see cref="ModuleParts"/>: true for each segment written backtick-escaped (#2157).
+    /// </summary>
+    public ImmutableArray<bool> BacktickEscapedParts { get; init; } = ImmutableArray<bool>.Empty;
+
     public int ModuleColumnStart { get; init; }
     public int ModuleColumnEnd { get; init; }
     public ImmutableArray<ImportAlias> Names { get; init; } = ImmutableArray<ImportAlias>.Empty;

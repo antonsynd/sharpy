@@ -686,6 +686,14 @@ public record FunctionCall : Expression
 public record KeywordArgument
 {
     public string Name { get; init; } = "";
+
+    /// <summary>
+    /// True when the keyword name was written backtick-escaped (<c>f(`class`=7)</c>). A syntax
+    /// fact read by the unparser and the structural comparer so formatting keeps the escape (#2157);
+    /// binding still reads <see cref="Name"/>.
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
     public Expression Value { get; init; } = null!;
 
     // Source location

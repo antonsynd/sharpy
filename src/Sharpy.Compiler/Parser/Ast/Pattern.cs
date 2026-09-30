@@ -116,6 +116,13 @@ public record MemberAccessPattern : Pattern
     public ImmutableArray<string> Parts { get; init; } = ImmutableArray<string>.Empty;
 
     /// <summary>
+    /// Parallel to <see cref="Parts"/>: true for each part that was written backtick-escaped
+    /// (<c>case E.`A`:</c>). Always one entry per part when built by the parser; a syntax fact
+    /// read by the unparser and the structural comparer (#2157).
+    /// </summary>
+    public ImmutableArray<bool> BacktickEscapedParts { get; init; } = ImmutableArray<bool>.Empty;
+
+    /// <summary>
     /// The source extent of each part, one per <see cref="Parts"/> entry (the #1454 recorded-extent
     /// rule). Built by the parser from the dotted-name tokens so hover can pick the part under the
     /// cursor and answer for the type or member it names (#1735).
@@ -270,6 +277,12 @@ public record PropertyPatternField : Node
     /// The property name being matched.
     /// </summary>
     public string Name { get; init; } = "";
+
+    /// <summary>
+    /// True when the field name was written backtick-escaped (<c>case P(`class`=v)</c>); a syntax
+    /// fact read by the unparser and the structural comparer (#2157).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
 
     /// <summary>
     /// The pattern to match the property value against.

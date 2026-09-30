@@ -221,6 +221,12 @@ public record UnionCaseField
     public string Name { get; init; } = "";
 
     /// <summary>
+    /// True when the field name was written backtick-escaped (<c>case K(`class`: int)</c>); a
+    /// syntax fact read by the unparser and the structural comparer (#2157).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
+    /// <summary>
     /// The field type.
     /// </summary>
     public TypeAnnotation Type { get; init; } = null!;

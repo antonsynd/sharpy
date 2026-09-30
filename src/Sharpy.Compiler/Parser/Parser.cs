@@ -1456,6 +1456,7 @@ public partial class Parser
                     kwargs.Add(new KeywordArgument
                     {
                         Name = name,
+                        IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
                         Value = value,
                         LineStart = kwargStartLine,
                         ColumnStart = kwargStartColumn,

@@ -1274,6 +1274,7 @@ public partial class Parser
                             var fieldStartToken = Current;
 
                             var fieldName = ExpectIdentifier();
+                            var fieldNameEscaped = Previous.IsBacktickEscaped;
                             Expect(TokenType.Colon);
                             var fieldType = ParseTypeAnnotation();
 
@@ -1282,6 +1283,7 @@ public partial class Parser
                             fields.Add(new UnionCaseField
                             {
                                 Name = fieldName,
+                                IsNameBacktickEscaped = fieldNameEscaped,
                                 Type = fieldType,
                                 LineStart = fieldStartLine,
                                 ColumnStart = fieldStartColumn,
@@ -1772,6 +1774,7 @@ public partial class Parser
             ColumnEnd = obsSuite.EndColumn,
             ParamNameLine = paramToken.Line,
             ParamNameColumn = paramToken.Column,
+            IsParamNameBacktickEscaped = paramToken.IsBacktickEscaped,
             Span = CombineSpans(GetSpanFromToken(startToken), obsSuite.EndSpan)
                 ?? GetSpanFromToken(startToken)
         };

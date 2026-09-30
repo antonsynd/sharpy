@@ -508,12 +508,16 @@ public sealed class AstNormalizer : AstVisitor<Node>
             NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             Decorators = NormalizeDecorators(node.Decorators),
+            // Rebuilt field by field (positions zeroed); the escape flags are structural syntax
+            // facts, like Identifier.IsNameBacktickEscaped, and ride along (#2157).
             Cases = node.Cases.Select(c => new UnionCaseDef
             {
                 Name = c.Name,
+                IsNameBacktickEscaped = c.IsNameBacktickEscaped,
                 Fields = c.Fields.Select(f => new UnionCaseField
                 {
                     Name = f.Name,
+                    IsNameBacktickEscaped = f.IsNameBacktickEscaped,
                     Type = NormalizeType(f.Type)!
                 }).ToImmutableArray()
             }).ToImmutableArray()

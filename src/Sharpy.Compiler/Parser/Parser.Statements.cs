@@ -1119,13 +1119,15 @@ public partial class Parser
             var aliasStartLine = Current.Line;
             var aliasStartColumn = Current.Column;
             var aliasStartToken = Current;
-            var name = ParseDottedName(allowKeywords: true);
+            var (name, nameParts, nameEscaped) = ParseDottedName(allowKeywords: true);
             string? asName = null;
+            var asNameEscaped = false;
 
             if (Current.Type == TokenType.As)
             {
                 Advance();
                 asName = ExpectIdentifier();
+                asNameEscaped = Previous.IsBacktickEscaped;
             }
 
             var aliasEndLine = Peek(-1).Line;
@@ -1134,7 +1136,10 @@ public partial class Parser
             names.Add(new ImportAlias
             {
                 Name = name,
+                NameParts = nameParts,
+                BacktickEscapedParts = nameEscaped,
                 AsName = asName,
+                IsAsNameBacktickEscaped = asNameEscaped,
                 LineStart = aliasStartLine,
                 ColumnStart = aliasStartColumn,
                 LineEnd = aliasEndLine,
@@ -1170,7 +1175,7 @@ public partial class Parser
 
         Expect(TokenType.From);
         var moduleColStart = Current.Column;
-        var module = ParseModuleName();
+        var (module, moduleParts, moduleEscaped) = ParseModuleName();
         var moduleColEnd = Previous.Column + Previous.Length;
         Expect(TokenType.Import);
 
@@ -1194,12 +1199,15 @@ public partial class Parser
                 var aliasStartColumn = Current.Column;
                 var aliasStartToken = Current;
                 var name = ExpectIdentifier();
+                var nameEscaped = Previous.IsBacktickEscaped;
                 string? asName = null;
+                var asNameEscaped = false;
 
                 if (Current.Type == TokenType.As)
                 {
                     Advance();
                     asName = ExpectIdentifier();
+                    asNameEscaped = Previous.IsBacktickEscaped;
                 }
 
                 var aliasEndLine = Peek(-1).Line;
@@ -1208,7 +1216,10 @@ public partial class Parser
                 names.Add(new ImportAlias
                 {
                     Name = name,
+                    NameParts = ImmutableArray.Create(name),
+                    BacktickEscapedParts = ImmutableArray.Create(nameEscaped),
                     AsName = asName,
+                    IsAsNameBacktickEscaped = asNameEscaped,
                     LineStart = aliasStartLine,
                     ColumnStart = aliasStartColumn,
                     LineEnd = aliasEndLine,
@@ -1229,6 +1240,8 @@ public partial class Parser
         return new FromImportStatement
         {
             Module = module,
+            ModuleParts = moduleParts,
+            BacktickEscapedParts = moduleEscaped,
             ModuleColumnStart = moduleColStart,
             ModuleColumnEnd = moduleColEnd,
             Names = names.ToImmutableArray(),
@@ -1241,27 +1254,34 @@ public partial class Parser
         };
     }
 
-    private string ParseDottedName(bool allowKeywords = false)
+    /// <summary>
+    /// Parses a dotted name. Returns the joined spelling every existing consumer reads plus the
+    /// segments as written and, parallel to them, each segment's backtick escape (#2157) — the
+    /// unparser needs the segments to write <c>a.`b`</c> back rather than <c>a.b</c>.
+    /// </summary>
+    private (string Joined, ImmutableArray<string> Parts, ImmutableArray<bool> Escaped) ParseDottedName(bool allowKeywords = false)
     {
         var parts = new List<string> { allowKeywords && IsModuleNameKeyword(Current.Type) ? ExpectIdentifierOrKeyword() : ExpectIdentifier() };
+        var escaped = new List<bool> { Previous.IsBacktickEscaped };
 
         // A backtick-escaped identifier may already contain dots (e.g. `System.Collections.Generic`),
         // forming a complete dotted path. In that case it is the entire name (#713).
         if (Previous.IsBacktickEscaped && Previous.Value.Contains('.', StringComparison.Ordinal))
         {
-            return parts[0];
+            return (parts[0], parts.ToImmutableArray(), escaped.ToImmutableArray());
         }
 
         while (Current.Type == TokenType.Dot)
         {
             Advance();
             parts.Add(ExpectIdentifier());
+            escaped.Add(Previous.IsBacktickEscaped);
         }
 
-        return string.Join(".", parts);
+        return (string.Join(".", parts), parts.ToImmutableArray(), escaped.ToImmutableArray());
     }
 
-    private string ParseModuleName()
+    private (string Module, ImmutableArray<string> Parts, ImmutableArray<bool> Escaped) ParseModuleName()
     {
         // Handle relative imports with leading dots (e.g., ".helpers", "..utils")
         var leadingDots = new StringBuilder();
@@ -1276,14 +1296,14 @@ public partial class Parser
         // But it's also valid to have just dots (e.g., "." for current package)
         if (Current.Type == TokenType.Identifier || IsModuleNameKeyword(Current.Type))
         {
-            var dottedName = ParseDottedName(allowKeywords: true);
-            return leadingDots.ToString() + dottedName;
+            var (dottedName, parts, escaped) = ParseDottedName(allowKeywords: true);
+            return (leadingDots.ToString() + dottedName, parts, escaped);
         }
 
         // If we have leading dots, that's a valid relative import (e.g., "from . import something")
         if (leadingDots.Length > 0)
         {
-            return leadingDots.ToString();
+            return (leadingDots.ToString(), ImmutableArray<string>.Empty, ImmutableArray<bool>.Empty);
         }
 
         // No dots and no identifier means invalid syntax (e.g., "from import x")
@@ -1891,6 +1911,7 @@ public partial class Parser
         {
             // Parse dotted member access pattern (e.g., Color.RED)
             var parts = new List<string> { token.Value };
+            var escapedParts = new List<bool> { token.IsBacktickEscaped };
             var partSpans = new List<(int Line, int Column, int Length)>
             {
                 (token.Line, token.Column, token.Length)
@@ -1909,6 +1930,7 @@ public partial class Parser
                 }
                 endToken = Current;
                 parts.Add(Current.Value);
+                escapedParts.Add(Current.IsBacktickEscaped);
                 partSpans.Add((Current.Line, Current.Column, Current.Length));
                 Advance();
             }
@@ -1929,6 +1951,7 @@ public partial class Parser
             return new MemberAccessPattern
             {
                 Parts = parts.ToImmutableArray(),
+                BacktickEscapedParts = escapedParts.ToImmutableArray(),
                 PartSpans = partSpans.ToImmutableArray(),
                 LineStart = token.Line,
                 ColumnStart = token.Column,
@@ -2053,6 +2076,7 @@ public partial class Parser
             fields.Add(new PropertyPatternField
             {
                 Name = fieldNameToken.Value,
+                IsNameBacktickEscaped = fieldNameToken.IsBacktickEscaped,
                 Pattern = fieldPattern,
                 LineStart = fieldNameToken.Line,
                 ColumnStart = fieldNameToken.Column,
