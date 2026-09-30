@@ -1,0 +1,29 @@
+# #1974 (P21a): a `let` star unpacking over predecessors of OTHER declared types is fresh and typed
+# by its values — neither the leading target (outer `x: float`) nor the starred rest (outer
+# `rest: list[float]`) is slot-directed by the predecessor. The typed stores `xi: int = x` and
+# `ri: list[int] = rest` are the type probes (a float/list[float] reading is SPY0220); the prints
+# show the outer bindings untouched. Literal and tuple-typed RHS.
+def main():
+    x: float = 0.5
+    rest: list[float] = [0.5]
+    if True:
+        let x, *rest = 1, 2, 3
+        xi: int = x
+        ri: list[int] = rest
+        print(xi + 1, ri)
+    print(x, rest)
+    t = (4, 5, 6)
+    if True:
+        let x, *rest = t
+        xi: int = x
+        ri: list[int] = rest
+        print(xi + 1, ri)
+    print(x, rest)
+    # A slot-directed VALUE: `[1, 2]` into a `list[float]` slot would be `[1.0, 2.0]`; the fresh
+    # `let` target is not slot-directed, so it stays `list[int]`.
+    ys: list[float] = [0.5]
+    if True:
+        let ys, *more = [1, 2], 3, 4
+        yi: list[int] = ys
+        print(yi, more)
+    print(ys)

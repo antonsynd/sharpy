@@ -120,6 +120,31 @@ def greet(name: str) -> str:
         Assert.Equal("greet", greetFunc.Name);
     }
 
+    /// <summary>
+    /// A <c>let</c> in a class or struct body is refused (SPY0340, TypeBodyStatementValidator) and
+    /// must not ALSO register a field (#1974, P21a): the host keeps only its declared field. The
+    /// declared field <c>y</c> is the positive control that the loop registers fields at all.
+    /// </summary>
+    [Theory]
+    [InlineData("class", TypeKind.Class)]
+    [InlineData("struct", TypeKind.Struct)]
+    public void TypeBodyLet_RegistersNoField(string keyword, TypeKind kind)
+    {
+        var source = $@"
+{keyword} Host:
+    y: int = 0
+    let x: int = 5
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        var hostType = symbolTable.LookupType("Host");
+        Assert.NotNull(hostType);
+        Assert.Equal(kind, hostType.TypeKind);
+        Assert.Contains(hostType.Fields, f => f.Name == "y");
+        Assert.DoesNotContain(hostType.Fields, f => f.Name == "x");
+    }
+
     [Fact]
     public void TestStructDeclaration()
     {

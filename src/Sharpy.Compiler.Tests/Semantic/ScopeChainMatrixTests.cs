@@ -435,6 +435,52 @@ def main() -> None:
     }
 
     /// <summary>
+    /// A <c>let</c> store never records the module-access crossing (#1974, P21a): it declares a
+    /// fresh local, so there is no module slot for codegen to qualify. One cell per statement-store
+    /// recording site — plain (TypeChecker.Statements), tuple element (CheckTupleUnpackingElements),
+    /// star leaf (BindAssignmentUnpackingIdentifier). The bare twin of each cell writes through to
+    /// the module variable and MUST record the crossing — the positive control that the probe sees
+    /// the fact at all.
+    /// </summary>
+    [Theory]
+    [InlineData("count = 5", "count", true)]
+    [InlineData("let count = 5", "count", false)]
+    [InlineData("count, z = 5, 0", "count", true)]
+    [InlineData("let count, z = 5, 0", "count", false)]
+    [InlineData("z, *tail = 1, 2", "tail", true)]
+    [InlineData("let z, *tail = 1, 2", "tail", false)]
+    public void StatementStore_RecordsModuleCrossing_OnlyForWriteThrough(
+        string store, string name, bool recordsCrossing)
+    {
+        var source = $@"
+count: int = 100
+tail: list[int] = [0]
+
+class C:
+    count: int = 7
+    tail: list[int] = [9]
+
+    def m(self) -> None:
+        {store}
+        print(1)
+
+def main() -> None:
+    C().m()
+";
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+        var result = compiler.Analyze(source, "test.spy");
+
+        result.Success.Should().BeTrue();
+        // The store target is the only identifier spelled `name` inside the method; the module
+        // variable's declaration is a VariableDeclaration name, not an Identifier node.
+        var crossings = CrossingIdentifiers(result);
+        if (recordsCrossing)
+            crossings.Should().Contain(name, "a bare store writes through to the module variable");
+        else
+            crossings.Should().NotContain(name, "a let store declares a fresh local");
+    }
+
+    /// <summary>
     /// Positive control for the fact above: with no class attribute of that name, nothing crosses
     /// and nothing is recorded, so the fact cannot be a constant true.
     /// </summary>
