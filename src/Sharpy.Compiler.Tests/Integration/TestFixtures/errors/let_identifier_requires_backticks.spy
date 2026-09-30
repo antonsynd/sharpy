@@ -1,0 +1,6 @@
+# #1974 (P21a): `let` is a keyword, so the bare identifier `let` is refused with the backtick
+# steer (SPY0101). This program ran and printed 5 before `let` was reserved (the plan's accepted
+# direction record). Positive control: basics/let_backtick_identifier.
+def main():
+    let = 5
+    print(let)

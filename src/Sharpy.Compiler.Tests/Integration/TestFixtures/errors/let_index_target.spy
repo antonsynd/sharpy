@@ -1,0 +1,6 @@
+# #1974 (P21a): an index target is refused like a member target (SPY0107).
+# Positive control: basics/let_tuple_fresh.
+def main():
+    xs = [1, 2]
+    let xs[0] = 5
+    print(xs)

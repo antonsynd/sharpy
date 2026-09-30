@@ -1,0 +1,5 @@
+# #1974 (P21a): `let` is a statement; a lambda body is an expression, so it is refused.
+# Positive control: basics/let_shadow_prints_both.
+def main():
+    f = lambda: let x = 1
+    print(1)

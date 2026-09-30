@@ -1,0 +1,11 @@
+# #1974 (P21a): a `for` target is block-scoped, so the outer x survives the loop; a `let x` in a
+# later block is fresh again — 100 / 7 / 100. The write-through reading would print 100 / 7 / 7.
+def main():
+    x = 100
+    for x in [1, 2, 3]:
+        pass
+    print(x)
+    if True:
+        let x = 7
+        print(x)
+    print(x)

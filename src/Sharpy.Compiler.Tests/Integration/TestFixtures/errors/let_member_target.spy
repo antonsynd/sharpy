@@ -1,0 +1,10 @@
+# #1974 (P21a): a `let` target must be a name or a tuple of names — a member or index target
+# is a store into an existing object, never a fresh binding (SPY0107). Positive control:
+# basics/let_tuple_fresh (a tuple-of-names target runs).
+class P:
+    x: int = 0
+
+def main():
+    p = P()
+    let p.x = 1
+    print(p.x)

@@ -1,0 +1,9 @@
+# #1974 (P21a): the backtick escape keeps `let` usable as a name — a local, a parameter and a
+# keyword argument. Negative twin: errors/let_identifier_requires_backticks.
+def double(`let`: int) -> int:
+    return `let` * 2
+
+def main():
+    `let` = 5
+    print(`let`)
+    print(double(`let`=7))

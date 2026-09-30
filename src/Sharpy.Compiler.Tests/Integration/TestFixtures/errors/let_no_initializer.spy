@@ -1,0 +1,5 @@
+# #1974 (P21a): `let` introduces a binding, so it always needs an initializer (SPY0104).
+# Positive control: basics/let_shadow_prints_both (a `let` with an initializer runs).
+def main():
+    let x
+    print(1)

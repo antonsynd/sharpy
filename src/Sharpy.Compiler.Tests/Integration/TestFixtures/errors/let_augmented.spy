@@ -1,0 +1,6 @@
+# #1974 (P21a): `let` takes '=' only — an augmented operator reads the old binding, which a fresh
+# binding does not have (SPY0100). Positive control: basics/let_shadow_prints_both.
+def main():
+    x = 1
+    let x += 1
+    print(x)

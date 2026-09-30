@@ -1,0 +1,5 @@
+# #1974 (P21a): `let` is a statement; a comprehension element is an expression, so it is refused.
+# Positive control: basics/let_shadow_prints_both.
+def main():
+    ys = [let x = 1 for x in [1]]
+    print(ys)

@@ -1,0 +1,2 @@
+SPY0100: 'let' takes '=' only, got '+=' @5:11
+!count 1
