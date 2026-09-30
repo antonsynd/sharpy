@@ -442,6 +442,11 @@ class TestParseParams:
         assert len(params) == 1
         assert params[0].name == "start"
 
+    def test_receiver_outside_an_extension_parse_is_an_ordinary_parameter(self):
+        # `this` is a C# modifier, never part of the rendered type (#2055).
+        params = _parse_params("this NdArray<double> a, int axis")
+        assert [(p.name, p.type) for p in params] == [("a", "NdArray[float]"), ("axis", "int")]
+
     def test_params_keyword(self):
         params = _parse_params("params int[] values")
         assert len(params) == 1
@@ -1458,16 +1463,37 @@ class TestFindNonpublicClassRanges:
 # ---------------------------------------------------------------------------
 
 
+# The real allowlist is empty since #2055 (every stdlib module is generator-owned), so the
+# mechanism is exercised through a fabricated entry.
+_HANDMADE = "handmade"
+
+
+@pytest.fixture
+def hand_authored_page(monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setitem(
+        generator.HAND_AUTHORED_MODULES,
+        _HANDMADE,
+        {"description": "A page written by hand.", "nav_title": _HANDMADE},
+    )
+    return _HANDMADE
+
+
 class TestHandAuthoredModules:
     """The hand-authored allowlist controls index merging and page skipping."""
 
-    def test_allowlist_seeded(self):
-        for name in ("numpy", "requests", "sqlite3"):
-            assert name in HAND_AUTHORED_MODULES
-            entry = HAND_AUTHORED_MODULES[name]
-            assert entry["description"].strip()
-            assert entry["nav_title"]
+    def test_no_discovered_module_is_hand_authored(self):
+        # A module the generator discovers must be generator-owned: only a generated page is
+        # covered by the C#-spelling scan and the staleness check (#2055).
+        discovered = {
+            m.name
+            for root in ("Sharpy.Core", "Sharpy.Stdlib")
+            for m in discover_modules(_REPO_ROOT / "src" / root)
+        } | {t.name for t in generator.discover_core_types(_REPO_ROOT / "src" / "Sharpy.Core")}
+        # Positive control: the three modules that used to be hand-authored are discovered.
+        assert {"numpy", "requests", "sqlite3"} <= discovered
+        assert discovered & set(HAND_AUTHORED_MODULES) == set()
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_index_merges_hand_authored(self):
         """Hand-authored modules appear in the index even with no generated module."""
         builtins = DocModule(name="builtins", kind="builtins", members=[])
@@ -1475,10 +1501,10 @@ class TestHandAuthoredModules:
         modules = [DocModule(name="math", kind="module", summary="Math functions.")]
         output = render_index_page(builtins, core_types, modules)
         assert "[`math`](math.md)" in output
-        # numpy is hand-authored: must still be linked from the index.
-        assert "[`numpy`](numpy.md)" in output
-        assert "[`requests`](requests.md)" in output
+        # A hand-authored page must still be linked from the index.
+        assert "[`handmade`](handmade.md)" in output
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_index_modules_sorted(self):
         builtins = DocModule(name="builtins", kind="builtins", members=[])
         modules = [
@@ -1486,23 +1512,24 @@ class TestHandAuthoredModules:
             DocModule(name="aaa", kind="module", summary="A."),
         ]
         output = render_index_page(builtins, [], modules)
-        # aaa before zzz, and hand-authored numpy slotted in sorted order.
+        # aaa before zzz, and the hand-authored page slotted in sorted order.
         i_aaa = output.index("[`aaa`]")
-        i_numpy = output.index("[`numpy`]")
+        i_handmade = output.index("[`handmade`]")
         i_zzz = output.index("[`zzz`]")
-        assert i_aaa < i_numpy < i_zzz
+        assert i_aaa < i_handmade < i_zzz
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_generate_skips_hand_authored_pages(self, tmp_path: Path):
         """Even with force, a hand-authored page is never (re)written."""
         src = tmp_path / "src"
-        mod_dir = src / "Numpy"
+        mod_dir = src / "Handmade"
         mod_dir.mkdir(parents=True)
         (mod_dir / "__Init__.cs").write_text(
             textwrap.dedent(
                 """\
                 namespace Sharpy;
-                [SharpyModule("numpy")]
-                public static partial class NumpyModule { }
+                [SharpyModule("handmade")]
+                public static partial class HandmadeModule { }
                 """
             ),
             encoding="utf-8",
@@ -1510,12 +1537,12 @@ class TestHandAuthoredModules:
         out = tmp_path / "out"
         out.mkdir()
         sentinel = "HAND AUTHORED — DO NOT OVERWRITE\n"
-        (out / "numpy.md").write_text(sentinel, encoding="utf-8")
+        (out / "handmade.md").write_text(sentinel, encoding="utf-8")
 
         generate(source_dir=src, output_dir=out, force=True, update_nav=False)
 
         # The hand-authored page must be untouched.
-        assert (out / "numpy.md").read_text(encoding="utf-8") == sentinel
+        assert (out / "handmade.md").read_text(encoding="utf-8") == sentinel
 
 
 # ---------------------------------------------------------------------------
@@ -1564,6 +1591,7 @@ class TestNavGeneration:
         assert "LSP Server: tooling/lsp-server.md" in text
         assert "list: stdlib/list.md" in text
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_build_nav_blocks_sorted_and_merged(self):
         core_types = [
             DocModule(name="list", kind="type"),
@@ -1582,9 +1610,10 @@ class TestNavGeneration:
         module_block = blocks["- Modules:"]
         # Sorted, and hand-authored names merged in.
         assert module_block[0] == "      - argparse: stdlib/argparse.md"
-        assert "      - numpy: stdlib/numpy.md" in module_block
+        assert "      - handmade: stdlib/handmade.md" in module_block
         assert module_block == sorted(module_block)
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_update_mkdocs_nav_writes_and_is_idempotent(self, tmp_path: Path):
         p = self._write(tmp_path)
         core_types = [DocModule(name="list", kind="type")]
@@ -1597,8 +1626,8 @@ class TestNavGeneration:
         assert changed1
         after_first = p.read_text(encoding="utf-8")
         assert "- middle: stdlib/middle.md" in after_first
-        # numpy (hand-authored) merged into nav too.
-        assert "- numpy: stdlib/numpy.md" in after_first
+        # The hand-authored page is merged into the nav too.
+        assert "- handmade: stdlib/handmade.md" in after_first
         # Unrelated sections preserved.
         assert "- Tooling:" in after_first
 
@@ -1656,6 +1685,7 @@ class TestCheckDocs:
         )
         return src
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_check_passes_when_in_sync(self, tmp_path: Path):
         src = self._make_source(tmp_path)
         out = tmp_path / "docs"
@@ -1677,6 +1707,7 @@ class TestCheckDocs:
         assert up_to_date, messages
         assert messages == []
 
+    @pytest.mark.usefixtures("hand_authored_page")
     def test_check_detects_missing_hand_authored_page(self, tmp_path: Path):
         """A deleted hand-authored page is flagged as drift."""
         src = self._make_source(tmp_path)
@@ -1695,7 +1726,7 @@ class TestCheckDocs:
             source_dir=src, output_dir=out, mkdocs_path=mkdocs
         )
         assert not up_to_date
-        assert any("numpy.md" in m for m in messages)
+        assert any("handmade.md" in m for m in messages)
 
     def test_check_detects_stale_page(self, tmp_path: Path):
         src = self._make_source(tmp_path)
@@ -2282,6 +2313,15 @@ _CSHARP_SPELLINGS = {
     # An integer width in a TYPE position (after `:`, `->`, `[`, `(`, `|`, `*` or `,`; never a
     # parameter name, which a `:` follows) spelled as its C# keyword alias.
     "int-width-alias": re.compile(r"(?:[:\[(|*,]\s*|-> )" + _INT_WIDTH_ALIAS + r"\b(?!:)"),
+    # #2055 — the spellings frozen into the formerly hand-authored pages (numpy, requests,
+    # sqlite3): an extension method's `this` receiver, C# angle-bracket generics, the C# nullable
+    # suffix `T?`, a `null` default, a `System.` namespace, and a delegate type by its CLR name.
+    "this-receiver": re.compile(r": this \w"),
+    "angle-generic": re.compile(r"\w<\w"),
+    "nullable-suffix": re.compile(r"[\w\]>)]\?(?=[\s,)\]|>`]|$)"),
+    "null-default": re.compile(r"= null\b"),
+    "clr-namespace": re.compile(r"\bSystem\."),
+    "clr-delegate": re.compile(r"\b(?:Func|Action)\["),
     # #2066 — the PROSE axis: a code span that IS a C# cref member signature, `Dumps(object?, int)`.
     # The lookahead asks for a C# keyword type, a nullable `T?` or a generic `T{` in the parameter
     # list, so a Sharpy call written in prose (`Err(HTTPError)`, `Counter({...})`) is not one.
@@ -2348,6 +2388,12 @@ _FABRICATED_LEAKS = {
     ),
     "builtin-clr-name": "### `base64.b64encode(s: Bytes) -> Bytes`",
     "int-width-alias": "### `struct.widen(value: short) -> ulong`",
+    "this-receiver": "### `numpy.sum(a: this NdArray[float]) -> float`",
+    "angle-generic": "### `numpy.mean(a: NdArray<double>) -> float`",
+    "nullable-suffix": "### `json() -> object?`",
+    "null-default": "### `requests.get(url: str, json: object | None = null) -> Response`",
+    "clr-namespace": "### `execute(sql: str, parameters: System.Collections.IEnumerable) -> Cursor`",
+    "clr-delegate": "| `row_factory` | `Func[Cursor, list[object], object]` | The row factory. |",
     "cref-signature": (
         "defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, "
         "Func{object, object?}?)`."
@@ -2403,18 +2449,67 @@ def _render_synthetic(tmp_path: Path) -> str:
         ),
         encoding="utf-8",
     )
+    # The extension class sorts BEFORE the file of the type it extends, as numpy's
+    # `NdArray.Reductions.cs` does before `NdArray.cs` (#2055).
+    (mod_dir / "Gadget.Reductions.cs").write_text(
+        textwrap.dedent(
+            """\
+            namespace Sharpy;
+            /// <summary>Reductions on float gadgets.</summary>
+            public static class GadgetReductionExtensions
+            {
+                /// <summary>Total.</summary>
+                public static double Total(this Gadget<double> g, int axis) => 0;
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    (mod_dir / "Gadget.cs").write_text(
+        textwrap.dedent(
+            """\
+            namespace Sharpy;
+            /// <summary>A gadget.</summary>
+            [SharpyModuleType("probe", "gadget")]
+            public class Gadget<T>
+            {
+                /// <summary>Size.</summary>
+                public int Size() => 0;
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
     out = tmp_path / "docs"
     generate(source_dir=src, output_dir=out, force=True, verbose=False, update_nav=False)
     return (out / "probe.md").read_text(encoding="utf-8")
 
 
+# Rows for spellings no generator rule produces — only a page frozen outside the generator carries
+# them (#2055) — so disabling a generator rule cannot surface them. Their positive controls are the
+# fabricated lines and the committed-page scan.
+_FROZEN_PAGE_ROWS = frozenset({"nullable-suffix", "clr-namespace", "clr-delegate"})
+_STDLIB_DOCS = _REPO_ROOT / "docs" / "stdlib"
+
+
 class TestCSharpSpellingScan:
-    """No rendered signature on a generator-owned page carries a C# spelling (#2034, #2066)."""
+    """No rendered signature on a stdlib page carries a C# spelling (#2034, #2066, #2055)."""
 
     def test_generator_owned_pages_have_no_csharp_spellings(self, tmp_path: Path):
         pages = _render_real_stdlib(tmp_path / "stdlib")
         assert pages, "the generator rendered no pages from the repository source"
         assert not any(p.stem in HAND_AUTHORED_MODULES for p in pages)
+        # The three formerly hand-authored pages are generator-owned, so this scan covers them.
+        assert {"numpy", "requests", "sqlite3"} <= {p.stem for p in pages}
+        hits = [h for p in pages for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))]
+        assert hits == []
+
+    def test_committed_stdlib_pages_have_no_csharp_spellings(self, tmp_path: Path):
+        # The COMMITTED pages: every generator-owned page plus every hand-authored one, so a page
+        # the generator never writes is still scanned (#2055).
+        names = {p.stem for p in _render_real_stdlib(tmp_path / "stdlib")} | set(HAND_AUTHORED_MODULES)
+        pages = [_STDLIB_DOCS / f"{n}.md" for n in sorted(names)]
+        assert len(pages) > 50 and all(p.exists() for p in pages)
         hits = [h for p in pages for h in _csharp_spelling_hits(p.name, p.read_text(encoding="utf-8"))]
         assert hits == []
 
@@ -2429,20 +2524,41 @@ class TestCSharpSpellingScan:
             "fmt: ((int) -> str) | None = None) -> bytes`"
         ) in page
         assert "Encode. See `lookup` into a `list[T]`." in page
+        # The extension method is the extended type's instance method, receiver dropped (#2055).
+        gadget = page.split("## gadget", 1)[1]
+        assert "### `total(axis: int) -> float`" in gadget
+        assert "probe.total" not in page
         assert _csharp_spelling_hits("probe.md", page) == []
 
     def test_positive_control_scan_hits_when_the_mapping_is_disabled(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
         # The same synthetic source with the Sharpy-spelling rules turned off: every C# spelling
-        # the scan names must be found, or the scan is vacuous.
+        # a generator rule guards must be found, or the scan is vacuous.
         monkeypatch.setattr(generator, "_sharpy_param_name", generator.pascal_to_snake)
         monkeypatch.setattr(generator, "_sharpy_default", lambda raw: raw)
         monkeypatch.setattr(generator, "_SHARPY_TYPE_NAMES", {})
         monkeypatch.setattr(generator, "_group_nullable_callable", lambda mapped: mapped)
         monkeypatch.setattr(generator, "_render_cref", lambda cref: cref)
+        monkeypatch.setattr(generator, "_extension_class_ranges", lambda lines: [])
+        monkeypatch.setattr(generator, "_drop_receiver_modifier", lambda part: part)
         hits = _csharp_spelling_hits("probe.md", _render_synthetic(tmp_path))
-        assert _hit_labels(hits) == set(_CSHARP_SPELLINGS), hits
+        assert _hit_labels(hits) == set(_CSHARP_SPELLINGS) - _FROZEN_PAGE_ROWS, hits
+
+    def test_frozen_hand_authored_spellings_are_flagged(self):
+        # Positive control for `_FROZEN_PAGE_ROWS` on the pages' own frozen text, verbatim from the
+        # hand-authored requests.md / sqlite3.md / numpy.md before #2055.
+        frozen = "\n".join(
+            [
+                "### `requests.get(url: str, headers: dict[str, str]? = null, json: object? = null) -> Result[Response, RequestException]`",
+                "| `response` | `Response?` | The HTTP response associated with this error, if any. |",
+                "### `execute(sql: str, parameters: System.Collections.IEnumerable? = null) -> Sqlite3Cursor`",
+                "| `row` | `Func[Sqlite3Cursor, list[object?], object]` | A factory function. |",
+                "### `numpy.sum(a: this NdArray<double>) -> float`",
+            ]
+        )
+        labels = _hit_labels(_csharp_spelling_hits("frozen.md", frozen))
+        assert _FROZEN_PAGE_ROWS | {"null-default", "this-receiver", "angle-generic"} <= labels
 
     def test_every_row_flags_its_fabricated_leak(self):
         # Row totality is anchored to the fabricated table, not derived from `_CSHARP_SPELLINGS`.

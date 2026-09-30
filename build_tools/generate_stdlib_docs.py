@@ -28,29 +28,15 @@ from xml.etree import ElementTree
 # Each entry maps the module name to:
 #   "description" -- one-line cell for the index Modules table
 #   "nav_title"   -- the title used in the mkdocs nav (usually the module name)
-HAND_AUTHORED_MODULES: dict[str, dict[str, str]] = {
-    "numpy": {
-        "description": (
-            "NumPy-style N-dimensional arrays and numerical routines, backed by "
-            "MathNet.Numerics."
-        ),
-        "nav_title": "numpy",
-    },
-    "requests": {
-        "description": (
-            "Pythonic HTTP client for sending requests and handling responses, "
-            "similar to Python's `requests` library."
-        ),
-        "nav_title": "requests",
-    },
-    "sqlite3": {
-        "description": (
-            "SQLite database access with a DB-API-style interface, similar to "
-            "Python's `sqlite3` module."
-        ),
-        "nav_title": "sqlite3",
-    },
-}
+#
+# A module the generator DISCOVERS (it has a `[SharpyModule]` __Init__.cs) is never listed here:
+# its page must be generated, because only a generated page is covered by the C#-spelling scan and
+# the staleness check. numpy, requests and sqlite3 were listed when the allowlist was introduced
+# (#793) and their pages froze an older generator's output — `this NdArray<double>`,
+# `object? = null`, `System.Collections.IEnumerable?` — until they were brought under the
+# generator (#2055). `TestHandAuthoredModules.test_no_discovered_module_is_hand_authored` holds
+# the rule.
+HAND_AUTHORED_MODULES: dict[str, dict[str, str]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -769,6 +755,12 @@ def _collect_doc_lines(lines: list[str], decl_index: int) -> list[str]:
     return doc_lines
 
 
+def _drop_receiver_modifier(part: str) -> str:
+    """An extension method rendered as a plain function keeps its receiver as an ordinary
+    parameter: `this` is a C# modifier, not part of the type (#2055)."""
+    return part[len("this"):].lstrip() if _EXTENSION_THIS_RE.match(part) else part
+
+
 def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
     """Parse a C# parameter list into DocParam objects."""
     # Normalize whitespace (multi-line params)
@@ -788,6 +780,8 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         # Skip 'this Type name' for extension methods
         if i == 0 and is_extension and _EXTENSION_THIS_RE.match(part):
             continue
+        if i == 0:
+            part = _drop_receiver_modifier(part)
 
         # The `params` keyword is KEPT so map_type can render the formal as the variadic it is
         # (`*Iterable[T]`). Deleting it here is what made a variadic read as an ordinary array
@@ -1016,6 +1010,28 @@ def _find_public_class_ranges(lines: list[str]) -> list[tuple[str, int, int]]:
                 break
         ranges.append((match.group(1), idx, end))
     return ranges
+
+
+_EXTENSION_RECEIVER_RE = re.compile(r"\(\s*this\s+([\w.]+)")
+
+
+def _extension_class_ranges(lines: list[str]) -> list[tuple[str, int, int]]:
+    """``(receiver, start, end)`` of each public static class of extension methods on ONE type.
+
+    ``receiver`` is the extended type's bare name (`NdArray` for `this NdArray<double> a`). A
+    static class whose methods extend several types, or that also declares ordinary methods, is
+    not an extension class of a single type and is left to the module-level parse (#2055).
+    """
+    found = []
+    for name, start, end in _find_public_class_ranges(lines):
+        if not re.search(r"\bstatic\s+(?:partial\s+)?class\b", lines[start]):
+            continue
+        body = [line for line in lines[start + 1 : end + 1] if line.strip().startswith("public ")]
+        receivers = {m.group(1).rsplit(".", 1)[-1] for line in body for m in _EXTENSION_RECEIVER_RE.finditer(line)}
+        methods = [line for line in body if "(" in line]
+        if len(receivers) == 1 and methods and all(_EXTENSION_RECEIVER_RE.search(m) for m in methods):
+            found.append((receivers.pop(), start, end))
+    return found
 
 
 def _count_code_braces(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
@@ -1471,6 +1487,8 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
         summary = _get_class_summary(init_file)
         all_members: list[DocMember] = []
         all_types: list[DocType] = []
+        types_by_class: dict[str, DocType] = {}
+        pending_extensions: list[tuple[Path, tuple[str, int, int]]] = []
 
         for cs_file in sorted(subdir.glob("*.cs")):
             if cs_file.name == "__Init__.cs":
@@ -1539,22 +1557,45 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                         line_range=(start, end),
                         exclude_ranges=nested,
                     )
-                    all_types.append(
-                        DocType(
-                            name=display_name,
-                            cs_name=cs_file.stem,
-                            summary=class_doc.get("summary", ""),
-                            remarks=class_doc.get("remarks", ""),
-                            members=type_members,
-                        )
+                    doc_type = DocType(
+                        name=display_name,
+                        cs_name=cs_file.stem,
+                        summary=class_doc.get("summary", ""),
+                        remarks=class_doc.get("remarks", ""),
+                        members=type_members,
                     )
+                    all_types.append(doc_type)
+                    types_by_class[class_name] = doc_type
 
                 # Un-annotated public classes in an annotated file are module-level, as they are
                 # in every non-annotated file.
+                extensions = _extension_class_ranges(file_lines)
+                pending_extensions.extend((cs_file, ext) for ext in extensions)
+                owned.extend((start, end) for _, start, end in extensions)
                 all_members.extend(_module_level(parse_cs_file(cs_file, exclude_ranges=owned)))
             else:
-                members = parse_cs_file(cs_file)
+                extensions = _extension_class_ranges(file_text.split("\n"))
+                pending_extensions.extend((cs_file, ext) for ext in extensions)
+                members = parse_cs_file(
+                    cs_file, exclude_ranges=[(start, end) for _, start, end in extensions]
+                )
                 all_members.extend(_module_level(members))
+
+        # A static class of extension methods on one of this module's types is that type's
+        # instance surface (#2055): `NdArrayReductionExtensions.Sum(this NdArray<double> a)` is
+        # `arr.sum()`, so it renders under the type with the receiver dropped. Resolved after the
+        # loop because the extended type's file may sort after the extension file. An extension of
+        # anything else stays module-level (its receiver rendered as an ordinary parameter).
+        for cs_file, (receiver, start, end) in pending_extensions:
+            owner = types_by_class.get(receiver)
+            if owner is not None:
+                owner.members.extend(
+                    parse_cs_file(cs_file, is_extension=True, line_range=(start, end))
+                )
+            else:
+                all_members.extend(
+                    _module_level(parse_cs_file(cs_file, line_range=(start, end)))
+                )
 
         modules.append(
             DocModule(

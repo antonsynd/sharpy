@@ -1,6 +1,6 @@
 # sqlite3
 
-Represents a connection to an SQLite database.
+DB-API interface for SQLite databases.
 
 ```python
 import sqlite3
@@ -10,7 +10,7 @@ import sqlite3
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row` | `Func[Sqlite3Cursor, list[object?], object]` | A factory function that returns \`Sqlite3Row\` objects for query results. |
+| `row` | `(Sqlite3Cursor, list[object | None]) -> object` | A factory function that returns \`Sqlite3Row\` objects for query results. |
 
 ## Functions
 
@@ -32,7 +32,7 @@ Represents a connection to an SQLite database.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row_factory` | `Func[Sqlite3Cursor, list[object?], object]?` | Gets or sets the row factory used to create row objects from query results. |
+| `row_factory` | `((Sqlite3Cursor, list[object | None]) -> object) | None` | Gets or sets the row factory used to create row objects from query results. |
 
 ### `cursor() -> Sqlite3Cursor`
 
@@ -40,31 +40,35 @@ Create a new cursor object for this connection.
 
 **Returns:** A new `Sqlite3Cursor`.
 
-### `execute(sql: str, parameters: System.Collections.IEnumerable? = null) -> Sqlite3Cursor`
+### `execute(sql: str, parameters: Iterable | None = None) -> Sqlite3Cursor`
 
 Create a cursor, execute a single SQL statement, and return the cursor.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `parameters` (System.Collections.IEnumerable?) -- Optional parameters to bind to placeholders in the SQL.
+- `parameters` (Iterable | None) -- Optional parameters to bind to placeholders in the SQL.
 
 **Returns:** The cursor that executed the statement.
 
-### `executemany(sql: str, seq_of_parameters: System.Collections.IEnumerable) -> Sqlite3Cursor`
+### `executemany(sql: str, seq_of_parameters: Iterable) -> Sqlite3Cursor`
 
 Create a cursor and execute an SQL statement against all parameter sequences.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `seq_of_parameters` (System.Collections.IEnumerable)
+- `seq_of_parameters` (Iterable) -- An iterable of parameter sequences.
 
 **Returns:** The cursor that executed the statements.
 
 ### `executescript(sql_script: str) -> Sqlite3Cursor`
 
 Create a cursor and execute a script of one or more SQL statements.
+
+**Parameters:**
+
+- `sql_script` (str) -- A string containing one or more SQL statements separated by semicolons.
 
 **Returns:** The cursor that executed the script.
 
@@ -89,29 +93,29 @@ Represents a database cursor used to execute SQL statements and fetch results.
 | Name | Type | Description |
 |------|------|-------------|
 | `arraysize` | `int` | Gets or sets the number of rows to fetch at a time with \`Fetchmany\`. Default is 1. |
-| `lastrowid` | `long` | Gets the row ID of the last modified row, or -1 if no row was inserted. |
+| `lastrowid` | `int64` | Gets the row ID of the last modified row, or -1 if no row was inserted. |
 | `rowcount` | `int` | Gets the number of rows affected by the last DML statement, or -1 for queries. |
-| `description` | `list[list[object?]]?` | Gets column descriptions for the last query, or null if no query has been executed. |
+| `description` | `list[list[object | None]] | None` | Gets column descriptions for the last query, or null if no query has been executed. |
 
-### `execute(sql: str, parameters: System.Collections.IEnumerable? = null) -> Sqlite3Cursor`
+### `execute(sql: str, parameters: Iterable | None = None) -> Sqlite3Cursor`
 
 Execute a single SQL statement, optionally binding parameters.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute. Use `?` as a placeholder for positional parameters.
-- `parameters` (System.Collections.IEnumerable?) -- Optional parameters to bind to placeholders in the SQL.
+- `parameters` (Iterable | None) -- Optional parameters to bind to placeholders in the SQL.
 
 **Returns:** This cursor instance.
 
-### `executemany(sql: str, seq_of_parameters: System.Collections.IEnumerable) -> Sqlite3Cursor`
+### `executemany(sql: str, seq_of_parameters: Iterable) -> Sqlite3Cursor`
 
 Execute an SQL statement against all parameter sequences in the given iterable.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `seq_of_parameters` (System.Collections.IEnumerable)
+- `seq_of_parameters` (Iterable) -- An iterable of parameter sequences.
 
 **Returns:** This cursor instance.
 
@@ -119,13 +123,17 @@ Execute an SQL statement against all parameter sequences in the given iterable.
 
 Execute a script of one or more SQL statements, committing any pending transaction first.
 
+**Parameters:**
+
+- `sql_script` (str) -- A string containing one or more SQL statements separated by semicolons.
+
 **Returns:** This cursor instance.
 
-### `fetchone() -> object?`
+### `fetchone() -> object | None`
 
-Fetch the next row of a query result, returning null if no more data is available.
+Fetch the next row of a query result, returning None if no more data is available.
 
-**Returns:** The next row as an array of values, or null.
+**Returns:** The next row as an array of values, or None.
 
 ### `fetchmany(size: int = -1) -> list[object]`
 
@@ -153,23 +161,23 @@ Base exception for all sqlite3-related errors.
 
 ## DatabaseError
 
-Base exception for all sqlite3-related errors.
+Exception raised for errors related to the database.
 
 ## OperationalError
 
-Base exception for all sqlite3-related errors.
+Exception raised for errors related to the database's operation, such as SQL syntax errors.
 
 ## IntegrityError
 
-Base exception for all sqlite3-related errors.
+Exception raised when the relational integrity of the database is affected, such as a foreign key or uniqueness constraint violation.
 
 ## ProgrammingError
 
-Base exception for all sqlite3-related errors.
+Exception raised for programming errors, such as operating on a closed database or cursor.
 
 ## InterfaceError
 
-Base exception for all sqlite3-related errors.
+Exception raised for errors related to the database interface rather than the database itself.
 
 ## Row
 
@@ -180,3 +188,7 @@ Represents a row returned from a query when using `Sqlite3.Row` as the row facto
 Return a list of column names.
 
 **Returns:** A list of column name strings.
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Return a string representation of the row.
