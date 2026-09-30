@@ -133,6 +133,48 @@ public class ModeDivergenceTests : IDisposable
         Normalize(ExtractRunProgramOutput(run.StdOut)).Should().Be("hi, sam");
     }
 
+    /// <summary>
+    /// #2126 (R-DA): both spellings of an <c>@lru_cache</c> program run under <c>sharpyc run</c> and
+    /// print python3's output. The wrapper constructs <c>Sharpy.LruCache</c>, which lives in the
+    /// functools module's runtime assembly; that assembly used to be recorded as used only by an
+    /// IMPORT, so the bare (builtin) spelling compiled and then died with FileNotFoundException for
+    /// Sharpy.Stdlib — which the in-process fixture harness, with the assembly already loaded, never
+    /// sees. A maxsize past int.MaxValue (saturated, docs/deviations.yaml), 200 keys, then the first key
+    /// again: a hit, where the old 128 fallback for an unparsed maxsize evicted it — python3 prints
+    /// "1\n0\n42".
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("from functools import lru_cache\n")]
+    public void LruCache_BothSpellings_RunAndHonourMaxsize_UnderRun(string importLine)
+    {
+        WriteFixture(importLine + """
+            calls: list[int] = []
+
+            @lru_cache(maxsize=10_000_000_000_000)
+            def f(k: int) -> int:
+                calls.append(k)
+                return k * 2
+
+            def main():
+                f(7)
+                f(7)
+                print(len(calls))
+                i: int = 0
+                while i < 200:
+                    f(i)
+                    i = i + 1
+                before: int = len(calls)
+                f(0)
+                print(len(calls) - before)
+                print(f(21))
+            """);
+
+        var run = ExecCli("run", _ws.PathFor("main.spy"));
+        run.ExitCode.Should().Be(0, $"run mode failed:\n{run.StdOut}\n{run.StdErr}");
+        Normalize(ExtractRunProgramOutput(run.StdOut)).Should().Be("1\n0\n42");
+    }
+
     [Fact]
     public void OutOfSourceSetRenamedAlias_DispatchesImportedOverloads_UnderRun()
     {

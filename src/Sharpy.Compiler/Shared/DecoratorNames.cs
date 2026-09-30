@@ -21,6 +21,26 @@ internal static class DecoratorNames
     public const string Cache = "cache";
     public const string Test = "test";
 
+    /// <summary>
+    /// The Python module that spells the memoization decorators (<c>from functools import
+    /// lru_cache</c>) and whose runtime assembly carries their backing cache type
+    /// (<c>Sharpy.LruCache&lt;TKey, TResult&gt;</c>, <c>src/Sharpy.Stdlib/Functools/</c>).
+    /// </summary>
+    public const string MemoizationModule = "functools";
+
+    /// <summary>
+    /// Whether <paramref name="name"/> is a memoization decorator that <see cref="MemoizationModule"/>
+    /// provides (R-DA, #2126): <c>from functools import lru_cache</c> binds the builtin decorator.
+    ///
+    /// <para>Keyed on the decorator NAME (layer-ladder rung 4) because the decorator is a compiler
+    /// intrinsic, not a CLR member: <c>@lru_cache</c> expands at compile time into a wrapper, a
+    /// cache field and its cache-info/cache-clear accessor methods, and Sharpy functions are
+    /// not first-class objects that a runtime decorator value could wrap. Every recognition site
+    /// already reads these two constants, so the import reads the same ones — a CLR export named
+    /// <c>lru_cache</c> would be a second definition free to diverge from them.</para>
+    /// </summary>
+    public static bool IsMemoizationDecorator(string name) => name is LruCache or Cache;
+
     // Diagnostic-oriented decorators. Compile-time only: they steer validation
     // (suppression, must-use), never the emitted C#.
     public const string Suppress = "suppress";

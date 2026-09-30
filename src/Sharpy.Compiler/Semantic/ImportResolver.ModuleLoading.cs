@@ -754,6 +754,29 @@ internal partial class ImportResolver
                             symbolName = caseMatch;
                     }
 
+                    // `from functools import lru_cache` binds the builtin decorator (R-DA, #2126).
+                    // The decorator is a compiler intrinsic recognized by its name at every
+                    // decorator site, so the import binds no symbol: it is accepted, and `@lru_cache`
+                    // below it means exactly what it means with no import. Only the stdlib module
+                    // (a [SharpyModule] class, never a user's own functools.spy, whose exports win
+                    // above) provides it. An alias would rename a decorator every recognition site
+                    // reads by its own name, so `as` is refused rather than silently unrecognized.
+                    if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName)
+                        && string.Equals(fromImport.Module, DecoratorNames.MemoizationModule, StringComparison.Ordinal)
+                        && moduleInfo.CSharpClassName != null
+                        && DecoratorNames.IsMemoizationDecorator(importAlias.Name))
+                    {
+                        if (importAlias.AsName != null && importAlias.AsName != importAlias.Name)
+                        {
+                            AddError(
+                                $"'{importAlias.Name}' is a compiler decorator and cannot be imported under an alias; "
+                                + $"write 'from {fromImport.Module} import {importAlias.Name}' and decorate with '@{importAlias.Name}'",
+                                importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError,
+                                span: importAlias.Span ?? fromImport.Span);
+                        }
+                        continue;
+                    }
+
                     // Check if symbol exists in the module's exported symbols
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
                     {

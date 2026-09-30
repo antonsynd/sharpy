@@ -934,6 +934,13 @@ internal partial class TypeChecker
 
         currentSymbol.IsCached = true;
         currentSymbol.CacheMaxSize = maxSize;
+
+        // The wrapper the emitter writes for this symbol constructs Sharpy.LruCache, which lives in
+        // the functools module's runtime assembly. A module is otherwise recorded as used only when
+        // an import touches it, so a bare `@lru_cache` (no import) compiled but its program died
+        // under `sharpyc run` with FileNotFoundException: Sharpy.Stdlib was never copied next to it,
+        // while the `from functools import lru_cache` spelling of the same program ran (#2126).
+        ModuleRegistry?.RecordModuleUsage(DecoratorNames.MemoizationModule);
     }
 
     /// <summary>
@@ -1035,11 +1042,25 @@ internal partial class TypeChecker
         var literal = AstHelper.TryGetLiteralValue(argExpr);
         if (literal == AstHelper.NoneValue)
             return (true, null);
-        if (argExpr is IntegerLiteral && literal is string rawInt
-            && int.TryParse(rawInt.Replace("_", "", System.StringComparison.Ordinal), out var n))
-            return (true, (int?)n);
+
+        // An integer literal is honoured at its exact value (R-DA, #2126) — every spelling the
+        // lexer accepts (`1_000`, `0x10`) through the one integer evaluator. Before, an int.TryParse
+        // miss (a value past int.MaxValue, a hex spelling) fell through to the 128 below: a silent
+        // wrong. The runtime cache is int-sized, so a value past int.MaxValue SATURATES to it
+        // (docs/deviations.yaml, lru-cache-maxsize-saturates); a negative one is 0, as in CPython
+        // (the validator refuses it first, SPY0442 — this keeps the extractor total).
+        if (argExpr is IntegerLiteral or UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral }
+            && IntegerConstantEvaluator.TryGetConstantInteger(argExpr, out var n))
+            return (true, ClampCacheMaxSize(n));
         return (true, 128);
     }
+
+    /// <summary>
+    /// The runtime capacity for an <c>@lru_cache(maxsize=n)</c> integer: negative → 0 (CPython's
+    /// rule, no caching), past <see cref="int.MaxValue"/> → <see cref="int.MaxValue"/> (R-DA).
+    /// </summary>
+    internal static int ClampCacheMaxSize(System.Numerics.BigInteger n)
+        => n.Sign < 0 ? 0 : n > int.MaxValue ? int.MaxValue : (int)n;
 
     /// <summary>
     /// Third of #1404's materialization obligations: the EMITTED base list.

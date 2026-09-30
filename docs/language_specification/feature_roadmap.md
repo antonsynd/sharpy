@@ -206,7 +206,9 @@ class SuppressErrors:
 
 **Issue:** [#396](https://github.com/antonsynd/sharpy/issues/396)
 
-Memoization decorators. Depends on decorator argument support in the compiler.
+Memoization decorators. Depends on decorator argument support in the compiler. The implemented
+semantics (capacity per `maxsize` spelling, the `functools` import, refusals) are specified in
+[decorators.md § Memoization](decorators.md#memoization-lru_cache-cache) (R-DA, #2126).
 
 **Syntax:**
 ```python
@@ -225,7 +227,7 @@ def expensive(x: int) -> int:
 
 **Design decisions:**
 - **Compiler support for decorator arguments** is the prerequisite. The compiler must parse `@decorator(args)` and pass args to the decorator's codegen logic.
-- `@lru_cache(maxsize=N)` generates a wrapper that checks a `ConcurrentDictionary<TKey, TResult>` before calling the original function. When `maxsize` is set, eviction uses insertion order (approximating LRU with bounded size).
+- `@lru_cache(maxsize=N)` generates a wrapper that checks a `ConcurrentDictionary<TKey, TResult>` before calling the original function. When `maxsize` is set, the least-recently-used entry is evicted at capacity.
 - `@cache` is syntactic sugar for `@lru_cache(maxsize=None)` (unbounded cache).
 - Cache is per-function-instance (module-level functions get a static cache; instance methods get a per-instance cache).
 - `.cache_info()` and `.cache_clear()` methods are available on the wrapper, matching Python's API.

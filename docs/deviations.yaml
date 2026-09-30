@@ -2004,3 +2004,34 @@ deviations:
             print("{0.real}".format(5))
         except AttributeError as e:
             print(e)                      # 'int' object has no attribute 'real'
+
+  - id: lru-cache-maxsize-saturates
+    code: SPY0442
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`@lru_cache(maxsize=n)` takes any int: a huge `n` bounds the cache at `n` (`f.cache_info().maxsize` is `10000000000`), and a negative `n` is treated as `0` — nothing is cached, every call is a miss."
+    sharpy_behavior: "The runtime cache (`Sharpy.LruCache<TKey, TResult>`) is sized by a 32-bit int, so an integer-literal `maxsize` past `int.MaxValue` SATURATES to `2147483647` entries (the emitted `new LruCache<…>(2147483647)`) rather than being refused (R-DA, #2126 — before, it silently fell back to 128). A negative `maxsize` is refused with SPY0442 instead of being read as `0`; write `maxsize=0` for no caching, which matches python."
+    spec_ref: docs/language_specification/decorators.md
+    existing_diagnostic: SPY0442
+    planned_diagnostic: null
+    example:
+      python: |
+        from functools import lru_cache
+        @lru_cache(maxsize=10_000_000_000)
+        def f(k): return k * 2
+        print(f(21))                   # 42
+        print(f.cache_info().maxsize)  # 10000000000
+        @lru_cache(maxsize=-1)         # treated as 0: nothing is cached
+        def g(k): return k
+        g(1); g(1)
+        print(g.cache_info())          # CacheInfo(hits=0, misses=2, maxsize=0, currsize=0)
+      sharpy: |
+        @lru_cache(maxsize=10_000_000_000)
+        def f(k: int) -> int:
+            return k * 2
+        print(f(21))   # 42 — bounded at 2147483647 entries, not 10_000_000_000
+
+        @lru_cache(maxsize=-1)   # error SPY0442: '@lru_cache' on 'g' requires a non-negative 'maxsize' value.
+        def g(k: int) -> int:
+            return k

@@ -1,0 +1,13 @@
+# #2126 (R-DA): `from functools import lru_cache` binds the builtin decorator, which every decorator
+# site recognizes by its own name — so an alias is refused at the import rather than leaving `@memo`
+# an unrecognized decorator.
+from functools import lru_cache as memo
+
+
+@memo
+def f(k: int) -> int:
+    return k
+
+
+def main():
+    print(f(1))

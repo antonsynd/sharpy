@@ -242,6 +242,71 @@ class TodoService:
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
 
+## Memoization (`@lru_cache`, `@cache`)
+
+`@lru_cache` and `@cache` memoize a function or method: a call whose arguments were seen before
+returns the stored result without running the body. They are built-in decorators, so no import is
+needed; `from functools import lru_cache` (or `cache`) is also accepted and binds the same decorator,
+so Python code that spells the import compiles unchanged.
+
+| Spelling | Capacity |
+|----------|----------|
+| `@lru_cache` | 128 entries (Python's default), least-recently-used evicted first |
+| `@lru_cache(maxsize=N)` / `@lru_cache(N)` | `N` entries, least-recently-used evicted first |
+| `@lru_cache(maxsize=None)`, `@cache` | unbounded, nothing is evicted |
+| `@lru_cache(maxsize=0)` | nothing is cached: every call runs the body |
+
+```python
+from functools import lru_cache
+
+calls: list[int] = []
+
+@lru_cache(maxsize=2)
+def square(n: int) -> int:
+    calls.append(n)
+    return n * n
+
+@lru_cache(maxsize=0)
+def ident(n: int) -> int:
+    calls.append(n)
+    return n
+
+def main():
+    square(3)
+    square(3)          # hit: the body does not run
+    square(4)
+    square(5)          # evicts 3, the least recently used
+    square(3)          # miss: recomputed
+    print(len(calls))  # 4
+    ident(1)
+    ident(1)           # maxsize=0 caches nothing
+    print(len(calls))  # 6
+```
+
+**Rules:**
+- `maxsize` must be an integer literal or `None` (SPY0442), and not negative (SPY0442 — CPython
+  treats a negative `maxsize` as `0`; Sharpy refuses it).
+- A `maxsize` past `2147483647` (`int.MaxValue`, the runtime cache's size type) saturates to it: the
+  cache is bounded at 2147483647 entries rather than at the literal's value — a documented deviation
+  (`docs/deviations.yaml`, `lru-cache-maxsize-saturates`).
+- The decorators apply to functions and methods only (SPY0443); `@cache` takes no arguments.
+- The import binds the decorator under its own name: `from functools import lru_cache as memo` is
+  refused (SPY0301), and the module-qualified spelling `@functools.lru_cache` is not supported
+  (SPY0444).
+
+<!-- spec-sweep: error SPY0301 -->
+```python
+from functools import lru_cache as memo   # ERROR SPY0301: a compiler decorator cannot be aliased
+
+@memo
+def f(k: int) -> int:
+    return k
+```
+
+*Implementation: ✅ Native - the wrapper, its cache field and accessors are emitted by the compiler;
+the cache is `Sharpy.LruCache<TKey, TResult>` in the functools module's runtime assembly.*
+
+
 ## Bracket Attribute Syntax (`@[...]`)
 
 C# attributes are applied using bracket syntax: `@[AttributeName]`. This is the **only** way to emit C# `[Attribute]` annotations — regular `@decorator` syntax is reserved for Sharpy language keywords.

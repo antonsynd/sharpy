@@ -155,6 +155,35 @@ def main():
               || Path.GetFileName(p).Contains("Stdlib", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// #2126: a bare <c>@lru_cache</c> imports nothing, but its wrapper constructs
+    /// <c>Sharpy.LruCache</c> from the functools module's assembly — so the checker records that
+    /// assembly as used, and the CLI copies it next to the program. Unrecorded, the program died
+    /// under <c>sharpyc run</c> with FileNotFoundException for Sharpy.Stdlib.
+    /// <see cref="CompileResult_NoStdlibUsed_WhenNoImports"/> is the control: without the decorator
+    /// the same shape records no stdlib assembly.
+    /// </summary>
+    [Fact]
+    public void CompileResult_IncludesFunctoolsAssembly_WhenLruCacheUsedWithoutImport()
+    {
+        var api = new CompilerApi(NullLogger.Instance, GetStdlibReferences());
+
+        var source = @"
+@lru_cache(maxsize=2)
+def f(k: int) -> int:
+    return k
+
+def main():
+    print(f(42))
+";
+        var result = api.Compile(source);
+        Assert.True(result.Success, string.Join("\n", result.Diagnostics.Select(d => d.Message)));
+
+        _output.WriteLine($"Used assemblies: {string.Join(", ", result.UsedAssemblyPaths.Select(Path.GetFileName))}");
+        Assert.Contains(result.UsedAssemblyPaths,
+            p => Path.GetFileName(p).StartsWith("Sharpy.Stdlib", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public void CompileResult_NoStdlibUsed_WhenNoImports()
     {

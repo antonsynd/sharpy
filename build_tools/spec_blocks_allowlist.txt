@@ -138,7 +138,6 @@ expressions.md::548a131a2f  # SPY0200 first #1952
 expressions.md::7cb6d9f184  # SPY0200 first #1952
 expressions.md::7d4dce890c  # SPY0200 first #1952
 feature_roadmap.md::3706915bb9  # SPY0440 first #1952
-feature_roadmap.md::56498df8c7  # SPY0301 first #1952
 feature_roadmap.md::79be89f965  # SPY0200 first #1952
 feature_roadmap.md::7c312e3306  # SPY0301 first #1952
 feature_roadmap.md::96c92fb80a  # SPY0200 first #1952

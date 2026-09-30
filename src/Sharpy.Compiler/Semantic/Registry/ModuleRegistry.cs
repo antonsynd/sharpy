@@ -249,7 +249,14 @@ internal class ModuleRegistry
         return new HashSet<string>(_usedAssemblyPaths.Keys, StringComparer.OrdinalIgnoreCase);
     }
 
-    private void RecordModuleUsage(string moduleName)
+    /// <summary>
+    /// Records that the compiled program needs <paramref name="moduleName"/>'s runtime assembly
+    /// even though no import names it — for a compiler intrinsic whose emitted code constructs a
+    /// type that module's assembly carries (the <c>@lru_cache</c> wrapper's <c>Sharpy.LruCache</c>,
+    /// #2126). Without it, <see cref="GetUsedAssemblyPaths"/> omits the assembly and the CLI never
+    /// copies it next to the program. A module the registry has not loaded is a no-op.
+    /// </summary>
+    public void RecordModuleUsage(string moduleName)
     {
         var assemblyName = _discovery.GetAssemblyNameForModule(moduleName);
         if (assemblyName != null && _assemblyNameToPath.TryGetValue(assemblyName, out var path))

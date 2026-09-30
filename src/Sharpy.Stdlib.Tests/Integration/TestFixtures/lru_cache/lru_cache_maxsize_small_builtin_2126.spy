@@ -1,0 +1,36 @@
+# #2126 (R-DA): maxsize=small, spelling=builtin; expected output is python3's.
+calls: list[int] = []
+
+@lru_cache(maxsize=3)
+def f(k: int) -> int:
+    calls.append(k)
+    return k * 2
+
+def sweep(n: int) -> None:
+    i: int = 0
+    while i < n:
+        f(i)
+        i = i + 1
+
+def main():
+    # a repeated key is a hit unless nothing is cached
+    f(1000)
+    f(1000)
+    print(len(calls))
+    # 200 distinct keys, then the oldest again: a hit only if nothing was evicted
+    sweep(200)
+    before: int = len(calls)
+    f(0)
+    print(len(calls) - before)
+    # the three most recent keys: hits for any bound >= 3
+    before = len(calls)
+    f(199)
+    f(198)
+    f(197)
+    print(len(calls) - before)
+    # bound 3: a 4th distinct key evicts the least-recently-used one (199)
+    f(500)
+    before = len(calls)
+    f(199)
+    print(len(calls) - before)
+    print(f(21))

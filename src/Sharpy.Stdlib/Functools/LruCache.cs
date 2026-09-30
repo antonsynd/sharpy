@@ -23,7 +23,8 @@ namespace Sharpy
     /// When constructed with a <c>null</c> maxsize the cache is unbounded and uses
     /// a <see cref="ConcurrentDictionary{TKey, TResult}"/> internally. When a
     /// positive maxsize is supplied, the cache evicts entries in least-recently-used
-    /// order once it reaches capacity.
+    /// order once it reaches capacity. A maxsize of 0 (or a negative one, treated as
+    /// 0 as in CPython) caches nothing: every call is a miss.
     /// </remarks>
     /// <typeparam name="TKey">The cache key type.</typeparam>
     /// <typeparam name="TResult">The cached value type.</typeparam>
@@ -58,11 +59,12 @@ namespace Sharpy
         /// <c>null</c> for unbounded.</param>
         public LruCache(int? maxSize)
         {
-            if (maxSize is int max && max <= 0)
+            // CPython: maxsize=0 caches nothing (every call is a miss), and a negative maxsize is
+            // treated as 0 (#2126). This used to throw, so `@lru_cache(maxsize=0)` — which the
+            // compiler accepts — died in the type initializer.
+            if (maxSize is int max && max < 0)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(maxSize),
-                    "maxsize must be a positive integer or None.");
+                maxSize = 0;
             }
 
             _maxSize = maxSize;
@@ -132,7 +134,13 @@ namespace Sharpy
                 _misses++;
                 TResult computed = factory(key);
 
-                if (_boundedMap.Count >= _maxSize!.Value)
+                // maxsize=0: no caching — compute, count the miss, store nothing.
+                if (_maxSize!.Value == 0)
+                {
+                    return computed;
+                }
+
+                if (_boundedMap.Count >= _maxSize.Value)
                 {
                     LinkedListNode<KeyValuePair<TKey, TResult>>? oldest = _boundedOrder!.First;
                     if (oldest is not null)
