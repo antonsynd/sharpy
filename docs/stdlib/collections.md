@@ -42,9 +42,13 @@ Like Python's collections.ChainMap.
 Return a new ChainMap with a new map followed by all previous maps.
 If no map is provided, an empty dict is used.
 
-### `get(key: K, default: V = None) -> V`
+### `get(key: K) -> Optional[V]`
 
-Get a value, searching through all maps.
+Get a value, searching through all maps; None when no map has the key.
+
+### `get(key: K, default: V) -> V`
+
+Get a value, searching through all maps, or *default* when no map has the key.
 
 ### `keys() -> list[K]`
 
@@ -282,9 +286,15 @@ Dictionary with default values for missing keys.
 | `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
 
-### `get(key: TKey, default_value: TValue = None) -> TValue`
+### `get(key: TKey) -> Optional[TValue]`
 
-Get the value for a key, or return a default value if the key is not present.
+Return the value for *key* if present, otherwise None. A missing key does
+NOT run the factory (python's `get` does not).
+
+### `get(key: TKey, default_value: TValue) -> TValue`
+
+Return the value for *key* if present, otherwise *defaultValue*.
+A missing key does NOT run the factory.
 
 ### `contains(key: TKey) -> bool`
 
@@ -426,9 +436,14 @@ Return the (key, value) pairs in insertion order as a sized list.
 
 Return a shallow copy.
 
-### `get(key: K, default: V = None) -> V`
+### `get(key: K) -> Optional[V]`
 
-Get the value for a key, or a default.
+Return the value for *key* if present, otherwise None — python's
+`od.get(key)`, in the builtin `dict.get(key)`'s shape.
+
+### `get(key: K, default: V) -> V`
+
+Return the value for *key* if present, otherwise *default*.
 
 ### `__str__() -> str`
 

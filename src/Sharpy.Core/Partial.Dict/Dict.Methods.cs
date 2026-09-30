@@ -15,14 +15,18 @@ namespace Sharpy
         /// Create a new dictionary with keys from <paramref name="keys"/> and values set to <paramref name="value"/>.
         /// </summary>
         /// <param name="keys">An iterable of keys for the new dictionary.</param>
-        /// <param name="value">The value for all keys. Defaults to <c>default(V)</c>.</param>
+        /// <param name="value">The value for all keys.</param>
         /// <returns>A new dictionary with the specified keys and value.</returns>
         /// <example>
         /// <code>
         /// d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
         /// </code>
         /// </example>
-        public static Dict<K, V> Fromkeys(IEnumerable<K> keys, V value = default!)
+        // `value` is required. Python's valueless dict.fromkeys(keys) fills None, which a value-type V
+        // cannot hold, so that form is the one-argument overload below (values typed object, all
+        // None). A defaulted V here — `V value = default!`, or `V? value = default`, which is the same
+        // parameter for a value-type V — filled 0/False where python fills None (#2054).
+        public static Dict<K, V> Fromkeys(IEnumerable<K> keys, V value)
         {
             var result = new Dict<K, V>();
 
@@ -43,6 +47,20 @@ namespace Sharpy
 
             return result;
         }
+
+        /// <summary>
+        /// Create a new dictionary with keys from <paramref name="keys"/>, every value None —
+        /// python's valueless <c>dict.fromkeys(keys)</c>. The values are typed <c>object</c>, since
+        /// None is not a value of every V.
+        /// </summary>
+        /// <param name="keys">An iterable of keys for the new dictionary.</param>
+        /// <returns>A new dictionary with the specified keys, all mapped to None.</returns>
+        /// <example>
+        /// <code>
+        /// d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}
+        /// </code>
+        /// </example>
+        public static Dict<K, object> Fromkeys(IEnumerable<K> keys) => Dict<K, object>.Fromkeys(keys, null!);
 
         /// <summary>
         /// Return a shallow copy of the dictionary.
@@ -486,7 +504,8 @@ namespace Sharpy
         public static Dict<TKey, object> Fromkeys<TKey>(IEnumerable<TKey> keys)
             where TKey : notnull
         {
-            return Dict<TKey, object>.Fromkeys(keys, default!);
+            // python's None, stored in an object-valued dict (the argument, not a parameter default).
+            return Dict<TKey, object>.Fromkeys(keys, null!);
         }
 
         /// <summary>

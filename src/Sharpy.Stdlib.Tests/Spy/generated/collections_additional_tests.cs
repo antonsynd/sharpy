@@ -302,8 +302,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsAdditionalTests
             global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
 #line (132, 5) - (132, 16) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
             od["a"] = 1;
-#line (133, 5) - (133, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-            Xunit.Assert.Equal(1, od.Get("a"));
+#line (133, 5) - (133, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+            Xunit.Assert.Equal(1, od.Get("a").Unwrap());
 #line hidden
         }
 

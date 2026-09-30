@@ -45,7 +45,8 @@ namespace Sharpy.Core.Tests
             d[null!] = 42;
             var fd = new FrozenDict<string?, int>(d);
 
-            fd.Get(null!).Should().Be(42);
+            // The valueless get is dict.get(key)'s shape — an Optional (#2054).
+            fd.Get(null!).Unwrap().Should().Be(42);
         }
 
         [Fact]

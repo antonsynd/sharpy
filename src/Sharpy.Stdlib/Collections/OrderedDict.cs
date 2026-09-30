@@ -290,9 +290,30 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Get the value for a key, or a default.
+        /// Return the value for <paramref name="key"/> if present, otherwise None — python's
+        /// <c>od.get(key)</c>, in the builtin <c>dict.get(key)</c>'s shape.
         /// </summary>
-        public V Get(K key, V @default = default!)
+        // Two overloads, as Dict<K, V> spells them, rather than one defaulted V: a
+        // `V @default = default!` (or `V? @default = default`, the same parameter for a value-type V)
+        // returned 0 for a missing key of an OrderedDict[str, int] where python returns None (#2054).
+        public Optional<V> Get(K key)
+        {
+            if (IsNullKey(key))
+            {
+                return _hasNullKey ? Optional<V>.Some(_items[_nullIndex].Value) : Optional<V>.None;
+            }
+
+            if (_index.TryGetValue(key, out int idx))
+            {
+                return Optional<V>.Some(_items[idx].Value);
+            }
+            return Optional<V>.None;
+        }
+
+        /// <summary>
+        /// Return the value for <paramref name="key"/> if present, otherwise <paramref name="default"/>.
+        /// </summary>
+        public V Get(K key, V @default)
         {
             if (IsNullKey(key))
             {

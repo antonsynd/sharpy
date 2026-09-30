@@ -124,10 +124,13 @@ public class FrozenDictTests
     }
 
     [Fact]
-    public void FrozenDict_Get_WithoutDefault_ReturnsDefaultT()
+    public void FrozenDict_Get_WithoutDefault_ReturnsNone_LikeDictGet()
     {
-        var fd = new FrozenDict<string, int>();
-        fd.Get("missing").Should().Be(0);
+        // #2054: the valueless get is dict.get(key)'s shape — None for a missing key, never
+        // default(TValue) (0 for an int value, where python's dict.get returns None).
+        var fd = new FrozenDict<string, int>(new[] { new KeyValuePair<string, int>("a", 1) });
+        fd.Get("missing").IsNone.Should().BeTrue();
+        fd.Get("a").Unwrap().Should().Be(1);
     }
 
     // ===== Keys / Values / Items =====

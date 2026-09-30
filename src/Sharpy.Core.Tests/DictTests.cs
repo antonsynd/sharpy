@@ -552,15 +552,17 @@ public class Dict_Tests
     }
 
     [Fact]
-    public void Fromkeys_WithoutValue_UsesTypeDefault()
+    public void Fromkeys_WithoutValue_FillsNone()
     {
-        // Act
-        var dict = Dict<string, int>.Fromkeys(new[] { "a", "b" });
+        // #2054: python's dict.fromkeys(["a", "b"]) is {'a': None, 'b': None}. The valueless form is
+        // the non-generic Dict.Fromkeys (object values); the generic Dict<K, V>.Fromkeys requires its
+        // value, since a defaulted V filled default(int) = 0 where python fills None.
+        var dict = Dict.Fromkeys(new[] { "a", "b" });
 
         // Assert
         dict.Count.Should().Be(2);
-        dict["a"].Should().Be(0);
-        dict["b"].Should().Be(0);
+        dict["a"].Should().BeNull();
+        dict["b"].Should().BeNull();
     }
 
     [Fact]
@@ -588,7 +590,7 @@ public class Dict_Tests
     public void Fromkeys_WithNullableValue_SetsNull()
     {
         // Act
-        var dict = Dict<string, string?>.Fromkeys(new[] { "a", "b" });
+        var dict = Dict<string, string?>.Fromkeys(new[] { "a", "b" }, null);
 
         // Assert
         dict.Count.Should().Be(2);

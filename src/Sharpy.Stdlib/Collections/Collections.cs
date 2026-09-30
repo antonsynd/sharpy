@@ -783,9 +783,23 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Get the value for a key, or return a default value if the key is not present.
+        /// Return the value for <paramref name="key"/> if present, otherwise None. A missing key does
+        /// NOT run the factory (python's <c>get</c> does not).
         /// </summary>
-        public TValue Get(TKey key, TValue defaultValue = default!)
+        // Two overloads, as Dict<K, V> spells them, rather than one defaulted TValue: a
+        // `TValue defaultValue = default!` (or `TValue? … = default`, the same parameter for a
+        // value-type TValue) returned 0 for a missing key of a defaultdict[str, int] where python
+        // returns None (#2054).
+        public Optional<TValue> Get(TKey key)
+        {
+            return _dict.TryGetValue(key, out TValue value) ? Optional<TValue>.Some(value) : Optional<TValue>.None;
+        }
+
+        /// <summary>
+        /// Return the value for <paramref name="key"/> if present, otherwise <paramref name="defaultValue"/>.
+        /// A missing key does NOT run the factory.
+        /// </summary>
+        public TValue Get(TKey key, TValue defaultValue)
         {
             return _dict.TryGetValue(key, out TValue value) ? value : defaultValue;
         }

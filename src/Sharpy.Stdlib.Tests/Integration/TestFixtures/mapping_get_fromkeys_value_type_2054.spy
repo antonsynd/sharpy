@@ -1,0 +1,20 @@
+# #2054: a value-type V cannot hold None, so a defaulted `V @default` / `V? @default = default`
+# returned 0 for a missing key where python returns None. Each mapping's valueless get() now has
+# dict.get's shape, and dict.fromkeys(keys) fills None. Expected: python3 3.12.13.
+from collections import OrderedDict, ChainMap, defaultdict
+
+def main() -> None:
+    od = OrderedDict[str, int]()
+    od["a"] = 1
+    print(od.get("missing"), od.get("missing", 5), od.get("a"), od.get("a", 5))
+    base: dict[str, int] = {"a": 1}
+    cm = ChainMap[str, int](base)
+    print(cm.get("missing"), cm.get("missing", 5), cm.get("a"), cm.get("a", 5))
+    dd = defaultdict[str, int](lambda: 7)
+    dd["a"] = 1
+    print(dd.get("missing"), dd.get("missing", 5), dd.get("a"), dd.get("a", 5))
+    print(len(dd))
+    b = OrderedDict[str, bool]()
+    print(b.get("missing"))
+    print(dict.fromkeys(["a"]))
+    print(dict.fromkeys(["a"], 0))

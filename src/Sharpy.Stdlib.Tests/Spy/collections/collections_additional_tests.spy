@@ -130,7 +130,7 @@ def test_ordered_dict_copy():
 def test_ordered_dict_get_existing_key():
     od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
     od["a"] = 1
-    assert od.get("a") == 1
+    assert od.get("a").unwrap() == 1
 
 @test
 def test_ordered_dict_get_missing_key_returns_default():

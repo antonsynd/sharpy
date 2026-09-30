@@ -122,9 +122,27 @@ namespace Sharpy
         public bool Contains(K key) => ContainsKey(key);
 
         /// <summary>
-        /// Get a value, searching through all maps.
+        /// Get a value, searching through all maps; None when no map has the key.
         /// </summary>
-        public V Get(K key, V @default = default!)
+        // Two overloads, as Dict<K, V> spells them, rather than one defaulted V: a
+        // `V @default = default!` (or `V? @default = default`, the same parameter for a value-type V)
+        // returned 0 for a missing key of a ChainMap[str, int] where python returns None (#2054).
+        public Optional<V> Get(K key)
+        {
+            foreach (var map in _maps)
+            {
+                if (map.ContainsKey(key))
+                {
+                    return Optional<V>.Some(map[key]);
+                }
+            }
+            return Optional<V>.None;
+        }
+
+        /// <summary>
+        /// Get a value, searching through all maps, or <paramref name="default"/> when no map has the key.
+        /// </summary>
+        public V Get(K key, V @default)
         {
             foreach (var map in _maps)
             {

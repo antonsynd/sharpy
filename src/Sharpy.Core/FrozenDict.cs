@@ -179,10 +179,27 @@ namespace Sharpy
         public bool Contains(TKey key) => ContainsKey(key);
 
         /// <summary>
-        /// Return the value for <paramref name="key"/> if present, otherwise
-        /// <paramref name="default"/>. Mirrors Python's <c>dict.get(key, default=None)</c>.
+        /// Return the value for <paramref name="key"/> if present, otherwise None — the builtin
+        /// <c>dict.get(key)</c>'s shape.
         /// </summary>
-        public TValue Get(TKey key, TValue @default = default!)
+        // Two overloads, as Dict<K, V> spells them, rather than one defaulted TValue: a
+        // `TValue @default = default!` returned 0 for a missing key of a frozendict[str, int] where
+        // dict.get returns None (#2054).
+        public Optional<TValue> Get(TKey key)
+        {
+            if (key is null)
+            {
+                return _hasNullKey ? Optional<TValue>.Some(_nullValue) : Optional<TValue>.None;
+            }
+
+            return _dict.TryGetValue(key, out TValue? value) ? Optional<TValue>.Some(value!) : Optional<TValue>.None;
+        }
+
+        /// <summary>
+        /// Return the value for <paramref name="key"/> if present, otherwise
+        /// <paramref name="default"/>. Mirrors Python's <c>dict.get(key, default)</c>.
+        /// </summary>
+        public TValue Get(TKey key, TValue @default)
         {
             if (key is null)
             {

@@ -3,17 +3,18 @@ import collections
 # --- Get Without Default ---
 
 @test
-def test_default_dict_get_no_default_returns_default_t():
+def test_default_dict_get_no_default_returns_none():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 42)
-    # Get() without explicit default returns default(int) = 0, NOT factory value 42
-    assert dd.get("missing") == 0
+    # get() without a default returns None, as python's does (#2054) — NOT the factory value 42,
+    # and not default(int) = 0 either
+    assert dd.get("missing").is_none
     assert not dd.contains_key("missing")
 
 @test
 def test_default_dict_get_existing_key_no_default_returns_value():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["x"] = 99
-    assert dd.get("x") == 99
+    assert dd.get("x").unwrap() == 99
 
 # --- Contains Alias ---
 

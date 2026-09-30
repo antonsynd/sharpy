@@ -13,9 +13,10 @@ def test_dict_reader_auto_detects_fieldnames_from_first_row():
     rows: list[dict[str, str]] = []
     for row in reader:
         rows.append(row)
-    assert reader.fieldnames.is_some
-    assert reader.fieldnames.unwrap()[0] == "name"
-    assert reader.fieldnames.unwrap()[1] == "age"
+    names: list[str] | None = reader.fieldnames
+    assert names is not None
+    assert names[0] == "name"
+    assert names[1] == "age"
 
 @test
 def test_dict_reader_auto_detect_row_has_correct_values():
@@ -32,7 +33,7 @@ def test_dict_reader_auto_detect_row_has_correct_values():
 @test
 def test_dict_reader_explicit_fieldnames_first_row_is_data():
     # When fieldnames are supplied, NO row is consumed as headers
-    reader = csv.dict_reader(["Alice,30", "Bob,25"], Some(["name", "age"]))
+    reader = csv.dict_reader(["Alice,30", "Bob,25"], ["name", "age"])
     rows: list[dict[str, str]] = []
     for row in reader:
         rows.append(row)
@@ -42,11 +43,12 @@ def test_dict_reader_explicit_fieldnames_first_row_is_data():
 
 @test
 def test_dict_reader_explicit_fieldnames_accessible_before_iteration():
-    reader = csv.dict_reader(["1,2"], Some(["x", "y"]))
+    reader = csv.dict_reader(["1,2"], fieldnames=["x", "y"])
     # Fieldnames should be set even before iteration
-    assert reader.fieldnames.is_some
-    assert reader.fieldnames.unwrap()[0] == "x"
-    assert reader.fieldnames.unwrap()[1] == "y"
+    names: list[str] | None = reader.fieldnames
+    assert names is not None
+    assert names[0] == "x"
+    assert names[1] == "y"
 
 @test
 def test_dict_reader_missing_field_produces_empty_string():

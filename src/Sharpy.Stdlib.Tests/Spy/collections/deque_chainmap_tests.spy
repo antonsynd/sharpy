@@ -95,16 +95,17 @@ def test_chainmap_pop_key_only_in_second_map_throws_key_error():
 # --- ChainMap Get Without Default ---
 
 @test
-def test_chainmap_get_missing_key_no_default_returns_default_t():
+def test_chainmap_get_missing_key_no_default_returns_none():
     cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
-    assert cm.get("missing") == 0
+    # python returns None, not default(int) = 0 (#2054)
+    assert cm.get("missing").is_none
 
 @test
 def test_chainmap_get_existing_key_in_second_map():
     d1: dict[str, int] = {"y": 0}
     d2: dict[str, int] = {"x": 42}
     cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
-    assert cm.get("x") == 42
+    assert cm.get("x").unwrap() == 42
 
 # --- ChainMap Write to Empty ---
 

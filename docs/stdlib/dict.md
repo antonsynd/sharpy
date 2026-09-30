@@ -17,19 +17,35 @@ Projects this dictionary's entries as string-keyed pairs for
 reflection-free JSON dispatch. Returns an empty sequence when
  is not `str`.
 
-### `fromkeys(keys: Iterable[K], value: V = None) -> dict[K, V]`
+### `fromkeys(keys: Iterable[K], value: V) -> dict[K, V]`
 
 Create a new dictionary with keys from *keys* and values set to *value*.
 
 **Parameters:**
 
 - `keys` (Iterable[K]) -- An iterable of keys for the new dictionary.
-- `value` (V) -- The value for all keys. Defaults to `default(V)`.
+- `value` (V) -- The value for all keys.
 
 **Returns:** A new dictionary with the specified keys and value.
 
 ```python
 d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
+```
+
+### `fromkeys(keys: Iterable[K]) -> dict[K, object]`
+
+Create a new dictionary with keys from *keys*, every value None —
+python's valueless `dict.fromkeys(keys)`. The values are typed `object`, since
+None is not a value of every V.
+
+**Parameters:**
+
+- `keys` (Iterable[K]) -- An iterable of keys for the new dictionary.
+
+**Returns:** A new dictionary with the specified keys, all mapped to None.
+
+```python
+d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}
 ```
 
 ### `copy() -> dict[K, V]`

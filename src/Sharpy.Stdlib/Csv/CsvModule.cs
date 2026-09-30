@@ -138,7 +138,7 @@ namespace Sharpy.CsvModule
         /// <summary>
         /// Create a CSV DictReader from a list of lines.
         /// </summary>
-        public static global::Sharpy.CsvModule.CsvDictReader DictReader(Sharpy.List<string> lines, Optional<Sharpy.List<string>> fieldnames = default)
+        public static global::Sharpy.CsvModule.CsvDictReader DictReader(Sharpy.List<string> lines, Sharpy.List<string>? fieldnames = null)
         {
             return new global::Sharpy.CsvModule.CsvDictReader(lines, fieldnames);
         }
@@ -260,24 +260,25 @@ namespace Sharpy.CsvModule
     public class CsvDictReader : System.Collections.Generic.IEnumerable<Sharpy.Dict<string, string>>
     {
         protected Sharpy.List<string> _Lines;
-        protected Optional<Sharpy.List<string>> _Fieldnames;
+        protected Sharpy.List<string>? _Fieldnames;
         public System.Collections.Generic.IEnumerator<Sharpy.Dict<string, string>> GetEnumerator()
         {
-            bool isFirstRow = this._Fieldnames.IsNone;
+            bool isFirstRow = this._Fieldnames == null;
             foreach (var __loopVar_5 in this._Lines)
             {
                 var line = __loopVar_5;
                 Sharpy.List<string> fields = global::Sharpy.CsvModule.CsvModuleModule._ParseLine(line);
                 if (isFirstRow)
                 {
-                    this._Fieldnames = Optional<Sharpy.List<string>>.Some(fields);
+                    this._Fieldnames = fields;
                     isFirstRow = false;
                     continue;
                 }
 
-                if (this._Fieldnames.IsSome)
+                Sharpy.List<string>? header = this._Fieldnames;
+                if (header != null)
                 {
-                    Sharpy.List<string> names = this._Fieldnames.Unwrap();
+                    Sharpy.List<string> names = header!;
                     Sharpy.Dict<string, string> d = new Sharpy.Dict<string, string>()
                     {
                     };
@@ -301,7 +302,7 @@ namespace Sharpy.CsvModule
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-        public Optional<Sharpy.List<string>> Fieldnames
+        public Sharpy.List<string>? Fieldnames
         {
             get
             {
@@ -309,7 +310,7 @@ namespace Sharpy.CsvModule
             }
         }
 
-        public CsvDictReader(Sharpy.List<string> lines, Optional<Sharpy.List<string>> fieldnames = default)
+        public CsvDictReader(Sharpy.List<string> lines, Sharpy.List<string>? fieldnames = null)
         {
             if (lines == null)
             {
