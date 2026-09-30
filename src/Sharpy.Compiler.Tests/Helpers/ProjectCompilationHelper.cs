@@ -146,15 +146,21 @@ public class ProjectCompilationHelper : IDisposable
     /// </summary>
     public List<string> ModuleReferences { get; } = new();
 
+    private bool _cliReferences = true;
+
+    /// <summary>The options the most recent <see cref="Compile()"/> built the project with.</summary>
+    public CompilerOptions? LastCompilerOptions { get; private set; }
+
     /// <summary>
-    /// Makes the stdlib modules (<c>datetime</c>, <c>collections</c>, …) importable, as the CLI does by
-    /// loading <c>Sharpy.Stdlib.dll</c> as a module reference.
+    /// Builds WITHOUT the CLI's default references (<see cref="DefaultReferences"/>): module discovery
+    /// sees only <see cref="ModuleReferences"/>. For a cell that pins how the compiler behaves under a
+    /// narrower reference set than <c>sharpyc</c> ever passes (a <c>CompilerApi</c> host that omits
+    /// Sharpy.Core). Every other test builds with the CLI's set (#2140).
     /// </summary>
-    public ProjectCompilationHelper WithStdlibModules()
+    public ProjectCompilationHelper WithoutCliReferences()
     {
-        ModuleReferences.AddRange(TestProjectScaffold.ResolveRuntimeDllPaths()
-            .Where(p => Path.GetFileName(p) == "Sharpy.Stdlib.dll"));
-        return WithRuntimeReferences();
+        _cliReferences = false;
+        return this;
     }
 
     /// <summary>
@@ -425,12 +431,31 @@ public class ProjectCompilationHelper : IDisposable
             config.SourceFiles.AddRange(reordered);
         }
 
-        var compilerOptions = new CompilerOptions
+        // The CLI's reference set and options authority (#2140): Sharpy.Core + the stdlib from
+        // DefaultReferences, injected into the project's references and fed to discovery through
+        // CompilerOptionsFactory.ForProject — exactly what `sharpyc project` does — so an in-process
+        // test resolves every import on the route sharpyc takes.
+        CompilerOptions compilerOptions;
+        if (_cliReferences)
         {
-            Incremental = Incremental,
-            Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures),
-            References = ModuleReferences.Count > 0 ? ModuleReferences.ToArray() : null
-        };
+            var defaults = DefaultReferences.Resolve();
+            DefaultReferences.ApplyTo(config, defaults);
+            compilerOptions = CompilerOptionsFactory.ForProject(
+                config,
+                defaultReferences: defaults.Concat(ModuleReferences),
+                incremental: Incremental,
+                features: Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures));
+        }
+        else
+        {
+            compilerOptions = new CompilerOptions
+            {
+                Incremental = Incremental,
+                Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures),
+                References = ModuleReferences.Count > 0 ? ModuleReferences.ToArray() : null
+            };
+        }
+        LastCompilerOptions = compilerOptions;
         var compiler = new Compiler(compilerOptions, _logger);
 
         // Each Compile() is one build; AssertIncrementalSkipped reads the most recent one.

@@ -167,9 +167,8 @@ def main():
     [MemberData(nameof(Cells))]
     public void Project(string form, string template, bool decorated, string? expected)
     {
-        using var helper = new ProjectCompilationHelper(Output).WithStdlibModules();
-        helper.ModuleReferences.AddRange(TestProjectScaffold.ResolveRuntimeDllPaths()
-            .Where(p => Path.GetFileName(p) == "Sharpy.Core.dll"));
+        // The helper builds with the CLI's reference set (Core + Stdlib, #2140).
+        using var helper = new ProjectCompilationHelper(Output);
         helper.AddSourceFile("main.spy", Render(template, decorated));
         helper.WithRootNamespace("OverrideRoute").WithEntryPoint("main.spy").CreateProjectFile();
         var result = helper.CompileAndExecute();
@@ -180,7 +179,10 @@ def main():
     [MemberData(nameof(NamespaceRouteCells))]
     public void Project_NamespaceRoute(string form, string template, bool decorated, string? expected)
     {
-        using var helper = new ProjectCompilationHelper(Output).WithStdlibModules();
+        // A narrower reference set than sharpyc passes: Stdlib only, no Core (#2140).
+        using var helper = new ProjectCompilationHelper(Output).WithoutCliReferences().WithRuntimeReferences();
+        helper.ModuleReferences.AddRange(TestProjectScaffold.ResolveRuntimeDllPaths()
+            .Where(p => Path.GetFileName(p) == "Sharpy.Stdlib.dll"));
         helper.AddSourceFile("main.spy", Render(template, decorated));
         helper.WithRootNamespace("OverrideRoute").WithEntryPoint("main.spy").CreateProjectFile();
         var result = helper.CompileAndExecute();

@@ -980,7 +980,7 @@ def main() -> None:
         var lib = UdtLib(k, position);
         var (initial, uses, probe) = UdtMains(k, position);
 
-        using var warm = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        using var warm = new ProjectCompilationHelper().WithIncremental();
         warm.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", initial);
         var first = warm.Compile();
         first.Success.Should().BeTrue($"the {kind}/{position} specimen must build cold first. Diagnostics:\n{Diagnostics(first)}");
@@ -996,14 +996,14 @@ def main() -> None:
         Skipped(warmProbe).Should().BeEquivalentTo(new[] { "lib.spy" },
             "lib must still be served from the cache for the probe build");
 
-        using var coldU = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        using var coldU = new ProjectCompilationHelper().WithIncremental();
         coldU.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", uses);
         var coldUses = coldU.CompileAndExecute();
         var coldUsesBuild = coldU.LastCompilationResult!;
         Skipped(coldUsesBuild).Should().BeEmpty("the control build is cold");
         coldUses.Success.Should().BeTrue($"the cold uses program must build and run. Diagnostics:\n{Diagnostics(coldUsesBuild)}");
 
-        using var coldP = new ProjectCompilationHelper().WithIncremental().WithStdlibModules();
+        using var coldP = new ProjectCompilationHelper().WithIncremental();
         coldP.AddSourceFile("lib.spy", lib).AddSourceFile("main.spy", probe);
         var coldProbe = coldP.Compile();
         coldProbe.Diagnostics.GetErrors().Should().NotBeEmpty(

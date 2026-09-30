@@ -81,32 +81,12 @@ internal static class CliHelpers
         return new CompilerApi(logger, GetDefaultReferences());
     }
 
+    /// <summary>
+    /// The CLI's default references — Sharpy.Core plus the stdlib — from the one authority the
+    /// in-process project test harness also reads (<see cref="DefaultReferences"/>, #2140).
+    /// </summary>
     internal static string[] GetDefaultReferences()
-    {
-        var corePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
-        var coreDir = Path.GetDirectoryName(corePath)!;
-        var refs = new List<string> { corePath };
-
-        var monolithPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
-        if (File.Exists(monolithPath))
-        {
-            refs.Add(monolithPath);
-        }
-        else
-        {
-            var perModuleAssemblies = SourceGlob.EnumerateArtifacts(coreDir, "Sharpy.Stdlib.*.dll").ToArray();
-            if (perModuleAssemblies.Length > 0)
-            {
-                refs.AddRange(perModuleAssemblies);
-            }
-            else
-            {
-                Console.Error.WriteLine("Warning: No Sharpy.Stdlib assemblies found next to Sharpy.Core.dll — stdlib modules (json, os, math, etc.) will not be available.");
-            }
-        }
-
-        return refs.ToArray();
-    }
+        => DefaultReferences.Resolve(message => Console.Error.WriteLine(message));
 
     internal static readonly CompilerPhase[] PhaseOrder = new[]
     {

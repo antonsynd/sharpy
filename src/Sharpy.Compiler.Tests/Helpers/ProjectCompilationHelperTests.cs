@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Project;
 using Xunit;
 using Xunit.Abstractions;
 using FluentAssertions;
@@ -15,6 +16,37 @@ public class ProjectCompilationHelperTests
     public ProjectCompilationHelperTests(ITestOutputHelper output)
     {
         _output = output;
+    }
+
+    /// <summary>
+    /// #2140: the in-process project harness builds with the CLI's reference set — Sharpy.Core and
+    /// the stdlib from <see cref="DefaultReferences"/>, the authority <c>CliHelpers.GetDefaultReferences</c>
+    /// reads — so a test resolves every import on the route <c>sharpyc</c> takes. It fed only
+    /// Sharpy.Stdlib.dll before, and Core's attribute-declared modules took the namespace route.
+    /// </summary>
+    [Fact]
+    public void Helper_BuildsWithTheCliReferenceSet()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("RefSet").AddSourceFile("main.spy", "def main():\n    print(1)\n").CreateProjectFile();
+        helper.Compile().Success.Should().BeTrue();
+
+        var cli = DefaultReferences.Resolve();
+        cli.Select(Path.GetFileName).Should().Contain(new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" });
+        helper.LastCompilerOptions!.References.Should().Contain(cli,
+            "module discovery sees exactly what sharpyc feeds it (#2140)");
+    }
+
+    /// <summary>Positive control for the observation above: the explicit opt-out drops the CLI set.</summary>
+    [Fact]
+    public void Helper_WithoutCliReferences_DiscoversOnlyItsOwnReferences()
+    {
+        using var helper = new ProjectCompilationHelper(_output).WithoutCliReferences();
+        helper.WithRootNamespace("RefSetOff").AddSourceFile("main.spy", "def main():\n    print(1)\n").CreateProjectFile();
+        helper.Compile().Success.Should().BeTrue();
+
+        (helper.LastCompilerOptions!.References ?? Array.Empty<string>())
+            .Select(Path.GetFileName).Should().NotContain("Sharpy.Core.dll");
     }
 
     [Fact]
