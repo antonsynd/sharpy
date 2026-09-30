@@ -61,9 +61,9 @@ Equivalent to Python's `http.client.HTTPResponse`.
 | `status` | `int` |  |
 | `reason` | `str` |  |
 
-### `read() -> Bytes`
+### `read() -> bytes`
 
-### `read(amt: int) -> Bytes`
+### `read(amt: int) -> bytes`
 
 ### `getheader(name: str, default_: str | None = None) -> str | None`
 

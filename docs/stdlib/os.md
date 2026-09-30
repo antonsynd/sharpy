@@ -124,7 +124,7 @@ Return an absolute path.
 
 Return the canonical path of the specified filename, eliminating any symbolic links.
 
-### `os.getsize(path: str) -> long`
+### `os.getsize(path: str) -> int64`
 
 Return the size of a file, reported by os.stat().
 
@@ -140,7 +140,7 @@ Result of os.stat(), similar to Python's os.stat_result.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `st_size` | `long` |  |
+| `st_size` | `int64` |  |
 | `st_mtime` | `float` |  |
 | `st_ctime` | `float` |  |
 | `st_atime` | `float` |  |

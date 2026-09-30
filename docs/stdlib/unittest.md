@@ -51,7 +51,7 @@ Marker for approx. The compiler transforms
 (when `abs` is used).
 
 !!! note
-    This method exists for type resolution only — it returns `double`
+    This method exists for type resolution only — it returns `float`
     so that `x == approx(y)` type-checks as numeric equality. It should never
     be called at runtime. Defaults mirror `AssertAlmostEqual`:
     `places=7`; if both `places` and `abs` are supplied,

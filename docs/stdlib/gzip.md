@@ -12,11 +12,11 @@ import gzip
 
 Opens a gzip file in binary mode.
 
-### `gzip.compress(data: Bytes, compresslevel: int = 9) -> Bytes`
+### `gzip.compress(data: bytes, compresslevel: int = 9) -> bytes`
 
 Compresses bytes into gzip format.
 
-### `gzip.decompress(data: Bytes) -> Bytes`
+### `gzip.decompress(data: bytes) -> bytes`
 
 Decompresses gzip-compressed bytes.
 
@@ -35,11 +35,11 @@ Provides file-like access to gzip-compressed data.
 | `name` | `str` | Gets the original file name passed to the gzip file. |
 | `mode` | `int` | Gets the internal read or write mode flag. |
 
-### `read(size: int = -1) -> Bytes`
+### `read(size: int = -1) -> bytes`
 
 Reads decompressed bytes from the gzip stream.
 
-### `write(data: Bytes) -> int`
+### `write(data: bytes) -> int`
 
 Writes bytes to the gzip stream and returns the number written.
 

@@ -52,7 +52,7 @@ Return the population variance of data.
 
 Return the sample arithmetic mean of integer data.
 
-### `statistics.mean(data: list[long]) -> float`
+### `statistics.mean(data: list[int64]) -> float`
 
 Return the sample arithmetic mean of long integer data.
 
@@ -60,7 +60,7 @@ Return the sample arithmetic mean of long integer data.
 
 Convert integer data to floats and compute the arithmetic mean.
 
-### `statistics.fmean(data: list[long]) -> float`
+### `statistics.fmean(data: list[int64]) -> float`
 
 Convert long integer data to floats and compute the arithmetic mean.
 
@@ -68,7 +68,7 @@ Convert long integer data to floats and compute the arithmetic mean.
 
 Return the median (middle value) of integer data.
 
-### `statistics.median(data: list[long]) -> float`
+### `statistics.median(data: list[int64]) -> float`
 
 Return the median (middle value) of long integer data.
 
@@ -76,7 +76,7 @@ Return the median (middle value) of long integer data.
 
 Return the low median of integer data.
 
-### `statistics.median_low(data: list[long]) -> float`
+### `statistics.median_low(data: list[int64]) -> float`
 
 Return the low median of long integer data.
 
@@ -84,7 +84,7 @@ Return the low median of long integer data.
 
 Return the high median of integer data.
 
-### `statistics.median_high(data: list[long]) -> float`
+### `statistics.median_high(data: list[int64]) -> float`
 
 Return the high median of long integer data.
 
@@ -92,7 +92,7 @@ Return the high median of long integer data.
 
 Return the square root of the sample variance for integer data.
 
-### `statistics.stdev(data: list[long]) -> float`
+### `statistics.stdev(data: list[int64]) -> float`
 
 Return the square root of the sample variance for long integer data.
 
@@ -100,7 +100,7 @@ Return the square root of the sample variance for long integer data.
 
 Return the sample variance of integer data.
 
-### `statistics.variance(data: list[long]) -> float`
+### `statistics.variance(data: list[int64]) -> float`
 
 Return the sample variance of long integer data.
 
@@ -108,7 +108,7 @@ Return the sample variance of long integer data.
 
 Return the square root of the population variance for integer data.
 
-### `statistics.pstdev(data: list[long]) -> float`
+### `statistics.pstdev(data: list[int64]) -> float`
 
 Return the square root of the population variance for long integer data.
 
@@ -116,6 +116,6 @@ Return the square root of the population variance for long integer data.
 
 Return the population variance of integer data.
 
-### `statistics.pvariance(data: list[long]) -> float`
+### `statistics.pvariance(data: list[int64]) -> float`
 
 Return the population variance of long integer data.

@@ -23,7 +23,7 @@ json.dumps({"key": "value"})    # '{"key": "value"}'
 json.dumps([1, 2, 3])           # '[1, 2, 3]'
 ```
 
-### `json.dumps(obj: object | None, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, default: (object) -> object | None | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True) -> str`
+### `json.dumps(obj: object | None, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, default: ((object) -> object | None) | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True) -> str`
 
 Serialize obj to a JSON formatted string with formatting options.
 
@@ -36,7 +36,7 @@ Serialize obj to a JSON formatted string with formatting options.
 - `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
 defaults. When `None`, defaults to `(", ", ": ")` in compact mode and
 `(",", ": ")`-style behavior in pretty mode (newlines drive item separation).
-- `default` ((object) -> object | None | None) -- Optional callback invoked for any value that is not natively
+- `default` (((object) -> object | None) | None) -- Optional callback invoked for any value that is not natively
 JSON-serializable. The callback should return a JSON-serializable replacement value, or
 raise a `TypeError` for unsupported types. Returning the original object will
 raise a `TypeError` to avoid infinite recursion. Named `default` for Python
@@ -50,7 +50,7 @@ float raises `ValueError` (#1296).
 
 **Returns:** A JSON string representation of *obj*.
 
-### `json.loads(s: str, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
+### `json.loads(s: str, cls: JSONDecoder | None = None, object_hook: ((dict[str, object | None]) -> object | None) | None = None) -> object | None`
 
 Deserialize a JSON string to a Python-like object.
 Returns Dict for objects, List for arrays,
@@ -60,7 +60,7 @@ string, int/long/double, bool, or None.
 
 - `s` (str) -- The JSON string to deserialize.
 - `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` ((dict[str, object | None]) -> object | None | None) -- Optional callback invoked for every decoded JSON object (dict).
+- `object_hook` (((dict[str, object | None]) -> object | None) | None) -- Optional callback invoked for every decoded JSON object (dict).
 
 **Returns:** The deserialized object.
 
@@ -84,7 +84,7 @@ json.dump({"key": "value"}, f)
 f.close()
 ```
 
-### `json.dump(obj: object | None, fp: TextFile, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, default: (object) -> object | None | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True)`
+### `json.dump(obj: object | None, fp: TextFile, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, default: ((object) -> object | None) | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True)`
 
 Serialize obj as a JSON formatted stream to a file with formatting options.
 
@@ -96,15 +96,15 @@ Serialize obj as a JSON formatted stream to a file with formatting options.
 - `sort_keys` (bool) -- Whether to sort dictionary keys.
 - `ensure_ascii` (bool) -- Whether to escape non-ASCII characters.
 - `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
-defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)`.
-- `default` ((object) -> object | None | None) -- Optional callback invoked for any value that is not natively
-JSON-serializable. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)`.
+defaults. See `dumps`.
+- `default` (((object) -> object | None) | None) -- Optional callback invoked for any value that is not natively
+JSON-serializable. See `dumps`.
 - `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance for custom encoding.
 - `allow_nan` (bool) -- When `True` (CPython's default), non-finite floats are
 emitted as `Infinity`/`-Infinity`/`NaN`; when `False` they raise
 `ValueError` (#1296).
 
-### `json.load(fp: TextFile, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
+### `json.load(fp: TextFile, cls: JSONDecoder | None = None, object_hook: ((dict[str, object | None]) -> object | None) | None = None) -> object | None`
 
 Deserialize a JSON document read from a file.
 
@@ -112,7 +112,7 @@ Deserialize a JSON document read from a file.
 
 - `fp` (TextFile) -- The file to read from.
 - `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` ((dict[str, object | None]) -> object | None | None) -- Optional callback invoked for every decoded JSON object (dict).
+- `object_hook` (((dict[str, object | None]) -> object | None) | None) -- Optional callback invoked for every decoded JSON object (dict).
 
 **Returns:** The deserialized object.
 
@@ -124,7 +124,7 @@ Deserialize a JSON string to a strongly-typed object using `System.Text.Json`.
 
 - `s` (str) -- The JSON string to deserialize.
 
-**Returns:** A `Result{T,E}` containing the deserialized value on success,
+**Returns:** A `Result[T, E]` containing the deserialized value on success,
 or a `JSONDecodeError` on failure.
 
 ### `json.load(fp: TextFile) -> Result[T, JSONDecodeError]`
@@ -135,7 +135,7 @@ Deserialize a JSON document read from a file to a strongly-typed object.
 
 - `fp` (TextFile) -- The file to read from.
 
-**Returns:** A `Result{T,E}` containing the deserialized value on success,
+**Returns:** A `Result[T, E]` containing the deserialized value on success,
 or a `JSONDecodeError` on failure.
 
 ## JSONDecodeError

@@ -128,11 +128,11 @@ Return the natural logarithm of 1+x (base e), computed in a way that is accurate
 
 Return the IEEE 754-style remainder of x with respect to y.
 
-### `math.gcd(a: long, b: long) -> long`
+### `math.gcd(a: int64, b: int64) -> int64`
 
 Return the greatest common divisor of a and b.
 
-### `math.factorial(n: int) -> long`
+### `math.factorial(n: int) -> int64`
 
 Return n factorial. Raises ValueError for negative n and OverflowError for n > 20.
 
@@ -140,19 +140,19 @@ Return n factorial. Raises ValueError for negative n and OverflowError for n > 2
 
 Determine whether two floating-point numbers are close in value.
 
-### `math.perm(n: int) -> long`
+### `math.perm(n: int) -> int64`
 
 Return the number of permutations of n items, equivalent to n factorial.
 
-### `math.perm(n: int, k: int) -> long`
+### `math.perm(n: int, k: int) -> int64`
 
 Return the number of ways to choose k items from n items without repetition and with order.
 
-### `math.lcm(a: long, b: long) -> long`
+### `math.lcm(a: int64, b: int64) -> int64`
 
 Return the least common multiple of a and b.
 
-### `math.comb(n: int, k: int) -> long`
+### `math.comb(n: int, k: int) -> int64`
 
 Return the number of ways to choose k items from n items without repetition and without order.
 
@@ -164,7 +164,7 @@ Return an accurate floating-point sum of values in the iterable.
 
 Return the product of all the elements in the iterable.
 
-### `math.prod(iterable: list[int], start: long = 1) -> long`
+### `math.prod(iterable: list[int], start: int64 = 1) -> int64`
 
 Return the product of all the elements in the iterable, starting with the given start value.
 

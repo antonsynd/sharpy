@@ -137,7 +137,7 @@ Deserialize a YAML string into a strongly-typed object.
 
 - `text` (str) -- The YAML text to parse.
 
-**Returns:** A `Result{T,E}` containing the deserialized value on success,
+**Returns:** A `Result[T, E]` containing the deserialized value on success,
 or a `YAMLError` on failure.
 
 ## CommentInfo
@@ -163,15 +163,15 @@ sequence) for YAML roundtrip preservation, mirroring ruamel.yaml's comment model
 ## CommentedMap
 
 An ordered, comment-aware mapping used for YAML roundtrip operations, analogous to
-ruamel.yaml's `CommentedMap`. Wraps a `Dict{K, V}` internally
-(composition — `Dict{K, V}` is sealed and cannot be inherited) and
+ruamel.yaml's `CommentedMap`. Wraps a `dict[K, V]` internally
+(composition — `dict[K, V]` is sealed and cannot be inherited) and
 tracks insertion order plus the comments associated with each key.
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `map` | `dict[str, object | None]` | The underlying \`Dict{K, V}\` backing this mapping, exposed for serialization access. |
+| `map` | `dict[str, object | None]` | The underlying \`dict[K, V]\` backing this mapping, exposed for serialization access. |
 | `keys` | `IReadOnlyList[str]` | The keys of this mapping, in insertion order. |
 | `count` | `int` | The number of key/value pairs in this mapping. |
 | `comments` | `IReadOnlyDictionary[str, CommentInfo]` | The comments associated with this mapping's keys, keyed by key name. |
@@ -202,15 +202,15 @@ Gets the comment associated with a key, or `None` if none exists.
 ## CommentedSeq
 
 An ordered, comment-aware sequence used for YAML roundtrip operations, analogous to
-ruamel.yaml's `CommentedSeq`. Wraps a `List{T}` internally
-(composition — `List{T}` is sealed and cannot be inherited) and tracks
+ruamel.yaml's `CommentedSeq`. Wraps a `list[T]` internally
+(composition — `list[T]` is sealed and cannot be inherited) and tracks
 the comments associated with each item by index.
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `seq` | `list[object | None]` | The underlying \`List{T}\` backing this sequence, exposed for serialization access. |
+| `seq` | `list[object | None]` | The underlying \`list[T]\` backing this sequence, exposed for serialization access. |
 | `count` | `int` | The number of items in this sequence. |
 | `comments` | `IReadOnlyDictionary[int, CommentInfo]` | The comments associated with this sequence's items, keyed by item index. |
 
@@ -255,7 +255,7 @@ carrying the problem description, surrounding context, and source location.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `line` | `long` | The 1-based line number where parsing failed, or -1 if unknown. |
-| `column` | `long` | The 1-based column number where parsing failed, or -1 if unknown. |
+| `line` | `int64` | The 1-based line number where parsing failed, or -1 if unknown. |
+| `column` | `int64` | The 1-based column number where parsing failed, or -1 if unknown. |
 | `problem` | `str | None` | A short description of the problem that caused the failure. |
 | `context` | `str | None` | Additional context describing where the problem occurred. |

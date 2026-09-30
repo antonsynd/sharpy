@@ -8,15 +8,15 @@ import struct
 
 ## Functions
 
-### `struct.pack(format: str, *values: object) -> Bytes`
+### `struct.pack(format: str, *values: object) -> bytes`
 
 Pack values according to the format string and return as Bytes.
 
-### `struct.unpack(format: str, buffer: Bytes) -> list[object]`
+### `struct.unpack(format: str, buffer: bytes) -> list[object]`
 
 Unpack binary data according to the format string.
 
-### `struct.unpack_from(format: str, buffer: Bytes, offset: int = 0) -> list[object]`
+### `struct.unpack_from(format: str, buffer: bytes, offset: int = 0) -> list[object]`
 
 Unpack binary data from a given offset according to the format string.
 
@@ -24,7 +24,7 @@ Unpack binary data from a given offset according to the format string.
 
 Calculate the size (in bytes) of the struct described by the format string.
 
-### `struct.iter_unpack(format: str, buffer: Bytes) -> Iterable[list[object]]`
+### `struct.iter_unpack(format: str, buffer: bytes) -> Iterable[list[object]]`
 
 Iteratively unpack from buffer according to the format string.
 
@@ -40,19 +40,19 @@ Corresponds to Python's struct.Struct class.
 | `format` | `str` | Gets the format string used to create this Struct instance. |
 | `size` | `int` | Gets the calculated size of the struct in bytes. |
 
-### `pack(*values: object) -> Bytes`
+### `pack(*values: object) -> bytes`
 
 Pack values according to the pre-compiled format and return as Bytes.
 
-### `unpack(buffer: Bytes) -> list[object]`
+### `unpack(buffer: bytes) -> list[object]`
 
 Unpack binary data according to the pre-compiled format.
 
-### `unpack_from(buffer: Bytes, offset: int = 0) -> list[object]`
+### `unpack_from(buffer: bytes, offset: int = 0) -> list[object]`
 
 Unpack binary data from a given offset according to the pre-compiled format.
 
-### `iter_unpack(buffer: Bytes) -> Iterable[list[object]]`
+### `iter_unpack(buffer: bytes) -> Iterable[list[object]]`
 
 Iteratively unpack from buffer according to the pre-compiled format.
 

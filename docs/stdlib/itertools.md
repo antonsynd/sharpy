@@ -104,7 +104,7 @@ Return successive r-length permutations of elements in the iterable. A negative 
 
 Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated.
 
-### `itertools.repeat(elem: T, n: uint) -> Iterable[T]`
+### `itertools.repeat(elem: T, n: uint32) -> Iterable[T]`
 
 Make an iterator that returns object over and over again, limited by n times.
 

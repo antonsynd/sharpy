@@ -32,6 +32,6 @@ Recursively move a file or directory to another location.
 
 Return the path to an executable which would be run if name were called, or None if not found.
 
-### `shutil.disk_usage(path: str) -> tuple[long, long, long]`
+### `shutil.disk_usage(path: str) -> tuple[int64, int64, int64]`
 
 Return disk usage statistics about the given path as a (total, used, free) tuple.

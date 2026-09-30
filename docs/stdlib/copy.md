@@ -9,8 +9,8 @@ import copy
 ### `copy.copy(x: object) -> object`
 
 Return a shallow copy of *x*.
-For Sharpy collections (`List{T}`, `Dict{K,V}`,
-`Set{T}`), a new collection is created with the same element
+For Sharpy collections (`list[T]`, `dict[K, V]`,
+`set[T]`), a new collection is created with the same element
 references. For value types the value is returned as-is. For other
 reference types, `MemberwiseClone` is invoked via reflection.
 

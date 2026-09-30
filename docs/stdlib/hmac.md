@@ -8,7 +8,7 @@ import hmac
 
 ## Functions
 
-### `hmac.new(key: Bytes, msg: Bytes | None = None, digestmod: str = "sha256") -> HmacObject`
+### `hmac.new(key: bytes, msg: bytes | None = None, digestmod: str = "sha256") -> HmacObject`
 
 Create a new HMAC object from a byte key.
 
@@ -16,11 +16,11 @@ Create a new HMAC object from a byte key.
 
 Create a new HMAC object from a string key.
 
-### `hmac.digest(key: Bytes, msg: Bytes, digestmod: str) -> Bytes`
+### `hmac.digest(key: bytes, msg: bytes, digestmod: str) -> bytes`
 
 Compute an HMAC digest for a byte message.
 
-### `hmac.digest(key: str, msg: str, digestmod: str) -> Bytes`
+### `hmac.digest(key: str, msg: str, digestmod: str) -> bytes`
 
 Compute an HMAC digest for a string message.
 
@@ -28,7 +28,7 @@ Compute an HMAC digest for a string message.
 
 Compare two strings in constant time.
 
-### `hmac.compare_digest(a: Bytes, b: Bytes) -> bool`
+### `hmac.compare_digest(a: bytes, b: bytes) -> bool`
 
 Compare two byte sequences in constant time.
 
@@ -47,7 +47,7 @@ Represents an incremental HMAC computation.
 
 Update the HMAC with string data.
 
-### `update(data: Bytes)`
+### `update(data: bytes)`
 
 Update the HMAC with byte data.
 

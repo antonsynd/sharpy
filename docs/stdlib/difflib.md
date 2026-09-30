@@ -10,7 +10,7 @@ import difflib
 
 ### `difflib.context_diff(a: IList[str], b: IList[str], from_file: str = "", to_file: str = "", from_file_date: str = "", to_file_date: str = "", n: int = 3, lineterm: str = "\n") -> Iterable[str]`
 
-### `difflib.ndiff(a: IList[str], b: IList[str], line_junk: (str) -> bool | None = None, char_junk: (str) -> bool | None = None) -> Iterable[str]`
+### `difflib.ndiff(a: IList[str], b: IList[str], line_junk: ((str) -> bool) | None = None, char_junk: ((str) -> bool) | None = None) -> Iterable[str]`
 
 ### `difflib.get_close_matches(word: str, possibilities: IList[str], n: int = 3, cutoff: float = 0.6) -> list[str]`
 

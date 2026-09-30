@@ -127,7 +127,35 @@ class TestMapType:
         assert map_type("System.Int32") == "int"
 
     def test_long(self):
-        assert map_type("long") == "long"
+        # The primary name the compiler prints, not the C# keyword alias (#2066).
+        assert map_type("long") == "int64"
+
+    @pytest.mark.parametrize(
+        "cs,sharpy",
+        [
+            ("sbyte", "int8"),
+            ("short", "int16"),
+            ("Int64", "int64"),
+            ("byte", "uint8"),
+            ("ushort", "uint16"),
+            ("uint", "uint32"),
+            ("ulong", "uint64"),
+            ("System.UInt64", "uint64"),
+            ("Bytes", "bytes"),
+            ("Sharpy.Bytes", "bytes"),
+            ("Bytes?", "bytes | None"),
+            ("Slice", "slice"),
+        ],
+    )
+    def test_integer_widths_and_builtin_clr_names(self, cs: str, sharpy: str):
+        assert map_type(cs) == sharpy
+
+    def test_nullable_function_type_is_grouped(self):
+        assert map_type("Func<object, object?>?") == "((object) -> object | None) | None"
+        assert map_type("Action<int>?") == "((int) -> None) | None"
+        assert map_type("Func<int, string?>") == "(int) -> str | None"
+        # A parenthesized non-function (a value tuple) is not re-grouped.
+        assert map_type("(int, string)?") == "tuple[int, str] | None"
 
     def test_double(self):
         assert map_type("double") == "float"
@@ -2126,7 +2154,8 @@ class TestDeclaringTypeAttribution:
         assert map_type("(int day, int weekday)") == "tuple[int, int]"
         assert map_type("List<(int a, int b, int size)>") == "list[tuple[int, int, int]]"
         assert map_type("(string? stdout, string? stderr)") == "tuple[str | None, str | None]"
-        assert map_type("(Bytes data, (string host, int port) addr)") == "tuple[Bytes, tuple[str, int]]"
+        # `Bytes` is the builtin `bytes` (#2066).
+        assert map_type("(Bytes data, (string host, int port) addr)") == "tuple[bytes, tuple[str, int]]"
         assert map_type("(T, int)") == "tuple[T, int]"
 
     def test_module_level_tostring_is_not_a_module_function(self, tmp_path: Path):
@@ -2213,32 +2242,127 @@ class TestDeclaringTypeAttribution:
 
 
 # ---------------------------------------------------------------------------
-# C#-spelling scan over rendered signatures (#2034)
+# C#-spelling scan over rendered signatures (#2034, #2066)
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# A rendered signature is a `### \`...\`` heading line. The scan is anchored to those lines: a
-# bare `@\w+:` over whole pages also matches prose such as urllib's `user:pass@host:8080`.
+# A rendered signature is a `### \`...\`` heading line. The scan is anchored to signature surfaces:
+# a bare `@\w+:` over whole pages also matches prose such as urllib's `user:pass@host:8080`.
 _SIGNATURE_HEADING = "### `"
 
+# The C# keyword aliases of the integer widths (#2066). `int` is absent on purpose: it is Python's
+# own spelling of int32 and the generator keeps it (see `_SHARPY_TYPE_NAMES` in the generator).
+_INT_WIDTH_ALIAS = r"(?:sbyte|byte|short|ushort|uint|ulong|long)"
+# Every C# keyword type — what a `<see cref>` parameter list is spelled in.
+_CS_TYPE_KEYWORD = (
+    r"(?:bool|byte|sbyte|short|ushort|int|uint|long|ulong|float|double|decimal|char|string|object)"
+)
+
+# Two scopes, one per axis family:
+#   TYPE rows read the signature surfaces — every `### \`...\`` heading, plus the type of each
+#   parameter bullet and properties/constants table row, read as `name: TYPE`.
+#   PROSE rows (`_PROSE_ROWS`) read every inline code span on a non-heading, non-fenced line: a
+#   `<see cref>` renders as a code span, so that is where a C# cref signature would surface.
 _CSHARP_SPELLINGS = {
+    # #2034 — the NAME and DEFAULT axes.
     "verbatim-identifier": re.compile(r"@\w+:"),
     "default!": re.compile(r"= default!"),
     "default": re.compile(r"= default\b"),
     "null-forgiving": re.compile(r"\w!(?=[,)])"),
+    # #2066 — the TYPE axis.
+    # A nullable function type must be grouped, `((object) -> object | None) | None`. Ungrouped it
+    # reads as a function returning `... | None`: visibly as a doubled `| None | None`, or as a
+    # function-typed parameter defaulting to `None` whose type is not nullable at the top level.
+    "ungrouped-nullable-callable": re.compile(
+        r"\| None \| None|\w: \((?:[^()]|\([^()]*\))*\) -> [^,()=]*= None"
+    ),
+    # A builtin type spelled as the Core CLR type behind it (`bytes` is `Sharpy.Bytes`).
+    "builtin-clr-name": re.compile(r"\b(?:Sharpy\.)?(?:Bytes|Slice)\b"),
+    # An integer width in a TYPE position (after `:`, `->`, `[`, `(`, `|`, `*` or `,`; never a
+    # parameter name, which a `:` follows) spelled as its C# keyword alias.
+    "int-width-alias": re.compile(r"(?:[:\[(|*,]\s*|-> )" + _INT_WIDTH_ALIAS + r"\b(?!:)"),
+    # #2066 — the PROSE axis: a code span that IS a C# cref member signature, `Dumps(object?, int)`.
+    # The lookahead asks for a C# keyword type, a nullable `T?` or a generic `T{` in the parameter
+    # list, so a Sharpy call written in prose (`Err(HTTPError)`, `Counter({...})`) is not one.
+    "cref-signature": re.compile(
+        r"^(?:[\w.]+\.)?[A-Z]\w*(?:\{[^{}]*\})?\((?=[^()]*(?:\b"
+        + _CS_TYPE_KEYWORD
+        + r"\b|\w\?|\w\{))[^()]*\)$"
+    ),
+    # A cref's generic-brace spelling, `List{T}` — C# XML-doc syntax, never Sharpy's.
+    "cref-generic": re.compile(r"\b[A-Za-z_]\w*\{\w+(?:, ?\w+)*\}"),
 }
+_PROSE_ROWS = frozenset({"cref-signature", "cref-generic"})
+
+# `- \`name\` (TYPE) -- description` and `| \`name\` | \`TYPE\` | description |`.
+_PARAM_BULLET_RE = re.compile(r"^- `([^`]+)` \((.*?)\)(?: -- |$)")
+_TABLE_TYPE_RE = re.compile(r"^\| `([^`]+)` \| `(.*?)` \| ")
+_CODE_SPAN_RE = re.compile(r"`([^`]+)`")
+
+
+def _scan_fragments(text: str):
+    """Yield ``(lineno, scope, fragment)`` for every surface the scan reads (see the rows above)."""
+    fenced = False
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        if line.startswith(_SIGNATURE_HEADING):
+            yield lineno, "type", line
+            continue
+        typed = _PARAM_BULLET_RE.match(line) or _TABLE_TYPE_RE.match(line)
+        if typed:
+            yield lineno, "type", f"{typed.group(1)}: {typed.group(2)}"
+        # A table cell escapes its backticks (`_escape_table_cell`); unescaped, they delimit spans.
+        for span in _CODE_SPAN_RE.findall(line.replace("\\`", "`")):
+            yield lineno, "prose", span
 
 
 def _csharp_spelling_hits(page_name: str, text: str) -> list[str]:
     hits = []
-    for lineno, line in enumerate(text.splitlines(), start=1):
-        if not line.startswith(_SIGNATURE_HEADING):
-            continue
+    for lineno, scope, fragment in _scan_fragments(text):
         for label, pattern in _CSHARP_SPELLINGS.items():
-            if pattern.search(line):
-                hits.append(f"{page_name}:{lineno} [{label}] {line}")
+            if (label in _PROSE_ROWS) != (scope == "prose"):
+                continue
+            if pattern.search(fragment):
+                hits.append(f"{page_name}:{lineno} [{label}] {fragment}")
     return hits
+
+
+def _hit_labels(hits: list[str]) -> set[str]:
+    return {h.split("[", 1)[1].split("]", 1)[0] for h in hits}
+
+
+# One fabricated page line per row, each carrying the leak its row names (#2066 positive control):
+# a row that cannot flag its own leak is vacuous.
+_FABRICATED_LEAKS = {
+    "verbatim-identifier": "### `probe.get(key: K, @default: V) -> V`",
+    "default!": "### `probe.get(key: K, default: V = default!) -> V`",
+    "default": "### `probe.get(key: K, tag: str | None = default) -> V`",
+    "null-forgiving": "### `probe.name(s: str = None!) -> str`",
+    "ungrouped-nullable-callable": (
+        "### `json.dumps(obj: object, default: (object) -> object | None | None = None) -> str`"
+    ),
+    "builtin-clr-name": "### `base64.b64encode(s: Bytes) -> Bytes`",
+    "int-width-alias": "### `struct.widen(value: short) -> ulong`",
+    "cref-signature": (
+        "defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, "
+        "Func{object, object?}?)`."
+    ),
+    "cref-generic": "Returns a `List{T}` of sub-arrays.",
+}
+
+# Each fabricated leak also has a surface form the scan must read: a parameter bullet or a
+# properties-table row (the TYPE rows' non-heading surfaces).
+_FABRICATED_SURFACE_LEAKS = {
+    "- `default` ((object) -> object | None | None) -- Optional callback.": "ungrouped-nullable-callable",
+    "| `data` | `Bytes` | The payload. |": "builtin-clr-name",
+    "- `width` (ushort) -- The width.": "int-width-alias",
+    "| `map` | `dict[str, object]` | The underlying \\`Dict{K, V}\\` backing it. |": "cref-generic",
+}
 
 
 def _render_real_stdlib(out_dir: Path) -> list[Path]:
@@ -2272,6 +2396,8 @@ def _render_synthetic(tmp_path: Path) -> str:
                 public static int Parse(string s, int @base = 10, string? tag = default) => 0;
                 /// <summary>Name.</summary>
                 public static string Name(string s = null!) => s;
+                /// <summary>Encode. See <see cref="Lookup{V}(string, V)"/> into a <see cref="List{T}"/>.</summary>
+                public static Bytes Encode(Bytes data, short width, ulong count, Func<object, object?>? hook = null, Func<int, string>? fmt = null) => data;
             }
             """
         ),
@@ -2283,7 +2409,7 @@ def _render_synthetic(tmp_path: Path) -> str:
 
 
 class TestCSharpSpellingScan:
-    """No rendered signature on a generator-owned page carries a C# spelling (#2034)."""
+    """No rendered signature on a generator-owned page carries a C# spelling (#2034, #2066)."""
 
     def test_generator_owned_pages_have_no_csharp_spellings(self, tmp_path: Path):
         pages = _render_real_stdlib(tmp_path / "stdlib")
@@ -2297,6 +2423,12 @@ class TestCSharpSpellingScan:
         assert "### `probe.lookup(key: str, default: V = None) -> V`" in page
         assert "### `probe.parse(s: str, base: int = 10, tag: str | None = None) -> int`" in page
         assert "### `probe.name(s: str = None) -> str`" in page
+        assert (
+            "### `probe.encode(data: bytes, width: int16, count: uint64, "
+            "hook: ((object) -> object | None) | None = None, "
+            "fmt: ((int) -> str) | None = None) -> bytes`"
+        ) in page
+        assert "Encode. See `lookup` into a `list[T]`." in page
         assert _csharp_spelling_hits("probe.md", page) == []
 
     def test_positive_control_scan_hits_when_the_mapping_is_disabled(
@@ -2306,6 +2438,58 @@ class TestCSharpSpellingScan:
         # the scan names must be found, or the scan is vacuous.
         monkeypatch.setattr(generator, "_sharpy_param_name", generator.pascal_to_snake)
         monkeypatch.setattr(generator, "_sharpy_default", lambda raw: raw)
+        monkeypatch.setattr(generator, "_SHARPY_TYPE_NAMES", {})
+        monkeypatch.setattr(generator, "_group_nullable_callable", lambda mapped: mapped)
+        monkeypatch.setattr(generator, "_render_cref", lambda cref: cref)
         hits = _csharp_spelling_hits("probe.md", _render_synthetic(tmp_path))
-        labels = {h.split("[", 1)[1].split("]", 1)[0] for h in hits}
-        assert labels == set(_CSHARP_SPELLINGS), hits
+        assert _hit_labels(hits) == set(_CSHARP_SPELLINGS), hits
+
+    def test_every_row_flags_its_fabricated_leak(self):
+        # Row totality is anchored to the fabricated table, not derived from `_CSHARP_SPELLINGS`.
+        assert set(_FABRICATED_LEAKS) == set(_CSHARP_SPELLINGS)
+        for label, line in _FABRICATED_LEAKS.items():
+            assert label in _hit_labels(_csharp_spelling_hits("fabricated.md", line)), (label, line)
+
+    @pytest.mark.parametrize("line,label", sorted(_FABRICATED_SURFACE_LEAKS.items()))
+    def test_bullet_and_table_surfaces_are_scanned(self, line: str, label: str):
+        assert label in _hit_labels(_csharp_spelling_hits("fabricated.md", line))
+
+    def test_sharpy_spellings_are_not_flagged(self):
+        # Negative controls: the Sharpy spellings the rows must NOT flag.
+        page = "\n".join(
+            [
+                "### `json.dumps(default: ((object) -> object | None) | None = None) -> str`",
+                "### `difflib.ndiff(a: list[str], key: (str) -> bool, n: int = 3) -> Iterable[str]`",
+                "### `long(m: decimal) -> int64`",
+                "### `builtins.divmod(x: uint64, y: uint64) -> tuple[uint64, uint64]`",
+                "### `struct.pack(fmt: str, *values: object) -> bytes`",
+                "Returns `Ok(this)` for 2xx status codes, or `Err(HTTPError)` for 4xx/5xx.",
+                "`repr()` returns `Counter({...})`, or `ChainMap({})` when empty.",
+                "See `dumps`; the result is a `list[T]` of `Fraction(1, 2)` values.",
+                "```python",
+                "x = Dumps(object?, int)",
+                "```",
+            ]
+        )
+        assert _csharp_spelling_hits("negative.md", page) == []
+
+    def test_every_cref_in_the_corpus_renders_without_csharp_signature_syntax(self):
+        # The renderer over the WHOLE corpus, not only the crefs that reach a page today (#2066):
+        # no rendered `<see cref>` keeps a C# parameter list or generic braces, except a .NET API
+        # reference (`System.`), which keeps its CLR path with the parameter list dropped.
+        crefs = sorted(
+            {
+                m.group(1)
+                for root in ("Sharpy.Core", "Sharpy.Stdlib")
+                for f in (_REPO_ROOT / "src" / root).rglob("*.cs")
+                for m in re.finditer(r'<see\s+cref="([^"]+)"', f.read_text(encoding="utf-8"))
+            }
+        )
+        assert len(crefs) > 100, "the cref corpus is unexpectedly small"
+        leaks = [
+            (c, r)
+            for c in crefs
+            for r in [generator._render_cref(c)]
+            if "(" in r or "{" in r or "<" in r
+        ]
+        assert leaks == []

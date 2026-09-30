@@ -18,11 +18,11 @@ Return the absolute value of x (double).
 
 Return the absolute value of x (int).
 
-### `operator.abs(x: long) -> long`
+### `operator.abs(x: int64) -> int64`
 
 Return the absolute value of x (long).
 
-### `operator.abs(x: short) -> short`
+### `operator.abs(x: int16) -> int16`
 
 Return the absolute value of x (short).
 
@@ -30,7 +30,7 @@ Return the absolute value of x (short).
 
 Return the absolute value of x (float).
 
-### `operator.abs(x: sbyte) -> sbyte`
+### `operator.abs(x: int8) -> int8`
 
 Return the absolute value of x (sbyte).
 
@@ -38,7 +38,7 @@ Return the absolute value of x (sbyte).
 
 Return left + right for int operands.
 
-### `operator.add(left: long, right: long) -> long`
+### `operator.add(left: int64, right: int64) -> int64`
 
 Return left + right for long operands.
 
@@ -98,7 +98,7 @@ Return True if left > right with automatic dispatch.
 
 In-place addition: left += right (int).
 
-### `operator.i_add(left: ref long, right: long)`
+### `operator.i_add(left: ref long, right: int64)`
 
 In-place addition: left += right (long).
 
@@ -118,7 +118,7 @@ In-place addition: left += right (decimal).
 
 In-place multiplication: left *= right (int).
 
-### `operator.i_mul(left: ref long, right: long)`
+### `operator.i_mul(left: ref long, right: int64)`
 
 In-place multiplication: left *= right (long).
 
@@ -170,7 +170,7 @@ Return True if left < right with automatic dispatch.
 
 Return left * right for int operands.
 
-### `operator.mul(left: long, right: long) -> long`
+### `operator.mul(left: int64, right: int64) -> int64`
 
 Return left * right for long operands.
 

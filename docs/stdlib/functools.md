@@ -25,7 +25,7 @@ zero for equality, or a positive number for greater-than.
 ### `functools.cache_info(hits: int, misses: int, max_size: int | None, current_size: int) -> record`
 
 Snapshot of cache statistics returned by
-`LruCache{TKey, TResult}.CacheInfo`.
+`LruCache[TKey, TResult].CacheInfo`.
 
 **Parameters:**
 

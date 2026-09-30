@@ -23,7 +23,7 @@ Like Python's collections.ChainMap.
 
 !!! note
     Implements `ISized` (`__len__` → `len(cm)`, the number of unique keys)
-    and `IEnumerable{T}` over the KEYS (`__iter__` → `for k in cm`,
+    and `Iterable[T]` over the KEYS (`__iter__` → `for k in cm`,
     `list(cm)`). Keys are the only generic `IEnumerable` the type exposes so
     `list(cm)` binds `Builtins.List<K>(IEnumerable<K>)`; pairs are reached
     through `Items` only (#1933). Keys/values/items iterate the maps in CPython's
@@ -71,7 +71,7 @@ Clear the first mapping.
 ### `__str__() -> str`
 
 `repr()` uses the same method. Python's `repr(cm)`/`str(cm)`: `ChainMap({...}, {...})`, one
-`Dict{K, V}` repr per underlying map in `Maps` order. An empty
+`dict[K, V]` repr per underlying map in `Maps` order. An empty
 ChainMap holds one empty map, so it prints `ChainMap({})` as CPython does.
 
 ## Deque
@@ -81,7 +81,7 @@ that supports adding and removing elements from either end.
 
 !!! note
     Implements `ISized` (`__len__` → `len(d)` and truth testing:
-    `if d:` is False for an empty deque). `IReadOnlyCollection{T}` alone gave
+    `if d:` is False for an empty deque). `IReadOnlyCollection[T]` alone gave
     `len()` a count but left every truth position refused (SPY0220), because the truth
     classifier reads the dunder table's spelling, `ISized` (#1972).
 
@@ -133,7 +133,7 @@ A Counter is a dict subclass for counting hashable objects.
 
 !!! note
     Implements `ISized` (`__len__` → `len(c)`, the number of distinct
-    elements) and `IEnumerable{T}` over the KEYS in first-seen order (`__iter__`
+    elements) and `Iterable[T]` over the KEYS in first-seen order (`__iter__`
     → `for k in c`, `list(c)`). Keys are the only generic `IEnumerable` the type
     exposes so `list(c)` binds `Builtins.List<T>(IEnumerable<T>)` (#1933).
 
@@ -152,7 +152,7 @@ Elements with equal counts keep first-seen order, as CPython's stable sort does
 ### `__str__() -> str`
 
 `repr()` uses the same method. Python's `repr(c)`/`str(c)`: `Counter({...})` in most-common order, or
-`Counter()` when empty (CPython 3.12). The braces are `Dict{K, V}`'s own
+`Counter()` when empty (CPython 3.12). The braces are `dict[K, V]`'s own
 repr, so there is one spelling of the mapping rule.
 
 ### `elements() -> Iterable[T]`
@@ -208,8 +208,8 @@ Dictionary with default values for missing keys.
 
 !!! note
     Implements `ISized` (`__len__` → `len(dd)`) and
-    `IEnumerable{T}` over the KEYS in insertion order (`__iter__` →
-    `for k in dd`, `list(dd)`), delegating both to the composed `Dict{K, V}`.
+    `Iterable[T]` over the KEYS in insertion order (`__iter__` →
+    `for k in dd`, `list(dd)`), delegating both to the composed `dict[K, V]`.
     Keys are the only generic `IEnumerable` the type exposes so `list(dd)` binds
     `Builtins.List<TKey>(IEnumerable<TKey>)` (#1933).
 
@@ -300,7 +300,7 @@ Convert to a standard .NET Dictionary.
 ### `__str__() -> str`
 
 `repr()` uses the same method. Python's `repr(dd)`/`str(dd)`: `defaultdict(<factory>, {...})`, the
-pairs rendered by the composed `Dict{K, V}`'s own repr.
+pairs rendered by the composed `dict[K, V]`'s own repr.
 
 !!! note
     Documented deviation (owner ruling R-BN, #1968): CPython prints the factory's repr —
@@ -315,7 +315,7 @@ Like Python's collections.OrderedDict.
 
 !!! note
     Implements `ISized` (`__len__` → `len(od)`) and
-    `IEnumerable{T}` over the KEYS in insertion order (`__iter__` → `for k in od`,
+    `Iterable[T]` over the KEYS in insertion order (`__iter__` → `for k in od`,
     `list(od)`). This is the ONLY generic `IEnumerable` the type exposes so that
     `list(od)` binds `Builtins.List<K>(IEnumerable<K>)` unambiguously (#1933).
 
@@ -372,4 +372,4 @@ Get the value for a key, or a default.
 
 `repr()` uses the same method. Python's `repr(od)`/`str(od)`: `OrderedDict({...})` with the pairs in
 insertion order, or `OrderedDict()` when empty (CPython 3.12). The braces are
-`Dict{K, V}`'s own repr, so there is one spelling of the mapping rule.
+`dict[K, V]`'s own repr, so there is one spelling of the mapping rule.

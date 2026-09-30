@@ -60,11 +60,11 @@ text = p.read_text()    # "Hello, world!"
 
 Write text to the file.
 
-### `read_bytes() -> list[byte]`
+### `read_bytes() -> list[uint8]`
 
 Read the file as bytes.
 
-### `write_bytes(data: list[byte])`
+### `write_bytes(data: list[uint8])`
 
 Write bytes to the file.
 

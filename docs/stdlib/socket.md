@@ -63,22 +63,22 @@ similar to Python's `socket.ntohs()`.
 Convert a 32-bit integer from network byte order to host byte order,
 similar to Python's `socket.ntohl()`.
 
-### `socket.inet_aton(ip_string: str) -> Bytes`
+### `socket.inet_aton(ip_string: str) -> bytes`
 
 Convert an IPv4 address string to a 32-bit packed binary format,
 similar to Python's `socket.inet_aton()`.
 
-### `socket.inet_ntoa(packed_ip: Bytes) -> str`
+### `socket.inet_ntoa(packed_ip: bytes) -> str`
 
 Convert a 32-bit packed binary IPv4 address to a string,
 similar to Python's `socket.inet_ntoa()`.
 
-### `socket.inet_pton(af: int, ip_string: str) -> Bytes`
+### `socket.inet_pton(af: int, ip_string: str) -> bytes`
 
 Convert an IP address string to packed binary format for the given address family,
 similar to Python's `socket.inet_pton()`.
 
-### `socket.inet_ntop(af: int, packed_ip: Bytes) -> str`
+### `socket.inet_ntop(af: int, packed_ip: bytes) -> str`
 
 Convert a packed binary IP address to string form for the given address family,
 similar to Python's `socket.inet_ntop()`.
@@ -130,23 +130,23 @@ Enable a server to accept connections with the given backlog.
 
 Accept a connection, returning (new socket, (remote_host, remote_port)).
 
-### `send(data: Sharpy.Bytes) -> int`
+### `send(data: bytes) -> int`
 
 Send data to the socket, returning the number of bytes sent.
 
-### `sendall(data: Sharpy.Bytes)`
+### `sendall(data: bytes)`
 
 Send all data to the socket, continuing until every byte is sent.
 
-### `recv(bufsize: int) -> Sharpy.Bytes`
+### `recv(bufsize: int) -> bytes`
 
 Receive up to bufsize bytes from the socket.
 
-### `sendto(data: Sharpy.Bytes, address: tuple[str, int]) -> int`
+### `sendto(data: bytes, address: tuple[str, int]) -> int`
 
 Send data to a specific (host, port) address (UDP).
 
-### `recvfrom(bufsize: int) -> tuple[Sharpy.Bytes, tuple[str, int]]`
+### `recvfrom(bufsize: int) -> tuple[bytes, tuple[str, int]]`
 
 Receive data and the sender's address (UDP).
 

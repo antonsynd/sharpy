@@ -8,7 +8,7 @@ import secrets
 
 ## Functions
 
-### `secrets.token_bytes(nbytes: int = 32) -> Bytes`
+### `secrets.token_bytes(nbytes: int = 32) -> bytes`
 
 Return a random byte string containing nbytes bytes.
 
@@ -32,6 +32,6 @@ Return a random element from a non-empty sequence.
 
 Compare two strings in constant time.
 
-### `secrets.compare_digest(a: Bytes, b: Bytes) -> bool`
+### `secrets.compare_digest(a: bytes, b: bytes) -> bool`
 
 Compare two byte sequences in constant time.

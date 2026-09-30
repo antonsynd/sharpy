@@ -42,4 +42,4 @@ Return the complex conjugate.
 ### `__format__(format_spec: str) -> str`
 
 Python's `complex.__format__` — the CLR spelling of `__format__` (#2018):
-`format(c, spec)`, rendered by `PyFormat.Apply(object, string)`.
+`format(c, spec)`, rendered by `apply`.

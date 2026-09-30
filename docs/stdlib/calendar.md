@@ -42,7 +42,7 @@ import calendar
 
 ### `calendar.prcal(year: int, w: int = 2, l: int = 1, c: int = 6, m: int = 3)`
 
-### `calendar.timegm(year: int, month: int, day: int, hour: int, minute: int, second: int) -> long`
+### `calendar.timegm(year: int, month: int, day: int, hour: int, minute: int, second: int) -> int64`
 
 ## Calendar
 

@@ -112,9 +112,6 @@ _TYPE_MAP: dict[str, str] = {
     "int": "int",
     "Int32": "int",
     "System.Int32": "int",
-    "long": "long",
-    "Int64": "long",
-    "System.Int64": "long",
     "double": "float",
     "Double": "float",
     "System.Double": "float",
@@ -130,6 +127,40 @@ _TYPE_MAP: dict[str, str] = {
     "object": "object",
     "Object": "object",
     "System.Object": "object",
+}
+
+# The Sharpy spelling of a type the C# source names by a C# keyword alias or by the Core CLR type
+# behind a builtin (#2066). Consulted before `_TYPE_MAP`.
+#
+# The integer widths render as the name the Sharpy compiler itself prints in diagnostics
+# (`SemanticType.Name`, e.g. "Type 'int16' has no member ..."), which is also the spec's primary
+# name (primitive_types.md): `int8`/`int16`/`int64`, `uint8`/`uint16`/`uint32`/`uint64`. The C#
+# keyword aliases `sbyte`/`short`/`long`/`byte`/`ushort`/`uint`/`ulong` are registered in
+# `PrimitiveCatalog` too, but only as name-map aliases "that help ease C# developers" — a stdlib
+# signature spelled in them reads as C#. `int` and `float` are NOT remapped: they are Python's own
+# spellings of int32 and float64, and the Python name is the one a stdlib page shows.
+#
+# `bytes` and `slice` are the builtin names `BuiltinRegistry` registers for `Sharpy.Bytes` and
+# `Sharpy.Slice`; the CLR names are what the C# source writes.
+_SHARPY_TYPE_NAMES: dict[str, str] = {
+    "sbyte": "int8",
+    "SByte": "int8",
+    "short": "int16",
+    "Int16": "int16",
+    "long": "int64",
+    "Int64": "int64",
+    "byte": "uint8",
+    "Byte": "uint8",
+    "ushort": "uint16",
+    "UInt16": "uint16",
+    "uint": "uint32",
+    "UInt32": "uint32",
+    "ulong": "uint64",
+    "UInt64": "uint64",
+    "Bytes": "bytes",
+    "Sharpy.Bytes": "bytes",
+    "Slice": "slice",
+    "Sharpy.Slice": "slice",
 }
 
 # Generic type mappings (prefix match)
@@ -296,9 +327,11 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     # Nullable suffix
     if cs_type.endswith("?"):
         inner = map_type(cs_type[:-1], current_module)
-        return f"{inner} | None"
+        return f"{_group_nullable_callable(inner)} | None"
 
     # Direct mapping
+    if cs_type in _SHARPY_TYPE_NAMES:
+        return _SHARPY_TYPE_NAMES[cs_type]
     if cs_type in _TYPE_MAP:
         return _TYPE_MAP[cs_type]
 
@@ -375,6 +408,27 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     return cs_type
 
 
+def _group_nullable_callable(mapped: str) -> str:
+    """Parenthesize a function type about to become nullable (#2066).
+
+    `->` binds looser than `|`, so `Func<object, object?>?` written `(object) -> object | None | None`
+    reads as a function returning `object | None | None`; the Sharpy spelling of a nullable function
+    type is grouped, `((object) -> object | None) | None` (function_types.md). Any other type is
+    returned unchanged.
+    """
+    if not mapped.startswith("("):
+        return mapped
+    depth = 0
+    for i, ch in enumerate(mapped):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return f"({mapped})" if mapped[i + 1 :].startswith(" -> ") else mapped
+    return mapped
+
+
 def _split_generic_args(s: str) -> list[str]:
     """Split generic arguments respecting nested angle brackets and tuple parens."""
     parts = []
@@ -409,12 +463,47 @@ def _split_generic_args(s: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def _render_cref(cref: str) -> str:
+    """The Sharpy spelling of a `<see cref="..."/>` target (#2066).
+
+    A cref is C# XML-doc syntax — a member signature with a C# parameter list
+    (`Dumps(object?, int, ...)`) and generic braces (`List{T}`). Rendered verbatim, that is a C#
+    signature in the middle of a Sharpy page. It renders as the Sharpy name of what it references:
+
+    - a member with a parameter list, or any `Builtins.` member -> the member's Sharpy name, the
+      name its own heading carries (`Dumps(...)` -> `dumps`, `object.ToString()` -> `__str__`,
+      `Builtins.Repr` -> `repr`); the declaring type is dropped, as a page names members bare;
+    - a .NET API member (a `System.` path) -> its CLR path with the parameter list dropped, since
+      the prose is naming the .NET API itself (`System.Diagnostics.Debugger.Break`);
+    - a type -> `map_type` (`List{T}` -> `list[T]`, `double` -> `float`); a member of a generic type
+      keeps its member name (`Optional{T}.None` -> `Optional[T].None`);
+    - anything else — a bare name, which the doc text alone cannot tell type from member — verbatim.
+    """
+    target = re.sub(r"^[A-Z]:", "", cref.strip()).replace("{", "<").replace("}", ">")
+    paren = target.find("(")
+    if paren != -1 or target.startswith("Builtins."):
+        path = target[:paren] if paren != -1 else target
+        while "<" in path:
+            path = re.sub(r"<[^<>]*>", "", path)
+        if path.startswith("System."):
+            return path
+        return pascal_to_snake(path.rsplit(".", 1)[-1])
+    member_of_generic = re.match(r"^(.*>)\.(\w+)$", target)
+    if member_of_generic:
+        return f"{map_type(member_of_generic.group(1))}.{member_of_generic.group(2)}"
+    if "<" in target or target in _TYPE_MAP or target in _SHARPY_TYPE_NAMES:
+        return map_type(target)
+    return target
+
+
 def _strip_xml_tags(text: str) -> str:
     """Convert XML doc content to plain text."""
     if not text:
         return ""
     # Replace common XML doc tags
-    text = re.sub(r"<see\s+cref=\"([^\"]+)\"\s*/>", r"`\1`", text)
+    text = re.sub(
+        r"<see\s+cref=\"([^\"]+)\"\s*/>", lambda m: f"`{_render_cref(m.group(1))}`", text
+    )
     # <see langword="true"/> — a C# KEYWORD reference, which the catch-all below eats whole. That is
     # how builtins.md came to read "Sums a sequence of booleans, counting  as 1." with the subject of
     # the sentence missing. Rendered as the Sharpy spelling, since the Python-ification pass that

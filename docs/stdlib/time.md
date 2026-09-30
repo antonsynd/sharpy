@@ -19,7 +19,7 @@ floating point number.
 t = time.time()    # e.g. 1700000000.123
 ```
 
-### `time.time_ns() -> long`
+### `time.time_ns() -> int64`
 
 Return the time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
 
@@ -50,7 +50,7 @@ duration.
 
 **Returns:** A monotonic time value in seconds.
 
-### `time.perf_counter_ns() -> long`
+### `time.perf_counter_ns() -> int64`
 
 Return the value (in nanoseconds) of a performance counter.
 
@@ -63,7 +63,7 @@ i.e. a clock that cannot go backwards.
 
 **Returns:** A monotonic time value in seconds.
 
-### `time.monotonic_ns() -> long`
+### `time.monotonic_ns() -> int64`
 
 Return the value (in nanoseconds) of a monotonic clock.
 

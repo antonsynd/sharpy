@@ -45,7 +45,7 @@ Represents an IPv4 address.
 | `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
 | `compressed` | `str` | Gets the canonical string form of the address. |
 
-### `to_int() -> long`
+### `to_int() -> int64`
 
 Returns the integer value of the address.
 
@@ -65,7 +65,7 @@ Represents an IPv4 network.
 | `prefixlen` | `int` | Gets the network prefix length. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv4 networks. |
 | `network_address` | `IPv4Address` | Gets the network address. |
-| `num_addresses` | `long` | Gets the number of addresses in the network. |
+| `num_addresses` | `int64` | Gets the number of addresses in the network. |
 | `is_loopback` | `bool` | Gets whether the network is a loopback network. |
 | `is_multicast` | `bool` | Gets whether the network is a multicast network. |
 | `is_link_local` | `bool` | Gets whether the network is link-local. |
@@ -122,7 +122,7 @@ Represents an IPv6 address.
 | `is_site_local` | `bool` | Gets whether the address is site-local. |
 | `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
 | `is_global` | `bool` | Gets whether the address is globally reachable. |
-| `packed` | `Bytes` | Gets the packed binary representation of the address. |
+| `packed` | `bytes` | Gets the packed binary representation of the address. |
 | `compressed` | `str` | Gets the compressed string form of the address. |
 
 ### `to_int() -> BigInteger`

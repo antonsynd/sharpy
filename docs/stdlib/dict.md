@@ -15,7 +15,7 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 Projects this dictionary's entries as string-keyed pairs for
 reflection-free JSON dispatch. Returns an empty sequence when
- is not `string`.
+ is not `str`.
 
 ### `fromkeys(keys: Iterable[K], value: V = None) -> dict[K, V]`
 
@@ -60,13 +60,13 @@ Used by the compiler for `key in dict` expressions.
 ### `get(key: K) -> Optional[V]`
 
 Return the value for *key* if present, otherwise
-`Optional{T}.None`.
+`Optional[T].None`.
 
 **Parameters:**
 
 - `key` (K) -- The key to look up.
 
-**Returns:** An `Optional{T}` containing the value, or None.
+**Returns:** An `Optional[T]` containing the value, or None.
 
 ```python
 d = {"a": 1}

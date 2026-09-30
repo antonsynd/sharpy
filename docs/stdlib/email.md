@@ -10,7 +10,7 @@ import email
 
 ### `email.message_from_string(text: str) -> EmailMessage`
 
-### `email.message_from_bytes(data: Bytes) -> EmailMessage`
+### `email.message_from_bytes(data: bytes) -> EmailMessage`
 
 ### `email.set_content(text: str, subtype: str = "plain")`
 
@@ -20,13 +20,13 @@ import email
 
 ### `email.is_multipart() -> bool`
 
-### `email.add_attachment(data: Bytes, maintype: str = "application", subtype: str = "octet-stream", filename: str | None = None)`
+### `email.add_attachment(data: bytes, maintype: str = "application", subtype: str = "octet-stream", filename: str | None = None)`
 
 ### `email.iter_attachments() -> list[Attachment]`
 
 ### `email.as_string() -> str`
 
-### `email.as_bytes() -> Bytes`
+### `email.as_bytes() -> bytes`
 
 ## EmailMessage
 
@@ -61,7 +61,7 @@ An email attachment with binary data.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `data` | `Bytes` |  |
+| `data` | `bytes` |  |
 | `content_type` | `str` |  |
 | `filename` | `str | None` |  |
 

@@ -21,7 +21,7 @@ abs(3)       # 3
 abs(-2.5)    # 2.5
 ```
 
-### `abs(x: long) -> long`
+### `abs(x: int64) -> int64`
 
 Return the absolute value of a number.
 Python: `abs(x)`
@@ -41,12 +41,12 @@ Python: `abs(x)`
 Return the absolute value of a number.
 Python: `abs(x)`
 
-### `abs(x: short) -> short`
+### `abs(x: int16) -> int16`
 
 Return the absolute value of a number.
 Python: `abs(x)`
 
-### `abs(x: sbyte) -> sbyte`
+### `abs(x: int8) -> int8`
 
 Return the absolute value of a number.
 Python: `abs(x)`
@@ -109,13 +109,13 @@ bin(-10)    # "-0b1010"
 bin(0)      # "0b0"
 ```
 
-### `bin(x: long) -> str`
+### `bin(x: int64) -> str`
 
 Return a binary string prefixed with "0b" for long integers.
 
 **Parameters:**
 
-- `x` (long) -- The long integer to convert
+- `x` (int64) -- The long integer to convert
 
 **Returns:** A binary string representation
 
@@ -169,73 +169,73 @@ Convert an int to bool. Returns False if zero, True otherwise.
 
 **Returns:** False if zero, True otherwise
 
-### `bool(u: uint) -> bool`
+### `bool(u: uint32) -> bool`
 
 Convert a uint to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `u` (uint) -- The uint value
+- `u` (uint32) -- The uint value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(s: short) -> bool`
+### `bool(s: int16) -> bool`
 
 Convert a short to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `s` (short) -- The short value
+- `s` (int16) -- The short value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(u: ushort) -> bool`
+### `bool(u: uint16) -> bool`
 
 Convert a ushort to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `u` (ushort) -- The ushort value
+- `u` (uint16) -- The ushort value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(l: long) -> bool`
+### `bool(l: int64) -> bool`
 
 Convert a long to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `l` (long) -- The long value
+- `l` (int64) -- The long value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(u: ulong) -> bool`
+### `bool(u: uint64) -> bool`
 
 Convert a ulong to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `u` (ulong) -- The ulong value
+- `u` (uint64) -- The ulong value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(b: byte) -> bool`
+### `bool(b: uint8) -> bool`
 
 Convert a byte to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `b` (byte) -- The byte value
+- `b` (uint8) -- The byte value
 
 **Returns:** False if zero, True otherwise
 
-### `bool(s: sbyte) -> bool`
+### `bool(s: int8) -> bool`
 
 Convert an sbyte to bool. Returns False if zero, True otherwise.
 
 **Parameters:**
 
-- `s` (sbyte) -- The sbyte value
+- `s` (int8) -- The sbyte value
 
 **Returns:** False if zero, True otherwise
 
@@ -264,7 +264,7 @@ Return the truth value of a tuple: False when empty, True otherwise.
     implement `System.Runtime.CompilerServices.ITuple` but
     neither `ICollection` nor
     `ISized`. Without this overload a tuple would bind
-    `Bool(object?)` and fall through to the truthy default.
+    `bool` and fall through to the truthy default.
     This mirrors `Len(ITuple)` and answers from the tuple's arity.
 
 ### `bool(obj: object | None) -> bool`
@@ -294,18 +294,18 @@ bool(None)     # False
 Drop into the debugger. No-op when no debugger is attached.
 
 !!! note
-    Maps to `System.Diagnostics.Debugger.Break()`.
+    Maps to `System.Diagnostics.Debugger.Break`.
     When no debugger is attached, this method does nothing.
 
-### `bytes() -> Bytes`
+### `bytes() -> bytes`
 
 Construct an empty bytes object.
 
-### `bytes(size: int) -> Bytes`
+### `bytes(size: int) -> bytes`
 
 Construct a bytes object of the given size, filled with zero bytes.
 
-### `bytes(source: Iterable[int]) -> Bytes`
+### `bytes(source: Iterable[int]) -> bytes`
 
 Construct a bytes object from an iterable of ints.
 
@@ -366,13 +366,13 @@ Convert an int to decimal.
 
 **Returns:** The value as a decimal
 
-### `decimal(l: long) -> decimal`
+### `decimal(l: int64) -> decimal`
 
 Convert a long to decimal.
 
 **Parameters:**
 
-- `l` (long) -- The long value
+- `l` (int64) -- The long value
 
 **Returns:** The value as a decimal
 
@@ -442,13 +442,13 @@ DecimalFloorDiv(-7m, -3m)  // 2
     so `Decimal(-7) // Decimal(3)` is `-2` where int `-7 // 3` is
     `-3`. That is both the spec's native-decimal policy and CPython's own decimal
     behavior (#1174), which is why this is not an overload of
-    `FloorDiv(double, double)` — it computes a different function.
+    `floor_div` — it computes a different function.
     
     
     The zero guard lives here, not in the emitted C#, so the `//` lowering splices
     each operand expression exactly once and a side-effecting divisor runs once
-    (#1216) — the same reason `FloorDiv(double, double)` and
-    `FloorMod(double, double)` own their guards.
+    (#1216) — the same reason `floor_div` and
+    `floor_mod` own their guards.
     
     
     The emitter previously used `Decimal.Divide` rather than `/` because a
@@ -484,7 +484,7 @@ DecimalMod(-7m, -3m)  // -1
     The result takes the sign of the DIVIDEND, so `Decimal(-7) % Decimal(3)` is
     `-1` where int `-7 % 3` is `2`. Decimal sits outside the floored-`%`
     allowlist by design (#1153, #1189), which is why this is not an overload of
-    `FloorMod(double, double)` — it computes a different function.
+    `floor_mod` — it computes a different function.
     
     
     A zero divisor raises `InvalidOperation`, NOT
@@ -496,7 +496,7 @@ DecimalMod(-7m, -3m)  // -1
     
     The zero guard lives here, not in the emitted C#, so the `%` lowering splices
     each operand expression exactly once and a side-effecting divisor runs once
-    (#1216) — the same reason `FloorMod(double, double)` owns its guard.
+    (#1216) — the same reason `floor_mod` owns its guard.
     
     
     The emitter previously used `Decimal.Remainder` rather than `%` because a
@@ -532,15 +532,15 @@ divmod(10, 3)    # (3, 1)
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
-### `divmod(x: long, y: long) -> tuple[long, long]`
+### `divmod(x: int64, y: int64) -> tuple[int64, int64]`
 
 Return the quotient and remainder of dividing x by y.
 Uses Python's floored division semantics where the remainder has the same sign as the divisor.
 
 **Parameters:**
 
-- `x` (long) -- The dividend
-- `y` (long) -- The divisor
+- `x` (int64) -- The dividend
+- `y` (int64) -- The divisor
 
 **Returns:** A tuple of (quotient, remainder)
 
@@ -548,18 +548,18 @@ Uses Python's floored division semantics where the remainder has the same sign a
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
-### `divmod(x: ulong, y: ulong) -> tuple[ulong, ulong]`
+### `divmod(x: uint64, y: uint64) -> tuple[uint64, uint64]`
 
 Return the quotient and remainder of dividing two `ulong` operands.
 Both operands are non-negative, so floored and truncating division coincide; the
 overload exists so `divmod(uint64, uint64)` resolves instead of being refused
 (SPY0354) or widened to `double` — the same reason
-`FloorDiv(ulong, ulong)` and `FloorMod(ulong, ulong)` exist (#1662).
+`floor_div` and `floor_mod` exist (#1662).
 
 **Parameters:**
 
-- `x` (ulong) -- The dividend
-- `y` (ulong) -- The divisor
+- `x` (uint64) -- The dividend
+- `y` (uint64) -- The divisor
 
 **Returns:** A tuple of (quotient, remainder)
 
@@ -653,7 +653,7 @@ Convert bool to double. True becomes 1.0, False becomes 0.0.
 
 Convert int to double
 
-### `double(l: long) -> float`
+### `double(l: int64) -> float`
 
 Convert long to double
 
@@ -673,27 +673,27 @@ Convert decimal to double
 
 Parse string to double
 
-### `double(b: byte) -> float`
+### `double(b: uint8) -> float`
 
 Convert byte to double
 
-### `double(sb: sbyte) -> float`
+### `double(sb: int8) -> float`
 
 Convert sbyte to double
 
-### `double(s: short) -> float`
+### `double(s: int16) -> float`
 
 Convert short to double
 
-### `double(us: ushort) -> float`
+### `double(us: uint16) -> float`
 
 Convert ushort to double
 
-### `double(u: uint) -> float`
+### `double(u: uint32) -> float`
 
 Convert uint to double
 
-### `double(ul: ulong) -> float`
+### `double(ul: uint64) -> float`
 
 Convert ulong to double
 
@@ -756,13 +756,13 @@ Convert an int to float.
 
 **Returns:** The value as a double
 
-### `float(l: long) -> float`
+### `float(l: int64) -> float`
 
 Convert a long to float.
 
 **Parameters:**
 
-- `l` (long) -- The long value
+- `l` (int64) -- The long value
 
 **Returns:** The value as a double
 
@@ -824,7 +824,7 @@ Convert bool to float32. True becomes 1.0f, False becomes 0.0f.
 
 Convert int to float32.
 
-### `float32(l: long) -> float32`
+### `float32(l: int64) -> float32`
 
 Convert long to float32.
 
@@ -844,27 +844,27 @@ Convert decimal to float32.
 
 Parse string to float32. Overflow produces Infinity, matching Python semantics.
 
-### `float32(b: byte) -> float32`
+### `float32(b: uint8) -> float32`
 
 Convert byte to float32.
 
-### `float32(sb: sbyte) -> float32`
+### `float32(sb: int8) -> float32`
 
 Convert sbyte to float32.
 
-### `float32(s: short) -> float32`
+### `float32(s: int16) -> float32`
 
 Convert short to float32.
 
-### `float32(us: ushort) -> float32`
+### `float32(us: uint16) -> float32`
 
 Convert ushort to float32.
 
-### `float32(u: uint) -> float32`
+### `float32(u: uint32) -> float32`
 
 Convert uint to float32.
 
-### `float32(ul: ulong) -> float32`
+### `float32(ul: uint64) -> float32`
 
 Convert ulong to float32.
 
@@ -893,7 +893,7 @@ FloorDiv(-1.0, 0.1)  // -10.0
     remainder instead keeps the division exact.
     
     
-    This is the quotient half of `Divmod(double, double)` — CPython
+    This is the quotient half of `divmod` — CPython
     implements `float_floor_div` by calling `float_divmod` and taking the
     first element — so the two share this one implementation and the divmod identity
     `x == (x // y) * y + (x % y)` established in #1153 holds for floats.
@@ -922,9 +922,9 @@ FloorDiv(-7, -3)  // 2
 ```
 
 !!! note
-    This is the quotient half of `Divmod(int, int)` and shares its algorithm,
+    This is the quotient half of `divmod` and shares its algorithm,
     so the divmod identity `x == (x // y) * y + (x % y)` established in #1153 holds
-    for integers against `FloorMod(int, int)`.
+    for integers against `floor_mod`.
     
     
     Integer arithmetic rather than `(int)Math.Floor((double)x / y)` (#1226): the double
@@ -937,7 +937,7 @@ FloorDiv(-7, -3)  // 2
     not fit `int`, and .NET raises `OverflowException` for it even in an unchecked
     context — division at MinValue by -1 is a hardware trap, unlike `*` and `+`,
     which wrap. So there is no "match the runtime wrap" option available. This raises
-    `OverflowError`, matching `CheckedIntPow(int, int)`'s
+    `OverflowError`, matching `checked_int_pow`'s
     "diagnose, don't saturate" contract; the behavior it replaces returned
     `int.MaxValue`, a silently wrong value. CPython, whose integers are arbitrary
     precision, computes 2147483648 exactly.
@@ -948,16 +948,16 @@ FloorDiv(-7, -3)  // 2
 - `OverflowError` -- Thrown when the quotient does not fit an `int`, which happens only for
 `int.MinValue / -1`.
 
-### `floor_div(x: long, y: long) -> long`
+### `floor_div(x: int64, y: int64) -> int64`
 
 Returns the floored quotient of *x* divided by
 *y*, computed entirely in integer arithmetic.
-See the `FloorDiv(int, int)` overload for the full contract.
+See the `floor_div` overload for the full contract.
 
 **Parameters:**
 
-- `x` (long) -- The dividend
-- `y` (long) -- The divisor
+- `x` (int64) -- The dividend
+- `y` (int64) -- The divisor
 
 **Returns:** The floored quotient
 
@@ -968,14 +968,14 @@ See the `FloorDiv(int, int)` overload for the full contract.
 **Raises:**
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
-- `OverflowError` -- Thrown when the quotient does not fit a `long`, which happens only for
+- `OverflowError` -- Thrown when the quotient does not fit a `int64`, which happens only for
 `long.MinValue / -1`.
 
 ### `floor_div(x: float32, y: float32) -> float32`
 
 Returns the floored quotient of *x* divided by
 *y*, matching CPython's `float_floor_div`.
-See the `FloorDiv(double, double)` overload.
+See the `floor_div` overload.
 
 **Parameters:**
 
@@ -988,7 +988,7 @@ See the `FloorDiv(double, double)` overload.
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
-### `floor_div(x: ulong, y: ulong) -> ulong`
+### `floor_div(x: uint64, y: uint64) -> uint64`
 
 Returns the floored quotient of two `ulong` operands.
 Both operands are non-negative, so floored division is identical to
@@ -1019,15 +1019,15 @@ FloorMod(-7, -3)  // -1
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
-### `floor_mod(x: long, y: long) -> long`
+### `floor_mod(x: int64, y: int64) -> int64`
 
 Returns the remainder of Python's floored division of *x* by
 *y*. The result takes the sign of the divisor.
 
 **Parameters:**
 
-- `x` (long) -- The dividend
-- `y` (long) -- The divisor
+- `x` (int64) -- The dividend
+- `y` (int64) -- The divisor
 
 **Returns:** The floored-division remainder (sign of the divisor)
 
@@ -1071,13 +1071,13 @@ Returns the remainder of Python's floored division of *x* by
 
 !!! note
     A zero remainder carries the divisor's sign, matching CPython's `float_mod`.
-    See the `FloorMod(double, double)` overload.
+    See the `floor_mod` overload.
 
 **Raises:**
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
-### `floor_mod(x: ulong, y: ulong) -> ulong`
+### `floor_mod(x: uint64, y: uint64) -> uint64`
 
 Returns the floored remainder of two `ulong` operands.
 Both operands are non-negative, so the floored remainder is identical
@@ -1105,7 +1105,7 @@ format(255, "x")       # "ff"
 ### `hash(obj: object) -> int`
 
 Return the hash value of an object.
-Calls `object.GetHashCode()` on the given object.
+Calls `__hash__` on the given object.
 
 **Parameters:**
 
@@ -1138,13 +1138,13 @@ hex(-42)    # "-0x2a"
 hex(0)      # "0x0"
 ```
 
-### `hex(x: long) -> str`
+### `hex(x: int64) -> str`
 
 Return a lowercase hexadecimal string prefixed with "0x" for long integers.
 
 **Parameters:**
 
-- `x` (long) -- The long integer to convert
+- `x` (int64) -- The long integer to convert
 
 **Returns:** A hexadecimal string representation
 
@@ -1212,7 +1212,7 @@ int("42")      # 42
 
 Convert int to int (identity)
 
-### `int(l: long) -> int`
+### `int(l: int64) -> int`
 
 Convert long to int
 
@@ -1232,139 +1232,139 @@ Convert decimal to int (truncates)
 
 Parse string to int
 
-### `int(b: byte) -> int`
+### `int(b: uint8) -> int`
 
 Convert byte to int
 
-### `int(sb: sbyte) -> int`
+### `int(sb: int8) -> int`
 
 Convert sbyte to int
 
-### `int(s: short) -> int`
+### `int(s: int16) -> int`
 
 Convert short to int
 
-### `int(us: ushort) -> int`
+### `int(us: uint16) -> int`
 
 Convert ushort to int
 
-### `int(u: uint) -> int`
+### `int(u: uint32) -> int`
 
 Convert uint to int
 
-### `int(ul: ulong) -> int`
+### `int(ul: uint64) -> int`
 
 Convert ulong to int
 
-### `int16(b: bool) -> short`
+### `int16(b: bool) -> int16`
 
 Convert bool to int16. True becomes 1, False becomes 0.
 
-### `int16(i: int) -> short`
+### `int16(i: int) -> int16`
 
 Convert int to int16.
 
-### `int16(l: long) -> short`
+### `int16(l: int64) -> int16`
 
 Convert long to int16.
 
-### `int16(f: float32) -> short`
+### `int16(f: float32) -> int16`
 
 Convert float to int16 (truncates toward zero).
 
-### `int16(d: float) -> short`
+### `int16(d: float) -> int16`
 
 Convert double to int16 (truncates toward zero).
 
-### `int16(m: decimal) -> short`
+### `int16(m: decimal) -> int16`
 
 Convert decimal to int16 (truncates toward zero).
 
-### `int16(s: str) -> short`
+### `int16(s: str) -> int16`
 
 Parse string to int16.
 
-### `int16(s: str, base: int) -> short`
+### `int16(s: str, base: int) -> int16`
 
 Parse string to int16 with explicit base.
 
-### `int16(b: byte) -> short`
+### `int16(b: uint8) -> int16`
 
 Convert byte to int16 (widening).
 
-### `int16(sb: sbyte) -> short`
+### `int16(sb: int8) -> int16`
 
 Convert sbyte to int16 (widening).
 
-### `int16(s: short) -> short`
+### `int16(s: int16) -> int16`
 
 Convert short to int16 (identity).
 
-### `int16(us: ushort) -> short`
+### `int16(us: uint16) -> int16`
 
 Convert ushort to int16.
 
-### `int16(u: uint) -> short`
+### `int16(u: uint32) -> int16`
 
 Convert uint to int16.
 
-### `int16(ul: ulong) -> short`
+### `int16(ul: uint64) -> int16`
 
 Convert ulong to int16.
 
-### `int8(b: bool) -> sbyte`
+### `int8(b: bool) -> int8`
 
 Convert bool to int8. True becomes 1, False becomes 0.
 
-### `int8(i: int) -> sbyte`
+### `int8(i: int) -> int8`
 
 Convert int to int8.
 
-### `int8(l: long) -> sbyte`
+### `int8(l: int64) -> int8`
 
 Convert long to int8.
 
-### `int8(f: float32) -> sbyte`
+### `int8(f: float32) -> int8`
 
 Convert float to int8 (truncates toward zero).
 
-### `int8(d: float) -> sbyte`
+### `int8(d: float) -> int8`
 
 Convert double to int8 (truncates toward zero).
 
-### `int8(m: decimal) -> sbyte`
+### `int8(m: decimal) -> int8`
 
 Convert decimal to int8 (truncates toward zero).
 
-### `int8(s: str) -> sbyte`
+### `int8(s: str) -> int8`
 
 Parse string to int8.
 
-### `int8(s: str, base: int) -> sbyte`
+### `int8(s: str, base: int) -> int8`
 
 Parse string to int8 with explicit base (2, 8, 10, or 16).
 
-### `int8(b: byte) -> sbyte`
+### `int8(b: uint8) -> int8`
 
 Convert byte to int8.
 
-### `int8(sb: sbyte) -> sbyte`
+### `int8(sb: int8) -> int8`
 
 Convert sbyte to int8 (identity).
 
-### `int8(s: short) -> sbyte`
+### `int8(s: int16) -> int8`
 
 Convert short to int8.
 
-### `int8(us: ushort) -> sbyte`
+### `int8(us: uint16) -> int8`
 
 Convert ushort to int8.
 
-### `int8(u: uint) -> sbyte`
+### `int8(u: uint32) -> int8`
 
 Convert uint to int8.
 
-### `int8(ul: ulong) -> sbyte`
+### `int8(ul: uint64) -> int8`
 
 Convert ulong to int8.
 
@@ -1473,7 +1473,7 @@ len({})           # 0
     Uses the non-generic `ICollection` interface
     which is implemented by arrays, List{T}, Dictionary{K,V}, etc.
     This avoids overload ambiguity when a type implements both
-    `ICollection{T}` and `IReadOnlyCollection{T}`.
+    `ICollection[T]` and `IReadOnlyCollection[T]`.
 
 **Raises:**
 
@@ -1500,7 +1500,7 @@ Return the length of a Sharpy list.
 !!! note
     This concrete overload disambiguates between the
     `ICollection` and `ISized`
-    overloads, both of which `Sharpy.List{T}` now satisfies (it
+    overloads, both of which `list[T]` now satisfies (it
     implements the non-generic `IList`).
     An identity conversion to the concrete parameter type is preferred
     over the interface conversions, so this overload wins.
@@ -1512,7 +1512,7 @@ Return the length of a Sharpy dictionary.
 !!! note
     This concrete overload disambiguates between the
     `ICollection` and `ISized`
-    overloads, both of which `Dict{K, V}` now satisfies (it
+    overloads, both of which `dict[K, V]` now satisfies (it
     implements the non-generic `IDictionary`).
 
 ### `len(s: str) -> int`
@@ -1551,55 +1551,55 @@ Iterates by UTF-16 code unit (Axiom 1), consistent with
 C# would otherwise bind `list(string)` to `List<char>`
 (`string` is `IEnumerable<char>`), diverging from Python (#1067).
 
-### `long(b: bool) -> long`
+### `long(b: bool) -> int64`
 
 Convert bool to long. True becomes 1, False becomes 0.
 
-### `long(i: int) -> long`
+### `long(i: int) -> int64`
 
 Convert int to long (widening)
 
-### `long(l: long) -> long`
+### `long(l: int64) -> int64`
 
 Convert long to long (identity)
 
-### `long(f: float32) -> long`
+### `long(f: float32) -> int64`
 
 Convert float to long (truncates)
 
-### `long(d: float) -> long`
+### `long(d: float) -> int64`
 
 Convert double to long (truncates)
 
-### `long(m: decimal) -> long`
+### `long(m: decimal) -> int64`
 
 Convert decimal to long (truncates)
 
-### `long(s: str) -> long`
+### `long(s: str) -> int64`
 
 Parse string to long
 
-### `long(b: byte) -> long`
+### `long(b: uint8) -> int64`
 
 Convert byte to long
 
-### `long(sb: sbyte) -> long`
+### `long(sb: int8) -> int64`
 
 Convert sbyte to long
 
-### `long(s: short) -> long`
+### `long(s: int16) -> int64`
 
 Convert short to long
 
-### `long(us: ushort) -> long`
+### `long(us: uint16) -> int64`
 
 Convert ushort to long
 
-### `long(u: uint) -> long`
+### `long(u: uint32) -> int64`
 
 Convert uint to long
 
-### `long(ul: ulong) -> long`
+### `long(ul: uint64) -> int64`
 
 Convert ulong to long
 
@@ -1835,13 +1835,13 @@ oct(-8)     # "-0o10"
 oct(0)      # "0o0"
 ```
 
-### `oct(x: long) -> str`
+### `oct(x: int64) -> str`
 
 Return an octal string prefixed with "0o" for long integers.
 
 **Parameters:**
 
-- `x` (long) -- The long integer to convert
+- `x` (int64) -- The long integer to convert
 
 **Returns:** An octal string representation
 
@@ -1933,14 +1933,14 @@ Return x raised to the power y.
 
 **Returns:** x raised to the power y
 
-### `pow(x: long, y: long) -> float`
+### `pow(x: int64, y: int64) -> float`
 
 Return x raised to the power y.
 
 **Parameters:**
 
-- `x` (long) -- The base
-- `y` (long) -- The exponent
+- `x` (int64) -- The base
+- `y` (int64) -- The exponent
 
 **Returns:** x raised to the power y
 
@@ -1958,7 +1958,7 @@ Return x raised to the power y.
 ### `checked_int_pow(x: int, y: int) -> int`
 
 Return x raised to the power y as an exact `int` using
-checked exponentiation-by-squaring. Unlike `Pow(int, int)`,
+checked exponentiation-by-squaring. Unlike `pow`,
 this does not route through floating-point and therefore never silently
 loses precision or saturates: an out-of-range result raises
 `OverflowError`, matching Python's "diagnose, don't saturate"
@@ -1989,77 +1989,77 @@ caller (#1228) — see the remarks.
 
 - `OverflowError` -- The result does not fit in an `int`.
 
-### `checked_int_pow(x: long, y: long) -> long`
+### `checked_int_pow(x: int64, y: int64) -> int64`
 
-Return x raised to the power y as an exact `long` using
-checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+Return x raised to the power y as an exact `int64` using
+checked exponentiation-by-squaring. See `checked_int_pow`
 for semantics; an out-of-range result raises `OverflowError`.
 
 **Parameters:**
 
-- `x` (long) -- The base.
-- `y` (long) -- The exponent. A negative exponent returns the truncating double-path
-value, as in `CheckedIntPow(int, int)` (#1228).
+- `x` (int64) -- The base.
+- `y` (int64) -- The exponent. A negative exponent returns the truncating double-path
+value, as in `checked_int_pow` (#1228).
 
 **Returns:** x raised to the power y.
 
 **Raises:**
 
-- `OverflowError` -- The result does not fit in a `long`.
+- `OverflowError` -- The result does not fit in a `int64`.
 
-### `checked_int_pow(x: ulong, y: ulong) -> ulong`
+### `checked_int_pow(x: uint64, y: uint64) -> uint64`
 
-Return x raised to the power y as an exact `ulong` using
-checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+Return x raised to the power y as an exact `uint64` using
+checked exponentiation-by-squaring. See `checked_int_pow`
 for semantics; an out-of-range result raises `OverflowError`.
 
 **Parameters:**
 
-- `x` (ulong) -- The base.
-- `y` (ulong) -- The exponent.
+- `x` (uint64) -- The base.
+- `y` (uint64) -- The exponent.
 
 **Returns:** x raised to the power y.
 
 **Raises:**
 
-- `OverflowError` -- The result does not fit in a `ulong`.
+- `OverflowError` -- The result does not fit in a `uint64`.
 
-### `checked_int_pow(x: ulong, y: long) -> ulong`
+### `checked_int_pow(x: uint64, y: int64) -> uint64`
 
-Return x raised to the power y as an exact `ulong`. When y is negative,
+Return x raised to the power y as an exact `uint64`. When y is negative,
 the truncating double-path value is returned, as in
-`CheckedIntPow(int, int)` (#1228). When y is non-negative, delegates to
-`CheckedIntPow(ulong, ulong)`.
+`checked_int_pow` (#1228). When y is non-negative, delegates to
+`checked_int_pow`.
 
 **Parameters:**
 
-- `x` (ulong) -- The base.
-- `y` (long) -- The exponent. A negative exponent returns the truncating double-path
+- `x` (uint64) -- The base.
+- `y` (int64) -- The exponent. A negative exponent returns the truncating double-path
 value.
 
 **Returns:** x raised to the power y.
 
 **Raises:**
 
-- `OverflowError` -- The result does not fit in a `ulong`.
+- `OverflowError` -- The result does not fit in a `uint64`.
 
-### `checked_int_pow(x: long, y: ulong) -> long`
+### `checked_int_pow(x: int64, y: uint64) -> int64`
 
-Return x raised to the power y as an exact `long` using
-checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+Return x raised to the power y as an exact `int64` using
+checked exponentiation-by-squaring. See `checked_int_pow`
 for semantics; an out-of-range result raises `OverflowError`.
 Handles negative bases correctly.
 
 **Parameters:**
 
-- `x` (long) -- The base.
-- `y` (ulong) -- The exponent.
+- `x` (int64) -- The base.
+- `y` (uint64) -- The exponent.
 
 **Returns:** x raised to the power y.
 
 **Raises:**
 
-- `OverflowError` -- The result does not fit in a `long`.
+- `OverflowError` -- The result does not fit in a `int64`.
 
 ### `contains(value: int) -> bool`
 
@@ -2128,11 +2128,11 @@ repr(None)         # "None"
 ```
 
 !!! note
-    Uses `object.ToString()` to get the representation.
+    Uses `__str__` to get the representation.
     Sharpy types (List, Set, Dict) override ToString() to produce
     Python-compatible repr output (e.g., "[1, 2, 3]", "{1, 2}", etc.).
     Strings are wrapped in single quotes, matching Python's repr().
-    Floats are formatted by `FormatFloat(double)` so whole values
+    Floats are formatted by `format_float` so whole values
     keep their trailing `.0` (e.g., `-4.0`, not `-4`).
 
 ### `reversed(sequence: Iterable[T]) -> Iterator[T]`
@@ -2151,7 +2151,7 @@ list(reversed("abc"))        # ["c", "b", "a"]
 ```
 
 !!! note
-    For `IList{T}` implementations, iterates backwards efficiently.
+    For `IList[T]` implementations, iterates backwards efficiently.
     For other sequences, materializes the sequence and reverses using LINQ.
 
 **Raises:**
@@ -2160,8 +2160,8 @@ list(reversed("abc"))        # ["c", "b", "a"]
 
 ### `reversed(reversible: IReverseEnumerable[T]) -> Iterator[T]`
 
-Return a reverse iterator for types that implement `IReverseEnumerable{T}`
-but not `IEnumerable{T}` (i.e., types with __reversed__ but no __iter__).
+Return a reverse iterator for types that implement `IReverseEnumerable[T]`
+but not `Iterable[T]` (i.e., types with __reversed__ but no __iter__).
 
 ### `round(x: float) -> int`
 
@@ -2343,24 +2343,24 @@ Convert a `char` to string without boxing.
 
 Convert an `int` to string without boxing.
 
-### `str(l: long) -> str`
+### `str(l: int64) -> str`
 
-Convert a `long` to string without boxing.
+Convert a `int64` to string without boxing.
 
-### `str(l: ulong) -> str`
+### `str(l: uint64) -> str`
 
-Convert a `ulong` to string without boxing. Without this overload C#
+Convert a `uint64` to string without boxing. Without this overload C#
 widened `uint64` to `double` and `str(uint64(7))` printed `7.0`
-(the other unsigned widths widen to `long` and were already exact).
+(the other unsigned widths widen to `int64` and were already exact).
 
 ### `str(d: float) -> str`
 
-Convert a `double` to string without boxing.
+Convert a `float` to string without boxing.
 Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `str(f: float32) -> str`
 
-Convert a `float` to string without boxing.
+Convert a `float32` to string without boxing.
 Formats with Python-compatible trailing `.0` for whole numbers.
 
 ### `format_float(value: float) -> str`
@@ -2387,11 +2387,11 @@ Whole-number values get a trailing `.0`.
 
 ### `format_float(value: float32) -> str`
 
-Format a `float` value with Python-compatible representation.
+Format a `float32` value with Python-compatible representation.
 Overload to avoid float→double widening precision issues.
 
 !!! note
-    Shares `RenderShortestRoundTrip` with `FormatFloat(double)`
+    Shares `RenderShortestRoundTrip` with `format_float`
     — the two overloads share a renderer, not a threshold.
     
     The single switches to exponential at `decpt > 9`, not the double's 16.
@@ -2434,13 +2434,13 @@ sum([])              # 0
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[long]) -> long`
+### `sum(iterable: Iterable[int64]) -> int64`
 
 Sums a sequence of longs.
 
 **Parameters:**
 
-- `iterable` (Iterable[long]) -- The sequence to sum
+- `iterable` (Iterable[int64]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2507,7 +2507,7 @@ Sums a sequence of integers with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[long], start: long) -> long`
+### `sum(iterable: Iterable[int64], start: int64) -> int64`
 
 Sums a sequence of longs with a start value.
 
@@ -2528,7 +2528,7 @@ Sums a sequence of doubles with a start value.
 
 Sums a sequence of decimals with a start value.
 
-### `sum(iterable: Iterable[sbyte]) -> int`
+### `sum(iterable: Iterable[int8]) -> int`
 
 Sums a sequence of signed bytes, accumulating into int.
 
@@ -2537,7 +2537,7 @@ Sums a sequence of signed bytes, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[byte]) -> int`
+### `sum(iterable: Iterable[uint8]) -> int`
 
 Sums a sequence of bytes, accumulating into int.
 
@@ -2546,7 +2546,7 @@ Sums a sequence of bytes, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[short]) -> int`
+### `sum(iterable: Iterable[int16]) -> int`
 
 Sums a sequence of short integers, accumulating into int.
 
@@ -2555,7 +2555,7 @@ Sums a sequence of short integers, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[ushort]) -> int`
+### `sum(iterable: Iterable[uint16]) -> int`
 
 Sums a sequence of unsigned short integers, accumulating into int.
 
@@ -2564,7 +2564,7 @@ Sums a sequence of unsigned short integers, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint]) -> uint`
+### `sum(iterable: Iterable[uint32]) -> uint32`
 
 Sums a sequence of unsigned integers.
 
@@ -2573,7 +2573,7 @@ Sums a sequence of unsigned integers.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint32`
 
-### `sum(iterable: Iterable[ulong]) -> ulong`
+### `sum(iterable: Iterable[uint64]) -> uint64`
 
 Sums a sequence of unsigned long integers.
 
@@ -2582,7 +2582,7 @@ Sums a sequence of unsigned long integers.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint64`
 
-### `sum(iterable: Iterable[sbyte], start: int) -> int`
+### `sum(iterable: Iterable[int8], start: int) -> int`
 
 Sums a sequence of signed bytes with a start value, accumulating into int.
 
@@ -2591,7 +2591,7 @@ Sums a sequence of signed bytes with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[byte], start: int) -> int`
+### `sum(iterable: Iterable[uint8], start: int) -> int`
 
 Sums a sequence of bytes with a start value, accumulating into int.
 
@@ -2600,7 +2600,7 @@ Sums a sequence of bytes with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[short], start: int) -> int`
+### `sum(iterable: Iterable[int16], start: int) -> int`
 
 Sums a sequence of short integers with a start value, accumulating into int.
 
@@ -2609,7 +2609,7 @@ Sums a sequence of short integers with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[ushort], start: int) -> int`
+### `sum(iterable: Iterable[uint16], start: int) -> int`
 
 Sums a sequence of unsigned short integers with a start value, accumulating into int.
 
@@ -2618,7 +2618,7 @@ Sums a sequence of unsigned short integers with a start value, accumulating into
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint], start: uint) -> uint`
+### `sum(iterable: Iterable[uint32], start: uint32) -> uint32`
 
 Sums a sequence of unsigned integers with a start value.
 
@@ -2627,7 +2627,7 @@ Sums a sequence of unsigned integers with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint32`
 
-### `sum(iterable: Iterable[ulong], start: ulong) -> ulong`
+### `sum(iterable: Iterable[uint64], start: uint64) -> uint64`
 
 Sums a sequence of unsigned long integers with a start value.
 
@@ -2652,19 +2652,19 @@ Sums a sequence of booleans with a double start value.
 
 Sums a sequence of booleans with a decimal start value.
 
-### `sum(iterable: Iterable[sbyte], start: float) -> float`
+### `sum(iterable: Iterable[int8], start: float) -> float`
 
 Sums a sequence of signed bytes with a double start value.
 
-### `sum(iterable: Iterable[byte], start: float) -> float`
+### `sum(iterable: Iterable[uint8], start: float) -> float`
 
 Sums a sequence of bytes with a double start value.
 
-### `sum(iterable: Iterable[short], start: float) -> float`
+### `sum(iterable: Iterable[int16], start: float) -> float`
 
 Sums a sequence of short integers with a double start value.
 
-### `sum(iterable: Iterable[ushort], start: float) -> float`
+### `sum(iterable: Iterable[uint16], start: float) -> float`
 
 Sums a sequence of unsigned short integers with a double start value.
 
@@ -2672,15 +2672,15 @@ Sums a sequence of unsigned short integers with a double start value.
 
 Sums a sequence of integers with a double start value.
 
-### `sum(iterable: Iterable[uint], start: float) -> float`
+### `sum(iterable: Iterable[uint32], start: float) -> float`
 
 Sums a sequence of unsigned integers with a double start value.
 
-### `sum(iterable: Iterable[long], start: float) -> float`
+### `sum(iterable: Iterable[int64], start: float) -> float`
 
 Sums a sequence of long integers with a double start value.
 
-### `sum(iterable: Iterable[ulong], start: float) -> float`
+### `sum(iterable: Iterable[uint64], start: float) -> float`
 
 Sums a sequence of unsigned long integers with a double start value.
 
@@ -2688,19 +2688,19 @@ Sums a sequence of unsigned long integers with a double start value.
 
 Sums a sequence of floats with a double start value.
 
-### `sum(iterable: Iterable[sbyte], start: decimal) -> decimal`
+### `sum(iterable: Iterable[int8], start: decimal) -> decimal`
 
 Sums a sequence of signed bytes with a decimal start value.
 
-### `sum(iterable: Iterable[byte], start: decimal) -> decimal`
+### `sum(iterable: Iterable[uint8], start: decimal) -> decimal`
 
 Sums a sequence of bytes with a decimal start value.
 
-### `sum(iterable: Iterable[short], start: decimal) -> decimal`
+### `sum(iterable: Iterable[int16], start: decimal) -> decimal`
 
 Sums a sequence of short integers with a decimal start value.
 
-### `sum(iterable: Iterable[ushort], start: decimal) -> decimal`
+### `sum(iterable: Iterable[uint16], start: decimal) -> decimal`
 
 Sums a sequence of unsigned short integers with a decimal start value.
 
@@ -2708,15 +2708,15 @@ Sums a sequence of unsigned short integers with a decimal start value.
 
 Sums a sequence of integers with a decimal start value.
 
-### `sum(iterable: Iterable[uint], start: decimal) -> decimal`
+### `sum(iterable: Iterable[uint32], start: decimal) -> decimal`
 
 Sums a sequence of unsigned integers with a decimal start value.
 
-### `sum(iterable: Iterable[long], start: decimal) -> decimal`
+### `sum(iterable: Iterable[int64], start: decimal) -> decimal`
 
 Sums a sequence of long integers with a decimal start value.
 
-### `sum(iterable: Iterable[ulong], start: decimal) -> decimal`
+### `sum(iterable: Iterable[uint64], start: decimal) -> decimal`
 
 Sums a sequence of unsigned long integers with a decimal start value.
 
@@ -2744,227 +2744,227 @@ type("hello")   # <class 'str'>
 type([1, 2])    # <class 'list'>
 ```
 
-### `u_int16(b: bool) -> ushort`
+### `u_int16(b: bool) -> uint16`
 
 Convert bool to uint16. True becomes 1, False becomes 0.
 
-### `u_int16(i: int) -> ushort`
+### `u_int16(i: int) -> uint16`
 
 Convert int to uint16.
 
-### `u_int16(l: long) -> ushort`
+### `u_int16(l: int64) -> uint16`
 
 Convert long to uint16.
 
-### `u_int16(f: float32) -> ushort`
+### `u_int16(f: float32) -> uint16`
 
 Convert float to uint16 (truncates toward zero).
 
-### `u_int16(d: float) -> ushort`
+### `u_int16(d: float) -> uint16`
 
 Convert double to uint16 (truncates toward zero).
 
-### `u_int16(m: decimal) -> ushort`
+### `u_int16(m: decimal) -> uint16`
 
 Convert decimal to uint16 (truncates toward zero).
 
-### `u_int16(s: str) -> ushort`
+### `u_int16(s: str) -> uint16`
 
 Parse string to uint16.
 
-### `u_int16(s: str, base: int) -> ushort`
+### `u_int16(s: str, base: int) -> uint16`
 
 Parse string to uint16 with explicit base.
 
-### `u_int16(b: byte) -> ushort`
+### `u_int16(b: uint8) -> uint16`
 
 Convert byte to uint16 (widening).
 
-### `u_int16(sb: sbyte) -> ushort`
+### `u_int16(sb: int8) -> uint16`
 
 Convert sbyte to uint16.
 
-### `u_int16(s: short) -> ushort`
+### `u_int16(s: int16) -> uint16`
 
 Convert short to uint16.
 
-### `u_int16(us: ushort) -> ushort`
+### `u_int16(us: uint16) -> uint16`
 
 Convert ushort to uint16 (identity).
 
-### `u_int16(u: uint) -> ushort`
+### `u_int16(u: uint32) -> uint16`
 
 Convert uint to uint16.
 
-### `u_int16(ul: ulong) -> ushort`
+### `u_int16(ul: uint64) -> uint16`
 
 Convert ulong to uint16.
 
-### `u_int32(b: bool) -> uint`
+### `u_int32(b: bool) -> uint32`
 
 Convert bool to uint32. True becomes 1, False becomes 0.
 
-### `u_int32(i: int) -> uint`
+### `u_int32(i: int) -> uint32`
 
 Convert int to uint32.
 
-### `u_int32(l: long) -> uint`
+### `u_int32(l: int64) -> uint32`
 
 Convert long to uint32.
 
-### `u_int32(f: float32) -> uint`
+### `u_int32(f: float32) -> uint32`
 
 Convert float to uint32 (truncates toward zero).
 
-### `u_int32(d: float) -> uint`
+### `u_int32(d: float) -> uint32`
 
 Convert double to uint32 (truncates toward zero).
 
-### `u_int32(m: decimal) -> uint`
+### `u_int32(m: decimal) -> uint32`
 
 Convert decimal to uint32 (truncates toward zero).
 
-### `u_int32(s: str) -> uint`
+### `u_int32(s: str) -> uint32`
 
 Parse string to uint32.
 
-### `u_int32(s: str, base: int) -> uint`
+### `u_int32(s: str, base: int) -> uint32`
 
 Parse string to uint32 with explicit base.
 
-### `u_int32(b: byte) -> uint`
+### `u_int32(b: uint8) -> uint32`
 
 Convert byte to uint32 (widening).
 
-### `u_int32(sb: sbyte) -> uint`
+### `u_int32(sb: int8) -> uint32`
 
 Convert sbyte to uint32.
 
-### `u_int32(s: short) -> uint`
+### `u_int32(s: int16) -> uint32`
 
 Convert short to uint32.
 
-### `u_int32(us: ushort) -> uint`
+### `u_int32(us: uint16) -> uint32`
 
 Convert ushort to uint32 (widening).
 
-### `u_int32(u: uint) -> uint`
+### `u_int32(u: uint32) -> uint32`
 
 Convert uint to uint32 (identity).
 
-### `u_int32(ul: ulong) -> uint`
+### `u_int32(ul: uint64) -> uint32`
 
 Convert ulong to uint32.
 
-### `u_int64(b: bool) -> ulong`
+### `u_int64(b: bool) -> uint64`
 
 Convert bool to uint64. True becomes 1, False becomes 0.
 
-### `u_int64(i: int) -> ulong`
+### `u_int64(i: int) -> uint64`
 
 Convert int to uint64.
 
-### `u_int64(l: long) -> ulong`
+### `u_int64(l: int64) -> uint64`
 
 Convert long to uint64.
 
-### `u_int64(f: float32) -> ulong`
+### `u_int64(f: float32) -> uint64`
 
 Convert float to uint64 (truncates toward zero).
 
-### `u_int64(d: float) -> ulong`
+### `u_int64(d: float) -> uint64`
 
 Convert double to uint64 (truncates toward zero).
 
-### `u_int64(m: decimal) -> ulong`
+### `u_int64(m: decimal) -> uint64`
 
 Convert decimal to uint64 (truncates toward zero).
 
-### `u_int64(s: str) -> ulong`
+### `u_int64(s: str) -> uint64`
 
 Parse string to uint64.
 
-### `u_int64(s: str, base: int) -> ulong`
+### `u_int64(s: str, base: int) -> uint64`
 
 Parse string to uint64 with explicit base.
 
-### `u_int64(b: byte) -> ulong`
+### `u_int64(b: uint8) -> uint64`
 
 Convert byte to uint64 (widening).
 
-### `u_int64(sb: sbyte) -> ulong`
+### `u_int64(sb: int8) -> uint64`
 
 Convert sbyte to uint64.
 
-### `u_int64(s: short) -> ulong`
+### `u_int64(s: int16) -> uint64`
 
 Convert short to uint64.
 
-### `u_int64(us: ushort) -> ulong`
+### `u_int64(us: uint16) -> uint64`
 
 Convert ushort to uint64 (widening).
 
-### `u_int64(u: uint) -> ulong`
+### `u_int64(u: uint32) -> uint64`
 
 Convert uint to uint64 (widening).
 
-### `u_int64(ul: ulong) -> ulong`
+### `u_int64(ul: uint64) -> uint64`
 
 Convert ulong to uint64 (identity).
 
-### `u_int8(b: bool) -> byte`
+### `u_int8(b: bool) -> uint8`
 
 Convert bool to uint8. True becomes 1, False becomes 0.
 
-### `u_int8(i: int) -> byte`
+### `u_int8(i: int) -> uint8`
 
 Convert int to uint8.
 
-### `u_int8(l: long) -> byte`
+### `u_int8(l: int64) -> uint8`
 
 Convert long to uint8.
 
-### `u_int8(f: float32) -> byte`
+### `u_int8(f: float32) -> uint8`
 
 Convert float to uint8 (truncates toward zero).
 
-### `u_int8(d: float) -> byte`
+### `u_int8(d: float) -> uint8`
 
 Convert double to uint8 (truncates toward zero).
 
-### `u_int8(m: decimal) -> byte`
+### `u_int8(m: decimal) -> uint8`
 
 Convert decimal to uint8 (truncates toward zero).
 
-### `u_int8(s: str) -> byte`
+### `u_int8(s: str) -> uint8`
 
 Parse string to uint8.
 
-### `u_int8(s: str, base: int) -> byte`
+### `u_int8(s: str, base: int) -> uint8`
 
 Parse string to uint8 with explicit base.
 
-### `u_int8(b: byte) -> byte`
+### `u_int8(b: uint8) -> uint8`
 
 Convert byte to uint8 (identity).
 
-### `u_int8(sb: sbyte) -> byte`
+### `u_int8(sb: int8) -> uint8`
 
 Convert sbyte to uint8.
 
-### `u_int8(s: short) -> byte`
+### `u_int8(s: int16) -> uint8`
 
 Convert short to uint8.
 
-### `u_int8(us: ushort) -> byte`
+### `u_int8(us: uint16) -> uint8`
 
 Convert ushort to uint8.
 
-### `u_int8(u: uint) -> byte`
+### `u_int8(u: uint32) -> uint8`
 
 Convert uint to uint8.
 
-### `u_int8(ul: ulong) -> byte`
+### `u_int8(ul: uint64) -> uint8`
 
 Convert ulong to uint8.
 

@@ -13,11 +13,11 @@ import fractions
 | `numerator` | `BigInteger` |  |
 | `denominator` | `BigInteger` |  |
 
-### `limit_denominator(max_denominator: long = 1000000) -> Fraction`
+### `limit_denominator(max_denominator: int64 = 1000000) -> Fraction`
 
 ### `limit_denominator(max_denominator: BigInteger) -> Fraction`
 
-### `floor_div(other: Fraction) -> long`
+### `floor_div(other: Fraction) -> int64`
 
 ### `mod(a: Fraction, b: Fraction) -> Fraction`
 
@@ -25,7 +25,7 @@ import fractions
 
 ### `abs() -> Fraction`
 
-### `to_long() -> long`
+### `to_long() -> int64`
 
 ### `to_double() -> float`
 

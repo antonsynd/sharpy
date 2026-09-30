@@ -19,11 +19,11 @@ import zipfile
 
 Adds a file from disk to the archive.
 
-### `zipfile.writestr(zinfo: ZipInfo, data: Bytes, compress_type: int | None = None)`
+### `zipfile.writestr(zinfo: ZipInfo, data: bytes, compress_type: int | None = None)`
 
 Writes bytes to the archive using the supplied ZipInfo metadata.
 
-### `zipfile.writestr(arcname: str, data: Bytes, compress_type: int | None = None)`
+### `zipfile.writestr(arcname: str, data: bytes, compress_type: int | None = None)`
 
 Writes bytes to a named archive member.
 
@@ -47,7 +47,7 @@ Creates a directory entry in the archive.
 
 Returns True if the file is a readable ZIP archive.
 
-### `zipfile.is_zipfile(data: Bytes) -> bool`
+### `zipfile.is_zipfile(data: bytes) -> bool`
 
 Returns True if the bytes contain a readable ZIP archive.
 
@@ -67,7 +67,7 @@ Returns ZipInfo objects for all archive members.
 
 Returns metadata for a named archive member.
 
-### `read(name: str) -> Bytes`
+### `read(name: str) -> bytes`
 
 Reads an archive member and returns its bytes.
 
@@ -90,14 +90,14 @@ Stores metadata describing a ZIP archive member.
 | `filename` | `str` | Gets or sets the archive member name. |
 | `date_time` | `list[int]` | Gets or sets the last modified timestamp as a date-time sequence. |
 | `compress_type` | `int` | Gets or sets the ZIP compression method. |
-| `comment` | `Bytes` | Gets or sets the per-entry comment bytes. |
-| `extra` | `Bytes` | Gets or sets the extra field bytes. |
+| `comment` | `bytes` | Gets or sets the per-entry comment bytes. |
+| `extra` | `bytes` | Gets or sets the extra field bytes. |
 | `create_system` | `int` | Gets or sets the originating system identifier. |
 | `create_version` | `int` | Gets or sets the ZIP version that created the entry. |
 | `extract_version` | `int` | Gets or sets the ZIP version needed to extract the entry. |
-| `file_size` | `long` | Gets or sets the uncompressed file size. |
-| `compress_size` | `long` | Gets or sets the compressed file size. |
-| `crc` | `long` | Gets or sets the CRC-32 checksum. |
+| `file_size` | `int64` | Gets or sets the uncompressed file size. |
+| `compress_size` | `int64` | Gets or sets the compressed file size. |
+| `crc` | `int64` | Gets or sets the CRC-32 checksum. |
 | `external_attr` | `int` | Gets or sets the external file attributes. |
 | `internal_attr` | `int` | Gets or sets the internal file attributes. |
 | `flag_bits` | `int` | Gets or sets the ZIP general purpose flag bits. |

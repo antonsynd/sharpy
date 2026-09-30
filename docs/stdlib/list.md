@@ -238,7 +238,7 @@ x = [1, 2, 3]
 
 `repr()` uses the same method. Returns a string representation of this list.
 
-### `get_slice(slice: Slice) -> list[T]`
+### `get_slice(slice: slice) -> list[T]`
 
 Returns a slice of the list.
 
@@ -246,11 +246,11 @@ Returns a slice of the list.
 
 - `ValueError` -- Thrown if slice step is zero.
 
-### `set_slice(slice: Slice, other: Iterable[T])`
+### `set_slice(slice: slice, other: Iterable[T])`
 
 Sets a slice of the list from an enumerable.
 
-### `set_slice(slice: Slice, other: list[T])`
+### `set_slice(slice: slice, other: list[T])`
 
 Sets a slice of the list from another list.
 
@@ -259,7 +259,7 @@ Sets a slice of the list from another list.
 - `TypeError` -- Thrown if *other* is null.
 - `ValueError` -- Thrown if slice step is zero or assignment size mismatches extended slice.
 
-### `delete_slice(slice: Slice)`
+### `delete_slice(slice: slice)`
 
 Deletes a slice of the list.
 

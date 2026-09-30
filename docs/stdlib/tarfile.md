@@ -55,7 +55,7 @@ Equivalent to Python's `tarfile.TarFile`.
 
 ### `getmember(name: str) -> TarInfo`
 
-### `extractfile(name: str) -> Bytes | None`
+### `extractfile(name: str) -> bytes | None`
 
 ### `extractall(path: str | None = None, members: list[TarInfo] | None = None)`
 
@@ -81,7 +81,7 @@ Equivalent to Python's `tarfile.TarInfo`.
 | Name | Type | Description |
 |------|------|-------------|
 | `name` | `str` |  |
-| `size` | `long` |  |
+| `size` | `int64` |  |
 | `mtime` | `float` |  |
 | `mode` | `int` |  |
 | `type` | `int` |  |
