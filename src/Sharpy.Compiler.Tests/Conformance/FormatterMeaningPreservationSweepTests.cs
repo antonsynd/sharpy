@@ -61,6 +61,9 @@ public class FormatterMeaningPreservationSweepTests
     internal const string EscapeDropped = "escapeDropped";
     internal const string NotIdempotent = "notIdempotent";
 
+    /// <summary>O7's bucket: its rows share the allowlist file and belong to <see cref="FormatterEmitInvarianceSweepTests"/>.</summary>
+    internal const string EmitChanged = "emitChanged";
+
     private static readonly string[] Twins = { Identity, Comment, Backtick };
     private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, EscapeDropped, NotIdempotent };
 
@@ -348,7 +351,7 @@ public class FormatterMeaningPreservationSweepTests
         foreach (var twin in Twins)
         {
             _output.WriteLine($"FMTPRES-CENSUS allowlist {twin} " + string.Join(" ",
-                Buckets.Select(b => $"{b}={rows.Count(r => r.Twin == twin && r.Bucket == b)}")));
+                Buckets.Append(EmitChanged).Select(b => $"{b}={rows.Count(r => r.Twin == twin && r.Bucket == b)}")));
         }
 
         census.Corpus.Count.Should().Be(census.SingleFile - census.Unparseable.Count);
@@ -375,7 +378,7 @@ public class FormatterMeaningPreservationSweepTests
     private static readonly Lazy<IReadOnlyList<Row>> Allowlist = new(ReadAllowlist);
 
     private static readonly Lazy<ILookup<(string Stem, string Twin), Row>> AllowlistByCell =
-        new(() => Allowlist.Value.ToLookup(row => (row.Stem, row.Twin)));
+        new(() => Allowlist.Value.Where(row => row.Bucket != EmitChanged).ToLookup(row => (row.Stem, row.Twin)));
 
     private static IReadOnlyList<Row> LoadAllowlist() => Allowlist.Value;
 
@@ -395,7 +398,7 @@ public class FormatterMeaningPreservationSweepTests
             var split = line.IndexOf(" #", StringComparison.Ordinal);
             var fields = (split < 0 ? line : line.Substring(0, split)).Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var cite = split < 0 ? "" : line.Substring(split + 2).Trim();
-            if (fields.Length != 3 || !Twins.Contains(fields[1]) || !Buckets.Contains(fields[2]))
+            if (fields.Length != 3 || !Twins.Contains(fields[1]) || !(Buckets.Contains(fields[2]) || fields[2] == EmitChanged))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' must read `stem twin bucket # #issue reason` with twin in {{{string.Join(", ", Twins)}}} and bucket in {{{string.Join(", ", Buckets)}}}.");
             if (!System.Text.RegularExpressions.Regex.IsMatch(cite, @"^#\d+\b"))
                 throw new InvalidOperationException($"Conformance/{AllowlistFileName}: '{line}' must cite an issue first (# #N reason).");

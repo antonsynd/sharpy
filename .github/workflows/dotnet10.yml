@@ -86,7 +86,7 @@ jobs:
       # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
       # The CPython execution oracle likewise earned its own step when #1202 took it from a
       # 60-program sample to the full ~565-cell pool.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential"
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test LSP
@@ -126,6 +126,15 @@ jobs:
       # generation; the sweep soft-skips (green) without a suitable python3. Split from the main
       # Compiler step above (which excludes it by name) so a sweep runs exactly once.
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential"
+    - name: Formatter emit-invariance sweep (#2062, #2068)
+      # Every executing single-file fixture P: the Roslyn-normalised C# of Format(P) equals P's with
+      # every #line directive line removed (~2,400 fixtures, compiled to C# in process, ~30 s on a
+      # dev machine). Emits .claude/tmp/formatter-emit-invariance-report.json and ratchets the
+      # `emitChanged` section of src/Sharpy.Compiler.Tests/Conformance/
+      # formatter-meaning-preservation-allowlist.txt (drain-on-fix). The parse-level twin sweep
+      # (FormatterMeaningPreservationSweepTests) runs inline in the main Compiler step; this one is
+      # excluded there by name so it runs exactly once.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
