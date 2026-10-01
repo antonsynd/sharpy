@@ -250,4 +250,162 @@ public class ParserHeaderEndTests
         prop.HeaderLineEnd.Should().Be(2);
         Comments(prop.TrailingTrivia).Should().Be("# p");
     }
+
+    // --- every header/clause colon site, one cell each ------------------------------------------
+
+    /// <summary>
+    /// One cell per <c>ExpectHeaderColon</c>/<c>ExpectClauseColon</c> call site in the parser
+    /// (P22b verify round: routing the while-else colon through a bare <c>Expect(Colon)</c> left
+    /// this class green — only for-else had a cell). (label, site, source, expected header line,
+    /// the text the header ends after — null where the clause records its line only: the
+    /// else/finally keyword lines.) Every body sits on a later line, so a site that stops recording
+    /// falls back to a different line (or 0) and its cell goes red. <c>except*</c> shares the
+    /// <c>except</c> site; <see cref="EveryHeaderColonSite_HasACell"/> pins the site count.
+    /// </summary>
+    public static TheoryData<string, string, string, int, string?> HeaderColonSites => new()
+    {
+        // ExpectHeaderColon — the colon ends the statement's header.
+        { "if", "if", "if x:\n    pass\n", 1, "if x:" },
+        { "while", "while", "while c:\n    pass\n", 1, "while c:" },
+        { "for", "for", "for k in xs:\n    pass\n", 1, "for k in xs:" },
+        { "with", "with", "with a as b:\n    pass\n", 1, "with a as b:" },
+        { "defer_block", "defer", "def f():\n    defer:\n        pass\n", 2, "defer:" },
+        { "try", "try", "try:\n    pass\nfinally:\n    pass\n", 1, "try:" },
+        { "match", "match", "match v:\n    case 1:\n        pass\n", 1, "match v:" },
+        { "match_expression", "match_expression", "y = match v:\n    case 1: 2\n    case _: 3\n", 1, "match v:" },
+        { "def", "def", "def f(a,\n      b):\n    pass\n", 2, "b):" },
+        { "class", "class", "class C:\n    x: int\n", 1, "class C:" },
+        { "struct", "struct", "struct S:\n    x: int\n", 1, "struct S:" },
+        { "interface", "interface", "interface I:\n    def f(self) -> int\n", 1, "interface I:" },
+        { "enum", "enum", "enum E:\n    A = 1\n", 1, "enum E:" },
+        { "union", "union", "union U:\n    case K(x: int)\n", 1, "union U:" },
+        { "property_function", "property", "class C:\n    property get p(self) -> int:\n        return 1\n", 2, "-> int:" },
+        { "event_function", "event", "class C:\n    event add e(self, h: H):\n        pass\n", 2, "h: H):" },
+        // ExpectClauseColon — the clause's own header; never the owning statement's.
+        { "elif", "elif", "if a:\n    pass\nelif b:\n    pass\n", 3, "elif b:" },
+        { "if_else", "if_else", "if a:\n    pass\nelse:\n    pass\n", 3, null },
+        { "while_else", "while_else", "while c:\n    pass\nelse:\n    pass\n", 3, null },
+        { "for_else", "for_else", "for k in xs:\n    pass\nelse:\n    pass\n", 3, null },
+        { "except", "except", "try:\n    pass\nexcept E as e:\n    pass\n", 3, "except E as e:" },
+        { "except_star", "except", "try:\n    pass\nexcept* E:\n    pass\n", 3, "except* E:" },
+        { "try_else", "try_else", "try:\n    pass\nexcept E:\n    pass\nelse:\n    pass\n", 5, null },
+        { "finally", "finally", "try:\n    pass\nfinally:\n    pass\n", 3, null },
+        { "case", "case", "match v:\n    case 1:\n        pass\n", 2, "case 1:" },
+        { "observer", "observer", "class C:\n    property h: int\n        after_set(o):\n            pass\n", 3, "after_set(o):" },
+    };
+
+    [Theory]
+    [MemberData(nameof(HeaderColonSites))]
+    public void EveryHeaderColonSite_RecordsWhereItsHeaderEnds(string label, string site, string source, int line, string? endsAfter)
+    {
+        var (actualLine, actualOffset) = HeaderEnd(site, Parse(source));
+
+        actualLine.Should().Be(line, $"{label}: the header line is recorded at its colon");
+        if (endsAfter != null)
+            actualOffset.Should().Be(OffsetAfter(source, endsAfter), $"{label}: the header ends just past its colon");
+    }
+
+    /// <summary>The recorded header end of the site's node in <paramref name="module"/>: (line, offset or null).</summary>
+    private static (int Line, int? Offset) HeaderEnd(string site, Module module)
+    {
+        var first = module.Body[0];
+        switch (site)
+        {
+            case "if" or "while" or "for" or "with" or "try" or "match" or "match_expression" or "def" or "class"
+                or "struct" or "interface" or "enum" or "union":
+                return (first.HeaderLineEnd, first.HeaderEndOffset);
+            case "defer":
+                {
+                    var defer = first.Should().BeOfType<FunctionDef>().Subject.Body.Single().Should().BeOfType<DeferStatement>().Subject;
+                    return (defer.HeaderLineEnd, defer.HeaderEndOffset);
+                }
+            case "property" or "event":
+                {
+                    var member = first.Should().BeOfType<ClassDef>().Subject.Body.Single();
+                    member.Should().BeOfType(site == "property" ? typeof(PropertyDef) : typeof(EventDef));
+                    return (member.HeaderLineEnd, member.HeaderEndOffset);
+                }
+            case "elif":
+                {
+                    var elif = first.Should().BeOfType<IfStatement>().Subject.ElifClauses.Single();
+                    return (elif.HeaderLineEnd, elif.HeaderEndOffset);
+                }
+            case "if_else":
+                return (first.Should().BeOfType<IfStatement>().Subject.ElseHeaderLine, null);
+            case "while_else":
+                return (first.Should().BeOfType<WhileStatement>().Subject.ElseHeaderLine, null);
+            case "for_else":
+                return (first.Should().BeOfType<ForStatement>().Subject.ElseHeaderLine, null);
+            case "except":
+                {
+                    var handler = first.Should().BeOfType<TryStatement>().Subject.Handlers.Single();
+                    return (handler.HeaderLineEnd, handler.HeaderEndOffset);
+                }
+            case "try_else":
+                return (first.Should().BeOfType<TryStatement>().Subject.ElseHeaderLine, null);
+            case "finally":
+                return (first.Should().BeOfType<TryStatement>().Subject.FinallyHeaderLine, null);
+            case "case":
+                {
+                    var arm = first.Should().BeOfType<MatchStatement>().Subject.Cases.Single();
+                    return (arm.HeaderLineEnd, arm.HeaderEndOffset);
+                }
+            case "observer":
+                {
+                    var observer = first.Should().BeOfType<ClassDef>().Subject.Body.Single()
+                        .Should().BeOfType<PropertyDef>().Subject.Observers.Single();
+                    return (observer.HeaderLineEnd, observer.HeaderEndOffset);
+                }
+            default:
+                throw new System.ArgumentOutOfRangeException(nameof(site), site, "a site without a locator");
+        }
+    }
+
+    /// <summary>
+    /// The cells cover every call site: the parser's <c>ExpectHeaderColon()</c>/<c>ExpectClauseColon()</c>
+    /// calls (the two definitions and <c>ExpectHeaderColon</c>'s own delegation excluded — that
+    /// delegation is asserted present, the scan's positive control) number exactly the distinct sites
+    /// of <see cref="HeaderColonSites"/>. A new header kind without a cell fails here.
+    /// </summary>
+    [Fact]
+    public void EveryHeaderColonSite_HasACell()
+    {
+        var parserDir = FindParserSourceDirectory();
+        var calls = 0;
+        var delegation = 0;
+        foreach (var file in System.IO.Directory.EnumerateFiles(parserDir, "Parser*.cs"))
+        {
+            foreach (var line in System.IO.File.ReadLines(file))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("private HeaderColon Expect", System.StringComparison.Ordinal))
+                    continue;
+                if (trimmed == "var colon = ExpectClauseColon();")
+                {
+                    delegation++;
+                    continue;
+                }
+                calls += System.Text.RegularExpressions.Regex.Matches(line, @"\bExpect(Header|Clause)Colon\(\)").Count;
+            }
+        }
+
+        delegation.Should().Be(1, "positive control: ExpectHeaderColon delegates to ExpectClauseColon exactly once");
+        var sites = HeaderColonSites.Select(row => (string)row[1]).Distinct().Count();
+        calls.Should().Be(sites, "every ExpectHeaderColon/ExpectClauseColon call site has a HeaderColonSites cell");
+    }
+
+    private static string FindParserSourceDirectory()
+    {
+        var current = System.AppContext.BaseDirectory;
+        while (current != null)
+        {
+            var dir = System.IO.Path.Combine(current, "src", "Sharpy.Compiler", "Parser");
+            if (System.IO.Directory.Exists(dir))
+                return dir;
+            current = System.IO.Directory.GetParent(current)?.FullName;
+        }
+
+        throw new System.InvalidOperationException("src/Sharpy.Compiler/Parser not found above the test binary");
+    }
 }
+
