@@ -31,6 +31,14 @@ public record TestFixtureInfo
     /// fixture is compiled, gating features such as <c>matmul</c> and <c>defer</c>.
     /// </summary>
     public IReadOnlyList<string> Features { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// True when the fixture carries a <c>.skip</c> sidecar (<c>main.skip</c> for multi-file).
+    /// Only discovery with <c>includeSkipped: true</c> returns such fixtures — the parse-level
+    /// sweeps (the formatter's meaning-preservation twins) read every source, including the
+    /// <c>Formatting/</c> fixtures that are skipped for execution.
+    /// </summary>
+    public bool IsSkipped { get; init; }
 }
 
 /// <summary>
@@ -51,8 +59,8 @@ public static class FixtureDiscoveryHelper
     /// (the file-based harness base class, told its root by the concrete test class, and the
     /// temp-directory discovery unit tests).
     /// </remarks>
-    public static IEnumerable<TestFixtureInfo> DiscoverFixtures(string fixturesPath)
-        => DiscoverFrom(new FixtureRoot { Path = fixturesPath });
+    public static IEnumerable<TestFixtureInfo> DiscoverFixtures(string fixturesPath, bool includeSkipped = false)
+        => DiscoverFrom(new FixtureRoot { Path = fixturesPath }, includeSkipped);
 
     /// <summary>
     /// Discovers fixtures across one or more declared corpora. Each root's fixtures carry that
@@ -60,7 +68,7 @@ public static class FixtureDiscoveryHelper
     /// <see cref="TestFixtureInfo.RootLabel"/>, so a cross-corpus sweep's keys stay unambiguous.
     /// </summary>
     public static IEnumerable<TestFixtureInfo> DiscoverFixturesFrom(params FixtureRoot[] roots)
-        => roots.SelectMany(DiscoverFrom);
+        => roots.SelectMany(root => DiscoverFrom(root, includeSkipped: false));
 
     /// <summary>
     /// Path segments that hold build output or compiler scratch rather than corpus. A multi-file
@@ -80,7 +88,7 @@ public static class FixtureDiscoveryHelper
         => Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
             Path.GetRelativePath(basePath, path));
 
-    private static IEnumerable<TestFixtureInfo> DiscoverFrom(FixtureRoot root)
+    private static IEnumerable<TestFixtureInfo> DiscoverFrom(FixtureRoot root, bool includeSkipped)
     {
         var basePath = root.Path;
 
@@ -134,7 +142,8 @@ public static class FixtureDiscoveryHelper
                 processedDirectories.Add(multiFileRoot);
 
                 var skipFile = Path.Combine(multiFileRoot, "main.skip");
-                if (File.Exists(skipFile))
+                var isSkipped = File.Exists(skipFile);
+                if (isSkipped && !includeSkipped)
                 {
                     continue;
                 }
@@ -164,12 +173,14 @@ public static class FixtureDiscoveryHelper
                     Category = category,
                     RootLabel = root.Label,
                     Features = ReadFeaturesFile(featuresFile),
+                    IsSkipped = isSkipped,
                 };
             }
             else
             {
                 var skipFile = Path.ChangeExtension(spyFile, ".skip");
-                if (File.Exists(skipFile))
+                var isSkipped = File.Exists(skipFile);
+                if (isSkipped && !includeSkipped)
                 {
                     continue;
                 }
@@ -200,6 +211,7 @@ public static class FixtureDiscoveryHelper
                     Category = category,
                     RootLabel = root.Label,
                     Features = ReadFeaturesFile(featuresFile),
+                    IsSkipped = isSkipped,
                 };
             }
         }

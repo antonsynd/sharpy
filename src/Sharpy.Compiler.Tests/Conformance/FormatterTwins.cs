@@ -360,11 +360,39 @@ public static class FormatterTwins
                     break;
             }
 
-            var tokenEnd = token.Position + token.Length;
+            var tokenEnd = TokenEnd(tokens, i, source);
             units.Add(new Unit(i, token.Position, tokenEnd, LineOf(lineStarts, token.Position), LineOf(lineStarts, Math.Max(token.Position, tokenEnd - 1)), depth, HasComment(token.TrailingTrivia)));
         }
 
         return units;
+    }
+
+    /// <summary>
+    /// Where a token's source text ends. A numeric literal's <c>Value</c> is normalised — underscores
+    /// dropped, <c>.5</c> spelled <c>0.5</c> — and carries no <c>SourceLength</c>, so its
+    /// <see cref="Token.Length"/> is not its source extent; its end is found by scanning the lexeme,
+    /// bounded by the next token.
+    /// </summary>
+    private static int TokenEnd(List<Token> tokens, int index, string source)
+    {
+        var token = tokens[index];
+        if (token.Type is not (TokenType.Integer or TokenType.Float))
+            return token.Position + token.Length;
+        var bound = index + 1 < tokens.Count && tokens[index + 1].Position > token.Position
+            ? Math.Min(source.Length, tokens[index + 1].Position)
+            : source.Length;
+        var end = token.Position;
+        while (end < bound)
+        {
+            var c = source[end];
+            var exponentSign = c is '+' or '-' && end > token.Position && source[end - 1] is 'e' or 'E'
+                && !source.AsSpan(token.Position, end - token.Position).StartsWith("0x", StringComparison.OrdinalIgnoreCase);
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '.' && !exponentSign)
+                break;
+            end++;
+        }
+
+        return end;
     }
 
     private static bool HasComment(IReadOnlyList<Trivia>? trivia)
