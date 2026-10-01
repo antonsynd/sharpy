@@ -68,6 +68,35 @@ public class FormatterCommentFidelityMatrixTests : IntegrationTestBase
         => AssertFormatsTo("eof.not_laid_out", "def main():\n    print(1)\n# end of file\n",
             "def main():\n    print(1)\n\n\n# end of file\n", "1");
 
+    /// <summary>
+    /// P22b verify-round R1: a comment after a token the unparser RE-SPELLS keeps its line — a type
+    /// shorthand is written canonically (<c>{int}</c> → <c>set[int]</c>) and a partial-application
+    /// placeholder as the lambda the parser lowered it to. At 99c3a5ae8 both were declined (SPY0912
+    /// "would move comment '# c'") though the base formatted them. The expected text pins today's
+    /// spelling of the placeholder lambda; writing <c>_</c> back is #2169's change to this cell.
+    /// </summary>
+    public static TheoryData<string, string, string, string> RespelledCells => new()
+    {
+        {
+            "respelled.placeholder",
+            "def add(a: int, b: int) -> int:\n    return a + b\n\ndef main():\n    g = add(5, _)  # c\n    print(g(3))\n",
+            "def add(a: int, b: int) -> int:\n    return a + b\n\n\ndef main():\n    g = lambda __placeholder_0: add(5, __placeholder_0)  # c\n    print(g(3))\n",
+            "8"
+        },
+        {
+            "respelled.set_shorthand",
+            "def main():\n    x: {int}  # c\n    x = {1, 2}\n    print(len(x))\n",
+            "def main():\n    x: set[int]  # c\n    x = {1, 2}\n    print(len(x))\n",
+            "2"
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(RespelledCells))]
+    [Trait("Category", "Conformance")]
+    public void Format_KeepsACommentAfterARespelledToken_RunsIdentically(string label, string program, string expected, string pinned)
+        => AssertFormatsTo(label, program, expected, pinned);
+
     private void AssertFormatsTo(string label, string program, string expected, string pinned)
     {
         var r0 = CompileAndExecute(program, executionTimeoutMs: 15_000);

@@ -362,4 +362,37 @@ public class FormatterServiceTests
         result.FormattedText.Should().Contain("print(f(`class`=7))");
         Net(source, result.FormattedText).Should().BeNull();
     }
+
+    /// <summary>
+    /// P22b verify-round R1: the comment-placement check over-refused a comment after a token the
+    /// unparser legitimately re-spells — a type shorthand (<c>{int}</c> → <c>set[int]</c>, …) or a
+    /// partial-application placeholder (<c>add(5, _)</c> → the lambda the parser lowered it to). At
+    /// 99c3a5ae8 each cell was declined with "would move comment '# c'". Each must format, pass the
+    /// net, and keep the comment on the line of the statement it trails (or own-line before the next).
+    /// </summary>
+    [Theory]
+    [InlineData("def add(a: int, b: int) -> int:\n    return a + b\n\n\ndef main():\n    g = add(5, _)  # c\n    print(g(3))\n", "g = ")]
+    [InlineData("def f(x: int, y: int) -> int:\n    return x * 10 + y\n\n\ndef main():\n    fix_x: (int) -> int = f(x=5, y=_)  # c\n    print(fix_x(7))\n", "fix_x: ")]
+    [InlineData("def f(x: int) -> int:\n    return x\n\n\ndef main():\n    x = 5 |> f(_)  # c\n    print(x)\n", "x = ")]
+    [InlineData("def main():\n    x: {int}  # c\n    x = {1}\n    print(x)\n", "x: ")]
+    [InlineData("def main():\n    d: {str: int}  # c\n    t: (int, int)\n    print(1)\n", "d: ")]
+    [InlineData("def main():\n    t: (int, int)  # c\n    print(1)\n", "t: ")]
+    [InlineData("def main():\n    f: (int) -> int  # c\n    print(1)\n", "f: ")]
+    [InlineData("def main():\n    counter: () -> int  # c\n    print(1)\n", "counter: ")]
+    [InlineData("class C:\n    x: {int}  # c\n    y: int\n", "x: ")]
+    [InlineData("def main():\n    x: {int}\n    # c\n    print(1)\n", "# c")]
+    [InlineData("def f() -> ():  # c\n    return ()\n", "def f() -> ")]
+    [InlineData("def main():\n    v: tuple[()] = ()  # c\n    print(len(v))\n", "v: ")]
+    [InlineData("def main():  # c\n    print(_)\n", "def main():")]
+    public void Format_KeepsACommentAfterARespelledToken_TheNetAccepts(string source, string commentLinePrefix)
+    {
+        var result = FormatterService.Format(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        Net(source, result.FormattedText).Should().BeNull();
+        var commentLine = result.FormattedText.Split('\n').Single(l => l.Contains("# c"));
+        commentLine.TrimStart().Should().StartWith(commentLinePrefix);
+        commentLine.Should().EndWith("# c");
+    }
 }
+

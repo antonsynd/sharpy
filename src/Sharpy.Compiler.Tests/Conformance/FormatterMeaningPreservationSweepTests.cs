@@ -23,19 +23,22 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// Multi-file fixtures and sources that do not parse are excluded and counted by
 /// <see cref="Census_CorpusExclusionsAndInjectionKindsAreCountedAndStated"/>.</para>
 ///
-/// <para>Each fixture P yields three twins Q (<see cref="FormatterTwins"/>): <c>identity</c> (T0,
-/// Q = P), <c>comment</c> (T1, a numbered <c># cN</c> at every comment anchor kind) and
-/// <c>backtick</c> (T2, every unescaped identifier escaped). Instrument checks come first and fail
-/// as bucket <c>instrument</c>, never as a skip: T1 and T2 parse clean, T1 parses to P's AST, and the
-/// injected count is reached (<c>comments(T1) == comments(P) + injected</c>, at least the end-of-file
-/// comment; <c>escapes(T2) == escapes(P) + wrapped</c>). Then, with <c>F = Format(Q)</c>:
+/// <para>Each fixture P yields four twins Q (<see cref="FormatterTwins"/>): <c>identity</c> (T0,
+/// Q = P), <c>comment</c> (T1, a numbered <c># cN</c> at every comment anchor kind),
+/// <c>backtick</c> (T2, every unescaped identifier escaped) and <c>trailing</c> (T3, a <c>  # cN</c>
+/// after the last code token of every line ending at bracket depth 0 and nothing else — T1's
+/// bracket comments write every bracketed statement verbatim, so only T3 meets a trailing comment
+/// with every spelling the unparser rewrites). Instrument checks come first and fail as bucket
+/// <c>instrument</c>, never as a skip: T1, T2 and T3 parse clean, T1 and T3 parse to P's AST, and the
+/// injected count is reached (<c>comments(T1|T3) == comments(P) + injected</c>, T1 at least the
+/// end-of-file comment; <c>escapes(T2) == escapes(P) + wrapped</c>). Then, with <c>F = Format(Q)</c>:
 /// <list type="bullet">
 /// <item>O1 <c>refused</c> — <c>Format(Q)</c> reports a diagnostic;</item>
 /// <item>O2 <c>unparseable</c> — F does not re-lex/re-parse clean;</item>
 /// <item>O3 <c>astChanged</c> — <see cref="AstNormalizer"/> + <see cref="StructuralEqualityComparer"/> inequality of Q and F;</item>
 /// <item>O4 <c>commentDropped</c> — the comment SEQUENCE (source order, text) differs: dropped, added or reordered;</item>
 /// <item>O4b <c>commentMoved</c> — same program, same comment sequence, but a comment's attachment
-/// changed (<c>CommentAnchors</c>: inline or own-line, neighbouring code tokens, block depth — the
+/// changed (<c>CommentAnchors</c>: inline or own-line, neighbouring code tokens, block and bracket depth — the
 /// same rule the SPY0912 net applies, after its structural check);</item>
 /// <item>O5 <c>escapeDropped</c> — the multiset of backtick-escaped identifier values differs;</item>
 /// <item>O6 <c>notIdempotent</c> — <c>Format(F) != F</c>.</item>
@@ -62,6 +65,7 @@ public class FormatterMeaningPreservationSweepTests
     internal const string Identity = "identity";
     internal const string Comment = "comment";
     internal const string Backtick = "backtick";
+    internal const string Trailing = "trailing";
 
     internal const string Instrument = "instrument";
     internal const string Refused = "refused";
@@ -80,7 +84,7 @@ public class FormatterMeaningPreservationSweepTests
     /// <summary>O7's bucket: its rows share the allowlist file and belong to <see cref="FormatterEmitInvarianceSweepTests"/>.</summary>
     internal const string EmitChanged = "emitChanged";
 
-    private static readonly string[] Twins = { Identity, Comment, Backtick };
+    private static readonly string[] Twins = { Identity, Comment, Backtick, Trailing };
     private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, CommentMoved, EscapeDropped, NotIdempotent, NetOverRefuses, NetMissed };
 
     private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
@@ -138,6 +142,10 @@ public class FormatterMeaningPreservationSweepTests
     [Theory]
     [MemberData(nameof(CorpusNames))]
     public void BacktickInjected_PreservesMeaning(string stem) => Sweep(stem, Backtick);
+
+    [Theory]
+    [MemberData(nameof(CorpusNames))]
+    public void LineTrailingInjected_PreservesMeaning(string stem) => Sweep(stem, Trailing);
 
     private void Sweep(string stem, string twin)
     {
@@ -210,18 +218,18 @@ public class FormatterMeaningPreservationSweepTests
             case Identity:
                 q = source;
                 break;
-            case Comment:
+            case Comment or Trailing:
                 {
-                    (q, var counts) = FormatterTwins.CommentInjected(source);
+                    (q, var counts) = twin == Comment ? FormatterTwins.CommentInjected(source) : FormatterTwins.LineTrailingInjected(source);
                     var twinObs = Observe(q);
-                    if (counts[InjectedCommentKind.EndOfFile] != 1)
+                    if (twin == Comment && counts[InjectedCommentKind.EndOfFile] != 1)
                         failures[Instrument] = $"the injector did not run (counts: {counts})";
                     else if (twinObs.HasErrors)
-                        failures[Instrument] = $"the comment twin does not parse: {twinObs.FirstError}";
+                        failures[Instrument] = $"the {twin} twin does not parse: {twinObs.FirstError}";
                     else if (!SameAst(original.Module!, twinObs.Module!))
-                        failures[Instrument] = "the comment twin parses to a different AST";
+                        failures[Instrument] = $"the {twin} twin parses to a different AST";
                     else if (twinObs.Comments.Count != original.Comments.Count + counts.Total)
-                        failures[Instrument] = $"the comment twin has {twinObs.Comments.Count} comments, expected {original.Comments.Count} + {counts.Total} injected";
+                        failures[Instrument] = $"the {twin} twin has {twinObs.Comments.Count} comments, expected {original.Comments.Count} + {counts.Total} injected";
                     break;
                 }
 
@@ -409,6 +417,8 @@ public class FormatterMeaningPreservationSweepTests
 
         var totals = new int[InjectedCommentCounts.Kinds.Count];
         var identifiers = 0;
+        var trailing = 0;
+        var trailingNone = 0;
         var skipped = FormatterTwins.ContextualKeywordsReadAsKeywords.ToDictionary(k => k, _ => 0, StringComparer.Ordinal);
         foreach (var fixture in census.Corpus.Values)
         {
@@ -416,12 +426,16 @@ public class FormatterMeaningPreservationSweepTests
             foreach (var kind in InjectedCommentCounts.Kinds)
                 totals[(int)kind] += counts[kind];
             identifiers += FormatterTwins.BacktickInjected(fixture.Source).Count;
+            var (_, trailingCounts) = FormatterTwins.LineTrailingInjected(fixture.Source);
+            trailing += trailingCounts.Total;
+            trailingNone += trailingCounts.Total == 0 ? 1 : 0;
             foreach (var (value, n) in FormatterTwins.ContextualKeywordSkips(fixture.Source))
                 skipped[value] += n;
         }
 
         _output.WriteLine("FMTPRES-CENSUS T1 " + string.Join(" ", InjectedCommentCounts.Kinds.Select(k => $"{k}={totals[(int)k]}")));
         _output.WriteLine($"FMTPRES-CENSUS T2 identifiers={identifiers}");
+        _output.WriteLine($"FMTPRES-CENSUS T3 LineTrailing={trailing} (fixtures with none={trailingNone})");
         _output.WriteLine("FMTPRES-CENSUS T2 skipped-contextual-keywords(#2166) "
             + string.Join(" ", skipped.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
 
@@ -438,6 +452,8 @@ public class FormatterMeaningPreservationSweepTests
         foreach (var kind in InjectedCommentCounts.Kinds)
             totals[(int)kind].Should().BeGreaterThanOrEqualTo(1, $"injection kind {kind} must fire somewhere in the corpus");
         identifiers.Should().BeGreaterThanOrEqualTo(1);
+        trailing.Should().BeGreaterThanOrEqualTo(totals[(int)InjectedCommentKind.LineTrailing],
+            "T3 injects the line-trailing kind alone, so every slot T1 gives it is T3's too (plus the clause-colon slots T1 takes)");
         foreach (var (value, n) in skipped)
             n.Should().BeGreaterThan(0, $"T2 skips the #2166 contextual keyword '{value}': the corpus must contain one, else the skip set has a stale member");
         rows.Should().OnlyContain(r => census.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");

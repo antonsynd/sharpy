@@ -170,7 +170,31 @@ public static class FormatterTwins
     /// a literal, or before a backslash continuation.
     /// </summary>
     public static (string Text, InjectedCommentCounts Injected) CommentInjected(string source)
+        => Inject(source, kinds: null);
+
+    /// <summary>The comment kinds of <see cref="LineTrailingInjected"/> (T3).</summary>
+    public static readonly IReadOnlySet<InjectedCommentKind> LineTrailingKinds = new HashSet<InjectedCommentKind> { InjectedCommentKind.LineTrailing };
+
+    /// <summary>
+    /// T3: the source with a numbered <c>  # cN</c> after the last code token of every line that ends
+    /// at bracket depth 0 outside a literal — the trailing half of the line-total kind ALONE, with no
+    /// bracket, clause, block-end or own-line injection. T1 puts a comment inside every bracket,
+    /// which writes every bracketed statement verbatim from source (P22b Decision 5); T3 leaves the
+    /// statement to the unparser, so a trailing comment meets every spelling the unparser rewrites
+    /// (<c>{int}</c> → <c>set[int]</c>, <c>add(5, _)</c> → <c>lambda __placeholder_0: …</c>). Lines
+    /// ending inside brackets get no comment for the same reason.
+    /// </summary>
+    public static (string Text, InjectedCommentCounts Injected) LineTrailingInjected(string source)
+        => Inject(source, LineTrailingKinds);
+
+    /// <summary>
+    /// Injects the comment kinds in <paramref name="kinds"/> (every kind when null). A slot is
+    /// "taken" — the line-total kind leaves it alone — only by a kind that is injected.
+    /// </summary>
+    private static (string Text, InjectedCommentCounts Injected) Inject(string source, IReadOnlySet<InjectedCommentKind>? kinds)
     {
+        bool Included(InjectedCommentKind kind) => kinds == null || kinds.Contains(kind);
+
         var tokens = Lex(source, out _);
         var nl = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lineStarts = LineStarts(source);
@@ -209,7 +233,8 @@ public static class FormatterTwins
                 case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
                     depth++;
                     insertions.Add(new Insertion(token.Position + token.Length, 0, InjectedCommentKind.OpenBracket, false, ""));
-                    trailingTaken.Add(i);
+                    if (Included(InjectedCommentKind.OpenBracket))
+                        trailingTaken.Add(i);
                     break;
 
                 case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
@@ -219,7 +244,8 @@ public static class FormatterTwins
 
                 case TokenType.Comma when depth >= 1:
                     insertions.Add(new Insertion(token.Position + token.Length, 0, InjectedCommentKind.Comma, false, ""));
-                    trailingTaken.Add(i);
+                    if (Included(InjectedCommentKind.Comma))
+                        trailingTaken.Add(i);
                     break;
 
                 case TokenType.Elif or TokenType.Else or TokenType.Except or TokenType.Finally or TokenType.Case
@@ -232,7 +258,8 @@ public static class FormatterTwins
                         if (colon < 0 || ContinuesBackslash(source, lineStarts, literalLines, line))
                             break;
                         insertions.Add(new Insertion(lineStarts[line - 1], 2, InjectedCommentKind.BeforeClauseKeyword, true, LeadingWhitespace(source, lineStarts, token)));
-                        ownLineTaken.Add(line);
+                        if (Included(InjectedCommentKind.BeforeClauseKeyword))
+                            ownLineTaken.Add(line);
 
                         if (colon + 2 < tokens.Count
                             && tokens[colon + 1].Type == TokenType.Newline
@@ -240,7 +267,8 @@ public static class FormatterTwins
                             && !unitByToken[colon].HasTrailingComment)
                         {
                             insertions.Add(new Insertion(tokens[colon].Position + tokens[colon].Length, 0, InjectedCommentKind.ClauseHeaderColon, false, ""));
-                            trailingTaken.Add(colon);
+                            if (Included(InjectedCommentKind.ClauseHeaderColon))
+                                trailingTaken.Add(colon);
                         }
 
                         break;
@@ -305,7 +333,7 @@ public static class FormatterTwins
 
         insertions.Add(new Insertion(source.Length, 4, InjectedCommentKind.EndOfFile, true, ""));
 
-        return Build(source, nl, insertions);
+        return Build(source, nl, insertions.Where(insertion => Included(insertion.Kind)).ToList());
     }
 
     private static (string, InjectedCommentCounts) Build(string source, string nl, List<Insertion> insertions)

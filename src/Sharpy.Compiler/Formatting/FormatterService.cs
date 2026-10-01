@@ -142,7 +142,7 @@ public static class FormatterService
     /// <item>its comment SEQUENCE differs (a comment dropped, added or reordered — comment text is
     /// compared without trailing spaces/tabs, which the formatter strips by design);</item>
     /// <item>a comment keeps its place in the sequence but changes its attachment
-    /// (<see cref="CommentAnchors"/>: inline or own-line, neighbouring code tokens, block depth);</item>
+    /// (<see cref="CommentAnchors"/>: inline or own-line, neighbouring code tokens, block and bracket depth);</item>
     /// <item>the multiset of backtick-escaped identifier tokens differs — token-based on purpose:
     /// the structural comparer does not see every escape flag, so this check must not depend on it;</item>
     /// <item>it does not re-parse;</item>
