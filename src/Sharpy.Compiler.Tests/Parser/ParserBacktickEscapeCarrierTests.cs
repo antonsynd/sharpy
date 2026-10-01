@@ -279,6 +279,25 @@ public class ParserBacktickEscapeCarrierTests
         tuple.ElementNamesBacktickEscaped.Should().BeEmpty();
     }
 
+    // --- AsPattern capture (the one capture site that did not copy the escape) -----------------
+
+    [Fact]
+    public void AsPatternCapture_Escaped_SetsFlag()
+    {
+        var pattern = CasePattern("match p:\n    case int() as `n`:\n        pass\n")
+            .Should().BeOfType<AsPattern>().Subject;
+        pattern.Name.Name.Should().Be("n");
+        pattern.Name.IsNameBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AsPatternCapture_Plain_LeavesFlagClear()
+    {
+        var pattern = CasePattern("match p:\n    case int() as n:\n        pass\n")
+            .Should().BeOfType<AsPattern>().Subject;
+        pattern.Name.IsNameBacktickEscaped.Should().BeFalse();
+    }
+
     // --- PropertyDef explicit-interface qualifier ----------------------------------------------
 
     private static PropertyDef PropertyOf(string source) =>

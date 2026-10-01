@@ -1787,6 +1787,10 @@ public partial class Parser
         var name = new Ast.Identifier
         {
             Name = nameToken.Value,
+            // The one capture site that did not copy the escape: the BindingPattern and star
+            // captures do, and Decision 4 is that the parser copies Token.IsBacktickEscaped at every
+            // name site (#2157).
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             LineStart = nameToken.Line,
             ColumnStart = nameToken.Column,
             LineEnd = nameToken.Line,

@@ -24,7 +24,7 @@
 # Populated by the first run (P22b Phase 1); drained to EMPTY by the end of Phase 4.
 # DO NOT DELETE THIS FILE: its presence arms the ratchet, and the sweep throws if it is missing.
 
-# ---- identity twin (T0) — the fixture as written: 177 rows ----
+# ---- identity twin (T0) — the fixture as written: 176 rows ----
 basics/arithmetic_operators_0006 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0001 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0004 identity refused # #2077 formatter declined (SPY0912); was commentDropped
@@ -34,7 +34,6 @@ basics/backtick_dotted_member_chain identity refused # #2157 formatter declined 
 basics/backtick_inline_clr_access identity refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/backtick_inline_clr_deep_namespace identity refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/backtick_inline_clr_math identity refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_local_declaration_spaces identity refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/bool_variables_0001 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/bool_variables_0002 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/bool_variables_0003 identity refused # #2077 formatter declined (SPY0912); was commentDropped
@@ -3476,7 +3475,7 @@ with_statement/with_error_no_enter comment refused # #2077 formatter declined (S
 with_statement/with_exception_handling comment refused # #2077 formatter declined (SPY0912); was commentDropped
 with_statement/with_nested comment refused # #2077 formatter declined (SPY0912); was commentDropped
 
-# ---- backtick twin (T2) — every identifier escaped: 480 rows ----
+# ---- backtick twin (T2) — every identifier escaped: 479 rows ----
 Formatting/let_declarations backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 arrays/array_case_list_pattern backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/arithmetic_operators_0006 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
@@ -3859,7 +3858,6 @@ pattern_matching/match_wildcard_exhaustive_0001 backtick refused # #2157 formatt
 pattern_matching/nested_capture_not_last_ok_1624 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 pattern_matching/or_wildcard_not_last_1624 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 pattern_matching/self_matching_int_n_1653 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-pattern_matching/total_class_pattern_non_trailing_spy0700_1651 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 pattern_matching/total_class_pattern_trailing_wildcard_ok_1651 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 pattern_matching/trailing_or_wildcard_ok_1624 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 pattern_matching/wildcard_not_last_1624 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped

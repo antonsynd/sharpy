@@ -54,6 +54,7 @@ public class StructuralEqualityComparerEscapeFlagTests
         { "dotted class-pattern head segment (TypeAnnotation.BacktickEscapedParts)", "match p:\n    case lib.`C`():\n        pass\n", "match p:\n    case lib.C():\n        pass\n" },
         { "tuple type element name (TypeAnnotation.TupleElementNamesBacktickEscaped)", "x: tuple[`a`: int] = t\n", "x: tuple[a: int] = t\n" },
         { "named tuple literal element name (TupleLiteral.ElementNamesBacktickEscaped)", "t = (`a`=1, b=2)\n", "t = (a=1, b=2)\n" },
+        { "as-pattern capture (AsPattern.Name.IsNameBacktickEscaped)", "match p:\n    case int() as `n`:\n        pass\n", "match p:\n    case int() as n:\n        pass\n" },
         { "explicit-interface qualifier (PropertyDef.IsExplicitInterfaceBacktickEscaped)", "class C(I):\n    property get `I`.x(self) -> int:\n        return 3\n", "class C(I):\n    property get I.x(self) -> int:\n        return 3\n" },
         { "explicit-interface qualifier, auto property (PropertyDef.IsExplicitInterfaceBacktickEscaped)", "class C(I):\n    property `I`.x: int = 3\n", "class C(I):\n    property I.x: int = 3\n" },
     };
