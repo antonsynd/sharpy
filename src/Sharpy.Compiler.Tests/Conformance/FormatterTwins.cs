@@ -1,0 +1,471 @@
+using System.Text;
+using Sharpy.Compiler.Lexer;
+using SLexer = Sharpy.Compiler.Lexer.Lexer;
+
+namespace Sharpy.Compiler.Tests.Conformance;
+
+/// <summary>
+/// The kinds of <c># cN</c> comment <see cref="FormatterTwins.CommentInjected"/> injects. Each is a
+/// comment anchor the formatter must keep (#2077); the census reports each kind's corpus total so a
+/// kind the corpus never exercises is visible.
+/// </summary>
+public enum InjectedCommentKind
+{
+    /// <summary><c>(  # cN</c> — right after an opening bracket, then a line break.</summary>
+    OpenBracket,
+
+    /// <summary><c>,  # cN</c> — right after a comma at bracket depth ≥ 1, then a line break.</summary>
+    Comma,
+
+    /// <summary>An own-line <c># cN</c> at column 1 right before a closing bracket.</summary>
+    CloseBracket,
+
+    /// <summary><c>else:  # cN</c> — after the colon of an <c>elif</c>/<c>else</c>/<c>except</c>/<c>finally</c>/<c>case</c> block header.</summary>
+    ClauseHeaderColon,
+
+    /// <summary>An own-line <c># cN</c> at the clause keyword's indent, on the line before it.</summary>
+    BeforeClauseKeyword,
+
+    /// <summary>An own-line <c># cN</c> at a closed block's indent, right after the block's last line (one per block closed).</summary>
+    BlockEnd,
+
+    /// <summary>An own-line <c># cN</c> at end of file.</summary>
+    EndOfFile,
+
+    /// <summary>The line-total kind, trailing half: <c>  # cN</c> after the last code token of a line that ends at bracket depth 0 (a statement, a header, a member line).</summary>
+    LineTrailing,
+
+    /// <summary>The line-total kind, trailing half, on a line that ends INSIDE brackets — an inner comment of its statement or header.</summary>
+    LineTrailingInBracket,
+
+    /// <summary>The line-total kind, own-line half: <c># cN</c> at the line's indent, on the line before it.</summary>
+    LineOwnLine,
+}
+
+/// <summary>Per-kind injection counts of one <see cref="FormatterTwins.CommentInjected"/> call.</summary>
+public sealed class InjectedCommentCounts
+{
+    public static readonly IReadOnlyList<InjectedCommentKind> Kinds = Enum.GetValues<InjectedCommentKind>();
+
+    private readonly int[] _counts = new int[Kinds.Count];
+
+    public int this[InjectedCommentKind kind] => _counts[(int)kind];
+
+    public int Total => _counts.Sum();
+
+    internal void Increment(InjectedCommentKind kind) => _counts[(int)kind]++;
+
+    public override string ToString() => string.Join(" ", Kinds.Select(k => $"{k}={this[k]}"));
+}
+
+/// <summary>
+/// Twin builders and observers for the formatter meaning-preservation sweep (P22b, #2062 #2077
+/// #2157). A twin is the source with text INSERTED at token-derived offsets — never re-laid-out —
+/// so it stays the same program:
+/// <list type="bullet">
+/// <item><see cref="CommentInjected"/> (T1) adds a uniquely numbered <c># cN</c> at every comment
+/// anchor kind in <see cref="InjectedCommentKind"/>; comments are inert, so the twin parses to the
+/// same AST.</item>
+/// <item><see cref="BacktickInjected"/> (T2) wraps every identifier token not already escaped in
+/// backticks, except the parser's contextual identifiers <c>before_set</c>/<c>after_set</c>.</item>
+/// </list>
+/// Nothing is injected inside a string token or between <c>FStringStart</c> and <c>FStringEnd</c>
+/// for T1 (the replacement-field hole is P22's contract); T2 escapes hole identifiers too (the hole
+/// is written verbatim, so the escape must survive).
+/// </summary>
+public static class FormatterTwins
+{
+    private const string ContextualBeforeSet = "before_set";
+    private const string ContextualAfterSet = "after_set";
+
+    /// <summary>Lexes with trivia and positions, the way <c>FormatterService.Format</c> does.</summary>
+    public static List<Token> Lex(string source, out bool hasErrors)
+    {
+        var lexer = new SLexer(source, preserveTrivia: true);
+        var tokens = lexer.TokenizeAll();
+        hasErrors = lexer.Diagnostics.HasErrors;
+        return tokens;
+    }
+
+    /// <summary>The <c>#</c> comments of a source in source order (leading then trailing trivia per token).</summary>
+    public static IReadOnlyList<string> Comments(string source)
+        => Lex(source, out _)
+            .SelectMany(t => (t.LeadingTrivia ?? Array.Empty<Trivia>()).Concat(t.TrailingTrivia ?? Array.Empty<Trivia>()))
+            .Where(t => t.Kind == TriviaKind.Comment)
+            .Select(t => t.Text)
+            .ToList();
+
+    /// <summary>The multiset of backtick-escaped identifier token values, sorted ordinally.</summary>
+    public static IReadOnlyList<string> EscapedNames(string source)
+        => Lex(source, out _)
+            .Where(t => t.Type == TokenType.Identifier && t.IsBacktickEscaped)
+            .Select(t => t.Value)
+            .OrderBy(v => v, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>T2: every unescaped identifier token wrapped in backticks, by source offset.</summary>
+    public static (string Text, int Count) BacktickInjected(string source)
+    {
+        var targets = Lex(source, out _)
+            .Where(t => t.Type == TokenType.Identifier && !t.IsBacktickEscaped && t.Position >= 0
+                && t.Value != ContextualBeforeSet && t.Value != ContextualAfterSet)
+            .OrderByDescending(t => t.Position)
+            .ToList();
+        var text = new StringBuilder(source);
+        foreach (var token in targets)
+        {
+            text.Insert(token.Position + token.Length, '`');
+            text.Insert(token.Position, '`');
+        }
+
+        return (text.ToString(), targets.Count);
+    }
+
+    // ================================================================
+    // T1
+    // ================================================================
+
+    /// <summary>A pending insertion: text at a source offset. <c>Order</c> sorts insertions sharing an offset.</summary>
+    private sealed record Insertion(int Offset, int Order, InjectedCommentKind Kind, bool OwnLine, string Indent);
+
+    /// <summary>One code unit: a token outside any f-string, or a whole outermost f-string.</summary>
+    private sealed record Unit(int TokenIndex, int Start, int End, int StartLine, int EndLine, int DepthAfter, bool HasTrailingComment);
+
+    /// <summary>
+    /// T1: the source with a numbered <c># cN</c> at every anchor of every
+    /// <see cref="InjectedCommentKind"/>. Numbers ascend in the twin's text order. An end-of-line
+    /// comment is never appended to a line that already ends in a comment (it would swallow it), in
+    /// a literal, or before a backslash continuation.
+    /// </summary>
+    public static (string Text, InjectedCommentCounts Injected) CommentInjected(string source)
+    {
+        var tokens = Lex(source, out _);
+        var nl = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lineStarts = LineStarts(source);
+        var literalLines = LiteralSpans.LinesStartingInside(source, LiteralSpans.Of(tokens));
+        var insertions = new List<Insertion>();
+
+        var units = Units(tokens, source, lineStarts);
+        var unitByToken = units.ToDictionary(u => u.TokenIndex);
+
+        // Tokens whose line end already carries an injected comment (open bracket, comma, clause colon)
+        // and lines whose own-line slot is taken by a clause keyword.
+        var trailingTaken = new HashSet<int>();
+        var ownLineTaken = new HashSet<int>();
+        var indentStack = new Stack<string>();
+        var depth = 0;
+        var fstringDepth = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (fstringDepth > 0)
+            {
+                if (token.Type == TokenType.FStringStart)
+                    fstringDepth++;
+                else if (token.Type == TokenType.FStringEnd)
+                    fstringDepth--;
+                continue;
+            }
+
+            switch (token.Type)
+            {
+                case TokenType.FStringStart:
+                    fstringDepth = 1;
+                    break;
+
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    insertions.Add(new Insertion(token.Position + token.Length, 0, InjectedCommentKind.OpenBracket, false, ""));
+                    trailingTaken.Add(i);
+                    break;
+
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    insertions.Add(new Insertion(token.Position, 3, InjectedCommentKind.CloseBracket, true, ""));
+                    depth--;
+                    break;
+
+                case TokenType.Comma when depth >= 1:
+                    insertions.Add(new Insertion(token.Position + token.Length, 0, InjectedCommentKind.Comma, false, ""));
+                    trailingTaken.Add(i);
+                    break;
+
+                case TokenType.Elif or TokenType.Else or TokenType.Except or TokenType.Finally or TokenType.Case
+                    when depth == 0 && IsFirstOnLine(source, lineStarts, token):
+                    {
+                        // A clause keyword starts a logical line and its header ends at a depth-0
+                        // colon; a ternary `else` continued onto a line by a backslash does neither.
+                        var line = LineOf(lineStarts, token.Position);
+                        var colon = HeaderColon(tokens, i);
+                        if (colon < 0 || ContinuesBackslash(source, lineStarts, literalLines, line))
+                            break;
+                        insertions.Add(new Insertion(lineStarts[line - 1], 2, InjectedCommentKind.BeforeClauseKeyword, true, LeadingWhitespace(source, lineStarts, token)));
+                        ownLineTaken.Add(line);
+
+                        if (colon + 2 < tokens.Count
+                            && tokens[colon + 1].Type == TokenType.Newline
+                            && tokens[colon + 2].Type == TokenType.Indent
+                            && !unitByToken[colon].HasTrailingComment)
+                        {
+                            insertions.Add(new Insertion(tokens[colon].Position + tokens[colon].Length, 0, InjectedCommentKind.ClauseHeaderColon, false, ""));
+                            trailingTaken.Add(colon);
+                        }
+
+                        break;
+                    }
+
+                case TokenType.Indent:
+                    {
+                        var next = i + 1 < tokens.Count ? tokens[i + 1] : token;
+                        indentStack.Push(LeadingWhitespace(source, lineStarts, next));
+                        break;
+                    }
+
+                case TokenType.Dedent:
+                    {
+                        // A run of dedents closes blocks innermost first, right after the last line of
+                        // the innermost block (the logical line's Newline; at EOF without one, the end).
+                        var run = i;
+                        while (run > 0 && tokens[run - 1].Type == TokenType.Dedent)
+                            run--;
+                        var offset = run > 0 && tokens[run - 1].Type == TokenType.Newline
+                            ? AfterLineBreak(source, tokens[run - 1].Position)
+                            : source.Length;
+                        var indent = indentStack.Count > 0 ? indentStack.Pop() : "";
+                        insertions.Add(new Insertion(offset, 1, InjectedCommentKind.BlockEnd, true, indent));
+                        break;
+                    }
+            }
+        }
+
+        // The line-total kind: every line's trailing slot and own-line slot not already taken.
+        var lastEndingOn = new Dictionary<int, Unit>();
+        var firstStartingOn = new Dictionary<int, Unit>();
+        foreach (var unit in units)
+        {
+            lastEndingOn[unit.EndLine] = unit;
+            firstStartingOn.TryAdd(unit.StartLine, unit);
+        }
+
+        foreach (var (line, unit) in lastEndingOn)
+        {
+            if (trailingTaken.Contains(unit.TokenIndex) || unit.HasTrailingComment || literalLines.Contains(line + 1))
+                continue;
+            var lineEnd = LineContentEnd(source, lineStarts, line);
+            if (source.AsSpan(unit.End, lineEnd - unit.End).Trim().Length != 0)
+                continue; // a backslash continuation follows the last token
+            var kind = unit.DepthAfter >= 1 ? InjectedCommentKind.LineTrailingInBracket : InjectedCommentKind.LineTrailing;
+            insertions.Add(new Insertion(unit.End, 0, kind, false, ""));
+        }
+
+        foreach (var (line, unit) in firstStartingOn)
+        {
+            if (ownLineTaken.Contains(line)
+                || !IsFirstOnLine(source, lineStarts, tokens[unit.TokenIndex])
+                || literalLines.Contains(line)
+                || ContinuesBackslash(source, lineStarts, literalLines, line))
+            {
+                continue;
+            }
+
+            insertions.Add(new Insertion(lineStarts[line - 1], 2, InjectedCommentKind.LineOwnLine, true, LeadingWhitespace(source, lineStarts, tokens[unit.TokenIndex])));
+        }
+
+        insertions.Add(new Insertion(source.Length, 4, InjectedCommentKind.EndOfFile, true, ""));
+
+        return Build(source, nl, insertions);
+    }
+
+    private static (string, InjectedCommentCounts) Build(string source, string nl, List<Insertion> insertions)
+    {
+        var counts = new InjectedCommentCounts();
+        var text = new StringBuilder(source.Length + insertions.Count * 12);
+        var n = 0;
+        var at = 0;
+        foreach (var insertion in insertions.OrderBy(x => x.Offset).ThenBy(x => x.Order))
+        {
+            text.Append(source, at, insertion.Offset - at);
+            at = insertion.Offset;
+            n++;
+            counts.Increment(insertion.Kind);
+            var comment = $"# c{n}";
+            if (insertion.OwnLine)
+            {
+                // An own-line comment starts a line: after the previous line's break, or its own.
+                if (insertion.Kind is InjectedCommentKind.CloseBracket
+                    || (text.Length > 0 && text[^1] != '\n' && text[^1] != '\r'))
+                {
+                    text.Append(nl);
+                }
+
+                text.Append(insertion.Indent).Append(comment).Append(nl);
+            }
+            else if (insertion.Kind is InjectedCommentKind.OpenBracket or InjectedCommentKind.Comma)
+            {
+                text.Append("  ").Append(comment).Append(nl);
+            }
+            else
+            {
+                text.Append("  ").Append(comment);
+            }
+        }
+
+        text.Append(source, at, source.Length - at);
+        return (text.ToString(), counts);
+    }
+
+    /// <summary>Code units in source order: tokens outside f-strings, each outermost f-string as one unit.</summary>
+    private static List<Unit> Units(List<Token> tokens, string source, List<int> lineStarts)
+    {
+        var units = new List<Unit>();
+        var depth = 0;
+        var fstringDepth = 0;
+        var fstringStart = -1;
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (token.Position < 0)
+                continue;
+            if (fstringDepth > 0)
+            {
+                if (token.Type == TokenType.FStringStart)
+                {
+                    fstringDepth++;
+                }
+                else if (token.Type == TokenType.FStringEnd && --fstringDepth == 0)
+                {
+                    var start = tokens[fstringStart].Position;
+                    var end = token.Position + token.Length;
+                    units.Add(new Unit(fstringStart, start, end, LineOf(lineStarts, start), LineOf(lineStarts, Math.Max(start, end - 1)), depth, HasComment(token.TrailingTrivia)));
+                    // The unit is keyed by its FStringStart token (the first-on-line check reads it);
+                    // the trailing comment rides the FStringEnd token.
+                }
+
+                continue;
+            }
+
+            switch (token.Type)
+            {
+                case TokenType.Newline or TokenType.Indent or TokenType.Dedent or TokenType.Eof:
+                    continue;
+                case TokenType.FStringStart:
+                    fstringDepth = 1;
+                    fstringStart = i;
+                    continue;
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    depth--;
+                    break;
+            }
+
+            var tokenEnd = token.Position + token.Length;
+            units.Add(new Unit(i, token.Position, tokenEnd, LineOf(lineStarts, token.Position), LineOf(lineStarts, Math.Max(token.Position, tokenEnd - 1)), depth, HasComment(token.TrailingTrivia)));
+        }
+
+        return units;
+    }
+
+    private static bool HasComment(IReadOnlyList<Trivia>? trivia)
+        => trivia != null && trivia.Any(t => t.Kind == TriviaKind.Comment);
+
+    /// <summary>The index of a clause header's colon: the first depth-0 colon on the logical line, or -1.</summary>
+    private static int HeaderColon(List<Token> tokens, int keyword)
+    {
+        var depth = 0;
+        var fstringDepth = 0;
+        for (var j = keyword + 1; j < tokens.Count; j++)
+        {
+            var type = tokens[j].Type;
+            if (type == TokenType.FStringStart)
+                fstringDepth++;
+            else if (type == TokenType.FStringEnd)
+                fstringDepth--;
+            if (fstringDepth > 0 || type == TokenType.FStringEnd)
+                continue;
+            switch (type)
+            {
+                case TokenType.Newline or TokenType.Eof:
+                    return -1;
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    depth--;
+                    break;
+                case TokenType.Colon when depth == 0:
+                    return j;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>0-based offsets of each line's first character; a line ends at <c>\r\n</c>, <c>\n</c> or a lone <c>\r</c>, as in the lexer.</summary>
+    private static List<int> LineStarts(string source)
+    {
+        var starts = new List<int> { 0 };
+        for (var i = 0; i < source.Length; i++)
+        {
+            var c = source[i];
+            if (c == '\r' && i + 1 < source.Length && source[i + 1] == '\n')
+                i++;
+            else if (c != '\n' && c != '\r')
+                continue;
+            starts.Add(i + 1);
+        }
+
+        return starts;
+    }
+
+    /// <summary>The 1-based line containing <paramref name="offset"/>.</summary>
+    private static int LineOf(List<int> lineStarts, int offset)
+    {
+        var index = lineStarts.BinarySearch(offset);
+        return index >= 0 ? index + 1 : ~index;
+    }
+
+    /// <summary>The offset just before the line break (or end of source) ending the 1-based line.</summary>
+    private static int LineContentEnd(string source, List<int> lineStarts, int line)
+    {
+        var end = line < lineStarts.Count ? lineStarts[line] : source.Length;
+        while (end > lineStarts[line - 1] && (source[end - 1] == '\n' || source[end - 1] == '\r'))
+            end--;
+        return end;
+    }
+
+    private static int AfterLineBreak(string source, int position)
+    {
+        if (position >= source.Length)
+            return source.Length;
+        if (source[position] == '\r' && position + 1 < source.Length && source[position + 1] == '\n')
+            return position + 2;
+        return source[position] is '\n' or '\r' ? position + 1 : position;
+    }
+
+    private static string LeadingWhitespace(string source, List<int> lineStarts, Token token)
+    {
+        if (token.Position < 0 || token.Position > source.Length)
+            return "";
+        var start = lineStarts[LineOf(lineStarts, token.Position) - 1];
+        var prefix = source.Substring(start, token.Position - start);
+        return prefix.Trim().Length == 0 ? prefix : "";
+    }
+
+    private static bool IsFirstOnLine(string source, List<int> lineStarts, Token token)
+    {
+        var start = lineStarts[LineOf(lineStarts, token.Position) - 1];
+        return source.AsSpan(start, token.Position - start).Trim().Length == 0;
+    }
+
+    /// <summary>Whether the previous line ends in a backslash continuation (outside a literal).</summary>
+    private static bool ContinuesBackslash(string source, List<int> lineStarts, HashSet<int> literalLines, int line)
+    {
+        if (line <= 1 || literalLines.Contains(line))
+            return false;
+        var end = LineContentEnd(source, lineStarts, line - 1);
+        var content = source.AsSpan(lineStarts[line - 2], end - lineStarts[line - 2]).TrimEnd();
+        return content.Length > 0 && content[^1] == '\\';
+    }
+}
