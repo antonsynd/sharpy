@@ -270,8 +270,10 @@ internal sealed partial class UnparseVisitor : AstVisitor
     /// <c>*a</c> alone is not a legal target, so the tuple keeps its delimiters (<c>(*a,)</c> /
     /// <c>[*a]</c>) and is self-contained (#1845).
     /// </summary>
+    // A list-display target keeps its brackets (`[b, *rest] = t`, accepted since #1841): writing it
+    // bare would re-parse as a tuple target, a different IsListDisplay the comparer sees (P22b).
     private static bool RendersAsBareTuple(TupleLiteral tuple) =>
-        tuple.Elements.Length > 1 && tuple.Elements.Any(e => e is StarExpression);
+        !tuple.IsListDisplay && tuple.Elements.Length > 1 && tuple.Elements.Any(e => e is StarExpression);
 
     #endregion
 
@@ -318,7 +320,9 @@ internal sealed partial class UnparseVisitor : AstVisitor
     {
         foreach (var dec in decorators)
         {
-            _w.Write("@");
+            // `@[name(args)]` is a .NET attribute and `@name(args)` a Sharpy decorator: the bracket
+            // is a user-written fact the parser records, and dropping it changes what compiles.
+            _w.Write(dec.IsBracketAttribute ? "@[" : "@");
             WriteDottedName(dec.QualifiedParts, dec.BacktickEscapedParts);
             if (dec.Arguments.Length > 0 || dec.KeywordArguments.Length > 0)
             {
@@ -326,6 +330,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
                 WriteArgList(dec.Arguments, dec.KeywordArguments);
                 _w.Write(")");
             }
+            if (dec.IsBracketAttribute)
+                _w.Write("]");
             _w.WriteLine();
         }
     }

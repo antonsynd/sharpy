@@ -521,7 +521,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
                     IsNameBacktickEscaped = f.IsNameBacktickEscaped,
                     Type = NormalizeType(f.Type)!
                 }).ToImmutableArray()
-            }).ToImmutableArray()
+            }).ToImmutableArray(),
+            // The union's methods are statements like any class body's.
+            Body = VisitStatements(node.Body)
         };
 
     public override Node VisitDelegateDef(DelegateDef node) =>

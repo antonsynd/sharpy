@@ -3476,7 +3476,7 @@ with_statement/with_error_no_enter comment refused # #2077 formatter declined (S
 with_statement/with_exception_handling comment refused # #2077 formatter declined (SPY0912); was commentDropped
 with_statement/with_nested comment refused # #2077 formatter declined (SPY0912); was commentDropped
 
-# ---- backtick twin (T2) — every identifier escaped: 483 rows ----
+# ---- backtick twin (T2) — every identifier escaped: 480 rows ----
 Formatting/let_declarations backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 arrays/array_case_list_pattern backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/arithmetic_operators_0006 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
@@ -3950,18 +3950,15 @@ type_system/nullable_types_0006 backtick refused # #2157 formatter declined (SPY
 type_system/type_alias_0001 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
 type_system/type_alias_0024 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
 type_system/type_narrowing_0026 backtick refused # #2077 formatter declined (SPY0912); was commentDropped
-unions/union_method_calls_protected_2041 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-unions/union_methods backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 unions/union_methods_generic backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 unions/union_methods_match_self backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-unions/union_outside_calls_protected_2041 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 variable_name_collision/main backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 variable_name_collision_class/main backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
 variable_name_collision_multiple/main backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 variable_name_collision_reversed/main backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 variable_redeclaration_self_reference/main backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 
-# ---- emitChanged (O7, FormatterEmitInvarianceSweepTests): 88 rows ----
+# ---- emitChanged (O7, FormatterEmitInvarianceSweepTests): 49 rows ----
 algorithms/binary_search_tree identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 algorithms/linked_list identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 arrays/clr_array_slice_1256 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
@@ -3974,41 +3971,6 @@ builtins/iterable_tuple_bridge identity emitChanged # #2062 redundantParens — 
 builtins/str_projection_single_eval identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 bytes_methods identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 comprehensions/comprehension_interop_array_source identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
-decorators/bracket_attr_custom_class identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_multi_param identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_on_field identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_on_method identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_on_struct identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_reflection identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_custom_with_usage identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_dotted identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_import_redundant_always_in_scope_1429 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_import_unrelated_still_warns_1429 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_import_used_1429 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_kwargs identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_mixed identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_multiple identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_obsolete_control_1427 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_on_field identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_on_method identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_simple identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attr_with_args identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/bracket_attribute_is_not_abstract_1373 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/custom_decorator_dotted_0053 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/custom_decorator_simple_0050 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/custom_decorator_simple_0062 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/custom_decorator_simple_0064 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_basic_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_constructor_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_dotted_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_empty_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_event_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_mixed_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_named_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_negative_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_property_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_args_typeof_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-decorators/decorator_interface_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
 dict_iterable_acceptance identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 dict_iterable_acceptance_empty identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 dict_iterable_nullable identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
@@ -4046,7 +4008,3 @@ strings/str_split_index_last identity emitChanged # #2062 redundantParens — th
 strings/str_split_maxsplit identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 strings/str_split_negative_index identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 strings/str_split_whitespace_collapse identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
-unions/union_method_calls_protected_2041 identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)
-unions/union_methods identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)
-unions/union_methods_generic identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)
-unions/union_methods_match_self identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)

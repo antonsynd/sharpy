@@ -59,7 +59,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             ComparisonChain a => ComparisonChainEquals(a, (ComparisonChain)y),
             ConditionalExpression a => Equals(a.Test, ((ConditionalExpression)y).Test) && Equals(a.ThenValue, ((ConditionalExpression)y).ThenValue) && Equals(a.ElseValue, ((ConditionalExpression)y).ElseValue),
             LambdaExpression a => LambdaEquals(a, (LambdaExpression)y),
-            TypeCoercion a => Equals(a.Value, ((TypeCoercion)y).Value) && TypeAnnotationEquals(a.TargetType, ((TypeCoercion)y).TargetType),
+            // `as?` (null on failure) and `as!` (throw) are different programs (P22b).
+            TypeCoercion a => a.Mode == ((TypeCoercion)y).Mode
+                && Equals(a.Value, ((TypeCoercion)y).Value) && TypeAnnotationEquals(a.TargetType, ((TypeCoercion)y).TargetType),
             TypeCheck a => Equals(a.Value, ((TypeCheck)y).Value) && TypeAnnotationEquals(a.CheckType, ((TypeCheck)y).CheckType),
             Parenthesized a => Equals(a.Expression, ((Parenthesized)y).Expression),
             SuperExpression => true,
@@ -162,7 +164,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         NodesEqual(a.Elements, b.Elements)
         && a.ElementNames.SequenceEqual(b.ElementNames)
         && EscapedPartsEqual(a.ElementNamesBacktickEscaped, b.ElementNamesBacktickEscaped, a.ElementNames.Length)
-        && a.HasTrailingComma == b.HasTrailingComma;
+        && a.HasTrailingComma == b.HasTrailingComma
+        // `[a, b] = t` and `(a, b) = t` are different spellings the unparser writes back (P22b).
+        && a.IsListDisplay == b.IsListDisplay;
 
     private bool FStringEquals(FStringLiteral a, FStringLiteral b) =>
         FStringPartsEqual(a.Parts, b.Parts);
@@ -466,6 +470,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         if (!DecoratorsEqual(a.Decorators, b.Decorators))
             return false;
+        // The union's methods: a formatter that dropped them deleted user code (P22b).
+        if (!StatementsEqual(a.Body, b.Body))
+            return false;
         if (a.Cases.Length != b.Cases.Length)
             return false;
         for (int i = 0; i < a.Cases.Length; i++)
@@ -678,6 +685,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             if (!a[i].QualifiedParts.SequenceEqual(b[i].QualifiedParts))
                 return false;
             if (!EscapedPartsEqual(a[i].BacktickEscapedParts, b[i].BacktickEscapedParts, a[i].QualifiedParts.Length))
+                return false;
+            // `@[name]` (a .NET attribute) and `@name` (a Sharpy decorator) are different programs.
+            if (a[i].IsBracketAttribute != b[i].IsBracketAttribute)
                 return false;
             if (!NodesEqual(a[i].Arguments, b[i].Arguments))
                 return false;

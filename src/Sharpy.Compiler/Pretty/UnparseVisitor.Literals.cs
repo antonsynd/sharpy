@@ -223,8 +223,8 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitTupleLiteral(TupleLiteral node)
     {
-        // A multi-element tuple that unpacks is written bare — `first, *rest = items` is the only
-        // spelling the parser accepts for that target. A SOLE starred element cannot be written
+        // A multi-element tuple that unpacks is written bare — `first, *rest = items` — unless it is a
+        // list display (`[first, *rest] = items`), which keeps its brackets. A SOLE starred element cannot be written
         // bare (`*a` alone is not a target), so it keeps its delimiters: `(*a,)` (paren + comma) or
         // `[*a]` (list display). In operand position the precedence table ranks a bare tuple below
         // every operator so the operand helpers parenthesize it instead (#1172).

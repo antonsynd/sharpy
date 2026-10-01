@@ -507,6 +507,13 @@ internal sealed partial class UnparseVisitor
                 });
                 _w.Write(" ");
             }
+            // The auto-property arm needs the qualifier as much as the function-style one: dropping
+            // it turns an explicit interface implementation into a public property.
+            if (node.ExplicitInterface != null)
+            {
+                WriteName(node.ExplicitInterface, node.IsExplicitInterfaceBacktickEscaped);
+                _w.Write(".");
+            }
             WriteName(node.Name, node.IsNameBacktickEscaped);
             if (node.Type != null)
             {
@@ -651,7 +658,7 @@ internal sealed partial class UnparseVisitor
             _w.WriteLine();
             _w.Dedent();
         }
-        if (node.Cases.IsEmpty)
+        if (node.Cases.IsEmpty && node.Body.IsEmpty)
         {
             _w.Indent();
             _w.WriteLine("pass");
@@ -678,6 +685,22 @@ internal sealed partial class UnparseVisitor
                     _w.Write(")");
                 }
                 _w.WriteLine();
+            }
+            // The union's methods (UnionDef.Body) follow its cases — the parser collects them
+            // apart from the cases, so writing them here keeps the AST; dropping them deleted every
+            // method (a `__str__` override silently fell back to the default repr).
+            var fmt = _options.Formatting;
+            for (int i = 0; i < node.Body.Length; i++)
+            {
+                if (fmt != null && (i > 0 || !node.Cases.IsEmpty))
+                {
+                    for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)
+                        _w.WriteLine();
+                }
+                if (_options.PreserveTrivia)
+                    VisitStatementWithTrivia(node.Body[i]);
+                else
+                    Visit(node.Body[i]);
             }
             _w.Dedent();
         }

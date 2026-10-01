@@ -55,6 +55,7 @@ public class StructuralEqualityComparerEscapeFlagTests
         { "tuple type element name (TypeAnnotation.TupleElementNamesBacktickEscaped)", "x: tuple[`a`: int] = t\n", "x: tuple[a: int] = t\n" },
         { "named tuple literal element name (TupleLiteral.ElementNamesBacktickEscaped)", "t = (`a`=1, b=2)\n", "t = (a=1, b=2)\n" },
         { "explicit-interface qualifier (PropertyDef.IsExplicitInterfaceBacktickEscaped)", "class C(I):\n    property get `I`.x(self) -> int:\n        return 3\n", "class C(I):\n    property get I.x(self) -> int:\n        return 3\n" },
+        { "explicit-interface qualifier, auto property (PropertyDef.IsExplicitInterfaceBacktickEscaped)", "class C(I):\n    property `I`.x: int = 3\n", "class C(I):\n    property I.x: int = 3\n" },
     };
 
     [Theory]
@@ -71,6 +72,30 @@ public class StructuralEqualityComparerEscapeFlagTests
     {
         _ = plain;
         StructuralEqualityComparer.Instance.Equals(Parse(escaped), Parse(escaped))
+            .Should().BeTrue($"{cell}: positive control — the same spelling parsed twice is equal");
+    }
+
+    /// <summary>
+    /// Non-escape structural facts the unparser writes but the comparer used to ignore (P22b
+    /// structure fixes): each pair is two different programs, so a round-trip that swapped one for
+    /// the other must be an inequality; the first source parsed twice is the positive control.
+    /// </summary>
+    public static TheoryData<string, string, string> StructurePairs => new()
+    {
+        { "bracket attribute vs decorator (Decorator.IsBracketAttribute)", "@[d]\ndef g():\n    pass\n", "@d\ndef g():\n    pass\n" },
+        { "union with vs without a method (UnionDef.Body)", "union U:\n    case K(x: int)\n\n    def f(self) -> int:\n        return 1\n", "union U:\n    case K(x: int)\n" },
+        { "explicit-interface auto property vs public (PropertyDef.ExplicitInterface)", "class C(I):\n    property I.x: int = 3\n", "class C(I):\n    property x: int = 3\n" },
+        { "as? vs as! (TypeCoercion.Mode)", "y = x as? int\n", "y = x as! int\n" },
+        { "list-display vs tuple store target (TupleLiteral.IsListDisplay)", "[a, b] = t\n", "(a, b) = t\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(StructurePairs))]
+    public void StructurallyDifferentPrograms_AreNotEqual(string cell, string first, string second)
+    {
+        StructuralEqualityComparer.Instance.Equals(Parse(first), Parse(second))
+            .Should().BeFalse($"{cell}: the two spellings are different programs");
+        StructuralEqualityComparer.Instance.Equals(Parse(first), Parse(first))
             .Should().BeTrue($"{cell}: positive control — the same spelling parsed twice is equal");
     }
 
