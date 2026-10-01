@@ -221,17 +221,62 @@ public class FormatterTwinsTests
         FormatterTwins.EscapedNames(text).Should().Equal("class", "class", "f", "int", "int", "int", "k", "print");
     }
 
-    /// <summary>The #2166 contextual keywords stay bare (an escape there parses as the keyword and is lost) and are counted.</summary>
+    /// <summary>
+    /// The #2166 contextual keywords stay bare at their contextual position (an escape there parses
+    /// as the keyword and is lost) and are counted; the same spellings as plain identifiers are
+    /// escaped like any other (the exemption is the position, not the value).
+    /// </summary>
     [Fact]
-    public void BacktickInjected_LeavesTheContextualKeywordsOf2166Bare()
+    public void BacktickInjected_LeavesTheContextualKeywordsOf2166Bare_OnlyAtTheirPosition()
     {
         const string source = "def f(x: int) -> int:\n    match x:\n        case _:\n            return d.get(out, x)\n";
 
         var (text, count) = FormatterTwins.BacktickInjected(source);
 
-        text.Should().Be("def `f`(`x`: `int`) -> `int`:\n    match `x`:\n        case _:\n            return `d`.get(out, `x`)\n");
-        count.Should().Be(7);
-        FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { ["_"] = 1, ["get"] = 1, ["out"] = 1 });
+        text.Should().Be("def `f`(`x`: `int`) -> `int`:\n    match `x`:\n        case _:\n            return `d`.`get`(`out`, `x`)\n");
+        count.Should().Be(9);
+        FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { ["_"] = 1 });
+    }
+
+    /// <summary>One cell per contextual position the parser reads despite an escape (#2166): the value stays bare there.</summary>
+    [Theory]
+    [InlineData("_", "def main():\n    f(1, _)\n")]
+    [InlineData("get", "class C:\n    property get p(self) -> int:\n        return 1\n")]
+    [InlineData("set", "class C:\n    property set p(self, v: int):\n        pass\n")]
+    [InlineData("init", "class C:\n    property init p(self, v: int):\n        pass\n")]
+    [InlineData("add", "class C:\n    event add e(self, h: H):\n        pass\n")]
+    [InlineData("remove", "class C:\n    event remove e(self, h: H):\n        pass\n")]
+    [InlineData("notnull", "def f[T: notnull](x: T) -> T:\n    return x\n")]
+    [InlineData("when", "try:\n    pass\nexcept E as e when c:\n    pass\n")]
+    [InlineData("out", "interface I[out T]:\n    def g(self) -> T\n")]
+    [InlineData("out", "def f(x: out int) -> None:\n    pass\n")]
+    [InlineData("out", "def main():\n    f(out y)\n")]
+    [InlineData("ref", "def f(x: ref int) -> None:\n    pass\n")]
+    [InlineData("ref", "def main():\n    f(ref y)\n")]
+    public void BacktickInjected_LeavesAContextualKeywordBare_AtItsPosition(string value, string source)
+    {
+        Parse(source, out var sourceErrors);
+        sourceErrors.Should().BeFalse(source);
+
+        var (text, _) = FormatterTwins.BacktickInjected(source);
+
+        text.Should().NotContain($"`{value}`");
+        FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { [value] = 1 });
+        Parse(text, out var errors);
+        errors.Should().BeFalse(text);
+    }
+
+    /// <summary>The same spellings as plain identifiers are escaped (positive control for the position key).</summary>
+    [Fact]
+    public void BacktickInjected_EscapesTheSameSpellingsAsPlainIdentifiers()
+    {
+        const string source = "def main():\n    xs.add(set)\n    init = ref\n    when = notnull\n    remove = d.get(out)\n";
+
+        var (text, _) = FormatterTwins.BacktickInjected(source);
+
+        foreach (var value in new[] { "add", "set", "init", "ref", "when", "notnull", "remove", "get", "out" })
+            text.Should().Contain($"`{value}`");
+        FormatterTwins.ContextualKeywordSkips(source).Should().BeEmpty();
     }
 
     [Fact]

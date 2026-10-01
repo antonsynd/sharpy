@@ -67,8 +67,9 @@ public sealed class InjectedCommentCounts
 /// anchor kind in <see cref="InjectedCommentKind"/>; comments are inert, so the twin parses to the
 /// same AST.</item>
 /// <item><see cref="BacktickInjected"/> (T2) wraps every identifier token not already escaped in
-/// backticks, except the parser's contextual identifiers <c>before_set</c>/<c>after_set</c> and the
-/// contextual keywords of <see cref="ContextualKeywordsReadAsKeywords"/>.</item>
+/// backticks, except the parser's contextual identifiers <c>before_set</c>/<c>after_set</c> and a
+/// contextual keyword of <see cref="ContextualKeywordsReadAsKeywords"/> at its contextual position
+/// (<see cref="IsReadAsContextualKeyword"/>).</item>
 /// </list>
 /// Nothing is injected inside a string token or between <c>FStringStart</c> and <c>FStringEnd</c>
 /// for T1 (the replacement-field hole is P22's contract); T2 escapes hole identifiers too (the hole
@@ -81,15 +82,68 @@ public static class FormatterTwins
 
     /// <summary>
     /// Contextual keywords the parser reads AS the keyword even when backtick-escaped (#2166: an
-    /// escaped <c>`get`</c>, <c>`_`</c>, <c>`out`</c> … parses to the same AST as the bare spelling and the
-    /// escape is lost). Escaping them is not meaning-preserving under the spec, so T2 leaves them bare;
-    /// the census counts how many it skipped. Value-keyed, so a plain identifier spelled the same
-    /// (<c>d.get</c>) is skipped too — its position is covered by every other identifier.
+    /// escaped <c>`get`</c>, <c>`_`</c>, <c>`out`</c> … at its contextual position parses to the same
+    /// AST as the bare spelling and the escape is lost). Escaping one THERE is not meaning-preserving
+    /// under the spec, so T2 leaves it bare — at that position only
+    /// (<see cref="IsReadAsContextualKeyword"/>): the same spelling as a plain identifier
+    /// (<c>d.get</c>, <c>xs.add(1)</c>, <c>out = 2</c>) round-trips its escape and is escaped like any
+    /// other identifier. The census counts how many each value skipped; every value still fails at
+    /// its contextual position (measured: emptying this set reddens 311 T2 cells, and each of the ten
+    /// values drops its escape in ≥ 1 fixture).
     /// </summary>
     public static readonly IReadOnlySet<string> ContextualKeywordsReadAsKeywords = new HashSet<string>(StringComparer.Ordinal)
     {
         "_", "get", "set", "init", "out", "ref", "add", "remove", "when", "notnull",
     };
+
+    /// <summary>
+    /// Whether the identifier token at <paramref name="i"/> sits where the parser reads its value as
+    /// a contextual keyword despite an escape (#2166) — the positions T2 leaves bare. Each arm
+    /// mirrors the parser's check, generously (a skip only costs coverage; a missed position is a
+    /// red T2 cell):
+    /// </summary>
+    public static bool IsReadAsContextualKeyword(IReadOnlyList<Token> tokens, int i)
+    {
+        var token = tokens[i];
+        if (token.Type != TokenType.Identifier || !ContextualKeywordsReadAsKeywords.Contains(token.Value))
+            return false;
+        var previous = i > 0 ? tokens[i - 1].Type : TokenType.Newline;
+        var next = i + 1 < tokens.Count ? tokens[i + 1].Type : TokenType.Eof;
+        return token.Value switch
+        {
+            // #2166: `_` is the partial-application placeholder in every expression position and the
+            // wildcard in every pattern position — an escaped `_` is read as both.
+            "_" => true,
+            // #2166: ParsePropertyDef reads get/set/init right after `property` as the accessor.
+            "get" or "set" or "init" => previous == TokenType.Property,
+            // #2166: ParseEventDef reads add/remove right after `event` as the accessor.
+            "add" or "remove" => previous == TokenType.Event,
+            // #2166: a type-parameter constraint `[T: notnull]` (also after `,`/`&` in a constraint list).
+            "notnull" => previous is TokenType.Colon or TokenType.Comma or TokenType.Ampersand,
+            // #2166: the exception filter of `except E when …` / `except E as e when …`.
+            "when" => LogicalLineStartsWith(tokens, i, TokenType.Except),
+            // #2166: variance `[out T]`, the parameter modifier `x: out T`, and the call-site argument
+            // modifier `f(out y)` (the parser's peek guard: not before `,`, `)` or `=`).
+            "out" => IsModifierPosition(previous, next) || (previous is TokenType.LeftBracket or TokenType.Comma && next == TokenType.Identifier),
+            // #2166: the parameter modifier `x: ref T` and the call-site modifier `f(ref y)`.
+            "ref" => IsModifierPosition(previous, next),
+            _ => false,
+        };
+
+        static bool IsModifierPosition(TokenType previous, TokenType next)
+            => (previous == TokenType.Colon && next == TokenType.Identifier)
+                || (previous is TokenType.LeftParen or TokenType.Comma
+                    && next is not (TokenType.Comma or TokenType.RightParen or TokenType.Assign));
+    }
+
+    /// <summary>Whether the logical line holding token <paramref name="i"/> begins with a <paramref name="type"/> token.</summary>
+    private static bool LogicalLineStartsWith(IReadOnlyList<Token> tokens, int i, TokenType type)
+    {
+        var j = i;
+        while (j > 0 && tokens[j - 1].Type is not (TokenType.Newline or TokenType.Indent or TokenType.Dedent))
+            j--;
+        return tokens[j].Type == type;
+    }
 
     /// <summary>Lexes with trivia and positions, the way <c>FormatterService.Format</c> does.</summary>
     public static List<Token> Lex(string source, out bool hasErrors)
@@ -127,10 +181,11 @@ public static class FormatterTwins
     /// <summary>T2: every unescaped identifier token wrapped in backticks, by source offset.</summary>
     public static (string Text, int Count) BacktickInjected(string source)
     {
-        var targets = Lex(source, out _)
-            .Where(t => IsUnescapedIdentifier(t)
+        var tokens = Lex(source, out _);
+        var targets = tokens
+            .Where((t, i) => IsUnescapedIdentifier(t)
                 && t.Value != ContextualBeforeSet && t.Value != ContextualAfterSet
-                && !ContextualKeywordsReadAsKeywords.Contains(t.Value))
+                && !IsReadAsContextualKeyword(tokens, i))
             .OrderByDescending(t => t.Position)
             .ToList();
         var text = new StringBuilder(source);
@@ -143,12 +198,15 @@ public static class FormatterTwins
         return (text.ToString(), targets.Count);
     }
 
-    /// <summary>How many unescaped identifier tokens of each <see cref="ContextualKeywordsReadAsKeywords"/> value T2 leaves bare.</summary>
+    /// <summary>How many unescaped identifier tokens of each <see cref="ContextualKeywordsReadAsKeywords"/> value T2 leaves bare (at a contextual position).</summary>
     public static IReadOnlyDictionary<string, int> ContextualKeywordSkips(string source)
-        => Lex(source, out _)
-            .Where(t => IsUnescapedIdentifier(t) && ContextualKeywordsReadAsKeywords.Contains(t.Value))
+    {
+        var tokens = Lex(source, out _);
+        return tokens
+            .Where((t, i) => IsUnescapedIdentifier(t) && IsReadAsContextualKeyword(tokens, i))
             .GroupBy(t => t.Value, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+    }
 
     private static bool IsUnescapedIdentifier(Token t)
         => t.Type == TokenType.Identifier && !t.IsBacktickEscaped && t.Position >= 0;
