@@ -76,7 +76,8 @@ Diagnostics are published after each document change (debounced) and include all
 | `textDocument/semanticTokens` | Semantic highlighting (types, functions, parameters, etc.) |
 | `textDocument/foldingRange` | Code folding for classes, functions, and block statements |
 | `textDocument/codeLens` | Reference counts on symbols; run buttons for entry points |
-| `textDocument/formatting` | Indentation normalization |
+| `textDocument/formatting` | Format the document with the same formatter as `sharpyc format` (see [The Sharpy Formatter](formatter.md)); no edits when formatting is declined (SPY0912), indentation-only fallback for a document that does not parse |
+| `textDocument/rangeFormatting` | Format the selected lines, with the same rules |
 
 ## Transport
 
