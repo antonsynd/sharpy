@@ -137,6 +137,8 @@ public static class FormatterService
     /// <item>it does not re-lex;</item>
     /// <item>its comment SEQUENCE differs (a comment dropped, added or reordered — comment text is
     /// compared without trailing spaces/tabs, which the formatter strips by design);</item>
+    /// <item>a comment keeps its place in the sequence but changes its attachment
+    /// (<see cref="CommentAnchors"/>: inline or own-line, neighbouring code tokens, block depth);</item>
     /// <item>the multiset of backtick-escaped identifier tokens differs — token-based on purpose:
     /// the structural comparer does not see every escape flag, so this check must not depend on it;</item>
     /// <item>it does not re-parse;</item>
@@ -181,6 +183,11 @@ public static class FormatterService
             var line = FirstDifferingStatementLine(sourceAst, sourceNorm, outputNorm);
             return Declined($"change the program's structure (first differing statement at line {line})", line);
         }
+
+        // Same program, same comments in the same order — each must also keep its attachment (#2077).
+        // Checked last: a structural change also changes a comment's neighbours, and is the cause.
+        if (CommentAnchors.FirstMoved(CommentAnchors.Of(sourceLex.Tokens), CommentAnchors.Of(outputLex.Tokens)) is { } moved)
+            return Declined($"move comment '{moved.Before.Text}' at line {moved.Before.Line} ({CommentAnchors.Describe(moved.Before, moved.After)})", moved.Before.Line);
 
         return null;
     }

@@ -277,6 +277,41 @@ public class FormatterServiceTests
         diagnostic!.Line.Should().Be(6);
     }
 
+    /// <summary>
+    /// A comment that keeps its place in the sequence but changes its attachment has MOVED (#2077):
+    /// the two shapes the unparser produced at 4ef844961 — an <c>else</c> header comment written on
+    /// the <c>if</c> line, and a block-end comment hoisted out of the block it ends.
+    /// </summary>
+    [Fact]
+    public void Net_RefusesAnOutputThatMovesAComment()
+    {
+        AssertDeclined(
+            Net("def main():\n    x = 0\n    if x > 0:\n        print(1)\n    else:  # c\n        print(2)\n",
+                "def main():\n    x = 0\n    if x > 0:  # c\n        print(1)\n    else:\n        print(2)\n"),
+            "would move comment '# c' at line 5");
+        AssertDeclined(
+            Net("def main():\n    if True:\n        print(1)\n        # end of if\n    print(2)\n",
+                "def main():\n    if True:\n        print(1)\n    # end of if\n    print(2)\n"),
+            "would move comment '# end of if' at line 4 (from block depth 2 to 1)");
+        AssertDeclined(
+            Net("@d\ndef f():  # c\n    pass\n", "@d  # c\ndef f():\n    pass\n"),
+            "would move comment '# c' at line 2");
+    }
+
+    /// <summary>
+    /// The exemption, positively: layout is not attachment. A body re-indented from 8 columns to 4
+    /// — its block-end comment and a mid-body comment written at an odd column (re-indented to the
+    /// statement it precedes) — moves no comment.
+    /// </summary>
+    [Fact]
+    public void Net_AcceptsAReindentThatKeepsEveryAttachment()
+    {
+        var source = "def main():\n        if True:\n                print(1)\n                # end of if\n# odd column, mid-body\n        print(2)\n";
+        var output = "def main():\n    if True:\n        print(1)\n        # end of if\n    # odd column, mid-body\n    print(2)\n";
+
+        Net(source, output).Should().BeNull();
+    }
+
     [Fact]
     public void Net_ComparesCommentTextWithoutTheTrailingWhitespaceTheFormatterStrips()
     {

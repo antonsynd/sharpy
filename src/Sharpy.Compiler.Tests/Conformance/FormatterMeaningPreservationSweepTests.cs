@@ -34,6 +34,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <item>O2 <c>unparseable</c> — F does not re-lex/re-parse clean;</item>
 /// <item>O3 <c>astChanged</c> — <see cref="AstNormalizer"/> + <see cref="StructuralEqualityComparer"/> inequality of Q and F;</item>
 /// <item>O4 <c>commentDropped</c> — the comment SEQUENCE (source order, text) differs: dropped, added or reordered;</item>
+/// <item>O4b <c>commentMoved</c> — same program, same comment sequence, but a comment's attachment
+/// changed (<c>CommentAnchors</c>: inline or own-line, neighbouring code tokens, block depth — the
+/// same rule the SPY0912 net applies, after its structural check);</item>
 /// <item>O5 <c>escapeDropped</c> — the multiset of backtick-escaped identifier values differs;</item>
 /// <item>O6 <c>notIdempotent</c> — <c>Format(F) != F</c>.</item>
 /// </list>
@@ -65,19 +68,20 @@ public class FormatterMeaningPreservationSweepTests
     internal const string Unparseable = "unparseable";
     internal const string AstChanged = "astChanged";
     internal const string CommentDropped = "commentDropped";
+    internal const string CommentMoved = "commentMoved";
     internal const string EscapeDropped = "escapeDropped";
     internal const string NotIdempotent = "notIdempotent";
     internal const string NetOverRefuses = "netOverRefuses";
     internal const string NetMissed = "netMissed";
 
     /// <summary>The raw-output buckets the net (SPY0912) is meant to catch: any of them ⇔ <c>Format</c> refuses.</summary>
-    private static readonly HashSet<string> NetCatches = new(StringComparer.Ordinal) { Unparseable, AstChanged, CommentDropped, EscapeDropped };
+    private static readonly HashSet<string> NetCatches = new(StringComparer.Ordinal) { Unparseable, AstChanged, CommentDropped, CommentMoved, EscapeDropped };
 
     /// <summary>O7's bucket: its rows share the allowlist file and belong to <see cref="FormatterEmitInvarianceSweepTests"/>.</summary>
     internal const string EmitChanged = "emitChanged";
 
     private static readonly string[] Twins = { Identity, Comment, Backtick };
-    private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, EscapeDropped, NotIdempotent, NetOverRefuses, NetMissed };
+    private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, CommentMoved, EscapeDropped, NotIdempotent, NetOverRefuses, NetMissed };
 
     private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
 
@@ -173,7 +177,7 @@ public class FormatterMeaningPreservationSweepTests
     internal sealed record Verdict(SortedDictionary<string, string> Failures, string? Formatted);
 
     /// <summary>The source observed once through the trivia lexer and the parser.</summary>
-    internal sealed record Observation(bool HasErrors, string FirstError, SModule? Module, IReadOnlyList<string> Comments, IReadOnlyList<string> EscapedNames);
+    internal sealed record Observation(bool HasErrors, string FirstError, SModule? Module, IReadOnlyList<string> Comments, IReadOnlyList<string> EscapedNames, List<CommentAnchors.Anchor> Anchors);
 
     internal static Observation Observe(string text)
     {
@@ -188,10 +192,11 @@ public class FormatterMeaningPreservationSweepTests
             .Select(t => t.Value)
             .OrderBy(v => v, StringComparer.Ordinal)
             .ToList();
+        var anchors = CommentAnchors.Of(lex.Tokens);
         if (lex.HasErrors)
-            return new Observation(true, FirstError(lex.Diagnostics.GetAll()), null, comments, escaped);
+            return new Observation(true, FirstError(lex.Diagnostics.GetAll()), null, comments, escaped, anchors);
         var parse = FileCompilationPipeline.Parse(lex.Tokens, NullLogger.Instance);
-        return new Observation(parse.HasErrors || parse.Module == null, FirstError(parse.Diagnostics.GetAll()), parse.Module, comments, escaped);
+        return new Observation(parse.HasErrors || parse.Module == null, FirstError(parse.Diagnostics.GetAll()), parse.Module, comments, escaped, anchors);
     }
 
     /// <summary>Builds the twin of <paramref name="source"/>, runs the instrument checks, formats it and applies O1–O6.</summary>
@@ -261,13 +266,15 @@ public class FormatterMeaningPreservationSweepTests
     internal static IEnumerable<(string Bucket, string Detail)> Oracles(Observation q, string formatted)
     {
         var f = Observe(formatted);
+        var sameProgram = false;
         if (f.HasErrors)
         {
             yield return (Unparseable, f.FirstError);
         }
         else
         {
-            if (!SameAst(q.Module!, f.Module!))
+            sameProgram = SameAst(q.Module!, f.Module!);
+            if (!sameProgram)
                 yield return (AstChanged, "the formatted text parses to a structurally different AST");
             var again = FormatRaw(formatted).FormattedText;
             if (again != formatted)
@@ -276,6 +283,8 @@ public class FormatterMeaningPreservationSweepTests
 
         if (!q.Comments.SequenceEqual(f.Comments, StringComparer.Ordinal))
             yield return (CommentDropped, SequenceDifference(q.Comments, f.Comments));
+        else if (sameProgram && CommentAnchors.FirstMoved(q.Anchors, f.Anchors) is { } moved)
+            yield return (CommentMoved, $"'{moved.Before.Text}' (line {moved.Before.Line}) moved {CommentAnchors.Describe(moved.Before, moved.After)}");
         if (!q.EscapedNames.SequenceEqual(f.EscapedNames, StringComparer.Ordinal))
             yield return (EscapeDropped, SequenceDifference(q.EscapedNames, f.EscapedNames));
     }
@@ -348,6 +357,22 @@ public class FormatterMeaningPreservationSweepTests
         var lines = twin.Split('\n').ToList();
         lines.RemoveAt(lines.FindIndex(l => l.Trim() == "# c5"));
         Oracles(q, string.Join("\n", lines)).Select(o => o.Bucket).Should().Contain(CommentDropped);
+    }
+
+    /// <summary>
+    /// O4b sees a comment that MOVED with the sequence intact (the else-header comment written on the
+    /// <c>if</c> line), and does not see a pure re-indent of the same program (the exemption's positive
+    /// control: layout is not attachment).
+    /// </summary>
+    [Fact]
+    public void PositiveControl_O4bSeesAMovedComment_NotAReindent()
+    {
+        var q = Observe("def main():\n        x = 0\n        if x > 0:\n                print(1)\n        else:  # c\n                print(2)\n");
+
+        Oracles(q, "def main():\n    x = 0\n    if x > 0:  # c\n        print(1)\n    else:\n        print(2)\n")
+            .Select(o => o.Bucket).Should().Contain(CommentMoved).And.NotContain(CommentDropped);
+        Oracles(q, "def main():\n    x = 0\n    if x > 0:\n        print(1)\n    else:  # c\n        print(2)\n")
+            .Select(o => o.Bucket).Should().NotContain(CommentMoved);
     }
 
     /// <summary>O5 sees a dropped escape, O2 an unparseable output and O3 a changed program, each on a hand-damaged formatted text.</summary>

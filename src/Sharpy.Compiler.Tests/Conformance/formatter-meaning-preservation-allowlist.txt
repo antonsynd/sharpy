@@ -4,7 +4,8 @@
 #   stem   — the fixture name (e.g. `basics/hello_world`)
 #   twin   — identity (T0, the fixture itself) | comment (T1, `# cN` injected at every comment
 #            anchor) | backtick (T2, every identifier backtick-escaped)
-#   bucket — instrument | refused | unparseable | astChanged | commentDropped | escapeDropped |
+#   bucket — instrument | refused | unparseable | astChanged | commentDropped | commentMoved |
+#            escapeDropped |
 #            notIdempotent | netOverRefuses | netMissed (FormatterMeaningPreservationSweepTests:
 #            O1 `refused` reads the real Format, O2–O6 the RAW output with the SPY0912 net bypassed,
 #            and netOverRefuses/netMissed are the net disagreeing with them) | emitChanged
