@@ -818,23 +818,30 @@ public partial class Parser
     private Statement ParseStatement() => ParseInStatementFrame(ParseStatementCore);
 
     /// <summary>
-    /// The line a simple statement ends on: the line of the line break that ended it — a multi-line
-    /// string's closing line, not the line it opens on — or, at a dedent or the end of the file, the
-    /// line of its last token. Never <see cref="Node.LineEnd"/>: several statement kinds record it
+    /// Where a simple statement ends: the LINE of the line break that ended it — a multi-line
+    /// string's closing line, not the line it opens on — or, at a dedent or the end of the file, of
+    /// its last token; and the exclusive OFFSET just past its last code token. Read from the
+    /// consumed tokens, never from the node: several statement kinds record <see cref="Node.LineEnd"/>
     /// after consuming the terminator, as the NEXT statement's line (<c>type X = int</c>, a
-    /// <c>const</c> declaration, …), which would read that statement's leading comments as this
-    /// header's inner comments.
+    /// <c>const</c> declaration, …), and an annotated declaration without a value records its
+    /// <see cref="Node.Span"/> as the name's alone (<c>x: int</c> ends at <c>x</c>) — either would
+    /// mis-bound the header the formatter's trivia anchors read (P22b, #2077).
     /// </summary>
-    private int SimpleStatementEndLine(Statement stmt)
+    private (int Line, int EndOffset) SimpleStatementEnd(Statement stmt)
     {
+        var line = 0;
         for (int i = Math.Min(_position - 1, _tokens.Count - 1); i >= 0; i--)
         {
             var t = _tokens[i];
             if (t.Type is TokenType.Indent or TokenType.Dedent or TokenType.Eof)
                 continue;
-            return t.Line;
+            if (line == 0)
+                line = t.Line;
+            if (t.Type == TokenType.Newline)
+                continue;
+            return (line, t.GetSpan() is { } span ? span.End : stmt.Span?.End ?? 0);
         }
-        return stmt.LineEnd;
+        return (line > 0 ? line : stmt.LineEnd, stmt.Span?.End ?? 0);
     }
 
     /// <summary>
@@ -864,7 +871,9 @@ public partial class Parser
 
         stmt = headerSeen
             ? stmt with { HeaderLineEnd = headerColon.Line, HeaderEndOffset = headerColon.EndOffset }
-            : stmt with { HeaderLineEnd = SimpleStatementEndLine(stmt), HeaderEndOffset = stmt.Span?.End ?? 0 };
+            : SimpleStatementEnd(stmt) is var (endLine, endOffset)
+                ? stmt with { HeaderLineEnd = endLine, HeaderEndOffset = endOffset }
+                : stmt;
 
         if (trailingTrivia == null)
         {

@@ -23,6 +23,8 @@ def main():
     # before except
     except ValueError as e:  # except header
         print(e)
+    except KeyError, IndexError:  # except-tuple header: an exception list is written (KeyError, IndexError)
+        print("k")
     # before finally
     finally:  # finally header
         print("f")

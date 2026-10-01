@@ -441,6 +441,11 @@ public class FormatterMeaningPreservationSweepTests
         foreach (var (value, n) in skipped)
             n.Should().BeGreaterThan(0, $"T2 skips the #2166 contextual keyword '{value}': the corpus must contain one, else the skip set has a stale member");
         rows.Should().OnlyContain(r => census.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
+
+        // P22b drained the allowlist to EMPTY at Phase 4 Task 3 (every comment, escape and O7 row). The
+        // literal anchors it: re-populating the allowlist is a visible decision — change this 0 in the
+        // same commit and say why.
+        rows.Count.Should().Be(0, "the formatter meaning-preservation allowlist is empty since P22b Phase 4 Task 3");
     }
 
     private static int CountMultiFileMemberFiles()

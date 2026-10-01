@@ -65,9 +65,10 @@ internal sealed class TriviaCursor
 
     /// <summary>
     /// Every comment and blank-line item of <paramref name="tokens"/> (lexed with trivia from
-    /// <paramref name="source"/>), in source order. Comments inside a string or f-/t-string token's
-    /// span (a replacement-field comment) are excluded: the literal's own verbatim writer
-    /// (<c>RawText</c>, P22) carries them.
+    /// <paramref name="source"/>), in source order. A comment inside a multi-line f-/t-string
+    /// replacement field is one of them: it lies inside its statement's header range, so it makes
+    /// the header verbatim like any inner comment (lead ruling (b), P22b Phase 4 Task 3) — the
+    /// f-string unparser never has to carry it.
     /// </summary>
     public static TriviaCursor FromTokens(IReadOnlyList<Token> tokens, string source)
     {
@@ -97,30 +98,8 @@ internal sealed class TriviaCursor
 
         void Add(IReadOnlyList<Trivia>? trivia)
         {
-            if (trivia == null)
-                return;
-            foreach (var t in trivia)
-            {
-                if (t.Kind == TriviaKind.Comment && InsideLiteral(t.Position))
-                    continue;
-                items.Add(t);
-            }
-        }
-
-        bool InsideLiteral(int position)
-        {
-            // The spans are in source order and non-overlapping: the last one starting before
-            // the position is the only one that can contain it.
-            int lo = 0, hi = literals.Count;
-            while (lo < hi)
-            {
-                var mid = (lo + hi) / 2;
-                if (literals[mid].Start < position)
-                    lo = mid + 1;
-                else
-                    hi = mid;
-            }
-            return lo > 0 && position < literals[lo - 1].End;
+            if (trivia != null)
+                items.AddRange(trivia);
         }
     }
 
@@ -161,7 +140,10 @@ internal sealed class TriviaCursor
     public List<Trivia> TakeBefore(int line)
     {
         var taken = new List<Trivia>();
-        while (_head < _items.Count && _items[_head].Line < line)
+        // A blank-line run is recorded on the line that ends it — the anchor's own first line — so
+        // it is taken here too, never mistaken for an inner comment of the anchor.
+        while (_head < _items.Count
+            && (_items[_head].Line < line || (_items[_head].Kind == TriviaKind.BlankLines && _items[_head].Line == line)))
             taken.Add(_items[_head++]);
         return taken;
     }
@@ -173,7 +155,7 @@ internal sealed class TriviaCursor
         while (_head < _items.Count)
         {
             var t = _items[_head];
-            if (t.Line < lineStart || t.Line > lineEnd || (t.IsInline && t.Line == lineEnd))
+            if (t.Kind != TriviaKind.Comment || t.Line < lineStart || t.Line > lineEnd || (t.IsInline && t.Line == lineEnd))
                 break;
             taken.Add(t);
             _head++;
@@ -191,11 +173,11 @@ internal sealed class TriviaCursor
     }
 
     /// <summary>
-    /// A body's end: the own-line comments at the head whose column is at or right of the body's
-    /// <paramref name="column"/> and that precede the first code after the body's last line
-    /// <paramref name="lastLine"/> (blank lines between them included). Nested bodies close
-    /// innermost first, so each takes the comments written at its own indent. Empty for an
-    /// AST-built cursor.
+    /// The end of the bodies closing after line <paramref name="lastLine"/>: the own-line comments at
+    /// the head whose column is at or right of the OUTERMOST closing body's
+    /// <paramref name="column"/> and that precede the first code after <paramref name="lastLine"/>
+    /// (blank lines between them included). The caller assigns each to the deepest closing body at
+    /// or left of its column. Empty for an AST-built cursor.
     /// </summary>
     public List<Trivia> TakeBodyEnd(int column, int lastLine)
     {
@@ -233,6 +215,41 @@ internal sealed class TriviaCursor
     /// <summary>True when an item is still pending.</summary>
     public bool HasPending => _head < _items.Count;
 
+    /// <summary>The column of the first code token after line <paramref name="afterLine"/>; 0 at the end of the source (every open body closes).</summary>
+    public int NextCodeColumn(int afterLine)
+    {
+        var line = NextCodeLine(afterLine);
+        if (line == int.MaxValue || _codeTokens == null)
+            return 0;
+        return _codeTokens.First(t => t.Line == line).Column;
+    }
+
+    /// <summary>True when code follows the code ending at <paramref name="parserEnd"/> on the same source line.</summary>
+    public bool CodeFollowsOnLine(int parserEnd)
+    {
+        if (_codeTokens == null)
+            return false;
+        var end = SourceEnd(parserEnd);
+        var next = _codeTokens.FirstOrDefault(t => t.Position >= end);
+        return next != null && next.Line == EndLineOf(parserEnd);
+    }
+
+    /// <summary>True when only whitespace precedes <paramref name="offset"/> on its source line.</summary>
+    public bool StartsLine(int offset)
+    {
+        if (_source == null)
+            return true;
+        for (var i = offset - 1; i >= 0; i--)
+        {
+            var c = _source[i];
+            if (c == '\n' || c == '\r')
+                return true;
+            if (c != ' ' && c != '\t')
+                return false;
+        }
+        return true;
+    }
+
     private int NextCodeLine(int afterLine)
     {
         var lines = _codeLines!;
@@ -249,20 +266,42 @@ internal sealed class TriviaCursor
     }
 
     /// <summary>
-    /// The line range of the docstring that is the first code after <paramref name="afterOffset"/>
-    /// (a header's end, or 0 for the module's docstring).
+    /// Where the docstring that is the first code after <paramref name="afterOffset"/> (a header's
+    /// end, or 0 for the module's docstring) lies: its first line and its source extent
+    /// [<paramref name="startOffset"/>, <paramref name="endOffset"/>) — the anchor's range and, when
+    /// a comment sits inside a parenthesized docstring, its verbatim slice.
     /// </summary>
-    public bool TryFindDocString(int afterOffset, out int startLine, out int endLine)
+    public bool TryFindDocString(int afterOffset, out int startLine, out int startOffset, out int endOffset)
     {
-        startLine = endLine = 0;
+        startLine = startOffset = endOffset = 0;
         if (_codeTokens == null || _source == null)
             return false;
-        var token = _codeTokens.FirstOrDefault(t => t.Position >= afterOffset);
-        if (token == null || token.Type is not (TokenType.String or TokenType.RawString))
+        var index = _codeTokens.FindIndex(t => t.Position >= afterOffset);
+        if (index < 0)
             return false;
-        startLine = token.Line;
-        endLine = token.Line + CountLineBreaks(token.Position, Math.Min(_source.Length, token.Position + token.Length));
-        return true;
+        // A parenthesized docstring (`("Doc.")`) is one too: it runs to the matching `)`.
+        var depth = 0;
+        var first = _codeTokens[index];
+        for (var i = index; i < _codeTokens.Count; i++)
+        {
+            var token = _codeTokens[i];
+            if (token.Type == TokenType.LeftParen)
+            {
+                depth++;
+                continue;
+            }
+            if (depth == 0 && token.Type is not (TokenType.String or TokenType.RawString))
+                return false;
+            if (token.Type == TokenType.RightParen)
+                depth--;
+            if (depth > 0)
+                continue;
+            startLine = first.Line;
+            startOffset = first.Position;
+            endOffset = Math.Min(_source.Length, token.Position + token.Length);
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -337,22 +376,4 @@ internal sealed class TriviaCursor
 
     /// <summary>True when source line <paramref name="line"/> (1-based) starts inside a string or f-/t-string literal.</summary>
     public bool LineStartsInsideLiteral(int line) => _linesStartingInsideLiteral?.Contains(line) == true;
-
-    private int CountLineBreaks(int start, int end)
-    {
-        var count = 0;
-        for (var i = start; i < end; i++)
-        {
-            var c = _source![i];
-            if (c == '\n')
-                count++;
-            else if (c == '\r')
-            {
-                count++;
-                if (i + 1 < end && _source[i + 1] == '\n')
-                    i++;
-            }
-        }
-        return count;
-    }
 }

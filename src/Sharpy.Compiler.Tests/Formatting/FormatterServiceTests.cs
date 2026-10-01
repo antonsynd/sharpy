@@ -332,21 +332,19 @@ public class FormatterServiceTests
     }
 
     [Fact]
-    public void Format_DeclinesAnOutputDroppingABracketComment_LeavesSourceUnchanged()
+    public void Format_KeepsABracketComment_TheFormerRefusalCellIsWrittenVerbatim()
     {
         // #2077 live cell end to end: at 4ef844961 Format returned `xs = [1, 2]` (comment gone); the
-        // P22b Phase 2 net declined the drop. Since the Phase 4 trivia cursor the comment is KEPT —
-        // written as a full line above the statement until the verbatim header lands (Task 3) — and
-        // the net declines that as a MOVE (the comment's anchor changed), never a drop.
-        var source = "def main():\n    xs = [1,  # inner\n        2]\n    print(xs)\n";
+        // P22b Phase 2 net declined the drop; the Phase 4 Task 2 cursor kept the comment but wrote it
+        // above the statement, which the net declined as a move. Since Task 3 the statement is written
+        // verbatim from source, re-indented with its first line (8 → 4, so the continuation 12 → 8).
+        var source = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
 
         var result = FormatterService.Format(source, filePath: "p2077.spy");
 
-        result.FormattedText.Should().Be(source);
-        result.HasChanges.Should().BeFalse();
-        result.Diagnostics.Should().ContainSingle();
-        AssertDeclined(result.Diagnostics[0], "would move comment '# inner' at line 2");
-        result.Diagnostics[0].FilePath.Should().Be("p2077.spy");
+        result.Diagnostics.Should().BeEmpty();
+        result.FormattedText.Should().Be("def main():\n    xs = [1,  # inner\n        2]\n    print(xs)\n");
+        result.HasChanges.Should().BeTrue();
     }
 
     [Fact]

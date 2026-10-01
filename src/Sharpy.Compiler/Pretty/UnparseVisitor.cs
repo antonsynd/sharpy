@@ -13,6 +13,13 @@ internal sealed partial class UnparseVisitor : AstVisitor
     private readonly TriviaCursor? _cursor;
 
     /// <summary>
+    /// The bodies being written, innermost on top: each body's source column (0 for a body with no
+    /// indented block of its own — an inline <c>def f(): ...</c>) and the writer level it is
+    /// written at. A body's end hands its trailing comments to the CLOSING bodies by column.
+    /// </summary>
+    private readonly Stack<(int Column, int Level)> _openBodies = new();
+
+    /// <summary>
     /// The decorators <see cref="VisitStatementWithTrivia"/> already wrote, each at its own anchor,
     /// before the statement's header anchor; the statement's visitor skips them.
     /// </summary>
@@ -125,7 +132,15 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
 
         var header = stmt is DecoratedStatement decorated ? decorated.Statement : stmt;
-        WriteAnchored(header.LineStart, stmt.HeaderLineEnd, header.Span?.Start ?? -1, stmt.HeaderEndOffset, () => Visit(stmt));
+        // A body that starts on the header's own line (`def f(self) -> str: (...)`) has no block of
+        // its own: the statement is ONE anchor — header and inline body together — so a comment in
+        // the body is an inner comment of the statement and the slice covers the whole statement.
+        var sliceEnd = stmt.HeaderEndOffset;
+        var wholeStatement = sliceEnd > 0 && stmt.Span is { } span && span.End > sliceEnd
+            && _cursor.CodeFollowsOnLine(sliceEnd);
+        if (wholeStatement)
+            sliceEnd = stmt.Span!.Value.End;
+        WriteAnchored(header.LineStart, stmt.HeaderLineEnd, header.Span?.Start ?? -1, sliceEnd, () => Visit(stmt), wholeStatement);
         _decoratorsWritten = default;
     }
 
@@ -155,7 +170,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
     /// that is neither (an inner comment) makes the header verbatim: the source slice
     /// [<paramref name="sliceStart"/>, <paramref name="sliceEnd"/>) replaces the written header.
     /// </summary>
-    private void WriteAnchored(int lineStart, int headerLineEnd, int sliceStart, int sliceEnd, Action write)
+    private void WriteAnchored(int lineStart, int headerLineEnd, int sliceStart, int sliceEnd, Action write, bool sliceCoversWrite = false)
     {
         if (_cursor == null || lineStart <= 0)
         {
@@ -170,33 +185,146 @@ internal sealed partial class UnparseVisitor : AstVisitor
         var end = Math.Max(lineStart, endFromSource > 0 ? endFromSource : headerLineEnd);
         var inner = _cursor.TakeInner(lineStart, end);
         var trailing = _cursor.TakeInline(end);
-        WriteOwnLine(inner);
+
+        // Inner comments are consumed by the verbatim slice; only an anchor without a source slice
+        // (no source text, or a header the parser did not position) writes them as full lines
+        // before it — moved, never dropped, and the net refuses the move.
+        var slice = inner.Count > 0 ? VerbatimSlice(lineStart, sliceStart, sliceEnd) : null;
+        if (inner.Count > 0 && slice == null)
+            WriteOwnLine(inner);
 
         var position = _w.Length;
+        var headerStart = position + (_w.AtLineStart ? _w.IndentWidth : 0);
         write();
+        if (slice != null)
+            ReplaceHeaderWithSlice(headerStart, slice, sliceCoversWrite);
         if (trailing.Count > 0)
             AppendInline(position, trailing);
+    }
+
+    /// <summary>
+    /// The header's source slice [<paramref name="sliceStart"/>, <paramref name="sliceEnd"/>) with
+    /// its continuation lines re-indented for the header's new indent: each moves by (new indent −
+    /// the header's original first column), clamped at column 0, except a line that starts inside a
+    /// string literal, whose leading whitespace is the literal's content. Null when the anchor has
+    /// no slice. The slice's end is re-derived from the source (<see cref="TriviaCursor.SourceEnd"/>):
+    /// the parser's end offset reads a numeric literal's normalised length.
+    /// </summary>
+    private string? VerbatimSlice(int lineStart, int sliceStart, int sliceEnd)
+    {
+        if (_cursor is not { HasSource: true } || sliceStart < 0 || sliceEnd <= sliceStart)
+            return null;
+        var source = _cursor.Source!;
+        var end = Math.Min(source.Length, _cursor.SourceEnd(sliceEnd));
+        if (end <= sliceStart)
+            return null;
+
+        var shift = _w.IndentWidth - _cursor.ColumnOf(sliceStart);
+        // One line-ending convention in the output: the source's \r\n / \r breaks are written as
+        // the writer's line ending, as everywhere else the formatter writes (P22 CRLF cells).
+        var lines = source.Substring(sliceStart, end - sliceStart).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        for (int k = 1; k < lines.Length; k++)
+        {
+            if (_cursor.LineStartsInsideLiteral(lineStart + k) || lines[k].Trim().Length == 0)
+                continue;
+            if (shift > 0)
+            {
+                lines[k] = new string(' ', shift) + lines[k];
+            }
+            else if (shift < 0)
+            {
+                var leading = 0;
+                while (leading < lines[k].Length && leading < -shift && (lines[k][leading] == ' ' || lines[k][leading] == '\t'))
+                    leading++;
+                lines[k] = lines[k].Substring(leading);
+            }
+        }
+        return string.Join(_options.LineEnding, lines);
+    }
+
+    /// <summary>
+    /// Replaces the header just written at <paramref name="headerStart"/> — up to its first line
+    /// break outside verbatim text — with its source slice, written opaque so the header's inline
+    /// comment is appended after the slice, never inside it.
+    /// </summary>
+    private void ReplaceHeaderWithSlice(int headerStart, string slice, bool wholeWrite)
+    {
+        var headerEnd = wholeWrite
+            ? _w.Length - (_w.ToString().EndsWith(_options.LineEnding, StringComparison.Ordinal) ? _options.LineEnding.Length : 0)
+            : _w.IndexOfLineEndingOutsideOpaque(_options.LineEnding, headerStart);
+        if (headerEnd < 0)
+            headerEnd = _w.Length;
+        // The written header's terminator stays the writer's: a bodyless definition
+        // (`def f(self)`) is written with a stub body (`def f(self):` + `...`), so its slice — which
+        // has no colon — takes the colon the stub body needs.
+        if (!wholeWrite && headerEnd > headerStart && _w.CharAt(headerEnd - 1) == ':' && !slice.EndsWith(':'))
+            slice += ":";
+        _w.ReplaceRangeOpaque(headerStart, headerEnd, slice);
     }
 
     /// <summary>A docstring's anchor: its line range is read from the token stream (the AST records only its text).</summary>
     private void WriteDocStringAnchored(int afterOffset, Action write)
     {
-        if (_cursor is { HasSource: true } && _cursor.TryFindDocString(afterOffset, out var startLine, out var endLine))
-            WriteAnchored(startLine, endLine, -1, -1, write);
+        if (_cursor is { HasSource: true } && _cursor.TryFindDocString(afterOffset, out var startLine, out var startOffset, out var endOffset))
+            WriteAnchored(startLine, 0, startOffset, endOffset, write);
         else
             write();
     }
 
     /// <summary>
-    /// A body's end: the comments after its last line at or right of its column — innermost body
-    /// first, so <c># end of the method</c> at the method body's indent stays in the method.
+    /// Opens a body whose first line starts at source column <paramref name="column"/> (written at
+    /// the current writer level). Pair with <see cref="CloseBody"/>.
     /// </summary>
-    private void WriteBodyEnd(int column, int lastLine)
+    private void OpenBody(int column) => _openBodies.Push((column, _w.IndentLevel));
+
+    /// <summary>
+    /// A body's end (its last source line <paramref name="lastLine"/>): the bodies that CLOSE here are
+    /// the open ones whose column is right of the next code's column (all of them at the end of the
+    /// file). The own-line comments before that code at or right of the outermost closing body's
+    /// column are written here, in source order, each at the level of the deepest closing body whose
+    /// column is at or left of the comment — so <c># end of the method</c> at the method body's
+    /// indent stays in the method even when it follows a comment at the class body's indent. A
+    /// comment left of every closing body leads the next statement and is written by its anchor.
+    /// </summary>
+    private void CloseBody(int lastLine)
     {
-        if (_cursor == null)
-            return;
-        WriteOwnLine(_cursor.TakeBodyEnd(column, lastLine));
+        if (_cursor is { HasSource: true } && _openBodies.Peek().Column > 0)
+        {
+            var nextColumn = _cursor.NextCodeColumn(lastLine);
+            var closing = _openBodies.Where(b => b.Column > 0).TakeWhile(b => b.Column > nextColumn).ToList();
+            if (closing.Count > 0)
+            {
+                foreach (var trivia in _cursor.TakeBodyEnd(closing[closing.Count - 1].Column, lastLine))
+                {
+                    if (trivia.Kind == TriviaKind.BlankLines)
+                    {
+                        if (_options.Formatting == null)
+                            for (int i = 0; i < trivia.BlankLineCount; i++)
+                                _w.WriteLine();
+                        continue;
+                    }
+                    _w.WriteLineAtLevel(closing.First(b => b.Column <= trivia.Column).Level, trivia.Text);
+                }
+            }
+        }
+        _openBodies.Pop();
     }
+
+    /// <summary>
+    /// The source column a body opens at: its first element's column when that element starts its
+    /// source line, else 0 — an inline body (<c>def f(): ...</c>) has no block of its own, so no
+    /// comment can end it.
+    /// </summary>
+    private int BodyColumn(Text.TextSpan? span, int columnStart)
+    {
+        if (_cursor is not { HasSource: true })
+            return columnStart;
+        if (span is not { } s)
+            return 0;
+        return _cursor.StartsLine(s.Start) ? columnStart : 0;
+    }
+
+    private int BodyColumn(Statement first) => BodyColumn(first.Span, first.ColumnStart);
 
     /// <summary>
     /// The last source line of a node ending at <paramref name="span"/>: from its end offset when the
@@ -436,6 +564,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
         var fmt = _options.Formatting;
         _w.Indent();
+        OpenBody(BodyColumn(body[0]));
         for (int i = 0; i < body.Length; i++)
         {
             if (fmt != null && i > 0)
@@ -451,7 +580,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
             VisitStatementWithTrivia(body[i]);
         }
-        WriteBodyEnd(body[0].ColumnStart, LastLineOf(body[body.Length - 1]));
+        CloseBody(LastLineOf(body[body.Length - 1]));
         _w.Dedent();
     }
 

@@ -68,7 +68,7 @@ internal static class CommentAnchors
             {
                 closing.Clear();
                 if (!IsLayoutSpelling(tokens, i))
-                    keys.Add($"{token.Type}:{token.Value}");
+                    keys.Add(KeyOf(token));
             }
 
             foreach (var comment in Comments(token.TrailingTrivia))
@@ -85,6 +85,20 @@ internal static class CommentAnchors
                 p.Depth))
             .ToList();
     }
+
+    /// <summary>
+    /// A neighbour's key: kind and value — except where the kind or value is a literal's SPELLING,
+    /// which is layout (P22b Phase 4 Task 3): an f-/t-string's delimiters are keyed by kind alone
+    /// (their value is the quote, <c>f"""</c> / <c>"""</c>, and the unparser writes a triple-quoted
+    /// f-string single-quoted, P22), and a raw string is keyed as the string it denotes (the unparser
+    /// writes <c>r"Doc."</c> as <c>"""Doc."""</c>; the token value is the string's content either way).
+    /// </summary>
+    private static string KeyOf(Token token) => token.Type switch
+    {
+        TokenType.FStringStart or TokenType.FStringEnd => token.Type.ToString(),
+        TokenType.RawString => $"{TokenType.String}:{token.Value}",
+        _ => $"{token.Type}:{token.Value}"
+    };
 
     /// <summary>
     /// Tokens the formatter may add or drop without moving anything: parentheses (redundant ones are

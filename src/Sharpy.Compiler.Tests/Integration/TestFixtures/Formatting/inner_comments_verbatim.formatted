@@ -1,0 +1,54 @@
+# A statement, clause header or decorator with a comment INSIDE its brackets is written verbatim
+# from source, re-indented: continuation lines move with the first line, clamped at column 0.
+# Inner spacing is kept as written (`[1,2]` stays `[1,2]`).
+def simple():
+    xs = [1,  # after a comma
+          2]
+    ys = [  # after the open bracket
+        # own line before an element
+        3,4
+        # own line before the close bracket
+    ]
+    zs = [1,  # inside the brackets
+          2]  # and the statement's own trailing comment
+    print(xs, ys, zs)
+
+
+def header(a: int,  # inside the parameter list
+           b: int) -> int:  # the header's trailing comment
+    return a + b
+
+
+class Derived(Base,  # inside the base list
+              Other):
+    pass
+
+
+@deco(1,  # inside the decorator's arguments
+      2)
+def decorated():
+    pass
+
+
+def clauses(x: int):
+    if x > 0:
+        pass
+    elif (x <  # inside the elif header
+          -1):
+        pass
+    try:
+        pass
+    except (ValueError,  # inside the except header
+            KeyError) as e:
+        pass
+
+
+def deep():
+    zs = [5,  # the continuation line clamps at column 0
+6]
+
+
+def mixed():
+    t = ("""a
+        b""",  # after a multi-line string, inside the same brackets
+         "c")

@@ -437,10 +437,16 @@ internal sealed partial class UnparseVisitor
         _w.Write(":");
         _w.WriteLine();
         _w.Indent();
+        if (!node.Arms.IsEmpty)
+            OpenBody(BodyColumn(node.Arms[0].Span, node.Arms[0].ColumnStart));
         foreach (var arm in node.Arms)
         {
-            // An arm line is a non-statement body line: an anchor like an enum member's.
-            WriteAnchored(arm.LineStart, arm.LineEnd, arm.Span?.Start ?? -1, arm.Span?.End ?? -1, () =>
+            // An arm line is a non-statement body line: an anchor like an enum member's. An arm whose
+            // result is itself a match expression is a header whose body is that match's arms (their
+            // own anchors): it ends on the nested `match` line and has no whole-arm slice.
+            var nested = arm.Result as MatchExpression;
+            WriteAnchored(arm.LineStart, nested?.LineStart ?? arm.LineEnd,
+                nested == null ? arm.Span?.Start ?? -1 : -1, nested == null ? arm.Span?.End ?? -1 : -1, () =>
             {
                 _w.Write("case ");
                 Visit(arm.Pattern);
@@ -457,7 +463,7 @@ internal sealed partial class UnparseVisitor
         if (!node.Arms.IsEmpty)
         {
             var lastArm = node.Arms[node.Arms.Length - 1];
-            WriteBodyEnd(node.Arms[0].ColumnStart, LastLineOf(lastArm.Span, lastArm.LineEnd));
+            CloseBody(LastLineOf(lastArm.Span, lastArm.LineEnd));
         }
         _w.Dedent();
     }

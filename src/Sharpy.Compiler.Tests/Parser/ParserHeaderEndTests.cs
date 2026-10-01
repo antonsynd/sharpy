@@ -110,6 +110,35 @@ public class ParserHeaderEndTests
         stmt.HeaderLineEnd.Should().Be(2);
     }
 
+    /// <summary>
+    /// A simple statement's header end OFFSET is its last code token's end, read from the tokens:
+    /// an annotated declaration without a value records its span as the name's alone (asserted as
+    /// the control), which cut the formatter's verbatim slice to <c>x</c>.
+    /// </summary>
+    [Fact]
+    public void AnnotatedDeclaration_WithoutAValue_HeaderEndsAfterItsAnnotation()
+    {
+        const string source = "x: dict[str, int]  # c\ny = 1\n";
+        var stmt = Parse(source).Body[0];
+        stmt.Span!.Value.End.Should().BeLessThan(OffsetAfter(source, "x: dict[str, int]"), "control: the node's span is the name's alone");
+        stmt.HeaderEndOffset.Should().Be(OffsetAfter(source, "x: dict[str, int]"));
+        stmt.HeaderLineEnd.Should().Be(1);
+    }
+
+    /// <summary>
+    /// <c>(c): int = 5</c> starts at its first token, the parenthesis — as an assignment does — so the
+    /// formatter's verbatim slice of it keeps the parenthesis; the name keeps its own position.
+    /// </summary>
+    [Fact]
+    public void ParenthesizedAnnotatedTarget_StartsAtTheParenthesis()
+    {
+        const string source = "(c): int = 5\n";
+        var stmt = Parse(source).Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        stmt.Span!.Value.Start.Should().Be(0);
+        stmt.ColumnStart.Should().Be(1);
+        stmt.NameColumnStart.Should().Be(2, "control: the name keeps its own position");
+    }
+
     [Fact]
     public void ReturnStatement_HeaderEndsOnItsOwnLine()
     {

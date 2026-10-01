@@ -218,14 +218,16 @@ public partial class Parser
                 IsConst = false,
                 IsLet = letToken != null,
                 // Like `const`, a `let` declaration starts at its keyword; the name keeps its own
-                // position in Name* (LSP EffectiveNameLine/Column reads the name).
-                LineStart = letToken?.Line ?? id.LineStart,
-                ColumnStart = letToken?.Column ?? id.ColumnStart,
+                // position in Name* (LSP EffectiveNameLine/Column reads the name). Without `let` it
+                // starts at its first token, as an assignment does: `(c): int = 5` starts at the
+                // parenthesis, not at the name inside it (the formatter's verbatim slice starts here).
+                LineStart = letToken?.Line ?? expr.LineStart,
+                ColumnStart = letToken?.Column ?? expr.ColumnStart,
                 LineEnd = Previous.Line,
                 ColumnEnd = Previous.Column + Previous.Length,
                 Span = initialValue != null
-                    ? CombineSpans(letToken != null ? GetSpanFromToken(letToken) : id.Span, initialValue.Span)
-                    : id.Span  // TypeAnnotation doesn't have Span yet (A.12)
+                    ? CombineSpans(letToken != null ? GetSpanFromToken(letToken) : expr.Span, initialValue.Span)
+                    : expr.Span  // TypeAnnotation doesn't have Span yet (A.12)
             };
         }
 

@@ -62,6 +62,46 @@ internal sealed class UnparseWriter
 
     public int Length => _sb.Length;
 
+    /// <summary>The width of the indentation the next line will be written at.</summary>
+    public int IndentWidth => _indentLevel * _indent.Length;
+
+    /// <summary>The indentation level the next line will be written at.</summary>
+    public int IndentLevel => _indentLevel;
+
+    /// <summary>Writes a full line at indentation level <paramref name="level"/> (≤ the current one), leaving the current level unchanged.</summary>
+    public void WriteLineAtLevel(int level, string text)
+    {
+        var saved = _indentLevel;
+        _indentLevel = level;
+        WriteLine(text);
+        _indentLevel = saved;
+    }
+
+    /// <summary>True when the next <see cref="Write"/> starts a line (and writes the indentation first).</summary>
+    public bool AtLineStart => _atLineStart;
+
+    /// <summary>
+    /// Replaces the output [<paramref name="start"/>, <paramref name="end"/>) with
+    /// <paramref name="text"/> written verbatim (a header's source slice, P22b Decision 5): the
+    /// replaced range's opaque spans are dropped, later spans shift, and the new text is opaque when
+    /// it spans lines — so a trailing-comment insertion lands after it, never inside it.
+    /// </summary>
+    public void ReplaceRangeOpaque(int start, int end, string text)
+    {
+        _sb.Remove(start, end - start);
+        _sb.Insert(start, text);
+        var delta = text.Length - (end - start);
+        _opaqueMultiLineSpans.RemoveAll(s => s.Start >= start && s.End <= end);
+        for (int i = 0; i < _opaqueMultiLineSpans.Count; i++)
+        {
+            var (s, e) = _opaqueMultiLineSpans[i];
+            if (s >= end)
+                _opaqueMultiLineSpans[i] = (s + delta, e + delta);
+        }
+        if (text.AsSpan().IndexOfAny('\n', '\r') >= 0)
+            _opaqueMultiLineSpans.Add((start, start + text.Length));
+    }
+
     public void InsertAt(int position, string text)
     {
         _sb.Insert(position, text);

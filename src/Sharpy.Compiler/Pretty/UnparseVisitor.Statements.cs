@@ -199,6 +199,31 @@ internal sealed partial class UnparseVisitor
         WriteKeywordClause("finally:", node.FinallyBody, node.FinallyHeaderLine);
     }
 
+    /// <summary>
+    /// An except clause's exception types. A list of two or more (<c>except A, B:</c> or
+    /// <c>except (A, B):</c>, which parse to the same tuple annotation) is written as Python spells
+    /// it, <c>(A, B)</c> — never <c>tuple[A, B]</c>, a spelling no user writes in an except clause,
+    /// which also re-spelled the token a header comment follows (P22b, lead ruling). An escaped,
+    /// optional or named-element tuple keeps the annotation spelling.
+    /// </summary>
+    private void WriteExceptionTypes(TypeAnnotation type)
+    {
+        if (type is { Name: "tuple", IsOptional: false, IsNameBacktickEscaped: false } && type.TupleElementNames.IsEmpty
+            && type.NameParts.Length <= 1 && type.TypeArguments.Length >= 2)
+        {
+            _w.Write("(");
+            for (int i = 0; i < type.TypeArguments.Length; i++)
+            {
+                if (i > 0)
+                    _w.Write(", ");
+                WriteTypeAnnotation(type.TypeArguments[i]);
+            }
+            _w.Write(")");
+            return;
+        }
+        WriteTypeAnnotation(type);
+    }
+
     private void WriteExceptHandler(ExceptHandler handler)
     {
         if (handler.IsExceptStar)
@@ -208,7 +233,7 @@ internal sealed partial class UnparseVisitor
         if (handler.ExceptionType != null)
         {
             _w.Write(" ");
-            WriteTypeAnnotation(handler.ExceptionType);
+            WriteExceptionTypes(handler.ExceptionType);
             if (handler.Name != null)
             {
                 _w.Write(" as ");
@@ -394,6 +419,7 @@ internal sealed partial class UnparseVisitor
         else
         {
             _w.Indent();
+            OpenBody(BodyColumn(node.Members[0].Span, node.Members[0].ColumnStart));
             foreach (var member in node.Members)
             {
                 // A member line is a non-statement body line: an anchor like a statement's.
@@ -409,7 +435,7 @@ internal sealed partial class UnparseVisitor
                 });
             }
             var lastMember = node.Members[node.Members.Length - 1];
-            WriteBodyEnd(node.Members[0].ColumnStart, LastLineOf(lastMember.Span, lastMember.LineEnd));
+            CloseBody(LastLineOf(lastMember.Span, lastMember.LineEnd));
             _w.Dedent();
         }
     }
@@ -511,6 +537,7 @@ internal sealed partial class UnparseVisitor
                 // Observer clauses are one indent level under the auto-property header; each
                 // body is indented a further level by WriteBody.
                 _w.Indent();
+                OpenBody(BodyColumn(node.Observers[0].Span, node.Observers[0].ColumnStart));
                 foreach (var observer in node.Observers)
                 {
                     // An observer header is a non-statement body line: an anchor like a clause's.
@@ -524,7 +551,7 @@ internal sealed partial class UnparseVisitor
                     });
                 }
                 var lastObserver = node.Observers[node.Observers.Length - 1];
-                WriteBodyEnd(node.Observers[0].ColumnStart, LastLineOf(lastObserver.Span, lastObserver.LineEnd));
+                CloseBody(LastLineOf(lastObserver.Span, lastObserver.LineEnd));
                 _w.Dedent();
             }
         }
@@ -603,12 +630,14 @@ internal sealed partial class UnparseVisitor
         _w.Write(":");
         _w.WriteLine();
         _w.Indent();
+        if (!node.Cases.IsEmpty)
+            OpenBody(BodyColumn(node.Cases[0].Span, node.Cases[0].ColumnStart));
         foreach (var c in node.Cases)
             WriteAnchored(c.LineStart, c.HeaderLineEnd, c.Span?.Start ?? -1, c.HeaderEndOffset, () => WriteMatchCase(c));
         if (!node.Cases.IsEmpty)
         {
             var lastCase = node.Cases[node.Cases.Length - 1];
-            WriteBodyEnd(node.Cases[0].ColumnStart, LastLineOf(lastCase.Span, lastCase.LineEnd));
+            CloseBody(LastLineOf(lastCase.Span, lastCase.LineEnd));
         }
         _w.Dedent();
     }
@@ -652,6 +681,9 @@ internal sealed partial class UnparseVisitor
         else
         {
             _w.Indent();
+            OpenBody(!node.Cases.IsEmpty
+                ? BodyColumn(node.Cases[0].Span, node.Cases[0].ColumnStart)
+                : BodyColumn(node.Body[0]));
             foreach (var caseDef in node.Cases)
             {
                 // A union case line is a non-statement body line: an anchor like a statement's.
@@ -670,11 +702,10 @@ internal sealed partial class UnparseVisitor
                 }
                 VisitStatementWithTrivia(node.Body[i]);
             }
-            var firstColumn = !node.Cases.IsEmpty ? node.Cases[0].ColumnStart : node.Body[0].ColumnStart;
             var lastLine = Math.Max(
                 node.Cases.IsEmpty ? 0 : LastLineOf(node.Cases[node.Cases.Length - 1].Span, node.Cases[node.Cases.Length - 1].LineEnd),
                 node.Body.IsEmpty ? 0 : LastLineOf(node.Body[node.Body.Length - 1]));
-            WriteBodyEnd(firstColumn, lastLine);
+            CloseBody(lastLine);
             _w.Dedent();
         }
     }

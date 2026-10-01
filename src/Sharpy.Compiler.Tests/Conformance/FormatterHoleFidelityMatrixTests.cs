@@ -95,6 +95,13 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         { "df.triple_backtick", "print(df\"\"\"\n        a{`x`}b\n        \"\"\")", "a5b" },
         { "t.backtick_conv_spec", "print(repr(t\"{`x`!r:>2}\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, '`x`', 'r', '>2'),))" },
         { "t.backtick_selfdoc", "print(repr(t\"{ `x` = }\"))", "Template(strings=(' `x` = ', ''), interpolations=(Interpolation(5, ' `x`', 'r', ''),))" },
+        // A comment inside a hole (after the conversion): the f-string unparser dropped it
+        // (`{x!r # c\n :>4}` → `{x!r:>4}`, refused by the SPY0912 net since P22b Phase 2). Since P22b
+        // Phase 4 Task 3 the cursor reads it as an inner comment of its statement, which is then
+        // written verbatim from source — the same cure as a bracket comment (lead ruling (b),
+        // superseding the earlier "hole axis, stays refused" ruling). Oracles: python3.12 / 3.14.
+        { "f.conv_comment_spec", "print(f\"{x!r # c\n    :>4}|\")", "   5|" },
+        { "t.conv_comment_spec", "print(repr(t\"{x!r # c\n    :>4}\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, 'x', 'r', '>4'),))" },
     };
 
     [Theory]
@@ -124,42 +131,31 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// Cells whose formatted output DAMAGED the program at 4ef844961 and which the SPY0912 net
-    /// (P22b Phase 2) now refuses: <c>Format</c> reports exactly one SPY0912 naming the damage, returns
-    /// the source unchanged, and the program still runs as before. (label, statement, python oracle,
-    /// the refusal's damage text, where the cell flips back to <see cref="Cells"/>.)
-    /// <list type="bullet">
-    /// <item><c>f.conv_comment_spec</c> — the comment after a hole's conversion was dropped
-    /// (<c>{x!r # c\n :>4}</c> → <c>{x!r:>4}</c>). A comment inside a hole: P22's hole axis, outside
-    /// P22b's contract (refs #2062).</item>
-    /// </list>
+    /// A verbatim statement re-indents with its first line (8 → 4 columns: shift −4) but NEVER shifts
+    /// a line that starts inside a literal: the hole's continuation line is the f-string's own text
+    /// (a hole's whitespace is a t-string's <c>Interpolation.expression</c>), so it keeps its
+    /// columns exactly, and the program prints the same (P22b Decision 5, lead ruling).
     /// </summary>
-    public static TheoryData<string, string, string, string> RefusedCells => new()
-    {
-        { "f.conv_comment_spec", "print(f\"{x!r # c\n    :>4}|\")", "   5|", "would drop comment '# c' at line 5" },
-    };
-
-    [Theory]
-    [MemberData(nameof(RefusedCells))]
+    [Fact]
     [Trait("Category", "Conformance")]
-    public void Format_DeclinesADamagingOutput_LeavesSourceUnchanged(string label, string statement, string oracle, string damage)
+    public void Format_VerbatimHoleStatement_InAnOverIndentedBody_NeverShiftsTheLineInsideTheHole()
     {
-        var program = Prelude + "    " + statement + "\n";
+        const string program = "def main():\n        x = 5\n        print(f\"{x!r # c\n            :>4}|\")\n";
+        const string expected = "def main():\n    x = 5\n    print(f\"{x!r # c\n            :>4}|\")\n";
 
         var r0 = CompileAndExecute(program, executionTimeoutMs: 15_000);
-        Assert.True(r0.Success, $"{label}: the original must run: " + string.Join("; ", r0.CompilationErrors) + r0.StandardError);
-        Assert.Equal(oracle, Normalize(r0.StandardOutput));
+        Assert.True(r0.Success, "the original must run: " + string.Join("; ", r0.CompilationErrors) + r0.StandardError);
+        Assert.Equal("   5|", Normalize(r0.StandardOutput));
 
         var formatted = FormatterService.Format(program);
-        var diagnostic = Assert.Single(formatted.Diagnostics);
-        Assert.Equal(Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.FormatterDeclined, diagnostic.Code);
-        Assert.Contains(damage, diagnostic.Message, StringComparison.Ordinal);
-        Assert.Equal(program, formatted.FormattedText);
-        Assert.False(formatted.HasChanges);
+        Assert.True(formatted.Diagnostics.Count == 0, "format reported " + string.Join("; ", formatted.Diagnostics.Select(d => d.Message)));
+        Assert.Equal(expected, formatted.FormattedText);
+        AssertLexesAndParsesClean("verbatim-hole", formatted.FormattedText);
 
         var r1 = CompileAndExecute(formatted.FormattedText, executionTimeoutMs: 15_000);
-        Assert.True(r1.Success, $"{label}: the (unchanged) program must still run");
-        Assert.Equal(oracle, Normalize(r1.StandardOutput));
+        Assert.True(r1.Success, "the formatted program must run:\n" + formatted.FormattedText);
+        Assert.Equal("   5|", Normalize(r1.StandardOutput));
+        Assert.Equal(expected, FormatterService.Format(expected).FormattedText);
     }
 
     /// <summary>(label, statement body lines with <c>\n</c> breaks, python oracle). The program is run

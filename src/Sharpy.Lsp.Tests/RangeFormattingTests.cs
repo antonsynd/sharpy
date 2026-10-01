@@ -125,11 +125,12 @@ public class RangeFormattingTests : IDisposable
         edits.First().NewText.Should().Be("    x: int = 1");
     }
 
-    // P22b Phase 2 (refs #2077): formatting this PARSEABLE document would drop the bracket comment,
-    // so the formatter declines (SPY0912) and range formatting returns NO edits rather than the
-    // indent-only fallback (which would re-indent the over-indented body — the unparseable twin
-    // below shows it does). This cell flips to "edits keep the comment" in Phase 4 (refs #2077).
-    private const string DeclinedDocument = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
+    // P22b Phase 2: a PARSEABLE document whose formatting would change meaning is declined (SPY0912)
+    // and range formatting returns NO edits rather than the indent-only fallback (which would
+    // re-indent the over-indented body — the unparseable twin below shows it does). The declined
+    // shape is an escaped contextual keyword the parser reads as the keyword (#2166); until Phase 4
+    // it was a dropped bracket comment, which now formats (BracketComment_EditsKeepTheCommentAsync).
+    private const string DeclinedDocument = "def main():\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
 
     [Fact]
     public async Task DeclinedFormatting_Spy0912_ReturnsNoEditsAsync()
@@ -137,7 +138,7 @@ public class RangeFormattingTests : IDisposable
         Sharpy.Compiler.Formatting.FormatterService.Format(DeclinedDocument)
             .Diagnostics.Should().ContainSingle(d => d.Code == "SPY0912");
 
-        var edits = await FormatRangeAsync(DeclinedDocument, 1, 0, 3, 17);
+        var edits = await FormatRangeAsync(DeclinedDocument, 1, 0, 4, 24);
 
         edits.Should().BeEmpty();
     }
@@ -147,10 +148,23 @@ public class RangeFormattingTests : IDisposable
     {
         // Positive control for the SPY0912 branch: the same range of the document made unparseable
         // gets the indent-only fallback's edits.
-        var edits = await FormatRangeAsync(DeclinedDocument + "class: # missing name", 1, 0, 3, 17);
+        var edits = await FormatRangeAsync(DeclinedDocument + "class: # missing name", 1, 0, 4, 24);
 
         edits.Should().NotBeEmpty();
-        edits.First().NewText.Should().Be("    xs = [1,  # inner");
+        edits.First().NewText.Should().Be("    x = 1");
+    }
+
+    // The Phase 2 declined cell, flipped by the Phase 4 trivia cursor (refs #2077): range formatting
+    // of the bracket statement keeps its comment and moves the continuation line with it.
+    [Fact]
+    public async Task BracketComment_EditsKeepTheCommentAsync()
+    {
+        const string source = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
+
+        var edits = await FormatRangeAsync(source, 1, 0, 3, 17);
+
+        edits.Should().NotBeEmpty();
+        string.Join("\n", edits.Select(e => e.NewText)).Should().Contain("    xs = [1,  # inner").And.Contain("        2]");
     }
 
     // P22b Phase 4 (refs #2077): range formatting of an `else:` clause keeps its header comment on

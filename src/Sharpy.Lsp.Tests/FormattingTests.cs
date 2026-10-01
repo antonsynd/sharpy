@@ -226,13 +226,14 @@ public class FormattingTests : IDisposable
         formatted!.Split('\n').Should().StartWith(new[] { "def foo() -> str:", "    s = \"\"\"a", "   ", "b\"\"\"" });
     }
 
-    // P22b Phase 2 (refs #2077): formatting this PARSEABLE document would drop the bracket comment,
-    // so the formatter declines (SPY0912) and the handler returns NO edits — the indent-only
-    // fallback is for documents that fail to parse, and it WOULD re-indent this one (the body is
-    // over-indented; asserted below, so the no-edits result is not vacuous).
-    // This cell flips to "edits keep the comment" in Phase 4, when the trivia cursor anchors
-    // bracket comments (refs #2077).
-    private const string DeclinedDocument = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
+    // P22b Phase 2: formatting a PARSEABLE document whose output would change meaning is declined
+    // (SPY0912) and the handler returns NO edits — the indent-only fallback is for documents that
+    // fail to parse, and it WOULD re-indent this one (the body is over-indented; asserted below, so
+    // the no-edits result is not vacuous). The declined shape is an escaped contextual keyword the
+    // parser reads as the keyword (`case `_`:` formats to `case _:`, the escape is lost — #2166).
+    // Until Phase 4 the document here was a dropped bracket comment; that cell now formats and
+    // keeps its comment (BracketComment_EditsKeepTheCommentAsync below).
+    private const string DeclinedDocument = "def main():\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
 
     [Fact]
     public async Task DeclinedFormatting_Spy0912_ReturnsNoEditsAsync()
@@ -250,11 +251,24 @@ public class FormattingTests : IDisposable
     public async Task DeclinedFormatting_UnparseableTwin_StillTakesTheIndentOnlyFallbackAsync()
     {
         // Positive control for the SPY0912 branch: the same document made unparseable takes the
-        // indent-only fallback, which keeps the comment and re-indents the body.
+        // indent-only fallback, which keeps the escape and re-indents the body.
         var formatted = await FormatAsync(DeclinedDocument + "class: # missing name");
 
         formatted.Should().NotBeNull();
-        formatted.Should().Contain("    xs = [1,  # inner");
+        formatted.Should().Contain("    match x:").And.Contain("case `_`:");
+    }
+
+    // The Phase 2 declined cell, flipped by the Phase 4 trivia cursor (refs #2077): the statement
+    // with a comment inside its brackets is written verbatim from source, re-indented — the
+    // continuation line moves with the first line (8 → 4 columns, so 12 → 8).
+    [Fact]
+    public async Task BracketComment_EditsKeepTheCommentAsync()
+    {
+        const string source = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
+
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().Be("def main():\n    xs = [1,  # inner\n        2]\n    print(xs)\n");
     }
 
     // P22b Phase 4 (refs #2077): a clause header's comment is written at the clause's own anchor —

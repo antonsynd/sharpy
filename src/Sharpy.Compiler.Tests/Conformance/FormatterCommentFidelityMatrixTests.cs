@@ -31,6 +31,15 @@ public class FormatterCommentFidelityMatrixTests : IntegrationTestBase
     /// <summary>(label, program already in formatter layout, pinned output).</summary>
     public static TheoryData<string, string, string> Cells => new()
     {
+        // A comment inside a header's brackets makes the header verbatim (Decision 5).
+        { "bracket.inner", "def main():\n    xs = [1,  # inner\n          2]\n    print(xs)\n", "[1, 2]" },
+        { "def_header.parameter_list", "def f(a: int,  # the first parameter\n      b: int) -> int:\n    return a + b\n\n\ndef main():\n    print(f(1, 2))\n", "3" },
+        { "mixed.bracket_comment_and_multiline_string", "def main():\n    s = \"\".join([\"\"\"a\nb\"\"\",  # after the string\n                 \"c\"])\n    print(s)\n", "a\nbc" },
+        // The slice's end is re-derived from the source: the parser's end offset reads a numeric
+        // literal's normalised length (`.5` is "0.5", one char past the source; `1_000` is "1000",
+        // one char short), which would cut or overrun a slice that ends at one.
+        { "verbatim.ends_at_leading_dot_float", "def main():\n    y = (1.0 +  # c\n         2.0) + .5\n    print(y)\n", "3.5" },
+        { "verbatim.ends_at_underscored_int", "def main():\n    z = (1 +  # c\n         2) + 1_000\n    print(z)\n", "1003" },
         { "clause.else_header", "def main():\n    x = 0\n    if x > 0:\n        print(\"pos\")\n    else:  # else header\n        print(\"nonpos\")\n", "nonpos" },
         { "block_end.inner_indent", "def main():\n    if True:\n        print(1)\n        # end of the if body\n    print(2)\n", "1\n2" },
         { "eof.with_newline", "def main():\n    print(1)\n\n\n# end of file\n", "1" },
