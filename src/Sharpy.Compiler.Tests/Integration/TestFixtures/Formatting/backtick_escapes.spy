@@ -1,0 +1,76 @@
+# Backtick escapes at every name position: an escaped KEYWORD and an escaped non-keyword at each.
+# Formatting must write every one back exactly as written (#2157).
+import `System`.`Text`
+import `System.Collections.Generic`
+import math as `class`
+import math as `m`
+from `System`.`IO` import `Path` as `def`
+from `System`.`IO` import `File` as `f`
+
+
+type `int` = str
+type `Alias` = int
+type `Pair` = tuple[`class`: int, `y`: str]
+
+
+@`my`.`deco`(`class`=1, `x`=2)
+def `if`(`for`: int, `y`: int) -> int:
+    return `for` + `y`
+
+
+class `Box`[`T`]:
+    `value`: `T`
+    `class`: int = 0
+
+
+union `Shape`:
+    case `class`(`def`: int)
+    case `Square`(`side`: float)
+
+
+enum `Color`:
+    `RED` = 1
+    `class` = 2
+
+
+interface `IFoo`:
+    property `x`: int
+
+
+class `Impl`(`IFoo`):
+    property `IFoo`.`x`: int = 3
+
+
+def `main`():
+    `b` = `Box`[int](`value`=1)
+    print(`if`(`for`=1, `y`=2))
+    print(`b`.`value`, `b`.`class`)
+    print(`System.Math`.`Abs`(-1))
+    `d`: `collections`.`deque`[int] = None
+    `pt`: `Pair` = (`class`=1, `y`="a")
+    `ok` = `int`.`TryParse`("1", out `parsed`: int)
+    try:
+        raise ValueError("x")
+    except ValueError as `class`:
+        print(`class`)
+    except KeyError as `err`:
+        print(`err`)
+    match `b`:
+        case `Box`(`value`=0, `class`=1):
+            pass
+        case int() as `n`:
+            pass
+        case `Color`.`RED`:
+            pass
+        case `Color`.`class`:
+            pass
+        case `other`:
+            pass
+    if (`w` := 5) > 1:
+        print(`w`)
+    for `i` in range(2):
+        print(`i`)
+    `sq` = [`k` * 2 for `k` in range(3)]
+    `fn` = lambda `z`: `z` + 1
+    with open("p") as `fh`:
+        pass

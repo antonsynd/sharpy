@@ -370,7 +370,10 @@ variable_name_collision_reversed/main identity refused # #2077 formatter decline
 variable_redeclaration_self_reference/main identity commentDropped # #2077 comment dropped or moved (raw output)
 variable_redeclaration_self_reference/main identity refused # #2077 formatter declined (SPY0912); raw output: commentDropped
 
-# ---- comment twin (T1) — `# cN` injected at every anchor: 6892 rows ----
+# ---- comment twin (T1) — `# cN` injected at every anchor: 6895 rows ----
+Formatting/backtick_escapes comment commentDropped # #2077 comment dropped or moved (raw output)
+Formatting/backtick_escapes comment notIdempotent # #2077 comment moves again on reformat (raw output)
+Formatting/backtick_escapes comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 Formatting/blank_lines comment commentDropped # #2077 comment dropped or moved (raw output)
 Formatting/blank_lines comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped
 Formatting/class_members comment commentDropped # #2077 comment dropped or moved (raw output)
