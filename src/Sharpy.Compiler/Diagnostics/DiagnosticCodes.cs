@@ -924,8 +924,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
-    /// Active: SPY0900-SPY0911 (12 codes)
-    /// Reserved: SPY0912-SPY0999 (88 codes)
+    /// Active: SPY0900-SPY0912 (13 codes)
+    /// Reserved: SPY0913-SPY0999 (87 codes)
     /// </summary>
     public static class Infrastructure
     {
@@ -948,7 +948,14 @@ public static class DiagnosticCodes
         /// </summary>
         public const string ReferenceAcquisitionFailed = "SPY0910"; // Active
         public const string PackageNotResolved = "SPY0911";        // Active
-        // SPY0912-SPY0999: Reserved for future infrastructure diagnostics
+
+        /// <summary>
+        /// The formatter refused its own output because it would change what the file says — drop or
+        /// reorder a comment, drop a backtick escape, fail to re-parse, or change the AST. The file
+        /// is left unchanged. Always a formatter bug (P22b meaning-preservation net).
+        /// </summary>
+        public const string FormatterDeclined = "SPY0912";         // Active
+        // SPY0913-SPY0999: Reserved for future infrastructure diagnostics
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Formatting;
 using LspFormatOptions = Sharpy.Compiler.Formatting.FormatOptions;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
@@ -13,7 +14,8 @@ namespace Sharpy.Lsp.Handlers;
 /// document via the pretty printer (trivia-aware emission, blank-line rules).
 /// Fallback: when the document fails to parse, fall back to
 /// <see cref="IndentationService"/>-based indent-only formatting so users can
-/// still tidy up half-written code.
+/// still tidy up half-written code. A document that parses but whose formatting
+/// the formatter declines (SPY0912) gets no edits.
 /// </summary>
 internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
 {
@@ -46,6 +48,13 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
         };
 
         var formatResult = FormatterService.Format(text, options);
+
+        // SPY0912: the document parsed, but the formatter refused its own output because it would
+        // change what the file says. No edits — the indent-only fallback below is for documents
+        // that fail to parse and must not re-indent a parseable one (P22b; the CLI likewise leaves
+        // the file unchanged).
+        if (formatResult.Diagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined))
+            return Task.FromResult<TextEditContainer?>(null);
 
         string formattedText;
         if (formatResult.Diagnostics.Count == 0)

@@ -112,8 +112,13 @@ internal static class FormatCommand
         {
             if (outcome.HasError)
             {
-                Console.Error.WriteLine($"Error: {outcome.FilePath}: {outcome.ErrorMessage}");
-                foreach (var diagnostic in outcome.Diagnostics.Where(d => d.IsError))
+                // A diagnostic whose message IS the outcome's error message (SPY0912) heads the report
+                // with its code instead of being printed twice.
+                var headline = outcome.Diagnostics.FirstOrDefault(d => d.IsError && d.Message == outcome.ErrorMessage);
+                Console.Error.WriteLine(headline != null
+                    ? $"Error: {outcome.FilePath}: {headline.Code}: {headline.Message}"
+                    : $"Error: {outcome.FilePath}: {outcome.ErrorMessage}");
+                foreach (var diagnostic in outcome.Diagnostics.Where(d => d.IsError && !ReferenceEquals(d, headline)))
                 {
                     Console.Error.WriteLine($"  {diagnostic.Code}: {diagnostic.Message}");
                 }

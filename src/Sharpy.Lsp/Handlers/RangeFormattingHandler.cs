@@ -1,6 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Formatting;
 using LspFormatOptions = Sharpy.Compiler.Formatting.FormatOptions;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
@@ -12,7 +13,8 @@ namespace Sharpy.Lsp.Handlers;
 /// Primary path: format the whole document with <see cref="FormatterService"/>,
 /// then emit per-line edits only for lines that intersect the requested range.
 /// Fallback: when the document fails to parse, fall back to indent-only
-/// formatting (the previous behaviour).
+/// formatting (the previous behaviour). A document that parses but whose
+/// formatting the formatter declines (SPY0912) gets no edits.
 /// </summary>
 internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHandlerBase
 {
@@ -50,6 +52,12 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         };
 
         var formatResult = FormatterService.Format(text, options);
+
+        // SPY0912: the document parsed, but the formatter refused its own output because it would
+        // change what the file says. No edits — the indent-only fallback is for documents that fail
+        // to parse and must not re-indent a parseable one (P22b).
+        if (formatResult.Diagnostics.Any(d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined))
+            return Task.FromResult(new TextEditContainer());
 
         if (formatResult.Diagnostics.Count == 0)
         {

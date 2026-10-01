@@ -125,6 +125,34 @@ public class RangeFormattingTests : IDisposable
         edits.First().NewText.Should().Be("    x: int = 1");
     }
 
+    // P22b Phase 2 (refs #2077): formatting this PARSEABLE document would drop the bracket comment,
+    // so the formatter declines (SPY0912) and range formatting returns NO edits rather than the
+    // indent-only fallback (which would re-indent the over-indented body — the unparseable twin
+    // below shows it does). This cell flips to "edits keep the comment" in Phase 4 (refs #2077).
+    private const string DeclinedDocument = "def main():\n        xs = [1,  # inner\n            2]\n        print(xs)\n";
+
+    [Fact]
+    public async Task DeclinedFormatting_Spy0912_ReturnsNoEditsAsync()
+    {
+        Sharpy.Compiler.Formatting.FormatterService.Format(DeclinedDocument)
+            .Diagnostics.Should().ContainSingle(d => d.Code == "SPY0912");
+
+        var edits = await FormatRangeAsync(DeclinedDocument, 1, 0, 3, 17);
+
+        edits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeclinedFormatting_UnparseableTwin_StillTakesTheIndentOnlyFallbackAsync()
+    {
+        // Positive control for the SPY0912 branch: the same range of the document made unparseable
+        // gets the indent-only fallback's edits.
+        var edits = await FormatRangeAsync(DeclinedDocument + "class: # missing name", 1, 0, 3, 17);
+
+        edits.Should().NotBeEmpty();
+        edits.First().NewText.Should().Be("    xs = [1,  # inner");
+    }
+
     [Fact]
     public async Task MultiLineHole_InteriorIsNotReindentedAsync()
     {

@@ -100,5 +100,17 @@ public static partial class DiagnosticExplanations
             "packages:\n  - name: NonExistent.Package\n    version: \"99.0.0\"",
             "Verify the package name and version are correct. Check that the NuGet feed is reachable " +
             "and that the package version exists. Run 'dotnet nuget list source' to see configured feeds.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.FormatterDeclined, "Formatter declined to rewrite the file", "Infrastructure",
+            "'sharpyc format' (and the editor's format-document / format-selection commands) re-reads its own output " +
+            "before writing it and refuses to write when the output would change what the file says: drop, add or " +
+            "reorder a comment, drop a backtick escape on a name (`class` → class), fail to re-parse, or parse to a " +
+            "different program. The message names the first such change and its line. The file is left exactly as it " +
+            "was — the command writes nothing in place (with --output it writes the unchanged source), and the editor " +
+            "receives no edits. This is always a Sharpy formatter bug: formatting may change layout only. The program " +
+            "itself is unaffected and still compiles and runs as written.",
+            null,
+            "Keep the file as it is (it is correct), and report this at https://github.com/antonsynd/sharpy/issues with " +
+            "the .spy file and the full SPY0912 message. Until it is fixed, formatting other files is unaffected.");
     }
 }

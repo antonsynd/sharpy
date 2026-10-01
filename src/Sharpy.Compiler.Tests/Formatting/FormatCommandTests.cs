@@ -109,6 +109,38 @@ public class FormatCommandTests : IDisposable
         File.ReadAllText(path).Should().Be(source);
     }
 
+    [Fact]
+    public void FormatFile_DeclinedOutput_ReportsTheSpy0912MessageAndLeavesTheFileUnchanged()
+    {
+        // P22b: formatting would drop the bracket comment (#2077), so the formatter declines. The
+        // outcome's message is the refusal's own text, not the syntax-error text; with --output the
+        // unchanged source is written there, and the input is never touched.
+        var source = "def main():\n    xs = [1,  # inner\n        2]\n    print(xs)\n";
+        var path = WriteFile("declined.spy", source);
+        var outputPath = Path.Combine(_tempDir, "declined.out.spy");
+
+        var inPlace = FormatRunner.FormatFile(path, new FormatRunnerOptions { Mode = FormatMode.Write });
+
+        inPlace.HasError.Should().BeTrue();
+        inPlace.Wrote.Should().BeFalse();
+        inPlace.ErrorMessage.Should().Be(
+            "formatting declined: the output would drop comment '# inner' at line 2; the file was left unchanged");
+        inPlace.Diagnostics.Should().ContainSingle(d => d.Code == "SPY0912");
+        File.ReadAllText(path).Should().Be(source);
+
+        var toOutput = FormatRunner.FormatFile(path, new FormatRunnerOptions { Mode = FormatMode.Write, OutputPath = outputPath });
+
+        toOutput.HasError.Should().BeTrue();
+        toOutput.Wrote.Should().BeTrue();
+        File.ReadAllText(outputPath).Should().Be(source);
+        File.ReadAllText(path).Should().Be(source);
+
+        // Contrast: a file that does not parse keeps the syntax-error message.
+        var broken = WriteFile("broken2.spy", "def foo(\n");
+        FormatRunner.FormatFile(broken, new FormatRunnerOptions { Mode = FormatMode.Write })
+            .ErrorMessage.Should().Be("syntax errors prevented formatting");
+    }
+
     // -----------------------------------------------------------------------
     // Check mode
     // -----------------------------------------------------------------------

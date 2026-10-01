@@ -111,15 +111,35 @@ public static class FormatRunner
         // If the formatter reported diagnostics it has returned the source unchanged.
         if (result.Diagnostics.Any(d => d.IsError))
         {
+            // SPY0912: the file parsed, but the formatter refused its own output because it would
+            // change what the file says. Report the refusal's own message (not "syntax errors"), and
+            // with --output still produce the (unchanged) source there, as for an unchanged file.
+            var declined = result.Diagnostics.FirstOrDefault(
+                d => d.Code == DiagnosticCodes.Infrastructure.FormatterDeclined);
+            var wroteUnchanged = false;
+            if (declined != null && options.Mode == FormatMode.Write && options.OutputPath != null)
+            {
+                try
+                {
+                    File.WriteAllText(options.OutputPath, source);
+                    wroteUnchanged = true;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // The refusal is the error being reported; a failed copy adds nothing to it.
+                }
+            }
+
             return new FormatFileOutcome
             {
                 FilePath = filePath,
                 OriginalText = source,
                 FormattedText = source,
                 Changed = false,
+                Wrote = wroteUnchanged,
                 Diagnostics = result.Diagnostics,
                 HasError = true,
-                ErrorMessage = "syntax errors prevented formatting",
+                ErrorMessage = declined?.Message ?? "syntax errors prevented formatting",
             };
         }
 

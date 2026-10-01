@@ -74,10 +74,8 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         { "f.comment", "print(f\"{x # c\n    }\")", "5" },
         { "f.brace_in_comment", "print(f\"\"\"{x # }\n    }\"\"\")", "5" },
         { "f.conv_then_newline", "print(f\"{x!r\n    }\")", "5" },
-        { "f.conv_comment_spec", "print(f\"{x!r # c\n    :>4}|\")", "   5|" },
         { "f.selfdoc_comment", "print(f\"\"\"{x # c\n=}\"\"\")", "x \n=5" },
         { "f.continuation", "print(f\"{x \\\n+ 1}\")", "6" },
-        { "f.selfdoc_newline_trailing_comment", "print(f\"{x\n=}\")  # note", "x\n=5" },
         { "t.nl_around", "print(repr(t\"\"\"{\nx\n}\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(5, '\\nx', None, ''),))" },
         { "t.comment_excised", "print(repr(t\"\"\"{x # c1\n + 1 # c2\n}\"\"\"))", "Template(strings=('', ''), interpolations=(Interpolation(6, 'x \\n + 1', None, ''),))" },
         { "t.selfdoc_comment", "print(repr(t\"\"\"{x # c\n=}\"\"\"))", "Template(strings=('x \\n=', ''), interpolations=(Interpolation(5, 'x', 'r', ''),))" },
@@ -122,6 +120,50 @@ public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
         Assert.Equal(out0, Normalize(r1.StandardOutput));
 
         Assert.Equal(text, FormatterService.Format(text).FormattedText);
+    }
+
+    /// <summary>
+    /// Cells whose formatted output DAMAGED the program at 4ef844961 and which the SPY0912 net
+    /// (P22b Phase 2) now refuses: <c>Format</c> reports exactly one SPY0912 naming the damage, returns
+    /// the source unchanged, and the program still runs as before. (label, statement, python oracle,
+    /// the refusal's damage text, where the cell flips back to <see cref="Cells"/>.)
+    /// <list type="bullet">
+    /// <item><c>f.conv_comment_spec</c> — the comment after a hole's conversion was dropped
+    /// (<c>{x!r # c\n :>4}</c> → <c>{x!r:>4}</c>). A comment inside a hole: P22's hole axis, outside
+    /// P22b's contract (refs #2062).</item>
+    /// <item><c>f.selfdoc_newline_trailing_comment</c> — the statement's trailing comment after a
+    /// multi-line hole was DUPLICATED onto the enclosing <c>def main():</c> line. Literal context
+    /// "multi-line f-string hole" of P22b's own comment matrix: flips to formatted in Phase 4
+    /// (refs #2068).</item>
+    /// </list>
+    /// </summary>
+    public static TheoryData<string, string, string, string> RefusedCells => new()
+    {
+        { "f.conv_comment_spec", "print(f\"{x!r # c\n    :>4}|\")", "   5|", "would drop comment '# c' at line 5" },
+        { "f.selfdoc_newline_trailing_comment", "print(f\"{x\n=}\")  # note", "x\n=5", "would add comment '# note'" },
+    };
+
+    [Theory]
+    [MemberData(nameof(RefusedCells))]
+    [Trait("Category", "Conformance")]
+    public void Format_DeclinesADamagingOutput_LeavesSourceUnchanged(string label, string statement, string oracle, string damage)
+    {
+        var program = Prelude + "    " + statement + "\n";
+
+        var r0 = CompileAndExecute(program, executionTimeoutMs: 15_000);
+        Assert.True(r0.Success, $"{label}: the original must run: " + string.Join("; ", r0.CompilationErrors) + r0.StandardError);
+        Assert.Equal(oracle, Normalize(r0.StandardOutput));
+
+        var formatted = FormatterService.Format(program);
+        var diagnostic = Assert.Single(formatted.Diagnostics);
+        Assert.Equal(Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.FormatterDeclined, diagnostic.Code);
+        Assert.Contains(damage, diagnostic.Message, StringComparison.Ordinal);
+        Assert.Equal(program, formatted.FormattedText);
+        Assert.False(formatted.HasChanges);
+
+        var r1 = CompileAndExecute(formatted.FormattedText, executionTimeoutMs: 15_000);
+        Assert.True(r1.Success, $"{label}: the (unchanged) program must still run");
+        Assert.Equal(oracle, Normalize(r1.StandardOutput));
     }
 
     /// <summary>(label, statement body lines with <c>\n</c> breaks, python oracle). The program is run
