@@ -113,11 +113,15 @@ Error: declined.spy: SPY0912: formatting declined: the output would drop the bac
 
 `sharpyc format` exits with code 2, and the file is byte-for-byte unchanged. A declined file has not been damaged.
 
-SPY0912 always means a formatter bug: your file is valid and its meaning is safe, but the formatter could not lay it out without changing it. Please report it (see below). One known case is the one above: a backtick-escaped contextual keyword such as `` case `_`: `` is declined, because the parser reads the escaped spelling as the keyword itself (#2166).
+SPY0912 always means a formatter bug: your file is valid and its meaning is safe, but the formatter could not lay it out without changing it. Please report it (see below). Known cases:
+
+- a backtick-escaped contextual keyword such as `` case `_`: `` is declined, because the parser reads the escaped spelling as the keyword itself (#2166);
+- a string containing a `\r` escape, a generic constraint intersection `[T: A & B]`, and a `with … as (a, *rest):` target are declined, because the formatter cannot yet write them back unchanged (#2169).
 
 ## In the editor (LSP)
 
-- **Format Document** and **Format Selection** use the same formatter as `sharpyc format`.
+- **Format Document** uses the same formatter as `sharpyc format` and produces the same text.
+- **Format Selection** and **format on type** do not yet carry these guarantees (#2168). Format Selection runs the same formatter, but it maps the result back onto the selection line by line. When formatting adds or removes a line (for example the two blank lines between top-level definitions), it can duplicate or drop lines. Format on type can re-indent a line inside a multi-line string. Until #2168 is fixed, use Format Document.
 - If the formatter declines (SPY0912), the editor receives **no edits** and the document is unchanged, as with the CLI.
 - If the document **does not parse**, for example in the middle of typing, the server falls back to an indentation-only pass. It re-indents lines to four-space levels and leaves everything else alone, including the inside of strings. This fallback is used only for documents that fail to parse, never for a document the formatter declined.
 
@@ -129,4 +133,4 @@ If formatting declines a file (SPY0912), changes what a program prints, or moves
 2. the `sharpyc format` output (the SPY0912 message, or the `-o` result),
 3. `sharpyc --version`.
 
-Formatter meaning-preservation issues are tracked on [#2062](https://github.com/antonsynd/sharpy/issues/2062).
+Open formatter issues are tracked on [#2169](https://github.com/antonsynd/sharpy/issues/2169) (constructs the formatter declines) and [#2168](https://github.com/antonsynd/sharpy/issues/2168) (editor formatting routes). The guarantees on this page were established by [#2062](https://github.com/antonsynd/sharpy/issues/2062).

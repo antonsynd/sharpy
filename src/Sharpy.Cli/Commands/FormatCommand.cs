@@ -61,8 +61,9 @@ internal static class FormatCommand
         }
 
         // Sharpy indentation is exactly 4 spaces per level and tabs are not allowed
-        // (docs/language_specification/indentation.md): any other indentation would write a file that
-        // does not lex, so these are usage errors, not options (owner ruling 2026-09-30, P22b).
+        // (docs/language_specification/indentation.md). A width that is not a multiple of 4, or a tab,
+        // would write a file that does not lex, and a wider multiple writes a non-canonical one, so these
+        // are usage errors, not options (owner ruling 2026-09-30, P22b).
         if (indent.HasValue && indent.Value != Sharpy.Compiler.Lexer.Lexer.IndentWidth)
         {
             Console.Error.WriteLine(

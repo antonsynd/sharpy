@@ -9,7 +9,8 @@ public partial class Lexer
     /// The width of one indentation level: exactly 4 spaces, never tabs
     /// (docs/language_specification/indentation.md). The one source for the lexer's check, the
     /// formatter's output and the language server's re-indentation — none of them takes an indent
-    /// width from the user or the editor, because any other width produces a file that does not lex.
+    /// width from the user or the editor: the specification fixes the width at 4, and a width that is
+    /// not a multiple of 4, or a tab, produces a file that does not lex.
     /// </summary>
     public const int IndentWidth = 4;
 
