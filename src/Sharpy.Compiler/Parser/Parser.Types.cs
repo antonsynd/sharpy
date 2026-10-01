@@ -589,12 +589,61 @@ public partial class Parser
     {
         if (Current.Type != type)
             throw ReportError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
-        if (type == TokenType.Colon && !_headerTriviaCaptured && Current.TrailingTrivia != null)
-        {
-            _headerTrailingTrivia = Current.TrailingTrivia;
-            _headerTriviaCaptured = true;
-        }
         Advance();
+    }
+
+    /// <summary>Where a header colon sits: its line and the exclusive offset just past it (0 when untracked).</summary>
+    private readonly record struct HeaderColon(int Line, int EndOffset);
+
+    /// <summary>
+    /// Consumes the HEADER colon of a compound statement (<c>if</c>, <c>while</c>, <c>for</c>,
+    /// <c>with</c>, <c>try</c>, <c>match</c>, <c>def</c>, <c>class</c>, …). The first such colon in the
+    /// current statement frame ends the statement's header — it is recorded as the statement's
+    /// HeaderLineEnd/HeaderEndOffset, and its trailing trivia is the statement's header-trailing
+    /// comment. This replaced the first-colon hook in <see cref="Expect"/>, which fired at whichever
+    /// <c>:</c> carried trivia first — a dict-literal, slice, lambda, annotation or <c>case</c> colon
+    /// (P22b Decision 5: <c>match 3:</c> + <c>case 3:  # c</c> moved the comment onto the match line).
+    /// </summary>
+    private HeaderColon ExpectHeaderColon()
+    {
+        var colonToken = Current;
+        var colon = ExpectClauseColon();
+        if (!_headerColonSeen)
+        {
+            _headerColonSeen = true;
+            _headerColon = colon;
+            _headerTrailingTrivia = colonToken.TrailingTrivia;
+        }
+        return colon;
+    }
+
+    /// <summary>
+    /// Consumes a CLAUSE header colon (<c>elif</c>, <c>else</c>, <c>except</c>, <c>finally</c>,
+    /// <c>case</c>, an observer clause) and returns where it sits, for the clause's own header
+    /// position. A clause never ends its owning statement's header.
+    /// </summary>
+    private HeaderColon ExpectClauseColon()
+    {
+        if (Current.Type != TokenType.Colon)
+            throw ReportError($"Expected {TokenType.Colon}, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
+        var colonToken = Current;
+        Advance();
+        return new HeaderColon(colonToken.Line, colonToken.GetSpan() is { } span ? span.End : 0);
+    }
+
+    /// <summary>
+    /// Ends the current statement's header at the last consumed token when the statement has no
+    /// header colon of its own but clauses follow (an auto-property's declaration line before its
+    /// observer clauses): the header is that line, and that token's trailing trivia its comment.
+    /// </summary>
+    private void MarkHeaderEndAtPrevious()
+    {
+        if (_headerColonSeen)
+            return;
+        var last = Previous;
+        _headerColonSeen = true;
+        _headerColon = new HeaderColon(last.Line, last.GetSpan() is { } span ? span.End : 0);
+        _headerTrailingTrivia = last.TrailingTrivia;
     }
 
     private string ExpectIdentifier()

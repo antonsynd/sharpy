@@ -92,11 +92,13 @@ public partial class Parser
     private ImmutableArray<Decorator> _pendingDecorators = ImmutableArray<Decorator>.Empty;
 
     /// <summary>
-    /// Trailing trivia captured from the colon token of compound statements (def, class, if, etc.).
-    /// Saved/restored per ParseStatement() call to handle recursion correctly.
+    /// The current statement frame's header: the trailing trivia of its header colon, whether that
+    /// colon was seen, and where it sits — all set only by <c>ExpectHeaderColon</c> (or
+    /// <c>MarkHeaderEndAtPrevious</c>). Saved/restored per statement frame to handle recursion.
     /// </summary>
     private IReadOnlyList<Trivia>? _headerTrailingTrivia;
-    private bool _headerTriviaCaptured;
+    private bool _headerColonSeen;
+    private HeaderColon _headerColon;
 
     /// <summary>
     /// Enabled experimental feature flags. Carried for parser-scoped feature gates
@@ -813,20 +815,36 @@ public partial class Parser
         }
     }
 
-    private Statement ParseStatement()
+    private Statement ParseStatement() => ParseInStatementFrame(ParseStatementCore);
+
+    /// <summary>
+    /// Parses one statement in its own header frame: attaches leading/trailing trivia and records
+    /// where the header ends — the frame's first header colon for a compound statement, the
+    /// statement's own end for a simple one (P22b Decision 5).
+    /// </summary>
+    private Statement ParseInStatementFrame(Func<Statement> parse)
     {
         var leadingTrivia = Current.LeadingTrivia;
 
         var savedHeaderTrivia = _headerTrailingTrivia;
-        var savedHeaderCaptured = _headerTriviaCaptured;
+        var savedHeaderSeen = _headerColonSeen;
+        var savedHeaderColon = _headerColon;
         _headerTrailingTrivia = null;
-        _headerTriviaCaptured = false;
+        _headerColonSeen = false;
+        _headerColon = default;
 
-        var stmt = ParseStatementCore();
+        var stmt = parse();
 
         var trailingTrivia = _headerTrailingTrivia;
+        var headerSeen = _headerColonSeen;
+        var headerColon = _headerColon;
         _headerTrailingTrivia = savedHeaderTrivia;
-        _headerTriviaCaptured = savedHeaderCaptured;
+        _headerColonSeen = savedHeaderSeen;
+        _headerColon = savedHeaderColon;
+
+        stmt = headerSeen
+            ? stmt with { HeaderLineEnd = headerColon.Line, HeaderEndOffset = headerColon.EndOffset }
+            : stmt with { HeaderLineEnd = stmt.LineEnd, HeaderEndOffset = stmt.Span?.End ?? 0 };
 
         if (trailingTrivia == null)
         {

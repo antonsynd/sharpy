@@ -370,7 +370,7 @@ variable_name_collision_reversed/main identity refused # #2077 formatter decline
 variable_redeclaration_self_reference/main identity commentDropped # #2077 comment dropped or moved (raw output)
 variable_redeclaration_self_reference/main identity refused # #2077 formatter declined (SPY0912); raw output: commentDropped
 
-# ---- comment twin (T1) — `# cN` injected at every anchor: 6895 rows ----
+# ---- comment twin (T1) — `# cN` injected at every anchor: 6890 rows ----
 Formatting/backtick_escapes comment commentDropped # #2077 comment dropped or moved (raw output)
 Formatting/backtick_escapes comment notIdempotent # #2077 comment moves again on reformat (raw output)
 Formatting/backtick_escapes comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
@@ -3446,16 +3446,12 @@ experimental/opt_stack_collections_gated comment refused # #2077 formatter decli
 experimental/property_observer_backing_field_mixed_control_1456 comment commentDropped # #2077 comment dropped or moved (raw output)
 experimental/property_observer_backing_field_mixed_control_1456 comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped
 experimental/property_observers_backing_field_collision_1456 comment commentDropped # #2077 comment dropped or moved (raw output)
-experimental/property_observers_backing_field_collision_1456 comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_backing_field_collision_1456 comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 experimental/property_observers_duplicate comment commentDropped # #2077 comment dropped or moved (raw output)
-experimental/property_observers_duplicate comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_duplicate comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 experimental/property_observers_gated comment commentDropped # #2077 comment dropped or moved (raw output)
-experimental/property_observers_gated comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_gated comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 experimental/property_observers_invalid_interface comment commentDropped # #2077 comment dropped or moved (raw output)
-experimental/property_observers_invalid_interface comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_invalid_interface comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 experimental/property_observers_invalid_override comment commentDropped # #2077 comment dropped or moved (raw output)
 experimental/property_observers_invalid_override comment notIdempotent # #2077 comment moves again on reformat (raw output)
@@ -3464,7 +3460,6 @@ experimental/property_observers_invalid_readonly comment commentDropped # #2077 
 experimental/property_observers_invalid_readonly comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_invalid_readonly comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 experimental/property_observers_ungated comment commentDropped # #2077 comment dropped or moved (raw output)
-experimental/property_observers_ungated comment notIdempotent # #2077 comment moves again on reformat (raw output)
 experimental/property_observers_ungated comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped+notIdempotent
 explicit_tuple_type_argument_1470 comment commentDropped # #2077 comment dropped or moved (raw output)
 explicit_tuple_type_argument_1470 comment refused # #2077 formatter declined (SPY0912); raw output: commentDropped

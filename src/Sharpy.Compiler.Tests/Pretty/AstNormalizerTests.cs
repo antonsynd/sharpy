@@ -64,6 +64,28 @@ public class AstNormalizerTests
     }
 
     [Fact]
+    public void NormalizeModule_ZerosHeaderEndPositions()
+    {
+        // P22b Decision 5: the header-end fields are positions; a parsed if/else and try/finally
+        // carry non-zero values (positive control) that normalization must erase.
+        var module = Parse("if a:\n    pass\nelse:\n    pass\ntry:\n    pass\nexcept E:\n    pass\nfinally:\n    pass\n");
+        var parsedIf = (Sharpy.Compiler.Parser.Ast.IfStatement)module.Body[0];
+        var parsedTry = (Sharpy.Compiler.Parser.Ast.TryStatement)module.Body[1];
+        parsedIf.HeaderLineEnd.Should().Be(1);
+        parsedIf.ElseHeaderLine.Should().Be(3);
+        parsedTry.FinallyHeaderLine.Should().Be(9);
+        parsedTry.Handlers[0].HeaderLineEnd.Should().Be(7);
+
+        var normalized = AstNormalizer.Instance.NormalizeModule(module);
+        var ifStmt = (Sharpy.Compiler.Parser.Ast.IfStatement)normalized.Body[0];
+        var tryStmt = (Sharpy.Compiler.Parser.Ast.TryStatement)normalized.Body[1];
+        (ifStmt.HeaderLineEnd, ifStmt.HeaderEndOffset, ifStmt.ElseHeaderLine).Should().Be((0, 0, 0));
+        (tryStmt.HeaderLineEnd, tryStmt.ElseHeaderLine, tryStmt.FinallyHeaderLine).Should().Be((0, 0, 0));
+        (tryStmt.Handlers[0].HeaderLineEnd, tryStmt.Handlers[0].HeaderEndOffset).Should().Be((0, 0));
+        ifStmt.ThenBody[0].HeaderLineEnd.Should().Be(0, "nested statements are zeroed too");
+    }
+
+    [Fact]
     public void NormalizeModule_CarriesBacktickEscapeFlags()
     {
         // #2157: the escape flags are structural syntax facts (like Identifier.IsNameBacktickEscaped),

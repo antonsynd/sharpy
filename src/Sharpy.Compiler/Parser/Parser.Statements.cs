@@ -21,7 +21,7 @@ public partial class Parser
 
         Expect(TokenType.If);
         var test = ParseExpression();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         var thenSuite = ParseIndentedSuite();
         var stmtEndLine = thenSuite.EndLine;
@@ -30,6 +30,7 @@ public partial class Parser
 
         var elifClauses = new List<ElifClause>();
         var elseBody = new List<Statement>();
+        var elseHeaderLine = 0;
 
         // Elif clauses
         while (Current.Type == TokenType.Elif)
@@ -39,7 +40,7 @@ public partial class Parser
             var elifStartToken = Current;
             Advance();
             var elifTest = ParseExpression();
-            Expect(TokenType.Colon);
+            var elifColon = ExpectClauseColon();
             ExpectNewline();
             var elifSuite = ParseIndentedSuite();
 
@@ -51,6 +52,8 @@ public partial class Parser
                 ColumnStart = elifStartColumn,
                 LineEnd = elifSuite.EndLine,
                 ColumnEnd = elifSuite.EndColumn,
+                HeaderLineEnd = elifColon.Line,
+                HeaderEndOffset = elifColon.EndOffset,
                 Span = CombineSpans(GetSpanFromToken(elifStartToken), elifSuite.EndSpan)
                     ?? GetSpanFromToken(elifStartToken)
             });
@@ -63,7 +66,7 @@ public partial class Parser
         if (Current.Type == TokenType.Else)
         {
             Advance();
-            Expect(TokenType.Colon);
+            elseHeaderLine = ExpectClauseColon().Line;
             ExpectNewline();
             var elseSuite = ParseIndentedSuite();
             elseBody = elseSuite.Body;
@@ -78,6 +81,7 @@ public partial class Parser
             ThenBody = thenSuite.Body.ToImmutableArray(),
             ElifClauses = elifClauses.ToImmutableArray(),
             ElseBody = elseBody.ToImmutableArray(),
+            ElseHeaderLine = elseHeaderLine,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = stmtEndLine,
@@ -95,7 +99,7 @@ public partial class Parser
 
         Expect(TokenType.While);
         var test = ParseExpression();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         var bodySuite = ParseIndentedSuite();
         var stmtEndLine = bodySuite.EndLine;
@@ -104,10 +108,11 @@ public partial class Parser
 
         // Optional else clause (runs if loop completes without break)
         var elseBody = new List<Statement>();
+        var elseHeaderLine = 0;
         if (Current.Type == TokenType.Else)
         {
             Advance();
-            Expect(TokenType.Colon);
+            elseHeaderLine = ExpectClauseColon().Line;
             ExpectNewline();
             var elseSuite = ParseIndentedSuite();
             elseBody = elseSuite.Body;
@@ -121,6 +126,7 @@ public partial class Parser
             Test = test,
             Body = bodySuite.Body.ToImmutableArray(),
             ElseBody = elseBody.ToImmutableArray(),
+            ElseHeaderLine = elseHeaderLine,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = stmtEndLine,
@@ -144,7 +150,7 @@ public partial class Parser
 
         Expect(TokenType.In);
         var iterator = ParseExpression();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         var bodySuite = ParseIndentedSuite();
         var stmtEndLine = bodySuite.EndLine;
@@ -153,10 +159,11 @@ public partial class Parser
 
         // Optional else clause (runs if loop completes without break)
         var elseBody = new List<Statement>();
+        var elseHeaderLine = 0;
         if (Current.Type == TokenType.Else)
         {
             Advance();
-            Expect(TokenType.Colon);
+            elseHeaderLine = ExpectClauseColon().Line;
             ExpectNewline();
             var elseSuite = ParseIndentedSuite();
             elseBody = elseSuite.Body;
@@ -171,6 +178,7 @@ public partial class Parser
             Iterator = iterator,
             Body = bodySuite.Body.ToImmutableArray(),
             ElseBody = elseBody.ToImmutableArray(),
+            ElseHeaderLine = elseHeaderLine,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = stmtEndLine,
@@ -568,7 +576,7 @@ public partial class Parser
                 break;
         } while (true);
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         var bodySuite = ParseIndentedSuite();
 
@@ -608,7 +616,7 @@ public partial class Parser
         {
             // Block form: `defer:` <newline> <indent> suite <dedent>
             isBlock = true;
-            Advance();
+            ExpectHeaderColon();
             ExpectNewline();
             var bodySuite = ParseIndentedSuite();
             body = bodySuite.Body;
@@ -647,7 +655,7 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.Try);
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         var bodySuite = ParseIndentedSuite();
         var stmtEndLine = bodySuite.EndLine;
@@ -776,7 +784,7 @@ public partial class Parser
                 filter = ParseExpression();
             }
 
-            Expect(TokenType.Colon);
+            var handlerColon = ExpectClauseColon();
             ExpectNewline();
             var handlerSuite = ParseIndentedSuite();
 
@@ -795,6 +803,8 @@ public partial class Parser
                 ColumnStart = handlerStartColumn,
                 LineEnd = handlerSuite.EndLine,
                 ColumnEnd = handlerSuite.EndColumn,
+                HeaderLineEnd = handlerColon.Line,
+                HeaderEndOffset = handlerColon.EndOffset,
                 Span = CombineSpans(GetSpanFromToken(handlerStartToken), handlerSuite.EndSpan)
                     ?? GetSpanFromToken(handlerStartToken)
             });
@@ -823,6 +833,7 @@ public partial class Parser
 
         // else clause (runs if no exception raised in try block)
         var elseBody = new List<Statement>();
+        var elseHeaderLine = 0;
         var elseLine = 0;
         var elseColumn = 0;
         Text.TextSpan? elseSpan = null;
@@ -832,7 +843,7 @@ public partial class Parser
             elseColumn = Current.Column;
             elseSpan = CurrentSpan;
             Advance();
-            Expect(TokenType.Colon);
+            elseHeaderLine = ExpectClauseColon().Line;
             ExpectNewline();
             var elseSuite = ParseIndentedSuite();
             elseBody = elseSuite.Body;
@@ -842,10 +853,11 @@ public partial class Parser
         }
 
         var finallyBody = new List<Statement>();
+        var finallyHeaderLine = 0;
         if (Current.Type == TokenType.Finally)
         {
             Advance();
-            Expect(TokenType.Colon);
+            finallyHeaderLine = ExpectClauseColon().Line;
             ExpectNewline();
             var finallySuite = ParseIndentedSuite();
             finallyBody = finallySuite.Body;
@@ -892,6 +904,8 @@ public partial class Parser
             Handlers = handlers.ToImmutableArray(),
             ElseBody = elseBody.ToImmutableArray(),
             FinallyBody = finallyBody.ToImmutableArray(),
+            ElseHeaderLine = elseHeaderLine,
+            FinallyHeaderLine = finallyHeaderLine,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = stmtEndLine,
@@ -1532,7 +1546,7 @@ public partial class Parser
         Expect(TokenType.Match);
 
         var scrutinee = ParseExpression();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         Expect(TokenType.Indent);
 
@@ -1573,7 +1587,7 @@ public partial class Parser
         Expect(TokenType.Match);
 
         var scrutinee = ParseExpression();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
         Expect(TokenType.Indent);
 
@@ -1658,7 +1672,7 @@ public partial class Parser
             guard = ParseExpression();
         }
 
-        Expect(TokenType.Colon);
+        var caseColon = ExpectClauseColon();
         ExpectNewline();
         var caseSuite = ParseIndentedSuite();
 
@@ -1671,6 +1685,8 @@ public partial class Parser
             ColumnStart = startColumn,
             LineEnd = caseSuite.EndLine,
             ColumnEnd = caseSuite.EndColumn,
+            HeaderLineEnd = caseColon.Line,
+            HeaderEndOffset = caseColon.EndOffset,
             Span = CombineSpans(GetSpanFromToken(startToken), caseSuite.EndSpan)
                 ?? GetSpanFromToken(startToken)
         };

@@ -623,7 +623,7 @@ public partial class Parser
                 startToken);
         }
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
 
         // Support inline stub syntax: def foo(): ...  (and every grouped spelling of it — #1238)
         if (TryParseInlineStubBody() is { } inlineStub)
@@ -770,7 +770,7 @@ public partial class Parser
             Expect(TokenType.RightParen);
         }
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
 
         var bodySuite = ParseIndentedSuite();
@@ -837,7 +837,7 @@ public partial class Parser
             Expect(TokenType.RightParen);
         }
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
 
         var bodySuite = ParseIndentedSuite();
@@ -904,7 +904,7 @@ public partial class Parser
             Expect(TokenType.RightParen);
         }
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
 
         // Set interface parsing flag so ParseFunctionDef knows to allow bodyless methods.
         // Set before ExpectNewline so the immediately-following ParseIndentedSuite satisfies
@@ -1084,7 +1084,7 @@ public partial class Parser
         Expect(TokenType.Enum);
         var nameToken = Current;
         var name = ExpectIdentifier();
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
 
         Expect(TokenType.Indent);
@@ -1200,7 +1200,7 @@ public partial class Parser
             typeParams = ParseTypeParameterList().ToImmutableArray();
         }
 
-        Expect(TokenType.Colon);
+        ExpectHeaderColon();
         ExpectNewline();
 
         Expect(TokenType.Indent);
@@ -1231,17 +1231,18 @@ public partial class Parser
                     continue;
                 }
 
-                // Method definitions inside the union body.
+                // Method definitions inside the union body. Each is parsed in its own statement
+                // frame, like a class body's members: its header end and trivia are its own.
                 if (Current.Type == TokenType.Def)
                 {
-                    body.Add(ParseFunctionDef());
+                    body.Add(ParseInStatementFrame(ParseFunctionDef));
                     SkipNewlines();
                     continue;
                 }
 
                 if (Current.Type == TokenType.Async)
                 {
-                    body.Add(ParseAsyncFunctionDef());
+                    body.Add(ParseInStatementFrame(ParseAsyncFunctionDef));
                     SkipNewlines();
                     continue;
                 }
@@ -1616,7 +1617,7 @@ public partial class Parser
                 };
             }
 
-            Expect(TokenType.Colon);
+            ExpectHeaderColon();
 
             // Support inline stub syntax: property get name(self) -> type: ...  (#1238)
             if (TryParseInlineStubBody() is { } inlineStub)
@@ -1691,6 +1692,9 @@ public partial class Parser
         var observers = ImmutableArray<PropertyObserver>.Empty;
         if (Current.Type == TokenType.Newline && Peek().Type == TokenType.Indent)
         {
+            // The declaration line is the header; the observer clauses are not part of it (their
+            // own colons are clause colons, so an observer's comment never becomes this header's).
+            MarkHeaderEndAtPrevious();
             Advance(); // consume NEWLINE
             Expect(TokenType.Indent);
             var observerList = new List<PropertyObserver>();
@@ -1768,7 +1772,7 @@ public partial class Parser
         var paramToken = Current;
         var paramName = ExpectIdentifier();
         Expect(TokenType.RightParen);
-        Expect(TokenType.Colon);
+        ExpectClauseColon();
         ExpectNewline();
         var obsSuite = ParseIndentedSuite();
 
@@ -1862,7 +1866,7 @@ public partial class Parser
                 };
             }
 
-            Expect(TokenType.Colon);
+            ExpectHeaderColon();
 
             // Support inline stub syntax: event add name(self, handler: T): ...  (#1238)
             if (TryParseInlineStubBody() is { } inlineStub)

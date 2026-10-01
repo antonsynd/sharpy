@@ -147,6 +147,8 @@ public class UnparserExhaustivenessTests
         var missingArm = new List<string>();
         var notZeroed = new List<string>();
         var visited = 0;
+        var headerPlanted = 0;
+        var headerZeroedObserved = 0;
 
         foreach (var type in concreteNodeTypes)
         {
@@ -157,6 +159,12 @@ public class UnparserExhaustivenessTests
             // Plant a position the arm must erase, so "zeroed" is an observation, not the default.
             typeof(Node).GetProperty(nameof(Node.LineStart))!.SetValue(instance, 7);
             typeof(Node).GetProperty(nameof(Node.ColumnStart))!.SetValue(instance, 3);
+            // The header-end positions (P22b Decision 5) are positions too: plant them as well.
+            var headerProperties = HeaderPositionProperties(type);
+            foreach (var property in headerProperties)
+                property.SetValue(instance, 9);
+            if (headerProperties.Count > 0)
+                headerPlanted++;
             visited++;
 
             Node? normalized;
@@ -180,7 +188,17 @@ public class UnparserExhaustivenessTests
                 missingArm.Add($"{type.Name} (returned null)");
             else if (normalized.LineStart != 0 || normalized.ColumnStart != 0)
                 notZeroed.Add(type.Name);
+            else if (HeaderPositionProperties(type).FirstOrDefault(p => (int)p.GetValue(normalized)! != 0) is { } unzeroed)
+                notZeroed.Add($"{type.Name}.{unzeroed.Name}");
+            else if (headerProperties.Count > 0)
+                headerZeroedObserved++;
         }
+
+        // Positive control for the header positions: they were planted on statement kinds and the
+        // zeroing was observed on at least one (the default instances of many compound statements
+        // throw on a null! child, so the observation rides on the constructible ones).
+        Assert.True(headerPlanted > 20, $"header positions planted on only {headerPlanted} node types");
+        Assert.True(headerZeroedObserved > 10, $"header-position zeroing observed on only {headerZeroedObserved} node types");
 
         // Positive control: the universe is real, not an empty loop that passes vacuously.
         Assert.True(visited > 50, $"only {visited} node types were constructible — the guard is not measuring anything");
@@ -189,6 +207,14 @@ public class UnparserExhaustivenessTests
         Assert.True(notZeroed.Count == 0,
             $"AstNormalizer did not zero positions for: {string.Join(", ", notZeroed)}");
     }
+
+    /// <summary>The int header-end position properties a node type carries (Statement and the else/finally lines).</summary>
+    private static List<PropertyInfo> HeaderPositionProperties(Type type) =>
+        type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(int) && p.CanWrite
+                && p.Name is nameof(Statement.HeaderLineEnd) or nameof(Statement.HeaderEndOffset)
+                    or nameof(IfStatement.ElseHeaderLine) or nameof(TryStatement.FinallyHeaderLine))
+            .ToList();
 
     private static Node? CreateDefaultInstance(Type type)
     {

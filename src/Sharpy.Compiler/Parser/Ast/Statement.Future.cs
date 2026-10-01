@@ -76,6 +76,13 @@ public record MatchCase
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>Line of the case's header colon (see <see cref="Statement.HeaderLineEnd"/>).</summary>
+    public int HeaderLineEnd { get; init; }
+
+    /// <summary>Exclusive offset just past the case's header colon; 0 when not tracked.</summary>
+    public int HeaderEndOffset { get; init; }
+
     public Text.TextSpan? Span { get; init; }
 }
 

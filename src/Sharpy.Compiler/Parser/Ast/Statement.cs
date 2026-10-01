@@ -6,7 +6,25 @@ namespace Sharpy.Compiler.Parser.Ast;
 /// <summary>
 /// Base class for all statement nodes
 /// </summary>
-public abstract record Statement : Node;
+public abstract record Statement : Node
+{
+    /// <summary>
+    /// The line on which the statement's HEADER ends: for a compound statement (<c>if</c>, <c>def</c>,
+    /// <c>class</c>, <c>match</c>, …) the line of its own header colon — recorded at the one
+    /// <c>ExpectHeaderColon</c> hook, so a dict, slice, lambda or annotation colon inside the header
+    /// never ends it (<c>def f(x: int) -&gt; None:</c> ends at the last colon); for a simple statement
+    /// <see cref="Node.LineEnd"/>. 0 when the statement was not built through the parser's statement
+    /// frame. A position, zeroed by the AST normalizer; read by the formatter's trivia anchors (P22b).
+    /// </summary>
+    public int HeaderLineEnd { get; init; }
+
+    /// <summary>
+    /// Exclusive character offset where the header ends (just past the header colon, or
+    /// <c>Span.End</c> for a simple statement); 0 when not tracked. Pairs with
+    /// <see cref="HeaderLineEnd"/>.
+    /// </summary>
+    public int HeaderEndOffset { get; init; }
+}
 
 #region Simple Statements
 
@@ -275,6 +293,9 @@ public record IfStatement : Statement
     public ImmutableArray<ElifClause> ElifClauses { get; init; } = ImmutableArray<ElifClause>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 
+    /// <summary>Line of the <c>else:</c> header (recorded at its colon); 0 when there is no else.</summary>
+    public int ElseHeaderLine { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
@@ -313,6 +334,12 @@ public record ElifClause
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
 
+    /// <summary>Line of the clause's header colon (see <see cref="Statement.HeaderLineEnd"/>).</summary>
+    public int HeaderLineEnd { get; init; }
+
+    /// <summary>Exclusive offset just past the clause's header colon; 0 when not tracked.</summary>
+    public int HeaderEndOffset { get; init; }
+
     /// <summary>
     /// Character offset-based span. May be null if not tracked.
     /// </summary>
@@ -327,6 +354,9 @@ public record WhileStatement : Statement
     public Expression Test { get; init; } = null!;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <summary>Line of the <c>else:</c> header (recorded at its colon); 0 when there is no else.</summary>
+    public int ElseHeaderLine { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -359,6 +389,9 @@ public record ForStatement : Statement
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
     public bool IsAsync { get; init; }
 
+    /// <summary>Line of the <c>else:</c> header (recorded at its colon); 0 when there is no else.</summary>
+    public int ElseHeaderLine { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
@@ -390,6 +423,12 @@ public record TryStatement : Statement
     public ImmutableArray<ExceptHandler> Handlers { get; init; } = ImmutableArray<ExceptHandler>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> FinallyBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <summary>Line of the <c>else:</c> header (recorded at its colon); 0 when there is no else.</summary>
+    public int ElseHeaderLine { get; init; }
+
+    /// <summary>Line of the <c>finally:</c> header (recorded at its colon); 0 when there is no finally.</summary>
+    public int FinallyHeaderLine { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -449,6 +488,12 @@ public record ExceptHandler
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>Line of the clause's header colon (see <see cref="Statement.HeaderLineEnd"/>).</summary>
+    public int HeaderLineEnd { get; init; }
+
+    /// <summary>Exclusive offset just past the clause's header colon; 0 when not tracked.</summary>
+    public int HeaderEndOffset { get; init; }
 
     /// <summary>
     /// Character offset-based span. May be null if not tracked.

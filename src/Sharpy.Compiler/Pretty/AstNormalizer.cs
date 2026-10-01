@@ -27,8 +27,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public Module NormalizeModule(Module module) =>
         (Module)Visit(module);
 
-    private static T Zero<T>(T node) where T : Node =>
-        (T)(node with
+    private static T Zero<T>(T node) where T : Node
+    {
+        Node zeroed = node with
         {
             LineStart = 0,
             ColumnStart = 0,
@@ -37,7 +38,12 @@ public sealed class AstNormalizer : AstVisitor<Node>
             Span = null,
             LeadingTrivia = null,
             TrailingTrivia = null
-        });
+        };
+        // A statement's header end is a position too (P22b Decision 5).
+        if (zeroed is Statement statement)
+            zeroed = statement with { HeaderLineEnd = 0, HeaderEndOffset = 0 };
+        return (T)zeroed;
+    }
 
     public override Node VisitModule(Module node) =>
         Zero(node) with { Body = VisitStatements(node.Body) };
@@ -305,6 +311,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitIfStatement(IfStatement node) =>
         Zero(node) with
         {
+            ElseHeaderLine = 0,
             Test = (Expression)Visit(node.Test),
             ThenBody = VisitStatements(node.ThenBody),
             ElifClauses = node.ElifClauses.Select(e => new ElifClause
@@ -316,11 +323,12 @@ public sealed class AstNormalizer : AstVisitor<Node>
         };
 
     public override Node VisitWhileStatement(WhileStatement node) =>
-        Zero(node) with { Test = (Expression)Visit(node.Test), Body = VisitStatements(node.Body), ElseBody = VisitStatements(node.ElseBody) };
+        Zero(node) with { ElseHeaderLine = 0, Test = (Expression)Visit(node.Test), Body = VisitStatements(node.Body), ElseBody = VisitStatements(node.ElseBody) };
 
     public override Node VisitForStatement(ForStatement node) =>
         Zero(node) with
         {
+            ElseHeaderLine = 0,
             Target = (Expression)Visit(node.Target),
             Iterator = (Expression)Visit(node.Iterator),
             Body = VisitStatements(node.Body),
@@ -330,6 +338,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitTryStatement(TryStatement node) =>
         Zero(node) with
         {
+            ElseHeaderLine = 0,
+            FinallyHeaderLine = 0,
             Body = VisitStatements(node.Body),
             Handlers = node.Handlers.Select(h => new ExceptHandler
             {
