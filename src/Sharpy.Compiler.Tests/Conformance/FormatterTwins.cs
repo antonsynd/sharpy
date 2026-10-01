@@ -92,8 +92,16 @@ public static class FormatterTwins
         => Lex(source, out _)
             .SelectMany(t => (t.LeadingTrivia ?? Array.Empty<Trivia>()).Concat(t.TrailingTrivia ?? Array.Empty<Trivia>()))
             .Where(t => t.Kind == TriviaKind.Comment)
-            .Select(t => t.Text)
+            .Select(CommentText)
             .ToList();
+
+    /// <summary>
+    /// A comment's text as the meaning-preservation contract compares it: trailing spaces/tabs are
+    /// not part of it. The lexer keeps them (<c>"# c   "</c>) and <c>StripTrailingWhitespace</c>
+    /// removes them by design — the same rule as the formatter's net
+    /// (<c>FormatterService.CheckMeaningPreserved</c>), so the sweep and the net agree.
+    /// </summary>
+    public static string CommentText(Trivia comment) => comment.Text.TrimEnd(' ', '\t');
 
     /// <summary>The multiset of backtick-escaped identifier token values, sorted ordinally.</summary>
     public static IReadOnlyList<string> EscapedNames(string source)

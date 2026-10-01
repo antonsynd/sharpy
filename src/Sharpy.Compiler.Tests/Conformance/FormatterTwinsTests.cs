@@ -240,6 +240,26 @@ public class FormatterTwinsTests
             .Should().Equal("# a", "# b", "# c", "# d");
     }
 
+    /// <summary>
+    /// A comment's trailing spaces/tabs are not compared: the lexer keeps them (positive control on
+    /// the raw trivia) and <c>StripTrailingWhitespace</c> removes them by design, so the formatted
+    /// text's comment sequence equals the source's.
+    /// </summary>
+    [Fact]
+    public void Comments_IgnoreTrailingWhitespace_WhichTheLexerKeepsAndTheFormatterStrips()
+    {
+        const string source = "# own  \nx = 1  # t \t \n";
+        var raw = FormatterTwins.Lex(source, out _)
+            .SelectMany(t => (t.LeadingTrivia ?? Array.Empty<Sharpy.Compiler.Lexer.Trivia>()).Concat(t.TrailingTrivia ?? Array.Empty<Sharpy.Compiler.Lexer.Trivia>()))
+            .Select(t => t.Text);
+        raw.Should().Equal("# own  ", "# t \t ");
+
+        FormatterTwins.Comments(source).Should().Equal("# own", "# t");
+        var formatted = Sharpy.Compiler.Formatting.FormatterService.Format(source).FormattedText;
+        formatted.Should().NotContain("# t \t");
+        FormatterTwins.Comments(formatted).Should().Equal(FormatterTwins.Comments(source));
+    }
+
     [Fact]
     public void EscapedNames_IsTheSortedMultisetOfEscapedIdentifiers()
     {

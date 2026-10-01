@@ -24,7 +24,7 @@
 # Populated by the first run (P22b Phase 1); drained to EMPTY by the end of Phase 4.
 # DO NOT DELETE THIS FILE: its presence arms the ratchet, and the sweep throws if it is missing.
 
-# ---- identity twin (T0) — the fixture as written: 195 rows ----
+# ---- identity twin (T0) — the fixture as written: 191 rows ----
 basics/arithmetic_operators_0006 identity commentDropped # #2077 comment dropped or moved
 basics/augmented_assignment_0001 identity commentDropped # #2077 comment dropped or moved
 basics/augmented_assignment_0004 identity commentDropped # #2077 comment dropped or moved
@@ -92,7 +92,6 @@ collections/collection_iteration_0000 identity commentDropped # #2077 comment dr
 collections/collection_methods_0002 identity commentDropped # #2077 comment dropped or moved
 collections/collection_methods_0007 identity commentDropped # #2077 comment dropped or moved
 collections/containment_test_0003 identity commentDropped # #2077 comment dropped or moved
-collections/containment_test_0081 identity commentDropped # #2077 comment dropped or moved
 collections/dict_literal_0013 identity commentDropped # #2077 comment dropped or moved
 collections/list_comprehension_0029 identity commentDropped # #2077 comment dropped or moved
 collections/list_literal_0003 identity commentDropped # #2077 comment dropped or moved
@@ -124,7 +123,6 @@ exceptions/try_except_finally_0016 identity commentDropped # #2077 comment dropp
 expressions/mixed_comparison_chain identity commentDropped # #2077 comment dropped or moved
 expressions/spread_call_0005 identity commentDropped # #2077 comment dropped or moved
 expressions/tuple_unpacking_nested_0013 identity commentDropped # #2077 comment dropped or moved
-expressions/tuple_unpacking_nested_0064 identity commentDropped # #2077 comment dropped or moved
 fstrings/f_string_basic_0003 identity commentDropped # #2077 comment dropped or moved
 fstrings/f_string_expressions_0003 identity commentDropped # #2077 comment dropped or moved
 fstrings/multiline_hole_2022 identity commentDropped # #2077 comment dropped or moved
@@ -181,7 +179,6 @@ operators/string_repeat_both_orders_1623 identity commentDropped # #2077 comment
 optional_result/optional_type_0006 identity commentDropped # #2077 comment dropped or moved
 optional_result/optional_unwrap_0003 identity commentDropped # #2077 comment dropped or moved
 optional_result/result_type_0016 identity commentDropped # #2077 comment dropped or moved
-optional_result/result_type_0042 identity commentDropped # #2077 comment dropped or moved
 optional_result/result_unwrap_0002 identity commentDropped # #2077 comment dropped or moved
 optional_result/result_unwrap_0013 identity commentDropped # #2077 comment dropped or moved
 optional_result/result_unwrap_0032 identity commentDropped # #2077 comment dropped or moved
@@ -206,7 +203,6 @@ tstrings/t_string_multiline_hole_2022 identity commentDropped # #2077 comment dr
 type_system/comparison_chaining_0037 identity commentDropped # #2077 comment dropped or moved
 type_system/generic_class_0001 identity commentDropped # #2077 comment dropped or moved
 type_system/generic_class_0005 identity commentDropped # #2077 comment dropped or moved
-type_system/generic_function_0016 identity commentDropped # #2077 comment dropped or moved
 type_system/null_coalescing_0003 identity commentDropped # #2077 comment dropped or moved
 type_system/null_conditional_0004 identity commentDropped # #2077 comment dropped or moved
 type_system/null_conditional_0005 identity commentDropped # #2077 comment dropped or moved
@@ -3864,7 +3860,7 @@ with_statement/with_error_no_enter comment commentDropped # #2077 comment droppe
 with_statement/with_exception_handling comment commentDropped # #2077 comment dropped or moved
 with_statement/with_nested comment commentDropped # #2077 comment dropped or moved
 
-# ---- backtick twin (T2) — every identifier escaped: 2079 rows ----
+# ---- backtick twin (T2) — every identifier escaped: 2075 rows ----
 Formatting/comments backtick escapeDropped # #2157 escape dropped
 Formatting/comments_and_blank_lines backtick escapeDropped # #2157 escape dropped
 Formatting/decorators backtick escapeDropped # #2157 escape dropped
@@ -4265,7 +4261,6 @@ collections/collection_methods_0007 backtick escapeDropped # #2157 escape droppe
 collections/comprehension_generic_type backtick escapeDropped # #2157 escape dropped
 collections/containment_test_0003 backtick commentDropped # #2077 comment dropped or moved
 collections/containment_test_0016 backtick escapeDropped # #2157 escape dropped
-collections/containment_test_0081 backtick commentDropped # #2077 comment dropped or moved
 collections/dict_get_0001 backtick escapeDropped # #2157 escape dropped
 collections/dict_get_value_type_0001 backtick escapeDropped # #2157 escape dropped
 collections/dict_items_unpacking backtick escapeDropped # #2157 escape dropped
@@ -4748,7 +4743,6 @@ expressions/spread_call_0005 backtick escapeDropped # #2157 escape dropped
 expressions/star_unpacking_0065 backtick escapeDropped # #2157 escape dropped
 expressions/tuple_unpacking_nested_0013 backtick commentDropped # #2077 comment dropped or moved
 expressions/tuple_unpacking_nested_0013 backtick escapeDropped # #2157 escape dropped
-expressions/tuple_unpacking_nested_0064 backtick commentDropped # #2077 comment dropped or moved
 expressions/tuple_unpacking_nested_0064 backtick escapeDropped # #2157 escape dropped
 float32_literal_positions_1688 backtick escapeDropped # #2157 escape dropped
 float_leading_decimal_not_member_access backtick escapeDropped # #2157 escape dropped
@@ -5391,7 +5385,6 @@ optional_result/result_type_0007 backtick escapeDropped # #2157 escape dropped
 optional_result/result_type_0016 backtick commentDropped # #2077 comment dropped or moved
 optional_result/result_type_0016 backtick escapeDropped # #2157 escape dropped
 optional_result/result_type_0018 backtick escapeDropped # #2157 escape dropped
-optional_result/result_type_0042 backtick commentDropped # #2077 comment dropped or moved
 optional_result/result_type_0042 backtick escapeDropped # #2157 escape dropped
 optional_result/result_unwrap_0002 backtick commentDropped # #2077 comment dropped or moved
 optional_result/result_unwrap_0002 backtick escapeDropped # #2157 escape dropped
@@ -5802,7 +5795,6 @@ type_system/generic_class_0001 backtick escapeDropped # #2157 escape dropped
 type_system/generic_class_0005 backtick commentDropped # #2077 comment dropped or moved
 type_system/generic_class_0005 backtick escapeDropped # #2157 escape dropped
 type_system/generic_comparable_0001 backtick escapeDropped # #2157 escape dropped
-type_system/generic_function_0016 backtick commentDropped # #2077 comment dropped or moved
 type_system/generic_infer_constructor_0001 backtick escapeDropped # #2157 escape dropped
 type_system/generic_infer_constructor_0002 backtick escapeDropped # #2157 escape dropped
 type_system/generic_infer_mixed_0001 backtick escapeDropped # #2157 escape dropped
@@ -5946,25 +5938,25 @@ with_statement/with_exception_handling backtick escapeDropped # #2157 escape dro
 with_statement/with_nested backtick escapeDropped # #2157 escape dropped
 
 # ---- emitChanged (O7, FormatterEmitInvarianceSweepTests): 100 rows ----
-algorithms/binary_search_tree identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-algorithms/linked_list identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-arrays/clr_array_slice_1256 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-bare_clr_sequence_display_1453 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+algorithms/binary_search_tree identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+algorithms/linked_list identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+arrays/clr_array_slice_1256 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+bare_clr_sequence_display_1453 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 basics/backtick_dotted_member_chain identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 basics/backtick_local_declaration_spaces identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 basics/backtick_member_access identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 basics/backtick_member_access_edges identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 basics/backtick_self_member_access identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 basics/backtick_type_alias identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
-builtin_literal_known_member identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-builtins/builtin_iterator_reprs_1354 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-builtins/iter_str_1468 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-builtins/iterable_sources_matrix identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-builtins/iterable_tuple_bridge identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-builtins/str_projection_single_eval identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-bytes_methods identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+builtin_literal_known_member identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+builtins/builtin_iterator_reprs_1354 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+builtins/iter_str_1468 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+builtins/iterable_sources_matrix identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+builtins/iterable_tuple_bridge identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+builtins/str_projection_single_eval identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+bytes_methods identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 classes/member_enclosing_type_escaped_1871 identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
-comprehensions/comprehension_interop_array_source identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+comprehensions/comprehension_interop_array_source identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 decorators/bracket_attr_custom_class identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
 decorators/bracket_attr_custom_multi_param identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
 decorators/bracket_attr_custom_on_field identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
@@ -6000,47 +5992,47 @@ decorators/decorator_args_negative_0001 identity emitChanged # #2062 @[attr] wri
 decorators/decorator_args_property_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
 decorators/decorator_args_typeof_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
 decorators/decorator_interface_0001 identity emitChanged # #2062 @[attr] written as @attr (Decorator.IsBracketAttribute ignored) — Format(P) does not compile
-dict_iterable_acceptance identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-dict_iterable_acceptance_empty identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-dict_iterable_nullable identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-docstrings/string_method_call_first identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-dunders/dunder_format_2009 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-exception_handling/keyerror_text identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-experimental/matmul_gated identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-fstrings/format_conversion_then_spec_1988 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-fstrings/format_iformattable_class_1988 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-fstrings/unicode_digit_width_2017 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-generators/genexp_join_1774 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-generics/bcl_extension_collision_guards_1206 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-interop/clr_char_array_is_str_1291 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+dict_iterable_acceptance identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+dict_iterable_acceptance_empty identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+dict_iterable_nullable identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+docstrings/string_method_call_first identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+dunders/dunder_format_2009 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+exception_handling/keyerror_text identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+experimental/matmul_gated identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+fstrings/format_conversion_then_spec_1988 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+fstrings/format_iformattable_class_1988 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+fstrings/unicode_digit_width_2017 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+generators/genexp_join_1774 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+generics/bcl_extension_collision_guards_1206 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+interop/clr_char_array_is_str_1291 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 interop/sharpy_receiver_backtick_escape_1851 identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 interop/sharpy_receiver_backtick_escape_callee_1888 identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 interop/sharpy_receiver_backtick_escape_kinds_1851 identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
-list_backing_sharpylist_fast_path identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-modules/import_statement_0085 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+list_backing_sharpylist_fast_path identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+modules/import_statement_0085 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 name_collision/grid_type_param_escaped_member identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
-narrowing/and_narrowing identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-operators/power_lowering_matrix_1623 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-pattern_matching/match_type_combined_0001 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-slice_user_getitem_1610 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-str_format identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-str_format_conversions identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-str_format_nested identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-str_formatmap identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_methods_0001 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_methods_0003 identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_methods_extended identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_predicates identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_removeprefix identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_removeprefix_chaining identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_removesuffix identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_replace_count_zero identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_replace_empty_old identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_split_append identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_split_index_last identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_split_maxsplit identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_split_negative_index identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
-strings/str_split_whitespace_collapse identity emitChanged # #2062 the formatter adds redundant parentheses that reach the emitted C#
+narrowing/and_narrowing identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+operators/power_lowering_matrix_1623 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+pattern_matching/match_type_combined_0001 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+slice_user_getitem_1610 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+str_format identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+str_format_conversions identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+str_format_nested identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+str_formatmap identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_methods_0001 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_methods_0003 identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_methods_extended identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_predicates identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_removeprefix identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_removeprefix_chaining identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_removesuffix identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_replace_count_zero identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_replace_empty_old identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_split_append identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_split_index_last identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_split_maxsplit identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_split_negative_index identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
+strings/str_split_whitespace_collapse identity emitChanged # #2062 redundantParens — the formatter adds parentheses the precedence table does not need, and they reach the emitted C#
 unions/union_backtick_escaped_reserved_case_1856 identity emitChanged # #2157 escape dropped at a name position (member access, except-as, union case, type alias) — the C# binds differently or does not compile
 unions/union_method_calls_protected_2041 identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)
 unions/union_methods identity emitChanged # #2062 the unparser drops every def in a union body (comparer-blind; silent wrong)

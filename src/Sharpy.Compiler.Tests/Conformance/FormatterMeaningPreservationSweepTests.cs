@@ -169,7 +169,7 @@ public class FormatterMeaningPreservationSweepTests
         var comments = lex.Tokens
             .SelectMany(t => (t.LeadingTrivia ?? Array.Empty<Trivia>()).Concat(t.TrailingTrivia ?? Array.Empty<Trivia>()))
             .Where(t => t.Kind == TriviaKind.Comment)
-            .Select(t => t.Text)
+            .Select(t => FormatterTwins.CommentText(t))
             .ToList();
         var escaped = lex.Tokens
             .Where(t => t.Type == TokenType.Identifier && t.IsBacktickEscaped)
