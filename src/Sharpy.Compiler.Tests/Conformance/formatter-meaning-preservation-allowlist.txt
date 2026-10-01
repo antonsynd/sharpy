@@ -20,8 +20,9 @@
 # idempotent.
 #
 # Rules for adding a row:
-#   1. It MUST cite a filed GitHub issue first: comment buckets #2077, escape buckets #2157 (the
-#      class trackers); `instrument` rows cite #2077 (comment twin) or #2157 (backtick twin).
+#   1. It MUST cite a filed, OPEN GitHub issue first (build_tools/check_allowlist_issue_state.sh
+#      fails a row citing a closed one). The P22b issues #2062 #2068 #2077 #2157 are closed; a
+#      formatter-output defect cites the open class tracker #2169 (or files the class, contract §10).
 #   2. It MUST correspond to a real measured failure — never allowlist speculatively.
 #
 # Populated by the first run (P22b Phase 1: 5915 rows); drained to EMPTY at P22b Phase 4 Task 3.
@@ -34,5 +35,7 @@
 # ---- comment twin (T1) — `# cN` injected at every anchor: 0 rows ----
 
 # ---- backtick twin (T2) — every identifier escaped: 0 rows ----
+
+# ---- trailing twin (T3) — `# cN` after every depth-0 code line only: 0 rows ----
 
 # ---- emitChanged (O7, FormatterEmitInvarianceSweepTests, raw output): 0 rows ----
