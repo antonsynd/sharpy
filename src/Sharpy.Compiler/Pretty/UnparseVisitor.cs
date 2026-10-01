@@ -175,7 +175,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
             BinaryOperator.LeftShift or BinaryOperator.RightShift => PrecShift,
             BinaryOperator.Add or BinaryOperator.Subtract => PrecAdditive,
             BinaryOperator.Multiply or BinaryOperator.Divide
-                or BinaryOperator.FloorDivide or BinaryOperator.Modulo => PrecMultiplicative,
+                or BinaryOperator.FloorDivide or BinaryOperator.Modulo
+                or BinaryOperator.MatMul => PrecMultiplicative,
             BinaryOperator.Power => PrecPower,
             BinaryOperator.Equal or BinaryOperator.NotEqual
                 or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
@@ -230,10 +231,14 @@ internal sealed partial class UnparseVisitor : AstVisitor
             return;
         }
 
+        // A literal receiver needs grouping only where its spelling would re-lex differently with a
+        // `.` after it: an integer (`1.real` lexes `1.` as the start of a number). A float is written
+        // with its `.` or exponent (`1.5.real`, `1e3.real` re-lex as float, dot, name), and a string,
+        // bytes, f- or t-string literal ends at its closing quote.
         int childPrec = GetExpressionPrecedence(obj);
         bool needsParens = childPrec < PrecPostfix
-            || obj is IntegerLiteral or FloatLiteral
-            || obj is StringLiteral or BytesLiteralExpression or FStringLiteral or TStringLiteral;
+            || obj is IntegerLiteral
+            || obj is FloatLiteral { Suffix: null } f && f.Value.All(c => char.IsDigit(c) || c == '_');
 
         if (needsParens)
             WriteParenthesized(obj);

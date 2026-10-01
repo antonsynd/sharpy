@@ -254,6 +254,15 @@ internal sealed partial class UnparseVisitor
             _w.Write(" ");
         }
 
+        // The right operand of `**` is a unary expression in the grammar (`2 ** -1`, `a ** await b`,
+        // as in Python): a prefix operator there needs no parentheses even though it binds looser.
+        if (node.Operator == BinaryOperator.Power
+            && node.Right is UnaryOp { Operator: not UnaryOperator.Not } or AwaitExpression)
+        {
+            Visit(node.Right);
+            return;
+        }
+
         VisitExprInContext(node.Right, prec, isRightChild: true, parentIsRightAssoc: isRightAssoc);
     }
 
