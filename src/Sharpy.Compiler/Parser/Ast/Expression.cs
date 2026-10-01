@@ -260,6 +260,13 @@ public record TupleLiteral : Expression
     public ImmutableArray<string?> ElementNames { get; init; } = ImmutableArray<string?>.Empty;
 
     /// <summary>
+    /// Parallel to <see cref="ElementNames"/>: true for each element name written backtick-escaped
+    /// (<c>(`x`=1, y=2)</c>). A syntax fact for the unparser and the structural comparer only
+    /// (#2157); empty when no name is escaped or the node was not built by the parser.
+    /// </summary>
+    public ImmutableArray<bool> ElementNamesBacktickEscaped { get; init; } = ImmutableArray<bool>.Empty;
+
+    /// <summary>
     /// True when this node was canonicalized from a list-display store target (<c>[a, b] = t</c>).
     /// Used only by the unparser to print brackets back; the semantic and codegen layers
     /// treat it identically to a parenthesized tuple target.

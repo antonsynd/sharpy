@@ -312,17 +312,18 @@ public class FormatterServiceTests
     }
 
     [Fact]
-    public void Format_DeclinesAnOutputDroppingAKeywordArgumentEscape_LeavesSourceUnchanged()
+    public void Format_KeepsAKeywordArgumentEscape_TheFormerRefusalCellFormatsClean()
     {
-        // #2157 live cell end to end: at 4ef844961 Format returned `f(class=7)`, which does not parse.
-        // The escape drop is reported (its cause), not the parse failure (its symptom).
+        // #2157 live cell end to end. At 4ef844961 Format returned `f(class=7)`, which does not parse;
+        // with the SPY0912 net (Phase 2) it declined with "would drop the backtick escape on 'class'
+        // at line 6". Phase 3 (KeywordArgument.IsNameBacktickEscaped written through WriteName) flips
+        // the cell: the escape is kept and Format reports nothing.
         var source = "def f(`class`: int) -> int:\n    return `class`\n\n\ndef main():\n    print(f(`class`=7))\n";
 
         var result = FormatterService.Format(source);
 
-        result.FormattedText.Should().Be(source);
-        result.HasChanges.Should().BeFalse();
-        result.Diagnostics.Should().ContainSingle();
-        AssertDeclined(result.Diagnostics[0], "would drop the backtick escape on 'class' at line 6");
+        result.Diagnostics.Should().BeEmpty();
+        result.FormattedText.Should().Contain("print(f(`class`=7))");
+        Net(source, result.FormattedText).Should().BeNull();
     }
 }

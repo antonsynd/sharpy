@@ -44,6 +44,19 @@ public record TypeAnnotation : Node
     /// </summary>
     public bool IsNameBacktickEscaped { get; init; }
 
+    /// <summary>
+    /// The segments of a DOTTED <see cref="Name"/> as written (<c>`collections`.deque</c> →
+    /// <c>["collections", "deque"]</c>); empty for a single-segment name and for an annotation not
+    /// built by the parser. A syntax fact for the unparser and the structural comparer only, so the
+    /// formatter writes each segment's backtick escape back (#2157); resolution keeps reading
+    /// <see cref="Name"/> and <see cref="IsNameBacktickEscaped"/>, whose dotted-name rule above is
+    /// unchanged.
+    /// </summary>
+    public ImmutableArray<string> NameParts { get; init; } = ImmutableArray<string>.Empty;
+
+    /// <summary>Parallel to <see cref="NameParts"/>: true for each segment written backtick-escaped.</summary>
+    public ImmutableArray<bool> BacktickEscapedParts { get; init; } = ImmutableArray<bool>.Empty;
+
     public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
 
     /// <summary>
@@ -75,6 +88,13 @@ public record TypeAnnotation : Node
     /// When present, must have the same count as TypeArguments.
     /// </summary>
     public ImmutableArray<string?> TupleElementNames { get; init; } = ImmutableArray<string?>.Empty;
+
+    /// <summary>
+    /// Parallel to <see cref="TupleElementNames"/>: true for each element name written
+    /// backtick-escaped (<c>tuple[`x`: int]</c>). A syntax fact for the unparser and the structural
+    /// comparer only (#2157); empty when no name is escaped or the node was not built by the parser.
+    /// </summary>
+    public ImmutableArray<bool> TupleElementNamesBacktickEscaped { get; init; } = ImmutableArray<bool>.Empty;
 
     // Source location (LineStart/ColumnStart/LineEnd/ColumnEnd/Span) is inherited from Node.
 }

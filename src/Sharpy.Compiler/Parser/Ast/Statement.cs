@@ -1138,6 +1138,13 @@ public record PropertyDef : Statement
     public string? ExplicitInterface { get; init; }
 
     /// <summary>
+    /// True when the explicit-interface qualifier was written backtick-escaped
+    /// (<c>property `IFoo`.x: int</c>); a syntax fact read by the unparser and the structural
+    /// comparer (#2157). Resolution reads <see cref="ExplicitInterface"/> unchanged.
+    /// </summary>
+    public bool IsExplicitInterfaceBacktickEscaped { get; init; }
+
+    /// <summary>
     /// Store-time observer clauses (<c>before_set</c>/<c>after_set</c>) on an auto-property.
     /// Empty for function-style properties and auto-properties without observers. Gated behind
     /// the experimental <c>property_observers</c> feature (#416).

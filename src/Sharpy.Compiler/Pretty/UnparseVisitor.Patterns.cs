@@ -112,12 +112,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitMemberAccessPattern(MemberAccessPattern node)
     {
-        for (int i = 0; i < node.Parts.Length; i++)
-        {
-            if (i > 0)
-                _w.Write(".");
-            _w.Write(node.Parts[i]);
-        }
+        WriteDottedName(node.Parts, node.BacktickEscapedParts);
     }
 
     public override void VisitRelationalPattern(RelationalPattern node)
@@ -129,7 +124,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitPropertyPatternField(PropertyPatternField node)
     {
-        _w.Write(node.Name);
+        WriteName(node.Name, node.IsNameBacktickEscaped);
         _w.Write("=");
         Visit(node.Pattern);
     }

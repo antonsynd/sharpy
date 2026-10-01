@@ -1547,10 +1547,12 @@ public partial class Parser
 
         // Check for explicit interface: Name.Name pattern
         string? explicitInterface = null;
+        var explicitInterfaceEscaped = false;
         if (Current.Type == TokenType.Dot)
         {
             Advance(); // consume '.'
             explicitInterface = name;
+            explicitInterfaceEscaped = nameToken.IsBacktickEscaped;
             nameToken = Current;
             name = ExpectIdentifier();
         }
@@ -1595,6 +1597,7 @@ public partial class Parser
                     Parameters = parameters.ToImmutableArray(),
                     ReturnType = returnType,
                     ExplicitInterface = explicitInterface,
+                    IsExplicitInterfaceBacktickEscaped = explicitInterfaceEscaped,
                     Body = ImmutableArray.Create<Statement>(
                         new ExpressionStatement
                         {
@@ -1630,6 +1633,7 @@ public partial class Parser
                     Parameters = parameters.ToImmutableArray(),
                     ReturnType = returnType,
                     ExplicitInterface = explicitInterface,
+                    IsExplicitInterfaceBacktickEscaped = explicitInterfaceEscaped,
                     Body = inlineStub.Body,
                     LineStart = startLine,
                     ColumnStart = startColumn,
@@ -1654,6 +1658,7 @@ public partial class Parser
                 Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
                 ExplicitInterface = explicitInterface,
+                IsExplicitInterfaceBacktickEscaped = explicitInterfaceEscaped,
                 Body = propBodySuite.Body.ToImmutableArray(),
                 LineStart = startLine,
                 ColumnStart = startColumn,
@@ -1725,6 +1730,7 @@ public partial class Parser
             DefaultValue = defaultValue,
             IsFunctionStyle = false,
             ExplicitInterface = explicitInterface,
+            IsExplicitInterfaceBacktickEscaped = explicitInterfaceEscaped,
             Observers = observers,
             LineStart = startLine,
             ColumnStart = startColumn,

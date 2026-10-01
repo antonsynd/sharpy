@@ -183,6 +183,8 @@ public partial class Parser
         // Handle 'auto' keyword for type inference
         string name;
         bool isNameBacktickEscaped = false;
+        var nameParts = ImmutableArray<string>.Empty;
+        var escapedParts = ImmutableArray<bool>.Empty;
         if (Current.Type == TokenType.Auto)
         {
             name = "auto";
@@ -208,17 +210,30 @@ public partial class Parser
             var nameToken = Current;
             name = IsKeywordQualifierStart() ? ExpectIdentifierOrKeyword() : ExpectIdentifier();
             isNameBacktickEscaped = nameToken.IsBacktickEscaped;
+            var parts = new List<string> { name };
+            var partsEscaped = new List<bool> { nameToken.IsBacktickEscaped };
 
             // Handle dotted type names for nested types (e.g., Outer.Inner)
             while (Current.Type == TokenType.Dot && Peek().Type == TokenType.Identifier)
             {
                 Advance(); // consume '.'
-                name += "." + ExpectIdentifier();
+                var part = ExpectIdentifier();
+                parts.Add(part);
+                partsEscaped.Add(Previous.IsBacktickEscaped);
+                name += "." + part;
                 isNameBacktickEscaped = false;
+            }
+
+            // The per-segment spelling is recorded for the dotted form only (the formatter writes it
+            // back, #2157); resolution still sees isNameBacktickEscaped = false for a dotted name.
+            if (parts.Count > 1)
+            {
+                nameParts = parts.ToImmutableArray();
+                escapedParts = partsEscaped.ToImmutableArray();
             }
         }
 
-        var (typeArguments, elementNames) =
+        var (typeArguments, elementNames, elementNamesEscaped) =
             ParseTypeArgumentList(name, startToken, startLine, startColumn);
 
         var endToken = Previous;
@@ -229,8 +244,11 @@ public partial class Parser
         {
             Name = name,
             IsNameBacktickEscaped = isNameBacktickEscaped,
+            NameParts = nameParts,
+            BacktickEscapedParts = escapedParts,
             TypeArguments = typeArguments,
             TupleElementNames = elementNames,
+            TupleElementNamesBacktickEscaped = elementNamesEscaped,
             IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -247,11 +265,13 @@ public partial class Parser
     /// <see cref="ParseStandardTypeAnnotation"/> and the pattern-head arm (<c>case list[int](xs)</c>)
     /// so both spell type arguments identically — arm 2 of the reification ruling (#1708/#1619).
     /// </summary>
-    private (ImmutableArray<TypeAnnotation> TypeArguments, ImmutableArray<string?> TupleElementNames)
+    private (ImmutableArray<TypeAnnotation> TypeArguments, ImmutableArray<string?> TupleElementNames,
+        ImmutableArray<bool> TupleElementNamesEscaped)
         ParseTypeArgumentList(string name, Token startToken, int startLine, int startColumn)
     {
         var typeArgs = new List<TypeAnnotation>();
         var tupleElementNames = new List<string?>();
+        var tupleElementNamesEscaped = new List<bool>();
 
         // Generic type arguments [T, U]
         if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
@@ -274,6 +294,7 @@ public partial class Parser
                 if (isTuple && Current.Type == TokenType.Identifier && Peek().Type == TokenType.Colon)
                 {
                     var elementName = Current.Value;
+                    tupleElementNamesEscaped.Add(Current.IsBacktickEscaped);
                     Advance(); // consume identifier
                     Advance(); // consume ':'
                     tupleElementNames.Add(elementName);
@@ -285,6 +306,7 @@ public partial class Parser
                     if (isTuple)
                     {
                         tupleElementNames.Add(null);
+                        tupleElementNamesEscaped.Add(false);
                         hasUnnamedElements = true;
                     }
                     var argStartPosition = _position;
@@ -313,6 +335,7 @@ public partial class Parser
             {
                 typeArgs.Clear();
                 tupleElementNames.Clear();
+                tupleElementNamesEscaped.Clear();
             }
 
             // Validate: either all or none are named
@@ -332,8 +355,12 @@ public partial class Parser
         var elementNames = tupleElementNames.Any(n => n != null)
             ? tupleElementNames.ToImmutableArray()
             : ImmutableArray<string?>.Empty;
+        // Recorded only when some element name is escaped (#2157) — the common case stays empty.
+        var elementNamesEscaped = tupleElementNamesEscaped.Contains(true)
+            ? tupleElementNamesEscaped.ToImmutableArray()
+            : ImmutableArray<bool>.Empty;
 
-        return (typeArgs.ToImmutableArray(), elementNames);
+        return (typeArgs.ToImmutableArray(), elementNames, elementNamesEscaped);
     }
 
     /// <summary>

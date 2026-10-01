@@ -198,6 +198,112 @@ public class ParserBacktickEscapeCarrierTests
         pattern.BacktickEscapedParts.Should().Equal(true, true);
     }
 
+    // --- TypeAnnotation: dotted name segments (syntax-only; resolution flag unchanged) ---------
+
+    private static TypeAnnotation AnnotationOf(string source) =>
+        Parse(source).Body.Single().Should().BeOfType<VariableDeclaration>().Subject.Type!;
+
+    [Fact]
+    public void DottedTypeAnnotation_EscapedSegments_RecordParts_ResolutionFlagStaysFalse()
+    {
+        var type = AnnotationOf("x: `a`.B.`C` = y\n");
+        type.Name.Should().Be("a.B.C");
+        type.NameParts.Should().Equal("a", "B", "C");
+        type.BacktickEscapedParts.Should().Equal(true, false, true);
+        // The dotted-name resolution rule (Types.cs: "Always false for dotted names") is untouched.
+        type.IsNameBacktickEscaped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DottedTypeAnnotation_Plain_RecordsUnescapedParts()
+    {
+        var type = AnnotationOf("x: a.B = y\n");
+        type.NameParts.Should().Equal("a", "B");
+        type.BacktickEscapedParts.Should().Equal(false, false);
+    }
+
+    [Fact]
+    public void SingleSegmentTypeAnnotation_HasNoParts()
+    {
+        var type = AnnotationOf("x: `T` = y\n");
+        type.NameParts.Should().BeEmpty();
+        type.IsNameBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DottedClassPatternHead_RecordsParts()
+    {
+        var pattern = CasePattern("match p:\n    case lib.`Circle`():\n        pass\n");
+        var type = pattern switch
+        {
+            PositionalPattern pp => pp.Type!,
+            PropertyPattern prop => prop.Type!,
+            TypePattern tp => tp.Type,
+            _ => throw new Xunit.Sdk.XunitException($"unexpected pattern {pattern.GetType().Name}")
+        };
+        type.Name.Should().Be("lib.Circle");
+        type.NameParts.Should().Equal("lib", "Circle");
+        type.BacktickEscapedParts.Should().Equal(false, true);
+    }
+
+    // --- Tuple element names: tuple type and named-tuple literal -------------------------------
+
+    [Fact]
+    public void TupleTypeElementNames_EscapedAndPlain_EachCarriesItsOwnFlag()
+    {
+        var type = AnnotationOf("x: tuple[`a`: int, b: int] = y\n");
+        type.TupleElementNames.Should().Equal("a", "b");
+        type.TupleElementNamesBacktickEscaped.Should().Equal(true, false);
+    }
+
+    [Fact]
+    public void TupleTypeElementNames_Plain_RecordNothing()
+    {
+        AnnotationOf("x: tuple[a: int, b: int] = y\n").TupleElementNamesBacktickEscaped.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void NamedTupleLiteral_EscapedAndPlain_EachCarriesItsOwnFlag()
+    {
+        var tuple = Parse("t = (`a`=1, b=2)\n").Body.Single().Should().BeOfType<Assignment>().Subject
+            .Value.Should().BeOfType<TupleLiteral>().Subject;
+        tuple.ElementNames.Should().Equal("a", "b");
+        tuple.ElementNamesBacktickEscaped.Should().Equal(true, false);
+    }
+
+    [Fact]
+    public void NamedTupleLiteral_Plain_RecordsNothing()
+    {
+        var tuple = Parse("t = (a=1, b=2)\n").Body.Single().Should().BeOfType<Assignment>().Subject
+            .Value.Should().BeOfType<TupleLiteral>().Subject;
+        tuple.ElementNamesBacktickEscaped.Should().BeEmpty();
+    }
+
+    // --- PropertyDef explicit-interface qualifier ----------------------------------------------
+
+    private static PropertyDef PropertyOf(string source) =>
+        Parse(source).Body.OfType<ClassDef>().Single().Body.OfType<PropertyDef>().Single();
+
+    [Fact]
+    public void ExplicitInterfaceQualifier_Escaped_SetsFlag_BothPropertyForms()
+    {
+        var auto = PropertyOf("class C(IFoo):\n    property `IFoo`.x: int = 3\n");
+        auto.ExplicitInterface.Should().Be("IFoo");
+        auto.IsExplicitInterfaceBacktickEscaped.Should().BeTrue();
+
+        var fn = PropertyOf("class C(IFoo):\n    property get `IFoo`.x(self) -> int:\n        return 3\n");
+        fn.ExplicitInterface.Should().Be("IFoo");
+        fn.IsExplicitInterfaceBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ExplicitInterfaceQualifier_Plain_LeavesFlagClear()
+    {
+        var auto = PropertyOf("class C(IFoo):\n    property IFoo.x: int = 3\n");
+        auto.ExplicitInterface.Should().Be("IFoo");
+        auto.IsExplicitInterfaceBacktickEscaped.Should().BeFalse();
+    }
+
     [Fact]
     public void MemberAccessPattern_MixedAndPlain_CarryPerPartFlags()
     {

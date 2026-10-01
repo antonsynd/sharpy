@@ -335,6 +335,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
             {
                 ExceptionType = NormalizeType(h.ExceptionType),
                 Name = h.Name,
+                IsNameBacktickEscaped = h.IsNameBacktickEscaped,
                 IsExceptStar = h.IsExceptStar,
                 Filter = h.Filter != null ? (Expression)Visit(h.Filter) : null,
                 Body = VisitStatements(h.Body)

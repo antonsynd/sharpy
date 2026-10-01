@@ -81,7 +81,9 @@ internal sealed partial class UnparseVisitor
     {
         VisitPostfixObject(node.Object);
         _w.Write(node.IsNullConditional ? "?." : ".");
-        _w.Write(node.Member);
+        // The escape is read by code generation (NameCasing: an escaped member is not
+        // pascal-cased), so dropping it can bind a different CLR member (#2157).
+        WriteName(node.Member, node.IsMemberBacktickEscaped);
     }
 
     public override void VisitIndexAccess(IndexAccess node)

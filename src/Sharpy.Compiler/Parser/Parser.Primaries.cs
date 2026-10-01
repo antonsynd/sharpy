@@ -955,9 +955,11 @@ public partial class Parser
     {
         var elements = new List<Expression>();
         var names = new List<string?>();
+        var namesEscaped = new List<bool>();
 
         // Parse first named element
         var firstName = Current.Value;
+        namesEscaped.Add(Current.IsBacktickEscaped);
         Advance(); // consume identifier
         Advance(); // consume '='
         names.Add(firstName);
@@ -973,6 +975,7 @@ public partial class Parser
             if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
             {
                 names.Add(Current.Value);
+                namesEscaped.Add(Current.IsBacktickEscaped);
                 Advance(); // consume identifier
                 Advance(); // consume '='
                 elements.Add(ParseExpression());
@@ -992,6 +995,10 @@ public partial class Parser
         {
             Elements = elements.ToImmutableArray(),
             ElementNames = names.ToImmutableArray(),
+            // Recorded only when some name is escaped (#2157) — the common case stays empty.
+            ElementNamesBacktickEscaped = namesEscaped.Contains(true)
+                ? namesEscaped.ToImmutableArray()
+                : ImmutableArray<bool>.Empty,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,

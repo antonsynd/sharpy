@@ -1945,7 +1945,8 @@ public partial class Parser
             if (Current.Type == TokenType.LeftParen || Current.Type == TokenType.LeftBracket)
             {
                 return ParseTypePatternOrStructural(
-                    token, string.Join(".", parts), endToken);
+                    token, string.Join(".", parts), endToken,
+                    parts.ToImmutableArray(), escapedParts.ToImmutableArray());
             }
 
             return new MemberAccessPattern
@@ -1988,14 +1989,19 @@ public partial class Parser
     /// would (#1445). Null for the ordinary bare-identifier arm.
     /// </param>
     /// <param name="nameEndToken">The last token of the name, for the annotation's span/escape flag.</param>
+    /// <param name="qualifiedParts">The dotted segments as written, with <paramref name="qualifiedEscapes"/>
+    /// parallel to them — the syntax-only per-segment spelling the formatter writes back (#2157).</param>
     private Pattern ParseTypePatternOrStructural(
-        Token typeToken, string? qualifiedName = null, Token? nameEndToken = null)
+        Token typeToken, string? qualifiedName = null, Token? nameEndToken = null,
+        ImmutableArray<string> qualifiedParts = default, ImmutableArray<bool> qualifiedEscapes = default)
     {
         var typeNameEnd = nameEndToken ?? typeToken;
         var typeAnnotation = new Ast.TypeAnnotation
         {
             Name = qualifiedName ?? typeToken.Value,
             IsNameBacktickEscaped = typeNameEnd.IsBacktickEscaped,
+            NameParts = qualifiedParts.IsDefault ? ImmutableArray<string>.Empty : qualifiedParts,
+            BacktickEscapedParts = qualifiedEscapes.IsDefault ? ImmutableArray<bool>.Empty : qualifiedEscapes,
             LineStart = typeToken.Line,
             ColumnStart = typeToken.Column,
             LineEnd = typeNameEnd.Line,
@@ -2010,13 +2016,14 @@ public partial class Parser
         // (the #1454 rule) so hover and the semantic reference seam (SetTypeAnnotation) see one node.
         if (Current.Type == TokenType.LeftBracket)
         {
-            var (typeArguments, tupleElementNames) = ParseTypeArgumentList(
+            var (typeArguments, tupleElementNames, tupleElementNamesEscaped) = ParseTypeArgumentList(
                 typeAnnotation.Name, typeToken, typeToken.Line, typeToken.Column);
             var argsEndToken = Previous; // the ']'
             typeAnnotation = typeAnnotation with
             {
                 TypeArguments = typeArguments,
                 TupleElementNames = tupleElementNames,
+                TupleElementNamesBacktickEscaped = tupleElementNamesEscaped,
                 LineEnd = argsEndToken.Line,
                 ColumnEnd = argsEndToken.Column + argsEndToken.Length,
                 Span = GetSpanFromTokens(typeToken, argsEndToken)

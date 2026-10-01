@@ -8,14 +8,16 @@ internal sealed partial class UnparseVisitor
     {
         if (type.Name == "tuple" && !type.TupleElementNames.IsEmpty)
         {
-            _w.Write("tuple[");
+            // Through WriteName: `tuple` lexes as an identifier, so `` `tuple`[x: int] `` keeps its escape.
+            WriteName(type.Name, type.IsNameBacktickEscaped);
+            _w.Write("[");
             for (int i = 0; i < type.TypeArguments.Length; i++)
             {
                 if (i > 0)
                     _w.Write(", ");
                 if (i < type.TupleElementNames.Length && type.TupleElementNames[i] != null)
                 {
-                    _w.Write(type.TupleElementNames[i]!);
+                    WriteName(type.TupleElementNames[i]!, IsPartEscaped(type.TupleElementNamesBacktickEscaped, i));
                     _w.Write(": ");
                 }
                 WriteTypeAnnotation(type.TypeArguments[i]);
@@ -24,7 +26,13 @@ internal sealed partial class UnparseVisitor
         }
         else
         {
-            WriteName(type.Name, type.IsNameBacktickEscaped);
+            // A dotted name is written segment by segment so each segment's escape survives
+            // (#2157). The parts are used only while they still spell Name — an annotation rebuilt
+            // with a new Name and stale parts falls back to the joined spelling.
+            if (type.NameParts.Length > 1 && string.Join(".", type.NameParts) == type.Name)
+                WriteDottedName(type.NameParts, type.BacktickEscapedParts);
+            else
+                WriteName(type.Name, type.IsNameBacktickEscaped);
             if (!type.TypeArguments.IsEmpty)
             {
                 _w.Write("[");

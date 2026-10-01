@@ -239,7 +239,7 @@ internal sealed partial class UnparseVisitor
                 _w.Write(", ");
             if (i < node.ElementNames.Length && node.ElementNames[i] != null)
             {
-                _w.Write(node.ElementNames[i]!);
+                WriteName(node.ElementNames[i]!, IsPartEscaped(node.ElementNamesBacktickEscaped, i));
                 _w.Write("=");
             }
             // A nested target that itself renders bare (a multi-element star tuple `c, *d`) must be

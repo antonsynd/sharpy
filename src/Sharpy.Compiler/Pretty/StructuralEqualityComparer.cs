@@ -115,9 +115,12 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             AndPattern a => Equals(a.Left, ((AndPattern)y).Left) && Equals(a.Right, ((AndPattern)y).Right),
             GuardPattern a => Equals(a.Inner, ((GuardPattern)y).Inner) && Equals(a.Guard, ((GuardPattern)y).Guard),
             AsPattern a => Equals(a.Inner, ((AsPattern)y).Inner) && Equals(a.Name, ((AsPattern)y).Name),
-            MemberAccessPattern a => a.Parts.SequenceEqual(((MemberAccessPattern)y).Parts),
+            MemberAccessPattern a => a.Parts.SequenceEqual(((MemberAccessPattern)y).Parts)
+                && EscapedPartsEqual(a.BacktickEscapedParts, ((MemberAccessPattern)y).BacktickEscapedParts, a.Parts.Length),
             RelationalPattern a => a.Operator == ((RelationalPattern)y).Operator && Equals(a.Value, ((RelationalPattern)y).Value),
-            PropertyPatternField a => a.Name == ((PropertyPatternField)y).Name && Equals(a.Pattern, ((PropertyPatternField)y).Pattern),
+            PropertyPatternField a => a.Name == ((PropertyPatternField)y).Name
+                && a.IsNameBacktickEscaped == ((PropertyPatternField)y).IsNameBacktickEscaped
+                && Equals(a.Pattern, ((PropertyPatternField)y).Pattern),
             PropertyPattern a => PropertyPatternEquals(a, (PropertyPattern)y),
             PositionalPattern a => PositionalPatternEquals(a, (PositionalPattern)y),
             // A TypeAnnotation is a Node so that annotation-shaped type operands can key the
@@ -158,6 +161,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     private bool TupleLiteralEquals(TupleLiteral a, TupleLiteral b) =>
         NodesEqual(a.Elements, b.Elements)
         && a.ElementNames.SequenceEqual(b.ElementNames)
+        && EscapedPartsEqual(a.ElementNamesBacktickEscaped, b.ElementNamesBacktickEscaped, a.ElementNames.Length)
         && a.HasTrailingComma == b.HasTrailingComma;
 
     private bool FStringEquals(FStringLiteral a, FStringLiteral b) =>
@@ -204,7 +208,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     }
 
     private bool MemberAccessEquals(MemberAccess a, MemberAccess b) =>
-        a.Member == b.Member && a.IsNullConditional == b.IsNullConditional && Equals(a.Object, b.Object);
+        a.Member == b.Member && a.IsMemberBacktickEscaped == b.IsMemberBacktickEscaped
+        && a.IsNullConditional == b.IsNullConditional && Equals(a.Object, b.Object);
 
     private bool SliceEquals(SliceAccess a, SliceAccess b) =>
         Equals(a.Object, b.Object) && NullableNodeEquals(a.Start, b.Start) && NullableNodeEquals(a.Stop, b.Stop) && NullableNodeEquals(a.Step, b.Step);
@@ -306,7 +311,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             var hb = b.Handlers[i];
             if (ha.IsExceptStar != hb.IsExceptStar)
                 return false;
-            if (ha.Name != hb.Name)
+            if (ha.Name != hb.Name || ha.IsNameBacktickEscaped != hb.IsNameBacktickEscaped)
                 return false;
             if (!NullableTypeEquals(ha.ExceptionType, hb.ExceptionType))
                 return false;
@@ -391,7 +396,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     }
 
     private bool TypeAliasEquals(TypeAlias a, TypeAlias b) =>
-        a.Name == b.Name
+        a.Name == b.Name && a.IsNameBacktickEscaped == b.IsNameBacktickEscaped
         && TypeParametersEqual(a.TypeParameters, b.TypeParameters)
         && NullableTypeEquals(a.Type, b.Type)
         && NullableFuncTypeEquals(a.FunctionType, b.FunctionType);
@@ -400,6 +405,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         a.Name == b.Name && a.IsNameBacktickEscaped == b.IsNameBacktickEscaped
         && a.Accessor == b.Accessor && a.IsFunctionStyle == b.IsFunctionStyle
         && a.ExplicitInterface == b.ExplicitInterface
+        && a.IsExplicitInterfaceBacktickEscaped == b.IsExplicitInterfaceBacktickEscaped
         && NullableTypeEquals(a.Type, b.Type)
         && NullableTypeEquals(a.ReturnType, b.ReturnType)
         && NullableNodeEquals(a.DefaultValue, b.DefaultValue)
@@ -415,6 +421,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         for (int i = 0; i < a.Length; i++)
         {
             if (a[i].Kind != b[i].Kind || a[i].ParamName != b[i].ParamName
+                || a[i].IsParamNameBacktickEscaped != b[i].IsParamNameBacktickEscaped
                 || !StatementsEqual(a[i].Body, b[i].Body))
                 return false;
         }
@@ -425,7 +432,11 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         ImportAliasesEqual(a.Names, b.Names);
 
     private bool FromImportEquals(FromImportStatement a, FromImportStatement b) =>
-        a.Module == b.Module && a.ImportAll == b.ImportAll && ImportAliasesEqual(a.Names, b.Names);
+        a.Module == b.Module && a.ImportAll == b.ImportAll
+        // ModuleParts exclude the leading relative dots, which the Module comparison already covers.
+        && EscapedSpelling(a.Module.TrimStart('.'), a.ModuleParts, a.BacktickEscapedParts)
+            == EscapedSpelling(b.Module.TrimStart('.'), b.ModuleParts, b.BacktickEscapedParts)
+        && ImportAliasesEqual(a.Names, b.Names);
 
     private bool MatchStmtEquals(MatchStatement a, MatchStatement b)
     {
@@ -459,13 +470,15 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         for (int i = 0; i < a.Cases.Length; i++)
         {
-            if (a.Cases[i].Name != b.Cases[i].Name)
+            if (a.Cases[i].Name != b.Cases[i].Name
+                || a.Cases[i].IsNameBacktickEscaped != b.Cases[i].IsNameBacktickEscaped)
                 return false;
             if (a.Cases[i].Fields.Length != b.Cases[i].Fields.Length)
                 return false;
             for (int j = 0; j < a.Cases[i].Fields.Length; j++)
             {
-                if (a.Cases[i].Fields[j].Name != b.Cases[i].Fields[j].Name)
+                if (a.Cases[i].Fields[j].Name != b.Cases[i].Fields[j].Name
+                    || a.Cases[i].Fields[j].IsNameBacktickEscaped != b.Cases[i].Fields[j].IsNameBacktickEscaped)
                     return false;
                 if (!TypeAnnotationEquals(a.Cases[i].Fields[j].Type, b.Cases[i].Fields[j].Type))
                     return false;
@@ -553,9 +566,17 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         if (a.IsCSharpNullable != b.IsCSharpNullable)
             return false;
+        if (a.IsNameBacktickEscaped != b.IsNameBacktickEscaped)
+            return false;
+        // The per-segment escapes of a dotted name (`a`.B vs a.B), compared as the written spelling.
+        if (EscapedSpelling(a.Name, a.NameParts, a.BacktickEscapedParts)
+            != EscapedSpelling(b.Name, b.NameParts, b.BacktickEscapedParts))
+            return false;
         if (!NullableTypeEquals(a.ErrorType, b.ErrorType))
             return false;
         if (!a.TupleElementNames.SequenceEqual(b.TupleElementNames))
+            return false;
+        if (!EscapedPartsEqual(a.TupleElementNamesBacktickEscaped, b.TupleElementNamesBacktickEscaped, a.TupleElementNames.Length))
             return false;
         if (a.TypeArguments.Length != b.TypeArguments.Length)
             return false;
@@ -656,6 +677,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         {
             if (!a[i].QualifiedParts.SequenceEqual(b[i].QualifiedParts))
                 return false;
+            if (!EscapedPartsEqual(a[i].BacktickEscapedParts, b[i].BacktickEscapedParts, a[i].QualifiedParts.Length))
+                return false;
             if (!NodesEqual(a[i].Arguments, b[i].Arguments))
                 return false;
             if (!KeywordArgsEqual(a[i].KeywordArguments, b[i].KeywordArguments))
@@ -670,7 +693,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name)
+            if (a[i].Name != b[i].Name || a[i].IsNameBacktickEscaped != b[i].IsNameBacktickEscaped)
                 return false;
             if (!Equals(a[i].Value, b[i].Value))
                 return false;
@@ -686,7 +709,48 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         {
             if (a[i].Name != b[i].Name)
                 return false;
-            if (a[i].AsName != b[i].AsName)
+            if (EscapedSpelling(a[i].Name, a[i].NameParts, a[i].BacktickEscapedParts)
+                != EscapedSpelling(b[i].Name, b[i].NameParts, b[i].BacktickEscapedParts))
+                return false;
+            if (a[i].AsName != b[i].AsName || a[i].IsAsNameBacktickEscaped != b[i].IsAsNameBacktickEscaped)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// The dotted name as written, escapes included (<c>a.`b`</c>, or <c>`a.b`</c> for the #713
+    /// single escaped token). With no parts (a node not built by the parser, or a dots-only
+    /// relative module) the joined spelling stands for itself, unescaped — so a hand-built node and
+    /// its re-parsed unparse compare equal, and only a real escape or split difference does not.
+    /// </summary>
+    private static string EscapedSpelling(string joined, ImmutableArray<string> parts, ImmutableArray<bool> escaped)
+    {
+        if (parts.IsDefaultOrEmpty)
+            return joined;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (i > 0)
+                sb.Append('.');
+            var isEscaped = !escaped.IsDefault && i < escaped.Length && escaped[i];
+            sb.Append(isEscaped ? "`" + parts[i] + "`" : parts[i]);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Compares two escape arrays parallel to a parts array of <paramref name="length"/>; a missing
+    /// entry (an empty array on a node not built by the parser) reads as not escaped, so only a real
+    /// escape difference makes two nodes unequal (#2157).
+    /// </summary>
+    private static bool EscapedPartsEqual(ImmutableArray<bool> a, ImmutableArray<bool> b, int length)
+    {
+        for (int i = 0; i < length; i++)
+        {
+            var ea = !a.IsDefault && i < a.Length && a[i];
+            var eb = !b.IsDefault && i < b.Length && b[i];
+            if (ea != eb)
                 return false;
         }
         return true;

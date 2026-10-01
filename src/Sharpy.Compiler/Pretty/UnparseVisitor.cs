@@ -319,7 +319,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
         foreach (var dec in decorators)
         {
             _w.Write("@");
-            _w.Write(dec.Name);
+            WriteDottedName(dec.QualifiedParts, dec.BacktickEscapedParts);
             if (dec.Arguments.Length > 0 || dec.KeywordArguments.Length > 0)
             {
                 _w.Write("(");
@@ -345,7 +345,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
             if (!first)
                 _w.Write(", ");
             first = false;
-            _w.Write(kwarg.Name);
+            WriteName(kwarg.Name, kwarg.IsNameBacktickEscaped);
             _w.Write("=");
             Visit(kwarg.Value);
         }
@@ -469,6 +469,10 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
     }
 
+    /// <summary>
+    /// The one writer for a user-written name: every name position goes through here so its
+    /// backtick escape is written back exactly as the parser recorded it (#2157).
+    /// </summary>
     private void WriteName(string name, bool isBacktickEscaped)
     {
         if (isBacktickEscaped)
@@ -482,6 +486,24 @@ internal sealed partial class UnparseVisitor : AstVisitor
             _w.Write(name);
         }
     }
+
+    /// <summary>
+    /// Writes a dotted name segment by segment through <see cref="WriteName"/>, joining with
+    /// <c>.</c>. <paramref name="escaped"/> is parallel to <paramref name="parts"/>; a missing entry
+    /// (an AST not built by the parser, or a parallel array left empty) reads as not escaped.
+    /// </summary>
+    private void WriteDottedName(ImmutableArray<string> parts, ImmutableArray<bool> escaped)
+    {
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (i > 0)
+                _w.Write(".");
+            WriteName(parts[i], IsPartEscaped(escaped, i));
+        }
+    }
+
+    private static bool IsPartEscaped(ImmutableArray<bool> escaped, int i) =>
+        !escaped.IsDefault && i < escaped.Length && escaped[i];
 
     #endregion
 

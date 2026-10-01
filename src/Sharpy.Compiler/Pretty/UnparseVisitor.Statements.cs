@@ -202,7 +202,7 @@ internal sealed partial class UnparseVisitor
                 if (handler.Name != null)
                 {
                     _w.Write(" as ");
-                    _w.Write(handler.Name);
+                    WriteName(handler.Name, handler.IsNameBacktickEscaped);
                 }
             }
             if (handler.Filter != null)
@@ -438,7 +438,7 @@ internal sealed partial class UnparseVisitor
     public override void VisitTypeAlias(TypeAlias node)
     {
         _w.Write("type ");
-        _w.Write(node.Name);
+        WriteName(node.Name, node.IsNameBacktickEscaped);
         WriteTypeParameters(node.TypeParameters);
         if (node.FunctionType != null)
         {
@@ -479,7 +479,7 @@ internal sealed partial class UnparseVisitor
             }
             if (node.ExplicitInterface != null)
             {
-                _w.Write(node.ExplicitInterface);
+                WriteName(node.ExplicitInterface, node.IsExplicitInterfaceBacktickEscaped);
                 _w.Write(".");
             }
             WriteName(node.Name, node.IsNameBacktickEscaped);
@@ -528,7 +528,7 @@ internal sealed partial class UnparseVisitor
                 foreach (var observer in node.Observers)
                 {
                     _w.Write(observer.Kind == ObserverKind.BeforeSet ? "before_set(" : "after_set(");
-                    _w.Write(observer.ParamName);
+                    WriteName(observer.ParamName, observer.IsParamNameBacktickEscaped);
                     _w.Write("):");
                     _w.WriteLine();
                     WriteBody(observer.Body);
@@ -549,20 +549,40 @@ internal sealed partial class UnparseVisitor
         {
             if (i > 0)
                 _w.Write(", ");
-            _w.Write(node.Names[i].Name);
-            if (node.Names[i].AsName != null)
-            {
-                _w.Write(" as ");
-                _w.Write(node.Names[i].AsName!);
-            }
+            WriteImportAlias(node.Names[i]);
         }
         _w.WriteLine();
+    }
+
+    private void WriteImportAlias(ImportAlias alias)
+    {
+        // NameParts is empty only on an alias not built by the parser; Name is then the spelling.
+        if (alias.NameParts.IsDefaultOrEmpty)
+            _w.Write(alias.Name);
+        else
+            WriteDottedName(alias.NameParts, alias.BacktickEscapedParts);
+        if (alias.AsName != null)
+        {
+            _w.Write(" as ");
+            WriteName(alias.AsName, alias.IsAsNameBacktickEscaped);
+        }
     }
 
     public override void VisitFromImportStatement(FromImportStatement node)
     {
         _w.Write("from ");
-        _w.Write(node.Module);
+        if (node.ModuleParts.IsDefaultOrEmpty)
+        {
+            // A dots-only relative module (`from . import x`), or a node not built by the parser.
+            _w.Write(node.Module);
+        }
+        else
+        {
+            // Module = leading relative dots + the joined parts; write the dots, then each part
+            // through WriteName so its escape survives.
+            _w.Write(new string('.', node.Module.Length - node.Module.TrimStart('.').Length));
+            WriteDottedName(node.ModuleParts, node.BacktickEscapedParts);
+        }
         _w.Write(" import ");
         if (node.ImportAll)
         {
@@ -574,12 +594,7 @@ internal sealed partial class UnparseVisitor
             {
                 if (i > 0)
                     _w.Write(", ");
-                _w.Write(node.Names[i].Name);
-                if (node.Names[i].AsName != null)
-                {
-                    _w.Write(" as ");
-                    _w.Write(node.Names[i].AsName!);
-                }
+                WriteImportAlias(node.Names[i]);
             }
         }
         _w.WriteLine();
@@ -648,7 +663,7 @@ internal sealed partial class UnparseVisitor
             foreach (var caseDef in node.Cases)
             {
                 _w.Write("case ");
-                _w.Write(caseDef.Name);
+                WriteName(caseDef.Name, caseDef.IsNameBacktickEscaped);
                 if (!caseDef.Fields.IsEmpty)
                 {
                     _w.Write("(");
@@ -656,7 +671,7 @@ internal sealed partial class UnparseVisitor
                     {
                         if (i > 0)
                             _w.Write(", ");
-                        _w.Write(caseDef.Fields[i].Name);
+                        WriteName(caseDef.Fields[i].Name, caseDef.Fields[i].IsNameBacktickEscaped);
                         _w.Write(": ");
                         WriteTypeAnnotation(caseDef.Fields[i].Type);
                     }
