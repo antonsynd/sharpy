@@ -16,8 +16,8 @@ internal static class FormatCommand
         diffOpt.Aliases.Add("-d");
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Write formatted output to the specified file (single-file input only)" };
         outputOpt.Aliases.Add("-o");
-        var indentOpt = new Option<int?>("--indent") { Description = "Indent size in spaces (default: 4)" };
-        var tabsOpt = new Option<bool>("--tabs") { Description = "Use tabs instead of spaces for indentation" };
+        var indentOpt = new Option<int?>("--indent") { Description = "Indent size in spaces; must be 4 — Sharpy indentation is exactly 4 spaces per level" };
+        var tabsOpt = new Option<bool>("--tabs") { Description = "Not supported: Sharpy does not allow tabs for indentation (usage error)" };
 
         command.Arguments.Add(inputArg);
         command.Options.Add(checkOpt);
@@ -60,6 +60,25 @@ internal static class FormatCommand
             return 2;
         }
 
+        // Sharpy indentation is exactly 4 spaces per level and tabs are not allowed
+        // (docs/language_specification/indentation.md): any other indentation would write a file that
+        // does not lex, so these are usage errors, not options (owner ruling 2026-09-30, P22b).
+        if (indent.HasValue && indent.Value != Sharpy.Compiler.Lexer.Lexer.IndentWidth)
+        {
+            Console.Error.WriteLine(
+                $"Error: --indent {indent.Value} is not supported: Sharpy indentation is exactly "
+                + $"{Sharpy.Compiler.Lexer.Lexer.IndentWidth} spaces per level (docs/language_specification/indentation.md).");
+            return 2;
+        }
+
+        if (tabs)
+        {
+            Console.Error.WriteLine(
+                "Error: --tabs is not supported: Sharpy does not allow tabs for indentation; it is exactly "
+                + $"{Sharpy.Compiler.Lexer.Lexer.IndentWidth} spaces per level (docs/language_specification/indentation.md).");
+            return 2;
+        }
+
         var isFile = File.Exists(input);
         var isDirectory = !isFile && Directory.Exists(input);
         if (!isFile && !isDirectory)
@@ -78,11 +97,7 @@ internal static class FormatCommand
             : diff ? FormatMode.Diff
             : FormatMode.Write;
 
-        var formatOptions = FormatOptions.Default with
-        {
-            IndentSize = indent ?? FormatOptions.Default.IndentSize,
-            UseTabs = tabs,
-        };
+        var formatOptions = FormatOptions.Default;
 
         var runnerOptions = new FormatRunnerOptions
         {

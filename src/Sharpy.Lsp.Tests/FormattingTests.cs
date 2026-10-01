@@ -82,36 +82,49 @@ public class FormattingTests : IDisposable
     }
 
     [Fact]
-    public async Task TabSize2_ReformatsIndentAsync()
+    public async Task TabSize2_FourSpaceDocument_GetsNoEditsAsync()
     {
-        // Source uses standard 4-space indent; reformat with tabSize=2
-        var source = "def foo():\n    x: int = 1\n    return x";
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n    x: int = 1\n    return x\n";
         var formatted = await FormatAsync(source, tabSize: 2);
 
-        formatted.Should().NotBeNull();
-        formatted.Should().Contain("  x: int = 1");
-        formatted.Should().Contain("  return x");
+        formatted.Should().BeNull();
     }
 
     [Fact]
-    public async Task TabSize2_NestedAsync()
+    public async Task TabSize2_Nested_ReindentsToFourSpacesAsync()
     {
-        var source = "def foo():\n    if True:\n        x: int = 1";
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        if True:\n                x: int = 1\n";
         var formatted = await FormatAsync(source, tabSize: 2);
 
-        formatted.Should().NotBeNull();
-        formatted.Should().Contain("  if True:");
-        formatted.Should().Contain("    x: int = 1");
+        formatted.Should().Be("def foo():\n    if True:\n        x: int = 1\n");
     }
 
     [Fact]
-    public async Task InsertTabs_UsesTabCharacterAsync()
+    public async Task InsertTabs_StillWritesFourSpacesAsync()
     {
-        var source = "def foo():\n    x: int = 1";
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        x: int = 1\n";
         var formatted = await FormatAsync(source, insertSpaces: false);
 
+        formatted.Should().Be("def foo():\n    x: int = 1\n");
+    }
+
+    [Fact]
+    public async Task ParseError_TwoSpaceDocument_TabSize2_FallbackWritesFourSpacesAsync()
+    {
+        // Positive control on the indent-only fallback: an UNPARSEABLE document indented with 2
+        // spaces, formatted with tabSize 2, is re-indented to 4 spaces (the fallback ignores the
+        // editor's tabSize too).
+        var source = "def foo():\n  x: int = 1\nclass: # missing name";
+        var formatted = await FormatAsync(source, tabSize: 2);
+
         formatted.Should().NotBeNull();
-        formatted.Should().Contain("\tx: int = 1");
+        formatted!.Split('\n')[1].Should().Be("    x: int = 1");
     }
 
     [Fact]
@@ -128,30 +141,26 @@ public class FormattingTests : IDisposable
     [Fact]
     public async Task IfElifElse_CorrectlyIndentedAsync()
     {
-        // Already valid 4-space indent; reformat with tabSize=2 to verify structure
-        var source = "def foo():\n    if True:\n        x: int = 1\n    elif False:\n        x = 2\n    else:\n        x = 3";
+        // Over-indented source, editor tabSize=2: every clause and body lands on 4-space levels.
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        if True:\n                x: int = 1\n        elif False:\n                x = 2\n        else:\n                x = 3";
         var formatted = await FormatAsync(source, tabSize: 2);
 
-        formatted.Should().NotBeNull();
-        formatted.Should().Contain("  if True:");
-        formatted.Should().Contain("    x: int = 1");
-        formatted.Should().Contain("  elif False:");
-        formatted.Should().Contain("    x = 2");
-        formatted.Should().Contain("  else:");
-        formatted.Should().Contain("    x = 3");
+        formatted.Should().Be("def foo():\n    if True:\n        x: int = 1\n    elif False:\n        x = 2\n    else:\n        x = 3\n");
     }
 
     [Fact]
     public async Task ClassWithDecorator_FormattedCorrectlyAsync()
     {
-        // Reformat 4-space indented code with tabSize=2 to verify decorator indent tracking
-        var source = "class Foo:\n    @staticmethod\n    def bar() -> int:\n        return 1";
+        // Over-indented source, editor tabSize=2: decorator indent tracking at 4-space levels.
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "class Foo:\n        @staticmethod\n        def bar() -> int:\n                return 1";
         var formatted = await FormatAsync(source, tabSize: 2);
 
         formatted.Should().NotBeNull();
-        formatted.Should().Contain("  @staticmethod");
-        formatted.Should().Contain("  def bar() -> int:");
-        formatted.Should().Contain("    return 1");
+        formatted.Should().Contain("\n    @staticmethod\n    def bar() -> int:\n        return 1");
     }
 
     [Fact]

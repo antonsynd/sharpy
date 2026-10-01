@@ -51,23 +51,26 @@ public class FormatterServiceTests
         result.Diagnostics.Should().NotBeEmpty();
     }
 
+    // Sharpy indentation is exactly 4 spaces per level, no tabs (indentation.md). Until 2026-09-30
+    // FormatOptions.IndentSize/UseTabs wrote 2-space or tab indentation — a file that does not lex
+    // (SPY0013/SPY0012); owner ruling 2026-09-30 (P22b): the formatter always writes 4 spaces and has
+    // no indentation option.
     [Fact]
-    public void Format_CustomIndentSize_TwoSpaces()
+    public void Format_AlwaysWritesFourSpaceIndentation()
     {
-        var source = "def foo():\n    pass\n";
-        var options = new FormatOptions { IndentSize = 2 };
-        var result = FormatterService.Format(source, options);
-        result.FormattedText.Should().Contain("  pass");
-        result.FormattedText.Should().NotContain("    pass");
+        var source = "def foo():\n        if True:\n                pass\n";
+        var result = FormatterService.Format(source);
+        result.Diagnostics.Should().BeEmpty();
+        result.FormattedText.Should().Be("def foo():\n    if True:\n        pass\n");
     }
 
     [Fact]
-    public void Format_TabMode()
+    public void FormatOptions_HasNoIndentationKnob()
     {
-        var source = "def foo():\n    pass\n";
-        var options = new FormatOptions { UseTabs = true };
-        var result = FormatterService.Format(source, options);
-        result.FormattedText.Should().Contain("\tpass");
+        // A re-added IndentSize/UseTabs would be a knob whose only effect is an unlexable file.
+        typeof(FormatOptions).GetProperty("IndentSize").Should().BeNull();
+        typeof(FormatOptions).GetProperty("UseTabs").Should().BeNull();
+        typeof(FormatOptions).GetProperty("LineEnding").Should().NotBeNull("positive control: the reflection sees the record's properties");
     }
 
     [Fact]

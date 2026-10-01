@@ -66,7 +66,8 @@ public static class FormatterService
             };
         }
 
-        var indentString = options.UseTabs ? "\t" : new string(' ', options.IndentSize);
+        // Always the language's indentation unit — never a caller-chosen width (indentation.md).
+        var indentString = new string(' ', Lexer.Lexer.IndentWidth);
         var unparseOptions = new UnparseOptions
         {
             IndentString = indentString,

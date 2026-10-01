@@ -99,26 +99,40 @@ public class OnTypeFormattingTests : IDisposable
     }
 
     [Fact]
-    public async Task TabsPreference_UsesTabsAsync()
+    public async Task TabsPreference_StillUsesFourSpacesAsync()
     {
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
         var source = "def foo():\n        x: int = 1\n";
         var edits = await OnTypeAsync(
             source, line: 1, character: 9, ch: "\n", insertSpaces: false);
 
         edits.Should().NotBeNull();
         edits!.Should().ContainSingle();
-        edits.First().NewText.Should().Be("\t");
+        edits.First().NewText.Should().Be("    ");
     }
 
     [Fact]
-    public async Task TabSize2_UsesTwoSpacesAsync()
+    public async Task TabSize2_StillUsesFourSpacesAsync()
     {
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
         var source = "def foo():\n        x: int = 1\n";
         var edits = await OnTypeAsync(source, line: 1, character: 9, ch: "\n", tabSize: 2);
 
         edits.Should().NotBeNull();
         edits!.Should().ContainSingle();
-        edits.First().NewText.Should().Be("  ");
+        edits.First().NewText.Should().Be("    ");
+    }
+
+    [Fact]
+    public async Task TabSize2_FourSpaceLine_GetsNoEditAsync()
+    {
+        // Positive control: a correctly indented line with editor tabSize=2 is left alone.
+        var source = "def foo():\n    x: int = 1\n";
+        var edits = await OnTypeAsync(source, line: 1, character: 5, ch: "\n", tabSize: 2);
+
+        edits.Should().BeNull();
     }
 
     [Fact]

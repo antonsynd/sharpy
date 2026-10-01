@@ -59,12 +59,13 @@ public class RangeFormattingTests : IDisposable
     [Fact]
     public async Task MultipleLines_ReformattedAsync()
     {
-        // Valid source but reformat with tabSize=2
-        var source = "def foo():\n    x: int = 1\n    y: int = 2\n    return x";
-        // Format lines 1-2
+        // Over-indented source, editor tabSize=2: lines 1-2 are re-indented to 4 spaces.
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        x: int = 1\n        y: int = 2\n        return x";
         var edits = await FormatRangeAsync(source, 1, 0, 2, 20, tabSize: 2);
 
-        edits.Should().HaveCount(2);
+        edits.Select(e => e.NewText).Should().Equal("    x: int = 1", "    y: int = 2");
     }
 
     [Fact]
@@ -78,17 +79,27 @@ public class RangeFormattingTests : IDisposable
     }
 
     [Fact]
-    public async Task EntireDocument_ReformatsWithTabSize2Async()
+    public async Task EntireDocument_TabSize2_FourSpaceDocument_GetsNoEditsAsync()
     {
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
         var source = "def foo():\n    x: int = 1\n    return x";
         var lines = source.Split('\n');
         var edits = await FormatRangeAsync(source, 0, 0, lines.Length - 1, lines[^1].Length, tabSize: 2);
 
-        edits.Should().NotBeEmpty();
-        foreach (var edit in edits)
-        {
-            edit.NewText.Should().StartWith("  ");
-        }
+        edits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ParseError_TwoSpaceDocument_TabSize2_FallbackWritesFourSpacesAsync()
+    {
+        // Positive control on the indent-only range fallback: an UNPARSEABLE 2-space document with
+        // tabSize 2 is re-indented to 4 spaces.
+        var source = "def foo():\n  x: int = 1\nclass: # missing name";
+        var edits = await FormatRangeAsync(source, 1, 0, 1, 20, tabSize: 2);
+
+        edits.Should().ContainSingle();
+        edits.First().NewText.Should().Be("    x: int = 1");
     }
 
     [Fact]
@@ -181,25 +192,28 @@ public class RangeFormattingTests : IDisposable
     [Fact]
     public async Task LastLine_ReformattedAsync()
     {
-        // Valid 4-space source, reformat last line with tabSize=2
-        var source = "def foo():\n    x: int = 1\n    return x";
+        // Over-indented last line, editor tabSize=2: re-indented to 4 spaces.
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        x: int = 1\n        return x";
         var lines = source.Split('\n');
         var lastLine = lines.Length - 1;
         var edits = await FormatRangeAsync(source, lastLine, 0, lastLine, lines[lastLine].Length, tabSize: 2);
 
         edits.Should().ContainSingle();
-        edits.First().NewText.Should().Be("  return x");
+        edits.First().NewText.Should().Be("    return x");
     }
 
     [Fact]
-    public async Task TabsPreference_UsesTabsInRangeAsync()
+    public async Task TabsPreference_StillWritesFourSpacesInRangeAsync()
     {
-        // Valid 4-space source, reformat with tabs
-        var source = "def foo():\n    x: int = 1";
+        // Owner ruling 2026-09-30 (P22b, indentation.md): the editor's tabSize/insertSpaces never choose
+        // the indentation — Sharpy is exactly 4 spaces per level; a 2-space or tab re-indent does not lex.
+        var source = "def foo():\n        x: int = 1";
         var edits = await FormatRangeAsync(source, 1, 0, 1, 20, insertSpaces: false);
 
         edits.Should().ContainSingle();
-        edits.First().NewText.Should().Be("\tx: int = 1");
+        edits.First().NewText.Should().Be("    x: int = 1");
     }
 
     [Fact]

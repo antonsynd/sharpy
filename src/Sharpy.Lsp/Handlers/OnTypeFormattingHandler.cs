@@ -32,9 +32,10 @@ internal sealed class SharpyOnTypeFormattingHandler : DocumentOnTypeFormattingHa
             return Task.FromResult<TextEditContainer?>(null);
 
         var text = doc.Text;
-        var tabSize = (int)request.Options.TabSize;
-        var insertSpaces = request.Options.InsertSpaces;
-        var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
+        // The editor's tabSize/insertSpaces never choose the indentation: Sharpy indentation is exactly
+        // Lexer.IndentWidth spaces per level, no tabs (indentation.md; owner ruling 2026-09-30, P22b) —
+        // a 2-space or tab re-indent would leave a file that does not lex.
+        var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
 
         var line = request.Position.Line;
         // request.Character holds the trigger character; not currently needed

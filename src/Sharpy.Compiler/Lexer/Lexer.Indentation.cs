@@ -5,6 +5,14 @@ namespace Sharpy.Compiler.Lexer;
 
 public partial class Lexer
 {
+    /// <summary>
+    /// The width of one indentation level: exactly 4 spaces, never tabs
+    /// (docs/language_specification/indentation.md). The one source for the lexer's check, the
+    /// formatter's output and the language server's re-indentation — none of them takes an indent
+    /// width from the user or the editor, because any other width produces a file that does not lex.
+    /// </summary>
+    public const int IndentWidth = 4;
+
     private int MeasureIndentation()
     {
         var indent = 0;
@@ -42,7 +50,7 @@ public partial class Lexer
             throw ReportError("Tabs are not allowed for indentation. Use 4 spaces.", _line, 1, DiagnosticCodes.Lexer.TabsNotAllowed);
 
         // Validate 4-space indentation
-        if (indent % 4 != 0)
+        if (indent % IndentWidth != 0)
             throw ReportError($"Indentation must be multiple of 4 spaces (found {indent})", _line, 1, DiagnosticCodes.Lexer.InvalidIndentation);
 
         // Check for indentation mismatch - indent level not matching any previous level

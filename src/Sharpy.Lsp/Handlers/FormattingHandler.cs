@@ -35,14 +35,13 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
             return Task.FromResult<TextEditContainer?>(null);
 
         var text = doc.Text;
-        var tabSize = (int)request.Options.TabSize;
-        var insertSpaces = request.Options.InsertSpaces;
+        // The editor's tabSize/insertSpaces never choose the indentation: Sharpy indentation is exactly
+        // Lexer.IndentWidth spaces per level, no tabs (indentation.md; owner ruling 2026-09-30, P22b) —
+        // a 2-space or tab re-indent would leave a file that does not lex.
 
         // Primary path: full FormatterService pass.
         var options = new LspFormatOptions
         {
-            IndentSize = tabSize,
-            UseTabs = !insertSpaces,
             LineEnding = "\n"
         };
 
@@ -59,7 +58,7 @@ internal sealed class SharpyFormattingHandler : DocumentFormattingHandlerBase
         else
         {
             // Fall back to indent-only formatting for unparseable files.
-            formattedText = FormattingFallback.ReindentDocument(text, tabSize, insertSpaces);
+            formattedText = FormattingFallback.ReindentDocument(text);
             if (formattedText == text)
                 return Task.FromResult<TextEditContainer?>(null);
         }

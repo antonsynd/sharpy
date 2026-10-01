@@ -9,12 +9,14 @@ namespace Sharpy.Lsp.Handlers;
 internal static class FormattingFallback
 {
     /// <summary>
-    /// Re-indents the entire document using the lexer-based indent map.
-    /// Returns the formatted text; equal to the input if no changes are needed.
+    /// Re-indents the entire document using the lexer-based indent map, at the language's one
+    /// indentation unit (<see cref="Compiler.Lexer.Lexer.IndentWidth"/> spaces — never the editor's
+    /// tabSize/insertSpaces, indentation.md). Returns the formatted text; equal to the input if no
+    /// changes are needed.
     /// </summary>
-    internal static string ReindentDocument(string text, int tabSize, bool insertSpaces)
+    internal static string ReindentDocument(string text)
     {
-        var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
+        var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
 
         var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
         var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);

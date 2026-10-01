@@ -272,34 +272,28 @@ public class FormatCommandTests : IDisposable
     // Format options
     // -----------------------------------------------------------------------
 
+    // Owner ruling 2026-09-30 (P22b, indentation.md): there is no indentation option — the runner
+    // always writes 4 spaces per level (it used to write 2-space / tab files that do not lex).
     [Fact]
-    public void FormatFile_UsesCustomIndentSize()
+    public void FormatFile_WritesFourSpaceIndentation()
     {
-        var path = WriteFile("a.spy", "def foo():\n    pass\n");
+        var path = WriteFile("a.spy", "def foo():\n        pass\n");
 
-        FormatRunner.FormatFile(path, new FormatRunnerOptions
-        {
-            Mode = FormatMode.Write,
-            FormatOptions = FormatOptions.Default with { IndentSize = 2 },
-        });
+        var outcome = FormatRunner.FormatFile(path, new FormatRunnerOptions { Mode = FormatMode.Write });
 
-        var formatted = File.ReadAllText(path);
-        formatted.Should().Contain("  pass");
-        formatted.Should().NotContain("    pass");
+        outcome.HasError.Should().BeFalse();
+        File.ReadAllText(path).Should().Be("def foo():\n    pass\n");
     }
 
     [Fact]
-    public void FormatFile_UsesTabsWhenRequested()
+    public void FormatFile_NestedBlocks_WriteFourSpacesPerLevel()
     {
-        var path = WriteFile("a.spy", "def foo():\n    pass\n");
+        var path = WriteFile("a.spy", "class C:\n        def f(self) -> None:\n                pass\n");
 
-        FormatRunner.FormatFile(path, new FormatRunnerOptions
-        {
-            Mode = FormatMode.Write,
-            FormatOptions = FormatOptions.Default with { UseTabs = true },
-        });
+        var outcome = FormatRunner.FormatFile(path, new FormatRunnerOptions { Mode = FormatMode.Write });
 
-        File.ReadAllText(path).Should().Contain("\tpass");
+        outcome.HasError.Should().BeFalse();
+        File.ReadAllText(path).Should().Be("class C:\n    def f(self) -> None:\n        pass\n");
     }
 
     // -----------------------------------------------------------------------

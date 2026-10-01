@@ -34,8 +34,9 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
             return Task.FromResult(new TextEditContainer());
 
         var text = doc.Text;
-        var tabSize = (int)request.Options.TabSize;
-        var insertSpaces = request.Options.InsertSpaces;
+        // The editor's tabSize/insertSpaces never choose the indentation: Sharpy indentation is exactly
+        // Lexer.IndentWidth spaces per level, no tabs (indentation.md; owner ruling 2026-09-30, P22b) —
+        // a 2-space or tab re-indent would leave a file that does not lex.
 
         var lines = text.Split('\n');
         var startLine = request.Range.Start.Line;
@@ -45,8 +46,6 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         // for lines that intersect the requested range.
         var options = new LspFormatOptions
         {
-            IndentSize = tabSize,
-            UseTabs = !insertSpaces,
             LineEnding = "\n"
         };
 
@@ -86,14 +85,13 @@ internal sealed class SharpyRangeFormattingHandler : DocumentRangeFormattingHand
         }
 
         // Fallback: indent-only formatting per line.
-        var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine, tabSize, insertSpaces);
+        var fallbackEdits = ComputeIndentOnlyRangeEdits(text, startLine, endLine);
         return Task.FromResult(new TextEditContainer(fallbackEdits));
     }
 
-    private static List<TextEdit> ComputeIndentOnlyRangeEdits(
-        string text, int startLine, int endLine, int tabSize, bool insertSpaces)
+    private static List<TextEdit> ComputeIndentOnlyRangeEdits(string text, int startLine, int endLine)
     {
-        var indentStr = insertSpaces ? new string(' ', tabSize) : "\t";
+        var indentStr = new string(' ', Compiler.Lexer.Lexer.IndentWidth);
 
         var (lineIndentLevels, tokens) = IndentationService.BuildIndentMap(text);
         var multiLineStringLines = IndentationService.FindMultiLineStringLines(tokens, text);

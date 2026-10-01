@@ -95,4 +95,39 @@ public class FormatCommandTests
         check.ExitCode.Should().Be(0);
         check.StdOut.Should().Contain("All files are already formatted.");
     }
+
+    // Owner ruling 2026-09-30 (P22b): Sharpy indentation is exactly 4 spaces per level, no tabs
+    // (docs/language_specification/indentation.md) — `--indent N` with N != 4 and `--tabs` are usage
+    // errors (exit 2, nothing written) instead of options that wrote a file that does not lex.
+    private const string OverIndented = "def foo():\n        pass\n";
+
+    [Theory]
+    [InlineData("--indent 2", "--indent 2 is not supported")]
+    [InlineData("--indent 8", "--indent 8 is not supported")]
+    [InlineData("--tabs", "--tabs is not supported")]
+    public void NonFourSpaceIndentation_IsUsageError_AndLeavesTheFileUntouched(string flag, string message)
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(OverIndented);
+
+        var invocation = CliTestHarness.Invoke($"format \"{spy}\" {flag}");
+
+        invocation.ExitCode.Should().Be(2);
+        invocation.StdErr.Should().Contain(message);
+        invocation.StdErr.Should().Contain("docs/language_specification/indentation.md");
+        File.ReadAllText(spy).Should().Be(OverIndented);
+    }
+
+    [Fact]
+    public void IndentFour_IsAccepted_AndWritesFourSpaces()
+    {
+        // Positive control for the usage error: the one supported width formats the file.
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(OverIndented);
+
+        var invocation = CliTestHarness.Invoke($"format \"{spy}\" --indent 4");
+
+        invocation.ExitCode.Should().Be(0);
+        File.ReadAllText(spy).Should().Be("def foo():\n    pass\n");
+    }
 }
