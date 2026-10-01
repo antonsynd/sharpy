@@ -221,6 +221,19 @@ public class FormatterTwinsTests
         FormatterTwins.EscapedNames(text).Should().Equal("class", "class", "f", "int", "int", "int", "k", "print");
     }
 
+    /// <summary>The #2166 contextual keywords stay bare (an escape there parses as the keyword and is lost) and are counted.</summary>
+    [Fact]
+    public void BacktickInjected_LeavesTheContextualKeywordsOf2166Bare()
+    {
+        const string source = "def f(x: int) -> int:\n    match x:\n        case _:\n            return d.get(out, x)\n";
+
+        var (text, count) = FormatterTwins.BacktickInjected(source);
+
+        text.Should().Be("def `f`(`x`: `int`) -> `int`:\n    match `x`:\n        case _:\n            return `d`.get(out, `x`)\n");
+        count.Should().Be(7);
+        FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { ["_"] = 1, ["get"] = 1, ["out"] = 1 });
+    }
+
     [Fact]
     public void BacktickInjected_SnippetTwinParses()
     {

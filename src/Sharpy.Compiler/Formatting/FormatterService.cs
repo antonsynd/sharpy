@@ -42,7 +42,41 @@ public static class FormatterService
 
     public static FormatterResult Format(string source, FormatOptions? options = null, string? filePath = null)
     {
+        var result = FormatUnchecked(source, options, filePath, out var sourceAst);
+        if (sourceAst == null)
+            return result;
+
+        // The net observes the FINAL text (after whitespace stripping), so a regression in
+        // stripping is caught as well as one in the unparser.
+        var declined = CheckMeaningPreserved(source, sourceAst, result.FormattedText);
+        if (declined != null)
+        {
+            return new FormatterResult
+            {
+                FormattedText = source,
+                HasChanges = false,
+                Diagnostics = new[] { declined with { FilePath = filePath } }
+            };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The formatter's output WITHOUT the meaning-preservation net (<see cref="CheckMeaningPreserved"/>):
+    /// the text <see cref="Format"/> writes when the net accepts it. Only the P22b sweeps
+    /// (FormatterMeaningPreservationSweepTests, FormatterEmitInvarianceSweepTests) call it: a refused
+    /// output is the source unchanged, which would make every damage oracle pass trivially, so the
+    /// sweeps observe the raw output and check the net's verdict against it. Never a production path.
+    /// </summary>
+    internal static FormatterResult FormatUnchecked(string source, FormatOptions? options = null, string? filePath = null)
+        => FormatUnchecked(source, options, filePath, out _);
+
+    /// <summary>Lex, parse, unparse and strip; <paramref name="sourceAst"/> is null when the source does not lex or parse (the result then carries those diagnostics).</summary>
+    private static FormatterResult FormatUnchecked(string source, FormatOptions? options, string? filePath, out Module? sourceAst)
+    {
         options ??= FormatOptions.Default;
+        sourceAst = null;
 
         var sourceText = new SourceText(source, filePath ?? "<format>");
         var logger = NullLogger.Instance;
@@ -86,19 +120,7 @@ public static class FormatterService
 
         var raw = Unparser.Unparse(parseResult.Module, unparseOptions);
         var formatted = StripTrailingWhitespace(raw, options);
-
-        // The net observes the FINAL text (after whitespace stripping), so a regression in
-        // stripping is caught as well as one in the unparser.
-        var declined = CheckMeaningPreserved(source, parseResult.Module, formatted);
-        if (declined != null)
-        {
-            return new FormatterResult
-            {
-                FormattedText = source,
-                HasChanges = false,
-                Diagnostics = new[] { declined with { FilePath = filePath } }
-            };
-        }
+        sourceAst = parseResult.Module;
 
         return new FormatterResult
         {

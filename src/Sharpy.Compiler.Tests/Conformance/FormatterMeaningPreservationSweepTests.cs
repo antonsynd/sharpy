@@ -39,6 +39,13 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </list>
 /// O4 and O5 read the token stream, so they hold whatever the comparer compares.</para>
 ///
+/// <para><b>The net does not mask the oracles.</b> Since P22b Phase 2, <c>Format</c> refuses (SPY0912)
+/// an output that would change meaning and returns Q unchanged — on which O2–O6 hold trivially. So O1
+/// reads the real <c>Format</c>, and O2–O6 read the RAW output
+/// (<c>FormatterService.FormatUnchecked</c>, the net bypassed): a refused cell lists <c>refused</c>
+/// AND the damage the net caught. The two must agree: a refusal of a raw output that passes O2–O5 is
+/// <c>netOverRefuses</c>, an accepted raw output that fails one is <c>netMissed</c>.</para>
+///
 /// <para><b>Ratchet.</b> <c>Conformance/formatter-meaning-preservation-allowlist.txt</c> lists
 /// <c>stem twin bucket # #issue reason</c> rows. Every failing bucket of a cell must be listed,
 /// and a listed bucket that now holds fails too (drain on fix). Comment buckets cite #2077 and
@@ -60,12 +67,17 @@ public class FormatterMeaningPreservationSweepTests
     internal const string CommentDropped = "commentDropped";
     internal const string EscapeDropped = "escapeDropped";
     internal const string NotIdempotent = "notIdempotent";
+    internal const string NetOverRefuses = "netOverRefuses";
+    internal const string NetMissed = "netMissed";
+
+    /// <summary>The raw-output buckets the net (SPY0912) is meant to catch: any of them ⇔ <c>Format</c> refuses.</summary>
+    private static readonly HashSet<string> NetCatches = new(StringComparer.Ordinal) { Unparseable, AstChanged, CommentDropped, EscapeDropped };
 
     /// <summary>O7's bucket: its rows share the allowlist file and belong to <see cref="FormatterEmitInvarianceSweepTests"/>.</summary>
     internal const string EmitChanged = "emitChanged";
 
     private static readonly string[] Twins = { Identity, Comment, Backtick };
-    private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, EscapeDropped, NotIdempotent };
+    private static readonly string[] Buckets = { Instrument, Refused, Unparseable, AstChanged, CommentDropped, EscapeDropped, NotIdempotent, NetOverRefuses, NetMissed };
 
     private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
 
@@ -150,7 +162,7 @@ public class FormatterMeaningPreservationSweepTests
         {
             Assert.Fail($"{stem} ({twin} twin): Format must preserve meaning, comments and escapes.\n  "
                 + string.Join("\n  ", problems)
-                + (verdict.Formatted is { } formatted ? $"\n--- Format(Q) ---\n{Clip(formatted)}" : ""));
+                + (verdict.Formatted is { } formatted ? $"\n--- raw Format(Q), net bypassed ---\n{Clip(formatted)}" : ""));
         }
     }
 
@@ -226,16 +238,26 @@ public class FormatterMeaningPreservationSweepTests
         if (failures.Count > 0)
             return new Verdict(failures, null);
 
+        // O1 on the real formatter; O2–O6 on the RAW output (the net bypassed) — a refusal returns Q
+        // unchanged, which would make every damage oracle pass trivially and hide what the net caught.
         var result = Format(q);
-        if (result.Diagnostics.Count > 0)
+        var refused = result.Diagnostics.Count > 0;
+        if (refused)
             failures[Refused] = FirstError(result.Diagnostics);
-        var formatted = result.FormattedText;
-        foreach (var (bucket, detail) in Oracles(Observe(q), formatted))
+        var raw = FormatRaw(q).FormattedText;
+        foreach (var (bucket, detail) in Oracles(Observe(q), raw))
             failures[bucket] = detail;
-        return new Verdict(failures, formatted);
+
+        // The net's verdict agrees with the damage oracles in both directions.
+        var damaged = failures.Keys.Where(NetCatches.Contains).ToList();
+        if (refused && damaged.Count == 0)
+            failures[NetOverRefuses] = $"Format refused ({failures[Refused]}) an output that passes O2–O5";
+        if (!refused && damaged.Count > 0)
+            failures[NetMissed] = $"Format accepted an output that fails {string.Join(", ", damaged)}";
+        return new Verdict(failures, raw);
     }
 
-    /// <summary>O2–O6 of a twin's observation against a formatted text.</summary>
+    /// <summary>O2–O6 of a twin's observation against a formatted (raw) text; idempotence is the raw formatter's.</summary>
     internal static IEnumerable<(string Bucket, string Detail)> Oracles(Observation q, string formatted)
     {
         var f = Observe(formatted);
@@ -247,7 +269,7 @@ public class FormatterMeaningPreservationSweepTests
         {
             if (!SameAst(q.Module!, f.Module!))
                 yield return (AstChanged, "the formatted text parses to a structurally different AST");
-            var again = Format(formatted).FormattedText;
+            var again = FormatRaw(formatted).FormattedText;
             if (again != formatted)
                 yield return (NotIdempotent, FirstDifference(formatted, again));
         }
@@ -260,6 +282,9 @@ public class FormatterMeaningPreservationSweepTests
 
     /// <summary>The formatter under test — <c>sharpyc format</c>'s and the LSP's one entry point.</summary>
     private static FormatterResult Format(string text) => FormatterService.Format(text);
+
+    /// <summary>The same formatter with the SPY0912 net bypassed — the text <see cref="Format"/> writes when the net accepts it.</summary>
+    private static FormatterResult FormatRaw(string text) => FormatterService.FormatUnchecked(text);
 
     private static bool SameAst(SModule a, SModule b)
         => StructuralEqualityComparer.Instance.Equals(
@@ -283,6 +308,27 @@ public class FormatterMeaningPreservationSweepTests
         result.Diagnostics.Should().BeEmpty();
         result.FormattedText.Should().NotBe(source);
         result.HasChanges.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// The bypass is real: on a program the net refuses (a dropped bracket comment, #2077),
+    /// <c>Format</c> returns the source with SPY0912 while the raw output drops the comment — and
+    /// the sweep's verdict carries both <c>refused</c> and <c>commentDropped</c>, never
+    /// <c>netMissed</c>/<c>netOverRefuses</c>.
+    /// </summary>
+    [Fact]
+    public void PositiveControl_TheBypassSeesTheDamageTheNetRefuses()
+    {
+        const string source = "def main():\n    xs = [1,  # inner\n          2]\n    print(xs)\n";
+
+        var netted = Format(source);
+        netted.Diagnostics.Select(d => d.Code).Should().Equal(global::Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.FormatterDeclined);
+        netted.FormattedText.Should().Be(source);
+        var raw = FormatRaw(source);
+        raw.Diagnostics.Should().BeEmpty();
+        raw.FormattedText.Should().NotContain("# inner");
+
+        Evaluate(source, Identity).Failures.Keys.Should().Equal(CommentDropped, Refused);
     }
 
     /// <summary>
@@ -336,16 +382,21 @@ public class FormatterMeaningPreservationSweepTests
 
         var totals = new int[InjectedCommentCounts.Kinds.Count];
         var identifiers = 0;
+        var skipped = FormatterTwins.ContextualKeywordsReadAsKeywords.ToDictionary(k => k, _ => 0, StringComparer.Ordinal);
         foreach (var fixture in census.Corpus.Values)
         {
             var (_, counts) = FormatterTwins.CommentInjected(fixture.Source);
             foreach (var kind in InjectedCommentCounts.Kinds)
                 totals[(int)kind] += counts[kind];
             identifiers += FormatterTwins.BacktickInjected(fixture.Source).Count;
+            foreach (var (value, n) in FormatterTwins.ContextualKeywordSkips(fixture.Source))
+                skipped[value] += n;
         }
 
         _output.WriteLine("FMTPRES-CENSUS T1 " + string.Join(" ", InjectedCommentCounts.Kinds.Select(k => $"{k}={totals[(int)k]}")));
         _output.WriteLine($"FMTPRES-CENSUS T2 identifiers={identifiers}");
+        _output.WriteLine("FMTPRES-CENSUS T2 skipped-contextual-keywords(#2166) "
+            + string.Join(" ", skipped.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
 
         var rows = LoadAllowlist();
         foreach (var twin in Twins)
@@ -360,6 +411,8 @@ public class FormatterMeaningPreservationSweepTests
         foreach (var kind in InjectedCommentCounts.Kinds)
             totals[(int)kind].Should().BeGreaterThanOrEqualTo(1, $"injection kind {kind} must fire somewhere in the corpus");
         identifiers.Should().BeGreaterThanOrEqualTo(1);
+        foreach (var (value, n) in skipped)
+            n.Should().BeGreaterThan(0, $"T2 skips the #2166 contextual keyword '{value}': the corpus must contain one, else the skip set has a stale member");
         rows.Should().OnlyContain(r => census.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
     }
 

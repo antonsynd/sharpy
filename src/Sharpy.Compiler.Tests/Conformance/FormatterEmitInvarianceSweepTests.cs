@@ -19,6 +19,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// of <c>Format(P)</c> equals P's with every <c>#line</c> directive line removed. The parse-level
 /// twin sweep (<see cref="FormatterMeaningPreservationSweepTests"/>) compares ASTs through a
 /// comparer that can miss a field; this sweep observes the program the compiler actually emits.
+/// <c>Format(P)</c> here is the RAW output (<c>FormatterService.FormatUnchecked</c>, the SPY0912 net
+/// bypassed): a refusal returns P itself, whose C# is P's by construction.
 ///
 /// <para><b>Why whole directives are forgotten.</b> The formatter moves lines (blank lines are
 /// normalised, a bracket is re-laid out), and the emitted C# maps every statement back to its
@@ -73,7 +75,9 @@ public class FormatterEmitInvarianceSweepTests : FileBasedIntegrationTestsBase
         Parallel.ForEach(fixtures, new ParallelOptions { MaxDegreeOfParallelism = dop }, fixture =>
         {
             var source = File.ReadAllText(fixture.SpyFilePath);
-            var formatted = FormatterService.Format(source).FormattedText;
+            // The RAW output (the SPY0912 net bypassed): a refusal returns P, whose C# is P's by
+            // construction, and would hide every cell the net catches.
+            var formatted = FormatterService.FormatUnchecked(source).FormattedText;
             if (formatted == source)
             {
                 cells.Add(new Cell(fixture.TestName, "unchanged", ""));
