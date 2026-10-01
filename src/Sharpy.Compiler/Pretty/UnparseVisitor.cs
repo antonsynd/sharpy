@@ -9,17 +9,29 @@ internal sealed partial class UnparseVisitor : AstVisitor
     private readonly UnparseWriter _w;
     private readonly UnparseOptions _options;
 
-    public UnparseVisitor(UnparseWriter writer, UnparseOptions options)
+    /// <summary>The one comment mechanism (null: no comments are written).</summary>
+    private readonly TriviaCursor? _cursor;
+
+    /// <summary>
+    /// The decorators <see cref="VisitStatementWithTrivia"/> already wrote, each at its own anchor,
+    /// before the statement's header anchor; the statement's visitor skips them.
+    /// </summary>
+    private ImmutableArray<Decorator> _decoratorsWritten;
+
+    public UnparseVisitor(UnparseWriter writer, UnparseOptions options, TriviaCursor? cursor = null)
     {
         _w = writer;
         _options = options;
+        _cursor = cursor;
     }
 
     public void UnparseModule(Module module)
     {
         if (module.DocString != null)
         {
-            _w.WriteLine($"\"\"\"{EscapeTripleQuoted(module.DocString)}\"\"\"");
+            // A docstring line is an anchor like a statement's: the comments above it stay above it
+            // and its inline comment stays on its closing line.
+            WriteDocStringAnchored(0, () => _w.WriteLine($"\"\"\"{EscapeTripleQuoted(module.DocString)}\"\"\""));
         }
 
         var fmt = _options.Formatting;
@@ -55,6 +67,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
             lastWasImport = isImport;
         }
 
+        WriteEndOfModule(module);
+
         if (fmt is { TrailingNewline: true } && _w.Length > 0)
         {
             var text = _w.ToString();
@@ -63,23 +77,144 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
     }
 
-    private void VisitStatementWithTrivia(Statement stmt)
+    private static bool IsTopLevelDef(Statement stmt) =>
+        stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef;
+
+    #region Trivia anchors
+
+    /// <summary>
+    /// End of module: every comment no anchor claimed. A comment left after a top-level definition
+    /// is module-level content and is separated from it like any module-level item (a comment at the
+    /// definition's BODY indent was already taken as that body's end).
+    /// </summary>
+    private void WriteEndOfModule(Module module)
     {
-        if (_options.PreserveTrivia)
-            WriteLeadingTrivia(stmt);
-
-        var posBefore = _w.Length;
-        Visit(stmt);
-
-        if (_options.PreserveTrivia && stmt.TrailingTrivia != null)
-            InsertTrailingTriviaAtFirstNewline(stmt.TrailingTrivia, posBefore);
+        if (_cursor == null)
+            return;
+        var rest = _cursor.TakeAll();
+        if (_options.Formatting is { } fmt
+            && rest.Any(t => t.Kind == TriviaKind.Comment)
+            && module.Body.Length > 0
+            && IsTopLevelDef(module.Body[module.Body.Length - 1]))
+        {
+            for (int b = 0; b < fmt.BlankLinesAroundTopLevelDefs; b++)
+                _w.WriteLine();
+        }
+        WriteOwnLine(rest);
     }
 
-    private void WriteLeadingTrivia(Node node)
+    /// <summary>
+    /// A statement at its anchor: its decorators each at their own anchor, then its header — the
+    /// comments above the header line, the header (verbatim when a comment sits inside it), and
+    /// the inline comment ending the header line, appended to the written header. A decorated
+    /// definition's header comment therefore stays on the <c>def</c> line, not the decorator's.
+    /// </summary>
+    private void VisitStatementWithTrivia(Statement stmt)
     {
-        if (node.LeadingTrivia == null)
+        if (_cursor == null)
+        {
+            Visit(stmt);
             return;
-        foreach (var trivia in node.LeadingTrivia)
+        }
+
+        var decorators = DecoratorsOf(stmt);
+        if (!decorators.IsDefaultOrEmpty)
+        {
+            WriteDecorators(decorators);
+            _decoratorsWritten = decorators;
+        }
+
+        var header = stmt is DecoratedStatement decorated ? decorated.Statement : stmt;
+        WriteAnchored(header.LineStart, stmt.HeaderLineEnd, header.Span?.Start ?? -1, stmt.HeaderEndOffset, () => Visit(stmt));
+        _decoratorsWritten = default;
+    }
+
+    /// <summary>The decorators a statement's visitor writes before its header (<see cref="WriteDecorators"/>).</summary>
+    private static ImmutableArray<Decorator> DecoratorsOf(Statement stmt) => stmt switch
+    {
+        DecoratedStatement s => s.Decorators,
+        FunctionDef s => s.Decorators,
+        ClassDef s => s.Decorators,
+        StructDef s => s.Decorators,
+        InterfaceDef s => s.Decorators,
+        EnumDef s => s.Decorators,
+        UnionDef s => s.Decorators,
+        PropertyDef s => s.Decorators,
+        EventDef s => s.Decorators,
+        VariableDeclaration s => s.Decorators,
+        _ => default
+    };
+
+    /// <summary>
+    /// THE anchor helper: every comment the unparser writes goes through here (or a body's end, or
+    /// the module's end). Before the anchor's first line <paramref name="lineStart"/>, the pending
+    /// own-line comments (and blank lines, when not formatting) are written as full lines at the
+    /// current indent; <paramref name="write"/> writes the anchor; the inline comment ending its
+    /// header line <paramref name="headerLineEnd"/> is appended to the written header line. A
+    /// comment inside the header's range [<paramref name="lineStart"/>, <paramref name="headerLineEnd"/>]
+    /// that is neither (an inner comment) makes the header verbatim: the source slice
+    /// [<paramref name="sliceStart"/>, <paramref name="sliceEnd"/>) replaces the written header.
+    /// </summary>
+    private void WriteAnchored(int lineStart, int headerLineEnd, int sliceStart, int sliceEnd, Action write)
+    {
+        if (_cursor == null || lineStart <= 0)
+        {
+            write();
+            return;
+        }
+
+        WriteOwnLine(_cursor.TakeBefore(lineStart));
+        // The header's last line: from its end offset when the source is at hand (exact for every
+        // statement kind), else the parser's line.
+        var endFromSource = sliceEnd > 0 ? _cursor.EndLineOf(sliceEnd) : 0;
+        var end = Math.Max(lineStart, endFromSource > 0 ? endFromSource : headerLineEnd);
+        var inner = _cursor.TakeInner(lineStart, end);
+        var trailing = _cursor.TakeInline(end);
+        WriteOwnLine(inner);
+
+        var position = _w.Length;
+        write();
+        if (trailing.Count > 0)
+            AppendInline(position, trailing);
+    }
+
+    /// <summary>A docstring's anchor: its line range is read from the token stream (the AST records only its text).</summary>
+    private void WriteDocStringAnchored(int afterOffset, Action write)
+    {
+        if (_cursor is { HasSource: true } && _cursor.TryFindDocString(afterOffset, out var startLine, out var endLine))
+            WriteAnchored(startLine, endLine, -1, -1, write);
+        else
+            write();
+    }
+
+    /// <summary>
+    /// A body's end: the comments after its last line at or right of its column — innermost body
+    /// first, so <c># end of the method</c> at the method body's indent stays in the method.
+    /// </summary>
+    private void WriteBodyEnd(int column, int lastLine)
+    {
+        if (_cursor == null)
+            return;
+        WriteOwnLine(_cursor.TakeBodyEnd(column, lastLine));
+    }
+
+    /// <summary>
+    /// The last source line of a node ending at <paramref name="span"/>: from its end offset when the
+    /// source is at hand (several statement kinds record <c>LineEnd</c> as the NEXT statement's line,
+    /// which would let a body's end claim that statement's leading comments), else
+    /// <paramref name="lineEnd"/>.
+    /// </summary>
+    private int LastLineOf(Text.TextSpan? span, int lineEnd)
+    {
+        var fromSource = span is { } s && _cursor != null ? _cursor.EndLineOf(s.End) : 0;
+        return fromSource > 0 ? fromSource : lineEnd;
+    }
+
+    private int LastLineOf(Statement stmt) => LastLineOf(stmt.Span, stmt.LineEnd);
+
+    private void WriteOwnLine(List<Trivia> items)
+    {
+        foreach (var trivia in items)
         {
             if (trivia.Kind == TriviaKind.BlankLines)
             {
@@ -95,15 +230,20 @@ internal sealed partial class UnparseVisitor : AstVisitor
         }
     }
 
-    private void InsertTrailingTriviaAtFirstNewline(IReadOnlyList<Trivia> trivia, int startPos)
+    /// <summary>
+    /// Appends inline comments to the anchor's header line: the first line break written at or after
+    /// <paramref name="position"/> that is not inside verbatim text (a triple-quoted string, a
+    /// multi-line replacement field — #2068).
+    /// </summary>
+    private void AppendInline(int position, List<Trivia> trivia)
     {
-        var nlIdx = _w.IndexOfLineEndingOutsideOpaque(_options.LineEnding, startPos);
+        var nlIdx = _w.IndexOfLineEndingOutsideOpaque(_options.LineEnding, position);
         if (nlIdx < 0)
             return;
-
-        var triviaText = string.Concat(trivia.Select(t => "  " + t.Text));
-        _w.InsertAt(nlIdx, triviaText);
+        _w.InsertAt(nlIdx, string.Concat(trivia.Select(t => "  " + t.Text)));
     }
+
+    #endregion
 
     #region Precedence
 
@@ -309,36 +449,40 @@ internal sealed partial class UnparseVisitor : AstVisitor
                 }
             }
 
-            if (_options.PreserveTrivia)
-            {
-                VisitStatementWithTrivia(body[i]);
-            }
-            else
-            {
-                Visit(body[i]);
-            }
+            VisitStatementWithTrivia(body[i]);
         }
+        WriteBodyEnd(body[0].ColumnStart, LastLineOf(body[body.Length - 1]));
         _w.Dedent();
     }
 
     private void WriteDecorators(ImmutableArray<Decorator> decorators)
     {
-        foreach (var dec in decorators)
+        if (!_decoratorsWritten.IsDefault && _decoratorsWritten == decorators)
         {
-            // `@[name(args)]` is a .NET attribute and `@name(args)` a Sharpy decorator: the bracket
-            // is a user-written fact the parser records, and dropping it changes what compiles.
-            _w.Write(dec.IsBracketAttribute ? "@[" : "@");
-            WriteDottedName(dec.QualifiedParts, dec.BacktickEscapedParts);
-            if (dec.Arguments.Length > 0 || dec.KeywordArguments.Length > 0)
-            {
-                _w.Write("(");
-                WriteArgList(dec.Arguments, dec.KeywordArguments);
-                _w.Write(")");
-            }
-            if (dec.IsBracketAttribute)
-                _w.Write("]");
-            _w.WriteLine();
+            // Already written at their own anchors by VisitStatementWithTrivia.
+            _decoratorsWritten = default;
+            return;
         }
+
+        foreach (var dec in decorators)
+            WriteAnchored(dec.LineStart, dec.LineEnd, dec.Span?.Start ?? -1, dec.Span?.End ?? -1, () => WriteDecorator(dec));
+    }
+
+    private void WriteDecorator(Decorator dec)
+    {
+        // `@[name(args)]` is a .NET attribute and `@name(args)` a Sharpy decorator: the bracket
+        // is a user-written fact the parser records, and dropping it changes what compiles.
+        _w.Write(dec.IsBracketAttribute ? "@[" : "@");
+        WriteDottedName(dec.QualifiedParts, dec.BacktickEscapedParts);
+        if (dec.Arguments.Length > 0 || dec.KeywordArguments.Length > 0)
+        {
+            _w.Write("(");
+            WriteArgList(dec.Arguments, dec.KeywordArguments);
+            _w.Write(")");
+        }
+        if (dec.IsBracketAttribute)
+            _w.Write("]");
+        _w.WriteLine();
     }
 
     private void WriteArgList(ImmutableArray<Expression> args, ImmutableArray<KeywordArgument> kwargs)

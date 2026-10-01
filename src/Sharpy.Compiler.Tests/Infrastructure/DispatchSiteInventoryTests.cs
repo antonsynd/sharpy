@@ -214,6 +214,10 @@ public class DispatchSiteInventoryTests
         ["Parser/Parser.Primaries.cs::Parser.ContainsPlaceholderIdentifier"] = "refusal-net:FileBasedIntegrationTests",
         ["Parser/Parser.Primaries.cs::Parser.ReplacePlaceholders"] = "refusal-net:FileBasedIntegrationTests",
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.GetExpressionPrecedence"] = "refusal-net:UnparseIdempotencePropertyTests",
+        // The decorator-carrying statement kinds whose decorators the trivia cursor anchors before
+        // the header (P22b, #2077): a kind missing here writes its header comment on the decorator
+        // line, which the sweep's commentMoved oracle (O4b) reports on every decorated fixture.
+        ["Pretty/UnparseVisitor.cs::UnparseVisitor.DecoratorsOf"] = "refusal-net:FormatterMeaningPreservationSweepTests",
         ["Semantic/IntegerConstantEvaluator.cs::IntegerConstantEvaluator.TryGetConstantInteger"] = "refusal-net:IntegerConstantEvaluatorTests",
         // New emitter sites found by typed census
         // (GenerateDictSpreadComprehension / GenerateImperativeComprehension: comprehension-clause family, see guarded-by rows)

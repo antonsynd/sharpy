@@ -198,6 +198,14 @@ public record Trivia
     public int Column { get; init; }
     public int Position { get; init; }
     public int BlankLineCount { get; init; }
+
+    /// <summary>
+    /// True for a comment that ends a line carrying code (<c>x = 1  # c</c>) — set when the lexer
+    /// reclassifies it as the trailing trivia of that line's last code token. False for a comment on
+    /// its own line and for blank lines. The formatter's trivia cursor appends an inline comment to
+    /// its anchor's line and writes the others as full lines (P22b, #2077).
+    /// </summary>
+    public bool IsInline { get; init; }
 }
 
 /// <summary>

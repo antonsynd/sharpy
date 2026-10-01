@@ -306,7 +306,7 @@ public partial class Lexer
                     if (trivia.Line == prevEndLine)
                     {
                         trailing ??= new List<Trivia>();
-                        trailing.Add(trivia);
+                        trailing.Add(trivia with { IsInline = true });
                     }
                     else
                     {

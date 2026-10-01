@@ -1772,7 +1772,7 @@ public partial class Parser
         var paramToken = Current;
         var paramName = ExpectIdentifier();
         Expect(TokenType.RightParen);
-        ExpectClauseColon();
+        var headerColon = ExpectClauseColon();
         ExpectNewline();
         var obsSuite = ParseIndentedSuite();
 
@@ -1780,6 +1780,8 @@ public partial class Parser
         {
             LineStart = startToken.Line,
             ColumnStart = startToken.Column,
+            HeaderLineEnd = headerColon.Line,
+            HeaderEndOffset = headerColon.EndOffset,
             LineEnd = obsSuite.EndLine,
             ColumnEnd = obsSuite.EndColumn,
             ParamNameLine = paramToken.Line,

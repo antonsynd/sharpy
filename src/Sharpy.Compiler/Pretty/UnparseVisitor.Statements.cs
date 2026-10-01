@@ -136,18 +136,32 @@ internal sealed partial class UnparseVisitor
         WriteBody(node.ThenBody);
         foreach (var elif in node.ElifClauses)
         {
-            _w.Write("elif ");
-            Visit(elif.Test);
-            _w.Write(":");
-            _w.WriteLine();
-            WriteBody(elif.Body);
+            WriteAnchored(elif.LineStart, elif.HeaderLineEnd, elif.Span?.Start ?? -1, elif.HeaderEndOffset, () =>
+            {
+                _w.Write("elif ");
+                Visit(elif.Test);
+                _w.Write(":");
+                _w.WriteLine();
+                WriteBody(elif.Body);
+            });
         }
-        if (!node.ElseBody.IsEmpty)
+        WriteElseClause(node.ElseBody, node.ElseHeaderLine);
+    }
+
+    /// <summary>An <c>else:</c> clause (of <c>if</c>, a loop or <c>try</c>) at its anchor, the keyword's line.</summary>
+    private void WriteElseClause(System.Collections.Immutable.ImmutableArray<Statement> body, int headerLine)
+        => WriteKeywordClause("else:", body, headerLine);
+
+    private void WriteKeywordClause(string header, System.Collections.Immutable.ImmutableArray<Statement> body, int headerLine)
+    {
+        if (body.IsEmpty)
+            return;
+        WriteAnchored(headerLine, headerLine, -1, -1, () =>
         {
-            _w.Write("else:");
+            _w.Write(header);
             _w.WriteLine();
-            WriteBody(node.ElseBody);
-        }
+            WriteBody(body);
+        });
     }
 
     public override void VisitWhileStatement(WhileStatement node)
@@ -157,12 +171,7 @@ internal sealed partial class UnparseVisitor
         _w.Write(":");
         _w.WriteLine();
         WriteBody(node.Body);
-        if (!node.ElseBody.IsEmpty)
-        {
-            _w.Write("else:");
-            _w.WriteLine();
-            WriteBody(node.ElseBody);
-        }
+        WriteElseClause(node.ElseBody, node.ElseHeaderLine);
     }
 
     public override void VisitForStatement(ForStatement node)
@@ -176,12 +185,7 @@ internal sealed partial class UnparseVisitor
         _w.Write(":");
         _w.WriteLine();
         WriteBody(node.Body);
-        if (!node.ElseBody.IsEmpty)
-        {
-            _w.Write("else:");
-            _w.WriteLine();
-            WriteBody(node.ElseBody);
-        }
+        WriteElseClause(node.ElseBody, node.ElseHeaderLine);
     }
 
     public override void VisitTryStatement(TryStatement node)
@@ -190,42 +194,35 @@ internal sealed partial class UnparseVisitor
         _w.WriteLine();
         WriteBody(node.Body);
         foreach (var handler in node.Handlers)
+            WriteAnchored(handler.LineStart, handler.HeaderLineEnd, handler.Span?.Start ?? -1, handler.HeaderEndOffset, () => WriteExceptHandler(handler));
+        WriteElseClause(node.ElseBody, node.ElseHeaderLine);
+        WriteKeywordClause("finally:", node.FinallyBody, node.FinallyHeaderLine);
+    }
+
+    private void WriteExceptHandler(ExceptHandler handler)
+    {
+        if (handler.IsExceptStar)
+            _w.Write("except*");
+        else
+            _w.Write("except");
+        if (handler.ExceptionType != null)
         {
-            if (handler.IsExceptStar)
-                _w.Write("except*");
-            else
-                _w.Write("except");
-            if (handler.ExceptionType != null)
+            _w.Write(" ");
+            WriteTypeAnnotation(handler.ExceptionType);
+            if (handler.Name != null)
             {
-                _w.Write(" ");
-                WriteTypeAnnotation(handler.ExceptionType);
-                if (handler.Name != null)
-                {
-                    _w.Write(" as ");
-                    WriteName(handler.Name, handler.IsNameBacktickEscaped);
-                }
+                _w.Write(" as ");
+                WriteName(handler.Name, handler.IsNameBacktickEscaped);
             }
-            if (handler.Filter != null)
-            {
-                _w.Write(" when ");
-                Visit(handler.Filter);
-            }
-            _w.Write(":");
-            _w.WriteLine();
-            WriteBody(handler.Body);
         }
-        if (!node.ElseBody.IsEmpty)
+        if (handler.Filter != null)
         {
-            _w.Write("else:");
-            _w.WriteLine();
-            WriteBody(node.ElseBody);
+            _w.Write(" when ");
+            Visit(handler.Filter);
         }
-        if (!node.FinallyBody.IsEmpty)
-        {
-            _w.Write("finally:");
-            _w.WriteLine();
-            WriteBody(node.FinallyBody);
-        }
+        _w.Write(":");
+        _w.WriteLine();
+        WriteBody(handler.Body);
     }
 
     public override void VisitWithStatement(WithStatement node)
@@ -275,6 +272,22 @@ internal sealed partial class UnparseVisitor
 
     #region Definitions
 
+    /// <summary>A definition's docstring, one indent under its header, at its own anchor.</summary>
+    private void WriteDocString(string? docString, Statement owner)
+    {
+        if (docString == null)
+            return;
+        _w.Indent();
+        WriteDocStringAnchored(owner.HeaderEndOffset, () =>
+        {
+            _w.Write("\"\"\"");
+            _w.WriteOpaque(EscapeTripleQuoted(docString));
+            _w.Write("\"\"\"");
+            _w.WriteLine();
+        });
+        _w.Dedent();
+    }
+
     public override void VisitFunctionDef(FunctionDef node)
     {
         WriteDecorators(node.Decorators);
@@ -291,15 +304,7 @@ internal sealed partial class UnparseVisitor
         }
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         WriteBody(node.Body);
     }
 
@@ -322,15 +327,7 @@ internal sealed partial class UnparseVisitor
         }
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         WriteBody(node.Body);
     }
 
@@ -353,15 +350,7 @@ internal sealed partial class UnparseVisitor
         }
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         WriteBody(node.Body);
     }
 
@@ -384,15 +373,7 @@ internal sealed partial class UnparseVisitor
         }
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         WriteBody(node.Body);
     }
 
@@ -403,15 +384,7 @@ internal sealed partial class UnparseVisitor
         WriteName(node.Name, node.IsNameBacktickEscaped);
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         if (node.Members.IsEmpty)
         {
             _w.Indent();
@@ -423,14 +396,20 @@ internal sealed partial class UnparseVisitor
             _w.Indent();
             foreach (var member in node.Members)
             {
-                WriteName(member.Name, member.IsNameBacktickEscaped);
-                if (member.Value != null)
+                // A member line is a non-statement body line: an anchor like a statement's.
+                WriteAnchored(member.LineStart, member.LineEnd, member.Span?.Start ?? -1, member.Span?.End ?? -1, () =>
                 {
-                    _w.Write(" = ");
-                    Visit(member.Value);
-                }
-                _w.WriteLine();
+                    WriteName(member.Name, member.IsNameBacktickEscaped);
+                    if (member.Value != null)
+                    {
+                        _w.Write(" = ");
+                        Visit(member.Value);
+                    }
+                    _w.WriteLine();
+                });
             }
+            var lastMember = node.Members[node.Members.Length - 1];
+            WriteBodyEnd(node.Members[0].ColumnStart, LastLineOf(lastMember.Span, lastMember.LineEnd));
             _w.Dedent();
         }
     }
@@ -534,12 +513,18 @@ internal sealed partial class UnparseVisitor
                 _w.Indent();
                 foreach (var observer in node.Observers)
                 {
-                    _w.Write(observer.Kind == ObserverKind.BeforeSet ? "before_set(" : "after_set(");
-                    WriteName(observer.ParamName, observer.IsParamNameBacktickEscaped);
-                    _w.Write("):");
-                    _w.WriteLine();
-                    WriteBody(observer.Body);
+                    // An observer header is a non-statement body line: an anchor like a clause's.
+                    WriteAnchored(observer.LineStart, observer.HeaderLineEnd, observer.Span?.Start ?? -1, observer.HeaderEndOffset, () =>
+                    {
+                        _w.Write(observer.Kind == ObserverKind.BeforeSet ? "before_set(" : "after_set(");
+                        WriteName(observer.ParamName, observer.IsParamNameBacktickEscaped);
+                        _w.Write("):");
+                        _w.WriteLine();
+                        WriteBody(observer.Body);
+                    });
                 }
+                var lastObserver = node.Observers[node.Observers.Length - 1];
+                WriteBodyEnd(node.Observers[0].ColumnStart, LastLineOf(lastObserver.Span, lastObserver.LineEnd));
                 _w.Dedent();
             }
         }
@@ -619,26 +604,34 @@ internal sealed partial class UnparseVisitor
         _w.WriteLine();
         _w.Indent();
         foreach (var c in node.Cases)
+            WriteAnchored(c.LineStart, c.HeaderLineEnd, c.Span?.Start ?? -1, c.HeaderEndOffset, () => WriteMatchCase(c));
+        if (!node.Cases.IsEmpty)
         {
-            _w.Write("case ");
-            var pattern = c.Pattern;
-            Expression? guard = c.Guard;
-            if (pattern is GuardPattern gp && guard == null)
-            {
-                pattern = gp.Inner;
-                guard = gp.Guard;
-            }
-            Visit(pattern);
-            if (guard != null)
-            {
-                _w.Write(" if ");
-                Visit(guard);
-            }
-            _w.Write(":");
-            _w.WriteLine();
-            WriteBody(c.Body);
+            var lastCase = node.Cases[node.Cases.Length - 1];
+            WriteBodyEnd(node.Cases[0].ColumnStart, LastLineOf(lastCase.Span, lastCase.LineEnd));
         }
         _w.Dedent();
+    }
+
+    private void WriteMatchCase(MatchCase c)
+    {
+        _w.Write("case ");
+        var pattern = c.Pattern;
+        Expression? guard = c.Guard;
+        if (pattern is GuardPattern gp && guard == null)
+        {
+            pattern = gp.Inner;
+            guard = gp.Guard;
+        }
+        Visit(pattern);
+        if (guard != null)
+        {
+            _w.Write(" if ");
+            Visit(guard);
+        }
+        _w.Write(":");
+        _w.WriteLine();
+        WriteBody(c.Body);
     }
 
     public override void VisitUnionDef(UnionDef node)
@@ -649,15 +642,7 @@ internal sealed partial class UnparseVisitor
         WriteTypeParameters(node.TypeParameters);
         _w.Write(":");
         _w.WriteLine();
-        if (node.DocString != null)
-        {
-            _w.Indent();
-            _w.Write("\"\"\"");
-            _w.WriteOpaque(EscapeTripleQuoted(node.DocString));
-            _w.Write("\"\"\"");
-            _w.WriteLine();
-            _w.Dedent();
-        }
+        WriteDocString(node.DocString, node);
         if (node.Cases.IsEmpty && node.Body.IsEmpty)
         {
             _w.Indent();
@@ -669,22 +654,8 @@ internal sealed partial class UnparseVisitor
             _w.Indent();
             foreach (var caseDef in node.Cases)
             {
-                _w.Write("case ");
-                WriteName(caseDef.Name, caseDef.IsNameBacktickEscaped);
-                if (!caseDef.Fields.IsEmpty)
-                {
-                    _w.Write("(");
-                    for (int i = 0; i < caseDef.Fields.Length; i++)
-                    {
-                        if (i > 0)
-                            _w.Write(", ");
-                        WriteName(caseDef.Fields[i].Name, caseDef.Fields[i].IsNameBacktickEscaped);
-                        _w.Write(": ");
-                        WriteTypeAnnotation(caseDef.Fields[i].Type);
-                    }
-                    _w.Write(")");
-                }
-                _w.WriteLine();
+                // A union case line is a non-statement body line: an anchor like a statement's.
+                WriteAnchored(caseDef.LineStart, caseDef.LineEnd, caseDef.Span?.Start ?? -1, caseDef.Span?.End ?? -1, () => WriteUnionCase(caseDef));
             }
             // The union's methods (UnionDef.Body) follow its cases — the parser collects them
             // apart from the cases, so writing them here keeps the AST; dropping them deleted every
@@ -697,13 +668,35 @@ internal sealed partial class UnparseVisitor
                     for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)
                         _w.WriteLine();
                 }
-                if (_options.PreserveTrivia)
-                    VisitStatementWithTrivia(node.Body[i]);
-                else
-                    Visit(node.Body[i]);
+                VisitStatementWithTrivia(node.Body[i]);
             }
+            var firstColumn = !node.Cases.IsEmpty ? node.Cases[0].ColumnStart : node.Body[0].ColumnStart;
+            var lastLine = Math.Max(
+                node.Cases.IsEmpty ? 0 : LastLineOf(node.Cases[node.Cases.Length - 1].Span, node.Cases[node.Cases.Length - 1].LineEnd),
+                node.Body.IsEmpty ? 0 : LastLineOf(node.Body[node.Body.Length - 1]));
+            WriteBodyEnd(firstColumn, lastLine);
             _w.Dedent();
         }
+    }
+
+    private void WriteUnionCase(UnionCaseDef caseDef)
+    {
+        _w.Write("case ");
+        WriteName(caseDef.Name, caseDef.IsNameBacktickEscaped);
+        if (!caseDef.Fields.IsEmpty)
+        {
+            _w.Write("(");
+            for (int i = 0; i < caseDef.Fields.Length; i++)
+            {
+                if (i > 0)
+                    _w.Write(", ");
+                WriteName(caseDef.Fields[i].Name, caseDef.Fields[i].IsNameBacktickEscaped);
+                _w.Write(": ");
+                WriteTypeAnnotation(caseDef.Fields[i].Type);
+            }
+            _w.Write(")");
+        }
+        _w.WriteLine();
     }
 
     public override void VisitDelegateDef(DelegateDef node)

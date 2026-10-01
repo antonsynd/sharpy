@@ -818,6 +818,26 @@ public partial class Parser
     private Statement ParseStatement() => ParseInStatementFrame(ParseStatementCore);
 
     /// <summary>
+    /// The line a simple statement ends on: the line of the line break that ended it — a multi-line
+    /// string's closing line, not the line it opens on — or, at a dedent or the end of the file, the
+    /// line of its last token. Never <see cref="Node.LineEnd"/>: several statement kinds record it
+    /// after consuming the terminator, as the NEXT statement's line (<c>type X = int</c>, a
+    /// <c>const</c> declaration, …), which would read that statement's leading comments as this
+    /// header's inner comments.
+    /// </summary>
+    private int SimpleStatementEndLine(Statement stmt)
+    {
+        for (int i = Math.Min(_position - 1, _tokens.Count - 1); i >= 0; i--)
+        {
+            var t = _tokens[i];
+            if (t.Type is TokenType.Indent or TokenType.Dedent or TokenType.Eof)
+                continue;
+            return t.Line;
+        }
+        return stmt.LineEnd;
+    }
+
+    /// <summary>
     /// Parses one statement in its own header frame: attaches leading/trailing trivia and records
     /// where the header ends — the frame's first header colon for a compound statement, the
     /// statement's own end for a simple one (P22b Decision 5).
@@ -844,7 +864,7 @@ public partial class Parser
 
         stmt = headerSeen
             ? stmt with { HeaderLineEnd = headerColon.Line, HeaderEndOffset = headerColon.EndOffset }
-            : stmt with { HeaderLineEnd = stmt.LineEnd, HeaderEndOffset = stmt.Span?.End ?? 0 };
+            : stmt with { HeaderLineEnd = SimpleStatementEndLine(stmt), HeaderEndOffset = stmt.Span?.End ?? 0 };
 
         if (trailingTrivia == null)
         {

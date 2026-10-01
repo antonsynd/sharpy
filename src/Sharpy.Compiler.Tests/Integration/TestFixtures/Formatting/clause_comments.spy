@@ -1,0 +1,40 @@
+# Comments on every clause header and before every clause keyword stay where they are written (#2077).
+def main():
+    x = 1
+    if x > 0:  # if header
+        print("pos")
+    # before elif
+    elif x < 0:  # elif header
+        print("neg")
+    # before else
+    else:  # else header
+        print("zero")
+    for i in range(2):  # for header
+        print(i)
+    # before for-else
+    else:  # for-else header
+        print("done")
+    while False:  # while header
+        pass
+    else:  # while-else header
+        print("w")
+    try:  # try header
+        print(1)
+    # before except
+    except ValueError as e:  # except header
+        print(e)
+    # before finally
+    finally:  # finally header
+        print("f")
+    match x:  # match header
+        # before case 1
+        case 1:  # case header
+            print("one")
+        # before case _
+        case _:  # wildcard header
+            print("other")
+    match x:
+        case 2:  # case under a match whose colon has no comment
+            print("two")
+        case _:
+            pass

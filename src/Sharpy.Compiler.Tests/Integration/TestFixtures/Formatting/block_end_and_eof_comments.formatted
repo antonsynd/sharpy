@@ -1,0 +1,23 @@
+# Block-end comments stay in the block they end, at that block's indent; three blocks close at once.
+class Outer:
+    def method(self, x: int) -> int:
+        if x > 0:
+            return 1
+            # end of the if body
+        # end of the method body
+    # end of the class body
+
+
+# before main, at module level
+def main():
+    x = 0
+    # odd column, mid-body: written at the indent of the statement it precedes
+    if x > 0:
+        print("pos")
+        # inner indent: the last line of the if body
+    # outer indent: before else
+    else:
+        print("nonpos")
+
+
+# end of file

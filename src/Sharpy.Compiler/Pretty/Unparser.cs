@@ -8,7 +8,7 @@ public static class Unparser
     {
         options ??= new UnparseOptions();
         var writer = new UnparseWriter(options);
-        var visitor = new UnparseVisitor(writer, options);
+        var visitor = new UnparseVisitor(writer, options, TriviaCursor.Create(options, module));
         visitor.UnparseModule(module);
         return writer.ToString();
     }
@@ -17,7 +17,7 @@ public static class Unparser
     {
         options ??= new UnparseOptions();
         var writer = new UnparseWriter(options);
-        var visitor = new UnparseVisitor(writer, options);
+        var visitor = new UnparseVisitor(writer, options, TriviaCursor.Create(options, node));
         visitor.Visit(node);
         return writer.ToString();
     }

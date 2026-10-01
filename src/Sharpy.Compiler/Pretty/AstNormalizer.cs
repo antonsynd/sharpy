@@ -471,6 +471,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
             ColumnEnd = 0,
             ParamNameLine = 0,
             ParamNameColumn = 0,
+            HeaderLineEnd = 0,
+            HeaderEndOffset = 0,
             Span = null,
             Body = VisitStatements(o.Body)
         }).ToImmutableArray();

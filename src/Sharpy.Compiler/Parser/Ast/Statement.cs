@@ -1140,6 +1140,12 @@ public record PropertyObserver(ObserverKind Kind, string ParamName, ImmutableArr
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
 
+    /// <summary>Line of the observer clause's header colon (see <see cref="Statement.HeaderLineEnd"/>).</summary>
+    public int HeaderLineEnd { get; init; }
+
+    /// <summary>Exclusive offset just past the observer clause's header colon; 0 when not tracked.</summary>
+    public int HeaderEndOffset { get; init; }
+
     /// <summary>Source position of the parameter identifier (used for LSP text edits/highlights).</summary>
     public int ParamNameLine { get; init; }
     public int ParamNameColumn { get; init; }

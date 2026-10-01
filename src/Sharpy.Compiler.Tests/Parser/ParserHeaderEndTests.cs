@@ -84,6 +84,40 @@ public class ParserHeaderEndTests
         stmt.HeaderEndOffset.Should().Be(OffsetAfter(source, "{1: 2}"));
     }
 
+    /// <summary>
+    /// A simple statement's header ends on its OWN last line — read from the line break that ended
+    /// it, never from <c>LineEnd</c>: <c>type</c> aliases and <c>const</c> declarations record
+    /// <c>LineEnd</c> after consuming the terminator, as the NEXT statement's line (asserted as the
+    /// positive control, so the cell discriminates), which made the trivia cursor read that
+    /// statement's leading comment as an inner comment of this header (P22b, #2077).
+    /// </summary>
+    [Theory]
+    [InlineData("type X = int  # c\n# next\ny = 1\n", 1)]
+    [InlineData("const LIMIT: int = 200  # c\n# next\ny = 1\n", 1)]
+    public void SimpleStatement_WhoseLineEndIsTheNextStatements_HeaderEndsOnItsOwnLine(string source, int line)
+    {
+        var module = Parse(source);
+        var stmt = module.Body[0];
+        stmt.LineEnd.Should().BeGreaterThan(line, "control: this statement kind records LineEnd past its terminator");
+        stmt.HeaderLineEnd.Should().Be(line);
+    }
+
+    [Fact]
+    public void SimpleStatement_EndingInAMultiLineString_HeaderEndsOnTheClosingLine()
+    {
+        const string source = "s = \"\"\"a\nb\"\"\"  # c\ny = 1\n";
+        var stmt = Parse(source).Body[0];
+        stmt.HeaderLineEnd.Should().Be(2);
+    }
+
+    [Fact]
+    public void ReturnStatement_HeaderEndsOnItsOwnLine()
+    {
+        const string source = "def f() -> int:\n    return 1  # c\n# next\ndef g():\n    pass\n";
+        var ret = Parse(source).Body[0].Should().BeOfType<FunctionDef>().Subject.Body.Single();
+        ret.HeaderLineEnd.Should().Be(2);
+    }
+
     [Fact]
     public void Elif_And_Else_HeadersAreRecorded()
     {

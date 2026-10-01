@@ -1,0 +1,12 @@
+# A decorator's trailing comment, an own-line comment between decorators, and the decorated
+# def's header comment each stay on their own line (#2077).
+@first  # on the first decorator
+# between the decorators
+@second(1, 2)  # on the second decorator
+def decorated() -> int:  # the def header
+    return 1
+
+
+@only  # on a class decorator
+class Marked:  # the class header
+    pass

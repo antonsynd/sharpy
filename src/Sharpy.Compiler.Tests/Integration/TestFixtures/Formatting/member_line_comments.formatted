@@ -1,0 +1,22 @@
+# Comments on non-statement body lines — enum members, union cases, property-observer headers.
+enum Color:
+    # before RED
+    RED = 1  # red
+    GREEN = 2  # green
+    # end of the enum body
+
+
+union Shape:
+    # before Circle
+    case Circle(radius: float)  # circle
+    case Square(side: float)  # square
+    # end of the union cases
+
+
+class Character:
+    property health: int = 100  # the property line
+        # before the before_set observer
+        before_set(new_value):  # before_set header
+            print(new_value)
+        after_set(old_value):  # after_set header
+            print(old_value)

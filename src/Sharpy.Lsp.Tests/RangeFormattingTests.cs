@@ -153,6 +153,19 @@ public class RangeFormattingTests : IDisposable
         edits.First().NewText.Should().Be("    xs = [1,  # inner");
     }
 
+    // P22b Phase 4 (refs #2077): range formatting of an `else:` clause keeps its header comment on
+    // the clause line (the pre-cursor unparser wrote it on the `if` line).
+    [Fact]
+    public async Task ClauseComment_EditsKeepTheCommentOnItsClauseLineAsync()
+    {
+        const string source = "def main():\n        x = 0\n        if x > 0:\n            print(x)\n        else:  # else header\n            print(0)\n";
+
+        var edits = await FormatRangeAsync(source, 1, 0, 5, 20);
+
+        var text = string.Join("\n", edits.Select(e => e.NewText));
+        text.Should().Contain("    else:  # else header").And.NotContain("if x > 0:  # else header");
+    }
+
     [Fact]
     public async Task MultiLineHole_InteriorIsNotReindentedAsync()
     {

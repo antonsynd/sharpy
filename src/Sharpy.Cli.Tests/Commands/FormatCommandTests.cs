@@ -99,17 +99,20 @@ public class FormatCommandTests
     [Fact]
     public void DeclinedFormatting_PrintsSpy0912Once_AndLeavesTheFileUnchanged()
     {
-        // P22b: formatting would drop the bracket comment (#2077); the CLI prints the refusal with
-        // its code on the error line (once — not repeated as a sub-bullet) and exits 2.
+        // P22b: formatting would drop a backtick escape — an escaped contextual keyword the parser
+        // reads as the keyword (`case `_`:` is written `case _:`, #2166, outside P22b; until P22b
+        // Phase 4 this cell was a dropped bracket comment, which the trivia cursor now keeps). The CLI
+        // prints the refusal with its code on the error line (once — not repeated as a sub-bullet)
+        // and exits 2.
         using var ws = new TempWorkspace();
-        var source = "def main():\n    xs = [1,  # inner\n        2]\n    print(xs)\n";
+        var source = "def main():\n    x = 1\n    match x:\n        case `_`:\n            print(x)\n";
         var spy = ws.WriteSpy(source);
 
         var invocation = CliTestHarness.Invoke($"format \"{spy}\"");
 
         invocation.ExitCode.Should().Be(2);
         invocation.StdErr.Should().Contain(
-            "SPY0912: formatting declined: the output would drop comment '# inner' at line 2; the file was left unchanged");
+            "SPY0912: formatting declined: the output would drop the backtick escape on '_' at line 4; the file was left unchanged");
         invocation.StdErr.Split("formatting declined").Should().HaveCount(2, "the refusal is printed exactly once");
         File.ReadAllText(spy).Should().Be(source);
     }

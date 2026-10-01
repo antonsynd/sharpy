@@ -110,6 +110,10 @@ public static class FormatterService
             IndentString = indentString,
             LineEnding = options.LineEnding,
             PreserveTrivia = true,
+            // The trivia cursor reads every comment from the token stream the module was parsed
+            // from, and writes each at its anchor (P22b, #2077).
+            SourceText = source,
+            SourceTokens = lexResult.Tokens,
             Formatting = new Pretty.FormatOptions
             {
                 BlankLinesAroundTopLevelDefs = options.BlankLinesAroundTopLevelDefs,

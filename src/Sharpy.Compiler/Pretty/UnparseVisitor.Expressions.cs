@@ -439,16 +439,25 @@ internal sealed partial class UnparseVisitor
         _w.Indent();
         foreach (var arm in node.Arms)
         {
-            _w.Write("case ");
-            Visit(arm.Pattern);
-            if (arm.Guard != null)
+            // An arm line is a non-statement body line: an anchor like an enum member's.
+            WriteAnchored(arm.LineStart, arm.LineEnd, arm.Span?.Start ?? -1, arm.Span?.End ?? -1, () =>
             {
-                _w.Write(" if ");
-                Visit(arm.Guard);
-            }
-            _w.Write(": ");
-            Visit(arm.Result);
-            _w.WriteLine();
+                _w.Write("case ");
+                Visit(arm.Pattern);
+                if (arm.Guard != null)
+                {
+                    _w.Write(" if ");
+                    Visit(arm.Guard);
+                }
+                _w.Write(": ");
+                Visit(arm.Result);
+                _w.WriteLine();
+            });
+        }
+        if (!node.Arms.IsEmpty)
+        {
+            var lastArm = node.Arms[node.Arms.Length - 1];
+            WriteBodyEnd(node.Arms[0].ColumnStart, LastLineOf(lastArm.Span, lastArm.LineEnd));
         }
         _w.Dedent();
     }

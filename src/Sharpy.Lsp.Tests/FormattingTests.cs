@@ -257,6 +257,19 @@ public class FormattingTests : IDisposable
         formatted.Should().Contain("    xs = [1,  # inner");
     }
 
+    // P22b Phase 4 (refs #2077): a clause header's comment is written at the clause's own anchor —
+    // the `else:` line, not the `if` line where the pre-cursor unparser put it — and the edit keeps it
+    // there while the over-indented body moves to 4 columns.
+    [Fact]
+    public async Task ClauseComment_EditsKeepTheCommentOnItsClauseLineAsync()
+    {
+        const string source = "def main():\n        x = 0\n        if x > 0:\n            print(x)\n        # before else\n        else:  # else header\n            print(0)\n";
+
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().Be("def main():\n    x = 0\n    if x > 0:\n        print(x)\n    # before else\n    else:  # else header\n        print(0)\n");
+    }
+
     [Fact]
     public async Task UnknownDocument_ReturnsNullAsync()
     {
