@@ -518,6 +518,16 @@ public record MemberAccess : Expression
     public bool IsMemberBacktickEscaped { get; init; }
 
     /// <summary>
+    /// True on the OUTERMOST node of a chain the parser expanded from one backtick token that
+    /// contains dots (the #713 form <c>`System.IO.Path`</c>): this node and its <see cref="Object"/>
+    /// chain down to the root <see cref="Identifier"/> were written as that single token. A syntax
+    /// fact for the unparser (which writes the chain back as the one token rather than
+    /// <c>`System`.`IO`.`Path`</c>) and the structural comparer only (#2157); binding reads the
+    /// per-segment escape flags, which are unchanged.
+    /// </summary>
+    public bool IsSingleEscapedTokenChain { get; init; }
+
+    /// <summary>
     /// Position and exclusive end column of the MEMBER name, recorded from the member token
     /// (#1503). Independent of <see cref="Node.ColumnEnd"/> and of the receiver's end: whitespace is
     /// legal on either side of the dot, so <c>Object.ColumnEnd + 1</c> is not where the member

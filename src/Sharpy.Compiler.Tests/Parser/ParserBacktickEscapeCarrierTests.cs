@@ -279,6 +279,37 @@ public class ParserBacktickEscapeCarrierTests
         tuple.ElementNamesBacktickEscaped.Should().BeEmpty();
     }
 
+    // --- #713 single escaped dotted token in expression position ------------------------------
+
+    private static MemberAccess ExpressionOf(string source) =>
+        Parse(source).Body.Single().Should().BeOfType<Assignment>().Subject
+            .Value.Should().BeOfType<MemberAccess>().Subject;
+
+    [Fact]
+    public void SingleEscapedDottedToken_MarksTheChainEnd_Only()
+    {
+        // `a.b.c`.d — the token closes at `c`, so only that MemberAccess carries the mark; the
+        // outer `.d` and the inner `.b` do not.
+        var outer = ExpressionOf("x = `a.b.c`.d\n");
+        outer.Member.Should().Be("d");
+        outer.IsSingleEscapedTokenChain.Should().BeFalse();
+        var tokenEnd = outer.Object.Should().BeOfType<MemberAccess>().Subject;
+        tokenEnd.Member.Should().Be("c");
+        tokenEnd.IsSingleEscapedTokenChain.Should().BeTrue();
+        var inner = tokenEnd.Object.Should().BeOfType<MemberAccess>().Subject;
+        inner.Member.Should().Be("b");
+        inner.IsSingleEscapedTokenChain.Should().BeFalse();
+        inner.Object.Should().BeOfType<Identifier>().Which.IsNameBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PerSegmentEscapes_AreNotASingleTokenChain()
+    {
+        var tokenEnd = ExpressionOf("x = `a`.`b`\n");
+        tokenEnd.IsMemberBacktickEscaped.Should().BeTrue();
+        tokenEnd.IsSingleEscapedTokenChain.Should().BeFalse();
+    }
+
     // --- AsPattern capture (the one capture site that did not copy the escape) -----------------
 
     [Fact]

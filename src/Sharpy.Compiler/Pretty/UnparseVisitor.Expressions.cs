@@ -79,11 +79,43 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitMemberAccess(MemberAccess node)
     {
+        // A chain the parser expanded from one #713 backtick token (`System.IO.Path`) is written
+        // back as that token, not as per-segment escapes (#2157).
+        if (node.IsSingleEscapedTokenChain && TrySingleEscapedTokenSegments(node) is { } segments)
+        {
+            _w.Write("`");
+            _w.Write(string.Join(".", segments));
+            _w.Write("`");
+            return;
+        }
         VisitPostfixObject(node.Object);
         _w.Write(node.IsNullConditional ? "?." : ".");
         // The escape is read by code generation (NameCasing: an escaped member is not
         // pascal-cased), so dropping it can bind a different CLR member (#2157).
         WriteName(node.Member, node.IsMemberBacktickEscaped);
+    }
+
+    /// <summary>
+    /// The segments of a single-escaped-token chain, root first, or null when the chain is not the
+    /// plain shape the parser builds (every link an escaped, non-null-conditional MemberAccess down
+    /// to an escaped Identifier) — a rewritten node then falls back to the per-segment spelling.
+    /// </summary>
+    private static List<string>? TrySingleEscapedTokenSegments(MemberAccess node)
+    {
+        var segments = new List<string>();
+        Expression current = node;
+        while (current is MemberAccess ma)
+        {
+            if (!ma.IsMemberBacktickEscaped || ma.IsNullConditional)
+                return null;
+            segments.Add(ma.Member);
+            current = ma.Object;
+        }
+        if (current is not Identifier { IsNameBacktickEscaped: true } root)
+            return null;
+        segments.Add(root.Name);
+        segments.Reverse();
+        return segments;
     }
 
     public override void VisitIndexAccess(IndexAccess node)

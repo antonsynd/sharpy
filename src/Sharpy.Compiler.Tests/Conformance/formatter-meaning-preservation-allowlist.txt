@@ -24,16 +24,12 @@
 # Populated by the first run (P22b Phase 1); drained to EMPTY by the end of Phase 4.
 # DO NOT DELETE THIS FILE: its presence arms the ratchet, and the sweep throws if it is missing.
 
-# ---- identity twin (T0) — the fixture as written: 176 rows ----
+# ---- identity twin (T0) — the fixture as written: 171 rows ----
 basics/arithmetic_operators_0006 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0001 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0004 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0011 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0032 identity refused # #2077 formatter declined (SPY0912); was commentDropped
-basics/backtick_dotted_member_chain identity refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_access identity refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_deep_namespace identity refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_math identity refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/bool_variables_0001 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/bool_variables_0002 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/bool_variables_0003 identity refused # #2077 formatter declined (SPY0912); was commentDropped
@@ -100,7 +96,6 @@ control_flow/if_elif_else_0001 identity refused # #2077 formatter declined (SPY0
 control_flow/if_else_simple_0015 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 control_flow/nested_if_in_loop_0007 identity refused # #2077 formatter declined (SPY0912); was commentDropped
 decorators/deprecated_mustuse_single_method_1537 identity refused # #2077 formatter declined (SPY0912); was commentDropped
-errors/backtick_inline_clr_unknown_namespace identity refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/error_recovery/missing_base_class_methods/main identity refused # #2077 formatter declined (SPY0912); was commentDropped
 errors/event_unsupported_operator identity refused # #2077 formatter declined (SPY0912); was commentDropped
 errors/function_boundary_narrowing_isolation identity refused # #2077 formatter declined (SPY0912); was commentDropped
@@ -3475,7 +3470,7 @@ with_statement/with_error_no_enter comment refused # #2077 formatter declined (S
 with_statement/with_exception_handling comment refused # #2077 formatter declined (SPY0912); was commentDropped
 with_statement/with_nested comment refused # #2077 formatter declined (SPY0912); was commentDropped
 
-# ---- backtick twin (T2) — every identifier escaped: 479 rows ----
+# ---- backtick twin (T2) — every identifier escaped: 474 rows ----
 Formatting/let_declarations backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 arrays/array_case_list_pattern backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/arithmetic_operators_0006 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
@@ -3483,10 +3478,6 @@ basics/augmented_assignment_0001 backtick refused # #2077 formatter declined (SP
 basics/augmented_assignment_0004 backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0011 backtick refused # #2077 formatter declined (SPY0912); was commentDropped
 basics/augmented_assignment_0032 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
-basics/backtick_dotted_member_chain backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_access backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_deep_namespace backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-basics/backtick_inline_clr_math backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/backtick_local_declaration_spaces backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 basics/bool_variables_0001 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
 basics/bool_variables_0002 backtick refused # #2157 formatter declined (SPY0912); was commentDropped+escapeDropped
@@ -3571,7 +3562,6 @@ decorators/internal_visibility_0001 backtick refused # #2157 formatter declined 
 enums/string_enum_match_1284 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/abstract_members_in_abstract_class_1307 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/abstract_property_non_abstract_class_1307 backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
-errors/backtick_inline_clr_unknown_namespace backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/class_attribute_bare_property_accessor backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/class_attribute_bare_store_inherited_property backtick refused # #2157 formatter declined (SPY0912); was escapeDropped
 errors/class_attribute_bare_store_property backtick refused # #2157 formatter declined (SPY0912); was escapeDropped

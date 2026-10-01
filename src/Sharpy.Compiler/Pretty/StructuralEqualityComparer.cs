@@ -213,6 +213,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 
     private bool MemberAccessEquals(MemberAccess a, MemberAccess b) =>
         a.Member == b.Member && a.IsMemberBacktickEscaped == b.IsMemberBacktickEscaped
+        && a.IsSingleEscapedTokenChain == b.IsSingleEscapedTokenChain
         && a.IsNullConditional == b.IsNullConditional && Equals(a.Object, b.Object);
 
     private bool SliceEquals(SliceAccess a, SliceAccess b) =>

@@ -249,6 +249,9 @@ public partial class Parser
                                 Object = expr,
                                 Member = segments[i],
                                 IsMemberBacktickEscaped = true,
+                                // The last segment closes the one source token (#2157): the
+                                // unparser writes the whole chain back as that token.
+                                IsSingleEscapedTokenChain = i == segments.Length - 1,
                                 MemberNameLineStart = identToken.Line,
                                 MemberNameColumnStart = segmentColumn,
                                 MemberNameColumnEnd = segmentColumn + segments[i].Length,
