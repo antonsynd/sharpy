@@ -18,11 +18,11 @@ import zoneinfo
 |------|------|-------------|
 | `key` | `str` |  |
 
-### `utcoffset(dt: DateTime | None = None) -> Timedelta`
+### `utcoffset(dt: datetime.datetime | None = None) -> datetime.timedelta`
 
-### `tzname(dt: DateTime | None = None) -> str`
+### `tzname(dt: datetime.datetime | None = None) -> str`
 
-### `dst(dt: DateTime | None = None) -> Timedelta`
+### `dst(dt: datetime.datetime | None = None) -> datetime.timedelta`
 
 ### `__str__() -> str`
 

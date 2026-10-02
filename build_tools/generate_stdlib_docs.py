@@ -147,9 +147,26 @@ _SHARPY_TYPE_NAMES: dict[str, str] = {
     "Sharpy.Bytes": "bytes",
     "Slice": "slice",
     "Sharpy.Slice": "slice",
+    # `RegisterType(BuiltinNames.Complex, typeof(Sharpy.Complex))` — Python's spelling (#1362, #2163).
+    "Complex": "complex",
+    "Sharpy.Complex": "complex",
 }
 
-# Generic type mappings (prefix match)
+# Generic types, keyed by the C# outer name. Every value is the name the compiler resolves for that
+# CLR type (#2163), cited by where it is registered — a page may only spell a type the way a Sharpy
+# user can write it:
+#   list / dict / set   BuiltinRegistry `RegisterType("list", typeof(Sharpy.List<>))`, etc.
+#   IEnumerable         `RegisterType(BuiltinNames.IEnumerable, typeof(IEnumerable<>))`; the spec's
+#                       spelling (collection_types.md "`IEnumerable[T]` for a read-only ...",
+#                       dunder_methods.md `__iter__`). NOT `Iterable`: no Sharpy surface declares
+#                       it (`def f(xs: Iterable[int])` is SPY0202 "Generic type 'Iterable' not found").
+#   IEnumerator         `RegisterType(BuiltinNames.IEnumerator, typeof(IEnumerator<>))`. NOT
+#                       `Iterator`: that is the registered abstract `Sharpy.Iterator<T>`, another type.
+#   Iterator            `RegisterType(BuiltinNames.Iterator, typeof(Sharpy.Iterator<>))`.
+#   Optional / Result   `RegisterType("Optional", ...)`, `RegisterType("Result", ...)`.
+#   tuple               `RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple))`.
+# `IComparer<T>` has no entry: it renders as itself, a System.Collections.Generic interface the
+# compiler resolves bare. The `Comparer` it used to render as is `SCG.Comparer<T>`, another type.
 _GENERIC_TYPE_MAP: dict[str, str] = {
     "List": "list",
     "Sharpy.List": "list",
@@ -157,9 +174,9 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "Sharpy.Dict": "dict",
     "Set": "set",
     "Sharpy.Set": "set",
-    "IEnumerable": "Iterable",
-    "System.Collections.Generic.IEnumerable": "Iterable",
-    "IEnumerator": "Iterator",
+    "IEnumerable": "IEnumerable",
+    "System.Collections.Generic.IEnumerable": "IEnumerable",
+    "IEnumerator": "IEnumerator",
     "Iterator": "Iterator",
     "Sharpy.Iterator": "Iterator",
     "Optional": "Optional",
@@ -167,9 +184,38 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "Tuple": "tuple",
     "ValueTuple": "tuple",
     "System.ValueTuple": "tuple",
-    "IComparer": "Comparer",
-    "TextWriter": "TextWriter",
 }
+
+# The spec's parameter modifiers (parameter_modifiers.md): a Sharpy parameter type is written
+# `ref T` / `out T` / `in T` — the modifier kept, the type after it mapped like any other (#2163).
+# Unmapped, `ref float` (C# System.Single) read as Sharpy's `float` (float64), a different type.
+_PARAMETER_MODIFIER_RE = re.compile(r"^(ref|out|in)\s+(\S.*)$", re.DOTALL)
+
+# A copy of `BuiltinRegistry.ClrFallbackNamespaces`: the namespaces the compiler searches for a
+# BARE CLR type name in an annotation (dotnet_interop.md "Import Name Fidelity"), System first and
+# the Sharpy runtime namespace last. A C# type spelled `System.<ns>.<T>` renders bare `<T>` when
+# `System.<ns>` is listed here and `<T>` is not also a type the documented sources declare (which
+# the bare spelling would denote instead); otherwise as the import path `system.<snake ns>.<T>`
+# that `import system.<snake ns>` makes valid. Kept equal to the compiler's list by
+# `TestRenderedTypeRoster.test_generator_fallback_namespaces_match_the_compiler`.
+_CLR_FALLBACK_NAMESPACES = (
+    "System",
+    "System.Collections.Generic",
+    "System.IO",
+    "System.Text",
+    "System.IO.Compression",
+    "System.Net",
+    "System.Net.Sockets",
+    "System.Net.Http",
+    "System.Numerics",
+    "System.Threading",
+    "System.Threading.Tasks",
+    "System.Text.RegularExpressions",
+    "System.Security.Cryptography",
+    "System.Diagnostics",
+    "System.Linq",
+    "Sharpy",
+)
 
 
 # Literal default value mapping for C# -> Sharpy. `default` is C#'s "zero value of the type": for
@@ -181,6 +227,20 @@ _LITERAL_DEFAULTS: dict[str, str] = {
     "true": "True",
     "default": "None",
 }
+
+
+def _builtin_function_name(snake: str) -> str:
+    """The name a builtin function is called by (#2163). Reverse-mangling `Builtins.UInt16` gives
+    `u_int16`, but the compiler aliases a builtin whose underscore-stripped name is a registered type
+    name to that type's spelling (BuiltinRegistry.LoadBuiltinFunctions, #1637): users call
+    `uint16(x)`, and `u_int16` is not the documented name."""
+    stripped = snake.replace("_", "")
+    builtin_types = (
+        set(_SHARPY_TYPE_NAMES.values())
+        | set(_TYPE_MAP.values())
+        | {name for name in _GENERIC_TYPE_MAP.values() if name.islower()}
+    )
+    return stripped if stripped != snake and stripped in builtin_types else snake
 
 
 def _sharpy_param_name(cs_name: str) -> str:
@@ -201,14 +261,110 @@ _CS_NAMESPACE_ALIASES: dict[str, str] = {
     "BclComplex": "System.Numerics.Complex",
 }
 
-# Common C# namespace prefixes to strip for cleaner type names
+# Common C# namespace prefixes to strip for cleaner type names. Any other `System.<ns>.` prefix is
+# rendered by `_clr_type_spelling` (#2163): stripping just `System.` left the rest of the namespace
+# behind (`Net.Sockets.SocketException`), a spelling no Sharpy annotation resolves.
 _CS_NAMESPACE_PREFIXES = [
     "System.Collections.Generic.",
     "System.Collections.",
     "System.Text.RegularExpressions.",
     "System.IO.",
-    "System.",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Source index: the types and members the documented sources declare (#2163)
+# ---------------------------------------------------------------------------
+
+# A `[SharpyModuleType("mod")]` / `[SharpyModuleType("mod", "display")]` annotation: written bare
+# by hand, `global::Sharpy.`-qualified on generated spy modules (#2039), trailing named arguments
+# accepted (#2035).
+_MODULE_TYPE_ANNOTATION_RE = re.compile(
+    r'\[(?:global::Sharpy\.)?SharpyModuleType\("([^"]+)"(?:\s*,\s*"([^"]+)")?'
+    r'(?:\s*,\s*\w+\s*=\s*"[^"]*")*\)\]'
+)
+_ANNOTATED_CLASS_RE = re.compile(r"public\s+(?:sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+(\w+)")
+_TYPE_DECL_NAME_RE = re.compile(
+    r"^\s*(?:\[.*\]\s*)?(?:(?:public|internal|private|protected|static|sealed|abstract|partial|"
+    r"readonly|ref|unsafe|new|file)\s+)*(?:class|struct|interface|enum|record(?:\s+(?:class|struct))?)\s+(\w+)",
+    re.MULTILINE,
+)
+_MEMBER_DECL_RE = re.compile(
+    r"^\s*(?:(?:public|internal|private|protected|static|override|virtual|abstract|sealed|new|"
+    r"readonly|async|unsafe|extern|partial)\s+)+[\w<>\[\],.?:() ]*?\b([A-Z]\w*)\s*(?:<[^<>()]*>)?\s*(?:\(|\{|=>|$)"
+)
+
+# CLR class name -> [(module, documented name)] of every `[SharpyModuleType]` class. A module type
+# is spelled by its documented name, bare on its own page and `<module>.<name>` on another (#1911),
+# never by its CLR class name (`NdArray` is `ndarray`, `Sqlite3Cursor` is `Cursor`).
+_MODULE_TYPES: dict[str, list[tuple[str, str]]] = {}
+# Every type / member name the documented sources declare: what tells a bare `<see cref="X"/>`
+# naming a member (rendered as its Sharpy name) from one naming a type.
+_DECLARED_TYPES: set[str] = set()
+_DECLARED_MEMBERS: set[str] = set()
+_INDEXED_ROOTS: set[Path] = set()
+
+
+def reset_source_index() -> None:
+    _MODULE_TYPES.clear()
+    _DECLARED_TYPES.clear()
+    _DECLARED_MEMBERS.clear()
+    _INDEXED_ROOTS.clear()
+
+
+def index_sources(*roots: "Path | None") -> None:
+    """Add every `.cs` file under *roots* to the source index (idempotent per root)."""
+    for root in roots:
+        if root is None or not root.exists() or root.resolve() in _INDEXED_ROOTS:
+            continue
+        _INDEXED_ROOTS.add(root.resolve())
+        for cs_file in sorted(root.rglob("*.cs")):
+            if {"bin", "obj"} & set(cs_file.relative_to(root).parts):
+                continue
+            text = cs_file.read_text(encoding="utf-8")
+            for annotation in _MODULE_TYPE_ANNOTATION_RE.finditer(text):
+                cm = _ANNOTATED_CLASS_RE.search(text[annotation.end() :])
+                if cm:
+                    entry = (annotation.group(1), annotation.group(2) or cm.group(1))
+                    entries = _MODULE_TYPES.setdefault(cm.group(1), [])
+                    if entry not in entries:
+                        entries.append(entry)
+            _DECLARED_TYPES.update(_TYPE_DECL_NAME_RE.findall(text))
+            for line in text.split("\n"):
+                if not _TYPE_DECL_NAME_RE.search(line):
+                    match = _MEMBER_DECL_RE.match(line)
+                    if match:
+                        _DECLARED_MEMBERS.add(match.group(1))
+
+
+def _module_type_spelling(class_name: str, current_module: "str | None") -> "str | None":
+    """The documented spelling of a `[SharpyModuleType]` class, or None when *class_name* is not one
+    (or names classes in several modules, none of them this page's)."""
+    entries = _MODULE_TYPES.get(class_name)
+    if not entries:
+        return None
+    for module, display in entries:
+        if current_module is not None and module.lower() == current_module.lower():
+            return display
+    if len(entries) == 1:
+        module, display = entries[0]
+        return f"{module}.{display}"
+    return None
+
+
+def _clr_type_spelling(full_name: str) -> str:
+    """The Sharpy spelling of a namespace-qualified CLR type `System.<ns>.<T>` (#2163)."""
+    namespace, _, name = full_name.rpartition(".")
+    if namespace in _CLR_FALLBACK_NAMESPACES and name not in _DECLARED_TYPES:
+        return name
+    return ".".join(pascal_to_snake(segment) for segment in namespace.split(".")) + "." + name
+
+
+# A C# file's `using X = Y;` aliases, set by parse_cs_file while it parses that file (#2163): a
+# signature written `NdArray<BclComplex>` names `System.Numerics.Complex`, and `StatResult` under
+# `using StatResult = Sharpy.OsModule.StatResult;` names os's type.
+_USING_ALIASES: dict[str, str] = {}
+_USING_ALIAS_RE = re.compile(r"^\s*using\s+(\w+)\s*=\s*([\w.:]+(?:<[^;]*>)?)\s*;", re.MULTILINE)
 
 
 # The module whose page is currently being parsed, set by discover_modules so map_type can render a
@@ -230,6 +386,11 @@ def _qualify_module_type(cs_type: str, current_module: "str | None") -> "str | N
         return None
     module = match.group(1).lower()
     type_name = match.group(2)
+    # The documented name when the index knows the class (`Sharpy.PlatformModule.UnameResult` is
+    # `platform.uname_result`, #2163).
+    for indexed_module, display in _MODULE_TYPES.get(type_name, ()):
+        if indexed_module.lower() == module:
+            type_name = display
     if current_module is not None and module == current_module.lower():
         return type_name
     return f"{module}.{type_name}"
@@ -250,11 +411,21 @@ def _normalize_cs_type(cs_type: str) -> str:
     # Strip common namespace prefixes (but keep the mapped form if it's in _TYPE_MAP)
     for prefix in _CS_NAMESPACE_PREFIXES:
         if cs_type.startswith(prefix):
-            candidate = cs_type[len(prefix):]
-            # Only strip prefix if the result is a known type (or still has namespace)
-            # Always strip — downstream maps handle them
-            cs_type = candidate
-            break
+            rest = cs_type[len(prefix):]
+            # A NON-generic `System.Collections.IEnumerable` stripped bare would read as the generic
+            # builtin `IEnumerable[T]` written without its argument (#2163): its import path instead.
+            dotted = re.match(r"^([\w.]+)(.*)$", cs_type, re.DOTALL)
+            if prefix == "System.Collections." and dotted and dotted.group(1)[len(prefix):] in _GENERIC_TYPE_MAP:
+                return _clr_type_spelling(dotted.group(1)) + dotted.group(2)
+            return rest
+    # Any other `System.` type: bare when the compiler resolves it bare, else its import path.
+    qualified = re.match(r"^(System\.[\w.]+)(.*)$", cs_type, re.DOTALL)
+    if qualified:
+        return _clr_type_spelling(qualified.group(1)) + qualified.group(2)
+    # A Sharpy runtime type spelled `Sharpy.<T>` (a `Sharpy.<M>Module.<T>` module type is
+    # `_qualify_module_type`'s).
+    if re.match(r"^Sharpy\.\w+(?:<.*)?$", cs_type, re.DOTALL) and not re.match(r"^Sharpy\.\w+Module\b", cs_type):
+        return cs_type[len("Sharpy."):]
     return cs_type
 
 
@@ -307,6 +478,18 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     if not cs_type:
         return ""
 
+    # A spec parameter modifier stays; the type after it is mapped (#2163).
+    modified = _PARAMETER_MODIFIER_RE.match(cs_type)
+    if modified:
+        return f"{modified.group(1)} {map_type(modified.group(2), current_module)}"
+
+    # A file-level `using X = Y;` alias names Y (#2163): a type alias whole, a namespace alias as
+    # the prefix of a qualified name.
+    bare = cs_type[len("global::") :] if cs_type.startswith("global::") else cs_type
+    head = re.match(r"^(\w+)(?=[.?<\[]|$)", bare)
+    if head and head.group(1) in _USING_ALIASES:
+        cs_type = _USING_ALIASES[head.group(1)] + bare[head.end() :]
+
     # Normalize: strip global:: and common namespace prefixes
     cs_type = _normalize_cs_type(cs_type)
 
@@ -356,7 +539,7 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
         # Split on top-level commas (respect nested generics and tuples)
         inners = _split_generic_args(inner_raw)
         mapped_inners = ", ".join(map_type(i, current_module) for i in inners)
-        mapped_outer = _GENERIC_TYPE_MAP.get(outer, outer)
+        mapped_outer = _GENERIC_TYPE_MAP.get(outer) or _named_type(outer, current_module)
         return f"{mapped_outer}[{mapped_inners}]"
 
     # Action (no generics) -> () -> None
@@ -386,12 +569,16 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
     if cs_type in _GENERIC_TYPE_MAP:
         return _GENERIC_TYPE_MAP[cs_type]
 
-    # A module-defined type (Sharpy.<M>Module.<T>) reads as its Sharpy name (#1911).
+    return _named_type(cs_type, current_module)
+
+
+def _named_type(cs_type: str, current_module: "str | None") -> str:
+    """A non-builtin named type: a module type by its documented name (#1911, #2163), else as is."""
     qualified = _qualify_module_type(cs_type, current_module)
     if qualified is not None:
         return qualified
-
-    return cs_type
+    documented = _module_type_spelling(cs_type, current_module)
+    return documented if documented is not None else cs_type
 
 
 def _group_nullable_callable(mapped: str) -> str:
@@ -477,9 +664,14 @@ def _render_cref(cref: str) -> str:
       `Builtins.Repr` -> `repr`); the declaring type is dropped, as a page names members bare;
     - a .NET API member (a `System.` path) -> its CLR path with the parameter list dropped, since
       the prose is naming the .NET API itself (`System.Diagnostics.Debugger.Break`);
-    - a type -> `map_type` (`List{T}` -> `list[T]`, `double` -> `float`); a member of a generic type
-      keeps its member name (`Optional{T}.None` -> `Optional[T].None`);
-    - anything else — a bare name, which the doc text alone cannot tell type from member — verbatim.
+    - a type -> `map_type` (`List{T}` -> `list[T]`, `double` -> `float`, `Sqlite3Cursor` ->
+      `Cursor`); a union case of a generic type keeps its name (`Optional{T}.None` ->
+      `Optional[T].None`), any other member of one is snake-cased;
+    - a bare or dotted name -> told type from member by the source index (#2163): a name the
+      documented sources declare as a type is mapped as one; a name they declare as a member
+      renders as the member's Sharpy name, declaring type dropped (`Ndim` -> `ndim`,
+      `NumpyLinalg.Dot` -> `dot`, `ToString` -> `__str__`);
+    - anything else (a .NET API the sources do not declare, `HttpClient`) — verbatim.
     """
     target = re.sub(r"^[A-Z]:", "", cref.strip()).replace("{", "<").replace("}", ">")
     paren = target.find("(")
@@ -492,10 +684,24 @@ def _render_cref(cref: str) -> str:
         return pascal_to_snake(path.rsplit(".", 1)[-1])
     member_of_generic = re.match(r"^(.*>)\.(\w+)$", target)
     if member_of_generic:
-        return f"{map_type(member_of_generic.group(1))}.{member_of_generic.group(2)}"
+        member = member_of_generic.group(2)
+        if member not in _UNION_CASE_NAMES:
+            member = pascal_to_snake(member)
+        return f"{map_type(member_of_generic.group(1))}.{member}"
     if "<" in target or target in _TYPE_MAP or target in _SHARPY_TYPE_NAMES:
         return map_type(target)
+    if target.startswith("System."):
+        return target
+    last = target.rsplit(".", 1)[-1]
+    if last in _DECLARED_TYPES or last in _MODULE_TYPES or target in _GENERIC_TYPE_MAP:
+        return map_type(target)
+    if last in _DECLARED_MEMBERS:
+        return pascal_to_snake(last)
     return target
+
+
+# The union cases Sharpy spells capitalized (`Some`/`None`/`Ok`/`Err`, WellKnownCaseNames).
+_UNION_CASE_NAMES = frozenset({"Some", "None", "Ok", "Err"})
 
 
 def _strip_xml_tags(text: str) -> str:
@@ -656,6 +862,9 @@ class DocMember:
     # renders under its declaring type's section, never as a module function of another type's.
     declaring_type: str = ""
     declaring_static: bool = False
+    # The declaring type's generic parameters: in scope for the member's signature wherever the
+    # member renders (an un-annotated generic class's members render at module level, #1980).
+    declaring_type_params: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -1267,7 +1476,23 @@ def parse_cs_file(
     declarations within that line range are considered; declarations inside any of
     *exclude_ranges* (nested or annotated types owned elsewhere) are skipped.
     """
+    global _USING_ALIASES
     text = filepath.read_text(encoding="utf-8")
+    saved_aliases = _USING_ALIASES
+    _USING_ALIASES = dict(_USING_ALIAS_RE.findall(text))
+    try:
+        return _parse_cs_text(text, is_extension, is_builtins, line_range, exclude_ranges)
+    finally:
+        _USING_ALIASES = saved_aliases
+
+
+def _parse_cs_text(
+    text: str,
+    is_extension: bool,
+    is_builtins: bool,
+    line_range: "tuple[int, int] | None",
+    exclude_ranges: "list[tuple[int, int]] | None",
+) -> list[DocMember]:
     lines = text.split("\n")
     members: list[DocMember] = []
 
@@ -1281,6 +1506,10 @@ def parse_cs_file(
     def _declaring_static(line: int) -> bool:
         enclosing = [start for _, start, end in _public_ranges if start <= line <= end]
         return bool(enclosing) and bool(re.search(r"\bstatic\b", lines[max(enclosing)]))
+
+    def _declaring_type_params(line: int) -> list[str]:
+        enclosing = [start for _, start, end in _public_ranges if start <= line <= end]
+        return _class_type_params(lines[max(enclosing)]) if enclosing else []
 
     i = 0
 
@@ -1325,6 +1554,7 @@ def parse_cs_file(
                         is_static=True,
                         declaring_type=_declaring_type(i),
                         declaring_static=_declaring_static(i),
+                        declaring_type_params=_declaring_type_params(i),
                     )
                 )
             i = end_i + 1
@@ -1332,7 +1562,9 @@ def parse_cs_file(
 
         # Skip class/struct/interface/enum declarations
         if re.match(
-            r"public\s+(?:(?:static|sealed|abstract|partial|readonly)\s+)*(?:class|struct|interface|enum)\s",
+            # `record` too: a positional `public sealed record CacheInfo(int Hits, ...)` is a TYPE
+            # declaration, which the method pattern read as `cache_info(...) -> record` (#2163).
+            r"public\s+(?:(?:static|sealed|abstract|partial|readonly)\s+)*(?:class|struct|interface|enum|record)\s",
             joined,
         ):
             i = end_i + 1
@@ -1373,6 +1605,8 @@ def parse_cs_file(
                 p.description = doc_params.get(p.name, "")
 
             sharpy_name = pascal_to_snake(mname)
+            if is_builtins:
+                sharpy_name = _builtin_function_name(sharpy_name)
             mapped_ret = map_type(ret_type.strip())
             is_static = "static" in modifiers
             # `ToString(format, provider)` is `IFormattable`'s method — the CLR spelling of
@@ -1425,6 +1659,7 @@ def parse_cs_file(
                     type_params=_split_type_params(type_params),
                     declaring_type=_declaring_type(i),
                     declaring_static=_declaring_static(i),
+                    declaring_type_params=_declaring_type_params(i),
                 )
             )
             i = end_i + 1
@@ -1451,6 +1686,7 @@ def parse_cs_file(
                             is_static="static" in modifiers,
                             declaring_type=_declaring_type(i),
                             declaring_static=_declaring_static(i),
+                            declaring_type_params=_declaring_type_params(i),
                         )
                     )
 
@@ -1501,6 +1737,7 @@ def _get_class_summary(filepath: Path) -> str:
 
 def discover_modules(core_dir: Path) -> list[DocModule]:
     """Discover all stdlib modules from Sharpy.Core source."""
+    index_sources(core_dir)
     modules: list[DocModule] = []
 
     for subdir in sorted(core_dir.iterdir()):
@@ -1537,6 +1774,17 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
         all_types: list[DocType] = []
         types_by_class: dict[str, DocType] = {}
         pending_extensions: list[tuple[Path, tuple[str, int, int]]] = []
+        pending_types: list[tuple[Path, str, int, int]] = []
+        # The classes this module's files annotate `[SharpyModuleType]`: a partial declaration of
+        # one in ANY file is that type's (#2163).
+        module_type_classes = {
+            cm.group(1)
+            for f in subdir.glob("*.cs")
+            for text in [f.read_text(encoding="utf-8")]
+            for annotation in _MODULE_TYPE_ANNOTATION_RE.finditer(text)
+            for cm in [_ANNOTATED_CLASS_RE.search(text[annotation.end() :])]
+            if cm
+        }
 
         for cs_file in sorted(subdir.glob("*.cs")):
             if cs_file.name == "__Init__.cs":
@@ -1561,6 +1809,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     file_text,
                 )
             )
+            owned: list[tuple[int, int]] = []
             if type_annotations:
                 # Find all annotated class names and their line positions
                 file_lines = file_text.split("\n")
@@ -1587,7 +1836,6 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 # annotated class" — folded an un-annotated trailing class into the last one.
                 public_ranges = _find_public_class_ranges(file_lines)
                 range_by_start = {start: end for _, start, end in public_ranges}
-                owned: list[tuple[int, int]] = []
                 for ci in range(len(annotated_classes)):
                     display_name, class_name, start, _ = annotated_classes[ci]
                     end = range_by_start.get(start, len(file_lines) - 1)
@@ -1616,19 +1864,22 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     all_types.append(doc_type)
                     types_by_class[class_name] = doc_type
 
-                # Un-annotated public classes in an annotated file are module-level, as they are
-                # in every non-annotated file.
-                extensions = _extension_class_ranges(file_lines)
-                pending_extensions.extend((cs_file, ext) for ext in extensions)
-                owned.extend((start, end) for _, start, end in extensions)
-                all_members.extend(_module_level(parse_cs_file(cs_file, exclude_ranges=owned)))
-            else:
-                extensions = _extension_class_ranges(file_text.split("\n"))
-                pending_extensions.extend((cs_file, ext) for ext in extensions)
-                members = parse_cs_file(
-                    cs_file, exclude_ranges=[(start, end) for _, start, end in extensions]
-                )
-                all_members.extend(_module_level(members))
+            file_lines = file_text.split("\n")
+            extensions = _extension_class_ranges(file_lines)
+            pending_extensions.extend((cs_file, ext) for ext in extensions)
+            owned.extend((start, end) for _, start, end in extensions)
+            # A declaration of an ANNOTATED type outside the annotated file — a `partial class`
+            # continued in `NdArray.Shape.cs` / `ConfigParser.IO.cs` — is that type's surface, not
+            # the module's (#2163): the owner is the declared type, not the file. Resolved after the
+            # loop because the annotated declaration may sort later (`NdArray.Shape.cs` <
+            # `NdArray.cs`). Any other un-annotated public type stays module-level (#1980).
+            public_ranges = _find_public_class_ranges(file_lines)
+            for name, start, end in public_ranges:
+                top_level = not any(ps < start and end <= pe for _, ps, pe in public_ranges)
+                if top_level and name in module_type_classes and (start, end) not in owned:
+                    pending_types.append((cs_file, name, start, end))
+                    owned.append((start, end))
+            all_members.extend(_module_level(parse_cs_file(cs_file, exclude_ranges=owned)))
 
         # A static class of extension methods on one of this module's types is that type's
         # instance surface (#2055): `NdArrayReductionExtensions.Sum(this NdArray<double> a)` is
@@ -1645,6 +1896,15 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 all_members.extend(
                     _module_level(parse_cs_file(cs_file, line_range=(start, end)))
                 )
+
+        # A partial declaration of an annotated type in a second file renders under the type's
+        # section (#2163), as its annotated file's members do.
+        for cs_file, name, start, end in pending_types:
+            file_lines = cs_file.read_text(encoding="utf-8").split("\n")
+            nested = [(s, e) for _, s, e in _find_public_class_ranges(file_lines) if start < s and e <= end]
+            types_by_class[name].members.extend(
+                parse_cs_file(cs_file, line_range=(start, end), exclude_ranges=nested)
+            )
 
         modules.append(
             DocModule(
@@ -1663,6 +1923,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
 
 def discover_core_types(core_dir: Path) -> list[DocModule]:
     """Discover core types (list, dict, set, str, complex)."""
+    index_sources(core_dir)
     type_dirs = {
         "Partial.List": ("list", False),
         "Partial.Dict": ("dict", False),
@@ -1720,6 +1981,7 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
 
 def discover_builtins(core_dir: Path) -> DocModule:
     """Discover built-in functions from Builtins partial class."""
+    index_sources(core_dir)
     all_members: list[DocMember] = []
 
     # Root-level files containing partial class Builtins
@@ -1770,6 +2032,13 @@ def _escape_table_cell(text: str) -> str:
     text = text.replace("|", "\\|")
     text = text.replace("`", "\\`")
     return text
+
+
+def _type_cell(type_text: str) -> str:
+    """A type for a table cell's code span (#2163). GFM splits a row at every unescaped `|`, a code
+    span included, so the union `Response | None` cut its row into four cells; `\\|` is the GFM
+    escape, removed by the table parser before the span renders."""
+    return _one_line(type_text).replace("|", "\\|")
 
 
 def _render_member(member: DocMember, prefix: str = "") -> str:
@@ -1838,7 +2107,7 @@ def _render_constants_table(constants: list[DocMember]) -> str:
     ]
     for c in constants:
         lines.append(
-            f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |"
+            f"| `{c.name}` | `{_type_cell(c.return_type)}` | {_escape_table_cell(c.summary)} |"
         )
     lines.append("")
     return "\n".join(lines)
@@ -1878,7 +2147,7 @@ def render_module_page(module: DocModule) -> str:
         lines.append("|------|------|-------------|")
         for p in unique_props:
             lines.append(
-                f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |"
+                f"| `{p.name}` | `{_type_cell(p.return_type)}` | {_escape_table_cell(p.summary)} |"
             )
         lines.append("")
 
@@ -1921,7 +2190,7 @@ def render_module_page(module: DocModule) -> str:
             lines.append("|------|------|-------------|")
             for c in type_constants:
                 lines.append(
-                    f"| `{c.name}` | `{c.return_type}` | {_escape_table_cell(c.summary)} |"
+                    f"| `{c.name}` | `{_type_cell(c.return_type)}` | {_escape_table_cell(c.summary)} |"
                 )
             lines.append("")
 
@@ -1939,7 +2208,7 @@ def render_module_page(module: DocModule) -> str:
             lines.append("|------|------|-------------|")
             for p in unique_type_props:
                 lines.append(
-                    f"| `{p.name}` | `{p.return_type}` | {_escape_table_cell(p.summary)} |"
+                    f"| `{p.name}` | `{_type_cell(p.return_type)}` | {_escape_table_cell(p.summary)} |"
                 )
             lines.append("")
 
@@ -2152,6 +2421,23 @@ def update_mkdocs_nav(
 # ---------------------------------------------------------------------------
 
 
+def discover_all(
+    source_dir: Path, stdlib_dir: Optional[Path] = None
+) -> tuple[DocModule, list[DocModule], list[DocModule]]:
+    """``(builtins, core_types, modules)`` — every generator-owned page's model.
+
+    The source index spans BOTH trees before anything is parsed: a type renders by its documented
+    name wherever it is referenced, including from the other tree (#2163).
+    """
+    reset_source_index()
+    index_sources(source_dir, stdlib_dir)
+    modules = discover_modules(source_dir)
+    if stdlib_dir and stdlib_dir.exists():
+        modules.extend(discover_modules(stdlib_dir))
+    modules.sort(key=lambda m: m.name)
+    return discover_builtins(source_dir), discover_core_types(source_dir), modules
+
+
 def generate(
     source_dir: Path,
     output_dir: Path,
@@ -2177,27 +2463,11 @@ def generate(
 
     # Discover
     if verbose:
-        print("Discovering modules...")
-    modules = discover_modules(source_dir)
-    if stdlib_dir and stdlib_dir.exists():
-        stdlib_modules = discover_modules(stdlib_dir)
-        modules.extend(stdlib_modules)
-        if verbose:
-            print(f"  Found {len(stdlib_modules)} stdlib modules")
-    modules.sort(key=lambda m: m.name)
+        print("Discovering modules, core types and builtins...")
+    builtins, core_types, modules = discover_all(source_dir, stdlib_dir)
     if verbose:
         print(f"  Found {len(modules)} modules total")
-
-    if verbose:
-        print("Discovering core types...")
-    core_types = discover_core_types(source_dir)
-    if verbose:
         print(f"  Found {len(core_types)} core types")
-
-    if verbose:
-        print("Discovering builtins...")
-    builtins = discover_builtins(source_dir)
-    if verbose:
         print(f"  Found {len(builtins.members)} builtin members")
         print()
 
@@ -2318,11 +2588,7 @@ def check_docs(
         # Compare mkdocs nav.
         if mkdocs_path is not None and mkdocs_path.exists():
             current = mkdocs_path.read_text(encoding="utf-8")
-            modules = discover_modules(source_dir)
-            if stdlib_dir and stdlib_dir.exists():
-                modules.extend(discover_modules(stdlib_dir))
-            modules.sort(key=lambda m: m.name)
-            core_types = discover_core_types(source_dir)
+            _, core_types, modules = discover_all(source_dir, stdlib_dir)
             desired = compute_mkdocs_nav(mkdocs_path, core_types, modules)
             if current != desired:
                 messages.append(f"out-of-date nav: {mkdocs_path.name}")

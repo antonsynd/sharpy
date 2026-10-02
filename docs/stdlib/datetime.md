@@ -32,7 +32,7 @@ Represents a date (year, month, day).
 
 `repr()` uses the same method. Return the ISO 8601 string representation (yyyy-MM-dd).
 
-### `today() -> Date`
+### `today() -> date`
 
 Return the current local date.
 
@@ -48,7 +48,7 @@ Return the ISO day of the week (1=Monday through 7=Sunday).
 
 Return the ISO 8601 formatted string.
 
-### `replace(year: int | None = None, month: int | None = None, day: int | None = None) -> Date`
+### `replace(year: int | None = None, month: int | None = None, day: int | None = None) -> date`
 
 Return a new Date with replaced components.
 
@@ -56,11 +56,11 @@ Return a new Date with replaced components.
 
 Return the proleptic Gregorian ordinal of the date.
 
-### `fromordinal(ordinal: int) -> Date`
+### `fromordinal(ordinal: int) -> date`
 
 Create a Date from a proleptic Gregorian ordinal.
 
-### `fromisoformat(date_string: str) -> Date`
+### `fromisoformat(date_string: str) -> date`
 
 Parse a date from ISO 8601 format string.
 
@@ -109,24 +109,24 @@ A combination of a date and a time.
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
 | `microsecond` | `int` | The microsecond component (0-999999). |
-| `tzinfo` | `ITzinfo | None` | The timezone info, or null if naive. |
-| `date_component` | `Date` | The date component of this datetime. |
-| `time_component` | `Time` | The time component of this datetime. |
+| `tzinfo` | `ITzinfo \| None` | The timezone info, or null if naive. |
+| `date_component` | `date` | The date component of this datetime. |
+| `time_component` | `time` | The time component of this datetime. |
 
 ### `__str__() -> str`
 
 `repr()` uses the same method. Python's `str(datetime)`, its `isoformat(" ")`: the `.ffffff` part only when the
 microseconds are non-zero (#2043).
 
-### `now() -> DateTime`
+### `now() -> datetime`
 
 Return the current local datetime.
 
-### `utcnow() -> DateTime`
+### `utcnow() -> datetime`
 
 Return the current UTC datetime.
 
-### `combine(date: Date, time: Time) -> DateTime`
+### `combine(date: date, time: time) -> datetime`
 
 Combine a date and a time to create a datetime.
 
@@ -142,7 +142,7 @@ Return the ISO day of the week (1=Monday through 7=Sunday).
 
 Return the ISO 8601 formatted string.
 
-### `replace(year: int | None = None, month: int | None = None, day: int | None = None, hour: int | None = None, minute: int | None = None, second: int | None = None) -> DateTime`
+### `replace(year: int | None = None, month: int | None = None, day: int | None = None, hour: int | None = None, minute: int | None = None, second: int | None = None) -> datetime`
 
 Return a new DateTime with replaced components.
 
@@ -150,7 +150,7 @@ Return a new DateTime with replaced components.
 
 Return the Unix timestamp as a double.
 
-### `fromisoformat(date_string: str) -> DateTime`
+### `fromisoformat(date_string: str) -> datetime`
 
 Parse a datetime from ISO 8601 format string.
 
@@ -158,11 +158,11 @@ Parse a datetime from ISO 8601 format string.
 
 Format the datetime using Python strftime format codes.
 
-### `strptime(date_string: str, format: str) -> DateTime`
+### `strptime(date_string: str, format: str) -> datetime`
 
 Parse a datetime from a string using Python strftime format codes.
 
-### `astimezone(tz: ITzinfo) -> DateTime`
+### `astimezone(tz: ITzinfo) -> datetime`
 
 Convert to a different timezone.
 
@@ -175,7 +175,7 @@ Represents the difference between two dates or times.
 | Name | Type | Description |
 |------|------|-------------|
 | `days` | `int` | The days component of the time interval. |
-| `seconds` | `int` | Gets the remaining seconds after extracting days (0-86399). This matches Python's \`timedelta.seconds\` property. For the total number of seconds, use \`TotalSeconds\`. |
+| `seconds` | `int` | Gets the remaining seconds after extracting days (0-86399). This matches Python's \`timedelta.seconds\` property. For the total number of seconds, use \`total_seconds\`. |
 | `microseconds` | `int` | The microseconds component of the time interval. |
 | `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
 
@@ -185,7 +185,7 @@ Represents the difference between two dates or times.
 (days, seconds, microseconds) triple — days floored, so `-1 day, 23:00:00` is minus an
 hour (#2043).
 
-### `abs() -> Timedelta`
+### `abs() -> timedelta`
 
 Return the absolute value of the timedelta.
 
@@ -197,18 +197,18 @@ Represents a fixed-offset timezone.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utc` | `Timezone` | The UTC timezone. |
+| `utc` | `timezone` | The UTC timezone. |
 
-### `utcoffset(dt: DateTime | None = None) -> Timedelta`
+### `utcoffset(dt: datetime | None = None) -> timedelta`
 
 Return the UTC offset (dt parameter ignored for fixed-offset zones).
 
-### `tzname(dt: DateTime | None = None) -> str`
+### `tzname(dt: datetime | None = None) -> str`
 
 Return the timezone name (dt parameter ignored for fixed-offset zones): the given name, else
 python's `UTC` for a zero offset and `UTC±HH:MM[:SS[.ffffff]]` otherwise.
 
-### `dst(dt: DateTime | None = None) -> Timedelta`
+### `dst(dt: datetime | None = None) -> timedelta`
 
 Return DST offset (always zero for fixed-offset zones).
 

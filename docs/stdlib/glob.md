@@ -27,7 +27,7 @@ glob.glob("src/[ab]*.py")   # files starting with a or b
 
 ### `glob.iglob(pattern: str) -> Iterator[str]`
 
-Return an iterator which yields the same values as `Glob`
+Return an iterator which yields the same values as `glob`
 without actually storing them all simultaneously.
 Similar to Python's `glob.iglob()`.
 

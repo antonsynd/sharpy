@@ -84,7 +84,7 @@ When serializing, registered prefixes will be used instead of auto-generated one
 ### `xml.comment(text: str) -> Element`
 
 Create a comment element with the given text.
-Serialized as `<!-- text -->` by `Tostring`.
+Serialized as `<!-- text -->` by `tostring`.
 
 **Parameters:**
 
@@ -95,7 +95,7 @@ Serialized as `<!-- text -->` by `Tostring`.
 ### `xml.processing_instruction(target: str, text: str | None = None) -> Element`
 
 Create a processing instruction element.
-Serialized as `<?target text?>` by `Tostring`.
+Serialized as `<?target text?>` by `tostring`.
 
 **Parameters:**
 
@@ -177,7 +177,7 @@ Return the number of direct child elements.
 
 Append a child element.
 
-### `extend(elements: Iterable[Element])`
+### `extend(elements: IEnumerable[Element])`
 
 Append all elements from the iterable.
 
@@ -240,7 +240,7 @@ Find the text content of the first matching child element.
 
 **Returns:** The text content of the matching element, or *default*.
 
-### `iter(tag: str | None = None) -> Iterable[Element]`
+### `iter(tag: str | None = None) -> IEnumerable[Element]`
 
 Iterate over all descendant elements (and optionally the element itself)
 that match the given tag.
@@ -251,7 +251,7 @@ that match the given tag.
 
 **Returns:** An enumerable of matching elements.
 
-### `iter_find(path: str, namespaces: dict[str, str] | None = None) -> Iterable[Element]`
+### `iter_find(path: str, namespaces: dict[str, str] | None = None) -> IEnumerable[Element]`
 
 Find all matching elements using an XPath-like expression,
 including descendants.
@@ -263,7 +263,7 @@ including descendants.
 
 **Returns:** An enumerable of matching elements.
 
-### `iter_text() -> Iterable[str]`
+### `iter_text() -> IEnumerable[str]`
 
 Iterate over all text content in this element and its descendants.
 
@@ -334,7 +334,7 @@ Find all matching elements by path from the root.
 
 **Returns:** A list of matching elements.
 
-### `iter(tag: str | None = None) -> Iterable[Element]`
+### `iter(tag: str | None = None) -> IEnumerable[Element]`
 
 Iterate over all elements matching the given tag.
 
@@ -344,7 +344,7 @@ Iterate over all elements matching the given tag.
 
 **Returns:** An enumerable of matching elements.
 
-### `iter_find(path: str, namespaces: dict[str, str] | None = None) -> Iterable[Element]`
+### `iter_find(path: str, namespaces: dict[str, str] | None = None) -> IEnumerable[Element]`
 
 Find all matching elements using an XPath-like expression from the root.
 

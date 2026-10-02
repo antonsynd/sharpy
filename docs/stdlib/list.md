@@ -80,14 +80,14 @@ x = [1, 2, 3]
 x.append(4)    # [1, 2, 3, 4]
 ```
 
-### `extend(enumerable: Iterable[T])`
+### `extend(enumerable: IEnumerable[T])`
 
 Extend the list by appending all the items from the iterable.
 Similar to a[len(a):] = iterable.
 
 **Parameters:**
 
-- `enumerable` (Iterable[T]) -- The iterable whose items are appended.
+- `enumerable` (IEnumerable[T]) -- The iterable whose items are appended.
 
 ```python
 x = [1, 2]
@@ -246,7 +246,7 @@ Returns a slice of the list.
 
 - `ValueError` -- Thrown if slice step is zero.
 
-### `set_slice(slice: slice, other: Iterable[T])`
+### `set_slice(slice: slice, other: IEnumerable[T])`
 
 Sets a slice of the list from an enumerable.
 

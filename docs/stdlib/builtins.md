@@ -51,13 +51,13 @@ Python: `abs(x)`
 Return the absolute value of a number.
 Python: `abs(x)`
 
-### `all(iterable: Iterable[T]) -> bool`
+### `all(iterable: IEnumerable[T]) -> bool`
 
 Return True if all elements of the iterable are True (or if the iterable is empty).
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to check
+- `iterable` (IEnumerable[T]) -- The iterable to check
 
 **Returns:** True if all elements are truthy, False otherwise
 
@@ -67,13 +67,13 @@ all([True, False, True])   # False
 all([])                    # True
 ```
 
-### `any(iterable: Iterable[T]) -> bool`
+### `any(iterable: IEnumerable[T]) -> bool`
 
 Return True if any element of the iterable is True. If the iterable is empty, return False.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to check
+- `iterable` (IEnumerable[T]) -- The iterable to check
 
 **Returns:** True if any element is truthy, False otherwise
 
@@ -249,13 +249,13 @@ Convert a string to bool. Returns False if the string is None or empty, True oth
 
 **Returns:** False if None or empty, True otherwise
 
-### `bool(tuple: Runtime.CompilerServices.ITuple) -> bool`
+### `bool(tuple: system.runtime.compiler_services.ITuple) -> bool`
 
 Return the truth value of a tuple: False when empty, True otherwise.
 
 **Parameters:**
 
-- `tuple` (Runtime.CompilerServices.ITuple) -- The tuple value
+- `tuple` (system.runtime.compiler_services.ITuple) -- The tuple value
 
 **Returns:** False if the tuple is empty, True otherwise
 
@@ -305,7 +305,7 @@ Construct an empty bytes object.
 
 Construct a bytes object of the given size, filled with zero bytes.
 
-### `bytes(source: Iterable[int]) -> bytes`
+### `bytes(source: IEnumerable[int]) -> bytes`
 
 Construct a bytes object from an iterable of ints.
 
@@ -491,7 +491,7 @@ DecimalMod(-7m, -3m)  // -1
     `ZeroDivisionError`: CPython raises `decimal.InvalidOperation`
     here, a sibling of `ZeroDivisionError` rather than a subclass — unlike decimal
     `//`, whose `decimal.DivisionByZero` IS a `ZeroDivisionError`. The
-    asymmetry with `DecimalFloorDiv` is deliberate; do not unify them.
+    asymmetry with `decimal_floor_div` is deliberate; do not unify them.
     
     
     The zero guard lives here, not in the emitted C#, so the `%` lowering splices
@@ -697,7 +697,7 @@ Convert uint to double
 
 Convert ulong to double
 
-### `enumerate(iterable: Iterable[T], start: int = 0) -> EnumerateIterator[T]`
+### `enumerate(iterable: IEnumerable[T], start: int = 0) -> EnumerateIterator[T]`
 
 Return an enumerate object. The iterable must be a sequence, an iterator,
 or some other object which supports iteration. The elements produced by
@@ -706,7 +706,7 @@ and the values obtained from iterating over iterable.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to enumerate
+- `iterable` (IEnumerable[T]) -- The iterable to enumerate
 - `start` (int) -- The starting index (default 0)
 
 **Returns:** An enumerate iterator
@@ -719,7 +719,7 @@ for i, val in enumerate(["a", "b", "c"]):
 # 2 c
 ```
 
-### `filter(predicate: (T) -> bool, iterable: Iterable[T]) -> FilterIterator[T]`
+### `filter(predicate: (T) -> bool, iterable: IEnumerable[T]) -> FilterIterator[T]`
 
 Construct an iterator from those elements of iterable for which predicate is True.
 If predicate is None, return the elements that are True.
@@ -727,7 +727,7 @@ If predicate is None, return the elements that are True.
 **Parameters:**
 
 - `predicate` ((T) -> bool) -- The predicate function to test each element
-- `iterable` (Iterable[T]) -- The iterable to filter
+- `iterable` (IEnumerable[T]) -- The iterable to filter
 
 **Returns:** A filter iterator
 
@@ -1435,13 +1435,13 @@ Return True if class is a subclass of any of the types in classInfo.
 
 **Returns:** True if cls is a subclass of any type in classInfo, False otherwise
 
-### `iter(enumerable: Iterable[T]) -> Iterator[T]`
+### `iter(enumerable: IEnumerable[T]) -> Iterator[T]`
 
 Return an iterator object from any C# enumerable.
 
 **Parameters:**
 
-- `enumerable` (Iterable[T]) -- The C# enumerable to get an iterator from.
+- `enumerable` (IEnumerable[T]) -- The C# enumerable to get an iterator from.
 
 **Returns:** An iterator for the enumerable.
 
@@ -1519,7 +1519,7 @@ Return the length of a Sharpy dictionary.
 
 Return the length of a string.
 
-### `len(tuple: Runtime.CompilerServices.ITuple) -> int`
+### `len(tuple: system.runtime.compiler_services.ITuple) -> int`
 
 Return the number of elements in a tuple.
 
@@ -1530,7 +1530,7 @@ Return the number of elements in a tuple.
     `ISized`. This overload routes `len(tuple)` to
     `System.Runtime.CompilerServices.ITuple.Length`.
 
-### `list(enumerable: Iterable[T]) -> list[T]`
+### `list(enumerable: IEnumerable[T]) -> list[T]`
 
 Convert IEnumerable to list
 
@@ -1547,7 +1547,7 @@ Convert list to list (copy)
 Builds a list of single-character strings from a string, matching Python's
 `list("abc")` -> `['a', 'b', 'c']` and `list("")` -> `[]`.
 Iterates by UTF-16 code unit (Axiom 1), consistent with
-`StringHelpers.Iterate`: `list("abc")` selects this overload because
+`iterate`: `list("abc")` selects this overload because
 C# would otherwise bind `list(string)` to `List<char>`
 (`string` is `IEnumerable<char>`), diverging from Python (#1067).
 
@@ -1603,14 +1603,14 @@ Convert uint to long
 
 Convert ulong to long
 
-### `map(function: (TIn) -> TOut, iterable: Iterable[TIn]) -> MapIterator[TIn, TOut]`
+### `map(function: (TIn) -> TOut, iterable: IEnumerable[TIn]) -> MapIterator[TIn, TOut]`
 
 Return an iterator that applies function to every item of iterable, yielding the results.
 
 **Parameters:**
 
 - `function` ((TIn) -> TOut) -- The function to apply to each element
-- `iterable` (Iterable[TIn]) -- The iterable to map over
+- `iterable` (IEnumerable[TIn]) -- The iterable to map over
 
 **Returns:** A map iterator
 
@@ -1619,7 +1619,7 @@ list(map(lambda x: x * 2, [1, 2, 3]))    # [2, 4, 6]
 list(map(str, [1, 2, 3]))                 # ["1", "2", "3"]
 ```
 
-### `map(function: (T1, T2) -> TOut, iterable1: Iterable[T1], iterable2: Iterable[T2], strict: bool = False) -> MapIterator[T1, T2, TOut]`
+### `map(function: (T1, T2) -> TOut, iterable1: IEnumerable[T1], iterable2: IEnumerable[T2], strict: bool = False) -> MapIterator[T1, T2, TOut]`
 
 Return an iterator that applies a two-argument function to corresponding items of two
 iterables. With *strict* True, raises ValueError if the iterables have
@@ -1630,19 +1630,19 @@ list(map(lambda a, b: a + b, [1, 2], [10, 20]))             # [11, 22]
 list(map(lambda a, b: a + b, [1, 2], [10], strict=True))    # ValueError
 ```
 
-### `map(function: (T1, T2, T3) -> TOut, iterable1: Iterable[T1], iterable2: Iterable[T2], iterable3: Iterable[T3], strict: bool = False) -> MapIterator[T1, T2, T3, TOut]`
+### `map(function: (T1, T2, T3) -> TOut, iterable1: IEnumerable[T1], iterable2: IEnumerable[T2], iterable3: IEnumerable[T3], strict: bool = False) -> MapIterator[T1, T2, T3, TOut]`
 
 Return an iterator that applies a three-argument function to corresponding items of three
 iterables. With *strict* True, raises ValueError if the iterables have
 different lengths; otherwise stops at the shortest.
 
-### `max(iterable: Iterable[T]) -> T`
+### `max(iterable: IEnumerable[T]) -> T`
 
 Return the largest item in an iterable.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to search
+- `iterable` (IEnumerable[T]) -- The iterable to search
 
 **Returns:** The largest item
 
@@ -1655,13 +1655,13 @@ max("abc")           # "c"
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `max(iterable: Iterable[T], key: (T) -> TKey) -> T`
+### `max(iterable: IEnumerable[T], key: (T) -> TKey) -> T`
 
 Return the largest item in an iterable, using a key function for comparison.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to search
+- `iterable` (IEnumerable[T]) -- The iterable to search
 - `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** The largest item according to the key function
@@ -1670,11 +1670,11 @@ Return the largest item in an iterable, using a key function for comparison.
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `max(iterable: Iterable[T], default: T) -> T`
+### `max(iterable: IEnumerable[T], default: T) -> T`
 
 Return the largest item in an iterable, or default if the iterable is empty.
 
-### `max(iterable: Iterable[T], key: (T) -> TKey, default: T) -> T`
+### `max(iterable: IEnumerable[T], key: (T) -> TKey, default: T) -> T`
 
 Return the largest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -1703,13 +1703,13 @@ max(5, 2, 8, 1)  # 8
     positional values in an array, because a C# `params` parameter must come last and
     cannot coexist with a by-keyword `key` (#1012).
 
-### `min(iterable: Iterable[T]) -> T`
+### `min(iterable: IEnumerable[T]) -> T`
 
 Return the smallest item in an iterable.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to search
+- `iterable` (IEnumerable[T]) -- The iterable to search
 
 **Returns:** The smallest item
 
@@ -1722,13 +1722,13 @@ min("abc")           # "a"
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `min(iterable: Iterable[T], key: (T) -> TKey) -> T`
+### `min(iterable: IEnumerable[T], key: (T) -> TKey) -> T`
 
 Return the smallest item in an iterable, using a key function for comparison.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to search
+- `iterable` (IEnumerable[T]) -- The iterable to search
 - `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** The smallest item according to the key function
@@ -1737,11 +1737,11 @@ Return the smallest item in an iterable, using a key function for comparison.
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `min(iterable: Iterable[T], default: T) -> T`
+### `min(iterable: IEnumerable[T], default: T) -> T`
 
 Return the smallest item in an iterable, or default if the iterable is empty.
 
-### `min(iterable: Iterable[T], key: (T) -> TKey, default: T) -> T`
+### `min(iterable: IEnumerable[T], key: (T) -> TKey, default: T) -> T`
 
 Return the smallest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -2135,13 +2135,13 @@ repr(None)         # "None"
     Floats are formatted by `format_float` so whole values
     keep their trailing `.0` (e.g., `-4.0`, not `-4`).
 
-### `reversed(sequence: Iterable[T]) -> Iterator[T]`
+### `reversed(sequence: IEnumerable[T]) -> Iterator[T]`
 
 Return a reverse iterator over the values of the given sequence.
 
 **Parameters:**
 
-- `sequence` (Iterable[T]) -- The sequence to reverse
+- `sequence` (IEnumerable[T]) -- The sequence to reverse
 
 **Returns:** An iterator that yields elements in reverse order
 
@@ -2161,7 +2161,7 @@ list(reversed("abc"))        # ["c", "b", "a"]
 ### `reversed(reversible: IReverseEnumerable[T]) -> Iterator[T]`
 
 Return a reverse iterator for types that implement `IReverseEnumerable[T]`
-but not `Iterable[T]` (i.e., types with __reversed__ but no __iter__).
+but not `IEnumerable[T]` (i.e., types with __reversed__ but no __iter__).
 
 ### `round(x: float) -> int`
 
@@ -2250,7 +2250,7 @@ Round a decimal to n decimal places.
 !!! note
     Uses .NET's banker's rounding (round half to even).
 
-### `set(enumerable: Iterable[T]) -> set[T]`
+### `set(enumerable: IEnumerable[T]) -> set[T]`
 
 Convert IEnumerable to set
 
@@ -2262,13 +2262,13 @@ Create empty set
 
 Convert set to set (copy)
 
-### `sorted(iterable: Iterable[T]) -> list[T]`
+### `sorted(iterable: IEnumerable[T]) -> list[T]`
 
 Return a new sorted list from the items in iterable.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to sort
+- `iterable` (IEnumerable[T]) -- The iterable to sort
 
 **Returns:** A new sorted list
 
@@ -2278,35 +2278,35 @@ sorted("cab")                  # ["a", "b", "c"]
 sorted([3, 1, 2], reverse=True) # [3, 2, 1]
 ```
 
-### `sorted(iterable: Iterable[T], key: (T) -> TKey) -> list[T]`
+### `sorted(iterable: IEnumerable[T], key: (T) -> TKey) -> list[T]`
 
 Return a new sorted list using a key function for comparison.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to sort
+- `iterable` (IEnumerable[T]) -- The iterable to sort
 - `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** A new sorted list
 
-### `sorted(iterable: Iterable[T], reverse: bool) -> list[T]`
+### `sorted(iterable: IEnumerable[T], reverse: bool) -> list[T]`
 
 Return a new sorted list, optionally in reverse order.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to sort
+- `iterable` (IEnumerable[T]) -- The iterable to sort
 - `reverse` (bool) -- If True, sort in descending order
 
 **Returns:** A new sorted list
 
-### `sorted(iterable: Iterable[T], key: (T) -> TKey, reverse: bool) -> list[T]`
+### `sorted(iterable: IEnumerable[T], key: (T) -> TKey, reverse: bool) -> list[T]`
 
 Return a new sorted list using a key function, optionally in reverse order.
 
 **Parameters:**
 
-- `iterable` (Iterable[T]) -- The iterable to sort
+- `iterable` (IEnumerable[T]) -- The iterable to sort
 - `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 - `reverse` (bool) -- If True, sort in descending order
 
@@ -2316,7 +2316,7 @@ Return a new sorted list using a key function, optionally in reverse order.
 
 Convert an arbitrary object to its string representation.
 Returns `"None"` for None, Python-style `"True"`/`"False"`
-for booleans, and `object.ToString` for everything else.
+for booleans, and `__str__` for everything else.
 
 **Parameters:**
 
@@ -2391,7 +2391,7 @@ Format a `float32` value with Python-compatible representation.
 Overload to avoid float→double widening precision issues.
 
 !!! note
-    Shares `RenderShortestRoundTrip` with `format_float`
+    Shares `render_shortest_round_trip` with `format_float`
     — the two overloads share a renderer, not a threshold.
     
     The single switches to exponential at `decpt > 9`, not the double's 16.
@@ -2413,13 +2413,13 @@ Overload to avoid float→double widening precision issues.
 Convert a `bool` to string.
 Returns Python-style `"True"` or `"False"`.
 
-### `sum(iterable: Iterable[int]) -> int`
+### `sum(iterable: IEnumerable[int]) -> int`
 
 Sums a sequence of integers.
 
 **Parameters:**
 
-- `iterable` (Iterable[int]) -- The sequence to sum
+- `iterable` (IEnumerable[int]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2434,13 +2434,13 @@ sum([])              # 0
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[int64]) -> int64`
+### `sum(iterable: IEnumerable[int64]) -> int64`
 
 Sums a sequence of longs.
 
 **Parameters:**
 
-- `iterable` (Iterable[int64]) -- The sequence to sum
+- `iterable` (IEnumerable[int64]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2449,13 +2449,13 @@ Sums a sequence of longs.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int64`
 
-### `sum(iterable: Iterable[float32]) -> float32`
+### `sum(iterable: IEnumerable[float32]) -> float32`
 
 Sums a sequence of floats.
 
 **Parameters:**
 
-- `iterable` (Iterable[float32]) -- The sequence to sum
+- `iterable` (IEnumerable[float32]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2463,13 +2463,13 @@ Sums a sequence of floats.
 
 - `TypeError` -- Thrown when *iterable* is null
 
-### `sum(iterable: Iterable[float]) -> float`
+### `sum(iterable: IEnumerable[float]) -> float`
 
 Sums a sequence of doubles.
 
 **Parameters:**
 
-- `iterable` (Iterable[float]) -- The sequence to sum
+- `iterable` (IEnumerable[float]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2477,13 +2477,13 @@ Sums a sequence of doubles.
 
 - `TypeError` -- Thrown when *iterable* is null
 
-### `sum(iterable: Iterable[decimal]) -> decimal`
+### `sum(iterable: IEnumerable[decimal]) -> decimal`
 
 Sums a sequence of decimals.
 
 **Parameters:**
 
-- `iterable` (Iterable[decimal]) -- The sequence to sum
+- `iterable` (IEnumerable[decimal]) -- The sequence to sum
 
 **Returns:** The total sum
 
@@ -2491,13 +2491,13 @@ Sums a sequence of decimals.
 
 - `TypeError` -- Thrown when *iterable* is null
 
-### `sum(iterable: Iterable[int], start: int) -> int`
+### `sum(iterable: IEnumerable[int], start: int) -> int`
 
 Sums a sequence of integers with a start value.
 
 **Parameters:**
 
-- `iterable` (Iterable[int]) -- The sequence to sum
+- `iterable` (IEnumerable[int]) -- The sequence to sum
 - `start` (int) -- The initial accumulator value
 
 **Returns:** The total sum plus start
@@ -2507,7 +2507,7 @@ Sums a sequence of integers with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[int64], start: int64) -> int64`
+### `sum(iterable: IEnumerable[int64], start: int64) -> int64`
 
 Sums a sequence of longs with a start value.
 
@@ -2516,19 +2516,19 @@ Sums a sequence of longs with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int64`
 
-### `sum(iterable: Iterable[float32], start: float32) -> float32`
+### `sum(iterable: IEnumerable[float32], start: float32) -> float32`
 
 Sums a sequence of floats with a start value.
 
-### `sum(iterable: Iterable[float], start: float) -> float`
+### `sum(iterable: IEnumerable[float], start: float) -> float`
 
 Sums a sequence of doubles with a start value.
 
-### `sum(iterable: Iterable[decimal], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[decimal], start: decimal) -> decimal`
 
 Sums a sequence of decimals with a start value.
 
-### `sum(iterable: Iterable[int8]) -> int`
+### `sum(iterable: IEnumerable[int8]) -> int`
 
 Sums a sequence of signed bytes, accumulating into int.
 
@@ -2537,7 +2537,7 @@ Sums a sequence of signed bytes, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint8]) -> int`
+### `sum(iterable: IEnumerable[uint8]) -> int`
 
 Sums a sequence of bytes, accumulating into int.
 
@@ -2546,7 +2546,7 @@ Sums a sequence of bytes, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[int16]) -> int`
+### `sum(iterable: IEnumerable[int16]) -> int`
 
 Sums a sequence of short integers, accumulating into int.
 
@@ -2555,7 +2555,7 @@ Sums a sequence of short integers, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint16]) -> int`
+### `sum(iterable: IEnumerable[uint16]) -> int`
 
 Sums a sequence of unsigned short integers, accumulating into int.
 
@@ -2564,7 +2564,7 @@ Sums a sequence of unsigned short integers, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint32]) -> uint32`
+### `sum(iterable: IEnumerable[uint32]) -> uint32`
 
 Sums a sequence of unsigned integers.
 
@@ -2573,7 +2573,7 @@ Sums a sequence of unsigned integers.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint32`
 
-### `sum(iterable: Iterable[uint64]) -> uint64`
+### `sum(iterable: IEnumerable[uint64]) -> uint64`
 
 Sums a sequence of unsigned long integers.
 
@@ -2582,7 +2582,7 @@ Sums a sequence of unsigned long integers.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint64`
 
-### `sum(iterable: Iterable[int8], start: int) -> int`
+### `sum(iterable: IEnumerable[int8], start: int) -> int`
 
 Sums a sequence of signed bytes with a start value, accumulating into int.
 
@@ -2591,7 +2591,7 @@ Sums a sequence of signed bytes with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint8], start: int) -> int`
+### `sum(iterable: IEnumerable[uint8], start: int) -> int`
 
 Sums a sequence of bytes with a start value, accumulating into int.
 
@@ -2600,7 +2600,7 @@ Sums a sequence of bytes with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[int16], start: int) -> int`
+### `sum(iterable: IEnumerable[int16], start: int) -> int`
 
 Sums a sequence of short integers with a start value, accumulating into int.
 
@@ -2609,7 +2609,7 @@ Sums a sequence of short integers with a start value, accumulating into int.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint16], start: int) -> int`
+### `sum(iterable: IEnumerable[uint16], start: int) -> int`
 
 Sums a sequence of unsigned short integers with a start value, accumulating into int.
 
@@ -2618,7 +2618,7 @@ Sums a sequence of unsigned short integers with a start value, accumulating into
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit an `int32`
 
-### `sum(iterable: Iterable[uint32], start: uint32) -> uint32`
+### `sum(iterable: IEnumerable[uint32], start: uint32) -> uint32`
 
 Sums a sequence of unsigned integers with a start value.
 
@@ -2627,7 +2627,7 @@ Sums a sequence of unsigned integers with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint32`
 
-### `sum(iterable: Iterable[uint64], start: uint64) -> uint64`
+### `sum(iterable: IEnumerable[uint64], start: uint64) -> uint64`
 
 Sums a sequence of unsigned long integers with a start value.
 
@@ -2636,95 +2636,95 @@ Sums a sequence of unsigned long integers with a start value.
 - `TypeError` -- Thrown when *iterable* is null
 - `OverflowError` -- Thrown when the sum does not fit a `uint64`
 
-### `sum(iterable: Iterable[bool]) -> int`
+### `sum(iterable: IEnumerable[bool]) -> int`
 
 Sums a sequence of booleans, counting `True` as 1.
 
-### `sum(iterable: Iterable[bool], start: int) -> int`
+### `sum(iterable: IEnumerable[bool], start: int) -> int`
 
 Sums a sequence of booleans with an integer start value.
 
-### `sum(iterable: Iterable[bool], start: float) -> float`
+### `sum(iterable: IEnumerable[bool], start: float) -> float`
 
 Sums a sequence of booleans with a double start value.
 
-### `sum(iterable: Iterable[bool], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[bool], start: decimal) -> decimal`
 
 Sums a sequence of booleans with a decimal start value.
 
-### `sum(iterable: Iterable[int8], start: float) -> float`
+### `sum(iterable: IEnumerable[int8], start: float) -> float`
 
 Sums a sequence of signed bytes with a double start value.
 
-### `sum(iterable: Iterable[uint8], start: float) -> float`
+### `sum(iterable: IEnumerable[uint8], start: float) -> float`
 
 Sums a sequence of bytes with a double start value.
 
-### `sum(iterable: Iterable[int16], start: float) -> float`
+### `sum(iterable: IEnumerable[int16], start: float) -> float`
 
 Sums a sequence of short integers with a double start value.
 
-### `sum(iterable: Iterable[uint16], start: float) -> float`
+### `sum(iterable: IEnumerable[uint16], start: float) -> float`
 
 Sums a sequence of unsigned short integers with a double start value.
 
-### `sum(iterable: Iterable[int], start: float) -> float`
+### `sum(iterable: IEnumerable[int], start: float) -> float`
 
 Sums a sequence of integers with a double start value.
 
-### `sum(iterable: Iterable[uint32], start: float) -> float`
+### `sum(iterable: IEnumerable[uint32], start: float) -> float`
 
 Sums a sequence of unsigned integers with a double start value.
 
-### `sum(iterable: Iterable[int64], start: float) -> float`
+### `sum(iterable: IEnumerable[int64], start: float) -> float`
 
 Sums a sequence of long integers with a double start value.
 
-### `sum(iterable: Iterable[uint64], start: float) -> float`
+### `sum(iterable: IEnumerable[uint64], start: float) -> float`
 
 Sums a sequence of unsigned long integers with a double start value.
 
-### `sum(iterable: Iterable[float32], start: float) -> float`
+### `sum(iterable: IEnumerable[float32], start: float) -> float`
 
 Sums a sequence of floats with a double start value.
 
-### `sum(iterable: Iterable[int8], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[int8], start: decimal) -> decimal`
 
 Sums a sequence of signed bytes with a decimal start value.
 
-### `sum(iterable: Iterable[uint8], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[uint8], start: decimal) -> decimal`
 
 Sums a sequence of bytes with a decimal start value.
 
-### `sum(iterable: Iterable[int16], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[int16], start: decimal) -> decimal`
 
 Sums a sequence of short integers with a decimal start value.
 
-### `sum(iterable: Iterable[uint16], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[uint16], start: decimal) -> decimal`
 
 Sums a sequence of unsigned short integers with a decimal start value.
 
-### `sum(iterable: Iterable[int], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[int], start: decimal) -> decimal`
 
 Sums a sequence of integers with a decimal start value.
 
-### `sum(iterable: Iterable[uint32], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[uint32], start: decimal) -> decimal`
 
 Sums a sequence of unsigned integers with a decimal start value.
 
-### `sum(iterable: Iterable[int64], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[int64], start: decimal) -> decimal`
 
 Sums a sequence of long integers with a decimal start value.
 
-### `sum(iterable: Iterable[uint64], start: decimal) -> decimal`
+### `sum(iterable: IEnumerable[uint64], start: decimal) -> decimal`
 
 Sums a sequence of unsigned long integers with a decimal start value.
 
-### `tuple(enumerable: Iterable[object]) -> tuple[T1, T2]`
+### `tuple(enumerable: IEnumerable[object]) -> tuple[T1, T2]`
 
 Convert IEnumerable to tuple (ValueTuple)
 
-### `tuple(enumerable: Iterable[object]) -> tuple[T1, T2, T3]`
+### `tuple(enumerable: IEnumerable[object]) -> tuple[T1, T2, T3]`
 
 Convert IEnumerable to tuple (ValueTuple with 3 items)
 
@@ -2744,231 +2744,231 @@ type("hello")   # <class 'str'>
 type([1, 2])    # <class 'list'>
 ```
 
-### `u_int16(b: bool) -> uint16`
+### `uint16(b: bool) -> uint16`
 
 Convert bool to uint16. True becomes 1, False becomes 0.
 
-### `u_int16(i: int) -> uint16`
+### `uint16(i: int) -> uint16`
 
 Convert int to uint16.
 
-### `u_int16(l: int64) -> uint16`
+### `uint16(l: int64) -> uint16`
 
 Convert long to uint16.
 
-### `u_int16(f: float32) -> uint16`
+### `uint16(f: float32) -> uint16`
 
 Convert float to uint16 (truncates toward zero).
 
-### `u_int16(d: float) -> uint16`
+### `uint16(d: float) -> uint16`
 
 Convert double to uint16 (truncates toward zero).
 
-### `u_int16(m: decimal) -> uint16`
+### `uint16(m: decimal) -> uint16`
 
 Convert decimal to uint16 (truncates toward zero).
 
-### `u_int16(s: str) -> uint16`
+### `uint16(s: str) -> uint16`
 
 Parse string to uint16.
 
-### `u_int16(s: str, base: int) -> uint16`
+### `uint16(s: str, base: int) -> uint16`
 
 Parse string to uint16 with explicit base.
 
-### `u_int16(b: uint8) -> uint16`
+### `uint16(b: uint8) -> uint16`
 
 Convert byte to uint16 (widening).
 
-### `u_int16(sb: int8) -> uint16`
+### `uint16(sb: int8) -> uint16`
 
 Convert sbyte to uint16.
 
-### `u_int16(s: int16) -> uint16`
+### `uint16(s: int16) -> uint16`
 
 Convert short to uint16.
 
-### `u_int16(us: uint16) -> uint16`
+### `uint16(us: uint16) -> uint16`
 
 Convert ushort to uint16 (identity).
 
-### `u_int16(u: uint32) -> uint16`
+### `uint16(u: uint32) -> uint16`
 
 Convert uint to uint16.
 
-### `u_int16(ul: uint64) -> uint16`
+### `uint16(ul: uint64) -> uint16`
 
 Convert ulong to uint16.
 
-### `u_int32(b: bool) -> uint32`
+### `uint32(b: bool) -> uint32`
 
 Convert bool to uint32. True becomes 1, False becomes 0.
 
-### `u_int32(i: int) -> uint32`
+### `uint32(i: int) -> uint32`
 
 Convert int to uint32.
 
-### `u_int32(l: int64) -> uint32`
+### `uint32(l: int64) -> uint32`
 
 Convert long to uint32.
 
-### `u_int32(f: float32) -> uint32`
+### `uint32(f: float32) -> uint32`
 
 Convert float to uint32 (truncates toward zero).
 
-### `u_int32(d: float) -> uint32`
+### `uint32(d: float) -> uint32`
 
 Convert double to uint32 (truncates toward zero).
 
-### `u_int32(m: decimal) -> uint32`
+### `uint32(m: decimal) -> uint32`
 
 Convert decimal to uint32 (truncates toward zero).
 
-### `u_int32(s: str) -> uint32`
+### `uint32(s: str) -> uint32`
 
 Parse string to uint32.
 
-### `u_int32(s: str, base: int) -> uint32`
+### `uint32(s: str, base: int) -> uint32`
 
 Parse string to uint32 with explicit base.
 
-### `u_int32(b: uint8) -> uint32`
+### `uint32(b: uint8) -> uint32`
 
 Convert byte to uint32 (widening).
 
-### `u_int32(sb: int8) -> uint32`
+### `uint32(sb: int8) -> uint32`
 
 Convert sbyte to uint32.
 
-### `u_int32(s: int16) -> uint32`
+### `uint32(s: int16) -> uint32`
 
 Convert short to uint32.
 
-### `u_int32(us: uint16) -> uint32`
+### `uint32(us: uint16) -> uint32`
 
 Convert ushort to uint32 (widening).
 
-### `u_int32(u: uint32) -> uint32`
+### `uint32(u: uint32) -> uint32`
 
 Convert uint to uint32 (identity).
 
-### `u_int32(ul: uint64) -> uint32`
+### `uint32(ul: uint64) -> uint32`
 
 Convert ulong to uint32.
 
-### `u_int64(b: bool) -> uint64`
+### `uint64(b: bool) -> uint64`
 
 Convert bool to uint64. True becomes 1, False becomes 0.
 
-### `u_int64(i: int) -> uint64`
+### `uint64(i: int) -> uint64`
 
 Convert int to uint64.
 
-### `u_int64(l: int64) -> uint64`
+### `uint64(l: int64) -> uint64`
 
 Convert long to uint64.
 
-### `u_int64(f: float32) -> uint64`
+### `uint64(f: float32) -> uint64`
 
 Convert float to uint64 (truncates toward zero).
 
-### `u_int64(d: float) -> uint64`
+### `uint64(d: float) -> uint64`
 
 Convert double to uint64 (truncates toward zero).
 
-### `u_int64(m: decimal) -> uint64`
+### `uint64(m: decimal) -> uint64`
 
 Convert decimal to uint64 (truncates toward zero).
 
-### `u_int64(s: str) -> uint64`
+### `uint64(s: str) -> uint64`
 
 Parse string to uint64.
 
-### `u_int64(s: str, base: int) -> uint64`
+### `uint64(s: str, base: int) -> uint64`
 
 Parse string to uint64 with explicit base.
 
-### `u_int64(b: uint8) -> uint64`
+### `uint64(b: uint8) -> uint64`
 
 Convert byte to uint64 (widening).
 
-### `u_int64(sb: int8) -> uint64`
+### `uint64(sb: int8) -> uint64`
 
 Convert sbyte to uint64.
 
-### `u_int64(s: int16) -> uint64`
+### `uint64(s: int16) -> uint64`
 
 Convert short to uint64.
 
-### `u_int64(us: uint16) -> uint64`
+### `uint64(us: uint16) -> uint64`
 
 Convert ushort to uint64 (widening).
 
-### `u_int64(u: uint32) -> uint64`
+### `uint64(u: uint32) -> uint64`
 
 Convert uint to uint64 (widening).
 
-### `u_int64(ul: uint64) -> uint64`
+### `uint64(ul: uint64) -> uint64`
 
 Convert ulong to uint64 (identity).
 
-### `u_int8(b: bool) -> uint8`
+### `uint8(b: bool) -> uint8`
 
 Convert bool to uint8. True becomes 1, False becomes 0.
 
-### `u_int8(i: int) -> uint8`
+### `uint8(i: int) -> uint8`
 
 Convert int to uint8.
 
-### `u_int8(l: int64) -> uint8`
+### `uint8(l: int64) -> uint8`
 
 Convert long to uint8.
 
-### `u_int8(f: float32) -> uint8`
+### `uint8(f: float32) -> uint8`
 
 Convert float to uint8 (truncates toward zero).
 
-### `u_int8(d: float) -> uint8`
+### `uint8(d: float) -> uint8`
 
 Convert double to uint8 (truncates toward zero).
 
-### `u_int8(m: decimal) -> uint8`
+### `uint8(m: decimal) -> uint8`
 
 Convert decimal to uint8 (truncates toward zero).
 
-### `u_int8(s: str) -> uint8`
+### `uint8(s: str) -> uint8`
 
 Parse string to uint8.
 
-### `u_int8(s: str, base: int) -> uint8`
+### `uint8(s: str, base: int) -> uint8`
 
 Parse string to uint8 with explicit base.
 
-### `u_int8(b: uint8) -> uint8`
+### `uint8(b: uint8) -> uint8`
 
 Convert byte to uint8 (identity).
 
-### `u_int8(sb: int8) -> uint8`
+### `uint8(sb: int8) -> uint8`
 
 Convert sbyte to uint8.
 
-### `u_int8(s: int16) -> uint8`
+### `uint8(s: int16) -> uint8`
 
 Convert short to uint8.
 
-### `u_int8(us: uint16) -> uint8`
+### `uint8(us: uint16) -> uint8`
 
 Convert ushort to uint8.
 
-### `u_int8(u: uint32) -> uint8`
+### `uint8(u: uint32) -> uint8`
 
 Convert uint to uint8.
 
-### `u_int8(ul: uint64) -> uint8`
+### `uint8(ul: uint64) -> uint8`
 
 Convert ulong to uint8.
 
-### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2]) -> ZipIterator[T1, T2]`
+### `zip(iterable1: IEnumerable[T1], iterable2: IEnumerable[T2]) -> ZipIterator[T1, T2]`
 
 Make an iterator that aggregates elements from two iterables.
 Returns an iterator of tuples, where the i-th tuple contains the i-th element
@@ -2977,8 +2977,8 @@ input iterable is exhausted.
 
 **Parameters:**
 
-- `iterable1` (Iterable[T1]) -- The first iterable
-- `iterable2` (Iterable[T2]) -- The second iterable
+- `iterable1` (IEnumerable[T1]) -- The first iterable
+- `iterable2` (IEnumerable[T2]) -- The second iterable
 
 **Returns:** A zip iterator
 
@@ -2987,20 +2987,20 @@ list(zip([1, 2, 3], ["a", "b", "c"]))    # [(1, "a"), (2, "b"), (3, "c")]
 list(zip([1, 2], [10, 20, 30]))           # [(1, 10), (2, 20)]
 ```
 
-### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2], strict: bool) -> ZipIterator[T1, T2]`
+### `zip(iterable1: IEnumerable[T1], iterable2: IEnumerable[T2], strict: bool) -> ZipIterator[T1, T2]`
 
 Make an iterator that aggregates elements from two iterables.
 When strict is True, raises ValueError if iterables have different lengths.
 
 **Parameters:**
 
-- `iterable1` (Iterable[T1]) -- The first iterable
-- `iterable2` (Iterable[T2]) -- The second iterable
+- `iterable1` (IEnumerable[T1]) -- The first iterable
+- `iterable2` (IEnumerable[T2]) -- The second iterable
 - `strict` (bool) -- If True, raises ValueError when iterables have different lengths
 
 **Returns:** A zip iterator
 
-### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2], iterable3: Iterable[T3]) -> ZipIterator[T1, T2, T3]`
+### `zip(iterable1: IEnumerable[T1], iterable2: IEnumerable[T2], iterable3: IEnumerable[T3]) -> ZipIterator[T1, T2, T3]`
 
 Make an iterator that aggregates elements from three iterables.
 Returns an iterator of tuples, where the i-th tuple contains the i-th element
@@ -3009,22 +3009,22 @@ input iterable is exhausted.
 
 **Parameters:**
 
-- `iterable1` (Iterable[T1]) -- The first iterable
-- `iterable2` (Iterable[T2]) -- The second iterable
-- `iterable3` (Iterable[T3]) -- The third iterable
+- `iterable1` (IEnumerable[T1]) -- The first iterable
+- `iterable2` (IEnumerable[T2]) -- The second iterable
+- `iterable3` (IEnumerable[T3]) -- The third iterable
 
 **Returns:** A zip iterator
 
-### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2], iterable3: Iterable[T3], strict: bool) -> ZipIterator[T1, T2, T3]`
+### `zip(iterable1: IEnumerable[T1], iterable2: IEnumerable[T2], iterable3: IEnumerable[T3], strict: bool) -> ZipIterator[T1, T2, T3]`
 
 Make an iterator that aggregates elements from three iterables.
 When strict is True, raises ValueError if iterables have different lengths.
 
 **Parameters:**
 
-- `iterable1` (Iterable[T1]) -- The first iterable
-- `iterable2` (Iterable[T2]) -- The second iterable
-- `iterable3` (Iterable[T3]) -- The third iterable
+- `iterable1` (IEnumerable[T1]) -- The first iterable
+- `iterable2` (IEnumerable[T2]) -- The second iterable
+- `iterable3` (IEnumerable[T3]) -- The third iterable
 - `strict` (bool) -- If True, raises ValueError when iterables have different lengths
 
 **Returns:** A zip iterator

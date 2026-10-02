@@ -98,15 +98,15 @@ Return True if left > right with automatic dispatch.
 
 In-place addition: left += right (int).
 
-### `operator.i_add(left: ref long, right: int64)`
+### `operator.i_add(left: ref int64, right: int64)`
 
 In-place addition: left += right (long).
 
-### `operator.i_add(left: ref float, right: float32)`
+### `operator.i_add(left: ref float32, right: float32)`
 
 In-place addition: left += right (float).
 
-### `operator.i_add(left: ref double, right: float)`
+### `operator.i_add(left: ref float, right: float)`
 
 In-place addition: left += right (double).
 
@@ -118,15 +118,15 @@ In-place addition: left += right (decimal).
 
 In-place multiplication: left *= right (int).
 
-### `operator.i_mul(left: ref long, right: int64)`
+### `operator.i_mul(left: ref int64, right: int64)`
 
 In-place multiplication: left *= right (long).
 
-### `operator.i_mul(left: ref float, right: float32)`
+### `operator.i_mul(left: ref float32, right: float32)`
 
 In-place multiplication: left *= right (float).
 
-### `operator.i_mul(left: ref double, right: float)`
+### `operator.i_mul(left: ref float, right: float)`
 
 In-place multiplication: left *= right (double).
 

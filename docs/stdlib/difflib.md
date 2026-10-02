@@ -6,11 +6,11 @@ import difflib
 
 ## Functions
 
-### `difflib.unified_diff(a: IList[str], b: IList[str], from_file: str = "", to_file: str = "", from_file_date: str = "", to_file_date: str = "", n: int = 3, lineterm: str = "\n") -> Iterable[str]`
+### `difflib.unified_diff(a: IList[str], b: IList[str], from_file: str = "", to_file: str = "", from_file_date: str = "", to_file_date: str = "", n: int = 3, lineterm: str = "\n") -> IEnumerable[str]`
 
-### `difflib.context_diff(a: IList[str], b: IList[str], from_file: str = "", to_file: str = "", from_file_date: str = "", to_file_date: str = "", n: int = 3, lineterm: str = "\n") -> Iterable[str]`
+### `difflib.context_diff(a: IList[str], b: IList[str], from_file: str = "", to_file: str = "", from_file_date: str = "", to_file_date: str = "", n: int = 3, lineterm: str = "\n") -> IEnumerable[str]`
 
-### `difflib.ndiff(a: IList[str], b: IList[str], line_junk: ((str) -> bool) | None = None, char_junk: ((str) -> bool) | None = None) -> Iterable[str]`
+### `difflib.ndiff(a: IList[str], b: IList[str], line_junk: ((str) -> bool) | None = None, char_junk: ((str) -> bool) | None = None) -> IEnumerable[str]`
 
 ### `difflib.get_close_matches(word: str, possibilities: IList[str], n: int = 3, cutoff: float = 0.6) -> list[str]`
 
@@ -18,11 +18,11 @@ import difflib
 
 ### `difflib.is_character_junk(ch: str) -> bool`
 
-### `difflib.restore(delta: Iterable[str], which: int) -> Iterable[str]`
+### `difflib.restore(delta: IEnumerable[str], which: int) -> IEnumerable[str]`
 
 ## Differ
 
-### `compare(a: IList[str], b: IList[str]) -> Iterable[str]`
+### `compare(a: IList[str], b: IList[str]) -> IEnumerable[str]`
 
 ## SequenceMatcher
 

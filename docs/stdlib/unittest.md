@@ -53,7 +53,7 @@ Marker for approx. The compiler transforms
 !!! note
     This method exists for type resolution only — it returns `float`
     so that `x == approx(y)` type-checks as numeric equality. It should never
-    be called at runtime. Defaults mirror `AssertAlmostEqual`:
+    be called at runtime. Defaults mirror `assert_almost_equal`:
     `places=7`; if both `places` and `abs` are supplied,
     `abs` takes precedence.
 
@@ -133,7 +133,7 @@ Marker for assert_not_in. The compiler transforms calls to
 
 ### `unittest.captured_output() -> CapturedOutput`
 
-Create a `Sharpy.CapturedOutput` context manager that captures
+Create a `CapturedOutput` context manager that captures
 everything written to the console while active. Exposed to Sharpy as
 `captured_output()` and intended for use in a `with` statement:
 `with captured_output() as out: ...`.
@@ -144,7 +144,7 @@ everything written to the console while active. Exposed to Sharpy as
 
 ### `unittest.captured_stderr() -> CapturedStderr`
 
-Create a `Sharpy.CapturedStderr` context manager that captures
+Create a `CapturedStderr` context manager that captures
 everything written to the standard error stream while active. Exposed to
 Sharpy as `captured_stderr()` and intended for use in a `with`
 statement: `with captured_stderr() as err: ...`. Useful for asserting

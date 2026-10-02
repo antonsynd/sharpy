@@ -38,8 +38,8 @@ Represents the result of a finished subprocess.
 |------|------|-------------|
 | `args` | `list[str]` | Gets the command arguments used to launch the process. |
 | `returncode` | `int` | Gets the process exit status. |
-| `stdout` | `str | None` | Gets the captured standard output, if any. |
-| `stderr` | `str | None` | Gets the captured standard error, if any. |
+| `stdout` | `str \| None` | Gets the captured standard output, if any. |
+| `stderr` | `str \| None` | Gets the captured standard error, if any. |
 
 ### `check_returncode()`
 
@@ -63,8 +63,8 @@ Raised when a process exits with a non-zero status.
 |------|------|-------------|
 | `returncode` | `int` | Gets the process exit status. |
 | `cmd` | `list[str]` | Gets the command that was run. |
-| `output` | `str | None` | Gets the captured standard output, if any. |
-| `stderr` | `str | None` | Gets the captured standard error, if any. |
+| `output` | `str \| None` | Gets the captured standard output, if any. |
+| `stderr` | `str \| None` | Gets the captured standard error, if any. |
 
 ## TimeoutExpired
 
@@ -76,8 +76,8 @@ Raised when a process exceeds the allowed timeout.
 |------|------|-------------|
 | `cmd` | `list[str]` | Gets the command that timed out. |
 | `timeout` | `float` | Gets the timeout value in seconds. |
-| `output` | `str | None` | Gets the captured standard output, if any. |
-| `stderr` | `str | None` | Gets the captured standard error, if any. |
+| `output` | `str \| None` | Gets the captured standard output, if any. |
+| `stderr` | `str \| None` | Gets the captured standard error, if any. |
 
 ## Popen
 
@@ -89,9 +89,9 @@ Starts and manages a child process like Python's subprocess.Popen.
 |------|------|-------------|
 | `pid` | `int` | Gets the operating system process identifier. |
 | `args` | `list[str]` | Gets the command arguments used to start the process. |
-| `stdin` | `StreamWriter | None` | Gets the redirected standard input writer, if available. |
-| `stdout_stream` | `StreamReader | None` | Gets the redirected standard output reader, if available. |
-| `stderr_stream` | `StreamReader | None` | Gets the redirected standard error reader, if available. |
+| `stdin` | `StreamWriter \| None` | Gets the redirected standard input writer, if available. |
+| `stdout_stream` | `StreamReader \| None` | Gets the redirected standard output reader, if available. |
+| `stderr_stream` | `StreamReader \| None` | Gets the redirected standard error reader, if available. |
 
 ### `communicate(input: str | None = None, timeout: float | None = None) -> tuple[str | None, str | None]`
 

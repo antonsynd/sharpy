@@ -73,7 +73,7 @@ Represents an IPv4 network.
 | `with_netmask` | `str` | Gets the network in address/netmask notation. |
 | `with_hostmask` | `str` | Gets the network in address/hostmask notation. |
 
-### `hosts() -> Iterable[IPv4Address]`
+### `hosts() -> IEnumerable[IPv4Address]`
 
 Iterates over usable host addresses in the network.
 
@@ -162,7 +162,7 @@ Determines whether the network contains the specified address.
 
 Determines whether this network overlaps another network.
 
-### `hosts() -> Iterable[IPv6Address]`
+### `hosts() -> IEnumerable[IPv6Address]`
 
 Iterates over usable host addresses in the network.
 

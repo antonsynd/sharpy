@@ -6,28 +6,6 @@ Configuration file parser similar to Python's configparser module.
 import configparser
 ```
 
-## Functions
-
-### `configparser.read_string(content: str, source: str = "<string>")`
-
-Reads configuration data from a string.
-
-### `configparser.read(filename: str)`
-
-Reads configuration data from a file if it exists.
-
-### `configparser.read_dict(dictionary: dict[str, dict[str, str]])`
-
-Loads configuration values from nested dictionaries.
-
-### `configparser.write(writer: TextWriter, space_around_delimiters: bool = True)`
-
-Writes the current configuration to a text writer.
-
-### `configparser.write_to_file(filename: str, space_around_delimiters: bool = True)`
-
-Writes the current configuration to a file.
-
 ## ConfigParser
 
 Parses and stores INI-style configuration data.
@@ -88,6 +66,26 @@ Returns the section items with defaults applied.
 
 Returns the default section values.
 
+### `read_string(content: str, source: str = "<string>")`
+
+Reads configuration data from a string.
+
+### `read(filename: str)`
+
+Reads configuration data from a file if it exists.
+
+### `read_dict(dictionary: dict[str, dict[str, str]])`
+
+Loads configuration values from nested dictionaries.
+
+### `write(writer: TextWriter, space_around_delimiters: bool = True)`
+
+Writes the current configuration to a text writer.
+
+### `write_to_file(filename: str, space_around_delimiters: bool = True)`
+
+Writes the current configuration to a file.
+
 ## Error
 
 Represents the base exception for configparser errors.
@@ -142,7 +140,7 @@ Raised when parsing invalid configuration data.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `str | None` | Gets the source being parsed, if available. |
+| `source` | `str \| None` | Gets the source being parsed, if available. |
 | `line_number` | `int` | Gets the line number associated with the parse error. |
 
 ## MissingSectionHeaderError

@@ -45,7 +45,7 @@ Equivalent to Python's `requests.RequestException`.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `response` | `Response | None` | The HTTP response associated with this error, if any. |
+| `response` | `Response \| None` | The HTTP response associated with this error, if any. |
 
 ## ConnectionError
 
@@ -96,14 +96,14 @@ Equivalent to Python's `response.raise_for_status()`, but uses a tagged
 
 `repr()` uses the same method. Returns a string representation of this response (e.g., `<Response [200]>`).
 
-### `iter_content(chunk_size: int = 1024) -> Iterable[list[uint8]]`
+### `iter_content(chunk_size: int = 1024) -> IEnumerable[list[uint8]]`
 
 Iterate over the response body in chunks of the given size (default 1024 bytes).
 The response must have been created with `stream=True` and the body must not
-have been fully read (via `Content` or `Text`).
+have been fully read (via `content` or `text`).
 Equivalent to Python's `response.iter_content(chunk_size)`.
 
-### `iter_lines() -> Iterable[str]`
+### `iter_lines() -> IEnumerable[str]`
 
 Iterate over the response body line by line, using the response encoding to decode
 bytes. The response must have been created with `stream=True` and the body
@@ -119,14 +119,14 @@ A session for sending multiple HTTP requests with shared configuration
 !!! note
     Wraps a single `HttpClientHandler`/`HttpClient` pair
     so connections and a `CookieContainer` are reused across requests.
-    Always dispose with `using` (or call `Dispose`) to release the
+    Always dispose with `using` (or call `dispose`) to release the
     underlying client.
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `auth` | `tuple[str, str] | None` | Default Basic auth credentials (username, password) sent with every request from this session. Per-request \`auth\` takes precedence, and an explicit \`Authorization\` header (per-request or session-level) also suppresses this default. |
+| `auth` | `tuple[str, str] \| None` | Default Basic auth credentials (username, password) sent with every request from this session. Per-request \`auth\` takes precedence, and an explicit \`Authorization\` header (per-request or session-level) also suppresses this default. |
 
 ### `get(url: str, headers: dict[str, str] | None = None, params_: dict[str, str] | None = None, json: object | None = None, data: dict[str, str] | None = None, timeout: float | None = None, auth: tuple[str, str] | None = None, files: dict[str, str] | None = None, stream: bool = False) -> Result[Response, RequestException]`
 

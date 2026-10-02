@@ -16,23 +16,11 @@ Apply function of two arguments cumulatively to the items of iterable, so as to 
 
 Apply function of two arguments cumulatively to the items of iterable, starting with initial value.
 
-### `functools.cmp_to_key(cmp: (T, T) -> int) -> Comparer[T]`
+### `functools.cmp_to_key(cmp: (T, T) -> int) -> IComparer[T]`
 
 Convert a comparison function into a key function for sorting.
 The comparison function should return a negative number for less-than,
 zero for equality, or a positive number for greater-than.
-
-### `functools.cache_info(hits: int, misses: int, max_size: int | None, current_size: int) -> record`
-
-Snapshot of cache statistics returned by
-`LruCache[TKey, TResult].CacheInfo`.
-
-**Parameters:**
-
-- `hits` (int) -- The number of cache hits.
-- `misses` (int) -- The number of cache misses.
-- `max_size` (int | None) -- The maximum size, or `None` for unbounded.
-- `current_size` (int) -- The current number of cached entries.
 
 ### `functools.get_or_add(key: TKey, factory: (TKey) -> TResult) -> TResult`
 

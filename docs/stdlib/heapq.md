@@ -8,31 +8,31 @@ import heapq
 
 ## Functions
 
-### `heapq.merge(*iterables: list[T]) -> Iterable[T]`
+### `heapq.merge(*iterables: list[T]) -> IEnumerable[T]`
 
 Merge multiple sorted inputs into a single sorted output.
 
-### `heapq.merge(a: list[T], b: list[T], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], key: (T) -> TKey, reverse: bool = False) -> IEnumerable[T]`
 
 Merge two sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(a: list[T], b: list[T], c: list[T], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], c: list[T], key: (T) -> TKey, reverse: bool = False) -> IEnumerable[T]`
 
 Merge three sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(iterables: list[list[T]], reverse: bool = False) -> Iterable[T]`
+### `heapq.merge(iterables: list[list[T]], reverse: bool = False) -> IEnumerable[T]`
 
 Merge multiple sorted inputs into a single sorted output, with optional reverse ordering.
 
-### `heapq.merge(iterables: list[list[T]], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
+### `heapq.merge(iterables: list[list[T]], key: (T) -> TKey, reverse: bool = False) -> IEnumerable[T]`
 
 Merge multiple sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(a: list[T], b: list[T], reverse: bool) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], reverse: bool) -> IEnumerable[T]`
 
 Merge two sorted inputs into a single sorted output, with optional reverse ordering.
 
-### `heapq.merge(a: list[T], b: list[T], c: list[T], reverse: bool) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], c: list[T], reverse: bool) -> IEnumerable[T]`
 
 Merge three sorted inputs into a single sorted output, with optional reverse ordering.
 

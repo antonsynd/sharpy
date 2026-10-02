@@ -24,7 +24,7 @@ Unpack binary data from a given offset according to the format string.
 
 Calculate the size (in bytes) of the struct described by the format string.
 
-### `struct.iter_unpack(format: str, buffer: bytes) -> Iterable[list[object]]`
+### `struct.iter_unpack(format: str, buffer: bytes) -> IEnumerable[list[object]]`
 
 Iteratively unpack from buffer according to the format string.
 
@@ -52,7 +52,7 @@ Unpack binary data according to the pre-compiled format.
 
 Unpack binary data from a given offset according to the pre-compiled format.
 
-### `iter_unpack(buffer: bytes) -> Iterable[list[object]]`
+### `iter_unpack(buffer: bytes) -> IEnumerable[list[object]]`
 
 Iteratively unpack from buffer according to the pre-compiled format.
 

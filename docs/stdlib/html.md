@@ -40,7 +40,7 @@ Users subclass this and override the Handle* methods to receive parse events.
 
 Feed some text to the parser. It is processed insofar as it consists
 of complete elements; incomplete data is buffered until more data is
-fed or `Close` is called.
+fed or `close` is called.
 
 ### `close()`
 
@@ -80,7 +80,7 @@ Called when a closing tag is encountered.
 ### `handle_startendtag(tag: str, attrs: list[tuple[str, str | None]])`
 
 Called when a self-closing tag like  is encountered.
-The default implementation calls `HandleStarttag` then `HandleEndtag`.
+The default implementation calls `handle_starttag` then `handle_endtag`.
 
 **Parameters:**
 

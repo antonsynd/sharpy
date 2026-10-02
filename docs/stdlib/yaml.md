@@ -146,18 +146,18 @@ Holds the comments associated with a single key (in a mapping) or item (in a
 sequence) for YAML roundtrip preservation, mirroring ruamel.yaml's comment model.
 
 !!! note
-    A node may have a comment on the line(s) preceding it (`BeforeComment`),
-    a comment trailing it on the same line (`InlineComment`), or a comment
-    on the line(s) following it (`AfterComment`). Comment text is stored
+    A node may have a comment on the line(s) preceding it (`before_comment`),
+    a comment trailing it on the same line (`inline_comment`), or a comment
+    on the line(s) following it (`after_comment`). Comment text is stored
     verbatim, without the leading `#` marker.
 
 ### Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `before_comment` | `str | None` | Comment appearing on the line(s) before the associated node. |
-| `inline_comment` | `str | None` | Comment trailing the associated node on the same line. |
-| `after_comment` | `str | None` | Comment appearing on the line(s) after the associated node. |
+| `before_comment` | `str \| None` | Comment appearing on the line(s) before the associated node. |
+| `inline_comment` | `str \| None` | Comment trailing the associated node on the same line. |
+| `after_comment` | `str \| None` | Comment appearing on the line(s) after the associated node. |
 | `has_comments` | `bool` | Gets a value indicating whether this instance carries any comment text. |
 
 ## CommentedMap
@@ -171,7 +171,7 @@ tracks insertion order plus the comments associated with each key.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `map` | `dict[str, object | None]` | The underlying \`dict[K, V]\` backing this mapping, exposed for serialization access. |
+| `map` | `dict[str, object \| None]` | The underlying \`dict[K, V]\` backing this mapping, exposed for serialization access. |
 | `keys` | `IReadOnlyList[str]` | The keys of this mapping, in insertion order. |
 | `count` | `int` | The number of key/value pairs in this mapping. |
 | `comments` | `IReadOnlyDictionary[str, CommentInfo]` | The comments associated with this mapping's keys, keyed by key name. |
@@ -210,7 +210,7 @@ the comments associated with each item by index.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `seq` | `list[object | None]` | The underlying \`list[T]\` backing this sequence, exposed for serialization access. |
+| `seq` | `list[object \| None]` | The underlying \`list[T]\` backing this sequence, exposed for serialization access. |
 | `count` | `int` | The number of items in this sequence. |
 | `comments` | `IReadOnlyDictionary[int, CommentInfo]` | The comments associated with this sequence's items, keyed by item index. |
 
@@ -257,5 +257,5 @@ carrying the problem description, surrounding context, and source location.
 |------|------|-------------|
 | `line` | `int64` | The 1-based line number where parsing failed, or -1 if unknown. |
 | `column` | `int64` | The 1-based column number where parsing failed, or -1 if unknown. |
-| `problem` | `str | None` | A short description of the problem that caused the failure. |
-| `context` | `str | None` | Additional context describing where the problem occurred. |
+| `problem` | `str \| None` | A short description of the problem that caused the failure. |
+| `context` | `str \| None` | Additional context describing where the problem occurred. |

@@ -12,22 +12,6 @@ import email
 
 ### `email.message_from_bytes(data: bytes) -> EmailMessage`
 
-### `email.set_content(text: str, subtype: str = "plain")`
-
-### `email.get_content() -> str`
-
-### `email.get_payload() -> str | None`
-
-### `email.is_multipart() -> bool`
-
-### `email.add_attachment(data: bytes, maintype: str = "application", subtype: str = "octet-stream", filename: str | None = None)`
-
-### `email.iter_attachments() -> list[Attachment]`
-
-### `email.as_string() -> str`
-
-### `email.as_bytes() -> bytes`
-
 ## EmailMessage
 
 Email message with headers and body.
@@ -53,6 +37,26 @@ Equivalent to Python's `email.message.EmailMessage`.
 
 ### `replace_header(name: str, value: str)`
 
+### `set_content(text: str, subtype: str = "plain")`
+
+### `get_content() -> str`
+
+### `get_payload() -> str | None`
+
+### `is_multipart() -> bool`
+
+### `add_attachment(data: bytes, maintype: str = "application", subtype: str = "octet-stream", filename: str | None = None)`
+
+### `iter_attachments() -> list[Attachment]`
+
+### `as_string() -> str`
+
+### `as_bytes() -> bytes`
+
+### `__str__() -> str`
+
+`repr()` uses the same method.
+
 ## Attachment
 
 An email attachment with binary data.
@@ -63,7 +67,7 @@ An email attachment with binary data.
 |------|------|-------------|
 | `data` | `bytes` |  |
 | `content_type` | `str` |  |
-| `filename` | `str | None` |  |
+| `filename` | `str \| None` |  |
 
 ## MessageError
 

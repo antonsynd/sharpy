@@ -23,10 +23,10 @@ Like Python's collections.ChainMap.
 
 !!! note
     Implements `ISized` (`__len__` → `len(cm)`, the number of unique keys)
-    and `Iterable[T]` over the KEYS (`__iter__` → `for k in cm`,
+    and `IEnumerable[T]` over the KEYS (`__iter__` → `for k in cm`,
     `list(cm)`). Keys are the only generic `IEnumerable` the type exposes so
     `list(cm)` binds `Builtins.List<K>(IEnumerable<K>)`; pairs are reached
-    through `Items` only (#1933). Keys/values/items iterate the maps in CPython's
+    through `items` only (#1933). Keys/values/items iterate the maps in CPython's
     REVERSED order — the last map is walked first and dedup keeps the first occurrence in that
     reversed walk (for maps `{n,x},{n,y}` CPython yields keys `n, y, x`) — while VALUE
     lookup stays first-map-wins via the indexer.
@@ -75,7 +75,7 @@ Clear the first mapping.
 ### `__str__() -> str`
 
 `repr()` uses the same method. Python's `repr(cm)`/`str(cm)`: `ChainMap({...}, {...})`, one
-`dict[K, V]` repr per underlying map in `Maps` order. An empty
+`dict[K, V]` repr per underlying map in `maps` order. An empty
 ChainMap holds one empty map, so it prints `ChainMap({})` as CPython does.
 
 ## Deque
@@ -111,11 +111,11 @@ If no elements are present, raises an IndexError.
 
 Remove all elements from the deque.
 
-### `extend(iterable: Iterable[T])`
+### `extend(iterable: IEnumerable[T])`
 
 Extend the right side of the deque by appending elements from the iterable.
 
-### `extendleft(iterable: Iterable[T])`
+### `extendleft(iterable: IEnumerable[T])`
 
 Extend the left side of the deque by appending elements from the iterable.
 
@@ -199,7 +199,7 @@ A Counter is a dict subclass for counting hashable objects.
 
 !!! note
     Implements `ISized` (`__len__` → `len(c)`, the number of distinct
-    elements) and `Iterable[T]` over the KEYS in first-seen order (`__iter__`
+    elements) and `IEnumerable[T]` over the KEYS in first-seen order (`__iter__`
     → `for k in c`, `list(c)`). Keys are the only generic `IEnumerable` the type
     exposes so `list(c)` binds `Builtins.List<T>(IEnumerable<T>)` (#1933).
 
@@ -221,15 +221,15 @@ Elements with equal counts keep first-seen order, as CPython's stable sort does
 `Counter()` when empty (CPython 3.12). The braces are `dict[K, V]`'s own
 repr, so there is one spelling of the mapping rule.
 
-### `elements() -> Iterable[T]`
+### `elements() -> IEnumerable[T]`
 
 Elements are returned in arbitrary order. Each element is repeated count times.
 
-### `update(iterable: Iterable[T])`
+### `update(iterable: IEnumerable[T])`
 
 Update counts from an iterable or another mapping.
 
-### `subtract(iterable: Iterable[T])`
+### `subtract(iterable: IEnumerable[T])`
 
 Subtract counts. Elements are subtracted from an iterable.
 Counts can go below zero.
@@ -274,7 +274,7 @@ Dictionary with default values for missing keys.
 
 !!! note
     Implements `ISized` (`__len__` → `len(dd)`) and
-    `Iterable[T]` over the KEYS in insertion order (`__iter__` →
+    `IEnumerable[T]` over the KEYS in insertion order (`__iter__` →
     `for k in dd`, `list(dd)`), delegating both to the composed `dict[K, V]`.
     Keys are the only generic `IEnumerable` the type exposes so `list(dd)` binds
     `Builtins.List<TKey>(IEnumerable<TKey>)` (#1933).
@@ -332,13 +332,13 @@ If the key is not found, return *defaultValue*.
 ### `items() -> DictItemsView[TKey, TValue]`
 
 The (key, value) pairs of the dictionary. Python: `d.items()`. A live view, like
-`Keys` and `Values`: later mutations of the defaultdict are reflected.
+`keys` and `values`: later mutations of the defaultdict are reflected.
 
 ### `update(other: IDictionary[TKey, TValue])`
 
 Update the defaultdict with key-value pairs from another dictionary.
 
-### `update(other: Iterable[tuple[TKey, TValue]])`
+### `update(other: IEnumerable[tuple[TKey, TValue]])`
 
 Update the defaultdict with key-value pairs from an iterable of tuples.
 
@@ -387,7 +387,7 @@ Like Python's collections.OrderedDict.
 
 !!! note
     Implements `ISized` (`__len__` → `len(od)`) and
-    `Iterable[T]` over the KEYS in insertion order (`__iter__` → `for k in od`,
+    `IEnumerable[T]` over the KEYS in insertion order (`__iter__` → `for k in od`,
     `list(od)`). This is the ONLY generic `IEnumerable` the type exposes so that
     `list(od)` binds `Builtins.List<K>(IEnumerable<K>)` unambiguously (#1933).
 

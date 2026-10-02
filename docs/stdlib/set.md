@@ -49,7 +49,7 @@ b: set[int] = {1, 2, 3}
 print(a.is_subset(b))    # True
 ```
 
-### `is_subset(other: Iterable[T]) -> bool`
+### `is_subset(other: IEnumerable[T]) -> bool`
 
 Returns whether this set is a subset of the given iterable.
 
@@ -79,7 +79,7 @@ b: set[int] = {1, 2}
 print(a.is_superset(b))    # True
 ```
 
-### `is_superset(other: Iterable[T]) -> bool`
+### `is_superset(other: IEnumerable[T]) -> bool`
 
 Returns whether this set is a superset of the given iterable.
 
@@ -99,11 +99,11 @@ b = {2, 3}
 a.union(b)    # {1, 2, 3}
 ```
 
-### `union(other: Iterable[T]) -> set[T]`
+### `union(other: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements from this set and the iterable.
 
-### `union(*others: Iterable[T]) -> set[T]`
+### `union(*others: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements from this set and all others.
 
@@ -123,11 +123,11 @@ b = {2, 3, 4}
 a.intersection(b)    # {2, 3}
 ```
 
-### `intersection(other: Iterable[T]) -> set[T]`
+### `intersection(other: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements common to this set and the iterable.
 
-### `intersection(*others: Iterable[T]) -> set[T]`
+### `intersection(*others: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements common to this set and all others.
 
@@ -147,11 +147,11 @@ b = {2, 3, 4}
 a.difference(b)    # {1}
 ```
 
-### `difference(other: Iterable[T]) -> set[T]`
+### `difference(other: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements in this set but not in the iterable.
 
-### `difference(*others: Iterable[T]) -> set[T]`
+### `difference(*others: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements in this set but not in any of the others.
 
@@ -171,7 +171,7 @@ b = {2, 3, 4}
 a.symmetric_difference(b)    # {1, 4}
 ```
 
-### `symmetric_difference(other: Iterable[T]) -> set[T]`
+### `symmetric_difference(other: IEnumerable[T]) -> set[T]`
 
 Return a new set with elements in either this set or the iterable but not both.
 
@@ -286,17 +286,17 @@ b: set[int] = {3, 4}
 print(a.is_disjoint(b))    # True
 ```
 
-### `is_disjoint(other: Iterable[T]) -> bool`
+### `is_disjoint(other: IEnumerable[T]) -> bool`
 
 Returns whether this set has no elements in common with the given iterable.
 
-### `update(*others: Iterable[T])`
+### `update(*others: IEnumerable[T])`
 
 Update the set, adding elements from the given iterables.
 
 **Parameters:**
 
-- `others` (*Iterable[T]) -- The iterables of elements to add.
+- `others` (*IEnumerable[T]) -- The iterables of elements to add.
 
 ```python
 s = {1, 2, 3}
@@ -304,13 +304,13 @@ s.update({3, 4})          # {1, 2, 3, 4}
 s.update({5}, {6}, {7})   # {1, 2, 3, 4, 5, 6, 7}
 ```
 
-### `difference_update(*others: Iterable[T])`
+### `difference_update(*others: IEnumerable[T])`
 
 Update the set, removing elements found in any of the given iterables.
 
 **Parameters:**
 
-- `others` (*Iterable[T]) -- The iterables of elements to remove.
+- `others` (*IEnumerable[T]) -- The iterables of elements to remove.
 
 ```python
 s = {1, 2, 3}
@@ -318,13 +318,13 @@ s.difference_update({2})      # {1, 3}
 s.difference_update({1}, {3}) # set()
 ```
 
-### `intersection_update(*others: Iterable[T])`
+### `intersection_update(*others: IEnumerable[T])`
 
 Update the set, keeping only elements found in all given iterables.
 
 **Parameters:**
 
-- `others` (*Iterable[T]) -- The iterables to intersect with.
+- `others` (*IEnumerable[T]) -- The iterables to intersect with.
 
 ```python
 s = {1, 2, 3}
@@ -345,13 +345,13 @@ s = {1, 2, 3}
 s.symmetric_difference_update({2, 3, 4})    # {1, 4}
 ```
 
-### `symmetric_difference_update(other: Iterable[T])`
+### `symmetric_difference_update(other: IEnumerable[T])`
 
 Update the set, keeping only elements found in either set or the iterable but not both.
 
 **Parameters:**
 
-- `other` (Iterable[T]) -- The iterable to compute symmetric difference with.
+- `other` (IEnumerable[T]) -- The iterable to compute symmetric difference with.
 
 ### `__str__() -> str`
 
@@ -362,42 +362,42 @@ Update the set, keeping only elements found in either set or the iterable but no
 
 Copies the elements of the set to an array.
 
-### `except_with(other: Iterable[T])`
+### `except_with(other: IEnumerable[T])`
 
 Removes all elements in the specified collection from the current set.
 
-### `intersect_with(other: Iterable[T])`
+### `intersect_with(other: IEnumerable[T])`
 
 Modifies the current set to contain only elements present in both sets.
 
-### `is_proper_subset_of(other: Iterable[T]) -> bool`
+### `is_proper_subset_of(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set is a proper subset of the specified collection.
 
-### `is_proper_superset_of(other: Iterable[T]) -> bool`
+### `is_proper_superset_of(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set is a proper superset of the specified collection.
 
-### `is_subset_of(other: Iterable[T]) -> bool`
+### `is_subset_of(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set is a subset of the specified collection.
 
-### `is_superset_of(other: Iterable[T]) -> bool`
+### `is_superset_of(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set is a superset of the specified collection.
 
-### `overlaps(other: Iterable[T]) -> bool`
+### `overlaps(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set and a specified collection share common elements.
 
-### `set_equals(other: Iterable[T]) -> bool`
+### `set_equals(other: IEnumerable[T]) -> bool`
 
 Determines whether the current set and the specified collection contain the same elements.
 
-### `symmetric_except_with(other: Iterable[T])`
+### `symmetric_except_with(other: IEnumerable[T])`
 
 Modifies the current set to contain only elements present in either the current set or the specified collection, but not both.
 
-### `union_with(other: Iterable[T])`
+### `union_with(other: IEnumerable[T])`
 
 Modifies the current set to contain all elements present in either the current set or the specified collection.

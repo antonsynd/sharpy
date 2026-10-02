@@ -23,7 +23,7 @@ Parse a URL into six components: (scheme, netloc, path, params, query, fragment)
 ### `urllib.urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitResult`
 
 Parse a URL into five components: (scheme, netloc, path, query, fragment).
-Similar to `Urlparse` but does not split params from the path.
+Similar to `urlparse` but does not split params from the path.
 
 **Parameters:**
 
@@ -111,7 +111,7 @@ By default, `/` is considered safe.
 
 ### `urllib.quote_plus(s: str, safe: str = "") -> str`
 
-Like `Quote` but also replaces spaces with `+` signs.
+Like `quote` but also replaces spaces with `+` signs.
 By default, no characters are considered safe.
 
 **Parameters:**
@@ -133,7 +133,7 @@ Decode a percent-encoded string.
 
 ### `urllib.unquote_plus(s: str) -> str`
 
-Like `Unquote` but also replaces `+` signs with spaces.
+Like `unquote` but also replaces `+` signs with spaces.
 
 **Parameters:**
 
@@ -143,7 +143,7 @@ Like `Unquote` but also replaces `+` signs with spaces.
 
 ## ParseResult
 
-Result of `UrllibModule.Urlparse`. Contains the six components of a
+Result of `urlparse`. Contains the six components of a
 parsed URL: scheme, netloc, path, params, query, and fragment.
 
 ### Properties
@@ -163,7 +163,7 @@ Reassemble the URL from its components.
 
 ## SplitResult
 
-Result of `UrllibModule.Urlsplit`. Contains five components of a
+Result of `urlsplit`. Contains five components of a
 parsed URL: scheme, netloc, path, query, and fragment (no params).
 
 ### Properties

@@ -64,9 +64,9 @@ Returns the .NET framework description string.
 Returns a tuple (bits, linkage) identifying the architecture.
 bits is "64bit" or "32bit", linkage is always empty.
 
-### `platform.uname() -> UnameResult`
+### `platform.uname() -> uname_result`
 
-Returns a `UnameResult` containing system identification information.
+Returns a `uname_result` containing system identification information.
 
 ## uname_result
 

@@ -11,19 +11,19 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 ## Methods
 
-### `get_string_key_entries() -> Iterable[KeyValuePair[str, object | None]]`
+### `get_string_key_entries() -> IEnumerable[KeyValuePair[str, object | None]]`
 
 Projects this dictionary's entries as string-keyed pairs for
 reflection-free JSON dispatch. Returns an empty sequence when
  is not `str`.
 
-### `fromkeys(keys: Iterable[K], value: V) -> dict[K, V]`
+### `fromkeys(keys: IEnumerable[K], value: V) -> dict[K, V]`
 
 Create a new dictionary with keys from *keys* and values set to *value*.
 
 **Parameters:**
 
-- `keys` (Iterable[K]) -- An iterable of keys for the new dictionary.
+- `keys` (IEnumerable[K]) -- An iterable of keys for the new dictionary.
 - `value` (V) -- The value for all keys.
 
 **Returns:** A new dictionary with the specified keys and value.
@@ -32,7 +32,7 @@ Create a new dictionary with keys from *keys* and values set to *value*.
 d = dict.fromkeys(["a", "b"], 0)    # {"a": 0, "b": 0}
 ```
 
-### `fromkeys(keys: Iterable[K]) -> dict[K, object]`
+### `fromkeys(keys: IEnumerable[K]) -> dict[K, object]`
 
 Create a new dictionary with keys from *keys*, every value None —
 python's valueless `dict.fromkeys(keys)`. The values are typed `object`, since
@@ -40,7 +40,7 @@ None is not a value of every V.
 
 **Parameters:**
 
-- `keys` (Iterable[K]) -- An iterable of keys for the new dictionary.
+- `keys` (IEnumerable[K]) -- An iterable of keys for the new dictionary.
 
 **Returns:** A new dictionary with the specified keys, all mapped to None.
 
@@ -216,13 +216,13 @@ d = {"a": 1}
 d.update({"a": 9, "b": 2})    # {"a": 9, "b": 2}
 ```
 
-### `update(other: Iterable[tuple[K, V]])`
+### `update(other: IEnumerable[tuple[K, V]])`
 
 Update the dictionary with key-value pairs from an iterable of tuples.
 
 **Parameters:**
 
-- `other` (Iterable[tuple[K, V]]) -- An iterable of `(key, value)` tuples.
+- `other` (IEnumerable[tuple[K, V]]) -- An iterable of `(key, value)` tuples.
 
 ### `values() -> DictValuesView[K, V]`
 
@@ -254,14 +254,14 @@ Keys from other take precedence.
 
 ### `merge(other: dict[K, V]) -> dict[K, V]`
 
-### `fromkeys(keys: Iterable[TKey]) -> dict[TKey, object]`
+### `fromkeys(keys: IEnumerable[TKey]) -> dict[TKey, object]`
 
 Create a new dictionary with keys from *keys* and values set to `None`.
 Mirrors Python's `dict.fromkeys(iterable)`.
 
 **Parameters:**
 
-- `keys` (Iterable[TKey]) -- An iterable of keys for the new dictionary.
+- `keys` (IEnumerable[TKey]) -- An iterable of keys for the new dictionary.
 
 **Returns:** A new dictionary with the specified keys all mapped to `None`.
 
@@ -269,14 +269,14 @@ Mirrors Python's `dict.fromkeys(iterable)`.
 d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}
 ```
 
-### `fromkeys(keys: Iterable[TKey], value: TValue) -> dict[TKey, TValue]`
+### `fromkeys(keys: IEnumerable[TKey], value: TValue) -> dict[TKey, TValue]`
 
 Create a new dictionary with keys from *keys* and values set to *value*.
 Mirrors Python's `dict.fromkeys(iterable, value)`. All keys share the same value reference.
 
 **Parameters:**
 
-- `keys` (Iterable[TKey]) -- An iterable of keys for the new dictionary.
+- `keys` (IEnumerable[TKey]) -- An iterable of keys for the new dictionary.
 - `value` (TValue) -- The value assigned to every key.
 
 **Returns:** A new dictionary with the specified keys all mapped to *value*.

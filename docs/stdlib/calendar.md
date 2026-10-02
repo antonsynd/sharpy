@@ -52,9 +52,9 @@ import calendar
 |------|------|-------------|
 | `firstweekday` | `int` |  |
 
-### `itermonthdays(year: int, month: int) -> Iterable[int]`
+### `itermonthdays(year: int, month: int) -> IEnumerable[int]`
 
-### `itermonthdays2(year: int, month: int) -> Iterable[tuple[int, int]]`
+### `itermonthdays2(year: int, month: int) -> IEnumerable[tuple[int, int]]`
 
 ### `monthdayscalendar(year: int, month: int) -> list[list[int]]`
 

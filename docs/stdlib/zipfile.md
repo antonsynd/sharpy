@@ -15,34 +15,6 @@ import zipfile
 
 ## Functions
 
-### `zipfile.write(filename: str, arcname: str | None = None, compress_type: int | None = None)`
-
-Adds a file from disk to the archive.
-
-### `zipfile.writestr(zinfo: ZipInfo, data: bytes, compress_type: int | None = None)`
-
-Writes bytes to the archive using the supplied ZipInfo metadata.
-
-### `zipfile.writestr(arcname: str, data: bytes, compress_type: int | None = None)`
-
-Writes bytes to a named archive member.
-
-### `zipfile.writestr(arcname: str, data: str, compress_type: int | None = None)`
-
-Writes UTF-8 text to a named archive member.
-
-### `zipfile.extract(member: str, path: str | None = None) -> str`
-
-Extracts one archive member to a target directory.
-
-### `zipfile.extractall(path: str | None = None, members: list[str] | None = None)`
-
-Extracts all members, or the selected members, to a target directory.
-
-### `zipfile.mkdir(zinf_or_arcname: str)`
-
-Creates a directory entry in the archive.
-
 ### `zipfile.is_zipfile(filename: str) -> bool`
 
 Returns True if the file is a readable ZIP archive.
@@ -78,6 +50,34 @@ Opens a stream for a named archive member.
 ### `close()`
 
 Closes the archive and releases its underlying resources.
+
+### `write(filename: str, arcname: str | None = None, compress_type: int | None = None)`
+
+Adds a file from disk to the archive.
+
+### `writestr(zinfo: ZipInfo, data: bytes, compress_type: int | None = None)`
+
+Writes bytes to the archive using the supplied ZipInfo metadata.
+
+### `writestr(arcname: str, data: bytes, compress_type: int | None = None)`
+
+Writes bytes to a named archive member.
+
+### `writestr(arcname: str, data: str, compress_type: int | None = None)`
+
+Writes UTF-8 text to a named archive member.
+
+### `extract(member: str, path: str | None = None) -> str`
+
+Extracts one archive member to a target directory.
+
+### `extractall(path: str | None = None, members: list[str] | None = None)`
+
+Extracts all members, or the selected members, to a target directory.
+
+### `mkdir(zinf_or_arcname: str)`
+
+Creates a directory entry in the archive.
 
 ## ZipInfo
 

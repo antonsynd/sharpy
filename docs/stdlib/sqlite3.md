@@ -10,11 +10,11 @@ import sqlite3
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row` | `(Sqlite3Cursor, list[object | None]) -> object` | A factory function that returns \`Sqlite3Row\` objects for query results. |
+| `row` | `(Cursor, list[object \| None]) -> object` | A factory function that returns \`Row\` objects for query results. |
 
 ## Functions
 
-### `sqlite3.connect(database: str) -> Sqlite3Connection`
+### `sqlite3.connect(database: str) -> Connection`
 
 Open a connection to an SQLite database.
 
@@ -22,7 +22,7 @@ Open a connection to an SQLite database.
 
 - `database` (str) -- The path to the database file, or ":memory:" for an in-memory database.
 
-**Returns:** A new `Sqlite3Connection` to the specified database.
+**Returns:** A new `Connection` to the specified database.
 
 ## Connection
 
@@ -32,37 +32,37 @@ Represents a connection to an SQLite database.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row_factory` | `((Sqlite3Cursor, list[object | None]) -> object) | None` | Gets or sets the row factory used to create row objects from query results. |
+| `row_factory` | `((Cursor, list[object \| None]) -> object) \| None` | Gets or sets the row factory used to create row objects from query results. |
 
-### `cursor() -> Sqlite3Cursor`
+### `cursor() -> Cursor`
 
 Create a new cursor object for this connection.
 
-**Returns:** A new `Sqlite3Cursor`.
+**Returns:** A new `Cursor`.
 
-### `execute(sql: str, parameters: Iterable | None = None) -> Sqlite3Cursor`
+### `execute(sql: str, parameters: system.collections.IEnumerable | None = None) -> Cursor`
 
 Create a cursor, execute a single SQL statement, and return the cursor.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `parameters` (Iterable | None) -- Optional parameters to bind to placeholders in the SQL.
+- `parameters` (system.collections.IEnumerable | None) -- Optional parameters to bind to placeholders in the SQL.
 
 **Returns:** The cursor that executed the statement.
 
-### `executemany(sql: str, seq_of_parameters: Iterable) -> Sqlite3Cursor`
+### `executemany(sql: str, seq_of_parameters: system.collections.IEnumerable) -> Cursor`
 
 Create a cursor and execute an SQL statement against all parameter sequences.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `seq_of_parameters` (Iterable) -- An iterable of parameter sequences.
+- `seq_of_parameters` (system.collections.IEnumerable) -- An iterable of parameter sequences.
 
 **Returns:** The cursor that executed the statements.
 
-### `executescript(sql_script: str) -> Sqlite3Cursor`
+### `executescript(sql_script: str) -> Cursor`
 
 Create a cursor and execute a script of one or more SQL statements.
 
@@ -92,34 +92,34 @@ Represents a database cursor used to execute SQL statements and fetch results.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `arraysize` | `int` | Gets or sets the number of rows to fetch at a time with \`Fetchmany\`. Default is 1. |
+| `arraysize` | `int` | Gets or sets the number of rows to fetch at a time with \`fetchmany\`. Default is 1. |
 | `lastrowid` | `int64` | Gets the row ID of the last modified row, or -1 if no row was inserted. |
 | `rowcount` | `int` | Gets the number of rows affected by the last DML statement, or -1 for queries. |
-| `description` | `list[list[object | None]] | None` | Gets column descriptions for the last query, or null if no query has been executed. |
+| `description` | `list[list[object \| None]] \| None` | Gets column descriptions for the last query, or null if no query has been executed. |
 
-### `execute(sql: str, parameters: Iterable | None = None) -> Sqlite3Cursor`
+### `execute(sql: str, parameters: system.collections.IEnumerable | None = None) -> Cursor`
 
 Execute a single SQL statement, optionally binding parameters.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute. Use `?` as a placeholder for positional parameters.
-- `parameters` (Iterable | None) -- Optional parameters to bind to placeholders in the SQL.
+- `parameters` (system.collections.IEnumerable | None) -- Optional parameters to bind to placeholders in the SQL.
 
 **Returns:** This cursor instance.
 
-### `executemany(sql: str, seq_of_parameters: Iterable) -> Sqlite3Cursor`
+### `executemany(sql: str, seq_of_parameters: system.collections.IEnumerable) -> Cursor`
 
 Execute an SQL statement against all parameter sequences in the given iterable.
 
 **Parameters:**
 
 - `sql` (str) -- The SQL statement to execute.
-- `seq_of_parameters` (Iterable) -- An iterable of parameter sequences.
+- `seq_of_parameters` (system.collections.IEnumerable) -- An iterable of parameter sequences.
 
 **Returns:** This cursor instance.
 
-### `executescript(sql_script: str) -> Sqlite3Cursor`
+### `executescript(sql_script: str) -> Cursor`
 
 Execute a script of one or more SQL statements, committing any pending transaction first.
 
@@ -141,7 +141,7 @@ Fetch the next set of rows, returning a list. An empty list is returned when no 
 
 **Parameters:**
 
-- `size` (int) -- The maximum number of rows to fetch. Defaults to `Arraysize`.
+- `size` (int) -- The maximum number of rows to fetch. Defaults to `arraysize`.
 
 **Returns:** A list of row objects.
 

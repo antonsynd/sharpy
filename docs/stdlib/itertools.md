@@ -80,7 +80,7 @@ Make an iterator that computes the function using arguments obtained from the it
 
 Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue.
 
-### `itertools.groupby(iterable: list[T], key: (T) -> K) -> Iterable[tuple[K, list[T]]]`
+### `itertools.groupby(iterable: list[T], key: (T) -> K) -> IEnumerable[tuple[K, list[T]]]`
 
 Make an iterator that returns consecutive keys and groups from the iterable.
 
@@ -104,73 +104,73 @@ Return successive r-length permutations of elements in the iterable. A negative 
 
 Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated.
 
-### `itertools.repeat(elem: T, n: uint32) -> Iterable[T]`
+### `itertools.repeat(elem: T, n: uint32) -> IEnumerable[T]`
 
 Make an iterator that returns object over and over again, limited by n times.
 
-### `itertools.cycle(iterable: Iterable[T]) -> Iterable[T]`
+### `itertools.cycle(iterable: IEnumerable[T]) -> IEnumerable[T]`
 
 Make an iterator returning elements from the iterable and saving a copy of each.
 
-### `itertools.compress(data: Iterable[T], selectors: Iterable[bool]) -> Iterable[T]`
+### `itertools.compress(data: IEnumerable[T], selectors: IEnumerable[bool]) -> IEnumerable[T]`
 
 Make an iterator that filters elements from data returning only those with a corresponding True selector.
 
-### `itertools.dropwhile(predicate: (T) -> bool, iterable: Iterable[T]) -> Iterable[T]`
+### `itertools.dropwhile(predicate: (T) -> bool, iterable: IEnumerable[T]) -> IEnumerable[T]`
 
 Make an iterator that drops elements as long as the predicate is True; afterwards, returns every element.
 
-### `itertools.takewhile(predicate: (T) -> bool, iterable: Iterable[T]) -> Iterable[T]`
+### `itertools.takewhile(predicate: (T) -> bool, iterable: IEnumerable[T]) -> IEnumerable[T]`
 
 Make an iterator that returns elements as long as the predicate is True.
 
-### `itertools.filterfalse(predicate: (T) -> bool, iterable: Iterable[T]) -> Iterable[T]`
+### `itertools.filterfalse(predicate: (T) -> bool, iterable: IEnumerable[T]) -> IEnumerable[T]`
 
 Make an iterator that filters elements returning only those for which the predicate is False.
 
-### `itertools.pairwise(iterable: Iterable[T]) -> Iterable[tuple[T, T]]`
+### `itertools.pairwise(iterable: IEnumerable[T]) -> IEnumerable[tuple[T, T]]`
 
 Return successive overlapping pairs taken from the input iterable.
 
-### `itertools.islice(iterable: Iterable[T], stop: int) -> Iterable[T]`
+### `itertools.islice(iterable: IEnumerable[T], stop: int) -> IEnumerable[T]`
 
 Make an iterator that returns selected elements from the iterable.
 
-### `itertools.islice(iterable: Iterable[T], start: int, stop: int, step: int = 1) -> Iterable[T]`
+### `itertools.islice(iterable: IEnumerable[T], start: int, stop: int, step: int = 1) -> IEnumerable[T]`
 
 Make an iterator that returns selected elements from the iterable with start, stop, and step.
 
-### `itertools.accumulate(iterable: Iterable[T], func: (T, T) -> T) -> Iterable[T]`
+### `itertools.accumulate(iterable: IEnumerable[T], func: (T, T) -> T) -> IEnumerable[T]`
 
 Make an iterator that returns accumulated sums (or accumulated results of a binary function).
 
-### `itertools.accumulate(iterable: Iterable[T], func: (T, T) -> T, initial: T) -> Iterable[T]`
+### `itertools.accumulate(iterable: IEnumerable[T], func: (T, T) -> T, initial: T) -> IEnumerable[T]`
 
 Make an iterator that returns accumulated results with an initial value.
 
-### `itertools.chain(*iterables: Iterable[T]) -> Iterable[T]`
+### `itertools.chain(*iterables: IEnumerable[T]) -> IEnumerable[T]`
 
 Make an iterator that returns elements from the first iterable until it is exhausted,
 then proceeds to the next iterable.
 
 **Parameters:**
 
-- `iterables` (*Iterable[T]) -- One or more iterables to chain together.
+- `iterables` (*IEnumerable[T]) -- One or more iterables to chain together.
 
 **Returns:** An iterator over the concatenated elements.
 
-### `itertools.combinations(iterable: Iterable[T], r: int) -> Iterable[list[T]]`
+### `itertools.combinations(iterable: IEnumerable[T], r: int) -> IEnumerable[list[T]]`
 
 Return r-length combinations of elements in the iterable.
 
-### `itertools.permutations(iterable: Iterable[T], r: int = -1) -> Iterable[list[T]]`
+### `itertools.permutations(iterable: IEnumerable[T], r: int = -1) -> IEnumerable[list[T]]`
 
 Return successive r-length permutations of elements in the iterable.
 
-### `itertools.combinations_with_replacement(iterable: Iterable[T], r: int) -> Iterable[list[T]]`
+### `itertools.combinations_with_replacement(iterable: IEnumerable[T], r: int) -> IEnumerable[list[T]]`
 
 Return r-length combinations of elements allowing individual elements to be repeated.
 
-### `itertools.starmap(func: (T1, T2) -> R, iterable: Iterable[tuple[T1, T2]]) -> Iterable[R]`
+### `itertools.starmap(func: (T1, T2) -> R, iterable: IEnumerable[tuple[T1, T2]]) -> IEnumerable[R]`
 
 Make an iterator that computes the function using arguments obtained from the iterable.

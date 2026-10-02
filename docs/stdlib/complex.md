@@ -11,7 +11,7 @@ A complex number type, similar to Python's complex.
 
 ## Methods
 
-### `conjugate() -> Complex`
+### `conjugate() -> complex`
 
 Return the complex conjugate.
 

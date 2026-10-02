@@ -23,7 +23,7 @@ Return the default timeout in seconds for new sockets, or None.
 
 Set the default timeout for new sockets. None means blocking mode.
 
-### `socket.create_connection(address: tuple[str, int], timeout: float | None = None) -> Socket`
+### `socket.create_connection(address: tuple[str, int], timeout: float | None = None) -> socket`
 
 Connect to a TCP (host, port) address and return the connected socket.
 
@@ -93,7 +93,7 @@ Resolve a hostname to a list of address info tuples, similar to Python's
 
 Base exception for socket-related errors. Corresponds to Python's socket.error.
 
-### `from_socket_exception(ex: Net.Sockets.SocketException) -> Error`
+### `from_socket_exception(ex: SocketException) -> error`
 
 Create a socket error from a .NET SocketException.
 
@@ -126,7 +126,7 @@ Bind the socket to a local (host, port) address.
 
 Enable a server to accept connections with the given backlog.
 
-### `accept() -> tuple[Socket, tuple[str, int]]`
+### `accept() -> tuple[socket, tuple[str, int]]`
 
 Accept a connection, returning (new socket, (remote_host, remote_port)).
 
@@ -194,7 +194,7 @@ Return the remote (host, port) address the socket is connected to.
 
 Return the socket handle (file descriptor) as an integer.
 
-### `enter() -> Socket`
+### `enter() -> socket`
 
 ### `exit()`
 

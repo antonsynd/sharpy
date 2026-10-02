@@ -76,11 +76,11 @@ Create the directory. Optionally create parents.
 
 Remove the directory (must be empty).
 
-### `iterdir() -> Iterable[Path]`
+### `iterdir() -> IEnumerable[Path]`
 
 Iterate over the directory entries.
 
-### `glob(pattern: str) -> Iterable[Path]`
+### `glob(pattern: str) -> IEnumerable[Path]`
 
 Glob for matching paths relative to this directory.
 
@@ -136,7 +136,7 @@ Create the file if it doesn't exist, or update its timestamp if it does.
 
 - `exist_ok` (bool) -- If False, raise FileExistsError when the file already exists.
 
-### `stat() -> StatResult`
+### `stat() -> os.StatResult`
 
 Return file or directory stats.
 
@@ -144,7 +144,7 @@ Return file or directory stats.
 
 Whether the path is a symbolic link.
 
-### `rglob(pattern: str) -> Iterable[Path]`
+### `rglob(pattern: str) -> IEnumerable[Path]`
 
 Recursively glob for matching paths relative to this directory.
 

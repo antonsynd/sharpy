@@ -10,119 +10,13 @@ import numpy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `count` | `int` | \`len(arr)\`-equivalent: the length of the first axis for non-scalar arrays. For 0-D scalars this returns 1 (matches the underlying buffer size). |
-| `start` | `int | None` | Inclusive start index. \`null\` means "from the beginning". |
-| `stop` | `int | None` | Exclusive stop index. \`null\` means "to the end". |
-| `step` | `int | None` | Step between successive indices. \`null\` defaults to 1. Cannot be 0. |
-| `is_squeeze` | `bool` | True when this spec was created by \`At\` and the axis should be removed from the result shape. |
+| `start` | `int \| None` | Inclusive start index. \`null\` means "from the beginning". |
+| `stop` | `int \| None` | Exclusive stop index. \`null\` means "to the end". |
+| `step` | `int \| None` | Step between successive indices. \`null\` defaults to 1. Cannot be 0. |
+| `is_squeeze` | `bool` | True when this spec was created by \`at\` and the axis should be removed from the result shape. |
 | `all` | `SliceSpec` | Sentinel slice representing \`:\` — take every element along this axis. |
 
 ## Functions
-
-### `numpy.get_masked(mask: NdArray[bool]) -> NdArray[T]`
-
-Return a 1-D copy containing the elements where *mask* is True.
-
-**Parameters:**
-
-- `mask` (NdArray[bool]) -- Boolean mask with the same shape as this array.
-
-**Raises:**
-
-- `ArgumentNullException` -- Thrown when *mask* is null.
-- `ArgumentException` -- Thrown when the mask shape does not match this array's shape.
-
-### `numpy.set_masked(mask: NdArray[bool], value: T)`
-
-Assign *value* to every position where *mask* is True.
-
-**Parameters:**
-
-- `mask` (NdArray[bool]) -- Boolean mask with the same shape as this array.
-- `value` (T) -- Scalar value written to each selected position.
-
-### `numpy.set_masked(mask: NdArray[bool], values: NdArray[T])`
-
-Assign values from *values* to positions where *mask* is True.
-*values* must be 1-D with length equal to the number of True entries in the mask.
-
-### `numpy.take(indices: list[int], axis: int = 0) -> NdArray[T]`
-
-Take elements from this array at the positions given by *indices*.
-For a 1-D source this returns a 1-D array of the selected values; for higher-rank
-sources this selects entire (N-1)-D slices along *axis*.
-
-**Parameters:**
-
-- `indices` (list[int]) -- Integer indices into *axis*. Negative values follow Python semantics.
-- `axis` (int) -- Axis along which to select. Default 0.
-
-**Returns:** A new C-contiguous array of the selected elements.
-
-### `numpy.put(indices: list[int], values: NdArray[T], axis: int = 0)`
-
-Write *values* into this array at the positions given by
-*indices* along *axis*. The shape of
-*values* must match the shape of `Take`'s result
-for the same indices/axis.
-
-### `numpy.tolist() -> object`
-
-Convert this array to a nested `List<...>` mirror — the equivalent of NumPy's
-`ndarray.tolist()`. The result type depends on rank: 1-D → `List<T>`,
-2-D → `List<List<T>>`, etc. Returned as `object` because the static
-nesting depth depends on the runtime rank.
-
-### `numpy.to_array() -> list[T]`
-
-Returns a flat copy of the array data in row-major order.
-
-### `numpy.mat_mul(other: NdArray[T]) -> NdArray[T]`
-
-Matrix multiplication (`@`, PEP 465). Delegates to
-`matmul`, which follows
-NumPy's dot semantics (inner product for 1-D operands, matrix product for 2-D).
-
-**Parameters:**
-
-- `other` (NdArray[T]) -- The right-hand operand.
-
-**Raises:**
-
-- `ArgumentNullException` -- Thrown when *other* is null.
-- `TypeError` -- Thrown when the arrays are not `float64` (`double`). NumPy's linear-algebra
-surface here is defined only for floating-point arrays.
-
-### `numpy.reshape(*new_shape: int) -> NdArray[T]`
-
-Return an array with the same data and a new shape. Returns a zero-copy view when
-this array is C-contiguous; otherwise materializes a copy.
-
-**Parameters:**
-
-- `new_shape` (*int) -- The target shape. Exactly one dimension may be `-1`, in which case its size is
-inferred from the total element count and the remaining dimensions.
-
-**Raises:**
-
-- `ArgumentNullException` -- Thrown when *newShape* is null.
-- `ArgumentException` -- Thrown when more than one dimension is -1, or the inferred shape does not match `Size`.
-
-### `numpy.transpose() -> NdArray[T]`
-
-Return a view of this array with axes reversed. For a 2-D array this is the matrix transpose.
-
-### `numpy.flatten() -> NdArray[T]`
-
-Return a 1-D copy of this array's elements in row-major order.
-
-### `numpy.ravel() -> NdArray[T]`
-
-Return a 1-D view of this array if it is C-contiguous; otherwise return a 1-D copy.
-
-### `numpy.copy() -> NdArray[T]`
-
-Return a deep copy of this array. The result owns its buffer and is C-contiguous.
 
 ### `numpy.at(index: int) -> SliceSpec`
 
@@ -136,113 +30,69 @@ Create a slice of the form `start:stop`.
 
 Create a slice of the form `start:stop:step`.
 
-### `numpy.slice(*slices: SliceSpec) -> NdArray[T]`
-
-Produce a zero-copy view defined by per-axis slice specs. The number of slices must
-equal `Ndim`. The view shares the underlying buffer with this array.
-
-**Parameters:**
-
-- `slices` (*SliceSpec) -- Per-axis slice descriptors. Length must equal `Ndim`.
-
-**Returns:** A view of this array with the same `Ndim` but possibly smaller per-axis lengths.
-
-**Raises:**
-
-- `ArgumentNullException` -- Thrown when *slices* is null.
-- `IndexError` -- Thrown when the slice count does not match `Ndim`.
-
-### `numpy.get_row(i: int) -> NdArray[T]`
-
-Return a 1-D view of row *i* for a 2-D array. Negative indices follow
-Python semantics.
-
-**Parameters:**
-
-- `i` (int) -- Row index. Negative values count from the end.
-
-**Raises:**
-
-- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
-- `IndexError` -- Thrown when *i* is out of range.
-
-### `numpy.get_column(j: int) -> NdArray[T]`
-
-Return a 1-D view of column *j* for a 2-D array. Negative indices follow
-Python semantics.
-
-**Parameters:**
-
-- `j` (int) -- Column index. Negative values count from the end.
-
-**Raises:**
-
-- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
-- `IndexError` -- Thrown when *j* is out of range.
-
-### `numpy.equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.equal(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a == b` with broadcasting, returning a boolean ndarray.
 
-### `numpy.not_equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.not_equal(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a != b` with broadcasting.
 
-### `numpy.less(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.less(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a < b` with broadcasting.
 
-### `numpy.less_equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.less_equal(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a <= b` with broadcasting.
 
-### `numpy.greater(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.greater(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a > b` with broadcasting.
 
-### `numpy.greater_equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
+### `numpy.greater_equal(a: ndarray[T], b: ndarray[T]) -> ndarray[bool]`
 
 Elementwise `a >= b` with broadcasting.
 
-### `numpy.concatenate(arrays: list[NdArray[float]], axis: int = 0) -> NdArray[float]`
+### `numpy.concatenate(arrays: list[ndarray[float]], axis: int = 0) -> ndarray[float]`
 
 Join a sequence of arrays along an existing *axis*.
 All input arrays must have the same shape except along *axis*.
 
 **Parameters:**
 
-- `arrays` (list[NdArray[float]]) -- Arrays to concatenate. Must not be empty.
+- `arrays` (list[ndarray[float]]) -- Arrays to concatenate. Must not be empty.
 - `axis` (int) -- Axis along which to concatenate. Default 0.
 
 **Returns:** A new C-contiguous array.
 
-### `numpy.stack(arrays: list[NdArray[float]], axis: int = 0) -> NdArray[float]`
+### `numpy.stack(arrays: list[ndarray[float]], axis: int = 0) -> ndarray[float]`
 
 Join a sequence of arrays along a new axis. All inputs must have the same shape.
 The output has rank `ndim + 1`.
 
 **Parameters:**
 
-- `arrays` (list[NdArray[float]]) -- Arrays to stack.
+- `arrays` (list[ndarray[float]]) -- Arrays to stack.
 - `axis` (int) -- Index of the new axis in the output. Default 0.
 
-### `numpy.hstack(arrays: list[NdArray[float]]) -> NdArray[float]`
+### `numpy.hstack(arrays: list[ndarray[float]]) -> ndarray[float]`
 
 Stack arrays horizontally — along the second axis for 2-D inputs, along axis 0 for 1-D.
 
-### `numpy.vstack(arrays: list[NdArray[float]]) -> NdArray[float]`
+### `numpy.vstack(arrays: list[ndarray[float]]) -> ndarray[float]`
 
 Stack arrays vertically — along the first axis. For 1-D inputs they are promoted
 to row vectors (shape `(1, n)`) before stacking.
 
-### `numpy.split(a: NdArray[float], indices: list[int], axis: int = 0) -> list[NdArray[float]]`
+### `numpy.split(a: ndarray[float], indices: list[int], axis: int = 0) -> list[ndarray[float]]`
 
 Split *a* along *axis* at the given index boundaries,
 returning a list of sub-arrays. Mirrors NumPy's `numpy.split`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Input array.
+- `a` (ndarray[float]) -- Input array.
 - `indices` (list[int]) -- Sorted strictly-increasing list of split points. A raw
 `int[]` deliberately: the stdlib rule is about what a public API produces,
 and a parameter accepts — a Sharpy `list[int]` converts to an array at the call
@@ -254,14 +104,14 @@ a raw .NET array in a public return is the surface #1256 fixed for `sys.argv`, a
 it is what the caller has to live with — `parts.append(...)`, `len(parts)` and
 slicing all work on the Sharpy collection and none of them work on the array.
 
-### `numpy.split(a: NdArray[float], sections: int, axis: int = 0) -> list[NdArray[float]]`
+### `numpy.split(a: ndarray[float], sections: int, axis: int = 0) -> list[ndarray[float]]`
 
 Split *a* along *axis* into *sections*
 equal parts. Mirrors NumPy's `numpy.split(a, N)`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Input array.
+- `a` (ndarray[float]) -- Input array.
 - `sections` (int) -- Number of equal sections. The axis length must divide evenly.
 - `axis` (int) -- Axis along which to split. Default 0.
 
@@ -286,17 +136,17 @@ equal parts. Mirrors NumPy's `numpy.split(a, N)`.
 - `ValueError` -- If the axis length is not divisible by *sections*, or if
 *sections* is not positive.
 
-### `numpy.where(condition: NdArray[bool], x: NdArray[float], y: NdArray[float]) -> NdArray[float]`
+### `numpy.where(condition: ndarray[bool], x: ndarray[float], y: ndarray[float]) -> ndarray[float]`
 
 Return an array whose elements are taken from *x* where
 *condition* is True, and *y* otherwise.
 All three inputs are broadcast to a common shape.
 
-### `numpy.clip(a: NdArray[float], min: float, max: float) -> NdArray[float]`
+### `numpy.clip(a: ndarray[float], min: float, max: float) -> ndarray[float]`
 
 Clamp every element of *a* to the interval `[min, max]`.
 
-### `numpy.sqrt(a: NdArray[float]) -> NdArray[float]`
+### `numpy.sqrt(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise square root.
 
@@ -304,7 +154,7 @@ Elementwise square root.
 
 Scalar square root — convenience overload mirroring NumPy.
 
-### `numpy.exp(a: NdArray[float]) -> NdArray[float]`
+### `numpy.exp(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise natural exponential.
 
@@ -312,7 +162,7 @@ Elementwise natural exponential.
 
 Scalar natural exponential.
 
-### `numpy.log(a: NdArray[float]) -> NdArray[float]`
+### `numpy.log(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise natural logarithm.
 
@@ -320,7 +170,7 @@ Elementwise natural logarithm.
 
 Scalar natural logarithm.
 
-### `numpy.log2(a: NdArray[float]) -> NdArray[float]`
+### `numpy.log2(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise base-2 logarithm.
 
@@ -328,7 +178,7 @@ Elementwise base-2 logarithm.
 
 Scalar base-2 logarithm.
 
-### `numpy.log10(a: NdArray[float]) -> NdArray[float]`
+### `numpy.log10(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise base-10 logarithm.
 
@@ -336,7 +186,7 @@ Elementwise base-10 logarithm.
 
 Scalar base-10 logarithm.
 
-### `numpy.abs(a: NdArray[float]) -> NdArray[float]`
+### `numpy.abs(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise absolute value.
 
@@ -344,7 +194,7 @@ Elementwise absolute value.
 
 Scalar absolute value.
 
-### `numpy.sin(a: NdArray[float]) -> NdArray[float]`
+### `numpy.sin(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise sine (radians).
 
@@ -352,7 +202,7 @@ Elementwise sine (radians).
 
 Scalar sine.
 
-### `numpy.cos(a: NdArray[float]) -> NdArray[float]`
+### `numpy.cos(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise cosine (radians).
 
@@ -360,7 +210,7 @@ Elementwise cosine (radians).
 
 Scalar cosine.
 
-### `numpy.tan(a: NdArray[float]) -> NdArray[float]`
+### `numpy.tan(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise tangent (radians).
 
@@ -368,7 +218,7 @@ Elementwise tangent (radians).
 
 Scalar tangent.
 
-### `numpy.arcsin(a: NdArray[float]) -> NdArray[float]`
+### `numpy.arcsin(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise arcsine, returning radians.
 
@@ -376,7 +226,7 @@ Elementwise arcsine, returning radians.
 
 Scalar arcsine.
 
-### `numpy.arccos(a: NdArray[float]) -> NdArray[float]`
+### `numpy.arccos(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise arccosine, returning radians.
 
@@ -384,7 +234,7 @@ Elementwise arccosine, returning radians.
 
 Scalar arccosine.
 
-### `numpy.arctan(a: NdArray[float]) -> NdArray[float]`
+### `numpy.arctan(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise arctangent, returning radians.
 
@@ -392,7 +242,7 @@ Elementwise arctangent, returning radians.
 
 Scalar arctangent.
 
-### `numpy.floor(a: NdArray[float]) -> NdArray[float]`
+### `numpy.floor(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise floor.
 
@@ -400,7 +250,7 @@ Elementwise floor.
 
 Scalar floor.
 
-### `numpy.ceil(a: NdArray[float]) -> NdArray[float]`
+### `numpy.ceil(a: ndarray[float]) -> ndarray[float]`
 
 Elementwise ceiling.
 
@@ -408,7 +258,7 @@ Elementwise ceiling.
 
 Scalar ceiling.
 
-### `numpy.round(a: NdArray[float], decimals: int = 0) -> NdArray[float]`
+### `numpy.round(a: ndarray[float], decimals: int = 0) -> ndarray[float]`
 
 Elementwise round to *decimals* decimal places (banker's rounding).
 
@@ -416,136 +266,136 @@ Elementwise round to *decimals* decimal places (banker's rounding).
 
 Scalar round to *decimals* decimal places.
 
-### `numpy.power(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
+### `numpy.power(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Elementwise `a ** b` with broadcasting (NumPy equivalent of `numpy.power`).
 C# has no `**` operator, so this is exposed as a module function.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Base array.
-- `b` (NdArray[float]) -- Exponent array. Broadcast against *a*.
+- `a` (ndarray[float]) -- Base array.
+- `b` (ndarray[float]) -- Exponent array. Broadcast against *a*.
 
-### `numpy.power(a: NdArray[float], b: float) -> NdArray[float]`
+### `numpy.power(a: ndarray[float], b: float) -> ndarray[float]`
 
 Raise every element of *a* to the scalar power *b*.
 
-### `numpy.power(a: float, b: NdArray[float]) -> NdArray[float]`
+### `numpy.power(a: float, b: ndarray[float]) -> ndarray[float]`
 
 Raise the scalar *a* elementwise to the powers in *b*.
 
-### `numpy.sum(a: NdArray[float]) -> float`
+### `numpy.sum(a: ndarray[float]) -> float`
 
 Sum of all elements.
 
-### `numpy.min(a: NdArray[float]) -> float`
+### `numpy.min(a: ndarray[float]) -> float`
 
 Minimum element. Throws when *a* is empty.
 
-### `numpy.max(a: NdArray[float]) -> float`
+### `numpy.max(a: ndarray[float]) -> float`
 
 Maximum element. Throws when *a* is empty.
 
-### `numpy.mean(a: NdArray[float]) -> float`
+### `numpy.mean(a: ndarray[float]) -> float`
 
 Arithmetic mean. Throws when *a* is empty.
 
-### `numpy.var(a: NdArray[float]) -> float`
+### `numpy.var(a: ndarray[float]) -> float`
 
 Population variance (ddof = 0). Throws when *a* is empty.
 
-### `numpy.std(a: NdArray[float]) -> float`
+### `numpy.std(a: ndarray[float]) -> float`
 
 Population standard deviation (ddof = 0). Throws when *a* is empty.
 
-### `numpy.median(a: NdArray[float]) -> float`
+### `numpy.median(a: ndarray[float]) -> float`
 
 Median of all elements. Throws when *a* is empty.
 
-### `numpy.sum(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.sum(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Sum along *axis*, removing that dimension.
 
-### `numpy.min(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.min(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Minimum along *axis*, removing that dimension.
 
-### `numpy.max(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.max(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Maximum along *axis*, removing that dimension.
 
-### `numpy.mean(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.mean(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Mean along *axis*, removing that dimension.
 
-### `numpy.var(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.var(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Population variance along *axis*, removing that dimension.
 
-### `numpy.std(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.std(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Population standard deviation along *axis*.
 
-### `numpy.median(a: NdArray[float], axis: int) -> NdArray[float]`
+### `numpy.median(a: ndarray[float], axis: int) -> ndarray[float]`
 
 Median along *axis*, removing that dimension.
 
-### `numpy.sort(a: NdArray[float]) -> NdArray[float]`
+### `numpy.sort(a: ndarray[float]) -> ndarray[float]`
 
 Return a sorted copy of the input. For 1-D input this is a plain ascending sort;
 for higher-rank inputs the array is flattened first.
 
-### `numpy.argsort(a: NdArray[float]) -> NdArray[int64]`
+### `numpy.argsort(a: ndarray[float]) -> ndarray[int64]`
 
 Return the indices that would sort the input — i.e. `a.Sort()` is equivalent
 to `a.Take(Argsort(a))` for 1-D inputs.
 
-### `numpy.unique(a: NdArray[float]) -> NdArray[float]`
+### `numpy.unique(a: ndarray[float]) -> ndarray[float]`
 
 Return the sorted unique elements of *a* as a 1-D array.
 
-### `numpy.searchsorted(a: NdArray[float], values: NdArray[float]) -> NdArray[int64]`
+### `numpy.searchsorted(a: ndarray[float], values: ndarray[float]) -> ndarray[int64]`
 
 Find indices where elements of *values* should be inserted into
 the sorted 1-D array *a* to maintain order. Uses NumPy's "left" side
 convention (the first valid insertion point).
 
-### `numpy.allclose(a: NdArray[float], b: NdArray[float], rtol: float = 1e-5, atol: float = 1e-8) -> bool`
+### `numpy.allclose(a: ndarray[float], b: ndarray[float], rtol: float = 1e-5, atol: float = 1e-8) -> bool`
 
 True if every pair of elements in *a* and *b* is
 close, using NumPy's mixed absolute/relative tolerance:
 `|a - b| <= atol + rtol * |b|`.
 
-### `numpy.isnan(a: NdArray[float]) -> NdArray[bool]`
+### `numpy.isnan(a: ndarray[float]) -> ndarray[bool]`
 
 Elementwise `double.IsNaN`.
 
-### `numpy.isinf(a: NdArray[float]) -> NdArray[bool]`
+### `numpy.isinf(a: ndarray[float]) -> ndarray[bool]`
 
 Elementwise `double.IsInfinity`.
 
-### `numpy.isfinite(a: NdArray[float]) -> NdArray[bool]`
+### `numpy.isfinite(a: ndarray[float]) -> ndarray[bool]`
 
 Elementwise `double.IsFinite` (neither infinite nor NaN).
 
-### `numpy.array(data: Iterable[T]) -> NdArray[T]`
+### `numpy.array(data: IEnumerable[T]) -> ndarray[T]`
 
-Construct a 1-D `NdArray[T]` from a flat data buffer.
+Construct a 1-D `ndarray[T]` from a flat data buffer.
 
 **Parameters:**
 
-- `data` (Iterable[T]) -- Source data. Length determines the shape.
+- `data` (IEnumerable[T]) -- Source data. Length determines the shape.
 
 **Returns:** A new 1-D ndarray owning a copy of *data*.
 
-### `numpy.array(data: Iterable[Iterable[T]]) -> NdArray[T]`
+### `numpy.array(data: IEnumerable[IEnumerable[T]]) -> ndarray[T]`
 
-Construct a 2-D `NdArray[T]` from a nested sequence of rows
+Construct a 2-D `ndarray[T]` from a nested sequence of rows
 (e.g. `[[1, 2], [3, 4]]`). All rows must have the same length.
 
 **Parameters:**
 
-- `data` (Iterable[Iterable[T]]) -- Sequence of equal-length rows; the row count and the
+- `data` (IEnumerable[IEnumerable[T]]) -- Sequence of equal-length rows; the row count and the
 common row length determine the 2-D shape.
 
 **Returns:** A new 2-D ndarray owning a copy of the flattened data.
@@ -554,7 +404,7 @@ common row length determine the 2-D shape.
 
 - `ArgumentException` -- Rows have differing lengths.
 
-### `numpy.zeros(*shape: int) -> NdArray[float]`
+### `numpy.zeros(*shape: int) -> ndarray[float]`
 
 Return a new ndarray of the given shape, filled with 0.0.
 
@@ -562,7 +412,7 @@ Return a new ndarray of the given shape, filled with 0.0.
 
 - `shape` (*int) -- Shape of the result. Each dimension must be non-negative.
 
-### `numpy.ones(*shape: int) -> NdArray[float]`
+### `numpy.ones(*shape: int) -> ndarray[float]`
 
 Return a new ndarray of the given shape, filled with 1.0.
 
@@ -570,7 +420,7 @@ Return a new ndarray of the given shape, filled with 1.0.
 
 - `shape` (*int) -- Shape of the result. Each dimension must be non-negative.
 
-### `numpy.full(shape: list[int], value: T) -> NdArray[T]`
+### `numpy.full(shape: list[int], value: T) -> ndarray[T]`
 
 Return a new ndarray of the given shape, filled with *value*.
 
@@ -579,7 +429,7 @@ Return a new ndarray of the given shape, filled with *value*.
 - `shape` (list[int]) -- Shape of the result.
 - `value` (T) -- Fill value.
 
-### `numpy.eye(n: int) -> NdArray[float]`
+### `numpy.eye(n: int) -> ndarray[float]`
 
 Return an *n*×*n* identity matrix.
 
@@ -587,7 +437,7 @@ Return an *n*×*n* identity matrix.
 
 - `n` (int) -- Square matrix dimension.
 
-### `numpy.arange(stop: float) -> NdArray[float]`
+### `numpy.arange(stop: float) -> ndarray[float]`
 
 Return evenly spaced values within the half-open interval `[0, stop)` — numpy's
 single-argument `arange` (#1469).
@@ -607,7 +457,7 @@ single-argument `arange` (#1469).
     error — `arange(0)` and `arange(-3.0)` both give an empty array, which the
     three-argument implementation already produces for `stop <= start`.
 
-### `numpy.arange(start: float, stop: float, step: float = 1.0) -> NdArray[float]`
+### `numpy.arange(start: float, stop: float, step: float = 1.0) -> ndarray[float]`
 
 Return evenly spaced values within a half-open interval `[start, stop)`.
 
@@ -617,7 +467,7 @@ Return evenly spaced values within a half-open interval `[start, stop)`.
 - `stop` (float) -- Exclusive end of the interval.
 - `step` (float) -- Step size between successive values. Default 1.0. Cannot be zero.
 
-### `numpy.linspace(start: float, stop: float, num: int = 50) -> NdArray[float]`
+### `numpy.linspace(start: float, stop: float, num: int = 50) -> ndarray[float]`
 
 Return *num* evenly spaced samples over the closed interval `[start, stop]`.
 
@@ -627,7 +477,7 @@ Return *num* evenly spaced samples over the closed interval `[start, stop]`.
 - `stop` (float) -- Inclusive end of the interval.
 - `num` (int) -- Number of samples to generate. Must be non-negative. Default 50.
 
-### `numpy.empty(*shape: int) -> NdArray[float]`
+### `numpy.empty(*shape: int) -> ndarray[float]`
 
 Return a new uninitialized ndarray of the given shape. Backed by a fresh
 zero-initialized buffer (CLR semantics — no truly-uninitialized storage).
@@ -636,31 +486,31 @@ zero-initialized buffer (CLR semantics — no truly-uninitialized storage).
 
 - `shape` (*int) -- Shape of the result.
 
-### `numpy.dot(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
+### `numpy.dot(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
-Dot product of two arrays — top-level alias for `NumpyLinalg.Dot`.
-
-**Parameters:**
-
-- `a` (NdArray[float]) -- Left operand.
-- `b` (NdArray[float]) -- Right operand.
-
-### `numpy.matmul(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
-
-Matrix product — top-level alias for `NumpyLinalg.Matmul`.
+Dot product of two arrays — top-level alias for `dot`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Left operand.
-- `b` (NdArray[float]) -- Right operand.
+- `a` (ndarray[float]) -- Left operand.
+- `b` (ndarray[float]) -- Right operand.
 
-### `numpy.fft(a: NdArray[float]) -> NdArray[BclComplex]`
+### `numpy.matmul(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
+
+Matrix product — top-level alias for `matmul`.
+
+**Parameters:**
+
+- `a` (ndarray[float]) -- Left operand.
+- `b` (ndarray[float]) -- Right operand.
+
+### `numpy.fft(a: ndarray[float]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D discrete Fourier transform of a real-valued ndarray.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Input 1-D ndarray of real values.
+- `a` (ndarray[float]) -- Input 1-D ndarray of real values.
 
 **Returns:** A 1-D ndarray of complex values with the same length as the input.
 
@@ -669,17 +519,17 @@ Compute the 1-D discrete Fourier transform of a real-valued ndarray.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 1-dimensional.
 
-### `numpy.fft(a: NdArray[BclComplex]) -> NdArray[BclComplex]`
+### `numpy.fft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D discrete Fourier transform of a complex-valued ndarray.
 
-### `numpy.ifft(a: NdArray[BclComplex]) -> NdArray[BclComplex]`
+### `numpy.ifft(a: ndarray[system.numerics.Complex]) -> ndarray[system.numerics.Complex]`
 
 Compute the 1-D inverse discrete Fourier transform of a complex-valued ndarray.
 
 **Parameters:**
 
-- `a` (NdArray[BclComplex]) -- Input 1-D ndarray of complex values.
+- `a` (ndarray[system.numerics.Complex]) -- Input 1-D ndarray of complex values.
 
 **Returns:** A 1-D ndarray of complex values with the same length as the input.
 
@@ -688,7 +538,7 @@ Compute the 1-D inverse discrete Fourier transform of a complex-valued ndarray.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 1-dimensional.
 
-### `numpy.fftfreq(n: int, d: float = 1.0) -> NdArray[float]`
+### `numpy.fftfreq(n: int, d: float = 1.0) -> ndarray[float]`
 
 Return the discrete Fourier transform sample frequencies for a transform of length *n*.
 
@@ -705,7 +555,7 @@ or `[0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)` for odd n.
 
 - `ValueError` -- Thrown when *n* is negative.
 
-### `numpy.dot(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
+### `numpy.dot(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Dot product of two arrays.
   * 1-D × 1-D — inner product (scalar) returned as a 0-D ndarray.
@@ -715,56 +565,56 @@ Dot product of two arrays.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Left operand.
-- `b` (NdArray[float]) -- Right operand.
+- `a` (ndarray[float]) -- Left operand.
+- `b` (ndarray[float]) -- Right operand.
 
 **Raises:**
 
 - `ArgumentNullException` -- Thrown when *a* or *b* is null.
 - `ValueError` -- Thrown when shapes are incompatible or rank is unsupported.
 
-### `numpy.matmul(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
+### `numpy.matmul(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
-Matrix product. For 1-D and 2-D inputs this is equivalent to `Dot`.
+Matrix product. For 1-D and 2-D inputs this is equivalent to `dot`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Left operand.
-- `b` (NdArray[float]) -- Right operand.
+- `a` (ndarray[float]) -- Left operand.
+- `b` (ndarray[float]) -- Right operand.
 
-### `numpy.inv(a: NdArray[float]) -> NdArray[float]`
+### `numpy.inv(a: ndarray[float]) -> ndarray[float]`
 
 Compute the (multiplicative) inverse of a square matrix.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- A square 2-D array.
+- `a` (ndarray[float]) -- A square 2-D array.
 
 **Raises:**
 
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D, not square, or is singular.
 
-### `numpy.det(a: NdArray[float]) -> float`
+### `numpy.det(a: ndarray[float]) -> float`
 
 Compute the determinant of a square 2-D array.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- A square 2-D array.
+- `a` (ndarray[float]) -- A square 2-D array.
 
 **Raises:**
 
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D or not square.
 
-### `numpy.eig(a: NdArray[float]) -> tuple[NdArray[float], NdArray[float]]`
+### `numpy.eig(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float]]`
 
 Compute the eigenvalues and (right) eigenvectors of a square 2-D array.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- A square 2-D array.
+- `a` (ndarray[float]) -- A square 2-D array.
 
 **Returns:** A tuple `(eigenvalues, eigenvectors)` where `eigenvalues` is a 1-D ndarray and
 `eigenvectors` is a 2-D ndarray whose columns are the eigenvectors. Imaginary parts
@@ -775,13 +625,13 @@ of complex eigenvalues are dropped — only the real component is returned.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D or not square.
 
-### `numpy.svd(a: NdArray[float]) -> tuple[NdArray[float], NdArray[float], NdArray[float]]`
+### `numpy.svd(a: ndarray[float]) -> tuple[ndarray[float], ndarray[float], ndarray[float]]`
 
 Singular value decomposition. Returns `(U, S, Vh)` such that `A = U · diag(S) · Vh`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- A 2-D array.
+- `a` (ndarray[float]) -- A 2-D array.
 
 **Returns:** A tuple `(U, S, Vh)` where `U` and `Vh` are 2-D ndarrays and `S`
 is a 1-D ndarray of singular values in descending order.
@@ -791,14 +641,14 @@ is a 1-D ndarray of singular values in descending order.
 - `ArgumentNullException` -- Thrown when *a* is null.
 - `ValueError` -- Thrown when *a* is not 2-D.
 
-### `numpy.solve(a: NdArray[float], b: NdArray[float]) -> NdArray[float]`
+### `numpy.solve(a: ndarray[float], b: ndarray[float]) -> ndarray[float]`
 
 Solve the linear system `A x = b` for `x`.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Coefficient matrix (square 2-D array).
-- `b` (NdArray[float]) -- Right-hand side. Either a 1-D vector or a 2-D matrix.
+- `a` (ndarray[float]) -- Coefficient matrix (square 2-D array).
+- `b` (ndarray[float]) -- Right-hand side. Either a 1-D vector or a 2-D matrix.
 
 **Returns:** Solution with the same rank as *b* (1-D ndarray when *b*
 is 1-D, 2-D ndarray otherwise).
@@ -808,7 +658,7 @@ is 1-D, 2-D ndarray otherwise).
 - `ArgumentNullException` -- Thrown when *a* or *b* is null.
 - `ValueError` -- Thrown when shapes are incompatible, the matrix is singular, or the rank is unsupported.
 
-### `numpy.norm(a: NdArray[float]) -> float`
+### `numpy.norm(a: ndarray[float]) -> float`
 
 Compute the L2 (Frobenius) norm of an array.
   * 1-D — Euclidean (L2) norm.
@@ -816,7 +666,7 @@ Compute the L2 (Frobenius) norm of an array.
 
 **Parameters:**
 
-- `a` (NdArray[float]) -- Input array.
+- `a` (ndarray[float]) -- Input array.
 
 **Raises:**
 
@@ -831,7 +681,7 @@ Seed the thread-local random number generator with *seed*.
 
 - `seed` (int) -- Seed value for the underlying `System.Random`.
 
-### `numpy.rand(*shape: int) -> NdArray[float]`
+### `numpy.rand(*shape: int) -> ndarray[float]`
 
 Random samples from a uniform distribution over `[0, 1)`.
 
@@ -839,7 +689,7 @@ Random samples from a uniform distribution over `[0, 1)`.
 
 - `shape` (*int) -- Shape of the result. May be empty (returns a 0-D scalar array).
 
-### `numpy.randn(*shape: int) -> NdArray[float]`
+### `numpy.randn(*shape: int) -> ndarray[float]`
 
 Random samples from the standard normal distribution (mean 0, stddev 1).
 
@@ -847,7 +697,7 @@ Random samples from the standard normal distribution (mean 0, stddev 1).
 
 - `shape` (*int) -- Shape of the result.
 
-### `numpy.randint(low: int, high: int, shape: list[int]) -> NdArray[int]`
+### `numpy.randint(low: int, high: int, shape: list[int]) -> ndarray[int]`
 
 Random integers from the half-open interval `[low, high)`.
 
@@ -861,7 +711,7 @@ Random integers from the half-open interval `[low, high)`.
 
 - `ValueError` -- Thrown when *high* is not greater than *low*.
 
-### `numpy.normal(loc: float, scale: float, shape: list[int]) -> NdArray[float]`
+### `numpy.normal(loc: float, scale: float, shape: list[int]) -> ndarray[float]`
 
 Random samples from a normal (Gaussian) distribution with the given mean and standard deviation.
 
@@ -875,7 +725,7 @@ Random samples from a normal (Gaussian) distribution with the given mean and sta
 
 - `ValueError` -- Thrown when *scale* is negative.
 
-### `numpy.uniform(low: float, high: float, shape: list[int]) -> NdArray[float]`
+### `numpy.uniform(low: float, high: float, shape: list[int]) -> ndarray[float]`
 
 Random samples from a continuous uniform distribution over `[low, high)`.
 
@@ -889,13 +739,13 @@ Random samples from a continuous uniform distribution over `[low, high)`.
 
 - `ValueError` -- Thrown when *high* is less than *low*.
 
-### `numpy.choice(a: NdArray[T], size: int, replace: bool = True) -> NdArray[T]`
+### `numpy.choice(a: ndarray[T], size: int, replace: bool = True) -> ndarray[T]`
 
 Draw *size* random samples from a 1-D ndarray *a*.
 
 **Parameters:**
 
-- `a` (NdArray[T]) -- Source 1-D ndarray to sample from.
+- `a` (ndarray[T]) -- Source 1-D ndarray to sample from.
 - `size` (int) -- Number of samples to draw. Must be non-negative.
 - `replace` (bool) -- Whether sampling is with replacement. Default `True`.
 When `False`, *size* must not exceed `a.Size`.
@@ -906,13 +756,13 @@ When `False`, *size* must not exceed `a.Size`.
 when *a* is empty and *size* > 0, or when sampling without replacement and
 *size* exceeds the source length.
 
-### `numpy.shuffle(a: NdArray[T])`
+### `numpy.shuffle(a: ndarray[T])`
 
 Shuffle the contents of *a* in place along its first axis.
 
 **Parameters:**
 
-- `a` (NdArray[T]) -- Array to shuffle. For multi-dimensional arrays, contiguous row blocks
+- `a` (ndarray[T]) -- Array to shuffle. For multi-dimensional arrays, contiguous row blocks
 of `a.Shape[1..]` are permuted as units (matches NumPy semantics).
 
 **Raises:**
@@ -936,12 +786,13 @@ N-dimensional homogeneous array — Sharpy equivalent of `numpy.ndarray`.
 | `shape` | `list[int]` | Shape of the array as a defensive copy of the internal shape vector. |
 | `strides` | `list[int]` | Strides of the array as a defensive copy of the internal stride vector. |
 | `dtype` | `str` | Element type name in NumPy-style notation (e.g., \`float64\`, \`int32\`). |
+| `count` | `int` | \`len(arr)\`-equivalent: the length of the first axis for non-scalar arrays. For 0-D scalars this returns 1 (matches the underlying buffer size). |
 
 ### `sum() -> float`
 
 Sum of all elements.
 
-### `sum(axis: int) -> NdArray[float]`
+### `sum(axis: int) -> ndarray[float]`
 
 Sum along *axis*, removing that dimension.
 
@@ -949,7 +800,7 @@ Sum along *axis*, removing that dimension.
 
 Minimum element.
 
-### `min(axis: int) -> NdArray[float]`
+### `min(axis: int) -> ndarray[float]`
 
 Minimum along *axis*.
 
@@ -957,7 +808,7 @@ Minimum along *axis*.
 
 Maximum element.
 
-### `max(axis: int) -> NdArray[float]`
+### `max(axis: int) -> ndarray[float]`
 
 Maximum along *axis*.
 
@@ -965,7 +816,7 @@ Maximum along *axis*.
 
 Arithmetic mean of all elements.
 
-### `mean(axis: int) -> NdArray[float]`
+### `mean(axis: int) -> ndarray[float]`
 
 Mean along *axis*.
 
@@ -973,7 +824,7 @@ Mean along *axis*.
 
 Population standard deviation.
 
-### `std(axis: int) -> NdArray[float]`
+### `std(axis: int) -> ndarray[float]`
 
 Standard deviation along *axis*.
 
@@ -981,7 +832,7 @@ Standard deviation along *axis*.
 
 Population variance.
 
-### `var(axis: int) -> NdArray[float]`
+### `var(axis: int) -> ndarray[float]`
 
 Variance along *axis*.
 
@@ -989,6 +840,161 @@ Variance along *axis*.
 
 Median of all elements.
 
-### `median(axis: int) -> NdArray[float]`
+### `median(axis: int) -> ndarray[float]`
 
 Median along *axis*.
+
+### `get_masked(mask: ndarray[bool]) -> ndarray[T]`
+
+Return a 1-D copy containing the elements where *mask* is True.
+
+**Parameters:**
+
+- `mask` (ndarray[bool]) -- Boolean mask with the same shape as this array.
+
+**Raises:**
+
+- `ArgumentNullException` -- Thrown when *mask* is null.
+- `ArgumentException` -- Thrown when the mask shape does not match this array's shape.
+
+### `set_masked(mask: ndarray[bool], value: T)`
+
+Assign *value* to every position where *mask* is True.
+
+**Parameters:**
+
+- `mask` (ndarray[bool]) -- Boolean mask with the same shape as this array.
+- `value` (T) -- Scalar value written to each selected position.
+
+### `set_masked(mask: ndarray[bool], values: ndarray[T])`
+
+Assign values from *values* to positions where *mask* is True.
+*values* must be 1-D with length equal to the number of True entries in the mask.
+
+### `__str__() -> str`
+
+`repr()` uses the same method. Format this array as a NumPy-style string: `array([1, 2, 3])` for 1-D arrays,
+`array([[1, 2], [3, 4]])` for 2-D arrays, and so on. Arrays with more than
+1000 elements are truncated, showing the first and last 3 entries per axis.
+
+### `take(indices: list[int], axis: int = 0) -> ndarray[T]`
+
+Take elements from this array at the positions given by *indices*.
+For a 1-D source this returns a 1-D array of the selected values; for higher-rank
+sources this selects entire (N-1)-D slices along *axis*.
+
+**Parameters:**
+
+- `indices` (list[int]) -- Integer indices into *axis*. Negative values follow Python semantics.
+- `axis` (int) -- Axis along which to select. Default 0.
+
+**Returns:** A new C-contiguous array of the selected elements.
+
+### `put(indices: list[int], values: ndarray[T], axis: int = 0)`
+
+Write *values* into this array at the positions given by
+*indices* along *axis*. The shape of
+*values* must match the shape of `take`'s result
+for the same indices/axis.
+
+### `tolist() -> object`
+
+Convert this array to a nested `List<...>` mirror — the equivalent of NumPy's
+`ndarray.tolist()`. The result type depends on rank: 1-D → `List<T>`,
+2-D → `List<List<T>>`, etc. Returned as `object` because the static
+nesting depth depends on the runtime rank.
+
+### `to_array() -> list[T]`
+
+Returns a flat copy of the array data in row-major order.
+
+### `mat_mul(other: ndarray[T]) -> ndarray[T]`
+
+Matrix multiplication (`@`, PEP 465). Delegates to
+`matmul`, which follows
+NumPy's dot semantics (inner product for 1-D operands, matrix product for 2-D).
+
+**Parameters:**
+
+- `other` (ndarray[T]) -- The right-hand operand.
+
+**Raises:**
+
+- `ArgumentNullException` -- Thrown when *other* is null.
+- `TypeError` -- Thrown when the arrays are not `float64` (`double`). NumPy's linear-algebra
+surface here is defined only for floating-point arrays.
+
+### `reshape(*new_shape: int) -> ndarray[T]`
+
+Return an array with the same data and a new shape. Returns a zero-copy view when
+this array is C-contiguous; otherwise materializes a copy.
+
+**Parameters:**
+
+- `new_shape` (*int) -- The target shape. Exactly one dimension may be `-1`, in which case its size is
+inferred from the total element count and the remaining dimensions.
+
+**Raises:**
+
+- `ArgumentNullException` -- Thrown when *newShape* is null.
+- `ArgumentException` -- Thrown when more than one dimension is -1, or the inferred shape does not match `size`.
+
+### `transpose() -> ndarray[T]`
+
+Return a view of this array with axes reversed. For a 2-D array this is the matrix transpose.
+
+### `flatten() -> ndarray[T]`
+
+Return a 1-D copy of this array's elements in row-major order.
+
+### `ravel() -> ndarray[T]`
+
+Return a 1-D view of this array if it is C-contiguous; otherwise return a 1-D copy.
+
+### `copy() -> ndarray[T]`
+
+Return a deep copy of this array. The result owns its buffer and is C-contiguous.
+
+### `slice(*slices: SliceSpec) -> ndarray[T]`
+
+Produce a zero-copy view defined by per-axis slice specs. The number of slices must
+equal `ndim`. The view shares the underlying buffer with this array.
+
+**Parameters:**
+
+- `slices` (*SliceSpec) -- Per-axis slice descriptors. Length must equal `ndim`.
+
+**Returns:** A view of this array with the same `ndim` but possibly smaller per-axis lengths.
+
+**Raises:**
+
+- `ArgumentNullException` -- Thrown when *slices* is null.
+- `IndexError` -- Thrown when the slice count does not match `ndim`.
+
+### `get_row(i: int) -> ndarray[T]`
+
+Return a 1-D view of row *i* for a 2-D array. Negative indices follow
+Python semantics.
+
+**Parameters:**
+
+- `i` (int) -- Row index. Negative values count from the end.
+
+**Raises:**
+
+- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
+- `IndexError` -- Thrown when *i* is out of range.
+
+### `get_column(j: int) -> ndarray[T]`
+
+Return a 1-D view of column *j* for a 2-D array. Negative indices follow
+Python semantics.
+
+**Parameters:**
+
+- `j` (int) -- Column index. Negative values count from the end.
+
+**Raises:**
+
+- `InvalidOperationException` -- Thrown when this array is not 2-dimensional.
+- `IndexError` -- Thrown when *j* is out of range.
