@@ -444,6 +444,22 @@ def _split_generic_args(s: str) -> list[str]:
     return parts
 
 
+def _split_type_params(raw: "str | None") -> list[str]:
+    """The names of a C# generic parameter list (`in T, out TResult` -> ["T", "TResult"])."""
+    if not raw:
+        return []
+    return [p.split()[-1] for p in raw.split(",") if p.strip()]
+
+
+_CLASS_TYPE_PARAMS_RE = re.compile(r"\b(?:class|struct|interface|record)\s+\w+\s*<([^>]+)>")
+
+
+def _class_type_params(decl_line: str) -> list[str]:
+    """The generic parameters of the type declared on *decl_line* (`class List<T>` -> ["T"])."""
+    match = _CLASS_TYPE_PARAMS_RE.search(decl_line)
+    return _split_type_params(match.group(1)) if match else []
+
+
 # ---------------------------------------------------------------------------
 # XML doc comment parsing
 # ---------------------------------------------------------------------------
@@ -633,6 +649,13 @@ class DocMember:
     remarks: str = ""
     exceptions: list[tuple[str, str]] = field(default_factory=list)
     is_static: bool = False
+    # The member's own generic parameters (`Lookup<V>` -> ["V"]). Not rendered; a type token that
+    # names one is a type parameter, not a type (#2163).
+    type_params: list[str] = field(default_factory=list)
+    # The innermost public type whose body declares the member, a parse fact (#2163): a member
+    # renders under its declaring type's section, never as a module function of another type's.
+    declaring_type: str = ""
+    declaring_static: bool = False
 
 
 @dataclass
@@ -640,10 +663,12 @@ class DocType:
     """A documented module type (e.g., ArgumentParser in argparse)."""
 
     name: str
-    cs_name: str
+    cs_name: str  # the declaring C# class
     summary: str = ""
     remarks: str = ""
     members: list[DocMember] = field(default_factory=list)
+    # The declaring class's generic parameters (`class Gadget<T>` -> ["T"]) (#2163).
+    type_params: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -655,6 +680,11 @@ class DocModule:
     summary: str = ""
     members: list[DocMember] = field(default_factory=list)
     types: list[DocType] = field(default_factory=list)
+    # A core-type page's generic parameters (`List<T>` -> ["T"]) (#2163).
+    type_params: list[str] = field(default_factory=list)
+    # The `[SharpyModule]` class a module page documents; its partial declarations in any file
+    # are the module's functions (#2163).
+    module_class: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -1242,6 +1272,15 @@ def parse_cs_file(
     members: list[DocMember] = []
 
     _non_public_ranges = _find_nonpublic_class_ranges(lines)
+    _public_ranges = _find_public_class_ranges(lines)
+
+    def _declaring_type(line: int) -> str:
+        enclosing = [(start, name) for name, start, end in _public_ranges if start <= line <= end]
+        return max(enclosing)[1] if enclosing else ""
+
+    def _declaring_static(line: int) -> bool:
+        enclosing = [start for _, start, end in _public_ranges if start <= line <= end]
+        return bool(enclosing) and bool(re.search(r"\bstatic\b", lines[max(enclosing)]))
 
     i = 0
 
@@ -1284,6 +1323,8 @@ def parse_cs_file(
                         summary=doc.get("summary", ""),
                         return_type=map_type(ctype.strip()),
                         is_static=True,
+                        declaring_type=_declaring_type(i),
+                        declaring_static=_declaring_static(i),
                     )
                 )
             i = end_i + 1
@@ -1381,6 +1422,9 @@ def parse_cs_file(
                     remarks=doc.get("remarks", ""),
                     exceptions=doc.get("exceptions", []),
                     is_static=is_static,
+                    type_params=_split_type_params(type_params),
+                    declaring_type=_declaring_type(i),
+                    declaring_static=_declaring_static(i),
                 )
             )
             i = end_i + 1
@@ -1405,6 +1449,8 @@ def parse_cs_file(
                             summary=doc.get("summary", ""),
                             return_type=map_type(ptype.strip()),
                             is_static="static" in modifiers,
+                            declaring_type=_declaring_type(i),
+                            declaring_static=_declaring_static(i),
                         )
                     )
 
@@ -1471,6 +1517,8 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             continue
 
         mod_name = mod_match.group(1)
+        module_class_match = re.search(r"\bclass\s+(\w+)", init_text[mod_match.end() :])
+        module_class = module_class_match.group(1) if module_class_match else ""
 
         # Skip sub-modules (os.path) and builtins (handled separately)
         if "." in mod_name or mod_name == "builtins":
@@ -1559,10 +1607,11 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                     )
                     doc_type = DocType(
                         name=display_name,
-                        cs_name=cs_file.stem,
+                        cs_name=class_name,
                         summary=class_doc.get("summary", ""),
                         remarks=class_doc.get("remarks", ""),
                         members=type_members,
+                        type_params=_class_type_params(file_lines[start]),
                     )
                     all_types.append(doc_type)
                     types_by_class[class_name] = doc_type
@@ -1604,6 +1653,7 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 summary=summary,
                 members=all_members,
                 types=all_types,
+                module_class=module_class,
             )
         )
 
@@ -1630,6 +1680,7 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
 
         all_members: list[DocMember] = []
         summary = ""
+        page_type_params: list[str] = []
 
         # Sort files so the main type file comes first (shorter name = main file)
         cs_files = sorted(subdir.glob("*.cs"), key=lambda f: (len(f.name), f.name))
@@ -1640,11 +1691,17 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
                     summary = file_summary
             # A type page documents ONE type: members of a type nested in it (`Dict.KeyEnumerator`,
             # `List.Enumerator`) are not the page type's members (#1980).
-            ranges = _find_public_class_ranges(cs_file.read_text(encoding="utf-8").split("\n"))
+            file_lines = cs_file.read_text(encoding="utf-8").split("\n")
+            ranges = _find_public_class_ranges(file_lines)
             nested = [
                 (s, e) for _, s, e in ranges
                 if any(ps < s and e <= pe for _, ps, pe in ranges)
             ]
+            if not page_type_params:
+                page_type_params = next(
+                    (_class_type_params(file_lines[s]) for _, s, e in ranges if (s, e) not in nested),
+                    [],
+                )
             members = parse_cs_file(cs_file, is_extension=is_extension, exclude_ranges=nested)
             all_members.extend(members)
 
@@ -1654,6 +1711,7 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
                 kind="type",
                 summary=summary,
                 members=all_members,
+                type_params=page_type_params,
             )
         )
 

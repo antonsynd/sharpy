@@ -2609,3 +2609,395 @@ class TestCSharpSpellingScan:
             if "(" in r or "{" in r or "<" in r
         ]
         assert leaks == []
+
+
+# ---------------------------------------------------------------------------
+# Positive-roster totality check over every rendered type position (#2163)
+# ---------------------------------------------------------------------------
+#
+# Three rounds (#2034 -> #2066 -> #2163) each added C#-spelling DENYLIST rows to `_CSHARP_SPELLINGS`
+# after the leak had shipped. This check is the positive form: every identifier token in every TYPE
+# position the pages render — each parameter and return type of a `### \`...\`` signature, and each
+# properties/constants table type cell — must be one of
+#
+#   1. a Sharpy builtin type name (`_builtin_type_roster`, derived from the language spec and the
+#      compiler's own registration code — never from the rendered output);
+#   2. a CLR type the compiler resolves bare (`_CLR_BARE_TYPES`: each row names its namespace, and
+#      the test checks that namespace is one `BuiltinRegistry.ClrFallbackNamespaces` searches), or a
+#      CLR type spelled by its import path, `system.<snake namespace>.<Type>` (dotnet_interop.md);
+#   3. a type the stdlib docs document — a section on THIS page, bare, or `<module>.<Type>` for a
+#      section on another module's page (the #1911 rule);
+#   4. a generic parameter of the enclosing member or type.
+#
+# A parameter type may also lead with a spec parameter modifier (`ref T`, parameter_modifiers.md).
+# Anything else is a spelling a Sharpy user cannot write.
+
+_SPEC_DIR = _REPO_ROOT / "docs" / "language_specification"
+_COMPILER_SRC = _REPO_ROOT / "src" / "Sharpy.Compiler"
+_CORE_SRC = _REPO_ROOT / "src" / "Sharpy.Core"
+_STDLIB_SRC = _REPO_ROOT / "src" / "Sharpy.Stdlib"
+_REGISTRY_CS = _COMPILER_SRC / "Semantic" / "Registry" / "BuiltinRegistry.cs"
+
+# The Python spellings of int32 and float64. primitive_types.md lists them as ALIASES, and the
+# generator renders them instead of the primary names on purpose (`_SHARPY_TYPE_NAMES`'s comment):
+# they are Python's own spellings. Every other alias (`long`, `double`, `byte`, ...) is there "to
+# ease C# developers" and reads as C#, so it is not on the roster.
+_PYTHON_PRIMITIVE_SPELLINGS = frozenset({"int", "float"})
+
+# CLR types outside the Sharpy namespace that a stdlib signature names bare, each with the namespace
+# it lives in. The compiler resolves a bare annotation through `ClrFallbackNamespaces`
+# (BuiltinRegistry.cs; dotnet_interop.md "Import Name Fidelity"); the test checks every namespace
+# against that list. Rows are non-collection interop types only: a raw .NET collection in a public
+# signature is #2164's API defect, allowlisted below, never a roster row.
+_CLR_BARE_TYPES = {
+    "BigInteger": "System.Numerics",
+    "Stream": "System.IO",
+    "StreamReader": "System.IO",
+    "StreamWriter": "System.IO",
+    "TextReader": "System.IO",
+    "TextWriter": "System.IO",
+    "Type": "System",
+}
+
+# `system.<snake namespace>.<Type>` — the spelling `import system.<snake namespace>` makes valid
+# (ModuleRegistry.MapModuleToNamespace PascalCases each snake segment).
+_CLR_IMPORT_PATH_RE = re.compile(r"^system(?:\.[a-z][a-z0-9_]*)*\.[A-Z]\w*$")
+
+# Tokens the roster rejects today, each citing the open issue that drains it. Never add a row
+# without an issue; a row whose token no longer appears fails `test_roster_allowlist_is_live`.
+_ROSTER_ALLOWLIST: dict[str, str] = {
+    # #2164 (P39) — raw .NET collection / protocol interfaces in public Core/Stdlib signatures: an
+    # API-surface defect the docs only render. P39 drains these rows; the renderer must not hide them.
+    "Dictionary": "#2164",
+    "HashSet": "#2164",
+    "ICollection": "#2164",
+    "IComparable": "#2164",
+    "IDictionary": "#2164",
+    "IList": "#2164",
+    "IReadOnlyDictionary": "#2164",
+    "IReadOnlyList": "#2164",
+    "KeyValuePair": "#2164",
+    # #2163 — the measured residue this check found on its first run (455 positions); the renderer
+    # commit that follows drains every row below.
+    "Iterable": "#2163",  # IEnumerable<T> rendered under a name no Sharpy surface declares (192)
+    "NdArray": "#2163",  # a module type's CLR name, not its documented `ndarray` (186)
+    "Date": "#2163",  # datetime's CLR class names, not the documented date/datetime/time/...
+    "DateTime": "#2163",
+    "Time": "#2163",
+    "Timedelta": "#2163",
+    "Timezone": "#2163",
+    "Sqlite3Connection": "#2163",  # sqlite3's documented `Connection` / `Cursor`
+    "Sqlite3Cursor": "#2163",
+    "Socket": "#2163",  # socket's documented `socket` / `error`
+    "Error": "#2163",
+    "UnameResult": "#2163",  # platform's documented `uname_result`
+    "Complex": "#2163",  # Sharpy.Complex is the registered `complex`
+    "StatResult": "#2163",  # os's type, bare on the pathlib page
+    "BclComplex": "#2163",  # a file-level C# `using` alias
+    "Comparer": "#2163",  # IComparer<T> rendered as a different type's name
+    "long": "#2163",  # `ref long` / `ref double`: the type after a modifier is not mapped
+    "double": "#2163",
+    "Runtime.CompilerServices.ITuple": "#2163",  # `System.` stripped, the rest of the namespace kept
+    "Net.Sockets.SocketException": "#2163",
+    "record": "#2163",  # functools' positional `record CacheInfo(...)` parsed as a function
+    "T": "#2163",  # members of a second-file partial class rendered as module functions
+    "TKey": "#2163",
+    "TResult": "#2163",
+}
+
+
+def _spec_primitive_roster() -> set[str]:
+    """primitive_types.md: the "Sharpy Type" column of the primitive table, plus `int`/`float`."""
+    text = (_SPEC_DIR / "primitive_types.md").read_text(encoding="utf-8")
+    primary_table = text.split("| Sharpy Type | .NET Type |", 1)[1].split("\n\n", 1)[0]
+    primary = set(re.findall(r"^\| `(\w+)` \|", primary_table, re.MULTILINE))
+    alias_table = text.split("| Sharpy Alias | Sharpy Type |", 1)[1].split("\n\n", 1)[0]
+    aliases = dict(re.findall(r"^\| `(\w+)` \| `(\w+)` \|", alias_table, re.MULTILINE))
+    assert _PYTHON_PRIMITIVE_SPELLINGS <= set(aliases), aliases
+    return primary | _PYTHON_PRIMITIVE_SPELLINGS
+
+
+def _registered_builtin_types() -> dict[str, str]:
+    """Every `RegisterType(<name>, typeof(<clr>))` in BuiltinRegistry.cs: Sharpy name -> CLR short name."""
+    names = (_COMPILER_SRC / "Shared" / "BuiltinNames.cs").read_text(encoding="utf-8")
+    consts = dict(re.findall(r'public const string (\w+) = "([^"]+)";', names))
+    registry = _REGISTRY_CS.read_text(encoding="utf-8")
+    registered = {}
+    for m in re.finditer(
+        r'RegisterType\(\s*(?:"(\w+)"|BuiltinNames\.(\w+))\s*,\s*typeof\(([^()]*)\)', registry
+    ):
+        sharpy = m.group(1) or consts[m.group(2)]
+        clr = re.sub(r"<[^<>]*>$", "", m.group(3)).replace("::", ".").rsplit(".", 1)[-1]
+        registered[sharpy] = clr
+    return registered
+
+
+def _clr_fallback_namespaces() -> list[str]:
+    body = _REGISTRY_CS.read_text(encoding="utf-8").split("ClrFallbackNamespaces =", 1)[1].split("};", 1)[0]
+    namespaces = re.findall(r'"([\w.]+)"', body)
+    if "ClrTypeBridge.SpecialCases.SharpyNamespace" in body:
+        namespaces.append("Sharpy")
+    return namespaces
+
+
+def _sharpy_namespace_bare_types() -> set[tuple[str, int]]:
+    """``(name, generic arity)`` of each public top-level type declared in `namespace Sharpy` (Core
+    and Stdlib) with no Sharpy-name override — no `[SharpyModuleType]` on any of its partial
+    declarations (a module type is spelled by its documented name) and no `RegisterType` under
+    another name (`Sharpy.Bytes` is `bytes`). The compiler resolves these bare: `Sharpy` is the last
+    `ClrFallbackNamespaces` entry, probed as `Name`arity` after the System namespaces — so the arity
+    is part of the identity (`Sharpy.IList` is not `IList[str]`, which is SCG's)."""
+    renamed = {clr for sharpy, clr in _registered_builtin_types().items() if sharpy != clr}
+    declared: set[tuple[str, int]] = set()
+    annotated: set[str] = set()
+    for root in (_CORE_SRC, _STDLIB_SRC):
+        for cs in root.rglob("*.cs"):
+            if {"bin", "obj"} & set(cs.relative_to(root).parts):
+                continue
+            text = cs.read_text(encoding="utf-8")
+            if not re.search(r"^\s*namespace Sharpy\s*[{;]?\s*$", text, re.MULTILINE):
+                continue
+            lines = text.split("\n")
+            ranges = generator._find_public_class_ranges(lines)
+            for name, start, end in ranges:
+                if any(ps < start and end <= pe for _, ps, pe in ranges):
+                    continue
+                attrs = " ".join(generator._collect_attribute_lines(lines, start)) + lines[start]
+                if "SharpyModuleType" in attrs:
+                    annotated.add(name)
+                elif name not in renamed:
+                    declared.add((name, len(generator._class_type_params(lines[start]))))
+    return {(name, arity) for name, arity in declared if name not in annotated}
+
+
+def _builtin_type_roster() -> set[str]:
+    """Names valid at ANY arity: the spec primitives and the registered builtins."""
+    return _spec_primitive_roster() | set(_registered_builtin_types())
+
+
+def _type_tokens(text: str) -> list[tuple[str, int]]:
+    """``(token, arity)`` for each identifier in a rendered type; arity counts a `[...]` argument list."""
+    tokens = []
+    for m in re.finditer(r"[A-Za-z_][\w.]*", text):
+        arity = 0
+        if text[m.end() : m.end() + 1] == "[":
+            depth = 0
+            for close in range(m.end(), len(text)):
+                depth += {"[": 1, "]": -1}.get(text[close], 0)
+                if depth == 0:
+                    break
+            arity = len(_split_top_level(text[m.end() + 1 : close]))
+        tokens.append((m.group(0), arity))
+    return tokens
+
+
+def _spec_parameter_modifiers() -> set[str]:
+    text = (_SPEC_DIR / "parameter_modifiers.md").read_text(encoding="utf-8")
+    return set(re.findall(r"^\| `(\w+) T` \|", text, re.MULTILINE))
+
+
+def _split_top_level(text: str, sep: str = ",") -> list[str]:
+    """Split on *sep* outside brackets and string literals."""
+    parts, current, depth, quote = [], [], 0, None
+    for ch in text:
+        if quote:
+            current.append(ch)
+            quote = None if ch == quote else quote
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == sep and depth == 0:
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(ch)
+    if "".join(current).strip():
+        parts.append("".join(current))
+    return parts
+
+
+def _signature_type_positions(signature: str) -> list[tuple[str, str]]:
+    """``(kind, type)`` for each parameter type (``"param"``) and the return type (``"return"``) of a
+    rendered signature `name(p: T = d, *q: U) -> R`. A default is a value, not a type: dropped."""
+    open_paren = signature.index("(")
+    depth = 0
+    for close_paren in range(open_paren, len(signature)):
+        depth += {"(": 1, ")": -1}.get(signature[close_paren], 0)
+        if depth == 0:
+            break
+    positions = []
+    for param in _split_top_level(signature[open_paren + 1 : close_paren]):
+        if ":" in param:
+            # ` = ` at top level starts the default; `->` inside a function type is not one.
+            ptype = re.split(r" = ", param.split(":", 1)[1], maxsplit=1)[0]
+            positions.append(("param", ptype.strip()))
+    tail = signature[close_paren + 1 :].strip()
+    if tail.startswith("->"):
+        positions.append(("return", tail[2:].strip()))
+    return positions
+
+
+def _discover_pages() -> list[DocModule]:
+    """Every generator-owned page's model, discovered as `generate` discovers it."""
+    modules = discover_modules(_CORE_SRC) + discover_modules(_STDLIB_SRC)
+    return (
+        [generator.discover_builtins(_CORE_SRC)]
+        + generator.discover_core_types(_CORE_SRC)
+        + sorted(modules, key=lambda m: m.name)
+    )
+
+
+def _rendered_type_positions(pages: list[DocModule]):
+    """Yield ``(page, where, kind, type, type_params_in_scope)`` for every rendered type position."""
+    for page in pages:
+        owners = [(page.members, page.type_params, "")] + [
+            (t.members, t.type_params, f"{t.name}.") for t in page.types
+        ]
+        for members, owner_params, owner in owners:
+            for m in members:
+                scope = set(owner_params) | set(m.type_params)
+                where = f"{page.name}.md {owner}{m.signature or m.name}"
+                if m.kind == "method":
+                    for kind, ptype in _signature_type_positions(m.signature):
+                        yield page.name, where, kind, ptype, scope
+                elif m.return_type:
+                    yield page.name, where, "return", m.return_type, scope
+
+
+def _roster_violations(pages: list[DocModule], allowlist: "dict[str, str] | None" = None) -> list[str]:
+    roster = _builtin_type_roster() | set(_CLR_BARE_TYPES)
+    sharpy_namespace = _sharpy_namespace_bare_types()
+    modifiers = _spec_parameter_modifiers()
+    documented = {p.name: {t.name for t in p.types} for p in pages if p.kind == "module"}
+    allowlist = _ROSTER_ALLOWLIST if allowlist is None else allowlist
+    hits = []
+    for page, where, kind, ptype, scope in _rendered_type_positions(pages):
+        text = ptype.lstrip("*")
+        head = text.split(" ", 1)
+        if kind == "param" and len(head) == 2 and head[0] in modifiers:
+            text = head[1]
+        for token, arity in _type_tokens(text):
+            module, _, name = token.partition(".")
+            if (
+                token in roster
+                or (token, arity) in sharpy_namespace
+                or token in scope
+                or token in allowlist
+                or token in documented.get(page, ())
+                or (name and name in documented.get(module, ()))
+                or _CLR_IMPORT_PATH_RE.match(token)
+            ):
+                continue
+            hits.append(f"{where}: `{token}` in `{ptype}`")
+    return hits
+
+
+@pytest.fixture(scope="module")
+def stdlib_pages() -> list[DocModule]:
+    return _discover_pages()
+
+
+def _probe_pages(signature: str, type_params: "list[str] | None" = None) -> list[DocModule]:
+    probe = DocModule(
+        name="probe",
+        kind="module",
+        members=[
+            DocMember(kind="method", name="f", cs_name="F", signature=signature, type_params=type_params or [])
+        ],
+    )
+    return [probe, DocModule(name="os", kind="module", types=[DocType(name="StatResult", cs_name="StatResult")])]
+
+
+class TestRenderedTypeRoster:
+    """Every rendered type token is a Sharpy name (#2163) — the positive form of the #2034/#2066 rows."""
+
+    def test_roster_sources_are_live(self):
+        # The derived roster must contain these literal anchors: a parse that silently matched
+        # nothing would leave an empty roster and a vacuous check (or, inverted, an everything-roster).
+        roster = _builtin_type_roster()
+        assert {"int", "float", "int64", "uint16", "float32", "str", "bool", "char", "decimal"} <= roster
+        assert {"list", "dict", "set", "tuple", "bytes", "slice", "complex", "Optional", "Result"} <= roster
+        assert {"IEnumerable", "IEnumerator", "Iterator", "object", "None"} <= roster
+        # Sharpy namespace, resolved bare, at the declared arity; a module type is not bare.
+        sharpy_namespace = _sharpy_namespace_bare_types()
+        assert {("ISized", 0), ("IReverseEnumerable", 1), ("TextFile", 0), ("IList", 0)} <= sharpy_namespace
+        assert not {n for n, _ in sharpy_namespace} & {"NdArray", "Date", "Sqlite3Cursor"}
+        roster |= {n for n, _ in sharpy_namespace}
+        # A builtin's CLR name is not a Sharpy spelling when the registry renames it.
+        assert not {"List", "Dict", "Bytes", "Slice", "Complex", "FrozenSet"} & roster
+        # Neither are the C# keyword aliases, nor names no Sharpy surface declares.
+        assert not {"long", "double", "byte", "ushort", "ulong", "sbyte", "short", "Iterable"} & roster
+        assert _spec_parameter_modifiers() == {"ref", "out", "in"}
+        fallback = _clr_fallback_namespaces()
+        assert "Sharpy" in fallback and "System.IO" in fallback
+        for name, namespace in _CLR_BARE_TYPES.items():
+            assert namespace in fallback, (name, namespace)
+        # A bare CLR row must not collide with a Sharpy name, or the bare spelling would denote the other type.
+        assert not set(_CLR_BARE_TYPES) & roster
+
+    def test_walk_covers_every_rendered_signature(self, stdlib_pages, tmp_path: Path):
+        # The roster reads the model; this anchors the model to the pages: each page's rendered
+        # signature headings are exactly the walked methods' signatures.
+        rendered = {p.stem: p.read_text(encoding="utf-8") for p in _render_real_stdlib(tmp_path / "stdlib")}
+        assert {p.name for p in stdlib_pages} == set(rendered) - {"index"}
+        for page in stdlib_pages:
+            prefix = f"{page.name}." if page.kind == "module" else ""
+            walked = [f"### `{prefix}{m.signature}`" for m in page.members if m.kind == "method"]
+            walked += [f"### `{m.signature}`" for t in page.types for m in t.members if m.kind == "method"]
+            headings = [line for line in rendered[page.name].splitlines() if line.startswith("### `")]
+            assert sorted(headings) == sorted(walked), page.name
+
+    def test_every_rendered_type_token_is_on_the_roster(self, stdlib_pages):
+        hits = _roster_violations(stdlib_pages)
+        assert hits == [], f"{len(hits)} non-Sharpy type tokens:\n" + "\n".join(hits)
+
+    def test_roster_allowlist_is_live(self, stdlib_pages):
+        # Drain on fix: an allowlisted token the pages no longer carry must be deleted.
+        assert all(re.fullmatch(r"#\d+", issue) for issue in _ROSTER_ALLOWLIST.values())
+        unflagged = _roster_violations(stdlib_pages, allowlist={})
+        stale = {t for t in _ROSTER_ALLOWLIST if not any(f": `{t}` in" in h for h in unflagged)}
+        assert stale == set()
+
+    @pytest.mark.parametrize(
+        "signature,token",
+        [
+            ("u_int16(m: decimal) -> UInt16", "UInt16"),
+            ("i_add(left: ref long, right: int64)", "long"),
+            ("bool(tuple: Runtime.CompilerServices.ITuple) -> bool", "Runtime.CompilerServices.ITuple"),
+            ("from_socket_exception(ex: Net.Sockets.SocketException) -> bool", "Net.Sockets.SocketException"),
+            ("encode(encoding: str) -> list[byte]", "byte"),
+            ("reshape(shape: tuple[int, int]) -> NdArray[float]", "NdArray"),
+            ("total(a: T) -> T", "T"),
+            ("take(x: ref int) -> ref int", "ref"),
+            ("cmp(x: object) -> Comparer[int]", "Comparer"),
+            ("each(x: Iterable[int]) -> None", "Iterable"),
+            ("get(x: object) -> os.Bogus", "os.Bogus"),
+            ("get(x: object) -> StatResult", "StatResult"),
+        ],
+    )
+    def test_fabricated_csharp_token_is_flagged(self, signature: str, token: str):
+        # Synthetic positive control: a fabricated page whose one signature carries a token no Sharpy
+        # user can write — a C# name, a C#-only modifier position, a bare type of ANOTHER page.
+        hits = _roster_violations(_probe_pages(signature), allowlist={})
+        assert any(f"`{token}` in" in h for h in hits), hits
+
+    @pytest.mark.parametrize(
+        "signature",
+        [
+            "lookup(key: str, default: V = None) -> V",
+            "i_add(left: ref int, right: int)",
+            "assigned(flag: ref bool, value: T) -> T",
+            "stat() -> os.StatResult",
+            "bool(tuple: system.runtime.compiler_services.ITuple) -> bool",
+            'print(*values: object, file: TextWriter | None = None, sep: str = ", ")',
+            "map(f: ((T) -> R) | None, items: IEnumerable[tuple[T, int]]) -> dict[str, list[float32]]",
+        ],
+    )
+    def test_sharpy_spellings_are_on_the_roster(self, signature: str):
+        # Negative controls: each token is a builtin, a CLR bare/import-path type, a documented type
+        # of another page (`os.StatResult`) or a type parameter in scope.
+        assert _roster_violations(_probe_pages(signature, ["T", "V", "R"]), allowlist={}) == []
