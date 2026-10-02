@@ -97,13 +97,14 @@ public class FormatterMeaningPreservationSweepTests
     // Corpus
     // ================================================================
 
-    private sealed record Fixture(string Name, string Source, bool IsSkipped);
+    internal sealed record Fixture(string Name, string Source, bool IsSkipped);
 
-    private sealed record Census(
+    internal sealed record Census(
         int Discovered, int MultiFile, int SingleFile, int Skipped, IReadOnlyList<string> Unparseable,
         IReadOnlyDictionary<string, Fixture> Corpus);
 
-    private static readonly Lazy<Census> CorpusCensus = new(BuildCensus);
+    /// <summary>The corpus, read once per process; <see cref="ContextualKeywordEscapeSweepTests"/> sweeps the same one.</summary>
+    internal static readonly Lazy<Census> CorpusCensus = new(BuildCensus);
 
     private static Census BuildCensus()
     {
