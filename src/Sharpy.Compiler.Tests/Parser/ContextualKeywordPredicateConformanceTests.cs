@@ -101,4 +101,127 @@ public class ContextualKeywordPredicateConformanceTests
     [InlineData("class P { string M(string v) => $\"got '{v}' when\"; }")]
     public void NegativeControl_CommentsAndLargerStrings_AreNotSpellings(string source)
         => RosterLiterals(source).Should().BeEmpty();
+
+    // ---- The comparison shape, independent of the word (verifier finding on plan-be89c1) --------
+    //
+    // The literal scan keys on the 13 roster words, so it cannot see (a) a NEW soft keyword read
+    // escape-blind (`Current.Value == "where"`) or (b) an escape-blind read of a roster word spelled
+    // through the roster (`Current.Value == ContextualKeywords.When`). Since #2166 the parser compares
+    // a token's text in exactly one place — IsContextualKeyword in the roster file — so the shape
+    // itself is the subject: outside that file no token `.Value` is compared to anything but null,
+    // switched on, or matched against a constant; and no ContextualKeywords member is a comparison
+    // operand, case label or constant pattern (that covers an AST `.Name == ContextualKeywords.K`).
+    // A legitimate new contextual read goes through IsContextualKeyword and adds a roster word.
+
+    private static bool IsValueRead(ExpressionSyntax e)
+        => e is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Value" }
+            or MemberBindingExpressionSyntax { Name.Identifier.ValueText: "Value" };
+
+    // `x is ContextualKeywords.Get` parses as a type test whose right side is a QualifiedName, so the
+    // roster member is matched in both spellings.
+    private static bool IsRosterMember(ExpressionSyntax e)
+        => (e is MemberAccessExpressionSyntax { Expression: var lhs } ? lhs : e is QualifiedNameSyntax { Left: var left } ? left : null)
+            ?.ToString() is "ContextualKeywords" or "Parser.ContextualKeywords" or "Sharpy.Compiler.Parser.ContextualKeywords";
+
+    private static bool IsNullLiteral(ExpressionSyntax e) => e.IsKind(SyntaxKind.NullLiteralExpression);
+
+    private static bool HasNonNullConstant(PatternSyntax p)
+        => p.DescendantNodesAndSelf().OfType<ConstantPatternSyntax>().Any(c => !IsNullLiteral(c.Expression));
+
+    /// <summary>Escape-blind comparison shapes in <paramref name="source"/>, with their 1-based lines.</summary>
+    internal static IReadOnlyList<(int Line, string Text)> EscapeBlindComparisons(string source)
+    {
+        var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+        var hits = new List<(int, string)>();
+        void Hit(SyntaxNode n) => hits.Add((n.GetLocation().GetLineSpan().StartLinePosition.Line + 1, n.ToString()));
+
+        foreach (var node in root.DescendantNodes())
+        {
+            switch (node)
+            {
+                case BinaryExpressionSyntax b when b.IsKind(SyntaxKind.EqualsExpression) || b.IsKind(SyntaxKind.NotEqualsExpression):
+                    if ((IsValueRead(b.Left) && !IsNullLiteral(b.Right)) || (IsValueRead(b.Right) && !IsNullLiteral(b.Left))
+                        || IsRosterMember(b.Left) || IsRosterMember(b.Right))
+                        Hit(b);
+                    break;
+                case BinaryExpressionSyntax b when b.IsKind(SyntaxKind.IsExpression) && IsRosterMember(b.Right):
+                    Hit(b);
+                    break;
+                case SwitchStatementSyntax s when IsValueRead(s.Expression):
+                    Hit(s.Expression);
+                    break;
+                case SwitchExpressionSyntax s when IsValueRead(s.GoverningExpression):
+                    Hit(s.GoverningExpression);
+                    break;
+                case IsPatternExpressionSyntax ip when IsValueRead(ip.Expression) && HasNonNullConstant(ip.Pattern):
+                    Hit(ip);
+                    break;
+                case SubpatternSyntax { ExpressionColon: { } ec } sp when ec.Expression.ToString() == "Value" && HasNonNullConstant(sp.Pattern):
+                    Hit(sp);
+                    break;
+                case ConstantPatternSyntax c when IsRosterMember(c.Expression):
+                    Hit(c);
+                    break;
+                case CaseSwitchLabelSyntax l when IsRosterMember(l.Value):
+                    Hit(l);
+                    break;
+                case InvocationExpressionSyntax inv
+                    when inv.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Equals" } ma
+                        && (IsValueRead(ma.Expression) || inv.ArgumentList.Arguments.Any(a => IsValueRead(a.Expression) || IsRosterMember(a.Expression))):
+                    Hit(inv);
+                    break;
+            }
+        }
+
+        return hits;
+    }
+
+    [Fact]
+    public void NoParserSource_ComparesATokenValue_OutsideTheRoster()
+    {
+        var files = Directory.GetFiles(ParserDirectory, "*.cs", SearchOption.AllDirectories);
+        files.Length.Should().BeGreaterThan(8, "the scan must see the parser partials and the AST files, not an empty directory");
+
+        var offenders = files
+            .Where(f => Path.GetFileName(f) != RosterFile)
+            .SelectMany(f => EscapeBlindComparisons(File.ReadAllText(f))
+                .Select(h => $"{Path.GetRelativePath(ParserDirectory, f)}:{h.Line}: {h.Text}"))
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            "a token's text is compared only by IsContextualKeyword, which honours the escape (#2166); "
+            + "a new soft keyword is a roster word read through it; offenders: " + string.Join("; ", offenders));
+    }
+
+    /// <summary>Positive control on a real file: the roster file's own predicate is the one comparison the scan must see.</summary>
+    [Fact]
+    public void PositiveControl_TheRosterPredicate_IsTheComparison()
+        => EscapeBlindComparisons(File.ReadAllText(Path.Combine(ParserDirectory, RosterFile)))
+            .Select(h => h.Text).Should().ContainSingle(t => t.Contains("token.Value == keyword"));
+
+    [Theory]
+    [InlineData("class P { bool M(Token t) => t.Value == \"where\"; }")]
+    [InlineData("class P { bool M() => \"where\" != Current.Value; }")]
+    [InlineData("class P { bool M() => Current.Value == ContextualKeywords.When; }")]
+    [InlineData("class P { bool M(Identifier id) => id.Name == ContextualKeywords.Placeholder; }")]
+    [InlineData("class P { void M() { switch (Current.Value) { default: break; } } }")]
+    [InlineData("class P { int M() => Current.Value switch { _ => 0 }; }")]
+    [InlineData("class P { bool M() => Current.Value is \"where\" or \"when\"; }")]
+    [InlineData("class P { bool M(Token t) => t is { Value: \"where\" }; }")]
+    [InlineData("class P { bool M(string n) => n is ContextualKeywords.Get; }")]
+    [InlineData("class P { void M(string n) { switch (n) { case ContextualKeywords.Set: break; } } }")]
+    [InlineData("class P { bool M() => Current.Value.Equals(\"where\"); }")]
+    [InlineData("class P { bool M() => string.Equals(Current.Value, \"where\"); }")]
+    public void PositiveControl_AnEscapeBlindComparison_IsReported(string source)
+        => EscapeBlindComparisons(source).Should().ContainSingle();
+
+    [Theory]
+    [InlineData("class P { bool M() => IsContextualKeyword(Current, ContextualKeywords.When); }")]
+    [InlineData("class P { void M(Node node) { if (node.Value != null) { } } }")]
+    [InlineData("class P { bool M(Kw kwarg) => kwarg.Value is LambdaExpression lambda; }")]
+    [InlineData("class P { bool M(Kw kwarg) => kwarg.Value is null; }")]
+    [InlineData("class P { void M(W w) => w.Write(ContextualKeywords.BeforeSet); }")]
+    [InlineData("class P { bool M() => Current.Type == TokenType.Identifier; }")]
+    public void NegativeControl_PredicateCallsNullChecksAndSpellings_AreNotComparisons(string source)
+        => EscapeBlindComparisons(source).Should().BeEmpty();
 }
