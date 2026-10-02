@@ -1,0 +1,31 @@
+# A local named `_` bound by an ordinary target is read back through a backtick-escaped `_` call
+# argument (#2166). The binding already worked before the fix; the escaped READ in a call argument
+# was the placeholder, so `print(`_`)` printed a lambda (or was refused) instead of the value.
+def f(a: int, b: int) -> int:
+    return a * 10 + b
+
+
+def for_target():
+    for `_` in range(2):
+        print(`_`)
+
+
+def tuple_target():
+    a, `_` = 1, 2
+    print(a, `_`)
+
+
+def lambda_parameter():
+    inc: (int) -> int = lambda `_`: f(`_`, 1)
+    print(inc(4))
+
+
+def comprehension_target():
+    print([f(`_`, 0) for `_` in range(3)])
+
+
+def main():
+    for_target()
+    tuple_target()
+    lambda_parameter()
+    comprehension_target()

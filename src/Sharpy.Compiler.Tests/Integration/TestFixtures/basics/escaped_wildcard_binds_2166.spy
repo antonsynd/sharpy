@@ -1,0 +1,72 @@
+# A backtick-escaped `_` in a pattern is a capture named `_`, never the wildcard (#2166): it binds,
+# and the escaped read sees the bound value. Before the fix the escape was ignored, the pattern
+# was the wildcard, and every read below was refused (SPY0132, `_` bound nothing). One function
+# per pattern site, so each `_` has one type.
+class P:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+
+def capture():
+    match 5:
+        case `_`:
+            v: int = `_`
+            print(v)
+
+
+def star_capture():
+    match [1, 2, 3]:
+        case [1, *`_`]:
+            v: list[int] = `_`
+            print(v)
+        case _:
+            print("no match")
+
+
+def tuple_element():
+    match (6, 7):
+        case (`_`, z):
+            v: int = `_`
+            print(v * 10 + z)
+        case _:
+            print("no match")
+
+
+def class_positional():
+    match P(8, 9):
+        case P(`_`, y):
+            v: int = `_`
+            print(v * 10 + y)
+        case _:
+            print("no match")
+
+
+def class_keyword():
+    match P(4, 2):
+        case P(x=`_`):
+            v: int = `_`
+            print(v)
+        case _:
+            print("no match")
+
+
+def guarded():
+    match 11:
+        case `_` if `_` > 10:
+            v: int = `_`
+            print(v)
+        case _:
+            print("guard rejected")
+
+
+def main():
+    capture()
+    star_capture()
+    tuple_element()
+    class_positional()
+    class_keyword()
+    guarded()

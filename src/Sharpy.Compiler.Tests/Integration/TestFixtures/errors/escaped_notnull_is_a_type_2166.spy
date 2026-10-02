@@ -1,0 +1,8 @@
+# A backtick-escaped `notnull` is a type name, not the constraint keyword (#2166): no type named
+# `notnull` exists. Before the fix the escape was ignored and this compiled as `[T: notnull]`.
+def first[T: `notnull`](x: T) -> T:
+    return x
+
+
+def main():
+    print(first(3))

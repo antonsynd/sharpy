@@ -1,0 +1,8 @@
+# A backtick-escaped `when` is an identifier, not the exception-filter keyword (#2166), so the
+# handler header has a stray name before its colon. Before the fix the escape was ignored and this
+# compiled as `except ValueError as e when True:`.
+def main():
+    try:
+        raise ValueError("x")
+    except ValueError as e `when` True:
+        print("filtered")

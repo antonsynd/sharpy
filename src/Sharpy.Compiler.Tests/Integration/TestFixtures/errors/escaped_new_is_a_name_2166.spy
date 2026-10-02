@@ -1,0 +1,9 @@
+# A backtick-escaped `new` is an identifier, not the `new()` constraint keyword (#2166), so the
+# constraint is a call-shaped expression where a type is expected. Before the fix the escape was
+# ignored and this compiled as `[T: new()]`.
+def first[T: `new`()](x: T) -> T:
+    return x
+
+
+def main():
+    print(first(3))

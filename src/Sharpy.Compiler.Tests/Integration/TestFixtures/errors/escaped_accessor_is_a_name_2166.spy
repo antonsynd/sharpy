@@ -1,0 +1,15 @@
+# A backtick-escaped `get` is an identifier, not the property accessor keyword (#2166): the
+# property is named `get`, so `name` is a stray token. Before the fix the escape was ignored and
+# this compiled as `property get name`.
+class Box:
+    _n: int
+
+    def __init__(self, n: int):
+        self._n = n
+
+    property `get` name(self) -> int:
+        return self._n
+
+
+def main():
+    print(Box(7).name)

@@ -1,0 +1,34 @@
+# A backtick-escaped `_` is an ordinary identifier at every placeholder site (#2166): it passes the
+# variable `_`, it is never the partial-application or operator-section placeholder. Before the
+# fix the escape was ignored at these sites, so each `g` below was a lambda (`System.Func...`), not
+# the int the annotation names.
+class Scaler:
+    def scale(self, a: int, b: int) -> int:
+        return a * 100 + b
+
+
+def f(a: int, b: int) -> int:
+    return a * 10 + b
+
+
+def main():
+    _ = 3
+
+    # Call argument, positional and keyword.
+    positional: int = f(1, `_`)
+    print(positional)
+    keyword: int = f(1, b=`_`)
+    print(keyword)
+
+    # Method call argument.
+    method: int = Scaler().scale(2, `_`)
+    print(method)
+
+    # Operator section, either operand.
+    right: int = (`_` + 1)
+    print(right)
+    left: int = (10 - `_`)
+    print(left)
+
+    # f-string hole (no contextual site; already an identifier).
+    print(f"{`_`}")
