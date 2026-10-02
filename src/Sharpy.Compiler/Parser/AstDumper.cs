@@ -523,7 +523,7 @@ internal class AstDumper : AstVisitor
         }
         foreach (var observer in node.Observers)
         {
-            var keyword = observer.Kind == ObserverKind.BeforeSet ? "before_set" : "after_set";
+            var keyword = observer.Kind == ObserverKind.BeforeSet ? ContextualKeywords.BeforeSet : ContextualKeywords.AfterSet;
             _output.AppendLine(CultureInfo.InvariantCulture,
                 $"{indent}{childPrefix}Observer {keyword}({observer.ParamName}): [{observer.Body.Length}]");
             for (int i = 0; i < observer.Body.Length; i++)
