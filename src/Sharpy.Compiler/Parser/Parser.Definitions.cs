@@ -962,7 +962,7 @@ public partial class Parser
 
             // Check for variance annotation: out T (covariant) or in T (contravariant)
             var variance = TypeParameterVariance.None;
-            if (Current.Type == TokenType.Identifier && Current.Value == "out")
+            if (IsContextualKeyword(Current, ContextualKeywords.Out))
             {
                 variance = TypeParameterVariance.Covariant;
                 Advance();
@@ -1057,14 +1057,14 @@ public partial class Parser
         }
 
         // notnull constraint
-        if (Current.Type == TokenType.Identifier && Current.Value == "notnull")
+        if (IsContextualKeyword(Current, ContextualKeywords.NotNull))
         {
             Advance();
             return new NotnullConstraint();
         }
 
         // new() constraint
-        if (Current.Type == TokenType.Identifier && Current.Value == "new")
+        if (IsContextualKeyword(Current, ContextualKeywords.New))
         {
             Advance();
             Expect(TokenType.LeftParen);
@@ -1525,24 +1525,14 @@ public partial class Parser
 
         // Check for accessor keyword: get, set, or init
         var accessor = PropertyAccessor.None;
-        if (Current.Type == TokenType.Identifier)
-        {
-            switch (Current.Value)
-            {
-                case "get":
-                    accessor = PropertyAccessor.Get;
-                    Advance();
-                    break;
-                case "set":
-                    accessor = PropertyAccessor.Set;
-                    Advance();
-                    break;
-                case "init":
-                    accessor = PropertyAccessor.Init;
-                    Advance();
-                    break;
-            }
-        }
+        if (IsContextualKeyword(Current, ContextualKeywords.Get))
+            accessor = PropertyAccessor.Get;
+        else if (IsContextualKeyword(Current, ContextualKeywords.Set))
+            accessor = PropertyAccessor.Set;
+        else if (IsContextualKeyword(Current, ContextualKeywords.Init))
+            accessor = PropertyAccessor.Init;
+        if (accessor != PropertyAccessor.None)
+            Advance();
 
         // Read property name (identifier)
         var nameToken = Current;
@@ -1759,15 +1749,15 @@ public partial class Parser
     {
         var startToken = Current;
 
-        if (Current.Type != TokenType.Identifier ||
-            (Current.Value != "before_set" && Current.Value != "after_set"))
+        if (!IsContextualKeyword(Current, ContextualKeywords.BeforeSet)
+            && !IsContextualKeyword(Current, ContextualKeywords.AfterSet))
         {
             throw ReportError(
-                $"Expected 'before_set' or 'after_set' property observer, got '{Current.Value}'",
+                $"Expected 'before_set' or 'after_set' property observer, got '{(Current.IsBacktickEscaped ? $"`{Current.Value}`" : Current.Value)}'",
                 Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
         }
 
-        var kind = Current.Value == "before_set" ? ObserverKind.BeforeSet : ObserverKind.AfterSet;
+        var kind = IsContextualKeyword(Current, ContextualKeywords.BeforeSet) ? ObserverKind.BeforeSet : ObserverKind.AfterSet;
         Advance();
 
         Expect(TokenType.LeftParen);
@@ -1804,20 +1794,12 @@ public partial class Parser
 
         // Check for accessor keyword: add or remove
         var accessor = EventAccessor.None;
-        if (Current.Type == TokenType.Identifier)
-        {
-            switch (Current.Value)
-            {
-                case "add":
-                    accessor = EventAccessor.Add;
-                    Advance();
-                    break;
-                case "remove":
-                    accessor = EventAccessor.Remove;
-                    Advance();
-                    break;
-            }
-        }
+        if (IsContextualKeyword(Current, ContextualKeywords.Add))
+            accessor = EventAccessor.Add;
+        else if (IsContextualKeyword(Current, ContextualKeywords.Remove))
+            accessor = EventAccessor.Remove;
+        if (accessor != EventAccessor.None)
+            Advance();
 
         // Read event name
         var nameToken = Current;

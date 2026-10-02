@@ -768,7 +768,7 @@ public partial class Parser
             }
 
             Expression? filter = null;
-            if (Current.Type == TokenType.Identifier && Current.Value == "when")
+            if (IsContextualKeyword(Current, ContextualKeywords.When))
             {
                 if (isExceptStar)
                 {
@@ -1456,11 +1456,10 @@ public partial class Parser
 
                 // Check for parameter modifier after ':' (ref, out, in)
                 // Syntax: name: ref type, name: out type, name: in type
-                if (Current.Type == TokenType.Identifier
-                    && (Current.Value == "ref" || Current.Value == "out")
+                if ((IsContextualKeyword(Current, ContextualKeywords.Ref) || IsContextualKeyword(Current, ContextualKeywords.Out))
                     && Peek().Type == TokenType.Identifier)
                 {
-                    modifier = Current.Value == "ref" ? ParameterModifier.Ref : ParameterModifier.Out;
+                    modifier = IsContextualKeyword(Current, ContextualKeywords.Ref) ? ParameterModifier.Ref : ParameterModifier.Out;
                     Advance();
                 }
                 else if (Current.Type == TokenType.In

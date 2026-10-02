@@ -117,13 +117,6 @@ public class ContextualKeywordEscapeMatrixTests
     /// </summary>
     private static readonly IReadOnlySet<string> KnownRed = new HashSet<string>(StringComparer.Ordinal)
     {
-        "G1", "G2", "G3", // #2166
-        "A1", "A2", // #2166
-        "O1", "O2", // #2166
-        "W1", "W2", // #2166
-        "M1", "M2", "M3", "M4", // #2166
-        "V1", "V2", // #2166
-        "C1", "C2", // #2166
     };
 
     private static Row RowById(string id) => Rows.Single(r => r.Id == id);

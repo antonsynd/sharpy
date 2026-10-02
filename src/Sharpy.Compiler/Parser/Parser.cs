@@ -1408,8 +1408,7 @@ public partial class Parser
                 // Check for ref/out/in argument modifier at call site.
                 // The peek guard excludes tokens where ref/out would be a plain identifier
                 // (e.g., `ref,` passing ref as value, `ref = ...` keyword arg).
-                else if ((Current.Type == TokenType.Identifier
-                         && (Current.Value == "ref" || Current.Value == "out")
+                else if (((IsContextualKeyword(Current, ContextualKeywords.Ref) || IsContextualKeyword(Current, ContextualKeywords.Out))
                          && Peek().Type is not (TokenType.Comma or TokenType.RightParen or TokenType.Assign))
                          || (Current.Type == TokenType.In
                          && Peek().Type is not (TokenType.Comma or TokenType.RightParen or TokenType.Assign)))
@@ -1420,7 +1419,7 @@ public partial class Parser
                     }
                     var modToken = Current;
                     var mod = Current.Type == TokenType.In ? Ast.ParameterModifier.In
-                        : Current.Value == "ref" ? Ast.ParameterModifier.Ref
+                        : IsContextualKeyword(Current, ContextualKeywords.Ref) ? Ast.ParameterModifier.Ref
                         : Ast.ParameterModifier.Out;
                     Advance();
 
