@@ -236,8 +236,10 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // Inline the body: self→left, other→right
-            var paramBaseName = NameMangler.ToCamelCase(otherParam.Name);
+            // Inline the body: self→left, other→right. The override is keyed on the name the
+            // body's references resolve to — the parameter's materialized C# name, so an escaped
+            // or `_` parameter (spelled `@_`, #2166) is renamed too.
+            var paramBaseName = ParameterCSharpName(otherParam);
             var overrides = new Dictionary<string, string> { { paramBaseName, "right" } };
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try
@@ -298,7 +300,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            var paramBaseName = NameMangler.ToCamelCase(otherParam.Name);
+            var paramBaseName = ParameterCSharpName(otherParam);
             var overrides = new Dictionary<string, string> { { paramBaseName, "right" } };
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try

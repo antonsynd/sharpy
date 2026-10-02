@@ -330,7 +330,7 @@ internal partial class RoslynEmitter
                     }
 
                     var varName = GetMangledVariableName(binding.Name, isNewDeclaration: true);
-                    return VarPattern(SingleVariableDesignation(Identifier(varName)));
+                    return VarPattern(SingleVariableDesignation(EscapedIdentifier(varName)));
                 }
 
             case LiteralPattern literal:
@@ -531,7 +531,7 @@ internal partial class RoslynEmitter
             case AsPattern asPattern:
                 {
                     var varName = GetMangledVariableName(asPattern.Name, isNewDeclaration: true);
-                    var designation = SingleVariableDesignation(Identifier(varName));
+                    var designation = SingleVariableDesignation(EscapedIdentifier(varName));
                     if (asPattern.Inner is TypePattern tp)
                     {
                         return GenerateTypePattern(tp, designation, scrutineeType);

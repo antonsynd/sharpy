@@ -1,0 +1,119 @@
+# A local named `_` is a real local at every binding position (#2166). C# reads a DESIGNATION
+# spelled `_` (`var (a, _)`, `out var _`, `case var _`) as a discard, so every position below must
+# declare a local that the escaped read `x = `_`` reaches. (The read is an assignment because an
+# escaped `_` call argument is still the placeholder until the #2166 parser fix.) One function per
+# position, so each `_` has one type.
+
+class Pair:
+    def __enter__(self) -> tuple[int, int]:
+        return (1, 2)
+
+    def __exit__(self, a: object?, b: Exception?, c: object?) -> bool:
+        return False
+
+
+def try_parse(s: str, result: out int) -> bool:
+    result = int(s)
+    return True
+
+
+def deconstruction():
+    a, _ = 1, 2
+    x = `_`
+    print(a, x)
+
+
+def deconstruction_rebinds():
+    _, a = 1, 2
+    _, b = 3, 4
+    x = `_`
+    print(a + b, x)
+
+
+def nested_deconstruction():
+    (a, (b, _)) = (5, (6, 7))
+    x = `_`
+    print(a + b, x)
+
+
+def starred_deconstruction():
+    a, *_ = 8, 9, 10
+    x = `_`
+    print(a, x)
+
+
+def for_tuple_target():
+    for a, _ in [(11, 12)]:
+        x = `_`
+        print(a, x)
+
+
+def comprehension_tuple_target():
+    print([`_` for a, _ in [(13, 14)]])
+
+
+def with_tuple_target():
+    with Pair() as (a, _):
+        x = `_`
+        print(a, x)
+
+
+def out_let():
+    if try_parse("15", out let _):
+        x = `_`
+        print(x)
+
+
+def out_typed():
+    if try_parse("16", out _: int):
+        x = `_`
+        print(x)
+
+
+def as_pattern():
+    match 17:
+        case 17 as _:
+            x = `_`
+            print(x)
+        case _:
+            print("no")
+
+
+# Declaration positions — a C# declaration named `_` was already a local; the spelling must not
+# break them.
+def assignment():
+    _ = 18
+    x = `_`
+    print(x)
+
+
+def for_target():
+    for _ in range(2):
+        x = `_`
+        print(x)
+
+
+def parameter(_: int) -> int:
+    return `_`
+
+
+def lambda_parameter():
+    inc = lambda _: `_` + 1
+    print(inc(20))
+
+
+def main():
+    deconstruction()
+    deconstruction_rebinds()
+    nested_deconstruction()
+    starred_deconstruction()
+    for_tuple_target()
+    comprehension_tuple_target()
+    with_tuple_target()
+    out_let()
+    out_typed()
+    as_pattern()
+    assignment()
+    for_target()
+    print(parameter(19))
+    lambda_parameter()

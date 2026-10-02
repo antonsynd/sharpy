@@ -42,6 +42,15 @@ public class NameCasingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveVariable_SpellsUnderscoreVerbatim_SoADesignationIsNeverADiscard(bool escaped)
+    {
+        // A C# designation spelled `_` is a discard (#2166); the verbatim token declares a local.
+        Assert.Equal("@_", NameCasing.ResolveVariable("_", escaped));
+    }
+
+    [Theory]
     [InlineData("max_size", false, "MaxSize")]
     [InlineData("max_size", true, "max_size")]
     [InlineData("MAX_SIZE", false, "MAX_SIZE")]

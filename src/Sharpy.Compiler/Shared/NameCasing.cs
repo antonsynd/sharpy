@@ -74,8 +74,23 @@ internal static class NameCasing
         return NameMangler.ToPascalCase(name);
     }
 
+    /// <summary>
+    /// The C# spelling of a local or parameter — the base the <c>LocalNameAllocator</c> claims, the
+    /// parameter and forwarder declarations, and the collision validator's key.
+    /// </summary>
+    /// <remarks>
+    /// A Sharpy local named <c>_</c> (escaped or not) is spelled <c>@_</c> (#2166). A C#
+    /// <i>designation</i> spelled <c>_</c> — <c>var (a, _)</c>, <c>out var _</c>,
+    /// <c>case var _</c>, <c>.. var _</c> — is a discard, so the local was never declared and an
+    /// escaped read <c>`_`</c> failed CS0103; a <i>declaration</i> <c>var _ = 3;</c> is a local, so
+    /// the bug showed only at the designation arms. The verbatim token is never a discard in any
+    /// position, and its value text is still <c>_</c>, so the metadata name of a parameter (what a
+    /// C# caller's named argument and reflection see) is unchanged.
+    /// </remarks>
     public static string ResolveVariable(string name, bool isBacktickEscaped)
     {
+        if (name == "_")
+            return "@_";
         if (isBacktickEscaped)
             return Verbatim(name);
         return NameMangler.ToCamelCase(name);
