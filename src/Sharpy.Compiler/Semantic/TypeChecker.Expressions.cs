@@ -570,7 +570,9 @@ internal partial class TypeChecker
                     return resolved;
             }
 
-            if (id.Name == "_")
+            // Only the unescaped spelling is the placeholder; an unbound `_` (escaped) is an
+            // ordinary undefined name (#2166).
+            if (id.Name == "_" && !id.IsNameBacktickEscaped)
             {
                 AddError("'_' placeholder can only be used inside function call arguments for partial application (e.g., f(_, 2)). "
                     + "If you intended a throwaway variable, assign it first: _ = ...",
