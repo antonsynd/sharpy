@@ -75,6 +75,41 @@ The following Python keywords are reserved by the lexer and produce a compile-ti
 | `get` | Properties | Property getter |
 | `init` | Properties | Property set-on-initialization only |
 | `set` | Properties | Property setter |
+| `add` | Events | Event `add` accessor ([events.md](events.md)) |
+| `remove` | Events | Event `remove` accessor ([events.md](events.md)) |
+| `before_set` | Properties | Property observer run before the store (experimental, `property_observers`) |
+| `after_set` | Properties | Property observer run after the store (experimental, `property_observers`) |
+| `when` | `except` clauses | Exception filter ([exception_handling.md](exception_handling.md)) |
+| `out` | Parameters and call arguments | Output parameter modifier ([parameter_modifiers.md](parameter_modifiers.md)) |
+| `ref` | Parameters and call arguments | Reference parameter modifier ([parameter_modifiers.md](parameter_modifiers.md)) |
+| `out` | Type parameter lists | Covariance ([generic_variance.md](generic_variance.md)) |
+| `notnull` | Type parameter constraints | `T: notnull` ([generics.md](generics.md)) |
+| `new` | Type parameter constraints | `T: new()` ([generics.md](generics.md)) |
+
+Outside its context a soft keyword is an ordinary identifier. **Backtick-escaping a soft keyword
+makes it an ordinary identifier at every one of these sites too** (see
+[identifiers.md](identifiers.md#literal-names-backtick-escaping)): `` f(1, `_`) `` passes the
+variable `_` rather than creating a partial application, `` case `_`: `` binds a local named `_`
+rather than matching as a wildcard, and `` property `get` name(self) `` declares a property named
+`get` (followed by a stray token — a parse error). An escaped `_` is a readable local in every
+binding position, including pattern captures and tuple-unpacking targets.
+
+```python
+def add(a: int, b: int) -> int:
+    return a * 10 + b
+
+def main():
+    _ = 3
+    print(add(1, `_`))      # 13 — the variable `_`, not a placeholder
+    match 5:
+        case `_`:            # binds `_`; not the wildcard
+            print(`_`)       # 5
+    match [1, 2, 3]:
+        case [1, *`_`]:
+            print(`_`)       # [2, 3]
+        case _:              # bare `_`: the wildcard
+            print("other")
+```
 
 **Underscore (`_`) disambiguation:**
 

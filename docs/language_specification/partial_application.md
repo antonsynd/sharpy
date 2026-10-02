@@ -29,6 +29,7 @@ The underscore `_` serves two different purposes in Sharpy:
 | `case` pattern position | Wildcard pattern | `case _:` matches anything |
 | Type pattern argument | Wildcard pattern | `case Point(_, y):` matches any x |
 | Assignment target | Regular identifier | `_ = compute()` (discards result) |
+| Backtick-escaped `` `_` ``, any position | Regular identifier | `` f(1, `_`) `` passes the variable `_`; `` case `_`: `` binds `_` |
 
 **Key disambiguation scenarios:**
 

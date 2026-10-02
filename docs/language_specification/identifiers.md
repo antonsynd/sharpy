@@ -57,5 +57,19 @@ def `ExactMethodName`():
     pass
 ```
 
+An escaped name is an identifier at every site, including the sites where the bare spelling is a
+soft keyword ([keywords.md](keywords.md#soft-keywords-context-dependent)): an escaped `` `_` `` in
+a call argument is the variable `_`, not a partial-application placeholder.
+
+```python
+def f(a: int, b: int) -> int:
+    return a * 10 + b
+
+def main():
+    _ = 3
+    g = f(1, `_`)
+    print(g)                # 13
+```
+
 *Implementation*
 - *✅ Native - Backtick names map to `@name` in C# when needed, or exact casing is preserved.*

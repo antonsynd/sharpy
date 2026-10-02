@@ -222,6 +222,26 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 | `T: Interface` | `where T : Interface` |
 | `T: class` | `where T : class` |
 | `T: struct` | `where T : struct` |
+| `T: notnull` | `where T : notnull` |
+| `T: new()` | `where T : new()` |
+
+```python
+class Counter:
+    count: int
+
+    def __init__(self):
+        self.count = 7
+
+def pick[T: new()](items: list[T]) -> T:    # where T : new()
+    return items[0]
+
+def describe[T: notnull](x: T) -> str:      # where T : notnull
+    return str(x)
+
+def main():
+    print(pick([Counter()]).count)   # 7
+    print(describe(42))              # 42
+```
 
 *Implementation*
 - *✅ Native - Direct mapping to C# generic constraints.*
