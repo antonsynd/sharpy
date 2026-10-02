@@ -138,7 +138,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
             try
             {
 #line (106, 9) - (106, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                var _ = row[10];
+                var @_ = row[10];
 #line hidden
             }
             catch (IndexError)
@@ -161,7 +161,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
             try
             {
 #line (113, 9) - (113, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                var _ = row[-10];
+                var @_ = row[-10];
 #line hidden
             }
             catch (IndexError)
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
             try
             {
 #line (144, 9) - (144, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                var _ = row["nonexistent"];
+                var @_ = row["nonexistent"];
 #line hidden
             }
             catch (IndexError)

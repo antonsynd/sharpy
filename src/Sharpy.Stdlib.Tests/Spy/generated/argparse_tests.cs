@@ -546,7 +546,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseTests
             try
             {
 #line (245, 9) - (245, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                var _ = ns["missing"];
+                var @_ = ns["missing"];
 #line hidden
             }
             catch (AttributeError)

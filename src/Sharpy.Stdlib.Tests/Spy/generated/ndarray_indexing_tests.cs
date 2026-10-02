@@ -55,7 +55,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayIndexingTests
             try
             {
 #line (37, 9) - (37, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                var _ = arr[3];
+                var @_ = arr[3];
 #line hidden
             }
             catch (IndexError)
@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayIndexingTests
             try
             {
 #line (43, 9) - (43, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                var _ = arr[-4];
+                var @_ = arr[-4];
 #line hidden
             }
             catch (IndexError)
@@ -129,7 +129,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayIndexingTests
             try
             {
 #line (68, 9) - (68, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                var _ = arr[2, 0];
+                var @_ = arr[2, 0];
 #line hidden
             }
             catch (IndexError)
@@ -152,7 +152,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayIndexingTests
             try
             {
 #line (74, 9) - (74, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                var _ = arr[1];
+                var @_ = arr[1];
 #line hidden
             }
             catch (IndexError)
