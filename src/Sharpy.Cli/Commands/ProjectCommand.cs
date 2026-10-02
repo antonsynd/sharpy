@@ -321,24 +321,11 @@ internal static class ProjectCommand
             Console.WriteLine($"Saving generated C# code to: {outputDir.FullName}");
 
             // Each unit mirrors its project-relative path under the output directory, so two
-            // units sharing a file stem in different directories land at distinct paths (#2060).
-            // The written-path map keeps "distinct" true by construction: a second unit that maps
-            // to an already-written path is refused loudly, never written over the first.
-            var written = new Dictionary<string, string>(
-                OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-            foreach (var (unitKey, csCode) in generatedFiles.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            // units sharing a file stem in different directories land at distinct paths; a unit
+            // mapping to an already-written path is refused loudly, never written over the first
+            // (#2060). CliHelpers.WriteMirroredCSharp is the one writer every command shares (#2159).
+            foreach (var (_, outputPath) in CliHelpers.WriteMirroredCSharp(outputDir.FullName, generatedFiles))
             {
-                var outputPath = CliHelpers.MirroredCSharpOutputPath(outputDir.FullName, unitKey);
-                if (written.TryGetValue(outputPath, out var firstKey))
-                {
-                    Console.Error.WriteLine(
-                        $"Warning: Not saving generated C# for '{unitKey}': it maps to {outputPath}, already written for '{firstKey}'");
-                    continue;
-                }
-                written[outputPath] = unitKey;
-
-                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-                File.WriteAllText(outputPath, csCode);
                 Console.WriteLine($"  Saved: {Path.GetRelativePath(outputDir.FullName, outputPath)}");
             }
 

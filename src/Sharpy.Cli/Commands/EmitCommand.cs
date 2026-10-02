@@ -510,20 +510,27 @@ internal static class EmitCommand
 
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
 
+            var outputDir = outputFile.DirectoryName ?? Directory.GetCurrentDirectory();
+            Directory.CreateDirectory(outputDir);
             File.WriteAllText(outputFile.FullName, csharpCode);
             Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
 
-            var outputDir = outputFile.DirectoryName ?? ".";
-            foreach (var (modulePath, moduleCode) in result.GeneratedCSharpFiles)
+            // Each imported module goes beside the entry's output at the path mirroring its source
+            // path relative to the entry file's directory (the root that names it), so `lib` and
+            // `pkg.lib` land at lib.cs and pkg/lib.cs; by file stem the second silently overwrote
+            // the first (#2159, the #2060 contract). A module that would land on the entry's own
+            // output file is refused, not written over it.
+            var entrySourceDir = inputFile.DirectoryName ?? Directory.GetCurrentDirectory();
+            var importedModules = result.GeneratedCSharpFiles.Where(kv => !string.Equals(
+                Path.GetFullPath(kv.Key), Path.GetFullPath(inputFile.FullName), StringComparison.OrdinalIgnoreCase));
+            var written = CliHelpers.WriteMirroredCSharp(
+                outputDir,
+                importedModules,
+                entrySourceDir,
+                showLineDirectives ? null : CliHelpers.StripLineDirectives,
+                new[] { KeyValuePair.Create(outputFile.FullName, Path.GetRelativePath(entrySourceDir, inputFile.FullName)) });
+            foreach (var (_, moduleOutputPath) in written)
             {
-                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(inputFile.FullName),
-                    StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
-                var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
-                var processedModuleCode = showLineDirectives ? moduleCode : CliHelpers.StripLineDirectives(moduleCode);
-                File.WriteAllText(moduleOutputPath, processedModuleCode);
                 Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
             }
             return 0;

@@ -79,7 +79,7 @@ internal static class CompileCommand
 
             if (input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase))
             {
-                return CompileProject(input, configuration, clean, incremental, noDeps, selfContained, emitCSharp, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
+                return CompileProject(input, output, configuration, clean, incremental, noDeps, selfContained, emitCSharp, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
             }
 
             return CompileSingleFile(input, output, configuration, type, reference, projectReference, modulePath, noDeps, selfContained, emitCSharp, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
@@ -144,7 +144,9 @@ internal static class CompileCommand
 
         if (emitCSharp)
         {
-            EmitGeneratedCSharp(compileResult.GeneratedCSharpFiles, outputDir);
+            // Single-file units are keyed by absolute source path; they mirror their path relative
+            // to the entry file's directory, the root that names the imported modules (#2159).
+            EmitGeneratedCSharp(compileResult.GeneratedCSharpFiles, outputDir, inputFile.DirectoryName);
         }
 
         if (selfContained)
@@ -176,6 +178,7 @@ internal static class CompileCommand
 
     static int CompileProject(
         FileInfo projectFile,
+        FileInfo? output,
         string configuration,
         bool clean,
         bool incremental,
@@ -194,6 +197,13 @@ internal static class CompileCommand
         try
         {
             var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+            // `-o` names the assembly path for a project exactly as it does for a single file;
+            // without this the option was parsed and silently dropped, and the assembly (and any
+            // --emit-csharp output beside it) went to bin/{Config}/{TFM} instead (#2159).
+            if (output != null)
+            {
+                projectConfig.OutputAssemblyPathOverride = output.FullName;
+            }
 
             if (clean)
             {
@@ -270,7 +280,7 @@ internal static class CompileCommand
                 var csOutputDir = outputPath != null
                     ? Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory()
                     : Directory.GetCurrentDirectory();
-                EmitGeneratedCSharp(result.GeneratedCSharpFiles, csOutputDir);
+                EmitGeneratedCSharp(result.GeneratedCSharpFiles, csOutputDir, projectConfig.ProjectDirectory);
             }
 
             if (outputPath != null)
@@ -305,28 +315,27 @@ internal static class CompileCommand
         }
     }
 
-    static void EmitGeneratedCSharp(IReadOnlyDictionary<string, string> generatedFiles, string outputDir)
+    /// <summary>
+    /// Writes each generated unit beside the output assembly at the path mirroring its source
+    /// path relative to <paramref name="sourceRoot"/> (the project directory, or the entry file's
+    /// directory for a single file), so <c>lib.spy</c> and <c>pkg/lib.spy</c> land at
+    /// <c>lib.cs</c> and <c>pkg/lib.cs</c>. Writing by file stem sent both to <c>lib.cs</c> and the
+    /// second silently overwrote the first (#2159, the #2060 contract).
+    /// </summary>
+    static void EmitGeneratedCSharp(IReadOnlyDictionary<string, string> generatedFiles, string outputDir, string? sourceRoot)
     {
         if (generatedFiles.Count == 0)
         {
             return;
         }
 
-        if (!Directory.Exists(outputDir))
+        var written = CliHelpers.WriteMirroredCSharp(
+            outputDir, generatedFiles, sourceRoot, CliHelpers.StripLineDirectives);
+        Console.WriteLine($"Generated {written.Count} C# file(s) in: {outputDir}");
+        foreach (var (_, path) in written)
         {
-            Directory.CreateDirectory(outputDir);
+            Console.WriteLine($"  {Path.GetRelativePath(outputDir, path)}");
         }
-
-        var csCount = 0;
-        foreach (var (modulePath, moduleCode) in generatedFiles)
-        {
-            var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
-            var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
-            var processedCode = CliHelpers.StripLineDirectives(moduleCode);
-            File.WriteAllText(moduleOutputPath, processedCode);
-            csCount++;
-        }
-        Console.WriteLine($"Generated {csCount} C# file(s) in: {outputDir}");
     }
 
     static void ReportOutput(string outputPath)

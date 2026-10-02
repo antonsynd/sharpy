@@ -617,6 +617,62 @@ internal static class CliHelpers
         return outputPath;
     }
 
+    /// <summary>
+    /// The one writer of generated-C# units for every command that saves them (<c>project
+    /// --emit-cs-to</c>, <c>compile --emit-csharp</c>, <c>emit csharp</c>; #2060, #2159). Each unit
+    /// goes to its <see cref="MirroredCSharpOutputPath"/> under <paramref name="outputDir"/>, so
+    /// two units sharing a file stem in different directories land at distinct paths. A second
+    /// unit that maps to an already-written path is refused with a stderr warning, never written
+    /// over the first.
+    /// </summary>
+    /// <param name="units">Unit key → generated C#. A project compile keys units by their
+    /// project-relative path; a single-file compile keys them by absolute source path, which is
+    /// made relative to <paramref name="sourceRoot"/> (the entry file's directory, the module root
+    /// that names the imported modules) before mirroring.</param>
+    /// <param name="sourceRoot">Root that rooted unit keys are made relative to; null leaves keys as given.</param>
+    /// <param name="transformCode">Applied to each unit's C# before writing (e.g. <see cref="StripLineDirectives"/>).</param>
+    /// <param name="alreadyWritten">Output paths the caller has written itself (path → the unit key
+    /// it holds), e.g. the <c>emit csharp --output</c> file; a unit mapping to one is refused.</param>
+    /// <returns>The units written, in write order, with the path each landed at.</returns>
+    internal static List<(string UnitKey, string OutputPath)> WriteMirroredCSharp(
+        string outputDir,
+        IEnumerable<KeyValuePair<string, string>> units,
+        string? sourceRoot = null,
+        Func<string, string>? transformCode = null,
+        IEnumerable<KeyValuePair<string, string>>? alreadyWritten = null)
+    {
+        var written = new Dictionary<string, string>(
+            OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        if (alreadyWritten != null)
+        {
+            foreach (var (path, key) in alreadyWritten)
+                written[Path.GetFullPath(path)] = key;
+        }
+
+        var result = new List<(string UnitKey, string OutputPath)>();
+        var keyed = units
+            .Select(kv => (Key: sourceRoot != null && Path.IsPathRooted(kv.Key)
+                ? Path.GetRelativePath(sourceRoot, kv.Key)
+                : kv.Key, Code: kv.Value))
+            .OrderBy(u => u.Key, StringComparer.Ordinal);
+        foreach (var (unitKey, code) in keyed)
+        {
+            var outputPath = MirroredCSharpOutputPath(outputDir, unitKey);
+            if (written.TryGetValue(outputPath, out var firstKey))
+            {
+                Console.Error.WriteLine(
+                    $"Warning: Not saving generated C# for '{unitKey}': it maps to {outputPath}, already written for '{firstKey}'");
+                continue;
+            }
+            written[outputPath] = unitKey;
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            File.WriteAllText(outputPath, transformCode != null ? transformCode(code) : code);
+            result.Add((unitKey, outputPath));
+        }
+        return result;
+    }
+
     internal static string StripLineDirectives(string csharpCode)
     {
         var lines = csharpCode.Split('\n');

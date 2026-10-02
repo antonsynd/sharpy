@@ -44,6 +44,17 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 - `--clean` - Delete bin/ and obj/ directories before building
 - `--emit-cs-to <dir>` - Save generated C# code to directory, mirroring each source's path relative to the project directory (`pkg/lib.spy` → `<dir>/pkg/lib.cs`)
 
+### Generated C# Layout
+
+Every command that writes generated C# writes each module to a path that mirrors its source path,
+so `lib.spy` and `pkg/lib.spy` land at `lib.cs` and `pkg/lib.cs`. Two modules that would map to the
+same path are refused with a warning; neither overwrites the other.
+
+- `sharpyc project app.spyproj --emit-cs-to <dir>` - under `<dir>`, relative to the project directory
+- `sharpyc compile app.spyproj --emit-csharp` - beside the output assembly, relative to the project directory (`-o <file>` sets the assembly path)
+- `sharpyc compile main.spy --emit-csharp` - beside the output assembly, relative to `main.spy`'s directory
+- `sharpyc emit csharp main.spy --output gen/main.cs` - the entry module to the `--output` file (default: `main.cs` beside `main.spy`); each imported module under that file's directory, relative to `main.spy`'s directory
+
 ## Examples
 
 ### Run a Sharpy File
