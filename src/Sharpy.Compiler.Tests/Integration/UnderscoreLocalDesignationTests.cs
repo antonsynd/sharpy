@@ -130,7 +130,7 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
     public void LocalNamedUnderscore_IsARealLocal_AtEveryBindingPosition(string position, bool read)
         => AssertPosition(position, read);
 
-    [Theory(Skip = "reachable after plan-be89c1 Task 4 (#2166)")]
+    [Theory]
     [InlineData("capture_pattern", true)]
     [InlineData("capture_pattern", false)]
     [InlineData("star_capture", true)]

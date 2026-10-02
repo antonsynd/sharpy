@@ -1443,14 +1443,14 @@ public partial class Parser
         var hasSpread = false;
         foreach (var arg in call.Arguments)
         {
-            if (arg is Identifier { Name: "_" })
+            if (IsPlaceholder(arg))
                 hasPlaceholder = true;
             if (arg is SpreadElement)
                 hasSpread = true;
         }
         foreach (var kwarg in call.KeywordArguments)
         {
-            if (kwarg.Value is Identifier { Name: "_" })
+            if (IsPlaceholder(kwarg.Value))
                 hasPlaceholder = true;
         }
 
@@ -1463,7 +1463,7 @@ public partial class Parser
             // Find the first placeholder to report the error location
             foreach (var arg in call.Arguments)
             {
-                if (arg is Identifier { Name: "_" } placeholder)
+                if (arg is Identifier placeholder && IsPlaceholder(placeholder))
                 {
                     ReportError(
                         "Cannot use '_' placeholder with spread arguments",
@@ -1521,7 +1521,7 @@ public partial class Parser
 
         foreach (var arg in call.Arguments)
         {
-            if (arg is Identifier { Name: "_" } placeholder)
+            if (arg is Identifier placeholder && IsPlaceholder(placeholder))
             {
                 var paramName = $"__placeholder_{placeholderIndex}";
                 parameters.Add(new Parameter
@@ -1560,7 +1560,7 @@ public partial class Parser
 
         foreach (var kwarg in call.KeywordArguments)
         {
-            if (kwarg.Value is Identifier { Name: "_" } kwPlaceholder)
+            if (kwarg.Value is Identifier kwPlaceholder && IsPlaceholder(kwPlaceholder))
             {
                 var paramName = kwarg.Name;
                 parameters.Add(new Parameter

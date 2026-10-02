@@ -1106,7 +1106,7 @@ public partial class Parser
     /// </summary>
     private static bool ContainsPlaceholderIdentifier(Expression expr) => expr switch
     {
-        Identifier { Name: "_" } => true,
+        Identifier id when IsPlaceholder(id) => true,
         BinaryOp bin => ContainsPlaceholderIdentifier(bin.Left) || ContainsPlaceholderIdentifier(bin.Right),
         UnaryOp un => ContainsPlaceholderIdentifier(un.Operand),
         ComparisonChain chain => chain.Operands.Any(ContainsPlaceholderIdentifier),
@@ -1144,7 +1144,7 @@ public partial class Parser
     {
         switch (expr)
         {
-            case Identifier { Name: "_" } placeholder:
+            case Identifier placeholder when IsPlaceholder(placeholder):
                 var paramName = $"__placeholder_{index}";
                 parameters.Add(new Parameter
                 {

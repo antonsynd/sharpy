@@ -1852,7 +1852,7 @@ public partial class Parser
             case TokenType.Minus when Peek(1).Type == TokenType.Integer || Peek(1).Type == TokenType.Float:
                 return ParseLiteralPattern();
 
-            case TokenType.Identifier when Current.Value == "_":
+            case TokenType.Identifier when IsContextualKeyword(Current, ContextualKeywords.Placeholder):
                 return ParseWildcardPattern();
 
             case TokenType.Identifier:
@@ -2294,7 +2294,7 @@ public partial class Parser
                 var nameToken = Current;
                 Advance();
                 endToken = nameToken;
-                if (nameToken.Value == "_")
+                if (IsContextualKeyword(nameToken, ContextualKeywords.Placeholder))
                 {
                     capture = new WildcardPattern
                     {

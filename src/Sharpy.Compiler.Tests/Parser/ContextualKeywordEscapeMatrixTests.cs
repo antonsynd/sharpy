@@ -117,7 +117,6 @@ public class ContextualKeywordEscapeMatrixTests
     /// </summary>
     private static readonly IReadOnlySet<string> KnownRed = new HashSet<string>(StringComparer.Ordinal)
     {
-        "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9", // #2166
         "G1", "G2", "G3", // #2166
         "A1", "A2", // #2166
         "O1", "O2", // #2166

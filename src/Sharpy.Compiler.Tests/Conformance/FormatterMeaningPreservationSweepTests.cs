@@ -332,23 +332,24 @@ public class FormatterMeaningPreservationSweepTests
     /// The bypass is real: on a program the net refuses, <c>Format</c> returns the source with
     /// SPY0912 while the raw output carries the damage — and the sweep's verdict carries both
     /// <c>refused</c> and the damage bucket, never <c>netMissed</c>/<c>netOverRefuses</c>. The damaged
-    /// shape is an escaped contextual keyword the parser reads as the keyword (<c>case `_`:</c> is
-    /// written <c>case _:</c>, #2166, outside P22b); until P22b Phase 4 it was a dropped bracket
-    /// comment, which the trivia cursor now keeps.
+    /// shape is a generic constraint intersection the unparser writes back unparseable
+    /// (<c>[T: A &amp; B]</c>, #2169); until #2166 it was an escaped <c>case `_`:</c> written
+    /// <c>case _:</c> (the parser read the escape as the wildcard), and until P22b Phase 4 a dropped
+    /// bracket comment, which the trivia cursor now keeps.
     /// </summary>
     [Fact]
     public void PositiveControl_TheBypassSeesTheDamageTheNetRefuses()
     {
-        const string source = "def main():\n    x = 1\n    match x:\n        case `_`:\n            print(x)\n";
+        const string source = "def f[T: A & B](x: T) -> T:\n    return x\n";
 
         var netted = Format(source);
         netted.Diagnostics.Select(d => d.Code).Should().Equal(global::Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.FormatterDeclined);
         netted.FormattedText.Should().Be(source);
         var raw = FormatRaw(source);
         raw.Diagnostics.Should().BeEmpty();
-        raw.FormattedText.Should().NotContain("`_`");
+        Observe(raw.FormattedText).HasErrors.Should().BeTrue();
 
-        Evaluate(source, Identity).Failures.Keys.Should().Equal(EscapeDropped, Refused);
+        Evaluate(source, Identity).Failures.Keys.Should().Equal(Refused, Unparseable);
     }
 
     /// <summary>
