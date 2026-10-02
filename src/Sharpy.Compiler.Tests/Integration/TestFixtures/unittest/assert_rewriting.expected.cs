@@ -72,9 +72,9 @@ namespace AssertRewriting
 #line (19, 5) - (19, 22) 12 "assert_rewriting.spy"
             Optional<string> s = Optional<string>.None;
 #line (20, 5) - (20, 22) 12 "assert_rewriting.spy"
-            Xunit.Assert.Null(s);
+            Xunit.Assert.True(s.IsNone);
 #line (21, 5) - (21, 26) 12 "assert_rewriting.spy"
-            Xunit.Assert.NotNull(s);
+            Xunit.Assert.True(s.IsSome);
 #line hidden
         }
 

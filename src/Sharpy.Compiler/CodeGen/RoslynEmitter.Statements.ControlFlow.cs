@@ -248,20 +248,37 @@ internal partial class RoslynEmitter
                     Argument(ordered[0])));
         }
 
-        // assert a is None → Xunit.Assert.Null(a)
-        if (test is BinaryOp { Operator: BinaryOperator.Is, Right: NoneLiteral } isNone)
+        // assert a is None / a is not None — the None literal on EITHER side (#2171). Which assertion
+        // observes absence is the operand's RECORDED lowering, never its shape (Critical Rule 2):
+        //   - OptionalNoneTest (an Optional<T> subject — a STRUCT) → Xunit.Assert.True(<the shared
+        //     is-None lowering>), i.e. Assert.True(a.IsNone) / Assert.True(a.IsSome). Assert.Null on a
+        //     boxed struct can never pass and Assert.NotNull can never fail, so routing an Optional to
+        //     the null assertions made the test vacuous. The operand lowering is the one
+        //     RoslynEmitter.Expressions.Operators.cs's Is/IsNot arms produce, so the test host and
+        //     `sharpyc run` cannot disagree about what `is None` means.
+        //   - no record (a reference, or a CLR Nullable<T> from `T | None`) → Xunit.Assert.Null /
+        //     NotNull on the non-None operand. For Nullable<T> C# overload resolution binds xUnit's
+        //     Null<T>(T?)/NotNull<T>(T?) (where T : struct), which observes HasValue.
+        if (test is BinaryOp { Operator: BinaryOperator.Is or BinaryOperator.IsNot } noneTest
+            && (noneTest.Right is NoneLiteral || noneTest.Left is NoneLiteral))
         {
-            return ExpressionStatement(InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Null")))
-                .AddArgumentListArguments(Argument(GenerateExpression(isNone.Left))));
-        }
+            if (_context.SemanticInfo?.GetOperatorLowering(noneTest)?.Kind == OperatorLoweringKind.OptionalNoneTest)
+            {
+                var optionalArgs = new List<ArgumentSyntax> { Argument(GenerateExpression(noneTest)) };
+                if (assert.Message != null)
+                {
+                    optionalArgs.Add(Argument(msgExpr!));
+                }
+                return ExpressionStatement(InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
+                    .WithArgumentList(ArgumentList(SeparatedList(optionalArgs))));
+            }
 
-        // assert a is not None → Xunit.Assert.NotNull(a)
-        if (test is BinaryOp { Operator: BinaryOperator.IsNot, Right: NoneLiteral } isNotNone)
-        {
+            var noneTestSubject = noneTest.Right is NoneLiteral ? noneTest.Left : noneTest.Right;
+            var nullAssertion = noneTest.Operator == BinaryOperator.Is ? "Null" : "NotNull";
             return ExpressionStatement(InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("NotNull")))
-                .AddArgumentListArguments(Argument(GenerateExpression(isNotNone.Left))));
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName(nullAssertion)))
+                .AddArgumentListArguments(Argument(GenerateExpression(noneTestSubject))));
         }
 
         // assert a is b → Xunit.Assert.Same(b, a)

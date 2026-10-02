@@ -96,10 +96,13 @@ def main():
     [Fact]
     public void AssertRewrite_IsNone_GeneratesXunitAssertNull()
     {
+        // A REFERENCE operand (`T | None` is a .NET-nullable reference). `str?` is a Sharpy Optional
+        // — a struct — since R-G, and lowers to Assert.True(s.IsNone) instead (#2171; see the
+        // Optional twins below and TestHostNoneAssertMatrixTests).
         var source = @"
 @test
 def test_is_none():
-    s: str? = None()
+    s: str | None = None
     assert s is None
 
 def main():
@@ -112,10 +115,11 @@ def main():
     [Fact]
     public void AssertRewrite_IsNotNone_GeneratesXunitAssertNotNull()
     {
+        // A REFERENCE operand; see AssertRewrite_IsNone_GeneratesXunitAssertNull.
         var source = @"
 @test
 def test_not_none():
-    s: str? = None()
+    s: str | None = None
     assert s is not None
 
 def main():
@@ -123,6 +127,34 @@ def main():
 ";
         var code = CompileToCSharp(source);
         code.Should().Contain("Xunit.Assert.NotNull(s)");
+    }
+
+    [Theory]
+    [InlineData("s is None", "Xunit.Assert.True(s.IsNone)")]
+    [InlineData("s is not None", "Xunit.Assert.True(s.IsSome)")]
+    [InlineData("None is s", "Xunit.Assert.True(s.IsNone)")]
+    [InlineData("None is not s", "Xunit.Assert.True(s.IsSome)")]
+    public void AssertRewrite_NoneTestOnOptional_ObservesIsNone_NotANullAssertion(string test, string expected)
+    {
+        // An Optional (`str?`) is a STRUCT: Assert.Null on it can never pass and Assert.NotNull can
+        // never fail. The rewrite reads the recorded OptionalNoneTest lowering and asserts on the
+        // same IsNone/IsSome the ordinary lowering prints (#2171). Executed in both directions by
+        // TestHostNoneAssertMatrixTests; this pins the shape.
+        var source = $@"
+@test
+def test_optional_none():
+    s: str? = None()
+    assert {test}
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain(expected);
+        code.Should().NotContain("Xunit.Assert.Null(");
+        code.Should().NotContain("Xunit.Assert.NotNull(");
+        code.Should().NotContain("Xunit.Assert.Same(");
+        code.Should().NotContain("Xunit.Assert.NotSame(");
     }
 
     [Fact]

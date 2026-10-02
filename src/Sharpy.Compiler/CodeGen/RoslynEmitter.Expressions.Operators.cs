@@ -31,6 +31,17 @@ internal partial class RoslynEmitter
             : null;
     }
 
+    /// <summary>
+    /// The subject of an <c>is None</c> / <c>is not None</c> test, whichever side the None literal is
+    /// on (#2171): the generated operand opposite the literal, or <c>null</c> when the node is not a
+    /// None test. A right-hand literal wins when both sides are literals (<c>None is None</c>), which
+    /// keeps that spelling's lowering unchanged.
+    /// </summary>
+    private static ExpressionSyntax? NoneTestSubject(BinaryOp binOp, ExpressionSyntax left, ExpressionSyntax right)
+        => binOp.Right is NoneLiteral ? left
+            : binOp.Left is NoneLiteral ? right
+            : null;
+
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
         // `and` emits a plain `left && right` (kind mapped below). Narrowing of RHS reads
@@ -165,15 +176,20 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Is:
-                if (binOp.Right is NoneLiteral)
+                // `x is None` and `None is x` are one test (#2171): the subject is the operand on the
+                // side that is NOT the None literal, and the recorded OptionalNoneTest — which the
+                // checker records for EITHER side — selects the Optional arm. Keying the arm on
+                // `Right is NoneLiteral` alone sent `None is x` on an Optional to ReferenceEquals on a
+                // boxed struct: always false.
+                if (NoneTestSubject(binOp, left, right) is { } isNoneSubject)
                 {
                     if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
                         == OperatorLoweringKind.OptionalNoneTest)
                     {
-                        return Member(left, "IsNone");
+                        return Member(isNoneSubject, "IsNone");
                     }
                     return Binary(SyntaxKind.EqualsExpression,
-                        left,
+                        isNoneSubject,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
                 }
                 return InvocationExpression(
@@ -185,15 +201,16 @@ internal partial class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.IsNot:
-                if (binOp.Right is NoneLiteral)
+                // Mirror of the Is arm (#2171): `None is not x` is `x is not None`.
+                if (NoneTestSubject(binOp, left, right) is { } isNotNoneSubject)
                 {
                     if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
                         == OperatorLoweringKind.OptionalNoneTest)
                     {
-                        return Member(left, "IsSome");
+                        return Member(isNotNoneSubject, "IsSome");
                     }
                     return Binary(SyntaxKind.NotEqualsExpression,
-                        left,
+                        isNotNoneSubject,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
                 }
                 return Prefix(SyntaxKind.LogicalNotExpression,

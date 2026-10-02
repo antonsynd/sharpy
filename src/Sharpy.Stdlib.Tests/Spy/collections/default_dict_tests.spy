@@ -5,9 +5,9 @@ import collections
 @test
 def test_default_dict_get_no_default_returns_none():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 42)
-    # get() without a default returns None, as python's does (#2054) — NOT the factory value 42,
-    # and not default(int) = 0 either
-    assert dd.get("missing").is_none
+    # get() without a default returns None, as python's does (#2054) — NOT the factory value 42, nor
+    # default(int) = 0; `is None` on the Optional lowers to Assert.True(x.IsNone) here (#2171)
+    assert dd.get("missing") is None
     assert not dd.contains_key("missing")
 
 @test
