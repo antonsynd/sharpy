@@ -128,9 +128,11 @@ public class RangeFormattingTests : IDisposable
     // P22b Phase 2: a PARSEABLE document whose formatting would change meaning is declined (SPY0912)
     // and range formatting returns NO edits rather than the indent-only fallback (which would
     // re-indent the over-indented body — the unparseable twin below shows it does). The declined
-    // shape is an escaped contextual keyword the parser reads as the keyword (#2166); until Phase 4
-    // it was a dropped bracket comment, which now formats (BracketComment_EditsKeepTheCommentAsync).
-    private const string DeclinedDocument = "def main():\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
+    // shape is a still-open #2169 cell, the constraint intersection `[T: A & B]` on line 0 (its
+    // output does not re-parse); until #2166 it was the escaped `case `_`:` in the body, which now
+    // formats, and until Phase 4 a dropped bracket comment (BracketComment_EditsKeepTheCommentAsync).
+    // When #2169's intersection cell is fixed this document needs another declined shape.
+    private const string DeclinedDocument = "def g[T: A & B](y: T):\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
 
     [Fact]
     public async Task DeclinedFormatting_Spy0912_ReturnsNoEditsAsync()

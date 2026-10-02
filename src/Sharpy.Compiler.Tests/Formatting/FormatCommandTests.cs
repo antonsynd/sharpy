@@ -112,12 +112,14 @@ public class FormatCommandTests : IDisposable
     [Fact]
     public void FormatFile_DeclinedOutput_ReportsTheSpy0912MessageAndLeavesTheFileUnchanged()
     {
-        // P22b: formatting would drop a backtick escape — an escaped contextual keyword the parser
-        // reads as the keyword (`case `_`:` is written `case _:`, #2166, outside P22b; until P22b
-        // Phase 4 this cell was a dropped bracket comment, which the trivia cursor now keeps), so the
-        // formatter declines. The outcome's message is the refusal's own text, not the syntax-error
-        // text; with --output the unchanged source is written there, and the input is never touched.
-        var source = "def main():\n    x = 1\n    match x:\n        case `_`:\n            print(x)\n";
+        // P22b: the formatter declines a program it cannot write back unchanged. The damaged shape is
+        // a still-open #2169 cell — a constraint intersection `[T: A & B]` written as something that
+        // does not re-parse. (It was `case `_`:` until #2166 made the parser honour that escape, and a
+        // dropped bracket comment before P22b Phase 4; when #2169's cell is fixed this test needs
+        // another damaged shape.) The outcome's message is the refusal's own text, not the
+        // syntax-error text; with --output the unchanged source is written there, and the input is
+        // never touched.
+        var source = "def f[T: A & B](x: T) -> T:\n    return x\n";
         var path = WriteFile("declined.spy", source);
         var outputPath = Path.Combine(_tempDir, "declined.out.spy");
 
@@ -126,7 +128,7 @@ public class FormatCommandTests : IDisposable
         inPlace.HasError.Should().BeTrue();
         inPlace.Wrote.Should().BeFalse();
         inPlace.ErrorMessage.Should().Be(
-            "formatting declined: the output would drop the backtick escape on '_' at line 4; the file was left unchanged");
+            "formatting declined: the output would not re-parse (first error at formatted line 1: SPY0104 Expected RightBracket, got Colon); the file was left unchanged");
         inPlace.Diagnostics.Should().ContainSingle(d => d.Code == "SPY0912");
         File.ReadAllText(path).Should().Be(source);
 

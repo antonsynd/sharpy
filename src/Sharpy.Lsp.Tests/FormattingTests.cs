@@ -229,11 +229,13 @@ public class FormattingTests : IDisposable
     // P22b Phase 2: formatting a PARSEABLE document whose output would change meaning is declined
     // (SPY0912) and the handler returns NO edits — the indent-only fallback is for documents that
     // fail to parse, and it WOULD re-indent this one (the body is over-indented; asserted below, so
-    // the no-edits result is not vacuous). The declined shape is an escaped contextual keyword the
-    // parser reads as the keyword (`case `_`:` formats to `case _:`, the escape is lost — #2166).
-    // Until Phase 4 the document here was a dropped bracket comment; that cell now formats and
-    // keeps its comment (BracketComment_EditsKeepTheCommentAsync below).
-    private const string DeclinedDocument = "def main():\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
+    // the no-edits result is not vacuous). The declined shape is a still-open #2169 cell, the
+    // constraint intersection `[T: A & B]` (its output does not re-parse); the escaped `case `_`:`
+    // in the body formats since #2166 and is kept by the fallback (asserted below). Until #2166 the
+    // declined cell was that `case `_`:`; until Phase 4 it was a dropped bracket comment, which now
+    // formats and keeps its comment (BracketComment_EditsKeepTheCommentAsync below). When #2169's
+    // intersection cell is fixed this document needs another declined shape.
+    private const string DeclinedDocument = "def g[T: A & B](y: T):\n        x = 1\n        match x:\n            case `_`:\n                print(x)\n";
 
     [Fact]
     public async Task DeclinedFormatting_Spy0912_ReturnsNoEditsAsync()

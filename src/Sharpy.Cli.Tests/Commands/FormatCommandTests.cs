@@ -99,22 +99,40 @@ public class FormatCommandTests
     [Fact]
     public void DeclinedFormatting_PrintsSpy0912Once_AndLeavesTheFileUnchanged()
     {
-        // P22b: formatting would drop a backtick escape — an escaped contextual keyword the parser
-        // reads as the keyword (`case `_`:` is written `case _:`, #2166, outside P22b; until P22b
-        // Phase 4 this cell was a dropped bracket comment, which the trivia cursor now keeps). The CLI
-        // prints the refusal with its code on the error line (once — not repeated as a sub-bullet)
-        // and exits 2.
+        // P22b: a program the unparser cannot write back unchanged is declined. The damaged shape is
+        // a still-open #2169 cell — a constraint intersection `[T: A & B]` the formatter writes as
+        // something that does not re-parse. (Until #2166 the cell was `case `_`:`, whose escape the
+        // parser ignored; it now formats — see the twin below. When #2169's intersection cell is
+        // fixed this test needs another damaged shape.) The CLI prints the refusal with its code on
+        // the error line (once — not repeated as a sub-bullet) and exits 2.
         using var ws = new TempWorkspace();
-        var source = "def main():\n    x = 1\n    match x:\n        case `_`:\n            print(x)\n";
+        var source = "def f[T: A & B](x: T) -> T:\n    return x\n";
         var spy = ws.WriteSpy(source);
 
         var invocation = CliTestHarness.Invoke($"format \"{spy}\"");
 
         invocation.ExitCode.Should().Be(2);
         invocation.StdErr.Should().Contain(
-            "SPY0912: formatting declined: the output would drop the backtick escape on '_' at line 4; the file was left unchanged");
+            "SPY0912: formatting declined: the output would not re-parse (first error at formatted line 1: SPY0104 Expected RightBracket, got Colon); the file was left unchanged");
         invocation.StdErr.Split("formatting declined").Should().HaveCount(2, "the refusal is printed exactly once");
         File.ReadAllText(spy).Should().Be(source);
+    }
+
+    [Fact]
+    public void EscapedWildcardCapture_FormatsAndKeepsTheEscape()
+    {
+        // #2166: `case `_`:` binds a local named `_` (the escape is honoured), so the formatter has
+        // nothing to drop and writes the file with the escape intact — the cell the test above used
+        // to decline.
+        using var ws = new TempWorkspace();
+        var source = "def main():\n    x = 1\n    match x:\n        case `_`:\n            print(`_`)\n";
+        var spy = ws.WriteSpy(source);
+
+        var invocation = CliTestHarness.Invoke($"format \"{spy}\"");
+
+        invocation.ExitCode.Should().Be(0, invocation.StdErr);
+        invocation.StdErr.Should().NotContain("SPY0912");
+        File.ReadAllText(spy).Should().Contain("case `_`:").And.Contain("print(`_`)");
     }
 
     // Owner ruling 2026-09-30 (P22b): Sharpy indentation is exactly 4 spaces per level, no tabs
