@@ -421,7 +421,7 @@ public class FormatterMeaningPreservationSweepTests
         var identifiers = 0;
         var trailing = 0;
         var trailingNone = 0;
-        var skipped = FormatterTwins.ContextualKeywordsReadAsKeywords.ToDictionary(k => k, _ => 0, StringComparer.Ordinal);
+        var skipped = FormatterTwins.ContextualKeywordsAtTheirSite.ToDictionary(k => k, _ => 0, StringComparer.Ordinal);
         foreach (var fixture in census.Corpus.Values)
         {
             var (_, counts) = FormatterTwins.CommentInjected(fixture.Source);
@@ -438,7 +438,7 @@ public class FormatterMeaningPreservationSweepTests
         _output.WriteLine("FMTPRES-CENSUS T1 " + string.Join(" ", InjectedCommentCounts.Kinds.Select(k => $"{k}={totals[(int)k]}")));
         _output.WriteLine($"FMTPRES-CENSUS T2 identifiers={identifiers}");
         _output.WriteLine($"FMTPRES-CENSUS T3 LineTrailing={trailing} (fixtures with none={trailingNone})");
-        _output.WriteLine("FMTPRES-CENSUS T2 skipped-contextual-keywords(#2166) "
+        _output.WriteLine("FMTPRES-CENSUS T2 skipped-contextual-keywords(at-site) "
             + string.Join(" ", skipped.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
 
         var rows = LoadAllowlist();
@@ -457,7 +457,7 @@ public class FormatterMeaningPreservationSweepTests
         trailing.Should().BeGreaterThanOrEqualTo(totals[(int)InjectedCommentKind.LineTrailing],
             "T3 injects the line-trailing kind alone, so every slot T1 gives it is T3's too (plus the clause-colon slots T1 takes)");
         foreach (var (value, n) in skipped)
-            n.Should().BeGreaterThan(0, $"T2 skips the #2166 contextual keyword '{value}': the corpus must contain one, else the skip set has a stale member");
+            n.Should().BeGreaterThan(0, $"T2 leaves the contextual keyword '{value}' bare at its site: the corpus must contain one, else the skip set has a stale member");
         rows.Should().OnlyContain(r => census.Corpus.ContainsKey(r.Stem), "every allowlist row names a corpus fixture");
 
         // P22b drained the allowlist to EMPTY at Phase 4 Task 3 (every comment, escape and O7 row). The

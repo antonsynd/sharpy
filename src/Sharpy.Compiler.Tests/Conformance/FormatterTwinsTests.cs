@@ -1,3 +1,4 @@
+using System.Text;
 using FluentAssertions;
 using Sharpy.Compiler.Pretty;
 using Xunit;
@@ -222,38 +223,42 @@ public class FormatterTwinsTests
     }
 
     /// <summary>
-    /// The #2166 contextual keywords stay bare at their contextual position (an escape there parses
-    /// as the keyword and is lost) and are counted; the same spellings as plain identifiers are
-    /// escaped like any other (the exemption is the position, not the value).
+    /// A wildcard <c>case _:</c> is escaped like any identifier since #2166 (the escaped twin binds
+    /// <c>`_`</c> and parses), and nothing is left bare; the same spellings as a plain identifier
+    /// are escaped too.
     /// </summary>
     [Fact]
-    public void BacktickInjected_LeavesTheContextualKeywordsOf2166Bare_OnlyAtTheirPosition()
+    public void BacktickInjected_EscapesACaseWildcard_AndLeavesNothingBare()
     {
         const string source = "def f(x: int) -> int:\n    match x:\n        case _:\n            return d.get(out, x)\n";
 
         var (text, count) = FormatterTwins.BacktickInjected(source);
 
-        text.Should().Be("def `f`(`x`: `int`) -> `int`:\n    match `x`:\n        case _:\n            return `d`.`get`(`out`, `x`)\n");
-        count.Should().Be(9);
-        FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { ["_"] = 1 });
+        text.Should().Be("def `f`(`x`: `int`) -> `int`:\n    match `x`:\n        case `_`:\n            return `d`.`get`(`out`, `x`)\n");
+        count.Should().Be(10);
+        FormatterTwins.ContextualKeywordSkips(source).Should().BeEmpty();
+        Parse(text, out var errors);
+        errors.Should().BeFalse(text);
     }
 
-    /// <summary>One cell per contextual position the parser reads despite an escape (#2166): the value stays bare there.</summary>
+    /// <summary>
+    /// One cell per contextual site that T2 leaves bare: the value is not escaped there, and the
+    /// escaped spelling at that site — an identifier since #2166 — would not parse (the positive
+    /// reason for the skip; the rest of the twin parses).
+    /// </summary>
     [Theory]
-    [InlineData("_", "def main():\n    f(1, _)\n")]
     [InlineData("get", "class C:\n    property get p(self) -> int:\n        return 1\n")]
     [InlineData("set", "class C:\n    property set p(self, v: int):\n        pass\n")]
     [InlineData("init", "class C:\n    property init p(self, v: int):\n        pass\n")]
     [InlineData("add", "class C:\n    event add e(self, h: H):\n        pass\n")]
     [InlineData("remove", "class C:\n    event remove e(self, h: H):\n        pass\n")]
-    [InlineData("notnull", "def f[T: notnull](x: T) -> T:\n    return x\n")]
     [InlineData("when", "try:\n    pass\nexcept E as e when c:\n    pass\n")]
     [InlineData("out", "interface I[out T]:\n    def g(self) -> T\n")]
     [InlineData("out", "def f(x: out int) -> None:\n    pass\n")]
     [InlineData("out", "def main():\n    f(out y)\n")]
     [InlineData("ref", "def f(x: ref int) -> None:\n    pass\n")]
     [InlineData("ref", "def main():\n    f(ref y)\n")]
-    public void BacktickInjected_LeavesAContextualKeywordBare_AtItsPosition(string value, string source)
+    public void BacktickInjected_LeavesAContextualKeywordBare_AtItsSite_WhereTheEscapeWouldNotParse(string value, string source)
     {
         Parse(source, out var sourceErrors);
         sourceErrors.Should().BeFalse(source);
@@ -264,19 +269,35 @@ public class FormatterTwinsTests
         FormatterTwins.ContextualKeywordSkips(source).Should().BeEquivalentTo(new Dictionary<string, int> { [value] = 1 });
         Parse(text, out var errors);
         errors.Should().BeFalse(text);
+
+        var escapedAtSite = EscapeTheTokenAtItsContextualSite(text);
+        escapedAtSite.Should().Contain($"`{value}`");
+        Parse(escapedAtSite, out var escapedErrors);
+        escapedErrors.Should().BeTrue($"the honoured escape makes '{value}' an identifier at its site, which does not parse:\n{escapedAtSite}");
     }
 
-    /// <summary>The same spellings as plain identifiers are escaped (positive control for the position key).</summary>
-    [Fact]
-    public void BacktickInjected_EscapesTheSameSpellingsAsPlainIdentifiers()
+    /// <summary>
+    /// <c>_</c> and <c>notnull</c> at their former contextual sites, and every contextual-keyword
+    /// spelling as a plain identifier, are escaped like any other identifier, and the twin parses.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    f(1, _)\n", new[] { "_" })]
+    [InlineData("def main():\n    g = f(1, b=_)\n", new[] { "_" })]
+    [InlineData("def main():\n    h = (_ + 1)\n", new[] { "_" })]
+    [InlineData("def main():\n    match x:\n        case [1, *_]:\n            pass\n", new[] { "_" })]
+    [InlineData("def f[T: notnull](x: T) -> T:\n    return x\n", new[] { "notnull" })]
+    [InlineData("def f[T: A, notnull](x: T) -> T:\n    return x\n", new[] { "notnull" })]
+    [InlineData("def main():\n    xs.add(set)\n    init = ref\n    when = notnull\n    remove = d.get(out)\n",
+        new[] { "add", "set", "init", "ref", "when", "notnull", "remove", "get", "out" })]
+    public void BacktickInjected_EscapesTheSameSpellingsAsPlainIdentifiers(string source, string[] values)
     {
-        const string source = "def main():\n    xs.add(set)\n    init = ref\n    when = notnull\n    remove = d.get(out)\n";
-
         var (text, _) = FormatterTwins.BacktickInjected(source);
 
-        foreach (var value in new[] { "add", "set", "init", "ref", "when", "notnull", "remove", "get", "out" })
+        foreach (var value in values)
             text.Should().Contain($"`{value}`");
         FormatterTwins.ContextualKeywordSkips(source).Should().BeEmpty();
+        Parse(text, out var errors);
+        errors.Should().BeFalse(text);
     }
 
     [Fact]
@@ -328,6 +349,23 @@ public class FormatterTwinsTests
 
     private static IEnumerable<int> Counts(InjectedCommentCounts counts)
         => InjectedCommentCounts.Kinds.Select(k => counts[k]);
+
+    /// <summary>The text with every unescaped token T2 left bare at its contextual site wrapped in backticks.</summary>
+    private static string EscapeTheTokenAtItsContextualSite(string text)
+    {
+        var tokens = FormatterTwins.Lex(text, out _);
+        var result = new StringBuilder(text);
+        for (var i = tokens.Count - 1; i >= 0; i--)
+        {
+            var token = tokens[i];
+            if (token.IsBacktickEscaped || !FormatterTwins.IsAtContextualSite(tokens, i))
+                continue;
+            result.Insert(token.Position + token.Length, '`');
+            result.Insert(token.Position, '`');
+        }
+
+        return result.ToString();
+    }
 
     private static SModule Parse(string source, out bool hasErrors)
     {

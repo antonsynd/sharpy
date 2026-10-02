@@ -108,15 +108,12 @@ Before it writes anything, the formatter re-reads its own output and checks guar
 
 ```text
 $ sharpyc format declined.spy
-Error: declined.spy: SPY0912: formatting declined: the output would drop the backtick escape on '_' at line 4; the file was left unchanged
+Error: declined.spy: SPY0912: formatting declined: the output would not re-parse (first error at formatted line 9: SPY0104 Expected RightBracket, got Colon); the file was left unchanged
 ```
 
 `sharpyc format` exits with code 2, and the file is byte-for-byte unchanged. A declined file has not been damaged.
 
-SPY0912 always means a formatter bug: your file is valid and its meaning is safe, but the formatter could not lay it out without changing it. Please report it (see below). Known cases:
-
-- a backtick-escaped contextual keyword such as `` case `_`: `` is declined, because the parser reads the escaped spelling as the keyword itself (#2166);
-- a string containing a `\r` escape, a generic constraint intersection `[T: A & B]`, and a `with … as (a, *rest):` target are declined, because the formatter cannot yet write them back unchanged (#2169).
+SPY0912 always means a formatter bug: your file is valid and its meaning is safe, but the formatter could not lay it out without changing it. Please report it (see below). Known cases: a string containing a `\r` escape, a generic constraint intersection `[T: A & B]`, and a `with … as (a, *rest):` target are declined, because the formatter cannot yet write them back unchanged (#2169).
 
 ## In the editor (LSP)
 
