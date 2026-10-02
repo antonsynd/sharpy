@@ -54,38 +54,38 @@ Elementwise `a > b` with broadcasting.
 
 Elementwise `a >= b` with broadcasting.
 
-### `numpy.concatenate(arrays: list[ndarray[float]], axis: int = 0) -> ndarray[float]`
+### `numpy.concatenate(arrays: array[ndarray[float]], axis: int = 0) -> ndarray[float]`
 
 Join a sequence of arrays along an existing *axis*.
 All input arrays must have the same shape except along *axis*.
 
 **Parameters:**
 
-- `arrays` (list[ndarray[float]]) -- Arrays to concatenate. Must not be empty.
+- `arrays` (array[ndarray[float]]) -- Arrays to concatenate. Must not be empty.
 - `axis` (int) -- Axis along which to concatenate. Default 0.
 
 **Returns:** A new C-contiguous array.
 
-### `numpy.stack(arrays: list[ndarray[float]], axis: int = 0) -> ndarray[float]`
+### `numpy.stack(arrays: array[ndarray[float]], axis: int = 0) -> ndarray[float]`
 
 Join a sequence of arrays along a new axis. All inputs must have the same shape.
 The output has rank `ndim + 1`.
 
 **Parameters:**
 
-- `arrays` (list[ndarray[float]]) -- Arrays to stack.
+- `arrays` (array[ndarray[float]]) -- Arrays to stack.
 - `axis` (int) -- Index of the new axis in the output. Default 0.
 
-### `numpy.hstack(arrays: list[ndarray[float]]) -> ndarray[float]`
+### `numpy.hstack(arrays: array[ndarray[float]]) -> ndarray[float]`
 
 Stack arrays horizontally — along the second axis for 2-D inputs, along axis 0 for 1-D.
 
-### `numpy.vstack(arrays: list[ndarray[float]]) -> ndarray[float]`
+### `numpy.vstack(arrays: array[ndarray[float]]) -> ndarray[float]`
 
 Stack arrays vertically — along the first axis. For 1-D inputs they are promoted
 to row vectors (shape `(1, n)`) before stacking.
 
-### `numpy.split(a: ndarray[float], indices: list[int], axis: int = 0) -> list[ndarray[float]]`
+### `numpy.split(a: ndarray[float], indices: array[int], axis: int = 0) -> list[ndarray[float]]`
 
 Split *a* along *axis* at the given index boundaries,
 returning a list of sub-arrays. Mirrors NumPy's `numpy.split`.
@@ -93,7 +93,7 @@ returning a list of sub-arrays. Mirrors NumPy's `numpy.split`.
 **Parameters:**
 
 - `a` (ndarray[float]) -- Input array.
-- `indices` (list[int]) -- Sorted strictly-increasing list of split points. A raw
+- `indices` (array[int]) -- Sorted strictly-increasing list of split points. A raw
 `int[]` deliberately: the stdlib rule is about what a public API produces,
 and a parameter accepts — a Sharpy `list[int]` converts to an array at the call
 boundary, so requiring one here would add a copy without adding reach (#1293).
@@ -420,13 +420,13 @@ Return a new ndarray of the given shape, filled with 1.0.
 
 - `shape` (*int) -- Shape of the result. Each dimension must be non-negative.
 
-### `numpy.full(shape: list[int], value: T) -> ndarray[T]`
+### `numpy.full(shape: array[int], value: T) -> ndarray[T]`
 
 Return a new ndarray of the given shape, filled with *value*.
 
 **Parameters:**
 
-- `shape` (list[int]) -- Shape of the result.
+- `shape` (array[int]) -- Shape of the result.
 - `value` (T) -- Fill value.
 
 ### `numpy.eye(n: int) -> ndarray[float]`
@@ -697,7 +697,7 @@ Random samples from the standard normal distribution (mean 0, stddev 1).
 
 - `shape` (*int) -- Shape of the result.
 
-### `numpy.randint(low: int, high: int, shape: list[int]) -> ndarray[int]`
+### `numpy.randint(low: int, high: int, shape: array[int]) -> ndarray[int]`
 
 Random integers from the half-open interval `[low, high)`.
 
@@ -705,13 +705,13 @@ Random integers from the half-open interval `[low, high)`.
 
 - `low` (int) -- Inclusive lower bound.
 - `high` (int) -- Exclusive upper bound. Must be greater than *low*.
-- `shape` (list[int]) -- Shape of the result.
+- `shape` (array[int]) -- Shape of the result.
 
 **Raises:**
 
 - `ValueError` -- Thrown when *high* is not greater than *low*.
 
-### `numpy.normal(loc: float, scale: float, shape: list[int]) -> ndarray[float]`
+### `numpy.normal(loc: float, scale: float, shape: array[int]) -> ndarray[float]`
 
 Random samples from a normal (Gaussian) distribution with the given mean and standard deviation.
 
@@ -719,13 +719,13 @@ Random samples from a normal (Gaussian) distribution with the given mean and sta
 
 - `loc` (float) -- Mean (`mu`) of the distribution.
 - `scale` (float) -- Standard deviation (`sigma`) of the distribution. Must be non-negative.
-- `shape` (list[int]) -- Shape of the result.
+- `shape` (array[int]) -- Shape of the result.
 
 **Raises:**
 
 - `ValueError` -- Thrown when *scale* is negative.
 
-### `numpy.uniform(low: float, high: float, shape: list[int]) -> ndarray[float]`
+### `numpy.uniform(low: float, high: float, shape: array[int]) -> ndarray[float]`
 
 Random samples from a continuous uniform distribution over `[low, high)`.
 
@@ -733,7 +733,7 @@ Random samples from a continuous uniform distribution over `[low, high)`.
 
 - `low` (float) -- Inclusive lower bound.
 - `high` (float) -- Exclusive upper bound. Must be greater than or equal to *low*.
-- `shape` (list[int]) -- Shape of the result.
+- `shape` (array[int]) -- Shape of the result.
 
 **Raises:**
 
@@ -783,8 +783,8 @@ N-dimensional homogeneous array — Sharpy equivalent of `numpy.ndarray`.
 |------|------|-------------|
 | `ndim` | `int` | Number of dimensions (rank) of the array. |
 | `size` | `int` | Total number of elements (product of shape dimensions). |
-| `shape` | `list[int]` | Shape of the array as a defensive copy of the internal shape vector. |
-| `strides` | `list[int]` | Strides of the array as a defensive copy of the internal stride vector. |
+| `shape` | `array[int]` | Shape of the array as a defensive copy of the internal shape vector. |
+| `strides` | `array[int]` | Strides of the array as a defensive copy of the internal stride vector. |
 | `dtype` | `str` | Element type name in NumPy-style notation (e.g., \`float64\`, \`int32\`). |
 | `count` | `int` | \`len(arr)\`-equivalent: the length of the first axis for non-scalar arrays. For 0-D scalars this returns 1 (matches the underlying buffer size). |
 
@@ -877,7 +877,7 @@ Assign values from *values* to positions where *mask* is True.
 `array([[1, 2], [3, 4]])` for 2-D arrays, and so on. Arrays with more than
 1000 elements are truncated, showing the first and last 3 entries per axis.
 
-### `take(indices: list[int], axis: int = 0) -> ndarray[T]`
+### `take(indices: array[int], axis: int = 0) -> ndarray[T]`
 
 Take elements from this array at the positions given by *indices*.
 For a 1-D source this returns a 1-D array of the selected values; for higher-rank
@@ -885,12 +885,12 @@ sources this selects entire (N-1)-D slices along *axis*.
 
 **Parameters:**
 
-- `indices` (list[int]) -- Integer indices into *axis*. Negative values follow Python semantics.
+- `indices` (array[int]) -- Integer indices into *axis*. Negative values follow Python semantics.
 - `axis` (int) -- Axis along which to select. Default 0.
 
 **Returns:** A new C-contiguous array of the selected elements.
 
-### `put(indices: list[int], values: ndarray[T], axis: int = 0)`
+### `put(indices: array[int], values: ndarray[T], axis: int = 0)`
 
 Write *values* into this array at the positions given by
 *indices* along *axis*. The shape of
@@ -904,7 +904,7 @@ Convert this array to a nested `List<...>` mirror — the equivalent of NumPy's
 2-D → `List<List<T>>`, etc. Returned as `object` because the static
 nesting depth depends on the runtime rank.
 
-### `to_array() -> list[T]`
+### `to_array() -> array[T]`
 
 Returns a flat copy of the array data in row-major order.
 

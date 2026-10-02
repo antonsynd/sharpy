@@ -358,7 +358,7 @@ Update the set, keeping only elements found in either set or the iterable but no
 `repr()` uses the same method. Python's `repr` of the set: `{1, 2}`, and `set()` when empty (a bare
 `{}` is the empty dict).
 
-### `copy_to(array: list[T], array_index: int)`
+### `copy_to(array: array[T], array_index: int)`
 
 Copies the elements of the set to an array.
 

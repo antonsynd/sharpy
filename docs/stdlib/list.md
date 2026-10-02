@@ -267,6 +267,6 @@ Deletes a slice of the list.
 
 - `ValueError` -- Thrown if slice step is zero.
 
-### `copy_to(array: list[T], array_index: int)`
+### `copy_to(array: array[T], array_index: int)`
 
 Copies the elements of the list to an array.

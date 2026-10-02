@@ -96,7 +96,7 @@ Equivalent to Python's `response.raise_for_status()`, but uses a tagged
 
 `repr()` uses the same method. Returns a string representation of this response (e.g., `<Response [200]>`).
 
-### `iter_content(chunk_size: int = 1024) -> IEnumerable[list[uint8]]`
+### `iter_content(chunk_size: int = 1024) -> IEnumerable[array[uint8]]`
 
 Iterate over the response body in chunks of the given size (default 1024 bytes).
 The response must have been created with `stream=True` and the body must not

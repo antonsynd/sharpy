@@ -195,6 +195,7 @@ nav:
       - list: stdlib/list.md
       - dict: stdlib/dict.md
       - set: stdlib/set.md
+      - str: stdlib/str.md
       - complex: stdlib/complex.md
     - Modules:
       - argparse: stdlib/argparse.md

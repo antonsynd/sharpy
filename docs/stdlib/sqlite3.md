@@ -10,7 +10,7 @@ import sqlite3
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row` | `(Cursor, list[object \| None]) -> object` | A factory function that returns \`Row\` objects for query results. |
+| `row` | `(Cursor, array[object \| None]) -> object` | A factory function that returns \`Row\` objects for query results. |
 
 ## Functions
 
@@ -32,7 +32,7 @@ Represents a connection to an SQLite database.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `row_factory` | `((Cursor, list[object \| None]) -> object) \| None` | Gets or sets the row factory used to create row objects from query results. |
+| `row_factory` | `((Cursor, array[object \| None]) -> object) \| None` | Gets or sets the row factory used to create row objects from query results. |
 
 ### `cursor() -> Cursor`
 
@@ -95,7 +95,7 @@ Represents a database cursor used to execute SQL statements and fetch results.
 | `arraysize` | `int` | Gets or sets the number of rows to fetch at a time with \`fetchmany\`. Default is 1. |
 | `lastrowid` | `int64` | Gets the row ID of the last modified row, or -1 if no row was inserted. |
 | `rowcount` | `int` | Gets the number of rows affected by the last DML statement, or -1 for queries. |
-| `description` | `list[list[object \| None]] \| None` | Gets column descriptions for the last query, or null if no query has been executed. |
+| `description` | `list[array[object \| None]] \| None` | Gets column descriptions for the last query, or null if no query has been executed. |
 
 ### `execute(sql: str, parameters: system.collections.IEnumerable | None = None) -> Cursor`
 

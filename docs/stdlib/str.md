@@ -1,11 +1,6 @@
 # str
 
-Extension methods on `string` that provide Python string method
-equivalents under PascalCase names.  The emitter's NameMangler converts
-`upper` to `Upper`, `lower` to `Lower`, etc.
-Generated code includes `using global::Sharpy;` which brings these
-extensions into scope so that `name.Upper()` compiles against C#
-`string`.
+Python-compatible string methods as extension methods on string.
 
 ## Methods
 
@@ -14,73 +9,10 @@ extensions into scope so that `name.Upper()` compiles against C#
 Return a copy of the string converted to uppercase.
 Python: `str.upper()`
 
-```python
-"hello".upper()    # "HELLO"
-```
-
-!!! note
-    Uses invariant culture to match Python's culture-independent behavior.
-
 ### `lower() -> str`
 
 Return a copy of the string converted to lowercase.
 Python: `str.lower()`
-
-```python
-"HELLO".lower()    # "hello"
-```
-
-!!! note
-    Uses invariant culture to match Python's culture-independent behavior.
-
-### `strip() -> str`
-
-Return a copy of the string with leading and trailing whitespace removed.
-Python: `str.strip()`
-
-```python
-"  hello  ".strip()    # "hello"
-```
-
-### `strip(chars: str) -> str`
-
-Return a copy of the string with leading and trailing characters in
-*chars* removed.
-Python: `str.strip(chars)`
-
-```python
-"xxhelloxx".strip("x")    # "hello"
-```
-
-### `lstrip() -> str`
-
-Return a copy of the string with leading whitespace removed.
-Python: `str.lstrip()`
-
-```python
-"  hello".lstrip()    # "hello"
-```
-
-### `lstrip(chars: str) -> str`
-
-Return a copy of the string with leading characters in
-*chars* removed.
-Python: `str.lstrip(chars)`
-
-### `rstrip() -> str`
-
-Return a copy of the string with trailing whitespace removed.
-Python: `str.rstrip()`
-
-```python
-"hello  ".rstrip()    # "hello"
-```
-
-### `rstrip(chars: str) -> str`
-
-Return a copy of the string with trailing characters in
-*chars* removed.
-Python: `str.rstrip(chars)`
 
 ### `capitalize() -> str`
 
@@ -88,30 +20,10 @@ Return a copy of the string with its first character capitalized
 and the rest lowercased.
 Python: `str.capitalize()`
 
-```python
-"hello world".capitalize()    # "Hello world"
-```
-
-### `join(iterable: Iterable[str]) -> str`
-
-Return a string which is the concatenation of the strings in
-*iterable*. The separator between elements is the
-string providing this method.
-Python: `str.join(iterable)`
-
-```python
-", ".join(["a", "b", "c"])    # "a, b, c"
-```
-
 ### `title() -> str`
 
-Return a titlecased version of the string where words start with
-an upper case character and the remaining characters are lower case.
+Return a titlecased version of the string.
 Python: `str.title()`
-
-```python
-"hello world".title()    # "Hello World"
-```
 
 ### `swapcase() -> str`
 
@@ -119,72 +31,79 @@ Return a copy of the string with uppercase characters converted to
 lowercase and vice versa.
 Python: `str.swapcase()`
 
-```python
-"Hello World".swapcase()    # "hELLO wORLD"
-```
+### `casefold() -> str`
+
+Return a casefolded copy of the string.
+Python: `str.casefold()`
+
+### `strip() -> str`
+
+Return a copy with leading and trailing whitespace removed.
+Python: `str.strip()`
+
+### `strip(chars: str) -> str`
+
+Return a copy with leading and trailing characters in
+*chars* removed.
+Python: `str.strip(chars)`
+
+### `lstrip() -> str`
+
+Return a copy with leading whitespace removed.
+Python: `str.lstrip()`
+
+### `lstrip(chars: str) -> str`
+
+Return a copy with leading characters in *chars* removed.
+Python: `str.lstrip(chars)`
+
+### `rstrip() -> str`
+
+Return a copy with trailing whitespace removed.
+Python: `str.rstrip()`
+
+### `rstrip(chars: str) -> str`
+
+Return a copy with trailing characters in *chars* removed.
+Python: `str.rstrip(chars)`
 
 ### `center(width: int, fillchar: char = ' ') -> str`
 
 Return centered in a string of length *width*.
-Padding is done using the specified *fillchar*
-(default is a space).
 Python: `str.center(width, fillchar)`
-
-```python
-"hi".center(10)         # "    hi    "
-"hi".center(10, "-")    # "----hi----"
-```
 
 ### `ljust(width: int, fillchar: char = ' ') -> str`
 
-Return the string left-justified in a string of length
-*width*. Padding is done using the specified
-*fillchar* (default is a space).
+Return left-justified in a string of length *width*.
 Python: `str.ljust(width, fillchar)`
 
 ### `rjust(width: int, fillchar: char = ' ') -> str`
 
-Return the string right-justified in a string of length
-*width*. Padding is done using the specified
-*fillchar* (default is a space).
+Return right-justified in a string of length *width*.
 Python: `str.rjust(width, fillchar)`
 
 ### `zfill(width: int) -> str`
 
-Return a copy of the string left filled with ASCII '0' digits to
-make a string of length *width*. A leading sign
-prefix (+/-) is handled by inserting the padding after the sign
-character rather than before.
+Return left filled with ASCII '0' digits to make a string of length
+*width*. A leading sign prefix is handled.
 Python: `str.zfill(width)`
-
-```python
-"42".zfill(5)     # "00042"
-"-42".zfill(5)    # "-0042"
-```
 
 ### `removeprefix(prefix: str) -> str`
 
-If the string starts with the *prefix* string,
-return `string[len(prefix):]`. Otherwise, return a copy of
-the original string.
+If the string starts with the *prefix*, return the
+string with the prefix removed. Otherwise, return a copy.
 Python: `str.removeprefix(prefix)`
-
-```python
-"HelloWorld".removeprefix("Hello")    # "World"
-"HelloWorld".removeprefix("Bye")      # "HelloWorld"
-```
 
 ### `removesuffix(suffix: str) -> str`
 
-If the string ends with the *suffix* string,
-return `string[:-len(suffix)]`. Otherwise, return a copy of
-the original string.
+If the string ends with the *suffix*, return the
+string with the suffix removed. Otherwise, return a copy.
 Python: `str.removesuffix(suffix)`
 
-```python
-"HelloWorld".removesuffix("World")    # "Hello"
-"HelloWorld".removesuffix("Bye")      # "HelloWorld"
-```
+### `expandtabs(tabsize: int = 8) -> str`
+
+Return a copy where all tab characters are expanded using spaces.
+Python: `str.expandtabs(tabsize=8)`
 
 ### `replace(old: str, new_: str) -> str`
 
@@ -192,9 +111,15 @@ Return a copy with all occurrences of *old* replaced
 by *new_*.
 Python: `str.replace(old, new)`
 
-```python
-"hello world".replace("world", "there")    # "hello there"
-```
+!!! note
+    This extension shadows `replace` by design.
+    C# instance methods take precedence over extensions, so generated code calling
+    `s.Replace(old, new_)` always invokes the BCL method at runtime. This
+    overload exists for two reasons: (1) BuiltinRegistry discovers it via reflection
+    to register `str.replace` for type-checking, and (2) the 3-arg overload
+    calls it directly (as a static call) when `count < 0` to get Python
+    empty-string replacement semantics (BCL throws on empty *old*
+    on empty *old*).
 
 ### `replace(old: str, new_: str, count: int) -> str`
 
@@ -202,119 +127,77 @@ Return a copy with the first *count* occurrences of
 *old* replaced by *new_*.
 Python: `str.replace(old, new, count)`
 
-### `splitlines() -> list[str]`
+### `join(iterable: IEnumerable[str]) -> str`
 
-Return a list of the lines in the string, breaking at line
-boundaries. Line breaks are not included in the resulting list.
-Python: `str.splitlines()`
-
-```python
-"a\nb\nc".splitlines()    # ["a", "b", "c"]
-```
-
-!!! note
-    Recognizes all Python line boundaries: \n, \r\n, \r, \v (0x0B),
-    \f (0x0C), \x1C, \x1D, \x1E, \x85 (NEL), \u2028 (LS), \u2029 (PS).
-
-### `splitlines(keepends: bool) -> list[str]`
-
-Return a list of the lines in the string, breaking at line
-boundaries. When *keepends* is `true`, line
-break characters are included in the resulting strings.
-Python: `str.splitlines(keepends)`
-
-!!! note
-    Recognizes all Python line boundaries: \n, \r\n, \r, \v (0x0B),
-    \f (0x0C), \x1C, \x1D, \x1E, \x85 (NEL), \u2028 (LS), \u2029 (PS).
+Return a string which is the concatenation of the strings in
+*iterable*. The separator between elements is this
+string.
+Python: `str.join(iterable)` — called as `separator.join(list)`.
 
 ### `split() -> list[str]`
 
-Split the string on whitespace. Consecutive whitespace is collapsed,
-and leading/trailing whitespace is stripped.
+Split on whitespace. Consecutive whitespace is collapsed,
+leading/trailing whitespace is stripped.
 Python: `str.split()`
-
-```python
-"a b  c".split()    # ["a", "b", "c"]
-```
 
 ### `split(sep: str) -> list[str]`
 
-Split the string on a separator string.
+Split on a separator string.
 Python: `str.split(sep)`
-
-```python
-"a,b,c".split(",")    # ["a", "b", "c"]
-```
 
 ### `split(sep: str, maxsplit: int) -> list[str]`
 
-Split the string on a separator string, performing at most
+Split on a separator string, performing at most
 *maxsplit* splits (from the left).
 Python: `str.split(sep, maxsplit)`
 
-**Raises:**
-
-- `TypeError` -- Thrown if *sep* is `null`.
-- `ValueError` -- Thrown if *sep* is empty.
-
 ### `rsplit() -> list[str]`
 
-Split the string on whitespace from the right. Consecutive whitespace
-is collapsed, and leading/trailing whitespace is stripped.
+Split on whitespace from the right.
 Python: `str.rsplit()`
 
 ### `rsplit(sep: str) -> list[str]`
 
-Split the string on a separator string from the right.
+Split on a separator string from the right.
 Python: `str.rsplit(sep)`
 
 ### `rsplit(sep: str, maxsplit: int) -> list[str]`
 
-Split the string on a separator string from the right, performing at
-most *maxsplit* splits.
+Split on a separator string from the right, performing at most
+*maxsplit* splits.
 Python: `str.rsplit(sep, maxsplit)`
 
-**Raises:**
+### `splitlines() -> list[str]`
 
-- `TypeError` -- Thrown if *sep* is `null`.
-- `ValueError` -- Thrown if *sep* is empty.
+Return a list of the lines in the string, breaking at line boundaries.
+Python: `str.splitlines()`
 
-### `expandtabs(tabsize: int = 8) -> str`
+### `splitlines(keepends: bool) -> list[str]`
 
-Return a copy where all tab characters are expanded using spaces.
-The column position is tracked; tab stops are at every
-*tabsize* characters.
-Python: `str.expandtabs(tabsize=8)`
+Return a list of lines, optionally keeping line break characters.
+Python: `str.splitlines(keepends)`
 
-```python
-"a\tb".expandtabs(4)    # "a   b"
-```
+### `partition(sep: str) -> tuple[str, str, str]`
 
-### `istitle() -> bool`
+Split at the first occurrence of *sep*, returning a
+3-tuple.
+Python: `str.partition(sep)`
 
-Return `true` if the string is a titlecased string and there is
-at least one character. Uppercase characters may only follow uncased
-characters and lowercase characters only cased characters.
-Python: `str.istitle()`
+### `rpartition(sep: str) -> tuple[str, str, str]`
 
-```python
-"Hello World".istitle()    # True
-"hello world".istitle()    # False
-```
+Split at the last occurrence of *sep*, returning a
+3-tuple.
+Python: `str.rpartition(sep)`
 
-### `encode(encoding: str = "utf-8") -> list[byte]`
+### `format(*args: object) -> str`
 
-Encode the string using the specified encoding and return as a byte array.
-Python: `str.encode(encoding='utf-8')`
+Return a formatted version of the string, using positional arguments.
+Python: `str.format(*args)`
 
-```python
-"hello".encode()           # b'hello'  (UTF-8)
-"hello".encode("ascii")    # b'hello'  (ASCII)
-```
+### `format_map(mapping: dict[str, object]) -> str`
 
-**Raises:**
-
-- `LookupError` -- Thrown if *encoding* is not recognized.
+Return a formatted version of the string, using a mapping of keyword arguments.
+Python: `str.format_map(mapping)`
 
 ### `maketrans(x: str, y: str) -> Dictionary[char, str]`
 
@@ -322,252 +205,196 @@ Build a translation table mapping characters in *x*
 to corresponding characters in *y*.
 Python: `str.maketrans(x, y)`
 
-```python
-t = str.maketrans("aeiou", "12345")
-"apple".translate(t)    # "1ppl2"
-```
-
-**Raises:**
-
-- `ValueError` -- Thrown if *x* and *y* have different lengths.
-
 ### `maketrans(x: str, y: str, z: str) -> Dictionary[char, str]`
 
-Build a translation table mapping characters in *x*
-to corresponding characters in *y*, and mapping
-each character in *z* to deletion (empty string).
+Build a translation table with a deletion set.
 Python: `str.maketrans(x, y, z)`
 
 ### `translate(table: Dictionary[char, str]) -> str`
 
 Return a copy of the string in which each character has been mapped
-through the given translation table. Characters mapped to an empty
-string are deleted.
+through the given translation table.
 Python: `str.translate(table)`
+
+### `encode(encoding: str = "utf-8") -> bytes`
+
+Encode the string using the specified encoding and return as bytes.
+Python: `str.encode(encoding='utf-8')`
 
 ### `find(sub: str) -> int`
 
-Return the lowest index in the string where substring *sub*
-is found. Return -1 if *sub* is not found.
+Return the lowest index where substring *sub* is found.
+Return -1 if not found.
 Python: `str.find(sub)`
-
-```python
-"hello".find("ll")    # 2
-"hello".find("xy")    # -1
-```
 
 ### `find(sub: str, start: int) -> int`
 
-Return the lowest index in the string where substring *sub*
-is found, starting the search at position *start*.
-Return -1 if *sub* is not found.
+Return the lowest index where substring *sub* is found,
+starting the search at *start*.
 Python: `str.find(sub, start)`
 
 ### `find(sub: str, start: int, end: int) -> int`
 
-Return the lowest index in the string where substring *sub*
-is found within `s[start:end]`.
-Return -1 if *sub* is not found.
+Return the lowest index where substring *sub* is found
+within `s[start:end]`.
 Python: `str.find(sub, start, end)`
 
 ### `rfind(sub: str) -> int`
 
-Return the highest index in the string where substring *sub*
-is found. Return -1 if *sub* is not found.
+Return the highest index where substring *sub* is found.
+Return -1 if not found.
 Python: `str.rfind(sub)`
-
-```python
-"hello hello".rfind("hello")    # 6
-```
 
 ### `rfind(sub: str, start: int) -> int`
 
-Return the highest index in the string where substring *sub*
-is found, searching within `s[start:]`.
-Return -1 if *sub* is not found.
+Return the highest index where substring *sub* is found,
+searching within `s[start:]`.
 Python: `str.rfind(sub, start)`
 
 ### `rfind(sub: str, start: int, end: int) -> int`
 
-Return the highest index in the string where substring *sub*
-is found within `s[start:end]`.
-Return -1 if *sub* is not found.
+Return the highest index where substring *sub* is found
+within `s[start:end]`.
 Python: `str.rfind(sub, start, end)`
 
-### `isdigit() -> bool`
+### `index(sub: str) -> int`
 
-Return `true` if all characters in the string are digits and
-there is at least one character, `false` otherwise.
-Python: `str.isdigit()`
+Like `find` but raises `ValueError`
+when the substring is not found.
+Python: `str.index(sub)`
 
-```python
-"123".isdigit()     # True
-"12.3".isdigit()    # False
-```
+### `index(sub: str, start: int) -> int`
 
-### `isalpha() -> bool`
+Like `find` but raises `ValueError`.
+Python: `str.index(sub, start)`
 
-Return `true` if all characters in the string are alphabetic
-and there is at least one character, `false` otherwise.
-Python: `str.isalpha()`
+### `index(sub: str, start: int, end: int) -> int`
 
-```python
-"hello".isalpha()     # True
-"hello1".isalpha()    # False
-```
+Like `find` but raises `ValueError`.
+Python: `str.index(sub, start, end)`
 
-### `isalnum() -> bool`
+### `rindex(sub: str) -> int`
 
-Return `true` if all characters in the string are alphanumeric
-and there is at least one character, `false` otherwise.
-Python: `str.isalnum()`
+Like `rfind` but raises `ValueError`.
+Python: `str.rindex(sub)`
 
-```python
-"abc123".isalnum()    # True
-"abc 123".isalnum()   # False
-```
+### `rindex(sub: str, start: int) -> int`
 
-### `isspace() -> bool`
+Like `rfind` but raises `ValueError`.
+Python: `str.rindex(sub, start)`
 
-Return `true` if all characters in the string are whitespace
-and there is at least one character, `false` otherwise.
-Python: `str.isspace()`
+### `rindex(sub: str, start: int, end: int) -> int`
 
-### `isupper() -> bool`
-
-Return `true` if all cased characters in the string are
-uppercase and there is at least one cased character, `false`
-otherwise.
-Python: `str.isupper()`
-
-### `islower() -> bool`
-
-Return `true` if all cased characters in the string are
-lowercase and there is at least one cased character, `false`
-otherwise.
-Python: `str.islower()`
+Like `rfind` but raises `ValueError`.
+Python: `str.rindex(sub, start, end)`
 
 ### `count(sub: str) -> int`
 
 Return the number of non-overlapping occurrences of substring
-*sub* in the string.
+*sub*.
 Python: `str.count(sub)`
-
-```python
-"banana".count("an")    # 2
-"hello".count("x")      # 0
-```
 
 ### `startswith(prefix: str) -> bool`
 
-Return `true` if string starts with the *prefix*.
+Return True if the string starts with the *prefix*.
 Python: `str.startswith(prefix)`
-
-```python
-"hello".startswith("he")    # True
-"hello".startswith("lo")    # False
-```
 
 ### `startswith(prefix: str, start: int) -> bool`
 
-Return `true` if `s[start:]` starts with the *prefix*.
+Return True if `s[start:]` starts with the *prefix*.
 Python: `str.startswith(prefix, start)`
 
 ### `startswith(prefix: str, start: int, end: int) -> bool`
 
-Return `true` if `s[start:end]` starts with the *prefix*.
+Return True if `s[start:end]` starts with the *prefix*.
 Python: `str.startswith(prefix, start, end)`
 
 ### `endswith(suffix: str) -> bool`
 
-Return `true` if string ends with the *suffix*.
+Return True if the string ends with the *suffix*.
 Python: `str.endswith(suffix)`
-
-```python
-"hello".endswith("lo")    # True
-"hello".endswith("he")    # False
-```
 
 ### `endswith(suffix: str, start: int) -> bool`
 
-Return `true` if `s[start:]` ends with the *suffix*.
+Return True if `s[start:]` ends with the *suffix*.
 Python: `str.endswith(suffix, start)`
 
 ### `endswith(suffix: str, start: int, end: int) -> bool`
 
-Return `true` if `s[start:end]` ends with the *suffix*.
+Return True if `s[start:end]` ends with the *suffix*.
 Python: `str.endswith(suffix, start, end)`
 
-### `index(sub: str) -> int`
+### `isdigit() -> bool`
 
-Like `Find(string, string)` but raises `ValueError`
-when the substring is not found.
-Python: `str.index(sub)`
+Return True if all characters are digits and there is at least one character.
+Python: `str.isdigit()`
 
-**Raises:**
+### `isalpha() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if all characters are alphabetic and there is at least one character.
+Python: `str.isalpha()`
 
-### `index(sub: str, start: int) -> int`
+### `isalnum() -> bool`
 
-Like `Find(string, string, int)` but raises `ValueError`
-when the substring is not found.
-Python: `str.index(sub, start)`
+Return True if all characters are alphanumeric and there is at least one character.
+Python: `str.isalnum()`
 
-**Raises:**
+### `isspace() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if all characters are whitespace and there is at least one character.
+Python: `str.isspace()`
 
-### `index(sub: str, start: int, end: int) -> int`
+### `isupper() -> bool`
 
-Like `Find(string, string, int, int)` but raises `ValueError`
-when the substring is not found.
-Python: `str.index(sub, start, end)`
+Return True if all cased characters are uppercase and there is at least
+one cased character.
+Python: `str.isupper()`
 
-**Raises:**
+### `islower() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if all cased characters are lowercase and there is at least
+one cased character.
+Python: `str.islower()`
 
-### `rindex(sub: str) -> int`
+### `istitle() -> bool`
 
-Like `Rfind(string, string)` but raises `ValueError`
-when the substring is not found.
-Python: `str.rindex(sub)`
+Return True if the string is titlecased and there is at least one character.
+Python: `str.istitle()`
 
-**Raises:**
+### `isnumeric() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if all characters are numeric and there is at least one character.
+Python: `str.isnumeric()`
 
-### `rindex(sub: str, start: int) -> int`
+### `isdecimal() -> bool`
 
-Like `Rfind(string, string, int)` but raises `ValueError`
-when the substring is not found.
-Python: `str.rindex(sub, start)`
+Return True if all characters are decimal characters and there is at least one character.
+Python: `str.isdecimal()`
 
-**Raises:**
+### `isidentifier() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if the string is a valid Python identifier.
+Python: `str.isidentifier()`
 
-### `rindex(sub: str, start: int, end: int) -> int`
+### `isprintable() -> bool`
 
-Like `Rfind(string, string, int, int)` but raises `ValueError`
-when the substring is not found.
-Python: `str.rindex(sub, start, end)`
+Return True if all characters are printable or the string is empty.
+Python: `str.isprintable()`
 
-**Raises:**
+### `isascii() -> bool`
 
-- `ValueError` -- Thrown if the substring is not found.
+Return True if all characters are ASCII (U+0000 to U+007F) or the string is empty.
+Python: `str.isascii()`
 
-### `casefold() -> str`
+### `contains(substring: str) -> bool`
 
-Return a casefolded copy of the string. Casefolded strings may be
-used for caseless matching.
-Python: `str.casefold()`
-
-```python
-"Straße".casefold()    # "strasse"
-```
+Return True if *substring* is found within this string.
+Used for `"x" in s` codegen.
 
 !!! note
-    Performs full Unicode case folding matching Python behavior
-    (e.g., ß → ss, ﬁ → fi).
+    This extension shadows `contains` by design.
+    C# instance methods take precedence over extensions, so generated code calling
+    `s.Contains(x)` always invokes the BCL method at runtime. This overload
+    exists so that BuiltinRegistry can discover it via reflection and register
+    `str.contains` for type-checking. The ordinal semantics here match
+    Python's byte-level containment check.

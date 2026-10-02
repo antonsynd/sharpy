@@ -13,6 +13,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`list`](list.md) | A mutable sequence of elements, similar to Python's \`list\`. Supports negative indexing, slicing, and Python-style methods. |
 | [`dict`](dict.md) | A mutable mapping of keys to values, similar to Python's dict. Supports Python-style methods like get(), pop(), items(), keys(), and values(). |
 | [`set`](set.md) | A mutable set of unique elements, similar to Python's \`set\`. Supports set operations: union, intersection, difference, and symmetric difference. |
+| [`str`](str.md) | Python-compatible string methods as extension methods on string. |
 | [`complex`](complex.md) | A complex number type, similar to Python's complex. |
 
 ## Modules

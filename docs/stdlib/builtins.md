@@ -1459,7 +1459,7 @@ next(it)    # 2
 
 - `TypeError` -- Thrown when enumerable is null.
 
-### `len(c: ICollection) -> int`
+### `len(c: system.collections.ICollection) -> int`
 
 Return the length (the number of items) of a collection.
 

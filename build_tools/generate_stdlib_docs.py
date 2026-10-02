@@ -38,6 +38,27 @@ from xml.etree import ElementTree
 # the rule.
 HAND_AUTHORED_MODULES: dict[str, dict[str, str]] = {}
 
+# Pages in docs/stdlib that are NOT API reference: planning and policy prose about the stdlib
+# itself. Neither generated nor a module page, they are named here so that every other page in
+# docs/stdlib must be one the generator writes or a HAND_AUTHORED_MODULES page — an unowned page
+# freezes stale output nothing regenerates or scans (str.md until #2163;
+# `TestPageOwnership.test_every_stdlib_page_has_an_owner`).
+PROSE_PAGES: frozenset[str] = frozenset(
+    {
+        "roadmap.md",
+        "rejected_modules.md",
+        "batch1-plan.md",
+        "batch2-plan.md",
+        "batch4-plan.md",
+        "batch5-plan.md",
+        "batch6-plan.md",
+        "batch7-plan.md",
+        "batch8-plan.md",
+        "batch9-plan.md",
+        "batch10-plan.md",
+    }
+)
+
 
 # ---------------------------------------------------------------------------
 # Name mangling: PascalCase -> snake_case
@@ -263,10 +284,12 @@ _CS_NAMESPACE_ALIASES: dict[str, str] = {
 
 # Common C# namespace prefixes to strip for cleaner type names. Any other `System.<ns>.` prefix is
 # rendered by `_clr_type_spelling` (#2163): stripping just `System.` left the rest of the namespace
-# behind (`Net.Sockets.SocketException`), a spelling no Sharpy annotation resolves.
+# behind (`Net.Sockets.SocketException`), a spelling no Sharpy annotation resolves. The NON-generic
+# `System.Collections.` is deliberately absent: `System.Collections` is not a ClrFallbackNamespaces
+# entry, so a bare `IList` names `Sharpy.IList` (Core's protocol) and a bare `IEnumerable` the
+# generic builtin — other types. Those render as their import path, `system.collections.IList`.
 _CS_NAMESPACE_PREFIXES = [
     "System.Collections.Generic.",
-    "System.Collections.",
     "System.Text.RegularExpressions.",
     "System.IO.",
 ]
@@ -411,13 +434,7 @@ def _normalize_cs_type(cs_type: str) -> str:
     # Strip common namespace prefixes (but keep the mapped form if it's in _TYPE_MAP)
     for prefix in _CS_NAMESPACE_PREFIXES:
         if cs_type.startswith(prefix):
-            rest = cs_type[len(prefix):]
-            # A NON-generic `System.Collections.IEnumerable` stripped bare would read as the generic
-            # builtin `IEnumerable[T]` written without its argument (#2163): its import path instead.
-            dotted = re.match(r"^([\w.]+)(.*)$", cs_type, re.DOTALL)
-            if prefix == "System.Collections." and dotted and dotted.group(1)[len(prefix):] in _GENERIC_TYPE_MAP:
-                return _clr_type_spelling(dotted.group(1)) + dotted.group(2)
-            return rest
+            return cs_type[len(prefix):]
     # Any other `System.` type: bare when the compiler resolves it bare, else its import path.
     qualified = re.match(r"^(System\.[\w.]+)(.*)$", cs_type, re.DOTALL)
     if qualified:
@@ -556,10 +573,12 @@ def map_type(cs_type: str, current_module: "str | None" = None) -> str:
             inner = inner[:-2]
         return f"*{map_type(inner, current_module)}"
 
-    # Array types
+    # A C# array `T[]` is Sharpy's `array[T]` (primitive_types.md "Array Type": `array[T]` <-> `T[]`;
+    # type_annotation_shorthand.md `T[]` postfix). NOT `list[T]`: that is `Sharpy.List<T>`, another
+    # type (#2163).
     if cs_type.endswith("[]"):
         inner = map_type(cs_type[:-2], current_module)
-        return f"list[{inner}]"
+        return f"array[{inner}]"
 
     # Single-letter type params (T, K, V, etc.)
     if len(cs_type) == 1 and cs_type.isupper():
@@ -1045,8 +1064,8 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
             if is_variadic:
                 # A `params T[]` formal takes zero or more T, so the element type is what the
                 # signature names; the star goes on the NAME when the signature is rendered.
-                if mapped.startswith("list[") and mapped.endswith("]"):
-                    mapped = mapped[len("list["):-1]
+                if mapped.startswith("array[") and mapped.endswith("]"):
+                    mapped = mapped[len("array["):-1]
                 mapped = "*" + mapped
             params.append(
                 DocParam(
@@ -1924,19 +1943,23 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
 def discover_core_types(core_dir: Path) -> list[DocModule]:
     """Discover core types (list, dict, set, str, complex)."""
     index_sources(core_dir)
-    type_dirs = {
-        "Partial.List": ("list", False),
-        "Partial.Dict": ("dict", False),
-        "Partial.Set": ("set", False),
-        "Partial.String": ("str", True),  # extension methods
-        "Partial.Complex": ("complex", False),
+    # Page -> (the Core files that declare its surface, relative to core_dir; extension methods?).
+    # `str`'s surface is the `this string` extension methods of Core-root `StringExtensions*.cs`
+    # (#2163). It was keyed on a `Partial.String/` directory that does not exist, so str.md was never
+    # regenerated and froze an older generator's output (`encode(...) -> list[byte]`).
+    type_sources = {
+        "list": ("Partial.List/*.cs", False),
+        "dict": ("Partial.Dict/*.cs", False),
+        "set": ("Partial.Set/*.cs", False),
+        "str": ("StringExtensions*.cs", True),
+        "complex": ("Partial.Complex/*.cs", False),
     }
 
     types: list[DocModule] = []
 
-    for dirname, (type_name, is_extension) in type_dirs.items():
-        subdir = core_dir / dirname
-        if not subdir.exists():
+    for type_name, (pattern, is_extension) in type_sources.items():
+        found = list(core_dir.glob(pattern))
+        if not found:
             continue
 
         all_members: list[DocMember] = []
@@ -1944,7 +1967,7 @@ def discover_core_types(core_dir: Path) -> list[DocModule]:
         page_type_params: list[str] = []
 
         # Sort files so the main type file comes first (shorter name = main file)
-        cs_files = sorted(subdir.glob("*.cs"), key=lambda f: (len(f.name), f.name))
+        cs_files = sorted(found, key=lambda f: (len(f.name), f.name))
         for cs_file in cs_files:
             if not summary:
                 file_summary = _get_class_summary(cs_file)

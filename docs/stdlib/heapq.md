@@ -20,11 +20,11 @@ Merge two sorted inputs into a single sorted output, using a key function.
 
 Merge three sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(iterables: list[list[T]], reverse: bool = False) -> IEnumerable[T]`
+### `heapq.merge(iterables: array[list[T]], reverse: bool = False) -> IEnumerable[T]`
 
 Merge multiple sorted inputs into a single sorted output, with optional reverse ordering.
 
-### `heapq.merge(iterables: list[list[T]], key: (T) -> TKey, reverse: bool = False) -> IEnumerable[T]`
+### `heapq.merge(iterables: array[list[T]], key: (T) -> TKey, reverse: bool = False) -> IEnumerable[T]`
 
 Merge multiple sorted inputs into a single sorted output, using a key function.
 

@@ -202,7 +202,7 @@ Return True if left != right using Equals.
 
 Return the logical negation of a boolean value.
 
-### `operator.not(collection: ICollection) -> bool`
+### `operator.not(collection: system.collections.ICollection) -> bool`
 
 Return True if the collection is empty.
 
@@ -214,7 +214,7 @@ Return True if the collection is empty.
 
 Return the truth value of a boolean.
 
-### `operator.truth(collection: ICollection) -> bool`
+### `operator.truth(collection: system.collections.ICollection) -> bool`
 
 Return True if the collection is non-empty.
 
