@@ -274,7 +274,21 @@ namespace Sharpy.SocketModule
                 }
 
                 global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
-                this._Socket.Connect(endpoint);
+                int ms = this._TimeoutMs();
+                if (ms > 0)
+                {
+                    var pending = this._Socket.BeginConnect(endpoint, null, null);
+                    if (!pending.AsyncWaitHandle.WaitOne(ms))
+                    {
+                        throw new global::Sharpy.SocketModule.Timeout("timed out");
+                    }
+
+                    this._Socket.EndConnect(pending);
+                }
+                else
+                {
+                    this._Socket.Connect(endpoint);
+                }
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
@@ -339,6 +353,12 @@ namespace Sharpy.SocketModule
         {
             try
             {
+                int ms = this._TimeoutMs();
+                if (ms > 0 && !this._WaitReadable(ms))
+                {
+                    throw new global::Sharpy.SocketModule.Timeout("timed out");
+                }
+
                 var accepted = this._Socket.Accept();
                 var remote = accepted.RemoteEndPoint;
                 if (remote == null)
@@ -520,6 +540,15 @@ namespace Sharpy.SocketModule
         /// </summary>
         public void Settimeout(double? timeout)
         {
+            if (timeout != null)
+            {
+                double requested = timeout.Value;
+                if (requested < 0.0d)
+                {
+                    throw new global::Sharpy.ValueError("Timeout value out of range");
+                }
+            }
+
             this._Timeout = timeout;
             if (timeout == null)
             {
@@ -537,11 +566,64 @@ namespace Sharpy.SocketModule
                 else
                 {
                     this._Socket.Blocking = true;
-                    int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
+                    int ms = this._TimeoutMs();
                     this._Socket.ReceiveTimeout = ms;
                     this._Socket.SendTimeout = ms;
                 }
             }
+        }
+
+        /// <summary>
+        /// The positive timeout in whole milliseconds (at least 1), or 0 when the
+        /// socket is blocking (None) or non-blocking (0.0).
+        /// </summary>
+        private int _TimeoutMs()
+        {
+            double? t = this._Timeout;
+            if (t == null)
+            {
+                return 0;
+            }
+
+            double value = t.Value;
+            if (value <= 0.0d)
+            {
+                return 0;
+            }
+
+            int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
+            if (ms < 1)
+            {
+                return 1;
+            }
+
+            return ms;
+        }
+
+        /// <summary>
+        /// Wait up to ms milliseconds for the socket to become readable (for a
+        /// listening socket: a connection is pending); False when the wait times out.
+        /// </summary>
+        private bool _WaitReadable(int ms)
+        {
+            int remaining = ms;
+            while (remaining > 0)
+            {
+                int chunk = remaining;
+                if (chunk > 1000000)
+                {
+                    chunk = 1000000;
+                }
+
+                if (this._Socket.Poll(chunk * 1000, global::System.Net.Sockets.SelectMode.SelectRead))
+                {
+                    return true;
+                }
+
+                remaining = remaining - chunk;
+            }
+
+            return false;
         }
 
         /// <summary>
