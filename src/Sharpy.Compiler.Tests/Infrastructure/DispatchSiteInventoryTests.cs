@@ -782,18 +782,100 @@ public class DispatchSiteInventoryTests
         var compilerTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler.Tests");
         var lspTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests");
 
-        static IEnumerable<string> Sources(string dir) => Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                     && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
-
         if (siteKey.StartsWith("Sharpy.Lsp/", StringComparison.Ordinal) && Directory.Exists(lspTestsDir))
         {
-            var lspHit = Sources(lspTestsDir).FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
+            var lspHit = TestSourceIndex.For(lspTestsDir).FirstFileContainingClass(className);
             if (lspHit != null)
                 return lspHit;
         }
 
-        return Sources(compilerTestsDir).FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
+        return TestSourceIndex.For(compilerTestsDir).FirstFileContainingClass(className);
+    }
+
+    /// <summary>
+    /// Every non-bin/obj <c>.cs</c> file of one test project, enumerated and read ONCE per test
+    /// run and indexed by the identifiers that follow <c>class </c> (#2176). The citation check
+    /// used to re-enumerate and re-read the whole test tree for every roster citation — about 213
+    /// citations × 1,100 files, 322 s for one [Fact] — while the tree does not change during a run.
+    /// </summary>
+    /// <remarks>
+    /// The lookup keeps the verdict of the per-citation scan it replaced, cell for cell:
+    /// <list type="bullet">
+    /// <item>Files are kept in <see cref="Directory.GetFiles(string, string, SearchOption)"/> order,
+    /// so the first matching file is the file the old <c>FirstOrDefault</c> returned.</item>
+    /// <item>The old predicate was the SUBSTRING test <c>text.Contains($"class {className}")</c>
+    /// (so <c>class FooTests</c> satisfies "Foo", and so does a comment saying "class Foo"). For an
+    /// identifier <c>X</c> that is exactly "some identifier run following an occurrence of
+    /// <c>class </c> starts with X": X's characters are all run characters, so the occurrence that
+    /// matches <c>class X</c> is followed by a run at least as long as X that starts with X, and
+    /// conversely. Every occurrence is indexed, overlapping ones included. A name with any other
+    /// character falls back to the old predicate on the cached text.</item>
+    /// </list>
+    /// </remarks>
+    private sealed class TestSourceIndex
+    {
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, TestSourceIndex> Cache =
+            new(StringComparer.Ordinal);
+
+        private readonly List<(string Path, string Text, HashSet<string> ClassRuns)> _files = new();
+
+        private TestSourceIndex(string dir)
+        {
+            var sources = Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                         && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
+            foreach (var path in sources)
+            {
+                var text = File.ReadAllText(path);
+                _files.Add((path, text, ClassRuns(text)));
+            }
+        }
+
+        internal static TestSourceIndex For(string dir) => Cache.GetOrAdd(dir, d => new TestSourceIndex(d));
+
+        /// <summary>The first file whose text contains <c>class {className}</c>, or null.</summary>
+        internal string? FirstFileContainingClass(string className)
+        {
+            if (className.Length > 0 && className.All(IsRunChar))
+            {
+                foreach (var (path, _, runs) in _files)
+                {
+                    if (runs.Any(run => run.StartsWith(className, StringComparison.Ordinal)))
+                        return path;
+                }
+
+                return null;
+            }
+
+            foreach (var (path, text, _) in _files)
+            {
+                if (text.Contains($"class {className}"))
+                    return path;
+            }
+
+            return null;
+        }
+
+        private static bool IsRunChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+        /// <summary>The identifier run after every occurrence of <c>class </c> (empty when none follows).</summary>
+        private static HashSet<string> ClassRuns(string text)
+        {
+            const string marker = "class ";
+            var runs = new HashSet<string>(StringComparer.Ordinal);
+            for (var at = text.IndexOf(marker, StringComparison.Ordinal);
+                 at >= 0;
+                 at = text.IndexOf(marker, at + 1, StringComparison.Ordinal))
+            {
+                var start = at + marker.Length;
+                var end = start;
+                while (end < text.Length && IsRunChar(text[end]))
+                    end++;
+                runs.Add(text.Substring(start, end - start));
+            }
+
+            return runs;
+        }
     }
 
     /// <summary>
@@ -890,13 +972,10 @@ public class DispatchSiteInventoryTests
             if (testAssemblyTypes.Contains(className))
                 return true;
 
-            // For LSP rows, also search LSP test assembly via source scan
+            // For LSP rows, also search LSP test assembly via source scan (read once, #2176)
             if (siteKey.StartsWith("Sharpy.Lsp/") && Directory.Exists(lspTestsDir))
             {
-                return Directory.GetFiles(lspTestsDir, "*.cs", SearchOption.AllDirectories)
-                    .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                        && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-                    .Any(f => File.ReadAllText(f).Contains($"class {className}"));
+                return TestSourceIndex.For(lspTestsDir).FirstFileContainingClass(className) != null;
             }
 
             return false;
