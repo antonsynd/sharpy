@@ -15,9 +15,9 @@ public static partial class DiagnosticExplanations
             "Check the syntax around the reported location. Common causes: missing operators, extra commas, or misplaced keywords.");
 
         Add(dict, DiagnosticCodes.Parser.ExpectedIdentifier, "Expected identifier", "Parser",
-            "The parser expected a name (identifier) but found something else. This commonly occurs when a keyword is used where a variable or function name is expected.",
-            "def 42():\n    pass",
-            "Provide a valid identifier:\ndef my_function():\n    pass");
+            "The parser expected a name (identifier) but found something else. This commonly occurs when a reserved word (keyword) is used where a variable, field, parameter or function name is introduced; the message then names the word and its backtick escape.",
+            "class MoveData:\n    type: int = 0",
+            "Write the reserved word in backticks to use it as a name, or rename it:\nclass MoveData:\n    `type`: int = 0");
 
         Add(dict, DiagnosticCodes.Parser.ExpectedNewline, "Expected newline", "Parser",
             "The parser expected a newline (end of statement) but found additional tokens. Each statement must be on its own line.",

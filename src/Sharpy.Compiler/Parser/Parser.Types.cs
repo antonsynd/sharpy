@@ -649,7 +649,13 @@ public partial class Parser
     private string ExpectIdentifier()
     {
         if (Current.Type != TokenType.Identifier && !IsSoftKeyword(Current.Type))
-            throw ReportError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+        {
+            // A reserved word where a name is introduced (parameter, function/class/enum-member
+            // name, ...) names the word and its backtick escape (#2209); the "Expected identifier,
+            // got X" head is kept so the refusal reads the same as for any other token.
+            var steer = IsReservedWordToken(Current) ? " — " + ReservedWordSteer(Current.Value) : "";
+            throw ReportError($"Expected identifier, got {Current.Type}{steer}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+        }
         var value = Current.Value;
         Advance();
         return value;

@@ -401,6 +401,97 @@ public partial class Parser
         TokenType.Match or TokenType.Case or TokenType.Type;
 
     /// <summary>
+    /// True when <paramref name="token"/> is a word from the lexer's keyword table written WITHOUT
+    /// its backtick escape (#2209). A backtick-escaped keyword lexes as an
+    /// <see cref="TokenType.Identifier"/> and <c>self</c> — in the table as a contextual keyword —
+    /// always lexes as one, so neither is a reserved-word token.
+    /// </summary>
+    private static bool IsReservedWordToken(Token token) =>
+        token.Type != TokenType.Identifier && Lexer.Lexer.KeywordNames.Contains(token.Value);
+
+    /// <summary>
+    /// The steer for a reserved word written where a name is introduced (#2209, ruling R-ED): it
+    /// names the word and its backtick escape. ONE spelling, shared by every position — the
+    /// statement-start binding check (<see cref="IsReservedWordBindingStart"/>) and every
+    /// <see cref="ExpectIdentifier"/> site (parameter, function/class name, enum member, ...).
+    /// </summary>
+    private static string ReservedWordSteer(string word) =>
+        $"'{word}' is a reserved word; write `{word}` in backticks to use it as a name, or rename it";
+
+    /// <summary>
+    /// True when the statement starting at <see cref="Current"/> binds a reserved word as a name —
+    /// <c>type = 1</c>, <c>type += 1</c>, <c>type: int = 0</c>, <c>type: int</c> — which no
+    /// keyword production accepts, so each keyword's own parser would otherwise fail with a
+    /// message that does not say the word is reserved (SPY0100 "Unexpected token: Auto", SPY0101
+    /// "Expected identifier, got Colon", ...). Exclusions, each because the statement is NOT a
+    /// refused binding:
+    /// <list type="bullet">
+    /// <item><c>case</c> parses as a plain identifier in expression position, so <c>case = 1</c>
+    /// is accepted today and stays so.</item>
+    /// <item><c>let</c> has its own steer naming the keyword and the escape (TryConsumeLet).</item>
+    /// <item>A keyword followed by <c>:</c> and the end of the line is a block header
+    /// (<c>try:</c>, <c>else:</c>, <c>finally:</c>, <c>except:</c>), never a binding; Sharpy has no
+    /// single-line suites, so <c>try: int = 0</c> can only be a binding.</item>
+    /// <item><c>lambda: x</c> is an expression statement; <c>lambda: int = 0</c> (an <c>=</c> at
+    /// the line's top level) is the binding.</item>
+    /// </list>
+    /// Under a decorator (<paramref name="decorated"/>) neither exclusion applies: a decorated
+    /// target must start with a name, so <c>@static</c> over <c>case: int = 0</c> or
+    /// <c>let: int = 0</c> was already refused (SPY0105) and now gets the steer instead.
+    /// </summary>
+    private bool IsReservedWordBindingStart(bool decorated = false)
+    {
+        if (!IsReservedWordToken(Current))
+            return false;
+        if (!decorated && Current.Type is TokenType.Case or TokenType.Let)
+            return false;
+
+        var next = Peek().Type;
+        if (next >= TokenType.Assign && next <= TokenType.AtAssign)
+            return true;
+        if (next != TokenType.Colon)
+            return false;
+
+        if (Peek(2).Type is TokenType.Newline or TokenType.Eof or TokenType.Dedent or TokenType.Indent)
+            return false;
+
+        return Current.Type != TokenType.Lambda || LineHasTopLevelAssignFrom(2);
+    }
+
+    /// <summary>
+    /// True when an assignment operator appears at bracket depth 0 between token offset
+    /// <paramref name="offset"/> and the end of the logical line.
+    /// </summary>
+    private bool LineHasTopLevelAssignFrom(int offset)
+    {
+        var depth = 0;
+        for (var i = offset; ; i++)
+        {
+            var type = Peek(i).Type;
+            switch (type)
+            {
+                case TokenType.Newline or TokenType.Eof:
+                    return false;
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    depth--;
+                    break;
+                default:
+                    if (depth == 0 && type >= TokenType.Assign && type <= TokenType.AtAssign)
+                        return true;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Refuses the reserved-word binding <see cref="IsReservedWordBindingStart"/> found.</summary>
+    private ParserAbortException ReservedWordBindingError() =>
+        ReportError(ReservedWordSteer(Current.Value), Current.Line, Current.Column,
+            DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+
+    /// <summary>
     /// Gets the TextSpan of the current token, or null if position tracking is unavailable.
     /// Convenience accessor for use in ReportError calls.
     /// </summary>
@@ -925,6 +1016,11 @@ public partial class Parser
         if (IsKeywordQualifierStart())
             return ParseSimpleStatement();
 
+        // A reserved word bound as a name (`type: int = 0`, `auto = 1`) — refused with the steer
+        // to its backtick escape before the keyword's own production claims it (#2209).
+        if (IsReservedWordBindingStart())
+            throw ReservedWordBindingError();
+
         // Special handling for 'try' - it can be either a statement (try:) or an expression (try expr)
         // Disambiguate by looking ahead: try statement has 'try:' while try expression has 'try expr'
         if (Current.Type == TokenType.Try)
@@ -1183,6 +1279,9 @@ public partial class Parser
             // Parse the decorated definition
             stmt = Current.Type switch
             {
+                // A decorated field named by a reserved word (`@static` over `type: int = 0`,
+                // `class: int = 0`) — first, before a definition keyword's own parser claims it (#2209).
+                _ when IsReservedWordBindingStart(decorated: true) => throw ReservedWordBindingError(),
                 TokenType.Async => ParseAsyncStatement(),
                 TokenType.Def => ParseFunctionDef(),
                 TokenType.Class => ParseClassDef(),

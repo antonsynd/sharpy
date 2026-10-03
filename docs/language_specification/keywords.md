@@ -57,6 +57,28 @@ The following are reserved keywords in Sharpy:
 | `union` | Union type declaration |
 | `Self` | Self-referential type annotation |
 
+### Using a keyword as a name
+
+A hard keyword cannot name a variable, field, parameter or function. Written where a name is
+introduced, it is refused (SPY0101) with a diagnostic that names the keyword and its escape: write
+the keyword in backticks (see [identifiers.md](identifiers.md#literal-names-backtick-escaping)),
+or rename it. The escaped name is emitted verbatim — `` `type` `` is the C# name `type`, not
+`Type`.
+
+```python
+class MoveData:
+    `type`: int = 0             # `type: int = 0` is SPY0101: 'type' is a reserved word; write `type` in backticks to use it as a name, or rename it
+
+def describe(`class`: str) -> str:
+    return "class " + `class`
+
+def main():
+    m = MoveData()
+    m.`type` = 3
+    print(m.`type`)             # 3
+    print(describe("A"))        # class A
+```
+
 ## Reserved Rejected Keywords
 
 The following Python keywords are reserved by the lexer and produce a compile-time error if used. Sharpy uses C# scoping rules instead.
