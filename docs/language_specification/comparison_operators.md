@@ -101,6 +101,10 @@ s2: str | None = None
 print(s2 == None)        # True
 ```
 
+A non-nullable **.NET** reference type (`from system import Version`) is the exception: `v == None`
+is refused with the same `is None` steer, because `is None` on it honours an overloaded `==` and
+the two spellings would answer differently (see [.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none)).
+
 `is None` works for both and is the spelling that narrows (see
 [Type Narrowing](type_narrowing.md)), so prefer it everywhere.
 

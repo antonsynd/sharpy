@@ -1360,8 +1360,14 @@ internal partial class TypeChecker
             // If type inference fails, report the error directly
             if (resultType == null)
             {
+                // The same `is None` steer the binary form gives (#1079, #2221): a chain link
+                // refuses `== None` exactly where the binary form does.
+                var noneSteer = binaryOp is BinaryOperator.Equal or BinaryOperator.NotEqual
+                    && (chain.Operands[i] is NoneLiteral || chain.Operands[i + 1] is NoneLiteral)
+                        ? $". Did you mean '{(binaryOp == BinaryOperator.Equal ? "is None" : "is not None")}'?"
+                        : "";
                 ReportValueTypeMismatch(
-                    $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'",
+                    $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'{noneSteer}",
                     chain.Operands[i + 1], leftType,
                     chain.Operands[i].LineStart,
                     chain.Operands[i].ColumnStart,

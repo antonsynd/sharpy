@@ -143,6 +143,19 @@ internal class TypeInferenceService
                 return InferNullCoalesceType(left, right);
         }
 
+        // `x == None` / `x != None` on a non-nullable CLR reference type is refused (#2221, ruling
+        // R-DX part 1) — BEFORE the #901 null check below and before the CLR operator lookup, which
+        // would otherwise bind the None literal to an `op_Equality` formal. The caller's SPY0222
+        // carries the `is None` steer.
+        if (IsClrReferenceNoneEquality(op, left, right))
+            return null;
+
+        // ...but `T | None == None` on such a T stays admitted: the nullable family lowers it to the
+        // native `== null`, which IS the `is None` lowering, so the two spellings already agree. The
+        // unwrap below would otherwise re-ask the question of the bare T and refuse it.
+        if (IsNullableClrReferenceNoneEquality(op, left, right))
+            return SemanticType.Bool;
+
         // `x == None` / `x != None` against a reference-semantics type (#901): Python's
         // `obj == None` falls back to identity (→ False for a live object), so we treat it as
         // a null check that yields Bool. Codegen lowers it to a C# null pattern (NoneCheck).
@@ -1078,6 +1091,62 @@ internal class TypeInferenceService
 
         return IsNoneCheckReferenceType(other);
     }
+
+    /// <summary>
+    /// True when <c>==</c>/<c>!=</c> compares the <c>None</c> literal against a NON-NULLABLE CLR
+    /// reference type — a type with a CLR identity of its own rather than one declared in Sharpy source
+    /// or collapsed onto a Sharpy builtin (#2221, ruling R-DX part 1). Such a comparison is refused with
+    /// the <c>is None</c> steer: <c>is None</c> lowers to <c>== null</c>, which honours an overloaded
+    /// <c>op_Equality</c> (Unity's "fake null"), while the #901 null check lowered <c>== None</c> to a
+    /// reference <c>is null</c> — two spellings of one test with two answers. Rejected: lowering
+    /// <c>== None</c> like <c>is None</c> (two spellings for one test).
+    /// <para>Out of scope by construction: <c>str</c> and the Sharpy collections (Sharpy surface whose
+    /// <c>== None</c> the spec documents), Sharpy-source classes (no CLR identity at check time; their
+    /// <c>== None</c> dispatches through <c>__eq__</c>, #1719), value types (already SPY0222), and the
+    /// nullable/Optional families, which are not <see cref="UserDefinedType"/>/<see cref="GenericType"/>.</para>
+    /// </summary>
+    private bool IsClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        var leftIsNone = left is VoidType;
+        var rightIsNone = right is VoidType;
+        if (leftIsNone == rightIsNone)
+            return false;
+
+        return HasClrReferenceIdentity(TypeChecker.OperandView(leftIsNone ? right : left));
+    }
+
+    /// <summary>
+    /// <c>T | None</c> (<see cref="NullableType"/>) compared <c>==</c>/<c>!=</c> against the <c>None</c>
+    /// literal, where <c>T</c> is a CLR reference type (<see cref="HasClrReferenceIdentity"/>). Admitted:
+    /// the native <c>== null</c> it lowers to is the <c>is None</c> lowering (#2221).
+    /// </summary>
+    private bool IsNullableClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        var other = left is VoidType ? right : right is VoidType ? left : null;
+        return other is NullableType nullable
+            && HasClrReferenceIdentity(TypeChecker.OperandView(nullable.UnderlyingType));
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is a CLR reference type spelled by its CLR identity: a
+    /// discovered <see cref="UserDefinedType"/> (its symbol carries a reference <see cref="Type"/>), or
+    /// a constructed CLR generic whose definition the bridge does NOT collapse onto a Sharpy builtin
+    /// (<c>HashSet[int]</c> keeps its identity, <c>list[int]</c> does not —
+    /// <see cref="ClrTypeBridge.MapsToSharpyBuiltin"/>, the one place that decides it).
+    /// </summary>
+    private bool HasClrReferenceIdentity(SemanticType type) => type switch
+    {
+        UserDefinedType { ClrType: { IsValueType: false } } => true,
+        GenericType { GenericDefinition.ClrType: { IsValueType: false } definition }
+            => !_clrTypeMapper.Value.MapsToSharpyBuiltin(definition),
+        _ => false,
+    };
 
     /// <summary>
     /// Reference-semantics classification for the non-None operand of an <c>== None</c>/<c>!= None</c>

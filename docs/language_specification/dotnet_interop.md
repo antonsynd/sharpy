@@ -514,6 +514,32 @@ def main():
 
 Parameters from assemblies without NRT annotations (`NullabilityState.Unknown`) accept `None` conservatively — the same behavior as before NRT support.
 
+### Testing a .NET reference for `None`
+
+`is None` on a .NET reference type lowers to C# `== null`, so it honours an overloaded `==` — a type that overloads `==` decides what counts as null (a destroyed Unity `Object` reads as `None`):
+
+```python
+from system import Version
+
+def main() -> None:
+    v: Version = Version(1, 2)
+    print(v is None)       # False — lowered to `v == null`, through Version's operator ==
+    print(v is not None)   # True
+```
+
+That is the one spelling: `== None` / `!= None` on a non-nullable .NET reference type is refused with the `is None` / `is not None` steer, because it would otherwise lower to a reference check that skips the overload:
+
+<!-- spec-sweep: error SPY0222 -->
+```python
+from system import Version
+
+def main() -> None:
+    v: Version = Version(1, 2)
+    # error SPY0222: Type 'Version' does not support operator '==' with
+    # operand of type 'None'. Did you mean 'is None'?
+    print(v == None)
+```
+
 ## IDisposable Pattern
 
 .NET's `IDisposable` integrates with `with`:
