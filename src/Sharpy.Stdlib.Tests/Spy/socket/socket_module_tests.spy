@@ -37,6 +37,7 @@
 from unittest import assert_raises
 
 import socket
+import time
 
 # ---- Constants ----
 
@@ -315,11 +316,21 @@ def test_connect_invalid_address_raises_error():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(1.0)
     caught: bool = False
+    is_timeout: bool = False
+    start: float = time.monotonic()
     try:
         s.connect(("192.0.2.1", 1))
-    except socket.error:
-        caught = True
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+        is_timeout = isinstance(e, socket.timeout)
+    elapsed: float = time.monotonic() - start
     assert caught
+    # settimeout governs connect (#2177): the 1 s timeout elapses and raises
+    # socket.timeout, where an un-timed connect waited the OS default (~75 s on
+    # macOS). A host whose network refuses 192.0.2.1 outright raises a plain
+    # socket.error before the timeout can elapse; python3 does the same.
+    assert elapsed < 5.0
+    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
     s.close()
 
 
@@ -376,11 +387,214 @@ def test_create_connection_invalid_address_raises():
     # subclass (socket.timeout). Caught via try/except on the base `error` type
     # (subclass-based), since assert_raises is exact-match.
     caught: bool = False
+    is_timeout: bool = False
+    start: float = time.monotonic()
     try:
         socket.create_connection(("192.0.2.1", 1), timeout=1.0)
-    except socket.error:
-        caught = True
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+        is_timeout = isinstance(e, socket.timeout)
+    elapsed: float = time.monotonic() - start
     assert caught
+    # The timeout= argument governs the connect (#2177); see
+    # test_connect_invalid_address_raises_error for the two admissible outcomes.
+    assert elapsed < 5.0
+    assert (is_timeout and elapsed >= 0.5) or (not is_timeout and elapsed < 0.5)
+
+# ---- settimeout governs every blocking operation (#2177) ----
+#
+# Cells: operation {connect, create_connection, accept, send, recv} x timeout
+# {1.0, None, 0.0}. 1.0 raises socket.timeout after ~1 s; 0.0 (non-blocking)
+# raises a plain socket.error at once (python3: BlockingIOError); None blocks, so
+# its cells are the successful loopback tests above. Each pair of a listener and a
+# connected client is loopback-only.
+
+def _elapsed_since(start: float) -> float:
+    return time.monotonic() - start
+
+@test
+def test_accept_with_timeout_raises_timeout():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    server.settimeout(1.0)
+    start: float = time.monotonic()
+    with assert_raises(socket.timeout):
+        server.accept()
+    elapsed: float = _elapsed_since(start)
+    assert elapsed >= 0.5
+    assert elapsed < 5.0
+    server.close()
+
+@test
+def test_accept_with_timeout_returns_pending_connection():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    server.settimeout(1.0)
+    port = server.getsockname()[1]
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", port))
+    conn, addr = server.accept()
+    assert addr[0] == "127.0.0.1"
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_accept_with_sub_millisecond_timeout_raises_timeout():
+    # A positive timeout below 1 ms still times out; it never means "blocking".
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    server.settimeout(0.0001)
+    start: float = time.monotonic()
+    with assert_raises(socket.timeout):
+        server.accept()
+    assert _elapsed_since(start) < 5.0
+    server.close()
+
+@test
+def test_accept_non_blocking_raises_error_immediately():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    server.settimeout(0.0)
+    caught: bool = False
+    is_timeout: bool = False
+    start: float = time.monotonic()
+    try:
+        server.accept()
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+        is_timeout = isinstance(e, socket.timeout)
+    assert caught
+    assert not is_timeout
+    assert _elapsed_since(start) < 0.5
+    server.close()
+
+@test
+def test_connect_non_blocking_raises_error_immediately():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.0)
+    caught: bool = False
+    is_timeout: bool = False
+    start: float = time.monotonic()
+    try:
+        s.connect(("192.0.2.1", 1))
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+        is_timeout = isinstance(e, socket.timeout)
+    assert caught
+    assert not is_timeout
+    assert _elapsed_since(start) < 0.5
+    s.close()
+
+@test
+def test_connect_with_timeout_succeeds_to_listening_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.settimeout(1.0)
+    client.connect(("127.0.0.1", port))
+    peer = client.getpeername()
+    assert peer[0] == "127.0.0.1"
+    assert peer[1] == port
+    conn, _ = server.accept()
+    client.sendall(b"ping")
+    received: bytes = conn.recv(16)
+    assert received == b"ping"
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_create_connection_with_timeout_succeeds_to_listening_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    client: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=1.0)
+    peer = client.getpeername()
+    assert peer[1] == port
+    conn, _ = server.accept()
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_connect_with_timeout_refused_raises_error_not_timeout():
+    # python3: ConnectionRefusedError (an OSError, not a TimeoutError), at once.
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1.0)
+    caught: bool = False
+    is_timeout: bool = False
+    try:
+        s.connect(("127.0.0.1", port))
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+        is_timeout = isinstance(e, socket.timeout)
+    assert caught
+    assert not is_timeout
+    s.close()
+
+@test
+def test_recv_with_timeout_raises_timeout():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", port))
+    conn, _ = server.accept()
+    client.settimeout(1.0)
+    start: float = time.monotonic()
+    with assert_raises(socket.timeout):
+        client.recv(16)
+    elapsed: float = _elapsed_since(start)
+    assert elapsed >= 0.5
+    assert elapsed < 5.0
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_send_with_timeout_raises_timeout_when_peer_does_not_read():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", port))
+    conn, _ = server.accept()
+    client.settimeout(1.0)
+    chunk: bytes = b"x" * 65536
+    is_timeout: bool = False
+    start: float = time.monotonic()
+    try:
+        while _elapsed_since(start) < 10.0:
+            client.send(chunk)
+    except Exception as e:
+        is_timeout = isinstance(e, socket.timeout)
+    assert is_timeout
+    assert _elapsed_since(start) < 5.0
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_settimeout_negative_raises_value_error():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    with assert_raises(ValueError):
+        s.settimeout(-1.0)
+    assert s.gettimeout() is None
+    s.close()
 
 # ---- ToString ----
 

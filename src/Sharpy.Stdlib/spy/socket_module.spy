@@ -2,7 +2,7 @@
 
 from system import IDisposable, Array
 from system.net import IPAddress, IPEndPoint, EndPoint, Dns
-from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError
+from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError, SelectMode
 
 # ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
 AF_INET: int = AddressFamily.InterNetwork as! int
@@ -139,7 +139,16 @@ class socket(IDisposable):
             if len(ip_addresses) == 0:
                 raise gaierror("Name or service not known", (SocketError.HostNotFound as! int))
             endpoint: IPEndPoint = IPEndPoint(ip_addresses[0], address[1])
-            self._socket.connect(endpoint)
+            ms: int = self._timeout_ms()
+            if ms > 0:
+                # .NET's synchronous Connect ignores Send/ReceiveTimeout, so a timed
+                # connect waits on an asynchronous one for at most the timeout (#2177).
+                pending = self._socket.begin_connect(endpoint, None, None)
+                if not pending.async_wait_handle.wait_one(ms):
+                    raise timeout("timed out")
+                self._socket.end_connect(pending)
+            else:
+                self._socket.connect(endpoint)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise timeout("timed out", ex, (ex.socket_error_code as! int))
         except SocketException as ex:
@@ -171,6 +180,9 @@ class socket(IDisposable):
     def accept(self) -> tuple[conn: socket, addr: tuple[host: str, port: int]]:
         """Accept a connection, returning (new socket, (remote_host, remote_port))."""
         try:
+            ms: int = self._timeout_ms()
+            if ms > 0 and not self._wait_readable(ms):
+                raise timeout("timed out")
             accepted = self._socket.accept()
             remote = accepted.remote_end_point
             if remote is None:
@@ -272,6 +284,10 @@ class socket(IDisposable):
 
     def settimeout(self, timeout: float | None) -> None:
         """Set the timeout in seconds for blocking operations, or None for blocking mode."""
+        if timeout is not None:
+            requested: float = timeout
+            if requested < 0.0:
+                raise ValueError("Timeout value out of range")
         self._timeout = timeout
         if timeout is None:
             self._socket.blocking = True
@@ -283,9 +299,41 @@ class socket(IDisposable):
                 self._socket.blocking = False
             else:
                 self._socket.blocking = True
-                ms: int = (value * 1000.0) as! int
+                # Send/ReceiveTimeout govern send/recv; connect and accept read the
+                # same _timeout_ms() (a 0 ms timeout would mean "infinite" to .NET).
+                ms: int = self._timeout_ms()
                 self._socket.receive_timeout = ms
                 self._socket.send_timeout = ms
+
+    @private
+    def _timeout_ms(self) -> int:
+        """The positive timeout in whole milliseconds (at least 1), or 0 when the
+        socket is blocking (None) or non-blocking (0.0)."""
+        t: float | None = self._timeout
+        if t is None:
+            return 0
+        value: float = t
+        if value <= 0.0:
+            return 0
+        ms: int = (value * 1000.0) as! int
+        if ms < 1:
+            return 1
+        return ms
+
+    @private
+    def _wait_readable(self, ms: int) -> bool:
+        """Wait up to ms milliseconds for the socket to become readable (for a
+        listening socket: a connection is pending); False when the wait times out."""
+        remaining: int = ms
+        while remaining > 0:
+            # Poll takes microseconds as an int, so wait at most 1000 s per call.
+            chunk: int = remaining
+            if chunk > 1000000:
+                chunk = 1000000
+            if self._socket.poll(chunk * 1000, SelectMode.SelectRead):
+                return True
+            remaining = remaining - chunk
+        return False
 
     def gettimeout(self) -> float | None:
         """Return the timeout in seconds, or None if in blocking mode."""
