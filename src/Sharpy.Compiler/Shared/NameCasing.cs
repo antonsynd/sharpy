@@ -79,18 +79,25 @@ internal static class NameCasing
     /// parameter and forwarder declarations, and the collision validator's key.
     /// </summary>
     /// <remarks>
-    /// A Sharpy local named <c>_</c> (escaped or not) is spelled <c>@_</c> (#2166). A C#
-    /// <i>designation</i> spelled <c>_</c> — <c>var (a, _)</c>, <c>out var _</c>,
-    /// <c>case var _</c>, <c>.. var _</c> — is a discard, so the local was never declared and an
-    /// escaped read <c>`_`</c> failed CS0103; a <i>declaration</i> <c>var _ = 3;</c> is a local, so
-    /// the bug showed only at the designation arms. The verbatim token is never a discard in any
-    /// position, and its value text is still <c>_</c>, so the metadata name of a parameter (what a
-    /// C# caller's named argument and reflection see) is unchanged.
+    /// A Sharpy local or parameter named <c>_</c> (escaped or not) is spelled
+    /// <see cref="UnderscoreLocalSpelling"/> (#2166). Two C# rules make the plain spelling wrong:
+    /// a <i>designation</i> spelled <c>_</c> — <c>var (a, _)</c>, <c>out var _</c>, <c>case var _</c>,
+    /// <c>.. var _</c> — is a discard, so the local was never declared and an escaped read
+    /// <c>`_`</c> failed CS0103; and when a local named <c>_</c> IS in scope, every discard the
+    /// emitter writes itself — the <c>_ = expr;</c> expression statement, <c>out _</c> — binds to it
+    /// instead of discarding (<c>a, _ = 1, 2</c> then a bare <c>"s"</c> statement was CS0029, and a
+    /// bare <c>a + 1</c> silently overwrote <c>_</c>). The verbatim token <c>@_</c> is the same
+    /// identifier as <c>_</c>, so it fixes only the first rule; a name in the compiler's reserved
+    /// <c>__</c> space (which <see cref="NameMangler.ToCamelCase"/> never produces from a user name
+    /// and an escaped local may not spell) is never a discard and never in a discard's way.
     /// </remarks>
+    /// <summary>The C# spelling of a Sharpy local or parameter named <c>_</c>; see <see cref="ResolveVariable"/>.</summary>
+    public const string UnderscoreLocalSpelling = "__spy_underscore";
+
     public static string ResolveVariable(string name, bool isBacktickEscaped)
     {
         if (name == "_")
-            return "@_";
+            return UnderscoreLocalSpelling;
         if (isBacktickEscaped)
             return Verbatim(name);
         return NameMangler.ToCamelCase(name);

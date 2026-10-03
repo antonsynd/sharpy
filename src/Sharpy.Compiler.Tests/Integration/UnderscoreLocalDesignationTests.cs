@@ -17,8 +17,13 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// former and failed CS0103 behind SPY0908; the assignment, <c>for _</c>, parameter and lambda rows
 /// emitted the latter and are the positive controls that already passed. The cure is one spelling
 /// decision (<c>NameCasing.ResolveVariable</c>), not a per-arm patch, so every position is a row.</para>
-/// <para>The read is an assignment, not <c>print(`_`)</c>: until the #2166 parser fix an escaped
-/// <c>_</c> call argument is still the partial-application placeholder.</para>
+/// <para>The read is an assignment, not <c>print(`_`)</c>, so the rows do not lean on the #2166
+/// parser fix (an escaped <c>_</c> call argument was the partial-application placeholder).</para>
+/// <para>The second axis is the emitter's own discards: a bare expression statement lowers to
+/// <c>_ = expr;</c>, and C# binds that to any local named <c>_</c> in scope — the first spelling
+/// of the fix, <c>@_</c>, is that same identifier, so <c>a, _ = 1, 2</c> followed by a bare
+/// <c>"s"</c> was CS0029 and a bare <c>10 + 1</c> silently overwrote <c>_</c>. Every position runs
+/// again with two such statements before the read (<see cref="DiscardRows"/>).</para>
 /// </remarks>
 [Collection("HeavyCompilation")]
 public class UnderscoreLocalDesignationTests : IntegrationTestBase
@@ -99,7 +104,7 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
         ["operator_parameter"] = ("y = (V(1) + V(2)).n\n{PRINT_Y}", "3"),
         ["comparison_operator_parameter"] = ("y = V(1) < V(2)\n{PRINT_Y}", "True"),
         ["lambda_parameter"] = ("inc: (int) -> int = lambda _: {READ_EXPR}\ny = inc(2)\n{PRINT_Y}", "2"),
-        // Reachable only once the #2166 parser fix stops reading an escaped `_` as the wildcard.
+        // Reachable through the #2166 parser fix: an escaped `_` is a binding, not the wildcard.
         ["capture_pattern"] = ("match 5:\n    case `_`:\n        {READ}", "5"),
         ["star_capture"] = ("match [1, 2, 3]:\n    case [1, *`_`]:\n        {READ}\n    case _:\n        pass", "[2, 3]"),
         ["tuple_pattern_capture"] = ("match (1, 2):\n    case (`_`, z):\n        {READ}\n    case _:\n        pass", "1"),
@@ -130,6 +135,35 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
     public void LocalNamedUnderscore_IsARealLocal_AtEveryBindingPosition(string position, bool read)
         => AssertPosition(position, read);
 
+    /// <summary>
+    /// Every position with a statement-level read, with an int-valued and a string-valued bare
+    /// expression statement before it: the emitter's <c>_ = expr;</c> discards must not bind to the
+    /// local (the int one would overwrite it silently, the string one is CS0029).
+    /// </summary>
+    public static TheoryData<string, bool> DiscardRows()
+    {
+        var data = new TheoryData<string, bool>();
+        foreach (var position in new[]
+                 {
+                     "deconstruction", "deconstruction_rebinds", "nested_deconstruction",
+                     "starred_deconstruction", "for_tuple_target", "with_tuple_target", "out_let",
+                     "out_typed", "as_pattern", "assignment", "for_target", "parameter",
+                     "capture_pattern", "star_capture", "tuple_pattern_capture",
+                     "keyword_pattern_capture",
+                 })
+        {
+            data.Add(position, true);
+            data.Add(position, false);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(DiscardRows))]
+    public void LocalNamedUnderscore_IsNotCapturedByAnEmitterDiscard_AtAnyBindingPosition(string position, bool read)
+        => AssertPosition(position, read, discardsBefore: true);
+
     [Theory]
     [InlineData("capture_pattern", true)]
     [InlineData("capture_pattern", false)]
@@ -145,7 +179,7 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
     /// <summary>
     /// The inlined-operator rename (operand parameter → <c>right</c>) is keyed on the parameter's
     /// materialized C# name, the name its references resolve to. It was keyed on a re-derived
-    /// camelCase spelling, which missed the <c>@_</c> spelling above and a backtick-escaped operand
+    /// camelCase spelling, which missed the <c>_</c> spelling above and a backtick-escaped operand
     /// too (CS0103 behind SPY0908).
     /// </summary>
     [Fact]
@@ -169,14 +203,14 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
         Assert.Equal("3\n", result.StandardOutput.Replace("\r\n", "\n"));
     }
 
-    private void AssertPosition(string position, bool read)
+    private void AssertPosition(string position, bool read, bool discardsBefore = false)
     {
         var (body, value) = Positions[position];
         var prelude = position.EndsWith("operator_parameter", StringComparison.Ordinal)
             ? Prelude + OperatorPrelude
             : Prelude;
         var source = prelude + "def main():\n" + Indent(body, "    ") + "\n    print(\"done\")\n";
-        source = ExpandRead(source, read)
+        source = ExpandRead(source, read, discardsBefore)
             .Replace("{READ_EXPR}", read ? "`_`" : "0", StringComparison.Ordinal)
             .Replace("{PRINT_Y}", read ? "print(y)" : "pass", StringComparison.Ordinal)
             .Replace("{OPERAND_READ}", read ? "`_`.n" : "2", StringComparison.Ordinal);
@@ -192,9 +226,10 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
 
     /// <summary>
     /// Replaces each <c>{READ}</c> line with the escaped read (<c>x = `_`</c> then <c>print(x)</c>) at the
-    /// line's own indentation, or with <c>pass</c> when the row has no read.
+    /// line's own indentation, or with <c>pass</c> when the row has no read; with
+    /// <paramref name="discardsBefore"/>, two bare expression statements precede it.
     /// </summary>
-    private static string ExpandRead(string source, bool read)
+    private static string ExpandRead(string source, bool read, bool discardsBefore)
     {
         var lines = source.Split('\n');
         var output = new List<string>();
@@ -208,6 +243,12 @@ public class UnderscoreLocalDesignationTests : IntegrationTestBase
             }
 
             var indent = line[..^trimmed.Length];
+            if (discardsBefore)
+            {
+                output.Add(indent + "10 + 1");
+                output.Add(indent + "\"unused\"");
+            }
+
             if (read)
             {
                 output.Add(indent + "x = `_`");

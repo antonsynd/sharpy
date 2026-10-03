@@ -44,10 +44,13 @@ public class NameCasingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ResolveVariable_SpellsUnderscoreVerbatim_SoADesignationIsNeverADiscard(bool escaped)
+    public void ResolveVariable_SpellsUnderscoreInTheReservedSpace_SoNoDiscardIsEverInItsWay(bool escaped)
     {
-        // A C# designation spelled `_` is a discard (#2166); the verbatim token declares a local.
-        Assert.Equal("@_", NameCasing.ResolveVariable("_", escaped));
+        // A C# designation spelled `_` is a discard, and a local spelled `_` (or `@_`, the same
+        // identifier) captures every `_ = expr;` / `out _` discard the emitter writes (#2166). The
+        // literal is pinned: a `__` name is one ToCamelCase never produces and an escaped local may
+        // not spell (LocalNameCollisionValidator).
+        Assert.Equal("__spy_underscore", NameCasing.ResolveVariable("_", escaped));
     }
 
     [Theory]
