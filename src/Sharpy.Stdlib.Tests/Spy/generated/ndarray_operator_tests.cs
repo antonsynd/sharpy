@@ -201,7 +201,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayOperatorTests
             try
             {
 #line (116, 9) - (116, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                var @_ = a + b;
+                var __spy_underscore = a + b;
 #line hidden
             }
             catch (ArgumentException)
@@ -226,7 +226,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayOperatorTests
             try
             {
 #line (123, 9) - (123, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                var @_ = a + b;
+                var __spy_underscore = a + b;
 #line hidden
             }
             catch (ArgumentException)

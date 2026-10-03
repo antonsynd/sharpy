@@ -604,7 +604,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonDictTests
 #line hidden
             {
 #line (240, 9) - (240, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                var @_ = d[(3, 4)];
+                var __spy_underscore = d[(3, 4)];
 #line hidden
             }
             catch (global::Sharpy.KeyError)

@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (155, 5) - (155, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             client.Connect(("127.0.0.1", port));
 #line (157, 5) - (157, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            var (conn, @_) = server.Accept();
+            var (conn, __spy_underscore) = server.Accept();
 #line (159, 5) - (159, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Sharpy.Bytes message = new Sharpy.Bytes(new byte[] { 104, 101, 108, 108, 111 });
 #line (160, 5) - (160, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -616,7 +616,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (366, 5) - (366, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(port, peer.Item2);
 #line (368, 5) - (368, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            var (conn, @_) = server.Accept();
+            var (conn, __spy_underscore) = server.Accept();
 #line (369, 5) - (369, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
 #line (370, 5) - (370, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -693,7 +693,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (411, 5) - (411, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.Equal(port, peer.Item2);
 #line (413, 5) - (413, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            var (conn, @_) = server.Accept();
+            var (conn, __spy_underscore) = server.Accept();
 #line (414, 5) - (414, 17) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             conn.Close();
 #line (415, 5) - (415, 19) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"

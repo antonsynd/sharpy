@@ -218,7 +218,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
             try
             {
 #line (103, 9) - (103, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                var @_ = addr + 1;
+                var __spy_underscore = addr + 1;
 #line hidden
             }
             catch (ValueError)

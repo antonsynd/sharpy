@@ -435,7 +435,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyLinalgTests
 #line (191, 5) - (191, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
             var a = np.Array(new Sharpy.List<double>() { 2.0d, 1.0d, 1.0d, 2.0d }).Reshape(2, 2);
 #line (192, 5) - (192, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-            var (values, @_) = global::Sharpy.NumpyLinalg.Eig(a);
+            var (values, __spy_underscore) = global::Sharpy.NumpyLinalg.Eig(a);
 #line (193, 5) - (193, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
             var sortedVals = np.Sort(values);
 #line (194, 5) - (194, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
