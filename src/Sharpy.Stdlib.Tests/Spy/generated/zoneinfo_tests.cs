@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,7 +115,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
 #line (44, 5) - (44, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
             Xunit.Assert.NotNull(exc);
 #line (45, 5) - (45, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-            Xunit.Assert.Contains("Invalid/Zone", global::Sharpy.Builtins.Str(exc));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(exc).Contains("Invalid/Zone"));
 #line hidden
         }
 
@@ -339,7 +341,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
 #line (167, 5) - (167, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
             Sharpy.Set<string> zones = zoneinfo.AvailableTimezones();
 #line (168, 5) - (168, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-            Xunit.Assert.Contains("UTC", zones);
+            Xunit.Assert.True(zones.Contains("UTC"));
 #line hidden
         }
 

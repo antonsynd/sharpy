@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -861,7 +863,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Datetime.DatetimeTests
 #line (470, 5) - (470, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
             var dt = new global::Sharpy.DateTime(2024, 1, 15, 12, 0, 0, tzinfo: utc);
 #line (471, 5) - (471, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
-            Xunit.Assert.Contains("+00:00", global::Sharpy.Builtins.Str(dt));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(dt).Contains("+00:00"));
 #line hidden
         }
 

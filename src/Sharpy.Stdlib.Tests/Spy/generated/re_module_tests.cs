@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -470,9 +472,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Re.ReModuleTests
 #line (261, 5) - (261, 21) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
             string s = global::Sharpy.Builtins.Str(m!);
 #line (262, 5) - (262, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-            Xunit.Assert.Contains("span=(6, 11)", s);
+            Xunit.Assert.True(s.Contains("span=(6, 11)"));
 #line (263, 5) - (263, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-            Xunit.Assert.Contains("match='world'", s);
+            Xunit.Assert.True(s.Contains("match='world'"));
 #line hidden
         }
 

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -313,9 +315,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests
             {
                 case string s:
 #line (140, 13) - (140, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Contains("hello", s);
+                    Xunit.Assert.True(s.Contains("hello"));
 #line (141, 13) - (141, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Contains("world", s);
+                    Xunit.Assert.True(s.Contains("world"));
 #line hidden
                     break;
                 default:
@@ -524,9 +526,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests
 #line (248, 5) - (248, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
             string result = toml.Dumps((object?)d);
 #line (249, 5) - (249, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("name = \"test\"", result);
+            Xunit.Assert.True(result.Contains("name = \"test\""));
 #line (250, 5) - (250, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("count = 42", result);
+            Xunit.Assert.True(result.Contains("count = 42"));
 #line hidden
         }
 
@@ -550,9 +552,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests
 #line (258, 5) - (258, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
             string result = toml.Dumps((object?)d);
 #line (259, 5) - (259, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("[section]", result);
+            Xunit.Assert.True(result.Contains("[section]"));
 #line (260, 5) - (260, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("key = \"val\"", result);
+            Xunit.Assert.True(result.Contains("key = \"val\""));
 #line hidden
         }
 
@@ -578,11 +580,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests
 #line (269, 5) - (269, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
             string result = toml.Dumps((object?)d);
 #line (270, 5) - (270, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("tags", result);
+            Xunit.Assert.True(result.Contains("tags"));
 #line (271, 5) - (271, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("\"a\"", result);
+            Xunit.Assert.True(result.Contains("\"a\""));
 #line (272, 5) - (272, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("\"b\"", result);
+            Xunit.Assert.True(result.Contains("\"b\""));
 #line hidden
         }
 
@@ -785,13 +787,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlModuleTests
             if (!__raised_5)
                 throw new global::Sharpy.AssertionError("Expected TOMLDecodeError to be raised, but no exception was raised");
 #line (339, 5) - (339, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("line", global::Sharpy.Builtins.Str(ex));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(ex).Contains("line"));
 #line (340, 5) - (340, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("column", global::Sharpy.Builtins.Str(ex));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(ex).Contains("column"));
 #line (341, 5) - (341, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
             Xunit.Assert.True(ex.Msg.Length > 0);
 #line (342, 5) - (342, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-            Xunit.Assert.Contains("invalid", ex.Doc);
+            Xunit.Assert.True(ex.Doc.Contains("invalid"));
 #line hidden
         }
 

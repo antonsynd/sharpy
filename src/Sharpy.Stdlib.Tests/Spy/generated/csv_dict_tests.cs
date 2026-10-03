@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -350,7 +352,7 @@ namespace Sharpy.Stdlib.Tests.Spy.CSV.CsvDictTests
 #line (133, 5) - (133, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
             writer.Writerow(row);
 #line (134, 5) - (134, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
-            Xunit.Assert.Contains("\"123 Main St, Springfield\"", sw.Getvalue());
+            Xunit.Assert.True(sw.Getvalue().Contains("\"123 Main St, Springfield\""));
 #line hidden
         }
 

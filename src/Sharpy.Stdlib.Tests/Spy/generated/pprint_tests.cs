@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 #line (35, 5) - (35, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             string result = pp.Pformat(3.14d);
 #line (36, 5) - (36, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains(".", result);
+            Xunit.Assert.True(result.Contains("."));
 #line (37, 5) - (37, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             Xunit.Assert.Equal("3.14", result);
 #line hidden
@@ -226,7 +228,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 #line (94, 5) - (94, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             string result = pp.Pformat(lst);
 #line (95, 5) - (95, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains("\n", result);
+            Xunit.Assert.True(result.Contains("\n"));
 #line hidden
         }
 
@@ -249,9 +251,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 #line (101, 5) - (101, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             string result = compact.Pformat(lst);
 #line (102, 5) - (102, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains("\n", result);
+            Xunit.Assert.True(result.Contains("\n"));
 #line (104, 5) - (104, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains(", ", result);
+            Xunit.Assert.True(result.Contains(", "));
 #line hidden
         }
 
@@ -375,7 +377,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 #line (161, 5) - (161, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             var pp = new global::Sharpy.PrettyPrinter();
 #line (162, 5) - (162, 61) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains("<Recursion on list with id=", pp.Pformat(lst));
+            Xunit.Assert.True(pp.Pformat(lst).Contains("<Recursion on list with id="));
 #line hidden
         }
 
@@ -475,9 +477,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Pprint.PprintTests
 #line (192, 5) - (192, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
             string result = pp.Pformat(lst);
 #line (193, 5) - (193, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains("\n", result);
+            Xunit.Assert.True(result.Contains("\n"));
 #line (195, 5) - (195, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-            Xunit.Assert.Contains("\n    ", result);
+            Xunit.Assert.True(result.Contains("\n    "));
 #line hidden
         }
 

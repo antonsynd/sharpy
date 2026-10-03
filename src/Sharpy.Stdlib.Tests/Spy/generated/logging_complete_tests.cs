@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -180,7 +182,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (101, 9) - (101, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logger.Warning("warn passes");
 #line (102, 9) - (102, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("warn passes", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("warn passes"));
 #line hidden
             }
         }
@@ -220,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (121, 9) - (121, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logger.Debug("should appear after lowering level");
 #line (122, 9) - (122, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("should appear after lowering level", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("should appear after lowering level"));
 #line hidden
             }
         }
@@ -247,9 +249,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (139, 9) - (139, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 var output = err.Getvalue();
 #line (140, 9) - (140, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.DoesNotContain("warn_logger debug suppressed", output);
+                Xunit.Assert.True(!output.Contains("warn_logger debug suppressed"));
 #line (141, 9) - (141, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("debug_logger debug visible", output);
+                Xunit.Assert.True(output.Contains("debug_logger debug visible"));
 #line hidden
             }
         }
@@ -276,9 +278,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (156, 9) - (156, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 var output = err.Getvalue();
 #line (157, 9) - (157, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("INFO:lc_prefix_a:msg from a", output);
+                Xunit.Assert.True(output.Contains("INFO:lc_prefix_a:msg from a"));
 #line (158, 9) - (158, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("INFO:lc_prefix_b:msg from b", output);
+                Xunit.Assert.True(output.Contains("INFO:lc_prefix_b:msg from b"));
 #line hidden
             }
         }
@@ -295,7 +297,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (168, 9) - (168, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logging.Debug("basicconfig debug test");
 #line (169, 9) - (169, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("basicconfig debug test", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("basicconfig debug test"));
 #line hidden
             }
 
@@ -314,7 +316,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (178, 9) - (178, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logging.Warning("module level warning");
 #line (179, 9) - (179, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("module level warning", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("module level warning"));
 #line hidden
             }
         }
@@ -329,7 +331,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (185, 9) - (185, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logging.Error("module level error");
 #line (186, 9) - (186, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("module level error", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("module level error"));
 #line hidden
             }
         }
@@ -344,7 +346,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
 #line (192, 9) - (192, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                 logging.Critical("module level critical");
 #line (193, 9) - (193, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                Xunit.Assert.Contains("module level critical", err.Getvalue());
+                Xunit.Assert.True(err.Getvalue().Contains("module level critical"));
 #line hidden
             }
         }

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -142,7 +144,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Time.TimeModuleTests
             if (!__raised_0)
                 throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (104, 5) - (104, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-            Xunit.Assert.Contains("sleep length must be non-negative", global::Sharpy.Builtins.Str(exc));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(exc).Contains("sleep length must be non-negative"));
 #line hidden
         }
 
@@ -206,9 +208,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Time.TimeModuleTests
 #line (139, 5) - (139, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
             string rep = global::Sharpy.Builtins.Str(t);
 #line (140, 5) - (140, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-            Xunit.Assert.Contains("tm_year=2024", rep);
+            Xunit.Assert.True(rep.Contains("tm_year=2024"));
 #line (141, 5) - (141, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-            Xunit.Assert.Contains("tm_mon=1", rep);
+            Xunit.Assert.True(rep.Contains("tm_mon=1"));
 #line (142, 5) - (142, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
             Xunit.Assert.StartsWith("time.struct_time(", rep);
 #line hidden

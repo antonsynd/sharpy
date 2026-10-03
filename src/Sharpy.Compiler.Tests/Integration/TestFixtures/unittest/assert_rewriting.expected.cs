@@ -1,5 +1,7 @@
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -90,9 +92,9 @@ namespace AssertRewriting
                 3
             };
 #line (26, 5) - (26, 23) 12 "assert_rewriting.spy"
-            Xunit.Assert.Contains(1, items);
+            Xunit.Assert.True(items.Contains(1));
 #line (27, 5) - (27, 27) 12 "assert_rewriting.spy"
-            Xunit.Assert.DoesNotContain(4, items);
+            Xunit.Assert.True(!items.Contains(4));
 #line hidden
         }
 

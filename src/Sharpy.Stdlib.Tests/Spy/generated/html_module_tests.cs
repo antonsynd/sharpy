@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -691,31 +693,31 @@ namespace Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests
 #line (343, 5) - (343, 100) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
             p.Feed("<!DOCTYPE html><html><head><title>Test</title></head><body><p>Hello</p></body></html>");
 #line (344, 5) - (344, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("decl:DOCTYPE html", p.Events);
+            Xunit.Assert.True(p.Events.Contains("decl:DOCTYPE html"));
 #line (345, 5) - (345, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("starttag:html []", p.Events);
+            Xunit.Assert.True(p.Events.Contains("starttag:html []"));
 #line (346, 5) - (346, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("starttag:head []", p.Events);
+            Xunit.Assert.True(p.Events.Contains("starttag:head []"));
 #line (347, 5) - (347, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("starttag:title []", p.Events);
+            Xunit.Assert.True(p.Events.Contains("starttag:title []"));
 #line (348, 5) - (348, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("data:Test", p.Events);
+            Xunit.Assert.True(p.Events.Contains("data:Test"));
 #line (349, 5) - (349, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("endtag:title", p.Events);
+            Xunit.Assert.True(p.Events.Contains("endtag:title"));
 #line (350, 5) - (350, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("endtag:head", p.Events);
+            Xunit.Assert.True(p.Events.Contains("endtag:head"));
 #line (351, 5) - (351, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("starttag:body []", p.Events);
+            Xunit.Assert.True(p.Events.Contains("starttag:body []"));
 #line (352, 5) - (352, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("starttag:p []", p.Events);
+            Xunit.Assert.True(p.Events.Contains("starttag:p []"));
 #line (353, 5) - (353, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("data:Hello", p.Events);
+            Xunit.Assert.True(p.Events.Contains("data:Hello"));
 #line (354, 5) - (354, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("endtag:p", p.Events);
+            Xunit.Assert.True(p.Events.Contains("endtag:p"));
 #line (355, 5) - (355, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("endtag:body", p.Events);
+            Xunit.Assert.True(p.Events.Contains("endtag:body"));
 #line (356, 5) - (356, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("endtag:html", p.Events);
+            Xunit.Assert.True(p.Events.Contains("endtag:html"));
 #line hidden
         }
 
@@ -784,9 +786,9 @@ namespace Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests
             }
 
 #line (390, 5) - (390, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("a", combined);
+            Xunit.Assert.True(combined.Contains("a"));
 #line (391, 5) - (391, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-            Xunit.Assert.Contains("b", combined);
+            Xunit.Assert.True(combined.Contains("b"));
 #line hidden
         }
 

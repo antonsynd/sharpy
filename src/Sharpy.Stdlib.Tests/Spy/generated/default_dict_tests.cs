@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -106,11 +108,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DefaultDictTests
 #line (56, 5) - (56, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
             Sharpy.List<string> keys = new global::Sharpy.List<string>(dd.Keys());
 #line (57, 5) - (57, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains("z", keys);
+            Xunit.Assert.True(keys.Contains("z"));
 #line (58, 5) - (58, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains("a", keys);
+            Xunit.Assert.True(keys.Contains("a"));
 #line (59, 5) - (59, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains("m", keys);
+            Xunit.Assert.True(keys.Contains("m"));
 #line (60, 5) - (60, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(keys));
 #line hidden
@@ -130,11 +132,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DefaultDictTests
 #line (68, 5) - (68, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
             Sharpy.List<int> vals = new global::Sharpy.List<int>(dd.Values());
 #line (69, 5) - (69, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains(10, vals);
+            Xunit.Assert.True(vals.Contains(10));
 #line (70, 5) - (70, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains(20, vals);
+            Xunit.Assert.True(vals.Contains(20));
 #line (71, 5) - (71, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-            Xunit.Assert.Contains(30, vals);
+            Xunit.Assert.True(vals.Contains(30));
 #line (72, 5) - (72, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(vals));
 #line hidden

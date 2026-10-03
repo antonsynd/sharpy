@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1133,11 +1135,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (604, 5) - (604, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             string text = global::Sharpy.Builtins.Str(s);
 #line (605, 5) - (605, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            Xunit.Assert.Contains("socket", text);
+            Xunit.Assert.True(text.Contains("socket"));
 #line (606, 5) - (606, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            Xunit.Assert.Contains("family=", text);
+            Xunit.Assert.True(text.Contains("family="));
 #line (607, 5) - (607, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            Xunit.Assert.Contains("type=", text);
+            Xunit.Assert.True(text.Contains("type="));
 #line (608, 5) - (608, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             s.Close();
 #line hidden

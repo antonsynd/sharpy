@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -249,7 +251,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Secrets.SecretsTests
 #line (89, 5) - (89, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
             int result = secrets.Choice(items);
 #line (90, 5) - (90, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-            Xunit.Assert.Contains(result, items);
+            Xunit.Assert.True(items.Contains(result));
 #line hidden
         }
 

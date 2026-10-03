@@ -1,5 +1,7 @@
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,7 +45,7 @@ namespace TestAssertRaisesCapture
             if (!__raised_0)
                 throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (7, 5) - (7, 36) 12 "test_assert_raises_capture.spy"
-            Xunit.Assert.Contains("bad input", global::Sharpy.Builtins.Str(exc));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(exc).Contains("bad input"));
 #line hidden
         }
     }

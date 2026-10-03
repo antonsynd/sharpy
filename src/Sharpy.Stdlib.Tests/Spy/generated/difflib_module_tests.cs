@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -200,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Difflib.DifflibModuleTests
 #line (85, 5) - (85, 87) 12 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
             var result = difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }, cutoff: 0.9d);
 #line (86, 5) - (86, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-            Xunit.Assert.DoesNotContain("ape", result);
+            Xunit.Assert.True(!result.Contains("ape"));
 #line hidden
         }
 

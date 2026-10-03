@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -102,9 +104,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (70, 5) - (70, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             string text = global::Sharpy.Builtins.Str(cp);
 #line (71, 5) - (71, 39) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("CompletedProcess", text);
+            Xunit.Assert.True(text.Contains("CompletedProcess"));
 #line (72, 5) - (72, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("returncode=0", text);
+            Xunit.Assert.True(text.Contains("returncode=0"));
 #line hidden
         }
 
@@ -128,9 +130,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (87, 5) - (87, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             string msg = global::Sharpy.Builtins.Str(ex);
 #line (88, 5) - (88, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("my cmd", msg);
+            Xunit.Assert.True(msg.Contains("my cmd"));
 #line (89, 5) - (89, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("non-zero exit status 1", msg);
+            Xunit.Assert.True(msg.Contains("non-zero exit status 1"));
 #line hidden
         }
 
@@ -174,9 +176,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (111, 5) - (111, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             string msg = global::Sharpy.Builtins.Str(ex);
 #line (112, 5) - (112, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("sleep 10", msg);
+            Xunit.Assert.True(msg.Contains("sleep 10"));
 #line (113, 5) - (113, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("timed out after 5 seconds", msg);
+            Xunit.Assert.True(msg.Contains("timed out after 5 seconds"));
 #line hidden
         }
 
@@ -188,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (121, 5) - (121, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             Xunit.Assert.Equal(0, result.Returncode);
 #line (122, 5) - (122, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("hello", result.Stdout);
+            Xunit.Assert.True(result.Stdout.Contains("hello"));
 #line hidden
         }
 
@@ -198,7 +200,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (127, 5) - (127, 79) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             var result = subprocess.Run(new Sharpy.List<string>() { "sh", "-c", "echo err >&2" }, captureOutput: true);
 #line (128, 5) - (128, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("err", result.Stderr);
+            Xunit.Assert.True(result.Stderr.Contains("err"));
 #line hidden
         }
 
@@ -273,7 +275,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (157, 5) - (157, 70) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             var result = subprocess.Run(new Sharpy.List<string>() { "pwd" }, captureOutput: true, cwd: "/tmp");
 #line (158, 5) - (158, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("tmp", result.Stdout.Strip());
+            Xunit.Assert.True(result.Stdout.Strip().Contains("tmp"));
 #line hidden
         }
 
@@ -292,7 +294,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (164, 5) - (164, 88) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             var result = subprocess.Run(new Sharpy.List<string>() { "sh", "-c", "echo $MY_VAR" }, captureOutput: true, env: env);
 #line (165, 5) - (165, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("test_val", result.Stdout);
+            Xunit.Assert.True(result.Stdout.Contains("test_val"));
 #line hidden
         }
 
@@ -312,7 +314,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Subprocess.SubprocessModuleTests
 #line (178, 5) - (178, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
             string output = subprocess.CheckOutput(new Sharpy.List<string>() { "echo", "hello" });
 #line (179, 5) - (179, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-            Xunit.Assert.Contains("hello", output);
+            Xunit.Assert.True(output.Contains("hello"));
 #line hidden
         }
 

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -240,17 +242,17 @@ namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
 #line (127, 5) - (127, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
             string output = cal.Formatmonth(2026, 6);
 #line (128, 5) - (128, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("June", output);
+            Xunit.Assert.True(output.Contains("June"));
 #line (129, 5) - (129, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("2026", output);
+            Xunit.Assert.True(output.Contains("2026"));
 #line (130, 5) - (130, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("Mo", output);
+            Xunit.Assert.True(output.Contains("Mo"));
 #line (131, 5) - (131, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("Su", output);
+            Xunit.Assert.True(output.Contains("Su"));
 #line (132, 5) - (132, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("15", output);
+            Xunit.Assert.True(output.Contains("15"));
 #line (133, 5) - (133, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("30", output);
+            Xunit.Assert.True(output.Contains("30"));
 #line hidden
         }
 
@@ -262,21 +264,21 @@ namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
 #line (140, 5) - (140, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
             string output = cal.Formatmonth(2026, 6);
 #line (141, 5) - (141, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("<table", output);
+            Xunit.Assert.True(output.Contains("<table"));
 #line (142, 5) - (142, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("class=\"month\"", output);
+            Xunit.Assert.True(output.Contains("class=\"month\""));
 #line (143, 5) - (143, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("June 2026", output);
+            Xunit.Assert.True(output.Contains("June 2026"));
 #line (144, 5) - (144, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("class=\"mon\"", output);
+            Xunit.Assert.True(output.Contains("class=\"mon\""));
 #line (145, 5) - (145, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("class=\"noday\"", output);
+            Xunit.Assert.True(output.Contains("class=\"noday\""));
 #line (146, 5) - (146, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains(">15</td>", output);
+            Xunit.Assert.True(output.Contains(">15</td>"));
 #line (147, 5) - (147, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains(">30</td>", output);
+            Xunit.Assert.True(output.Contains(">30</td>"));
 #line (148, 5) - (148, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("</table>", output);
+            Xunit.Assert.True(output.Contains("</table>"));
 #line hidden
         }
 
@@ -288,9 +290,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
 #line (153, 5) - (153, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
             string output = cal.Formatmonth(2026, 6, withyear: false);
 #line (154, 5) - (154, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains(">June</th>", output);
+            Xunit.Assert.True(output.Contains(">June</th>"));
 #line (155, 5) - (155, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.DoesNotContain("June 2026", output);
+            Xunit.Assert.True(!output.Contains("June 2026"));
 #line hidden
         }
 
@@ -324,9 +326,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
 #line (176, 5) - (176, 41) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
             Xunit.Assert.NotEqual(sundayFirst, mondayFirst);
 #line (177, 5) - (177, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("Mo Tu We Th Fr Sa Su", mondayFirst);
+            Xunit.Assert.True(mondayFirst.Contains("Mo Tu We Th Fr Sa Su"));
 #line (178, 5) - (178, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-            Xunit.Assert.Contains("Su Mo Tu We Th Fr Sa", sundayFirst);
+            Xunit.Assert.True(sundayFirst.Contains("Su Mo Tu We Th Fr Sa"));
 #line (180, 5) - (180, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
             calendar.Setfirstweekday(0);
 #line hidden

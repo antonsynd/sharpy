@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -301,9 +303,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (134, 5) - (134, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Sharpy.List<string> elements = new global::Sharpy.List<string>(c.Elements());
 #line (135, 5) - (135, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains("a", elements);
+            Xunit.Assert.True(elements.Contains("a"));
 #line (136, 5) - (136, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains("b", elements);
+            Xunit.Assert.True(elements.Contains("b"));
 #line (138, 5) - (138, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             int aCount = 0;
 #line (139, 5) - (141, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -624,9 +626,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (284, 5) - (284, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(keys));
 #line (285, 5) - (285, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains("a", keys);
+            Xunit.Assert.True(keys.Contains("a"));
 #line (286, 5) - (286, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains("b", keys);
+            Xunit.Assert.True(keys.Contains("b"));
 #line hidden
         }
 
@@ -644,9 +646,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (294, 5) - (294, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(vals));
 #line (295, 5) - (295, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains(1, vals);
+            Xunit.Assert.True(vals.Contains(1));
 #line (296, 5) - (296, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains(2, vals);
+            Xunit.Assert.True(vals.Contains(2));
 #line hidden
         }
 
@@ -753,9 +755,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (343, 5) - (343, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(items));
 #line (344, 5) - (344, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains(("x", 10), items);
+            Xunit.Assert.True(items.Contains(("x", 10)));
 #line (345, 5) - (345, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.Contains(("y", 20), items);
+            Xunit.Assert.True(items.Contains(("y", 20)));
 #line hidden
         }
 

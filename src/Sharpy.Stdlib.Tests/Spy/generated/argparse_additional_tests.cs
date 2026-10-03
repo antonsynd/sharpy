@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +32,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (12, 5) - (12, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             Xunit.Assert.True(helpText.Length > 0);
 #line (13, 5) - (13, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("test", helpText);
+            Xunit.Assert.True(helpText.Contains("test"));
 #line hidden
         }
 
@@ -44,11 +46,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (19, 5) - (19, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string helpText = parser.FormatHelp();
 #line (20, 5) - (20, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("positional arguments", helpText);
+            Xunit.Assert.True(helpText.Contains("positional arguments"));
 #line (21, 5) - (21, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("input", helpText);
+            Xunit.Assert.True(helpText.Contains("input"));
 #line (22, 5) - (22, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("the input file", helpText);
+            Xunit.Assert.True(helpText.Contains("the input file"));
 #line hidden
         }
 
@@ -62,11 +64,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (28, 5) - (28, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string helpText = parser.FormatHelp();
 #line (29, 5) - (29, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("options", helpText);
+            Xunit.Assert.True(helpText.Contains("options"));
 #line (30, 5) - (30, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("--verbose", helpText);
+            Xunit.Assert.True(helpText.Contains("--verbose"));
 #line (31, 5) - (31, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("verbose output", helpText);
+            Xunit.Assert.True(helpText.Contains("verbose output"));
 #line hidden
         }
 
@@ -78,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (36, 5) - (36, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string helpText = parser.FormatHelp();
 #line (37, 5) - (37, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("usage: myprogram", helpText);
+            Xunit.Assert.True(helpText.Contains("usage: myprogram"));
 #line hidden
         }
 
@@ -102,7 +104,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (50, 5) - (50, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             Xunit.Assert.Equal("new", parser.Prog);
 #line (51, 5) - (51, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("new", parser.FormatHelp());
+            Xunit.Assert.True(parser.FormatHelp().Contains("new"));
 #line hidden
         }
 
@@ -118,9 +120,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (60, 5) - (60, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string s = global::Sharpy.Builtins.Str(ns);
 #line (61, 5) - (61, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("Namespace(", s);
+            Xunit.Assert.True(s.Contains("Namespace("));
 #line (62, 5) - (62, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("output=None", s);
+            Xunit.Assert.True(s.Contains("output=None"));
 #line hidden
         }
 
@@ -136,7 +138,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (69, 5) - (69, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string s = global::Sharpy.Builtins.Str(ns);
 #line (70, 5) - (70, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("count=42", s);
+            Xunit.Assert.True(s.Contains("count=42"));
 #line hidden
         }
 
@@ -152,7 +154,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (79, 5) - (79, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string s = global::Sharpy.Builtins.Str(ns);
 #line (80, 5) - (80, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("ratio=3.14", s);
+            Xunit.Assert.True(s.Contains("ratio=3.14"));
 #line hidden
         }
 
@@ -168,7 +170,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (87, 5) - (87, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string s = global::Sharpy.Builtins.Str(ns);
 #line (88, 5) - (88, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("threshold=0.75", s);
+            Xunit.Assert.True(s.Contains("threshold=0.75"));
 #line hidden
         }
 
@@ -298,9 +300,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Argparse.ArgparseAdditionalTests
 #line (150, 5) - (150, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             string s = global::Sharpy.Builtins.Str(ns);
 #line (151, 5) - (151, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("verbose=True", s);
+            Xunit.Assert.True(s.Contains("verbose=True"));
 #line (152, 5) - (152, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
-            Xunit.Assert.Contains("json=True", s);
+            Xunit.Assert.True(s.Contains("json=True"));
 #line (154, 5) - (155, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
             bool __raised_2 = false;
 #line hidden

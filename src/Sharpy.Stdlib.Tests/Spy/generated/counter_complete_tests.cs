@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,11 +64,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests
 #line (27, 5) - (27, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Sharpy.List<string> keys = new global::Sharpy.List<string>(c.Keys());
 #line (28, 5) - (28, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.Contains("a", keys);
+            Xunit.Assert.True(keys.Contains("a"));
 #line (29, 5) - (29, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.Contains("b", keys);
+            Xunit.Assert.True(keys.Contains("b"));
 #line (30, 5) - (30, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.Contains("c", keys);
+            Xunit.Assert.True(keys.Contains("c"));
 #line (31, 5) - (31, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(keys));
 #line hidden
@@ -138,9 +140,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests
 #line (70, 5) - (70, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Sharpy.List<string> elements = new global::Sharpy.List<string>(c.Elements());
 #line (71, 5) - (71, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.Contains("a", elements);
+            Xunit.Assert.True(elements.Contains("a"));
 #line (72, 5) - (72, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.DoesNotContain("b", elements);
+            Xunit.Assert.True(!elements.Contains("b"));
 #line (73, 5) - (73, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(elements));
 #line hidden
@@ -158,9 +160,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests
 #line (80, 5) - (80, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Sharpy.List<string> elements = new global::Sharpy.List<string>(c.Elements());
 #line (81, 5) - (81, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.Contains("a", elements);
+            Xunit.Assert.True(elements.Contains("a"));
 #line (82, 5) - (82, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-            Xunit.Assert.DoesNotContain("b", elements);
+            Xunit.Assert.True(!elements.Contains("b"));
 #line (83, 5) - (83, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(elements));
 #line hidden

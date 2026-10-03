@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -664,11 +666,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsAdditionalTests
 #line (244, 5) - (244, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(keys));
 #line (245, 5) - (245, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-            Xunit.Assert.Contains("a", keys);
+            Xunit.Assert.True(keys.Contains("a"));
 #line (246, 5) - (246, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-            Xunit.Assert.Contains("b", keys);
+            Xunit.Assert.True(keys.Contains("b"));
 #line (247, 5) - (247, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-            Xunit.Assert.Contains("c", keys);
+            Xunit.Assert.True(keys.Contains("c"));
 #line hidden
         }
 

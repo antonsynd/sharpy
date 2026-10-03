@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -196,11 +198,11 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonAdditionalTests
 #line (89, 5) - (89, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
             string result = json.Dumps(outer, indent: 2);
 #line (90, 5) - (90, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-            Xunit.Assert.Contains("\n", result);
+            Xunit.Assert.True(result.Contains("\n"));
 #line (91, 5) - (91, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-            Xunit.Assert.Contains("\"items\"", result);
+            Xunit.Assert.True(result.Contains("\"items\""));
 #line (92, 5) - (92, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-            Xunit.Assert.Contains("\"a\"", result);
+            Xunit.Assert.True(result.Contains("\"a\""));
 #line hidden
         }
 

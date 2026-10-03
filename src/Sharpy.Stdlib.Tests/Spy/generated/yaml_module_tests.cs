@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -987,9 +989,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 #line (454, 5) - (454, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             string text = yaml.SafeDump(data);
 #line (455, 5) - (455, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("a: 1", text);
+            Xunit.Assert.True(text.Contains("a: 1"));
 #line (456, 5) - (456, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.DoesNotContain("{", text);
+            Xunit.Assert.True(!text.Contains("{"));
 #line hidden
         }
 
@@ -1008,9 +1010,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 #line (463, 5) - (463, 63) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             string text = yaml.SafeDump(data, defaultFlowStyle: true);
 #line (464, 5) - (464, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("{", text);
+            Xunit.Assert.True(text.Contains("{"));
 #line (465, 5) - (465, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("}", text);
+            Xunit.Assert.True(text.Contains("}"));
 #line hidden
         }
 
@@ -1034,7 +1036,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 #line (473, 5) - (473, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             string text = yaml.SafeDump(outer, indent: 4);
 #line (474, 5) - (474, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("    x: 1", text);
+            Xunit.Assert.True(text.Contains("    x: 1"));
 #line hidden
         }
 
@@ -1119,9 +1121,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 #line (508, 5) - (508, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             string wide = yaml.SafeDump(items, width: 1000);
 #line (509, 5) - (509, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("item-0", narrow);
+            Xunit.Assert.True(narrow.Contains("item-0"));
 #line (510, 5) - (510, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("item-0", wide);
+            Xunit.Assert.True(wide.Contains("item-0"));
 #line hidden
         }
 
@@ -1298,7 +1300,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlModuleTests
 #line (588, 5) - (588, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             string text = yaml.SafeDumpAll(documents);
 #line (589, 5) - (589, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-            Xunit.Assert.Contains("---", text);
+            Xunit.Assert.True(text.Contains("---"));
 #line (590, 5) - (590, 62) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
             Sharpy.List<object?> reparsed = yaml.SafeLoadAll(text);
 #line (591, 5) - (591, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"

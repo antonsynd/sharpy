@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -216,7 +218,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Fnmatch.FnmatchTests
 #line (114, 5) - (114, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
             string result = fnmatch.Translate("[abc");
 #line (115, 5) - (115, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-            Xunit.Assert.Contains("\\[", result);
+            Xunit.Assert.True(result.Contains("\\["));
 #line hidden
         }
 

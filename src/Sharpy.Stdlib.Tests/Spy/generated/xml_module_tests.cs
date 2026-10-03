@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -579,13 +581,13 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (294, 5) - (294, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(tags));
 #line (295, 5) - (295, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("root", tags);
+            Xunit.Assert.True(tags.Contains("root"));
 #line (296, 5) - (296, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("a", tags);
+            Xunit.Assert.True(tags.Contains("a"));
 #line (297, 5) - (297, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("b", tags);
+            Xunit.Assert.True(tags.Contains("b"));
 #line (298, 5) - (298, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("c", tags);
+            Xunit.Assert.True(tags.Contains("c"));
 #line hidden
         }
 
@@ -635,11 +637,11 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
             }
 
 #line (314, 5) - (314, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("Hello ", texts);
+            Xunit.Assert.True(texts.Contains("Hello "));
 #line (315, 5) - (315, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("world", texts);
+            Xunit.Assert.True(texts.Contains("world"));
 #line (316, 5) - (316, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("!", texts);
+            Xunit.Assert.True(texts.Contains("!"));
 #line hidden
         }
 
@@ -751,7 +753,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (375, 5) - (375, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             string s = xml.Tostring(el);
 #line (376, 5) - (376, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("hello", s);
+            Xunit.Assert.True(s.Contains("hello"));
 #line hidden
         }
 
@@ -977,7 +979,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (486, 5) - (486, 14) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             f.Close();
 #line (487, 5) - (487, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("<data>content</data>", content);
+            Xunit.Assert.True(content.Contains("<data>content</data>"));
 #line (488, 5) - (488, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             os.Remove(tempFile);
 #line hidden
@@ -1042,7 +1044,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (516, 5) - (516, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             string s = xml.Tostring(root);
 #line (518, 5) - (518, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("\n", s);
+            Xunit.Assert.True(s.Contains("\n"));
 #line hidden
         }
 
@@ -1062,7 +1064,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (527, 5) - (527, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             string s = xml.Tostring(treeRoot!);
 #line (528, 5) - (528, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("\n", s);
+            Xunit.Assert.True(s.Contains("\n"));
 #line hidden
         }
 
@@ -1150,11 +1152,11 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (568, 5) - (568, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             Xunit.Assert.Equal(5, err.Column);
 #line (569, 5) - (569, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("test error", global::Sharpy.Builtins.Str(err));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(err).Contains("test error"));
 #line (570, 5) - (570, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("line 2", global::Sharpy.Builtins.Str(err));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(err).Contains("line 2"));
 #line (571, 5) - (571, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("column 5", global::Sharpy.Builtins.Str(err));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(err).Contains("column 5"));
 #line hidden
         }
 
@@ -1190,7 +1192,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (590, 5) - (590, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             var tree = new global::Sharpy.ElementTree(root);
 #line (591, 5) - (591, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("root", global::Sharpy.Builtins.Str(tree));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(tree).Contains("root"));
 #line hidden
         }
 
@@ -1200,7 +1202,7 @@ namespace Sharpy.Stdlib.Tests.Spy.XML.XmlModuleTests
 #line (595, 5) - (595, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
             var tree = new global::Sharpy.ElementTree();
 #line (596, 5) - (596, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-            Xunit.Assert.Contains("empty", global::Sharpy.Builtins.Str(tree));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(tree).Contains("empty"));
 #line hidden
         }
 

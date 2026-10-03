@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -244,11 +246,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
 #line (153, 5) - (153, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(keys));
 #line (154, 5) - (154, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("id", keys);
+            Xunit.Assert.True(keys.Contains("id"));
 #line (155, 5) - (155, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("name", keys);
+            Xunit.Assert.True(keys.Contains("name"));
 #line (156, 5) - (156, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("score", keys);
+            Xunit.Assert.True(keys.Contains("score"));
 #line hidden
         }
 
@@ -274,11 +276,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
 #line (174, 5) - (174, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             Xunit.Assert.EndsWith(">", s);
 #line (175, 5) - (175, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("id=1", s);
+            Xunit.Assert.True(s.Contains("id=1"));
 #line (176, 5) - (176, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("name='Alice'", s);
+            Xunit.Assert.True(s.Contains("name='Alice'"));
 #line (177, 5) - (177, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("score=", s);
+            Xunit.Assert.True(s.Contains("score="));
 #line hidden
         }
 
@@ -305,7 +307,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
 #line (190, 13) - (190, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     string s = global::Sharpy.Builtins.Str(row);
 #line (191, 13) - (191, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                    Xunit.Assert.Contains("val=None", s);
+                    Xunit.Assert.True(s.Contains("val=None"));
 #line hidden
                     break;
                 default:
@@ -328,7 +330,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3RowTests
 #line (200, 5) - (200, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
             string s = global::Sharpy.Builtins.Str(row);
 #line (201, 5) - (201, 32) 12 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-            Xunit.Assert.Contains("name='Alice'", s);
+            Xunit.Assert.True(s.Contains("name='Alice'"));
 #line hidden
         }
 

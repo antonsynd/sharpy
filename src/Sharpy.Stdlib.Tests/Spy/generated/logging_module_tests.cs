@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -115,13 +117,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 #line (61, 9) - (61, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var output = err.Getvalue();
 #line (62, 9) - (62, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("DEBUG:myapp:debug msg", output);
+                Xunit.Assert.True(output.Contains("DEBUG:myapp:debug msg"));
 #line (63, 9) - (63, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("INFO:myapp:info msg", output);
+                Xunit.Assert.True(output.Contains("INFO:myapp:info msg"));
 #line (64, 9) - (64, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("ERROR:myapp:error msg", output);
+                Xunit.Assert.True(output.Contains("ERROR:myapp:error msg"));
 #line (65, 9) - (65, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("CRITICAL:myapp:critical msg", output);
+                Xunit.Assert.True(output.Contains("CRITICAL:myapp:critical msg"));
 #line hidden
             }
         }
@@ -142,9 +144,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 #line (75, 9) - (75, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var output = err.Getvalue();
 #line (76, 9) - (76, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.DoesNotContain("INFO", output);
+                Xunit.Assert.True(!output.Contains("INFO"));
 #line (77, 9) - (77, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("WARNING", output);
+                Xunit.Assert.True(output.Contains("WARNING"));
 #line hidden
             }
         }
@@ -167,9 +169,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 #line (89, 9) - (89, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var output = err.Getvalue();
 #line (90, 9) - (90, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("ERROR:test_higher_sev:err msg", output);
+                Xunit.Assert.True(output.Contains("ERROR:test_higher_sev:err msg"));
 #line (91, 9) - (91, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("CRITICAL:test_higher_sev:crit msg", output);
+                Xunit.Assert.True(output.Contains("CRITICAL:test_higher_sev:crit msg"));
 #line hidden
             }
         }
@@ -198,15 +200,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 #line (105, 9) - (105, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var output = err.Getvalue();
 #line (106, 9) - (106, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.DoesNotContain("DEBUG", output);
+                Xunit.Assert.True(!output.Contains("DEBUG"));
 #line (107, 9) - (107, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("INFO:test_all_above_info:info shown", output);
+                Xunit.Assert.True(output.Contains("INFO:test_all_above_info:info shown"));
 #line (108, 9) - (108, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("WARNING:test_all_above_info:warn shown", output);
+                Xunit.Assert.True(output.Contains("WARNING:test_all_above_info:warn shown"));
 #line (109, 9) - (109, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("ERROR:test_all_above_info:error shown", output);
+                Xunit.Assert.True(output.Contains("ERROR:test_all_above_info:error shown"));
 #line (110, 9) - (110, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("CRITICAL:test_all_above_info:critical shown", output);
+                Xunit.Assert.True(output.Contains("CRITICAL:test_all_above_info:critical shown"));
 #line hidden
             }
         }
@@ -294,9 +296,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests
 #line (157, 9) - (157, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                 var output = err.Getvalue();
 #line (158, 9) - (158, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.DoesNotContain("should be suppressed after raise", output);
+                Xunit.Assert.True(!output.Contains("should be suppressed after raise"));
 #line (159, 9) - (159, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                Xunit.Assert.Contains("should still appear", output);
+                Xunit.Assert.True(output.Contains("should still appear"));
 #line hidden
             }
         }

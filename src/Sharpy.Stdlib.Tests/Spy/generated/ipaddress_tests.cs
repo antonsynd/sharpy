@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -248,7 +250,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
 #line (117, 5) - (117, 72) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
             global::Sharpy.IPv6Address addr = new global::Sharpy.IPv6Address("2001:db8::1");
 #line (118, 5) - (118, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-            Xunit.Assert.Contains("2001:db8::1", addr.Compressed);
+            Xunit.Assert.True(addr.Compressed.Contains("2001:db8::1"));
 #line hidden
         }
 
@@ -308,7 +310,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
 #line (147, 5) - (147, 64) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
             global::Sharpy.IPv6Address addr = new global::Sharpy.IPv6Address("::1");
 #line (148, 5) - (148, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-            Xunit.Assert.Contains("::2", global::Sharpy.Builtins.Str(addr + 1));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(addr + 1).Contains("::2"));
 #line hidden
         }
 
@@ -583,7 +585,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
 #line (295, 5) - (295, 80) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
             global::Sharpy.IPv6Interface iface = new global::Sharpy.IPv6Interface("2001:db8::1/32");
 #line (296, 5) - (296, 43) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-            Xunit.Assert.Contains("2001:db8::1", global::Sharpy.Builtins.Str(iface.Ip));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(iface.Ip).Contains("2001:db8::1"));
 #line (297, 5) - (297, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
             Xunit.Assert.Equal(32, iface.Network.Prefixlen);
 #line hidden

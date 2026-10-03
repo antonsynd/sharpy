@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -274,7 +276,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Textwrap.TextwrapTests
 #line (141, 5) - (141, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
             Xunit.Assert.True(result.Length <= 10);
 #line (142, 5) - (142, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-            Xunit.Assert.Contains("[...]", result);
+            Xunit.Assert.True(result.Contains("[...]"));
 #line hidden
         }
 
@@ -325,7 +327,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Textwrap.TextwrapTests
 #line (161, 5) - (161, 64) 12 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
             string result = textwrap.Shorten("Supercalifragilistic", 10);
 #line (162, 5) - (162, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-            Xunit.Assert.Contains("[...]", result);
+            Xunit.Assert.True(result.Contains("[...]"));
 #line (163, 5) - (163, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
             Xunit.Assert.True(result.Length <= 10);
 #line hidden

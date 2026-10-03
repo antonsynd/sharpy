@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -329,11 +331,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.FunctoolsTests
 #line (133, 5) - (133, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
             Xunit.Assert.Equal(5, global::Sharpy.Builtins.Len(items));
 #line (134, 5) - (134, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-            Xunit.Assert.Contains(1, items);
+            Xunit.Assert.True(items.Contains(1));
 #line (135, 5) - (135, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-            Xunit.Assert.Contains(2, items);
+            Xunit.Assert.True(items.Contains(2));
 #line (136, 5) - (136, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-            Xunit.Assert.Contains(3, items);
+            Xunit.Assert.True(items.Contains(3));
 #line hidden
         }
     }

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Sys.SysModuleTests
         public void TestVersionContainsSharpy()
         {
 #line (67, 5) - (67, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/sys/sys_module_tests.spy"
-            Xunit.Assert.Contains("Sharpy", global::Sharpy.Sys.Version);
+            Xunit.Assert.True(global::Sharpy.Sys.Version.Contains("Sharpy"));
 #line hidden
         }
 

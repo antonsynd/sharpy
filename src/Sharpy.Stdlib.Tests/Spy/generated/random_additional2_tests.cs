@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -202,7 +204,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
             {
                 var item = __loopVar_0;
 #line (90, 9) - (90, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                Xunit.Assert.DoesNotContain(item, seen);
+                Xunit.Assert.True(!seen.Contains(item));
 #line (91, 9) - (91, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 seen.Add(item);
 #line hidden
@@ -454,7 +456,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
 #line (206, 5) - (206, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (207, 5) - (207, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            Xunit.Assert.Contains(result.GetItemUnchecked(0), pop);
+            Xunit.Assert.True(pop.Contains(result.GetItemUnchecked(0)));
 #line hidden
         }
 

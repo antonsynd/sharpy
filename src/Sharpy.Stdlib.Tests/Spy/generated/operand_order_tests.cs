@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -122,7 +124,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests
             }
 
 #line (55, 5) - (55, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/compiler/operand_order_tests.spy"
-            Xunit.Assert.DoesNotContain(__arg_11, __comp_8);
+            Xunit.Assert.True(!__comp_8.Contains(__arg_11));
 #line hidden
         }
 

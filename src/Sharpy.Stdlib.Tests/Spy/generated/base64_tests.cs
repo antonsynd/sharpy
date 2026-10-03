@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,9 +56,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Base64.Base64Tests
 #line (21, 5) - (21, 46) 12 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
             string resultStr = result.Decode("ascii");
 #line (22, 5) - (22, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-            Xunit.Assert.DoesNotContain("+", resultStr);
+            Xunit.Assert.True(!resultStr.Contains("+"));
 #line (23, 5) - (23, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-            Xunit.Assert.DoesNotContain("/", resultStr);
+            Xunit.Assert.True(!resultStr.Contains("/"));
 #line hidden
         }
 

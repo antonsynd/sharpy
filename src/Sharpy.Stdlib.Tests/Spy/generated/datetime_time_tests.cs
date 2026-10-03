@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -76,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Datetime.DatetimeTimeTests
 #line (40, 5) - (40, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_time_tests.spy"
             Xunit.Assert.Equal("10:30:00", t.Isoformat());
 #line (41, 5) - (41, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_time_tests.spy"
-            Xunit.Assert.DoesNotContain(".", t.Isoformat());
+            Xunit.Assert.True(!t.Isoformat().Contains("."));
 #line hidden
         }
 

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -232,7 +234,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
 #line (116, 5) - (116, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
             Xunit.Assert.NotNull(ct);
 #line (117, 5) - (117, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("text/html", ct!);
+            Xunit.Assert.True(ct!.Contains("text/html"));
 #line hidden
         }
 
@@ -312,11 +314,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
 #line (158, 5) - (158, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
             string result = msg.AsString();
 #line (159, 5) - (159, 42) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("Subject: Test\r\n", result);
+            Xunit.Assert.True(result.Contains("Subject: Test\r\n"));
 #line (160, 5) - (160, 53) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("From: sender@example.com\r\n", result);
+            Xunit.Assert.True(result.Contains("From: sender@example.com\r\n"));
 #line (161, 5) - (161, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("Hello", result);
+            Xunit.Assert.True(result.Contains("Hello"));
 #line hidden
         }
 
@@ -332,9 +334,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
 #line (168, 5) - (168, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
             string result = msg.AsString();
 #line (169, 5) - (169, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("--", result);
+            Xunit.Assert.True(result.Contains("--"));
 #line (170, 5) - (170, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("Content-Transfer-Encoding: base64", result);
+            Xunit.Assert.True(result.Contains("Content-Transfer-Encoding: base64"));
 #line hidden
         }
 
@@ -446,7 +448,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
 #line (227, 5) - (227, 60) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
             Xunit.Assert.Equal("sender@example.com", parsed.GetItem("From"));
 #line (228, 5) - (228, 48) 12 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-            Xunit.Assert.Contains("Test body", parsed.GetContent());
+            Xunit.Assert.True(parsed.GetContent().Contains("Test body"));
 #line hidden
         }
 

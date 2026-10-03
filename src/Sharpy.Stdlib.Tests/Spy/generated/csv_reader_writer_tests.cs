@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -331,7 +333,7 @@ namespace Sharpy.Stdlib.Tests.Spy.CSV.CsvReaderWriterTests
 #line (129, 5) - (129, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
             Xunit.Assert.Equal("\"", global::Sharpy.StringHelpers.GetItem(output, 0));
 #line (130, 5) - (130, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-            Xunit.Assert.Contains("line1\nline2", output);
+            Xunit.Assert.True(output.Contains("line1\nline2"));
 #line hidden
         }
 

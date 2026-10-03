@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -302,7 +304,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Re.RePatternTests
 #line (164, 5) - (164, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
             string s = global::Sharpy.Builtins.Str(pattern);
 #line (165, 5) - (165, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-            Xunit.Assert.Contains("\\d+", s);
+            Xunit.Assert.True(s.Contains("\\d+"));
 #line hidden
         }
 

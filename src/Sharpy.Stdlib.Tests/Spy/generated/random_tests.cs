@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -225,7 +227,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomTests
             {
                 var item = __loopVar_0;
 #line (114, 9) - (114, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-                Xunit.Assert.Contains(item, population);
+                Xunit.Assert.True(population.Contains(item));
 #line hidden
             }
         }

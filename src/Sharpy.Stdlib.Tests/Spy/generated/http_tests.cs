@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -221,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy.HTTP.HttpTests
 #line (102, 5) - (102, 57) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
             global::Sharpy.HTTPException ex = new global::Sharpy.HTTPException("test");
 #line (103, 5) - (103, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-            Xunit.Assert.Contains("test", global::Sharpy.Builtins.Str(ex));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(ex).Contains("test"));
 #line hidden
         }
 
@@ -231,7 +233,7 @@ namespace Sharpy.Stdlib.Tests.Spy.HTTP.HttpTests
 #line (107, 5) - (107, 54) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
             global::Sharpy.InvalidURL ex = new global::Sharpy.InvalidURL("bad url");
 #line (108, 5) - (108, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-            Xunit.Assert.Contains("bad url", global::Sharpy.Builtins.Str(ex));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(ex).Contains("bad url"));
 #line hidden
         }
 
@@ -241,7 +243,7 @@ namespace Sharpy.Stdlib.Tests.Spy.HTTP.HttpTests
 #line (112, 5) - (112, 58) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
             global::Sharpy.NotConnected ex = new global::Sharpy.NotConnected("no conn");
 #line (113, 5) - (113, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-            Xunit.Assert.Contains("no conn", global::Sharpy.Builtins.Str(ex));
+            Xunit.Assert.True(global::Sharpy.Builtins.Str(ex).Contains("no conn"));
 #line hidden
         }
 

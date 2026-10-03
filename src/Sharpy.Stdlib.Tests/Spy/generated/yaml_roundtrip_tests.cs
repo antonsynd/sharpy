@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -172,7 +174,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
 #line (88, 13) - (88, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                     Xunit.Assert.NotNull(before);
 #line (89, 13) - (89, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                    Xunit.Assert.Contains("this is a comment", before!);
+                    Xunit.Assert.True(before!.Contains("this is a comment"));
 #line hidden
                     break;
                 default:
@@ -202,7 +204,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
 #line (101, 13) - (101, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                     Xunit.Assert.NotNull(inline);
 #line (102, 13) - (102, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                    Xunit.Assert.Contains("trailing note", inline!);
+                    Xunit.Assert.True(inline!.Contains("trailing note"));
 #line hidden
                     break;
                 default:
@@ -221,11 +223,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
 #line (109, 5) - (109, 47) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
             string dumped = yaml.RoundtripDump(loaded);
 #line (110, 5) - (110, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-            Xunit.Assert.Contains("leading comment", dumped);
+            Xunit.Assert.True(dumped.Contains("leading comment"));
 #line (111, 5) - (111, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-            Xunit.Assert.Contains("inline", dumped);
+            Xunit.Assert.True(dumped.Contains("inline"));
 #line (112, 5) - (112, 30) 12 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-            Xunit.Assert.Contains("name:", dumped);
+            Xunit.Assert.True(dumped.Contains("name:"));
 #line hidden
         }
 
@@ -254,7 +256,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
 #line (125, 13) - (125, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                     Xunit.Assert.NotNull(inline);
 #line (126, 13) - (126, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                    Xunit.Assert.Contains("the host", inline!);
+                    Xunit.Assert.True(inline!.Contains("the host"));
 #line hidden
                     break;
                 default:

@@ -2,6 +2,8 @@
 // To regenerate: bash build_tools/regenerate_spy_tests.sh
 #nullable enable
 
+#pragma warning disable xUnit2009, xUnit2017
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -420,9 +422,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
 #line (186, 5) - (186, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
             var options = config.Options("section");
 #line (187, 5) - (187, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("d", options);
+            Xunit.Assert.True(options.Contains("d"));
 #line (188, 5) - (188, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("s", options);
+            Xunit.Assert.True(options.Contains("s"));
 #line hidden
         }
 
@@ -528,9 +530,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
 #line (231, 5) - (231, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
             var keys = config["section"].Keys();
 #line (232, 5) - (232, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("key1", keys);
+            Xunit.Assert.True(keys.Contains("key1"));
 #line (233, 5) - (233, 27) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("key2", keys);
+            Xunit.Assert.True(keys.Contains("key2"));
 #line hidden
         }
 
@@ -785,11 +787,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
 #line (351, 5) - (351, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
             string output = writer.Getvalue();
 #line (352, 5) - (352, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("[DEFAULT]", output);
+            Xunit.Assert.True(output.Contains("[DEFAULT]"));
 #line (353, 5) - (353, 36) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("base = /srv", output);
+            Xunit.Assert.True(output.Contains("base = /srv"));
 #line (354, 5) - (354, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("[section]", output);
+            Xunit.Assert.True(output.Contains("[section]"));
 #line hidden
         }
 
@@ -807,7 +809,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
 #line (362, 5) - (362, 56) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
             config.Write(writer, spaceAroundDelimiters: false);
 #line (363, 5) - (363, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-            Xunit.Assert.Contains("key=value", writer.Getvalue());
+            Xunit.Assert.True(writer.Getvalue().Contains("key=value"));
 #line hidden
         }
 
