@@ -971,7 +971,50 @@ public partial class Lexer
         if (lastChar == '_')
             throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
 
+        // A hex digit is never a suffix: `0xFFf` is 0xFFF and `0x1D` is 29. The digit loop above
+        // has already consumed every a-f/A-F, so what follows can only be an integer suffix.
+        ReadPrefixedIntegerSuffix(sb, "a hexadecimal", startLine, startColumn);
+
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
+    }
+
+    /// <summary>
+    /// The integer suffixes a literal of ANY base accepts (#2208): the decimal integer roster of
+    /// <see cref="ReadNumber"/> minus the float suffixes (<c>f d m</c>), which make a decimal
+    /// literal a float and have no meaning on a hex, binary or octal literal (C# refuses
+    /// <c>0x1m</c> too). <c>f</c>/<c>d</c> are hex digits, so on a hex literal they never reach
+    /// this roster.
+    /// </summary>
+    private static readonly string[] IntegerSuffixes = { "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
+
+    /// <summary>
+    /// Reads the optional integer suffix after the digits of a <c>0x</c>/<c>0b</c>/<c>0o</c>
+    /// literal, the same way <see cref="ReadNumber"/> reads a decimal literal's suffix: up to two
+    /// letters, validated against <see cref="IntegerSuffixes"/>. Without this the suffix lexed as
+    /// a separate identifier and the statement failed with SPY0103 (#2208).
+    /// </summary>
+    private void ReadPrefixedIntegerSuffix(StringBuilder sb, string articleAndBase, int startLine, int startColumn)
+    {
+        if (_position >= _source.Length || !char.IsLetter(_source[_position]))
+            return;
+
+        var suffix = _source[_position].ToString();
+        _position++;
+        _column++;
+
+        if (_position < _source.Length && char.IsLetter(_source[_position]))
+        {
+            suffix += _source[_position];
+            _position++;
+            _column++;
+        }
+
+        if (!IntegerSuffixes.Contains(suffix))
+            throw ReportError(
+                $"Invalid numeric suffix: {suffix} ({articleAndBase} literal accepts only the integer suffixes u, l and ul)",
+                startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumericSuffix);
+
+        sb.Append(suffix);
     }
 
     private Token ReadBinaryNumber(int startLine, int startColumn, int startPosition)
@@ -1022,6 +1065,8 @@ public partial class Lexer
         // Check if number ends with underscore
         if (lastChar == '_')
             throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
+
+        ReadPrefixedIntegerSuffix(sb, "a binary", startLine, startColumn);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
@@ -1074,6 +1119,8 @@ public partial class Lexer
         // Check if number ends with underscore
         if (lastChar == '_')
             throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
+
+        ReadPrefixedIntegerSuffix(sb, "an octal", startLine, startColumn);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }

@@ -25,28 +25,25 @@ public partial class Parser
                     var tokenValue = token.Value;
                     Advance();
 
-                    // Extract suffix if present (L, U, UL, etc.)
-                    // Skip suffix extraction for hex/octal/binary literals where
-                    // trailing letters are digits, not type suffixes
+                    // Extract the integer suffix (L, U, UL, ...) if present. An Integer token's
+                    // suffix is the lexer's integer roster, whose letters are only u/U/l/L — none
+                    // of which is a digit in ANY base — so the trailing run of those letters is
+                    // the suffix for decimal, hex, binary and octal alike, and a trailing hex
+                    // digit (`0x1D`, `0xFFf`) stays a digit (#2208). A float suffix (f/d/m) makes
+                    // the token a Float, so it never reaches here.
                     string value = tokenValue;
                     string? suffix = null;
-                    bool isPrefixedLiteral = tokenValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-                        || tokenValue.StartsWith("0o", StringComparison.OrdinalIgnoreCase)
-                        || tokenValue.StartsWith("0b", StringComparison.OrdinalIgnoreCase);
-
-                    if (!isPrefixedLiteral && tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+                    var suffixLength = 0;
+                    while (suffixLength < 2 && suffixLength < tokenValue.Length
+                        && tokenValue[tokenValue.Length - 1 - suffixLength] is 'u' or 'U' or 'l' or 'L')
                     {
-                        // Check for two-letter suffix
-                        if (tokenValue.Length > 1 && char.IsLetter(tokenValue[tokenValue.Length - 2]))
-                        {
-                            suffix = tokenValue.Substring(tokenValue.Length - 2);
-                            value = tokenValue.Substring(0, tokenValue.Length - 2);
-                        }
-                        else
-                        {
-                            suffix = tokenValue.Substring(tokenValue.Length - 1);
-                            value = tokenValue.Substring(0, tokenValue.Length - 1);
-                        }
+                        suffixLength++;
+                    }
+
+                    if (suffixLength > 0)
+                    {
+                        suffix = tokenValue.Substring(tokenValue.Length - suffixLength);
+                        value = tokenValue.Substring(0, tokenValue.Length - suffixLength);
                     }
 
                     return new IntegerLiteral

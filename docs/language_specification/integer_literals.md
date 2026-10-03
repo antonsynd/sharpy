@@ -22,6 +22,28 @@ billion = 1_000_000_000
   - `u` or `U` for `uint32` (System.UInt32): `42u`
   - `ul` or `UL` for `uint64` (System.UInt64): `42ul`
 
+The integer suffixes work on every base — hexadecimal (`0x`), binary (`0b`) and octal (`0o`)
+literals take them exactly as decimal ones do, with or without digit separators:
+
+```python
+def main():
+    mult = 0x41C64E6Du        # uint32
+    mask = 0xFFFF_FFFFL       # int64
+    flags = 0b1010_0101u      # uint32
+    mode = 0o755ul            # uint64
+    print(mult, mask, flags, mode)   # 1103515245 4294967295 165 493
+```
+
+A hex digit is never read as a suffix: `a`–`f` and `A`–`F` are digits, so `0xFFf` is `0xFFF`
+(4095) and `0x1D` is 29. The float suffixes `f`, `d` and `m` (see
+[Float Literals](float_literals.md)) apply to decimal literals only; on a binary or octal literal,
+and `m` on a hex literal, they are refused (SPY0023), as in C#:
+
+```python
+# x = 0b11f                 # ERROR (SPY0023): Invalid numeric suffix: f (a binary literal accepts only the integer suffixes u, l and ul)
+# y = 0xFFm                 # ERROR (SPY0023): Invalid numeric suffix: m (a hexadecimal literal accepts only the integer suffixes u, l and ul)
+```
+
 **Note:** Like C#, there are no literal suffixes for `int16`, `uint16`, `uint8`, or `int8`. Use type annotations or explicit casts:
 
 ```python
