@@ -1308,6 +1308,13 @@ public record FromImportStatement : Statement
     public bool ImportAll { get; init; }  // from module import *
 
     /// <summary>
+    /// The written spelling (#2188, ruling R-DS): the names were written in parentheses
+    /// (<c>from m import (a, b,)</c>, PEP 328). A syntax fact on a syntax node, read only by the
+    /// unparser so the formatter keeps the written form; no Semantic/CodeGen consumer.
+    /// </summary>
+    public bool IsParenthesized { get; init; }
+
+    /// <summary>
     /// The resolved module path relative to the project root, set during semantic analysis.
     /// For example, ".helpers" in package "mypackage" resolves to "mypackage.helpers".
     /// This is used during code generation to generate correct namespace references.

@@ -1195,6 +1195,7 @@ public partial class Parser
 
         var names = new List<ImportAlias>();
         var importAll = false;
+        var isParenthesized = false;
 
         if (Current.Type == TokenType.Star)
         {
@@ -1203,6 +1204,21 @@ public partial class Parser
         }
         else
         {
+            // PEP 328: the names may be parenthesized, and only then take a trailing comma and span
+            // lines (the lexer joins lines inside brackets) — #2188, ruling R-DS. `(*)` and `()` are
+            // refused as in python3 (SyntaxError: invalid syntax).
+            if (Current.Type == TokenType.LeftParen)
+            {
+                Advance();
+                isParenthesized = true;
+                if (Current.Type == TokenType.Star)
+                {
+                    throw ReportError(
+                        "'import *' cannot be parenthesized; write 'from <module> import *'",
+                        Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+                }
+            }
+
             _lastLoopPosition = -1;
             do
             {
@@ -1242,10 +1258,19 @@ public partial class Parser
                 });
 
                 if (Current.Type == TokenType.Comma)
+                {
                     Advance();
+                    // A trailing comma closes the list only inside parentheses (python3: "trailing
+                    // comma not allowed without surrounding parentheses").
+                    if (isParenthesized && Current.Type == TokenType.RightParen)
+                        break;
+                }
                 else
                     break;
             } while (true);
+
+            if (isParenthesized)
+                Expect(TokenType.RightParen);
         }
 
         var endToken = Previous;
@@ -1260,6 +1285,7 @@ public partial class Parser
             ModuleColumnEnd = moduleColEnd,
             Names = names.ToImmutableArray(),
             ImportAll = importAll,
+            IsParenthesized = isParenthesized,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endToken.Line,

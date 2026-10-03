@@ -298,7 +298,10 @@ from_import_stmt
 module_path     ::= identifier { '.' identifier }
 
 import_targets  ::= '*'
-                  | import_target { ',' import_target } [ ',' ]
+                  | '(' import_target { ',' import_target } [ ',' ] ')'
+                  | import_target { ',' import_target }
+                    (* PEP 328: only the parenthesized form takes a trailing comma or spans
+                       lines; '(' '*' ')' and '(' ')' are refused, as in Python *)
 
 import_target   ::= identifier [ 'as' identifier ]
 

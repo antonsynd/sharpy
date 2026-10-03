@@ -609,12 +609,19 @@ internal sealed partial class UnparseVisitor
         }
         else
         {
+            // The written spelling is kept (#2188, R-DS): parenthesized stays parenthesized. Like
+            // every bracketed construct the unparser writes, the names go on one line; a comment
+            // inside the parentheses makes the statement verbatim (WriteAnchored), keeping its layout.
+            if (node.IsParenthesized)
+                _w.Write("(");
             for (int i = 0; i < node.Names.Length; i++)
             {
                 if (i > 0)
                     _w.Write(", ");
                 WriteImportAlias(node.Names[i]);
             }
+            if (node.IsParenthesized)
+                _w.Write(")");
         }
         _w.WriteLine();
     }

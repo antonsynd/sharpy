@@ -1,0 +1,26 @@
+# #2188: the PEP 328 parenthesized form of `from m import (...)` — every cell of the
+# matrix: single line, multi-line, trailing comma, `as` aliases, comments between names,
+# a backtick-escaped name, a CLR namespace — next to the unparenthesized form.
+from builtins import (len as blen, abs as babs)
+from builtins import (max as bmax,)
+from builtins import (
+    min as bmin,
+    sum as bsum,
+)
+from builtins import (  # a comment after the open paren
+    # a comment on its own line between names
+    sorted as bsorted,  # an inline comment after a name
+    `reversed` as brev
+)
+from system.text import (StringBuilder)
+from builtins import round as bround
+
+
+def main():
+    xs: list[int] = [3, -1, 2]
+    print(blen(xs), babs(-4), bmax(xs))
+    print(bmin(xs), bsum(xs))
+    print(bsorted(xs), list(brev(xs)))
+    sb = StringBuilder()
+    sb.append("ok")
+    print(sb.to_string(), bround(2.5))

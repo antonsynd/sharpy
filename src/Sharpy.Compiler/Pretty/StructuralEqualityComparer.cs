@@ -438,6 +438,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 
     private bool FromImportEquals(FromImportStatement a, FromImportStatement b) =>
         a.Module == b.Module && a.ImportAll == b.ImportAll
+        // The written spelling (#2188): the formatter keeps a parenthesized list parenthesized.
+        && a.IsParenthesized == b.IsParenthesized
         // ModuleParts exclude the leading relative dots, which the Module comparison already covers.
         && EscapedSpelling(a.Module.TrimStart('.'), a.ModuleParts, a.BacktickEscapedParts)
             == EscapedSpelling(b.Module.TrimStart('.'), b.ModuleParts, b.BacktickEscapedParts)
