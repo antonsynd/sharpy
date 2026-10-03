@@ -20,7 +20,7 @@ public static partial class DiagnosticExplanations
             "Write the reserved word in backticks to use it as a name, or rename it:\nclass MoveData:\n    `type`: int = 0");
 
         Add(dict, DiagnosticCodes.Parser.ExpectedNewline, "Expected newline", "Parser",
-            "The parser expected a newline (end of statement) but found additional tokens. Each statement must be on its own line.",
+            "The parser expected a newline (end of statement) but found additional tokens. Each statement must be on its own line. A match expression written inside brackets (a call argument, a list or tuple element, a subscript) is refused under this code too: line breaks inside brackets are joined, so its 'case' arms cannot start their own lines — bind the match expression to a local first and use the local.",
             "x: int = 1 y: int = 2",
             "Put each statement on its own line:\n  x: int = 1\n  y: int = 2");
 

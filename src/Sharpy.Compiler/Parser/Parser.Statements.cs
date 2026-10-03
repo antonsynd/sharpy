@@ -1583,10 +1583,27 @@ public partial class Parser
     private MatchExpression ParseMatchExpression()
     {
         var startToken = Current;
+        var matchIndex = _position;
         Expect(TokenType.Match);
 
         var scrutinee = ParseExpression();
         ExpectHeaderColon();
+
+        // Directly inside brackets the lexer joins lines, so the arms can never start their own
+        // lines: what follows the colon is the first `case` (or anything but a newline), and the
+        // generic "Expected newline, got Case" said nothing about why. Ruling R-DT (#2210): the
+        // form stays refused — supporting it would re-enable newlines and indentation inside
+        // brackets, an invariant the formatter relies on — with the steer to bind it to a local.
+        if (Current.Type != TokenType.Newline && IsInsideBrackets(matchIndex))
+        {
+            throw ReportError(
+                "A match expression cannot be written inside brackets: line breaks inside (), [] and {} are joined, "
+                    + "so its 'case' arms cannot start their own lines. Bind it to a local first "
+                    + "(v = match ...: with the arms on the following lines) and use the local here",
+                startToken.Line, startToken.Column, DiagnosticCodes.Parser.ExpectedNewline,
+                span: GetSpanFromToken(startToken));
+        }
+
         ExpectNewline();
         Expect(TokenType.Indent);
 
@@ -1619,6 +1636,33 @@ public partial class Parser
             Span = CombineSpans(GetSpanFromToken(startToken), endSpan)
                 ?? GetSpanFromToken(startToken)
         };
+    }
+
+    /// <summary>
+    /// True when the token at <paramref name="index"/> sits inside an unclosed <c>(</c>, <c>[</c> or
+    /// <c>{</c> of its logical line. The lexer emits no NEWLINE/INDENT/DEDENT inside brackets, so
+    /// the nearest preceding one of those tokens starts the logical line, and the bracket balance
+    /// from there to <paramref name="index"/> is the nesting depth.
+    /// </summary>
+    private bool IsInsideBrackets(int index)
+    {
+        var depth = 0;
+        for (var i = index - 1; i >= 0 && i < _tokens.Count; i--)
+        {
+            switch (_tokens[i].Type)
+            {
+                case TokenType.Newline or TokenType.Indent or TokenType.Dedent:
+                    return depth > 0;
+                case TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace:
+                    depth--;
+                    break;
+            }
+        }
+
+        return depth > 0;
     }
 
     private MatchArm ParseMatchArm()

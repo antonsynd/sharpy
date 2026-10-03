@@ -53,23 +53,28 @@ match value:
 Used when you want to produce a value:
 
 ```python
-result = match value:
-    case 1: "one"
-    case 2: "two"
-    case _: "other"
-
-# Can be used anywhere an expression is expected
-print(match x:
-    case True: "yes"
-    case False: "no"
-)
-
 # In a return statement
 def categorize(n: int) -> str:
     return match n:
         case 0: "zero"
         case _ if n > 0: "positive"
         case _: "negative"
+
+def main():
+    value = 2
+    result = match value:
+        case 1: "one"
+        case 2: "two"
+        case _: "other"
+    print(result)                 # two
+
+    # Inside brackets, bind the match expression to a local first
+    x = True
+    answer = match x:
+        case True: "yes"
+        case False: "no"
+    print(answer)                 # yes
+    print(categorize(-3))         # negative
 ```
 
 **Expression Form Rules:**
@@ -77,6 +82,9 @@ def categorize(n: int) -> str:
 - All cases must produce values of compatible types
 - Must be exhaustive (all possible values handled)
 - Cases use `:` followed by an expression, not a block
+- Not directly inside brackets: line breaks inside `()`, `[]` and `{}` are joined, so the arms
+  could not start their own lines. A match expression written as a call argument, a list, tuple
+  or dict element, or a subscript is refused (SPY0102) with the steer to bind it to a local first
 
 ## Disambiguation: Expression vs Statement Context
 
@@ -84,35 +92,40 @@ The parser determines whether `match` is an expression or statement based on syn
 
 **Expression contexts** (match produces a value):
 ```python
-# Assignment RHS
-x = match value:
-    case 1: "one"
-    case _: "other"
+def respond(flag: bool) -> str:
+    # Return statement
+    return match flag:
+        case True: "yes"
+        case False: "no"
 
-# Return statement
-return match value:
-    case True: "yes"
-    case False: "no"
+def main():
+    value = 1
+    # Assignment RHS
+    x = match value:
+        case 1: "one"
+        case _: "other"
 
-# Function argument
-f(match value:
-    case 1: "a"
-    case _: "b"
-)
+    # Inside larger expression
+    prefix = "n="
+    result = prefix + match value:
+        case 1: "one"
+        case _: "other"
+    print(x, result, respond(True))   # one n=one yes
+```
 
-# Inside larger expression
-result = prefix + match value:
-    case 1: "one"
-    case _: "other"
+A match expression is **not** an expression context inside brackets — a call argument, a
+list/tuple/dict element, a subscript or a parenthesized operand. Bind it to a local first:
 
-# List/dict literal element
-items = [match x:
-    case 1: "one"
-    case _: "other"
-]
-
-# Conditional expression
-y = (match x: case 1: "a" case _: "b") if flag else default
+```python
+# f(match value:              # ERROR (SPY0102): A match expression cannot be written inside brackets: ...
+#     case 1: "a"             #   ... Bind it to a local first (v = match ...: with the arms on the
+#     case _: "b")            #   following lines) and use the local here
+def main():
+    value = 1
+    letter = match value:
+        case 1: "a"
+        case _: "b"
+    print([letter])           # ['a']
 ```
 
 **Statement contexts** (match is standalone):
@@ -139,7 +152,7 @@ if condition:
 | Feature | Expression Form | Statement Form |
 |---------|-----------------|----------------|
 | Case body | Single expression after `:` | Indented block |
-| Used in | Assignment, return, arguments | Standalone statement |
+| Used in | Assignment, return, an operand outside brackets | Standalone statement |
 | Newline after `case X:` | Expression on same line | Block on next line |
 | Produces value | Yes | No |
 

@@ -240,10 +240,8 @@ match_statement.md::8c64fcd74b  # SPY0200 first #1952
 match_statement.md::99372e1dad  # SPY0104 first #1952
 match_statement.md::a7b279c56e  # SPY0200 first #1952
 match_statement.md::ad6774fd98  # SPY0200 first #1952
-match_statement.md::b221ffbca2  # SPY0102 first #1952
 match_statement.md::bfe5685336  # SPY0200 first #1952
 match_statement.md::d207ff74cb  # SPY0700 first #1952
-match_statement.md::f88f109cb4  # SPY0102 first #1952
 maybe_expressions.md::151bf85f81  # SPY0103 first #1952
 maybe_expressions.md::28e2b6f8df  # SPY0200 first #1952
 maybe_expressions.md::4fd72ba689  # SPY0200 first #1952
