@@ -6,6 +6,7 @@ using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
@@ -109,7 +110,9 @@ internal static class CliHelpers
         }
         else if (logFile != null)
         {
-            var stream = new StreamWriter(logFile.FullName, append: false);
+            // Nothing disposes the logger, so a buffered writer lost every line at exit and
+            // --log-file always left an empty file (#2173).
+            var stream = new StreamWriter(logFile.FullName, append: false) { AutoFlush = true };
             return new ConsoleCompilerLogger(logLevel, stream, stream);
         }
         else
@@ -336,6 +339,62 @@ internal static class CliHelpers
 
         return true;
     }
+
+    /// <summary>
+    /// A <c>--module-path</c> naming a directory that does not exist is an error, like a missing
+    /// input file — it used to be accepted silently (#2173). Relative paths are checked against the
+    /// working directory, the directory the compiler resolves them from. Prints one error per
+    /// missing path and returns false when any is missing.
+    /// </summary>
+    internal static bool ValidateModulePaths(IEnumerable<string> modulePaths)
+    {
+        var valid = true;
+        foreach (var modulePath in modulePaths)
+        {
+            if (!Directory.Exists(modulePath))
+            {
+                Console.Error.WriteLine($"Error: Module path '{Path.GetFullPath(modulePath)}' does not exist.");
+                valid = false;
+            }
+        }
+
+        return valid;
+    }
+
+    /// <summary>
+    /// Spells each <c>--reference</c> as the full path the module registry resolves it to (as given,
+    /// against the working directory, or as a name on a module path). The registry and the Roslyn
+    /// assembly step must see the same file: handed a bare name the registry found on a module path,
+    /// Roslyn (which takes the reference verbatim) could not, and the compile failed with SPY0908
+    /// CS0400. A reference that resolves nowhere is kept as given, so the registry reports SPY0305.
+    /// </summary>
+    internal static string[] ResolveReferences(IEnumerable<string> references, IEnumerable<string> modulePaths)
+    {
+        var searchPaths = modulePaths.ToArray();
+        return references
+            .Select(reference => ModuleRegistry.ResolveAssemblyPath(reference, searchPaths) ?? reference)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// <c>--project-reference</c> is parsed by <c>build</c>, <c>run</c> and <c>compile</c> but no
+    /// mode builds a .NET project, so it was silently dropped (#2173). Refuse it instead. Prints the
+    /// error and returns false when any project reference was given.
+    /// </summary>
+    internal static bool RefuseProjectReferences(IReadOnlyCollection<string> projectReferences)
+    {
+        if (projectReferences.Count == 0)
+        {
+            return true;
+        }
+
+        Console.Error.WriteLine($"Error: --project-reference is not supported: {ProjectReferenceUnsupportedReason}.");
+        return false;
+    }
+
+    /// <summary>Why <c>--project-reference</c> is refused; shared by the refusal and <c>compile</c>'s option table.</summary>
+    internal const string ProjectReferenceUnsupportedReason =
+        "sharpyc does not build .NET projects; build it with `dotnet build` and pass the assembly with --reference";
 
     /// <summary>
     /// Splits a raw argument vector at the first bare <c>--</c>: everything before it is sharpyc's

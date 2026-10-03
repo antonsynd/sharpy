@@ -129,6 +129,28 @@ public sealed class CompilerApi
     {
         var config = SyntheticProject.BuildConfig(source, entryFilePath, options, _logger);
         var registry = BuildModuleRegistry(config);
+
+        // A reference that resolves to no file is SPY0305 on the registry; this path built the
+        // registry and never read it, so `--reference does/not/exist.dll` compiled silently (#2173).
+        // Refuse before compiling, as for a missing input file — nothing is written. Only the
+        // missing-path code: SPY0306 also fires when a long-lived process (a test host, the
+        // compile server) already loaded a same-named assembly from another path, and that
+        // compile goes on to succeed against the loaded copy — a different defect, not this one.
+        var missingReferences = registry?.Diagnostics.GetAll()
+            .Where(d => d.Code == DiagnosticCodes.Semantic.AssemblyNotFound)
+            .ToList();
+        if (missingReferences is { Count: > 0 })
+        {
+            return new CompileResult
+            {
+                Success = false,
+                Diagnostics = missingReferences,
+                GeneratedCSharpFiles = new Dictionary<string, string>(),
+                UsedAssemblyPaths = new HashSet<string>(),
+                ProjectConfig = config,
+            };
+        }
+
         // The synthetic config was built from these very options, so it has nothing independent to
         // merge in; incremental is off because single-file compiles never use the project cache.
         var projectCompiler = new Project.ProjectCompiler(

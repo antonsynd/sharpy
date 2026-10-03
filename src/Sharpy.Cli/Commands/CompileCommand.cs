@@ -1,6 +1,8 @@
 using System.CommandLine;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
@@ -14,6 +16,140 @@ namespace Sharpy.Cli.Commands;
 /// </summary>
 internal static class CompileCommand
 {
+    /// <summary>The two input kinds <c>compile</c> accepts; the option table has one column per kind.</summary>
+    internal enum InputKind
+    {
+        /// <summary>A single <c>.spy</c> source file (compiled as a synthetic project-of-one-file).</summary>
+        SpyFile,
+
+        /// <summary>A <c>.spyproj</c> project file.</summary>
+        SpyProject,
+    }
+
+    /// <summary>What <c>compile</c> does with an option for one input kind (#2173).</summary>
+    internal enum OptionEffect
+    {
+        /// <summary>The option reaches the compile and changes its result.</summary>
+        Honoured,
+
+        /// <summary>
+        /// Giving the option is an error for this input kind: the command prints why and exits 1
+        /// before compiling anything (<see cref="RefuseInapplicableOptions"/>).
+        /// </summary>
+        Refused,
+
+        /// <summary>
+        /// The option has no effect for this input kind, and its <c>--help</c> description says so
+        /// (the suffix is appended from this table by <see cref="Configure"/>).
+        /// </summary>
+        Ignored,
+    }
+
+    /// <summary>One row of the option-to-effect table: the effect per input kind and why.</summary>
+    internal sealed record OptionEffectRow(OptionEffect SpyFile, OptionEffect SpyProject, string Reason)
+    {
+        internal OptionEffect For(InputKind kind) => kind == InputKind.SpyFile ? SpyFile : SpyProject;
+    }
+
+    /// <summary>
+    /// The option-to-effect table for <c>compile</c>, keyed by option name: every option the command
+    /// accepts — its own and the recursive global ones — with what it does for a <c>.spy</c> and a
+    /// <c>.spyproj</c> input. A parsed option is honoured, refused for that input kind with a message,
+    /// or documented as ignored; it is never silently dropped (#2173, after #2159 found <c>-o</c>
+    /// parsed and dropped for a project). <c>CompileOptionEffectTableTests</c> fails when an option is
+    /// declared without a row or a row names no declared option.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, OptionEffectRow> OptionEffects =
+        new Dictionary<string, OptionEffectRow>(StringComparer.Ordinal)
+        {
+            ["--output"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "the assembly path; for a project it overrides bin/{Configuration}/{TFM} (#2159)"),
+            ["--configuration"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "the build configuration (default Release)"),
+            ["--type"] = new(OptionEffect.Honoured, OptionEffect.Ignored,
+                "a project's output type is its <OutputType>"),
+            ["--reference"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "for a project, added to the .spyproj's <Reference> items; a reference that cannot be found is SPY0305"),
+            ["--project-reference"] = new(OptionEffect.Refused, OptionEffect.Refused,
+                CliHelpers.ProjectReferenceUnsupportedReason),
+            ["--module-path"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "for a project, added to the .spyproj's <ModulePath> items; a directory that does not exist is an error"),
+            ["--self-contained"] = new(OptionEffect.Honoured, OptionEffect.Refused,
+                "self-contained publishing of a .spyproj is not supported yet"),
+            ["--no-deps"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "runtime dependencies are not copied beside the output"),
+            ["--incremental"] = new(OptionEffect.Ignored, OptionEffect.Honoured,
+                "the incremental cache lives in a project's obj/"),
+            ["--clean"] = new(OptionEffect.Ignored, OptionEffect.Honoured,
+                "only a project has bin/ and obj/ directories to delete"),
+            ["--emit-csharp"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "generated C# is mirrored beside the output (#2159)"),
+
+            // Recursive global options (GlobalOptions): every one reaches both paths.
+            ["--log-level"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "the compiler logger's level"),
+            ["--log-file"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "the compiler log goes to this file (at the --log-level/--verbose level)"),
+            ["--metrics-format"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "compilation metrics are printed"),
+            ["--metrics-output"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "compilation metrics are written to this file"),
+            ["--warn-as-error"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "warnings fail the compile (OR-ed with a project's <WarningsAsErrors>)"),
+            ["--nowarn"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "the codes are suppressed (unioned with a project's <NoWarn>)"),
+            ["--max-errors"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "error reporting stops after this many"),
+            ["--verbose"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "raises the log level to Info and shows diagnostic provenance"),
+            ["--enable-feature"] = new(OptionEffect.Honoured, OptionEffect.Honoured,
+                "the experimental feature is enabled (unioned with a project's <Features>)"),
+            ["--help"] = new(OptionEffect.Honoured, OptionEffect.Honoured, "prints help instead of compiling"),
+        };
+
+    /// <summary>
+    /// The <c>--help</c> suffix that documents a row's non-honoured cells, e.g.
+    /// <c>(ignored for .spyproj)</c>. Empty when the option is honoured for both input kinds.
+    /// </summary>
+    internal static string DescriptionSuffix(OptionEffectRow row)
+    {
+        var notes = new List<string>();
+        if (row.SpyFile == row.SpyProject && row.SpyFile != OptionEffect.Honoured)
+        {
+            notes.Add($"{EffectWord(row.SpyFile)} for .spy and .spyproj: {row.Reason}");
+        }
+        else
+        {
+            if (row.SpyFile != OptionEffect.Honoured)
+                notes.Add($"{EffectWord(row.SpyFile)} for .spy: {row.Reason}");
+            if (row.SpyProject != OptionEffect.Honoured)
+                notes.Add($"{EffectWord(row.SpyProject)} for .spyproj: {row.Reason}");
+        }
+
+        return notes.Count == 0 ? string.Empty : $" ({string.Join("; ", notes)})";
+
+        static string EffectWord(OptionEffect effect) => effect == OptionEffect.Refused ? "refused" : "ignored";
+    }
+
+    /// <summary>
+    /// Refuses, before anything is compiled or written, every option the user actually gave whose
+    /// table cell for <paramref name="kind"/> is <see cref="OptionEffect.Refused"/>. Returns false
+    /// (after printing one error per refused option) when the command must exit.
+    /// </summary>
+    internal static bool RefuseInapplicableOptions(System.CommandLine.ParseResult parseResult, IEnumerable<Option> options, InputKind kind)
+    {
+        var refused = false;
+        foreach (var option in options)
+        {
+            if (!OptionEffects.TryGetValue(option.Name, out var row) || row.For(kind) != OptionEffect.Refused)
+                continue;
+            if (parseResult.GetResult(option) is not { Implicit: false })
+                continue;
+
+            var inputKind = kind == InputKind.SpyFile ? "a .spy file" : "a .spyproj project";
+            Console.Error.WriteLine($"Error: {option.Name} is not supported when compiling {inputKind}: {row.Reason}.");
+            refused = true;
+        }
+
+        return !refused;
+    }
+
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
         var command = new Command("compile", "Compile Sharpy source to a standalone .dll or .exe");
@@ -23,7 +159,7 @@ internal static class CompileCommand
         outputOpt.Aliases.Add("-o");
         var configOpt = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };
         configOpt.Aliases.Add("-c");
-        var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (ignored for .spyproj)" };
+        var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library'" };
         typeOpt.Aliases.Add("-t");
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
         var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
@@ -34,8 +170,8 @@ internal static class CompileCommand
         modPathOpt.Aliases.Add("-m");
         var selfContainedOpt = new Option<bool>("--self-contained") { Description = "Produce a self-contained executable (no .NET runtime required)" };
         var noDepsOpt = new Option<bool>("--no-deps") { Description = "Skip copying runtime dependencies alongside the output" };
-        var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation for .spyproj projects" };
-        var cleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ before building a .spyproj project" };
+        var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation" };
+        var cleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ before building" };
         var emitCSharpOpt = new Option<bool>("--emit-csharp") { Description = "Write generated C# source files alongside the output" };
 
         command.Arguments.Add(inputArg);
@@ -50,6 +186,15 @@ internal static class CompileCommand
         command.Options.Add(incrementalOpt);
         command.Options.Add(cleanOpt);
         command.Options.Add(emitCSharpOpt);
+
+        // The table documents its own non-honoured cells in --help, so "ignored"/"refused" cannot
+        // drift from what the command does. (Global options are honoured for both kinds; the table
+        // test keeps it that way, since their descriptions are shared with every other command.)
+        foreach (var option in command.Options)
+        {
+            if (OptionEffects.TryGetValue(option.Name, out var row))
+                option.Description += DescriptionSuffix(row);
+        }
 
         command.SetAction((parseResult) =>
         {
@@ -75,11 +220,20 @@ internal static class CompileCommand
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
 
+            var kind = input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase)
+                ? InputKind.SpyProject
+                : InputKind.SpyFile;
+            if (!RefuseInapplicableOptions(parseResult, command.Options, kind)
+                || !CliHelpers.ValidateModulePaths(modulePath))
+            {
+                return CliHelpers.ExitCompileError;
+            }
+
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
 
-            if (input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase))
+            if (kind == InputKind.SpyProject)
             {
-                return CompileProject(input, output, configuration, clean, incremental, noDeps, selfContained, emitCSharp, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
+                return CompileProject(input, output, configuration, reference, modulePath, clean, incremental, noDeps, emitCSharp, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
             }
 
             return CompileSingleFile(input, output, configuration, type, reference, projectReference, modulePath, noDeps, selfContained, emitCSharp, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
@@ -180,10 +334,11 @@ internal static class CompileCommand
         FileInfo projectFile,
         FileInfo? output,
         string configuration,
+        string[] references,
+        string[] modulePaths,
         bool clean,
         bool incremental,
         bool noDeps,
-        bool selfContained,
         bool emitCSharp,
         ICompilerLogger logger,
         CompilerLogLevel logLevel,
@@ -203,6 +358,49 @@ internal static class CompileCommand
             if (output != null)
             {
                 projectConfig.OutputAssemblyPathOverride = output.FullName;
+            }
+
+            // `-r`/`-m` were parsed and silently dropped for a project (#2173). They join the
+            // project's own <ModulePath>/<Reference> items, so they mean what those items mean. Paths
+            // are resolved against the working directory, as for a single file; each reference is
+            // spelled as the file the module registry resolves it to (CliHelpers.ResolveReferences),
+            // so semantic analysis and the Roslyn step see the same assembly.
+            foreach (var modulePath in modulePaths)
+            {
+                var full = Path.GetFullPath(modulePath);
+                if (!projectConfig.ModulePaths.Contains(full))
+                    projectConfig.ModulePaths.Add(full);
+            }
+
+            // A `-r` that resolves nowhere is an error, as it is for a single file (where the module
+            // registry's SPY0305 fails the compile). The project path does not surface registry load
+            // failures — a .spyproj's own unresolvable <Reference> is still accepted, recorded
+            // separately — so the command-line references are checked here, by the registry's own
+            // resolution over the merged module paths, before anything is compiled.
+            var unresolved = new List<CompilerDiagnostic>();
+            foreach (var reference in references)
+            {
+                var resolved = ModuleRegistry.ResolveAssemblyPath(reference, projectConfig.ModulePaths);
+                if (resolved == null)
+                {
+                    unresolved.Add(new CompilerDiagnostic(
+                        $"Assembly not found: {reference}",
+                        CompilerDiagnosticSeverity.Error,
+                        Code: DiagnosticCodes.Semantic.AssemblyNotFound,
+                        Phase: CompilerPhase.ImportResolution));
+                }
+                else if (!projectConfig.References.Contains(resolved))
+                {
+                    projectConfig.References.Add(resolved);
+                }
+            }
+
+            if (unresolved.Count > 0)
+            {
+                Console.Error.WriteLine("Compilation FAILED.");
+                Console.Error.WriteLine();
+                CliHelpers.RenderDiagnosticsFromFiles(unresolved, Console.Error, projectConfig.EntryPoint);
+                return CliHelpers.ExitCompileError;
             }
 
             if (clean)
@@ -266,12 +464,8 @@ internal static class CompileCommand
                 RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase));
             }
 
-            if (selfContained)
-            {
-                Console.Error.WriteLine("Self-contained publishing not yet supported.");
-                return 1;
-            }
-
+            // --self-contained is refused for a project up front, by the option table, before
+            // anything is compiled; it used to be refused here, after the assembly was written.
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
             CliHelpers.OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
 

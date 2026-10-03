@@ -33,9 +33,11 @@ sharpyc emit csharp <input.spy>   # Generated C# code
 
 - `-t, --type <exe|library>` - Output type (default: library)
 - `-o, --output <path>` - Output file path
-- `-r, --reference <assembly>` - Add .NET assembly references
-- `-p, --project-reference <project>` - Add .NET project references
-- `-m, --module-path <path>` - Additional module search paths
+- `-r, --reference <assembly>` - Add .NET assembly references (a path, or a file name found on a module path). A reference that resolves nowhere is an error (SPY0305). With `compile app.spyproj`, added to the project's own `<Reference>` items.
+- `-p, --project-reference <project>` - Refused: sharpyc does not build .NET projects; build it with `dotnet build` and pass the assembly with `-r`
+- `-m, --module-path <path>` - Additional module search paths. A directory that does not exist is an error. With `compile app.spyproj`, added to the project's own `<ModulePath>` items.
+
+`compile` accepts both a `.spy` file and a `.spyproj`. Every option it accepts is either honoured, refused for that input kind, or documented in `--help` as ignored for it (`--type` for a `.spyproj`, `--incremental`/`--clean` for a `.spy` file; `--self-contained` is refused for a `.spyproj`) — the table is `CompileCommand.OptionEffects`.
 
 ### Project Options
 

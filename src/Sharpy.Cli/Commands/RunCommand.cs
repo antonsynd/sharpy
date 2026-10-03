@@ -29,7 +29,7 @@ internal static class RunCommand
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
         var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = $"Add a .NET project reference (repeatable; refused: {CliHelpers.ProjectReferenceUnsupportedReason})" };
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");

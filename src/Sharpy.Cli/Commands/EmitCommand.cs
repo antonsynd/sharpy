@@ -454,7 +454,7 @@ internal static class EmitCommand
     {
         try
         {
-            if (!CliHelpers.ValidateNamespaceOption(namespaceName))
+            if (!CliHelpers.ValidateNamespaceOption(namespaceName) || !CliHelpers.ValidateModulePaths(modulePaths))
             {
                 return 1;
             }

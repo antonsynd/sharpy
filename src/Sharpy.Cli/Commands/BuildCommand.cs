@@ -22,7 +22,7 @@ internal static class BuildCommand
         // One value per occurrence — repeat the flag to collect more (#1179, #1215).
         var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = $"Add a .NET project reference (repeatable; refused: {CliHelpers.ProjectReferenceUnsupportedReason})" };
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
@@ -119,6 +119,17 @@ internal static class BuildCommand
         string[]? features = null,
         string? namespaceName = null)
     {
+        // The one single-file seam behind build, run, compile <file>.spy and the compile server:
+        // a project reference is refused rather than dropped, and a module path that does not
+        // exist is an error rather than ignored (#2173).
+        if (!CliHelpers.RefuseProjectReferences(projectReferences) || !CliHelpers.ValidateModulePaths(modulePaths))
+        {
+            CliHelpers.LastFailureExitCode = CliHelpers.ExitCompileError;
+            return null;
+        }
+
+        references = CliHelpers.ResolveReferences(references, modulePaths);
+
         try
         {
             var source = File.ReadAllText(inputFile.FullName);

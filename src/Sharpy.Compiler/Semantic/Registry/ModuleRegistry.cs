@@ -615,7 +615,15 @@ internal class ModuleRegistry
     /// as any file system changes between this check and Assembly.LoadFrom() are
     /// handled by exception catching (IOException, UnauthorizedAccessException) in LoadReference().
     /// </summary>
-    private string? ResolveAssemblyPath(string assemblyPath)
+    private string? ResolveAssemblyPath(string assemblyPath) => ResolveAssemblyPath(assemblyPath, _modulePaths);
+
+    /// <summary>
+    /// The resolution <see cref="LoadReference"/> applies, against an explicit set of module search
+    /// paths, so a caller can tell whether a reference will resolve before compiling with it — the
+    /// CLI uses it to refuse a <c>--reference</c> that names nothing (#2173). Returns the full path,
+    /// or null when the reference resolves nowhere.
+    /// </summary>
+    internal static string? ResolveAssemblyPath(string assemblyPath, IEnumerable<string> modulePaths)
     {
         // Try as absolute or relative path first
         if (File.Exists(assemblyPath))
@@ -631,7 +639,7 @@ internal class ModuleRegistry
         }
 
         // Try in module search paths
-        foreach (var searchPath in _modulePaths)
+        foreach (var searchPath in modulePaths)
         {
             var fullPath = Path.Combine(searchPath, assemblyPath);
             if (File.Exists(fullPath))
