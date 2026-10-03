@@ -74,6 +74,27 @@ content = File.read_all_text("data.txt")  # Calls System.IO.File.ReadAllText(...
 
 This mapping applies to method names, property names, and static members. The compiler resolves `snake_case` identifiers to their `PascalCase` .NET equivalents at compile time.
 
+### Members a framework finds by name
+
+A member you declare is emitted through the same mapping, so `def on_gui(self)` becomes `OnGui`. A `snake_case` name cannot spell an acronym, and a framework that finds a member **by name through reflection** — a Unity message such as `OnGUI`, or anything that calls `Type.GetMethod("…")` — finds only the exact spelling. Declare such a member with the backtick spelling, which is emitted verbatim: ``def `OnGUI`(self)``. The compiler does not warn about the near miss: a name a framework looks up is not an inherited member, so there is nothing for it to compare against.
+
+```python
+class Mangled:
+    def on_gui(self) -> None:      # emitted as OnGui
+        pass
+
+class Escaped:
+    def `OnGUI`(self) -> None:     # emitted verbatim as OnGUI
+        pass
+
+def main() -> None:
+    # What a reflective framework does: look the method up by its exact name.
+    m: object = Mangled()
+    e: object = Escaped()
+    print(m.get_type().get_method("OnGUI") is None)   # True: there is only OnGui
+    print(e.get_type().get_method("OnGUI") is None)   # False
+```
+
 ### Sharpy builtin receivers expose their Sharpy names only
 
 A Sharpy builtin — `list`, `dict`, `set`, `frozenset`, `frozendict`, `array`, `str`, `bytes` — wraps a .NET type, but its surface is the Sharpy one. A `PascalCase` .NET spelling of a wrapper member is **refused** with a steer to the Sharpy spelling, rather than binding the wrapper's C# member and silently producing a `System.Func` or an internal view type:
