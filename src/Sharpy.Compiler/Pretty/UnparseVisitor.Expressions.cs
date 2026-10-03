@@ -456,6 +456,8 @@ internal sealed partial class UnparseVisitor
                     Visit(arm.Guard);
                 }
                 _w.Write(": ");
+                if (arm.IsRaise)
+                    _w.Write("raise "); // #2190: the arm's written `raise <exception>` body
                 Visit(arm.Result);
                 _w.WriteLine();
             });

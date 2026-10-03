@@ -1074,6 +1074,7 @@ internal partial class TypeChecker
         scrutineeType = ApplyVoidScrutineePolicy(matchExpr.Scrutinee, scrutineeType);
 
         SemanticType? resultType = null;
+        var raisingArms = 0;
 
         foreach (var arm in matchExpr.Arms)
         {
@@ -1091,6 +1092,21 @@ internal partial class TypeChecker
                         ReportNotTruthTestable(arm.Guard, guardType, "Guard condition must be a boolean expression",
                             code: DiagnosticCodes.Semantic.ConditionNotBoolean);
                     }
+                }
+
+                if (arm.IsRaise)
+                {
+                    // #2190 (ruling R-DR): `case P: raise E` — the exception is checked exactly as a
+                    // raise statement's (CheckRaise), the arm contributes NO type to the match
+                    // expression (it never produces a value), and the throw lowering is recorded
+                    // for the emitter (Rule 2).
+                    CheckExpression(arm.Result);
+                    RequireRaisedValueIsException(arm.Result);
+                    _semanticInfo.SetMatchArmLowering(arm.Pattern, new MatchArmLowering(OmitUnreachableDiscard: false, Throws: true));
+                    raisingArms++;
+                    _controlFlowDepth--;
+                    _symbolTable.ExitScope();
+                    continue;
                 }
 
                 var armType = CheckExpression(arm.Result);
@@ -1139,8 +1155,26 @@ internal partial class TypeChecker
                     matchExpr.Arms.Take(matchExpr.Arms.Length - 1).Select(a => (a.Pattern, a.Guard)),
                     _semanticInfo))
             {
-                _semanticInfo.SetMatchArmLowering(last.Pattern, new MatchArmLowering(OmitUnreachableDiscard: true));
+                // Keep a recorded Throws (#2190): an omitted arm is never emitted either way.
+                var recorded = _semanticInfo.GetMatchArmLowering(last.Pattern) ?? new MatchArmLowering(OmitUnreachableDiscard: false);
+                _semanticInfo.SetMatchArmLowering(last.Pattern, recorded with { OmitUnreachableDiscard = true });
             }
+        }
+
+        // #2190: a match expression takes its type from its value-producing arms only — there is no
+        // slot-directed typing of a match expression (the arms alone decide, see above), so when
+        // EVERY arm raises there is no type to give it. Refused rather than typed `void` (which would
+        // surface as a confusing assignment/return mismatch); C# likewise has no natural type for a
+        // switch expression whose arms all throw (CS8506).
+        if (resultType == null && raisingArms > 0 && raisingArms == matchExpr.Arms.Length)
+        {
+            AddError(
+                "Every arm of this match expression raises, so it has no value: a match expression takes "
+                + "its type from its non-raising arms. Use a match statement whose cases raise",
+                matchExpr.LineStart, matchExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidRaise,
+                span: matchExpr.Span);
+            return SemanticType.Unknown;
         }
 
         return resultType ?? SemanticType.Void;

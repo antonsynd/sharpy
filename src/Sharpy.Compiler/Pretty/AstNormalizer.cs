@@ -252,7 +252,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
             {
                 Pattern = (Pattern)Visit(a.Pattern),
                 Guard = a.Guard != null ? (Expression)Visit(a.Guard) : null,
-                Result = (Expression)Visit(a.Result)
+                Result = (Expression)Visit(a.Result),
+                IsRaise = a.IsRaise
             }).ToImmutableArray()
         };
 

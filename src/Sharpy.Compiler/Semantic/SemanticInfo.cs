@@ -3229,8 +3229,12 @@ public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
 /// EMITTED lowering (deconstruct-to-bool for synthetic Result/Optional, payload+null for a
 /// NullableType), so C#'s switch-expression exhaustiveness proves the discard unreachable (CS8510
 /// behind SPY0908). The emitter reads the fact and skips the arm (Rule 2); it never re-derives it.
+/// <see cref="Throws"/> (#2190, ruling R-DR) marks an arm written <c>raise &lt;exception&gt;</c>
+/// whose exception the checker admitted: the emitter lowers it to a C# throw — a
+/// <c>throw</c> expression in the switch-expression form, a <c>throw</c> statement in the
+/// <c>is</c>-chain form (where an assignment cannot take a throw expression).
 /// </summary>
-public sealed record MatchArmLowering(bool OmitUnreachableDiscard);
+public sealed record MatchArmLowering(bool OmitUnreachableDiscard, bool Throws = false);
 
 // FunctoolsPartialSpec (#1520) lives in FunctoolsPartialSpec.cs, sibling to
 // SelfInterfaceBridgeSpec — the same fully-resolved-spec pattern, node-keyed.

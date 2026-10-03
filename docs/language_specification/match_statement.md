@@ -86,6 +86,28 @@ def main():
   could not start their own lines. A match expression written as a call argument, a list, tuple
   or dict element, or a subscript is refused (SPY0102) with the steer to bind it to a local first
 
+**Raising arms.** An arm of a match *expression* may `raise <exception>` instead of producing a
+value; it lowers to a C# `throw` expression (`_ => throw new ValueError(...)`). The exception
+follows `raise`'s own rules (it must be an exception, SPY0242), and `raise ... from` is not
+accepted in an arm. A raising arm contributes no type: the match expression's type comes from its
+other arms, and a match expression whose every arm raises has no type and is refused (SPY0242) —
+use a match statement. `raise` is accepted only here, never as a general expression.
+
+```python
+def parse(name: str) -> int:
+    return match name:
+        case "up": 0
+        case "down": 1
+        case _: raise ValueError(f"unknown {name}")
+
+def main():
+    print(parse("down"))          # 1
+    try:
+        parse("left")
+    except ValueError as e:
+        print(e)                  # unknown left
+```
+
 ## Disambiguation: Expression vs Statement Context
 
 The parser determines whether `match` is an expression or statement based on syntactic context:

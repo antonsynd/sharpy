@@ -845,7 +845,9 @@ match_expr      ::= 'match' expression ':' NEWLINE INDENT
                     DEDENT
 
 case_expr_clause
-                ::= 'case' pattern [ guard ] ':' expression NEWLINE
+                ::= 'case' pattern [ guard ] ':' ( expression | 'raise' expression ) NEWLINE
+                    (* 'raise' expression: the arm throws (a C# throw expression); accepted
+                       only here, never as a general expression; no 'from' clause *)
 
 # =============================================================================
 # 4. TYPES

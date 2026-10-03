@@ -1,0 +1,44 @@
+# #2190 (ruling R-DR): `raise <exception>` as a match-EXPRESSION arm body lowers to a C# throw
+# expression. The raising arm contributes no type: the match expression is `str` from its other
+# arms. Last arm, middle arm, a nested match expression, and an arm whose sibling hoists (the
+# `is`-chain lowering, where the raise becomes a throw statement).
+def parse(name: str) -> int:
+    return match name:
+        case "up": 0
+        case "down": 1
+        case _: raise ValueError(f"unknown {name}")
+
+
+def describe(n: int) -> str:
+    label = match n:
+        case 0: "zero"
+        case 1: raise ValueError("one is not allowed")
+        case _: match n:
+            case 7: "big"
+            case _: raise ValueError(f"small {n}")
+    return label
+
+
+def squares(n: int) -> list[int]:
+    xs: list[int] = [1, 2, 3]
+    return match n:
+        case 0: [v * v for v in xs]
+        case _: raise ValueError(f"no squares for {n}")
+
+
+def main():
+    print(parse("up"), parse("down"))
+    for n in [0, 1, 7, 3]:
+        try:
+            print(describe(n))
+        except ValueError as e:
+            print("raised:", e)
+    print(squares(0))
+    try:
+        print(parse("left"))
+    except ValueError as e:
+        print("raised:", e)
+    try:
+        print(squares(2))
+    except ValueError as e:
+        print("raised:", e)

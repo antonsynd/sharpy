@@ -94,9 +94,18 @@ public record MatchArm
     public Expression? Guard { get; init; }
 
     /// <summary>
-    /// The result expression if the pattern matches.
+    /// The result expression if the pattern matches — or, when <see cref="IsRaise"/>, the
+    /// exception the arm raises.
     /// </summary>
     public Expression Result { get; init; } = null!;
+
+    /// <summary>
+    /// The written spelling (#2190, ruling R-DR): the arm body is <c>raise &lt;exception&gt;</c>,
+    /// with the exception in <see cref="Result"/>. Accepted ONLY as a match-EXPRESSION arm body,
+    /// never as a general expression. A syntax fact: the checker validates the exception and
+    /// materializes the throw lowering (<c>MatchArmLowering.Throws</c>) the emitter reads.
+    /// </summary>
+    public bool IsRaise { get; init; }
 
     // Source location
     public int LineStart { get; init; }

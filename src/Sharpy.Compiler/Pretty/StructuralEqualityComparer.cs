@@ -264,7 +264,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
                 return false;
             if (!NullableNodeEquals(a.Arms[i].Guard, b.Arms[i].Guard))
                 return false;
-            if (!Equals(a.Arms[i].Result, b.Arms[i].Result))
+            if (a.Arms[i].IsRaise != b.Arms[i].IsRaise || !Equals(a.Arms[i].Result, b.Arms[i].Result))
                 return false;
         }
         return true;

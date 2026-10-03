@@ -1706,7 +1706,35 @@ public partial class Parser
         }
 
         Expect(TokenType.Colon);
+
+        // #2190 (ruling R-DR): `case P: raise E` — `raise` is accepted as a match-EXPRESSION arm
+        // body ONLY (never as a general expression); it lowers to a C# throw expression. The
+        // exception is required (a throw expression cannot rethrow), and `from` is refused: a
+        // throw expression has no cause to attach.
+        var isRaise = false;
+        if (Current.Type == TokenType.Raise)
+        {
+            var raiseToken = Current;
+            Advance();
+            isRaise = true;
+            if (Current.Type is TokenType.Newline or TokenType.Dedent or TokenType.Eof)
+            {
+                throw ReportError(
+                    "A raising match-expression arm needs an exception: 'raise <exception>' (a bare 'raise' re-raises only inside 'except')",
+                    raiseToken.Line, raiseToken.Column, DiagnosticCodes.Parser.UnexpectedToken,
+                    span: GetSpanFromToken(raiseToken));
+            }
+        }
+
         var result = ParseExpression();
+
+        if (isRaise && Current.Type == TokenType.From)
+        {
+            throw ReportError(
+                "'raise ... from' is not supported in a match-expression arm; raise the exception with its cause from a match statement",
+                Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
+        }
+
         // A block-consuming result (a nested match expression) already consumed the arm's newline
         // and its own Dedent, so the arm is terminated by that Dedent rather than a Newline (#1196).
         ExpectStatementEnd();
@@ -1717,6 +1745,7 @@ public partial class Parser
             Pattern = pattern,
             Guard = guard,
             Result = result,
+            IsRaise = isRaise,
             LineStart = startToken.Line,
             ColumnStart = startToken.Column,
             LineEnd = endToken.Line,

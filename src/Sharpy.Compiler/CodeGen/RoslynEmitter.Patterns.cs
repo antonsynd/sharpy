@@ -1045,14 +1045,18 @@ internal partial class RoslynEmitter
 
         var generated = new List<GeneratedMatchArm>(matchExpr.Arms.Length);
         var armResults = new List<ExpressionSyntax>(matchExpr.Arms.Length);
+        // Parallel to armResults: the arm raises (#2190) — its result is the exception to throw.
+        var armThrows = new List<bool>(matchExpr.Arms.Length);
 
         foreach (var arm in matchExpr.Arms)
         {
+            var armLowering = _context.SemanticInfo?.GetMatchArmLowering(arm.Pattern);
+
             // P13 D5: a trailing catch-all the checker proved unreachable under the emitted lowering
             // (synthetic Result/Optional deconstruct-to-bool, or a NullableType payload+null) is
             // omitted — emitting it draws CS8510 from C#'s switch-expression exhaustiveness. Reading a
             // recorded fact, no re-derivation (Rule 2).
-            if (_context.SemanticInfo?.GetMatchArmLowering(arm.Pattern) is { OmitUnreachableDiscard: true })
+            if (armLowering is { OmitUnreachableDiscard: true })
                 continue;
 
             var memberGuards = new List<ExpressionSyntax>();
@@ -1082,17 +1086,21 @@ internal partial class RoslynEmitter
                 resultEvaluations));
 
             armResults.Add(resultExpr);
+            // The checker admitted `raise E` as this arm's body and recorded the throw lowering.
+            armThrows.Add(armLowering is { Throws: true });
         }
 
         if (generated.Any(a => a.GuardEvaluations.Count > 0 || a.Body.Count > 0))
         {
-            return GenerateMatchExpressionAsIsChain(matchExpr, scrutineeExpr, generated, armResults);
+            return GenerateMatchExpressionAsIsChain(matchExpr, scrutineeExpr, generated, armResults, armThrows);
         }
 
         var switchArms = new List<SwitchExpressionArmSyntax>(generated.Count);
         for (int i = 0; i < generated.Count; i++)
         {
-            var switchArm = SwitchExpressionArm(generated[i].Pattern, armResults[i]);
+            // A raising arm is a C# throw expression, which a switch-expression arm accepts.
+            var switchArm = SwitchExpressionArm(generated[i].Pattern,
+                armThrows[i] ? ThrowExpression(armResults[i]) : armResults[i]);
             if (generated[i].Guard != null)
             {
                 switchArm = switchArm.WithWhenClause(WhenClause(generated[i].Guard!));
@@ -1129,7 +1137,8 @@ internal partial class RoslynEmitter
         MatchExpression matchExpr,
         ExpressionSyntax scrutineeExpr,
         List<GeneratedMatchArm> arms,
-        List<ExpressionSyntax> armResults)
+        List<ExpressionSyntax> armResults,
+        List<bool> armThrows)
     {
         var resultType = GetExpressionSemanticType(matchExpr)
             ?? throw new InvalidOperationException(
@@ -1187,9 +1196,13 @@ internal partial class RoslynEmitter
                     LiteralExpression(SyntaxKind.TrueLiteralExpression)))
             };
             selectedBody.AddRange(arm.Body);
-            selectedBody.Add(ExpressionStatement(
-                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                    EscapedIdentifierName(valueName), armResults[i])));
+            // A raising arm (#2190) throws instead of storing: C# admits a throw expression in a
+            // switch-expression arm but not as an assignment's right-hand side (CS8115).
+            selectedBody.Add(armThrows[i]
+                ? ThrowStatement(armResults[i])
+                : ExpressionStatement(
+                    AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                        EscapedIdentifierName(valueName), armResults[i])));
 
             if (arm.Guard == null)
             {

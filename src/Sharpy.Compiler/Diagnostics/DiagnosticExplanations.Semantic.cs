@@ -381,7 +381,7 @@ public static partial class DiagnosticExplanations
             "Use an explicit comparison:\nif x != 0:\n    print(\"non-zero\")\nFor a tuple, test len(t) or a specific element instead.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidRaise, "Invalid raise statement", "Semantic",
-            "A raise statement is used incorrectly. Bare 'raise' can only be used inside an except block, and 'raise X' requires X to be an exception type.",
+            "A raise statement is used incorrectly. Bare 'raise' can only be used inside an except block, and 'raise X' requires X to be an exception type. The same rules apply to 'raise X' as a match-expression arm body, and a match expression whose every arm raises is refused: it has no value to give.",
             "def foo():\n    raise  # bare raise outside except block",
             "Raise a specific exception:\n  raise ValueError(\"something went wrong\")\n\nOr use bare raise inside an except block:\n  try:\n      ...\n  except Exception as e:\n      raise");
 
