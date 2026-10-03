@@ -3152,6 +3152,8 @@ public enum OperatorLoweringKind
     ReflectedOperands,
     DecimalPow,
     FloatPow,
+    /// <summary><c>**</c> whose operands promote to float32 (#2189): <c>(float)Math.Pow(x, y)</c>.</summary>
+    Float32Pow,
     IntegerPowInt,
     IntegerPowLong,
     /// <summary><c>CheckedIntPow(ulong, ulong)</c> — both operands are unsigned 64-bit (#1700).</summary>

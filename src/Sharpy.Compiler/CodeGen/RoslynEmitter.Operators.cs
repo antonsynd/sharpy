@@ -1090,9 +1090,10 @@ internal partial class RoslynEmitter
     /// <see cref="OperatorLoweringKind.IntegerPowULongExponentLong"/>,
     /// <see cref="OperatorLoweringKind.IntegerPowLongExponentULong"/>;
     /// <see cref="OperatorLoweringKind.FloatPow"/> is <c>Math.Pow</c>,
+    /// <see cref="OperatorLoweringKind.Float32Pow"/> is <c>(float)Math.Pow</c> (#2189),
     /// <see cref="OperatorLoweringKind.DecimalPow"/> is <c>Math.Pow</c> over <c>(double)</c> casts.
     /// There is no type-inspecting fallback: an unrecorded power throws, because a <c>**</c> that
-    /// passed inference is always one of these seven (a user-defined or CLR operand is refused by
+    /// passed inference is always one of these eight (a user-defined or CLR operand is refused by
     /// inference — no <c>__pow__</c> mapping exists).
     /// </para>
     /// </summary>
@@ -1115,6 +1116,9 @@ internal partial class RoslynEmitter
 
             case OperatorLoweringKind.FloatPow:
                 return GenerateDoublePow(left, right);
+
+            case OperatorLoweringKind.Float32Pow:
+                return CastExpression(PredefinedType(Token(SyntaxKind.FloatKeyword)), GenerateDoublePow(left, right));
 
             case OperatorLoweringKind.IntegerPowInt:
                 return GenerateCheckedIntPow(left, right,
@@ -1140,7 +1144,7 @@ internal partial class RoslynEmitter
                 throw new InvalidOperationException(
                     "No power lowering recorded for '**' — the TypeChecker must classify every power "
                     + "that passes inference as IntegerPowInt/IntegerPowLong/IntegerPowULong/"
-                    + "IntegerPowULongExponentLong/IntegerPowLongExponentULong/FloatPow/DecimalPow (#1623, #1700)");
+                    + "IntegerPowULongExponentLong/IntegerPowLongExponentULong/FloatPow/Float32Pow/DecimalPow (#1623, #1700, #2189)");
         }
     }
 

@@ -355,11 +355,14 @@ internal class TypeInferenceService
                 // rejection the other arithmetic operators give that pair. Returning float64
                 // for a decimal operand would contradict the emitted native decimal `/`
                 // (CS0266/CS0019 -> SPY0908) (#1188).
+                // A float32 promotion (any float32, no float64/decimal) divides in float32 — the
+                // spec table's row, and what the native C# `/` the emitter prints computes (#2189).
                 BinaryOperator.Divide => PrimitiveCatalog.IsDecimal(left) || PrimitiveCatalog.IsDecimal(right)
                     ? InferNumericResultType(left, right)
-                    : SemanticType.Double,
+                    : IsFloat32Arithmetic(left, right) ? SemanticType.Float32 : SemanticType.Double,
 
-                // Power: integer ** integer => Long, any float => Double
+                // Power: integer ** integer => the IntegerPowerRules width, float32 promotion =>
+                // float32 (#2189), any other float => float64
                 BinaryOperator.Power => InferPowerResultType(left, right),
 
                 BinaryOperator.Equal or
@@ -1955,8 +1958,20 @@ internal class TypeInferenceService
     {
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
             return IntegerPowerRules.Classify(left, right)?.ResultType ?? ApplyIntegerFloor(left);
-        return SemanticType.Double;
+        return IsFloat32Arithmetic(left, right) ? SemanticType.Float32 : SemanticType.Double;
     }
+
+    /// <summary>
+    /// The spec's float32 row (<c>arithmetic_operators.md</c>: "Any <c>float32</c> (no
+    /// <c>float64</c>/<c>decimal</c>) → <c>float32</c>"): the two numeric operands promote to
+    /// <c>float32</c>. The ONE predicate behind the <c>/</c> and <c>**</c> result types and the
+    /// <see cref="OperatorLoweringKind.Float32Pow"/> classification, so the recorded type and the
+    /// emitted computation are one decision (#2189). <c>+ - * // %</c> already reach float32
+    /// through <see cref="InferNumericResultType"/>, which this reads.
+    /// </summary>
+    internal static bool IsFloat32Arithmetic(SemanticType left, SemanticType right)
+        => !PrimitiveCatalog.IsDecimal(left) && !PrimitiveCatalog.IsDecimal(right)
+            && InferNumericResultType(left, right) == SemanticType.Float32;
 
     private static SemanticType? InferNumericResultType(SemanticType left, SemanticType right)
     {

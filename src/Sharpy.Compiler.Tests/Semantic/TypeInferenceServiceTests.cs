@@ -180,14 +180,23 @@ public class TypeInferenceServiceTests
         _service.InferBinaryOpType(op, SemanticType.Float32, SemanticType.Decimal).Should().BeNull();
     }
 
-    // Non-decimal division keeps its Python float64 answer — the `/` change is scoped to
+    // Non-decimal integer division keeps its Python float64 answer — the `/` change is scoped to
     // operand pairs that include a decimal.
     [Fact]
     public void InferBinaryOpType_NonDecimalDivision_StillReturnsDouble()
     {
         _service.InferBinaryOpType(BinaryOperator.Divide, SemanticType.Int, SemanticType.Long)
             .Should().Be(SemanticType.Double);
+    }
+
+    // The spec table's float32 row (arithmetic_operators.md: any float32, no float64/decimal →
+    // float32) — this assertion pinned float64 until #2189.
+    [Fact]
+    public void InferBinaryOpType_Float32Division_ReturnsFloat32()
+    {
         _service.InferBinaryOpType(BinaryOperator.Divide, SemanticType.Float32, SemanticType.Float32)
+            .Should().Be(SemanticType.Float32);
+        _service.InferBinaryOpType(BinaryOperator.Divide, SemanticType.Float32, SemanticType.Double)
             .Should().Be(SemanticType.Double);
     }
 

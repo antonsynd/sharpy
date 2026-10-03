@@ -498,7 +498,13 @@ internal partial class TypeChecker
             return OperatorLoweringKind.DecimalPow;
 
         if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
-            return OperatorLoweringKind.FloatPow;
+        {
+            // The same predicate that typed the expression float32 (#2189): Math.Pow's double is
+            // narrowed back to the recorded width.
+            return TypeInferenceService.IsFloat32Arithmetic(leftType, rightType)
+                ? OperatorLoweringKind.Float32Pow
+                : OperatorLoweringKind.FloatPow;
+        }
 
         return IntegerPowerRules.Classify(leftType, rightType)?.Kind;
     }
