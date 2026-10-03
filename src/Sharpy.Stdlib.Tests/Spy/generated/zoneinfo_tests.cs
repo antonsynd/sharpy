@@ -362,7 +362,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
         [Xunit.FactAttribute]
         public void TestEqualsNoneIsFalse()
         {
-#line (184, 5) - (184, 45) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (185, 5) - (185, 49) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
             Xunit.Assert.NotNull(new global::Sharpy.ZoneInfo("UTC"));
 #line hidden
         }
@@ -370,7 +370,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
         [Xunit.FactAttribute]
         public void TestGetHashCodeSameKeyIsEqual()
         {
-#line (188, 5) - (188, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (189, 5) - (189, 77) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
             Xunit.Assert.Equal(global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")), global::Sharpy.Builtins.Hash(new global::Sharpy.ZoneInfo("UTC")));
 #line hidden
         }
@@ -378,7 +378,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
         [Xunit.FactAttribute]
         public void TestToStringUtcReturnsUtc()
         {
-#line (194, 5) - (194, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (195, 5) - (195, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
             Xunit.Assert.Equal("UTC", global::Sharpy.Builtins.Str(new global::Sharpy.ZoneInfo("UTC")));
 #line hidden
         }
