@@ -17,6 +17,7 @@ internal partial class RoslynEmitter
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
         _context.Logger.LogInfo("Starting code generation");
+        _emittedTestHostAssert = false;
 
         // Note: From-import symbol tracking is now handled by CodeGenInfo during semantic analysis.
         // The CodeGenInfoComputer.ProcessFromImport method sets CodeGenInfo.CSharpName and
@@ -143,8 +144,39 @@ internal partial class RoslynEmitter
         // Must be added AFTER NormalizeWhitespace to preserve leading position
         var nullablePragma = ParseLeadingTrivia("#nullable enable\n\n");
 
+        // A test file of a test host (it emitted an xUnit assertion) suppresses the two xUnit analyzer
+        // rules its membership asserts trip (#2174, ruling R-EE). `assert x in c` lowers to
+        // Xunit.Assert.True(<the ordinary membership lowering>) — one lowering of `in` for every
+        // container kind — and xUnit's analyzers steer Assert.True(c.Contains(x)) to Assert.Contains
+        // (xUnit2017) and Assert.True(s.Contains(t)) to Assert.Contains on strings (xUnit2009). That
+        // steer is wrong for Sharpy: Assert.Contains searches by enumeration, not the container's
+        // __contains__. The suppression travels with the emitted file so an analyzer-enabled,
+        // warnings-as-errors user test project builds; non-test output carries no pragma.
+        if (_emittedTestHostAssert)
+        {
+            nullablePragma = nullablePragma.AddRange(BuildXunitMembershipAnalyzerSuppression());
+        }
+
         _context.Logger.LogInfo($"Completed code generation ({nonImportStatements.Count} statements emitted)");
         return compilationUnit.WithLeadingTrivia(nullablePragma);
+    }
+
+    /// <summary>
+    /// <c>#pragma warning disable xUnit2009, xUnit2017</c> followed by a blank line, built as Roslyn
+    /// directive trivia (#2174).
+    /// </summary>
+    private static SyntaxTriviaList BuildXunitMembershipAnalyzerSuppression()
+    {
+        var directive = PragmaWarningDirectiveTrivia(
+                Token(SyntaxKind.DisableKeyword),
+                SeparatedList<ExpressionSyntax>(new ExpressionSyntax[]
+                {
+                    IdentifierName("xUnit2009"),
+                    IdentifierName("xUnit2017"),
+                }),
+                isActive: true)
+            .NormalizeWhitespace();
+        return TriviaList(Trivia(directive), EndOfLine("\n"));
     }
 
     private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)

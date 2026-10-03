@@ -406,6 +406,12 @@ internal partial class RoslynEmitter : ICodeEmitter
     // When true, assert statements are rewritten to xUnit assertions instead of Debug.Assert.
     private bool _isInTestFunction;
 
+    // Set when this compilation unit emitted an xUnit assertion (GenerateTestAssert). Such a file is
+    // a test file of a test host and carries `#pragma warning disable xUnit2009, xUnit2017` (#2174):
+    // membership asserts lower to Xunit.Assert.True(<the ordinary `in` lowering>), which xUnit's
+    // analyzers would otherwise flag in an analyzer-enabled, warnings-as-errors test project.
+    private bool _emittedTestHostAssert;
+
     // Track if the current class being generated inherits from unittest.TestCase.
     // When true, setup/teardown methods become private (called from synthesized
     // constructor/Dispose) instead of being exposed publicly.

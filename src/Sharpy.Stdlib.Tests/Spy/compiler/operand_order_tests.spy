@@ -48,7 +48,7 @@ def test_assert_not_equal_operand_order_1853():
     assert take(xs) != len([v for v in xs])
 
 
-# GenerateTestAssert: `assert a not in b` -> Xunit.Assert.DoesNotContain(a, b).
+# GenerateTestAssert: `assert a not in b` -> Xunit.Assert.True(<the ordinary `a not in b` lowering>) (#2174).
 @test
 def test_assert_not_in_operand_order_1853():
     xs: list[int] = [9, 1, 2]

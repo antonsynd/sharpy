@@ -65,8 +65,8 @@ Inside `@test` functions, `assert` statements are rewritten to xUnit assertions 
 | `assert a is not None` | `Xunit.Assert.NotNull(a)` |
 | `assert a is b` | `Xunit.Assert.Same(b, a)` |
 | `assert a is not b` | `Xunit.Assert.NotSame(b, a)` |
-| `assert a in b` | `Xunit.Assert.Contains(a, b)` |
-| `assert a not in b` | `Xunit.Assert.DoesNotContain(a, b)` |
+| `assert a in b` | `Xunit.Assert.True(<a in b>)` — the ordinary membership lowering, e.g. `b.Contains(a)` |
+| `assert a not in b` | `Xunit.Assert.True(<a not in b>)` — e.g. `!b.Contains(a)` |
 | `assert isinstance(a, T)` | `Xunit.Assert.IsType<T>(a)` |
 | `assert s.startswith(p)` | `Xunit.Assert.StartsWith(p, s)` (only when `s` is typed `str`) |
 | `assert s.endswith(p)` | `Xunit.Assert.EndsWith(p, s)` (only when `s` is typed `str`) |
@@ -75,6 +75,19 @@ Inside `@test` functions, `assert` statements are rewritten to xUnit assertions 
 | `assert expr` (fallback) | `Xunit.Assert.True(expr)` |
 
 When an `assert` has a message (`assert expr, "message"`), it is passed as the last argument where xUnit supports it.
+
+Membership (`in` / `not in`) has no dedicated xUnit assertion: a test observes exactly what the same
+condition computes outside a test (see [membership_operators.md](membership_operators.md)), so
+`x in c` is the container's own membership test — a user `__contains__`, a substring test on `str`,
+the keys of a `dict`, the elements of a `tuple`. xUnit's `Assert.Contains` searches by enumeration,
+which is a different question for a class whose `__contains__` and `__iter__` disagree.
+
+xUnit's analyzers flag `Assert.True(c.Contains(x))` (xUnit2017) and `Assert.True(s.Contains(t))`
+on strings (xUnit2009) and steer to `Assert.Contains` — the enumeration search above. Every emitted
+C# file that contains a rewritten `assert` therefore carries
+`#pragma warning disable xUnit2009, xUnit2017` after its `#nullable enable` header, so an
+analyzer-enabled test project that treats warnings as errors builds. Files with no rewritten
+`assert` carry no pragma.
 
 ### `startswith` / `endswith` (type-gated)
 

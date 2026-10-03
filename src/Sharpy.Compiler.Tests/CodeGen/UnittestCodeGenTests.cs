@@ -12,8 +12,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///
 /// 1. Assert rewriting inside <c>@test</c> functions (Plan Task 20):
 ///    each Python-style <c>assert</c> is rewritten to a specialized
-///    <c>Xunit.Assert.*</c> call (Equal, NotEqual, Null, NotNull, Contains,
-///    DoesNotContain, IsAssignableFrom, False, True). Outside <c>@test</c>, asserts
+///    <c>Xunit.Assert.*</c> call (Equal, NotEqual, Null, NotNull, IsAssignableFrom,
+///    False, True; membership is True over the ordinary <c>in</c> lowering, #2174). Outside <c>@test</c>, asserts
 ///    continue to emit <c>System.Diagnostics.Debug.Assert(...)</c>.
 ///
 /// 2. Unittest module transforms (Plan Task 22):
@@ -158,7 +158,7 @@ def main():
     }
 
     [Fact]
-    public void AssertRewrite_In_GeneratesXunitAssertContains()
+    public void AssertRewrite_In_GeneratesXunitAssertTrueOverOrdinaryMembership()
     {
         var source = @"
 @test
@@ -170,11 +170,14 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.Contains(1, items)");
+        // One lowering of `in` (#2174, R-EE): the ordinary membership test, asserted True — never
+        // xUnit's enumeration-based Assert.Contains.
+        code.Should().Contain("Xunit.Assert.True(items.Contains(1))");
+        code.Should().NotContain("Xunit.Assert.Contains(");
     }
 
     [Fact]
-    public void AssertRewrite_NotIn_GeneratesXunitAssertDoesNotContain()
+    public void AssertRewrite_NotIn_GeneratesXunitAssertTrueOverOrdinaryNonMembership()
     {
         var source = @"
 @test
@@ -186,7 +189,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.DoesNotContain(4, items)");
+        code.Should().Contain("Xunit.Assert.True(!items.Contains(4))");
+        code.Should().NotContain("Xunit.Assert.DoesNotContain(");
     }
 
     [Fact]
@@ -716,7 +720,7 @@ def main():
         code.Should().MatchRegex(@"catch \(ValueError __caught_\d+\)");
         code.Should().MatchRegex(@"exc = __caught_\d+;");
         // The captured variable must be usable in subsequent assertions
-        code.Should().Contain("Xunit.Assert.Contains(\"bad input\", global::Sharpy.Builtins.Str(exc))");
+        code.Should().Contain("Xunit.Assert.True(global::Sharpy.Builtins.Str(exc).Contains(\"bad input\"))");
     }
 
     [Fact]

@@ -149,6 +149,7 @@ internal partial class RoslynEmitter
     /// </param>
     private StatementSyntax GenerateTestAssert(AssertStatement assert, ExpressionSyntax? msgExpr)
     {
+        _emittedTestHostAssert = true;
         var xunitAssert = ParseQualifiedName("Xunit.Assert");
         var test = assert.Test;
 
@@ -303,27 +304,16 @@ internal partial class RoslynEmitter
                     Argument(ordered[0])));
         }
 
-        // assert a in b → Xunit.Assert.Contains(a, b)
-        if (test is BinaryOp { Operator: BinaryOperator.In } inOp)
-        {
-            var ordered = GenerateExpressionsInOrder(new Expression[] { inOp.Left, inOp.Right });
-            return ExpressionStatement(InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Contains")))
-                .AddArgumentListArguments(
-                    Argument(ordered[0]),
-                    Argument(ordered[1])));
-        }
-
-        // assert a not in b → Xunit.Assert.DoesNotContain(a, b)
-        if (test is BinaryOp { Operator: BinaryOperator.NotIn } notInOp)
-        {
-            var ordered = GenerateExpressionsInOrder(new Expression[] { notInOp.Left, notInOp.Right });
-            return ExpressionStatement(InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("DoesNotContain")))
-                .AddArgumentListArguments(
-                    Argument(ordered[0]),
-                    Argument(ordered[1])));
-        }
+        // assert a in b / a not in b have NO arm of their own (#2174, ruling R-EE): they reach the
+        // fallback below, Xunit.Assert.True(<the ordinary membership lowering>), so the test host
+        // asserts exactly what `sharpyc run` computes — the recorded #1771 iterable projection, then
+        // the container's own Contains (a user __contains__, str's substring test, a dict's keys).
+        // One lowering of `in`. The former Xunit.Assert.Contains(a, b) / DoesNotContain(a, b) arm
+        // re-spelled the condition from the AST: a tuple skipped the projection (CS1503), a dict bound
+        // neither of xUnit's two dictionary overloads (CS0121), and a user class whose __contains__
+        // and __iter__ disagree was searched by ENUMERATION instead of its __contains__ (a silent
+        // wrong verdict). xUnit's analyzers flag the resulting Assert.True(c.Contains(x)) as
+        // xUnit2017/xUnit2009; the compilation unit suppresses both (see GenerateCompilationUnit).
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
         //
