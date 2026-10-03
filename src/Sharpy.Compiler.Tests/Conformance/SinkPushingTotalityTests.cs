@@ -122,7 +122,6 @@ public class SinkPushingTotalityTests
 
         // --- Deferred lambdas built around an ALREADY-GENERATED expression: the body is that one
         // expression, so there is no operand left to place. ---
-        ["GenerateNestedLinqChain/SimpleLambdaExpression"] = "comprehension clause lambdas; CaptureHoisted owns the sinks",
         ["GenerateCallableReferenceLambda/ParenthesizedLambdaExpression"] = "wraps a resolved callable, no user sub-expression",
         ["GenerateCallableReferenceLambda/SimpleLambdaExpression"] = "wraps a resolved callable, no user sub-expression",
         ["GenerateConstructorReference/ParenthesizedLambdaExpression"] = "wraps a constructor call, no user sub-expression",

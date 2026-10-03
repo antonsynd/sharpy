@@ -85,9 +85,23 @@ internal partial class RoslynEmitter
         var (forClause, ifClauses) = forClauses[depth];
         var iterExpr = GenerateComprehensionIterator(forClause.Iterator);
 
-        var loopVarName = forClause.Target is Identifier id
-            ? GetMangledVariableName(id, isNewDeclaration: true)
-            : GenerateTempVarName("genvar");
+        // A plain-name target IS the lambda parameter. Every other target (flat, parenthesized,
+        // nested or starred tuple, member/index store) binds through the list/set/dict comprehension's
+        // own binder, BindComprehensionLoopTarget, against a temp parameter — once, here, before the
+        // conditions and the element are generated, so their references resolve to the names bound
+        // (#2181: the generator form used to name the temp and bind nothing, so every read of a
+        // tuple-target name was CS0103).
+        var targetBinding = new List<StatementSyntax>();
+        string loopVarName;
+        if (forClause.Target is Identifier id)
+        {
+            loopVarName = GetMangledVariableName(id, isNewDeclaration: true);
+        }
+        else
+        {
+            loopVarName = GenerateTempVarName("genvar");
+            BindComprehensionLoopTarget(forClause.Target, loopVarName, targetBinding);
+        }
 
         var loopParam = Parameter(EscapedIdentifier(loopVarName));
 
@@ -95,19 +109,20 @@ internal partial class RoslynEmitter
 
         foreach (var ifClause in ifClauses)
         {
-            var condExpr = GenerateExpression(ifClause.Condition);
-            var condLambda = SimpleLambdaExpression(loopParam, condExpr);
+            ExpressionSyntax condExpr = null!;
+            var condHoisted = CaptureHoisted(() => condExpr = GenerateExpression(ifClause.Condition));
+            var condLambda = SimpleLambdaExpression(loopParam, GeneratorClauseBody(targetBinding, condHoisted, condExpr));
             chain = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     chain, IdentifierName("Where")))
                 .AddArgumentListArguments(Argument(condLambda));
         }
 
-        ExpressionSyntax body;
+        ExpressionSyntax body = null!;
         if (depth + 1 < forClauses.Count)
         {
-            body = GenerateNestedLinqChain(forClauses, element, depth + 1);
-            var innerLambda = SimpleLambdaExpression(loopParam, body);
+            var innerHoisted = CaptureHoisted(() => body = GenerateNestedLinqChain(forClauses, element, depth + 1));
+            var innerLambda = SimpleLambdaExpression(loopParam, GeneratorClauseBody(targetBinding, innerHoisted, body));
             chain = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     chain, IdentifierName("SelectMany")))
@@ -115,8 +130,8 @@ internal partial class RoslynEmitter
         }
         else
         {
-            body = GenerateExpression(element);
-            var selectLambda = SimpleLambdaExpression(loopParam, body);
+            var elementHoisted = CaptureHoisted(() => body = GenerateExpression(element));
+            var selectLambda = SimpleLambdaExpression(loopParam, GeneratorClauseBody(targetBinding, elementHoisted, body));
             chain = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     chain, IdentifierName("Select")))
@@ -124,6 +139,28 @@ internal partial class RoslynEmitter
         }
 
         return chain;
+    }
+
+    /// <summary>
+    /// The body of one generator-expression clause lambda. It evaluates where the loop target is in
+    /// scope: the target's binding statements, then whatever generating the body hoisted (the caller
+    /// captured it with <see cref="CaptureHoisted"/> — a comprehension nested in a condition or the
+    /// element reads the target, so its loop cannot run in the enclosing scope, #2181), then
+    /// <c>return body;</c>. With nothing to bind or hoist it is the bare expression, so the lambda
+    /// stays <c>p =&gt; body</c>.
+    /// </summary>
+    private static CSharpSyntaxNode GeneratorClauseBody(
+        List<StatementSyntax> targetBinding,
+        List<StatementSyntax> hoisted,
+        ExpressionSyntax body)
+    {
+        if (targetBinding.Count == 0 && hoisted.Count == 0)
+            return body;
+
+        var statements = new List<StatementSyntax>(targetBinding);
+        statements.AddRange(hoisted);
+        statements.Add(ReturnStatement(body));
+        return Block(statements);
     }
 
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
