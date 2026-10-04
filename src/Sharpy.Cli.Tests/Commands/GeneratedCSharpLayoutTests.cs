@@ -170,4 +170,24 @@ public class GeneratedCSharpLayoutTests
         File.ReadAllText(ws.PathFor(Path.Combine("custom", "src", "lib.cs"))).Should().Contain(FlatMarker);
         Directory.Exists(ws.PathFor("bin")).Should().BeFalse("nothing goes to the default bin/ when -o is given");
     }
+
+    [Fact]
+    public void CompileProject_PinnedSourceRoot_MirrorsBelowIt()
+    {
+        // With <SourceRoot>src</SourceRoot> the unit keys are relative to src/, the root the module
+        // names are spelled from, so the C# lands at lib.cs, not src/lib.cs.
+        using var ws = new TempWorkspace();
+        WriteSources(ws, flat: true, package: true);
+        var proj = ws.PathFor("App.spyproj");
+        File.WriteAllText(proj, File.ReadAllText(proj).Replace(
+            "  </PropertyGroup>", "    <SourceRoot>src</SourceRoot>\n  </PropertyGroup>"));
+
+        AssertOk(CliTestHarness.Invoke($"compile \"{proj}\" --emit-csharp"));
+
+        var root = ws.PathFor(Path.Combine("bin", "Release", "net10.0"));
+        Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Select(p => Path.GetRelativePath(root, p))
+            .Should().BeEquivalentTo("main.cs", "lib.cs", Path.Combine("pkg", "lib.cs"));
+        File.ReadAllText(Path.Combine(root, "pkg", "lib.cs")).Should().Contain(PackageMarker);
+    }
 }

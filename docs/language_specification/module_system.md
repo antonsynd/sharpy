@@ -52,6 +52,28 @@ reaches `Merge.Pkg.Lib.LibModule.F()`, and a type `Foo` declared in `pkg/lib.spy
 `Merge.Pkg.Lib.Foo`. A single-file compile has no root namespace: `thing.spy` is `namespace Thing`.
 The layout is the same in every mode — `run`, `project`, and single-file library builds.
 
+**The module root.** Absolute imports and namespaces are spelled from one directory, the
+project's module root. By default it is the longest common directory of the project's sources, so
+it moves when a source is added in a new top-level folder: with sources only in `src/game/core/`
+and `src/game/ui/`, the root is `src/game/` and `from core.greeting import greet` names
+`src/game/core/greeting.spy`; add `src/tools/x.spy` and the root becomes `src/`, so the same module
+is `game.core.greeting`, the old import fails, and its namespace gains a `Game` segment. A
+`.spyproj` pins the root with `<SourceRoot>`, a path relative to the `.spyproj`'s directory (an
+absolute path is also accepted):
+
+```xml
+<PropertyGroup>
+    <RootNamespace>Merge</RootNamespace>
+    <SourceRoot>src</SourceRoot>
+</PropertyGroup>
+```
+
+With a pinned root, `src/game/core/greeting.spy` is always `game.core.greeting` (namespace
+`Merge.Game.Core.Greeting`), whatever other folders appear. The saved C# (`project --emit-cs-to`,
+`compile --emit-csharp`) mirrors each source's path below the pinned root (`game/core/greeting.cs`)
+instead of below the `.spyproj`'s directory (`src/game/core/greeting.cs`). A `<SourceRoot>` that
+does not exist, or a source file outside it, is an error when the project is loaded.
+
 Because types sit beside the members class, a type may share its module's name: `class Thing[T]`
 (or a `struct`, `enum`, `union`, … named `Thing`) in `thing.spy` is simply `Merge.Thing.Thing`, and
 a function and a type whose emitted names coincide (`def foo_bar` and `class FooBar`) live in two

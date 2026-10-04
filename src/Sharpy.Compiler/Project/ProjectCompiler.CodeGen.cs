@@ -45,7 +45,10 @@ internal partial class ProjectCompiler
         foreach (var (_, unit) in _projectModel!.Units)
         {
             var sourceFile = unit.FilePath;
-            var relativePath = Path.GetRelativePath(config.ProjectDirectory, sourceFile);
+            // The unit key: the source path below the pinned module root when the .spyproj sets
+            // <SourceRoot>, so `project --emit-cs-to` mirrors module names; otherwise below the
+            // project directory.
+            var relativePath = Path.GetRelativePath(config.SourceRoot ?? config.ProjectDirectory, sourceFile);
             var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
 
             // Include cached C# code for skipped files

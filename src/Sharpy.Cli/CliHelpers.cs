@@ -641,8 +641,10 @@ internal static class CliHelpers
 
     /// <summary>
     /// Maps one generated-C# unit to its output path under <paramref name="outputDir"/>, mirroring
-    /// the unit's key, which is its source path relative to the project directory (the module
-    /// root that also fixes the module's dotted name — <c>ProjectCompiler.GenerateCode</c>). So
+    /// the unit's key, which is its source path relative to the project directory, or to the
+    /// pinned <c>&lt;SourceRoot&gt;</c> when the .spyproj sets one (<c>ProjectCompiler.GenerateCode</c>);
+    /// with <c>&lt;SourceRoot&gt;../../Assets&lt;/SourceRoot&gt;</c>, <c>Assets/Scripts/x.spy</c> goes
+    /// to <c>Scripts/x.cs</c>, the same path its module name <c>Scripts.x</c> spells. So
     /// <c>src/lib.spy</c> and <c>src/pkg/lib.spy</c> go to <c>src/lib.cs</c> and
     /// <c>src/pkg/lib.cs</c>. Writing by file name alone sent both to <c>lib.cs</c>, and the second
     /// silently overwrote the first (#2060).

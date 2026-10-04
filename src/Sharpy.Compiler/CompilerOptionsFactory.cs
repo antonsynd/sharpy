@@ -94,6 +94,11 @@ public static class CompilerOptionsFactory
                 "The compile input file list; read directly from config by ProjectCompiler. "
                 + "Not a compiler option — it is the input, not a setting.",
 
+            ["SourceRoot"] =
+                "The pinned module root; read directly from config by "
+                + "ProjectCompiler.ComputeSourceRootPath and the generated-C# unit keys. "
+                + "Not a compiler option.",
+
             ["PackageReferences"] =
                 "Resolved per-seam by NuGetResolver.ResolvePackage at each of its three "
                 + "consumers (Compiler, CompilerApi, AssemblyCompiler) — nothing rewrites "

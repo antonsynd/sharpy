@@ -69,6 +69,17 @@ public class ProjectConfig
     public List<string> SourceFiles { get; init; } = new();
 
     /// <summary>
+    /// The pinned module root, as a full path, or null when the .spyproj sets no
+    /// <c>&lt;SourceRoot&gt;</c>. Absolute imports, module namespaces and the generated-C# layout
+    /// are all spelled from the module root (<see cref="Project.ProjectCompiler.ComputeSourceRootPath"/>).
+    /// Without a pin that root is the longest common directory of <see cref="SourceFiles"/>, so it
+    /// moves when a source is added in a new top-level folder, and every absolute import and
+    /// namespace moves with it. <see cref="ProjectFileParser.Load"/> resolves the value against
+    /// the project directory and refuses a missing directory or a source file outside it.
+    /// </summary>
+    public string? SourceRoot { get; init; }
+
+    /// <summary>
     /// Optional in-memory source overrides keyed by source-file path. When a file in
     /// <see cref="SourceFiles"/> has an entry here, the compiler uses this text instead of
     /// reading the file from disk. Used by the synthetic project-of-one-file (#1038) so a
@@ -250,6 +261,7 @@ public class ProjectConfig
             AssemblyName = AssemblyName,
             EntryPoint = EntryPoint,
             SourceFiles = SourceFiles,
+            SourceRoot = SourceRoot,
             InMemorySources = sources,
             PreParsedUnits = PreParsedUnits,
             PreserveTrivia = PreserveTrivia,
@@ -422,10 +434,17 @@ public static class ProjectFileParser
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
 
+        var sourceRoot = ResolveSourceRoot(projectDirectory, propertyGroup.Element("SourceRoot")?.Value);
+
         if (sourceFiles.Count == 0)
         {
             throw new InvalidDataException(
                 "No source files found in project. Add <SpyFile Include=\"...\" /> or <SourceFile Include=\"...\" /> elements.");
+        }
+
+        if (sourceRoot != null)
+        {
+            RequireSourcesUnderSourceRoot(sourceRoot, sourceFiles);
         }
 
         return new ProjectConfig
@@ -438,6 +457,7 @@ public static class ProjectFileParser
             AssemblyName = assemblyName,
             EntryPoint = entryPoint,
             SourceFiles = sourceFiles,
+            SourceRoot = sourceRoot,
             References = references,
             ModulePaths = modulePaths,
             PackageReferences = packageReferences,
@@ -469,6 +489,57 @@ public static class ProjectFileParser
         }
 
         return projectFiles[0];
+    }
+
+    /// <summary>
+    /// Resolves a <c>&lt;SourceRoot&gt;</c> value (relative to the project directory, or absolute)
+    /// to a full path without a trailing separator. A blank or absent value is no pin (null).
+    /// </summary>
+    private static string? ResolveSourceRoot(string projectDirectory, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        var resolved = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(Path.IsPathRooted(trimmed) ? trimmed : Path.Combine(projectDirectory, trimmed)));
+        if (!Directory.Exists(resolved))
+        {
+            throw new InvalidDataException(
+                $"Invalid .spyproj file: <SourceRoot> '{trimmed}' resolves to '{resolved}', which does not exist");
+        }
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// A module's dotted name is its path below the module root, so a source file outside a pinned
+    /// <c>&lt;SourceRoot&gt;</c> has no name. Refused at load, listing the first few offenders.
+    /// </summary>
+    private static void RequireSourcesUnderSourceRoot(string sourceRoot, List<string> sourceFiles)
+    {
+        var outside = sourceFiles
+            .Select(Path.GetFullPath)
+            .Where(f =>
+            {
+                var relative = Path.GetRelativePath(sourceRoot, f);
+                return Path.IsPathRooted(relative)
+                    || relative == ".."
+                    || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+            })
+            .ToList();
+        if (outside.Count == 0)
+        {
+            return;
+        }
+
+        const int shown = 5;
+        var listed = string.Join("\n", outside.Take(shown).Select(f => $"  - {f}"));
+        var more = outside.Count > shown ? $"\n  ... and {outside.Count - shown} more" : "";
+        throw new InvalidDataException(
+            $"Invalid .spyproj file: {outside.Count} source file(s) outside <SourceRoot> '{sourceRoot}':\n{listed}{more}");
     }
 
     private static List<string> ResolveGlobPattern(string baseDirectory, string includePattern, string? excludePattern = null)

@@ -360,6 +360,11 @@ public class ProjectCompilationHelper : IDisposable
             projectContent.AppendLine("    <WarningsAsErrors>true</WarningsAsErrors>");
         }
 
+        if (Options.SourceRoot != null)
+        {
+            projectContent.AppendLine($"    <SourceRoot>{Options.SourceRoot}</SourceRoot>");
+        }
+
         projectContent.AppendLine("  </PropertyGroup>");
         projectContent.AppendLine("  <ItemGroup>");
         projectContent.AppendLine($"    <SourceFile Include=\"{sourceFilePattern}\" />");
@@ -886,6 +891,12 @@ public class ProjectOptions
     /// promoted to errors (used to verify @suppress parity under -Werror, #1024).
     /// </summary>
     public bool WarningsAsErrors { get; set; }
+
+    /// <summary>
+    /// When set, emits <c>&lt;SourceRoot&gt;</c> (relative to the project directory) to pin the
+    /// module root instead of letting it float to the sources' common directory.
+    /// </summary>
+    public string? SourceRoot { get; set; }
 }
 
 /// <summary>

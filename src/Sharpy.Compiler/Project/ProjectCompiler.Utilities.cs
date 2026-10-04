@@ -81,11 +81,18 @@ internal partial class ProjectCompiler
     }
 
     /// <summary>
-    /// Compute the source root path from the project configuration.
-    /// This is the common directory containing all source files, used for relative path calculation.
+    /// Compute the module root from the project configuration: the pinned
+    /// <see cref="ProjectConfig.SourceRoot"/> when the .spyproj sets one, otherwise the common
+    /// directory containing all source files. Absolute imports, module namespaces and the
+    /// generated-C# layout are all spelled from it.
     /// </summary>
     internal static string ComputeSourceRootPath(ProjectConfig config)
     {
+        if (config.SourceRoot != null)
+        {
+            return config.SourceRoot;
+        }
+
         if (config.SourceFiles.Count == 0)
         {
             return config.ProjectDirectory;
