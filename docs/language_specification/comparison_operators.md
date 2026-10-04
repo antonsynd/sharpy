@@ -105,9 +105,9 @@ A class whose `__eq__` accepts `None` (`__eq__(self, other: object)`) is asked, 
 `d == None` runs `__eq__`. A `None` left operand is never dereferenced — `z == None` with `z`
 holding `None` is `True`.
 
-A non-nullable **.NET** reference type (`from system import Version`) is the exception: `v == None`
-is refused with the same `is None` steer. To compare a .NET reference against `None` through its
-own overloaded `==`, declare it `Version | None` and write `v == None` (see
+A **.NET** reference type (`from system import Version`) is asked through its own `==`: `v == None`
+lowers to C# `v == null` and runs the type's overloaded `operator ==` — on a declared `Version`, a
+`Version | None`, or one narrowed to `Version` (see
 [.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none)).
 
 `is None` works for every operand, never runs user code (it is a reference null check — see

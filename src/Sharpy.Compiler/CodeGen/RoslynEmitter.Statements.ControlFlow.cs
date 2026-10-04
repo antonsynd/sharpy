@@ -206,8 +206,8 @@ internal partial class RoslynEmitter
         // check, not an operator== call (see RoslynEmitter.Expressions.Operators.cs's NoneCheck branch).
         // Checked ahead of the generic ==/!= patterns so the comparison maps to a dedicated null
         // assertion. Operand order is irrelevant — detect the non-None side from the AST. NullableType/
-        // OptionalType operands never reach here: the type checker rejects their ==/!= None comparisons
-        // with SPY0222. The literal-shape guard below is an invariant assertion (mirrored in
+        // OptionalType operands never reach here: they are never classified NoneCheck. The literal-shape
+        // guard below is an invariant assertion (mirrored in
         // RoslynEmitter.Expressions.Operators.cs's NoneCheck branch): NoneCheck classifies by VoidType,
         // but the #911 semantic gate (SPY0329) now rejects any non-literal VoidType comparison operand
         // before lowering, so a NoneCheck always has exactly one NoneLiteral. Requiring that here is
@@ -222,6 +222,25 @@ internal partial class RoslynEmitter
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName(nullAssert)))
                 .AddArgumentListArguments(Argument(GenerateExpression(nonNoneOperand))));
+        }
+
+        // assert a == None / a != None whose recorded lowering is NOT the null pattern — a CLR
+        // reference's native `== null` (#2238, ruling R-ES) or a user __eq__ that admits None (#1719) —
+        // runs the type's operator, so the test host asserts exactly what `sharpyc run` computes:
+        // Xunit.Assert.True(<the shared equality lowering>). The generic Assert.Equal(null, a) below
+        // would ask xUnit's comparer, whose null check is a reference check that skips the operator
+        // (a destroyed "fake null" CLR object, an always-True __eq__).
+        if (test is BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } operatorNoneEq
+            && (operatorNoneEq.Left is NoneLiteral) != (operatorNoneEq.Right is NoneLiteral))
+        {
+            var operatorNoneArgs = new List<ArgumentSyntax> { Argument(GenerateExpression(operatorNoneEq)) };
+            if (assert.Message != null)
+            {
+                operatorNoneArgs.Add(Argument(msgExpr!));
+            }
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
+                .WithArgumentList(ArgumentList(SeparatedList(operatorNoneArgs))));
         }
 
         // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order). The operands are

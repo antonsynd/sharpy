@@ -101,7 +101,13 @@ internal class TypeInferenceService
     /// </summary>
     internal BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
     {
-        // `x == None` / `x != None` on a reference-semantics type lowers to a C# null pattern
+        // `x == None` / `x != None` on a CLR reference type — bare, narrowed, or `T | None` — is the
+        // native `x == null`, which runs T's `operator ==` (#2238, ruling R-ES). Decided before the
+        // #901 null pattern below, which would skip the operator it names.
+        if (IsClrReferenceNoneEquality(op, left, right))
+            return BinaryOpLowering.NativeOperator;
+
+        // `x == None` / `x != None` on any other reference-semantics type lowers to a C# null pattern
         // check (`x is null` / `x is not null`), bypassing any overloaded operator (#901).
         if (IsNoneReferenceEquality(op, left, right))
             return BinaryOpLowering.NoneCheck;
@@ -143,18 +149,12 @@ internal class TypeInferenceService
                 return InferNullCoalesceType(left, right);
         }
 
-        // `x == None` / `x != None` on a non-nullable CLR reference type is refused (#2221, ruling
-        // R-DX part 1) — BEFORE the #901 null check below and before the CLR operator lookup, which
-        // would otherwise bind the None literal to an `op_Equality` formal. The caller's SPY0222
-        // carries the `is None` steer.
+        // `x == None` / `x != None` on a CLR reference type is admitted on EVERY operand — declared
+        // `T`, narrowed, or `T | None` — and runs T's `operator ==` (#2238, ruling R-ES; R-EJ: `is None`
+        // is the reference check, `==` runs the operator). Decided BEFORE the #901 null check below
+        // and before the CLR operator lookup, which would otherwise bind the None literal to an
+        // `op_Equality` formal; the nullable unwrap below would re-ask the question of the bare T.
         if (IsClrReferenceNoneEquality(op, left, right))
-            return null;
-
-        // ...but `T | None == None` on such a T stays admitted: the nullable family lowers it to the
-        // native `== null`, which runs T's `operator ==` — the spelling that reaches an overload such
-        // as Unity's destroyed-object `==` (#2224, R-EJ: `is None` is the reference check, `==` runs
-        // the operator). The unwrap below would otherwise re-ask the question of the bare T and refuse it.
-        if (IsNullableClrReferenceNoneEquality(op, left, right))
             return SemanticType.Bool;
 
         // `x == None` / `x != None` against a reference-semantics type (#901): Python's
@@ -1097,20 +1097,20 @@ internal class TypeInferenceService
     }
 
     /// <summary>
-    /// True when <c>==</c>/<c>!=</c> compares the <c>None</c> literal against a NON-NULLABLE CLR
-    /// reference type — a type with a CLR identity of its own rather than one declared in Sharpy source
-    /// or collapsed onto a Sharpy builtin (#2221, ruling R-DX part 1). Such a comparison is refused with
-    /// the <c>is None</c> steer: <c>is None</c> is the reference null check (#2224, ruling R-EJ — it
-    /// never runs an overloaded <c>op_Equality</c>), and the #901 null check would have lowered
-    /// <c>== None</c> to that same reference <c>is null</c>, so <c>==</c> would silently skip the
-    /// operator it names. The spelling that runs the overload (Unity's "fake null") is <c>== None</c> on
-    /// <c>T | None</c> (<see cref="IsNullableClrReferenceNoneEquality"/>).
+    /// True when <c>==</c>/<c>!=</c> compares the <c>None</c> literal against a CLR reference type — a
+    /// type with a CLR identity of its own rather than one declared in Sharpy source or collapsed onto a
+    /// Sharpy builtin — whether the operand is the bare <c>T</c> (declared, or narrowed by assignment or
+    /// by <c>is not None</c>) or <c>T | None</c> (<see cref="NullableType"/>). One rule for every such
+    /// operand (#2238, ruling R-ES, lifting #2221's R-DX part 1 for CLR types): the comparison is
+    /// admitted and lowers to the native <c>x == null</c>, which runs T's <c>operator ==</c> — Unity's
+    /// destroyed-object "fake null" answers True — while <c>is None</c> stays the reference null check
+    /// that never runs user code (#2224, ruling R-EJ).
     /// <para>Out of scope by construction: <c>str</c> and the Sharpy collections (Sharpy surface whose
     /// <c>== None</c> the spec documents), Sharpy-source classes (no CLR identity at check time; their
-    /// <c>== None</c> dispatches through <c>__eq__</c>, #1719), value types (already SPY0222), and the
-    /// nullable/Optional families, which are not <see cref="UserDefinedType"/>/<see cref="GenericType"/>.</para>
+    /// <c>== None</c> dispatches through <c>__eq__</c>, #1719), value types (SPY0222), and the Optional
+    /// family, which is not <see cref="UserDefinedType"/>/<see cref="GenericType"/>.</para>
     /// </summary>
-    private bool IsClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    internal bool IsClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {
         if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
             return false;
@@ -1120,23 +1120,10 @@ internal class TypeInferenceService
         if (leftIsNone == rightIsNone)
             return false;
 
-        return HasClrReferenceIdentity(TypeChecker.OperandView(leftIsNone ? right : left));
-    }
-
-    /// <summary>
-    /// <c>T | None</c> (<see cref="NullableType"/>) compared <c>==</c>/<c>!=</c> against the <c>None</c>
-    /// literal, where <c>T</c> is a CLR reference type (<see cref="HasClrReferenceIdentity"/>). Admitted
-    /// (#2221): it lowers to the native <c>== null</c>, which runs T's <c>operator ==</c> — unlike
-    /// <c>is None</c>, the reference check (#2224, ruling R-EJ).
-    /// </summary>
-    private bool IsNullableClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
-    {
-        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
-            return false;
-
-        var other = left is VoidType ? right : right is VoidType ? left : null;
-        return other is NullableType nullable
-            && HasClrReferenceIdentity(TypeChecker.OperandView(nullable.UnderlyingType));
+        var other = leftIsNone ? right : left;
+        if (other is NullableType nullable)
+            other = nullable.UnderlyingType;
+        return HasClrReferenceIdentity(TypeChecker.OperandView(other));
     }
 
     /// <summary>

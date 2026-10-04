@@ -529,7 +529,7 @@ def main() -> None:
     print(v is not None)   # True
 ```
 
-A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, compare an operand typed `T | None` with `== None` / `!= None`, which lowers to C# `v == null` and runs the overload:
+A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, write `== None` / `!= None`, which lowers to C# `v == null` and runs the overload. That holds for every operand: a declared `T`, a `T | None`, and a `T | None` that an assignment or an `is not None` test has narrowed to `T`:
 
 ```python
 from system import Version
@@ -540,20 +540,12 @@ def is_gone(w: Version | None) -> bool:
 def main() -> None:
     print(is_gone(None))               # True
     print(is_gone(Version(1, 2)))      # False
-```
-
-`== None` / `!= None` on a **non-nullable** .NET reference type is refused with the `is None` / `is not None` steer (SPY0222) — including a `T | None` variable that an assignment or an `is not None` test has narrowed to `T` at that point. Write `is None` for the reference check, or compare an operand typed `T | None` to ask the type's `==`:
-
-<!-- spec-sweep: error SPY0222 -->
-```python
-from system import Version
-
-def main() -> None:
     v: Version = Version(1, 2)
-    # error SPY0222: Type 'Version' does not support operator '==' with
-    # operand of type 'None'. Did you mean 'is None'?
-    print(v == None)
+    print(v == None)                   # False — the same operator on a non-nullable operand
+    print(None != v)                   # True
 ```
+
+Inside a `@test` function, `assert v == None` asserts that same lowering (`Assert.True(v == null)`), so a test and `sharpyc run` agree on what the comparison means.
 
 ## IDisposable Pattern
 

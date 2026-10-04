@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
 using Xunit.Abstractions;
 
-using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 
 namespace Sharpy.Compiler.Tests.Integration;
@@ -68,7 +67,8 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
         }
         """;
 
-    private static readonly Lazy<string> FakeNullAssembly = new(() =>
+    /// <summary>The fake-null specimen assembly, shared with <see cref="ClrReferenceNoneTestMatrixTests"/>.</summary>
+    internal static readonly Lazy<string> FakeNullAssembly = new(() =>
     {
         var references = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
@@ -155,7 +155,7 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
     /// <summary>
     /// The subjects for one operand. A statically non-nullable value is "present" by construction —
     /// including the destroyed <c>Handle</c>, which <c>is None</c> must NOT report as None (R-EJ: the
-    /// reference check; <c>== None</c> on <c>Handle | None</c> is the spelling that asks its overload).
+    /// reference check; <c>== None</c> is the spelling that asks its overload, #2238).
     /// </summary>
     private static Subject[] Subjects(Operand operand) => operand switch
     {
@@ -310,8 +310,8 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
     /// <c>==</c> / <c>!=</c> with a None operand on the same operands — python3 values (measured with
     /// the equivalent python program). <c>==</c> runs <c>__eq__</c> (a permissive <c>__eq__</c> says a
     /// live value equals None, as in python3); a None LEFT operand is never dereferenced, and python3's
-    /// reflected <c>__eq__</c> is asked when the parameter admits None. <c>Handle | None == None</c> is
-    /// the spelling that runs the CLR overload (a destroyed handle reads as None).
+    /// reflected <c>__eq__</c> is asked when the parameter admits None. <c>== None</c> runs the CLR
+    /// overload (a destroyed handle reads as None) — on every operand form, #2238.
     /// </summary>
     [Theory]
     [InlineData("W", "z == None", true)]
@@ -366,12 +366,16 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
         result.StandardOutput.Trim().Should().Be(truth ? "True" : "False");
     }
 
-    /// <summary>The #2221 refusal stands (R-DX part 1): <c>== None</c> on a NON-nullable CLR reference is
-    /// SPY0222 with the <c>is None</c> steer — the reference check, never the overload.</summary>
+    /// <summary>The #2221 refusal is lifted for CLR types (#2238, ruling R-ES): <c>== None</c> on a
+    /// NON-nullable CLR reference runs its operator, so the destroyed handle answers <c>== None</c> → True
+    /// while <c>is None</c>, the reference check, answers False.</summary>
     [Theory]
-    [InlineData("x == None", "Did you mean 'is None'?")]
-    [InlineData("x != None", "Did you mean 'is not None'?")]
-    public void EqualsNone_OnANonNullableClrReference_IsStillRefused(string test, string steer)
+    [InlineData("x == None", "True")]
+    [InlineData("x != None", "False")]
+    [InlineData("None == x", "True")]
+    [InlineData("x is None", "False")]
+    [InlineData("x is not None", "True")]
+    public void EqualsNone_OnANonNullableClrReference_RunsTheOperator(string test, string truth)
     {
         var result = CompileAndExecute(Prelude + $"""
             def main():
@@ -379,9 +383,9 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
                 print({test})
             """);
 
-        result.Success.Should().BeFalse();
-        result.RawDiagnostics.Should().Contain(d =>
-            d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation && d.Message.Contains(steer));
+        result.Success.Should().BeTrue(
+            $"{string.Join("; ", result.CompilationErrors)} stderr: {result.StandardError}");
+        result.StandardOutput.Trim().Should().Be(truth);
     }
 
     /// <summary>
