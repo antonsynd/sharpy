@@ -7,6 +7,22 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-04
+
+### Changed
+- Format Document always writes 4-space indentation. The language server ignores the editor's `tabSize` / `insertSpaces` (#2062).
+- When formatting would drop a comment or an escape, fail to re-parse, or change the program, the language server now returns no edits and leaves the document unchanged, instead of silently damaging the file (SPY0912; #2062, #2077, #2157).
+
+Toolchain-side:
+- A `.spyproj` can pin its module root with `<SourceRoot>`. Absolute imports, module namespaces and the `--emit-cs-to` layout are then spelled from that directory instead of the common directory of the sources, so adding a source in a new top-level folder no longer renames every module. A missing root, or a source outside it, is refused when the project loads.
+- The parser now accepts parenthesized `from m import (a, b,)`.
+- `raise` is accepted as a match-expression arm.
+- Integer suffixes are accepted on hex, binary and octal literals.
+- `== None` / `!= None` on a non-nullable CLR reference is refused, with a steer to `is None`.
+- `compile` honours, refuses or documents every option for each input kind.
+- Socket timeouts govern `connect` and `accept`.
+- A local named `_` compiles correctly. The bare `_` placeholder rules now read only the unescaped spelling.
+
 ## [0.21.0] - 2026-09-29
 
 ### Added
