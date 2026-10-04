@@ -265,11 +265,12 @@ internal class IncrementalCompilationCache
     {
         var filesToRecompile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var changedFiles = new List<string>();
+        var sourceSet = new HashSet<string>(allFiles.Select(PathNormalizer.Normalize), StringComparer.Ordinal);
 
         // First pass: find directly changed files
         foreach (var file in allFiles)
         {
-            if (IsStale(file))
+            if (IsStale(file) || ImportsAFileOutside(file, sourceSet))
             {
                 changedFiles.Add(file);
                 filesToRecompile.Add(file);
@@ -299,6 +300,20 @@ internal class IncrementalCompilationCache
         }
 
         return filesToRecompile;
+    }
+
+    /// <summary>
+    /// True when a file's recorded import targets include one that is no longer a source of the
+    /// project (dropped from the <c>.spyproj</c>'s items, or deleted). Its content is unchanged, but
+    /// served from the cache its generated C# still names that module's namespace, which no unit
+    /// emits now (SPY0908, CS0234), so its imports are resolved again — and refused (#2234).
+    /// </summary>
+    private bool ImportsAFileOutside(string file, HashSet<string> sourceSet)
+    {
+        EnsureFileCacheLoaded();
+        return _fileCache != null
+            && _fileCache.TryGetValue(PathNormalizer.Normalize(file), out var entry)
+            && entry.Dependencies.Any(dependency => !sourceSet.Contains(PathNormalizer.Normalize(dependency)));
     }
 
     /// <summary>

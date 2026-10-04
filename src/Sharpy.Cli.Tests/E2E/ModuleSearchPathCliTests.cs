@@ -175,6 +175,77 @@ public class ModuleSearchPathCliTests : IDisposable
     }
 
     /// <summary>
+    /// #2234 (R-EQ): a <c>.spyproj</c> compiles only its listed sources, so an import that resolves to
+    /// any other <c>.spy</c> is refused with SPY0313, which names the file. Cells: the command
+    /// {<c>project</c>, <c>compile app.spyproj</c>} × the route {<c>&lt;ModulePath&gt;</c>, <c>-m</c>,
+    /// the project directory, the working directory} × the import form. Every cell was SPY0908
+    /// (CS0234) @ 746004125. The listed twins are <see cref="ProjectModulePathItem_ReachesImportResolution"/>
+    /// and <see cref="CompileSpyproj_ModulePathItemOrOption_ReachesImportResolution"/>, whose project
+    /// lists every <c>.spy</c>; the compiler-level matrix (every route × every import form, listed,
+    /// unlisted and missing, warm and cold) is in <c>Sharpy.Compiler.Tests.Project.ModuleSearchPathTests</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("project", "modulepath-item", "from")]
+    [InlineData("project", "modulepath-item", "plain")]
+    [InlineData("compile", "modulepath-item", "from")]
+    [InlineData("compile", "modulepath-item", "plain")]
+    [InlineData("compile", "m-option", "from")]
+    [InlineData("compile", "m-option", "plain")]
+    [InlineData("project", "project-directory", "from")]
+    [InlineData("compile", "project-directory", "plain")]
+    [InlineData("project", "working-directory", "plain")]
+    [InlineData("compile", "working-directory", "from")]
+    public void SpyprojImportOfAnUnlistedModule_IsRefusedWithSPY0313(string command, string route, string form)
+    {
+        var cell = $"[{command} · {route} · {form}]";
+        // The two routes without a search path import the flat module alone (no pkg.mod beside it).
+        var program = form == "from"
+            ? "from helper import helper_value\n\ndef main():\n    print(helper_value())\n"
+            : "import helper\n\ndef main():\n    print(helper.helper_value())\n";
+        string project, target;
+        var extra = new System.Collections.Generic.List<string>();
+        switch (route)
+        {
+            case "modulepath-item":
+            case "m-option":
+                WriteLayout(form);
+                WriteProject(modulePathItem: route == "modulepath-item", include: "main.spy");
+                project = "app.spyproj";
+                target = Path.Combine("mods", "helper.spy");
+                if (route == "m-option")
+                    extra.AddRange(new[] { "-m", "mods" });
+                break;
+            case "project-directory":
+                _ws.WriteFile(Path.Combine("sub", "main.spy"), program);
+                _ws.WriteFile("helper.spy", Helper);
+                WriteProject(modulePathItem: false, include: "sub/main.spy");
+                project = "app.spyproj";
+                target = "helper.spy";
+                break;
+            default:
+                // Found only through the working directory: the project sits one level below it.
+                _ws.WriteFile(Path.Combine("proj", "main.spy"), program);
+                _ws.WriteFile("helper.spy", Helper);
+                WriteProject(modulePathItem: false, include: "main.spy", directory: "proj");
+                project = Path.Combine("proj", "app.spyproj");
+                target = "helper.spy";
+                break;
+        }
+
+        var args = command == "project"
+            ? new System.Collections.Generic.List<string> { "project", project }
+            : new System.Collections.Generic.List<string> { "compile", project, "-o", _ws.PathFor(Path.Combine("out", "app.dll")) };
+        args.AddRange(extra);
+        var result = ExecCli(args.ToArray());
+        var combined = result.StdOut + "\n" + result.StdErr;
+
+        result.ExitCode.Should().NotBe(0, $"{cell} {combined}");
+        combined.Should().NotContain("SPY0908", cell);
+        combined.Should().Contain("error[SPY0313]: Module 'helper' resolves to '"
+            + Path.Combine(RealPath(_ws.Root), target) + "', which is not a source of this project", cell);
+    }
+
+    /// <summary>
     /// #2216's repro: a package module emitted as its own entry, its sibling imported by the dotted
     /// name spelled from the <c>-m</c> root. The no-<c>-m</c> control stays SPY0300.
     /// </summary>
@@ -266,7 +337,8 @@ public class ModuleSearchPathCliTests : IDisposable
 
     private static string Normalize(string text) => text.Replace("\r\n", "\n");
 
-    private void WriteProject(bool modulePathItem) => _ws.WriteFile("app.spyproj",
+    private void WriteProject(bool modulePathItem, string include = "**/*.spy", string directory = "")
+        => _ws.WriteFile(Path.Combine(directory, "app.spyproj"),
         "<Project>\n"
         + "  <PropertyGroup>\n"
         + "    <RootNamespace>App</RootNamespace>\n"
@@ -275,7 +347,7 @@ public class ModuleSearchPathCliTests : IDisposable
         + "    <EntryPoint>main.spy</EntryPoint>\n"
         + "  </PropertyGroup>\n"
         + "  <ItemGroup>\n"
-        + "    <SpyFile Include=\"**/*.spy\" />\n"
+        + $"    <SpyFile Include=\"{include}\" />\n"
         + (modulePathItem ? "    <ModulePath Include=\"mods\" />\n" : "")
         + "  </ItemGroup>\n"
         + "</Project>\n");

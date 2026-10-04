@@ -178,6 +178,36 @@ internal partial class ImportResolver
         return owned;
     }
 
+    /// <summary>
+    /// The compilation's source set: true when a resolved <c>.spy</c> path is a file this
+    /// compilation compiles. Installed by <c>ProjectCompiler</c> from the config's source files;
+    /// null (the resolver on its own) accepts every resolved file.
+    /// </summary>
+    internal Func<string, bool>? IsCompiledSource { get; set; }
+
+    /// <summary>
+    /// Refuses an import of <paramref name="moduleName"/> that resolved to
+    /// <paramref name="resolvedPath"/>, a <c>.spy</c> outside the compilation, and returns true
+    /// (#2234, R-EQ). Code generation emits only the compilation's sources, so binding the import
+    /// made the generated C# name a namespace no unit declares (SPY0908, CS0234). Every resolution
+    /// route reaches this one check — the importing file's directory, the module root, a
+    /// <c>&lt;ModulePath&gt;</c>/<c>-m</c> search path, the project directory, the working directory.
+    /// </summary>
+    private bool RefuseImportOutsideCompilation(string moduleName, string resolvedPath,
+        int? line, int? column, Text.TextSpan? span)
+    {
+        if (IsCompiledSource is not { } isCompiled || isCompiled(resolvedPath))
+            return false;
+
+        _diagnostics.AddRootCauseError(moduleName,
+            $"Module '{moduleName}' resolves to '{resolvedPath}', which is not a source of this project; "
+            + "list it as a <SpyFile> in the .spyproj, or remove the import"
+            + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
+            span, line, column, _currentModulePath,
+            DiagnosticCodes.Semantic.ImportOutsideCompilation, CompilerPhase.ImportResolution);
+        return true;
+    }
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 

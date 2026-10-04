@@ -688,6 +688,14 @@ public static partial class DiagnosticExplanations
             null,
             "Fix the errors in the imported module first, then retry the compilation.");
 
+        Add(dict, DiagnosticCodes.Semantic.ImportOutsideCompilation, "Imported module is not a project source", "Semantic",
+            "An import resolved to a .spy file that the compilation does not compile. A .spyproj compiles only the files its <SpyFile> items list, " +
+            "but an import is also resolved through the importing file's directory, the module root, each <ModulePath> or -m search path, and the project directory, " +
+            "so it can name a file outside that list. The error names the file the import resolved to.",
+            "# app.spyproj lists <SpyFile Include=\"main.spy\" /> and <ModulePath Include=\"mods\" />\n" +
+            "from helper import answer  # resolves to mods/helper.spy, which is not a source",
+            "List the file as a source of the project (<SpyFile Include=\"mods/helper.spy\" />, or a glob that covers it), or remove the import.");
+
         Add(dict, DiagnosticCodes.Semantic.AssemblyNotFound, "Assembly not found", "Semantic",
             "A .NET assembly referenced in an import could not be found. The compiler searches configured assembly paths.",
             "import SomeLibrary  # .NET assembly not found",

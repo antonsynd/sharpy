@@ -400,7 +400,8 @@ public static class DiagnosticCodes
         // carve a new sub-band would break shipped `.error` fixtures for no gain.
         // Retired — superseded by alias transparency (#1527); reserved, never reused
         public const string BuiltinTypeAliasUnsupported = "SPY0312"; // Retired
-        // SPY0313-SPY0319: Reserved for future import diagnostics
+        public const string ImportOutsideCompilation = "SPY0313";   // Active (#2234)
+        // SPY0314-SPY0319: Reserved for future import diagnostics
 
         #endregion
 

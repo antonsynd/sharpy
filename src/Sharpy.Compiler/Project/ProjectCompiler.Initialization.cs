@@ -36,6 +36,11 @@ internal partial class ProjectCompiler
         // …and the overload list beside it, which is a second channel with its own dictionary and
         // was left holding extractions when the single-symbol channel was re-pointed (#1491).
         _importResolverBacking.OwnOverloadResolver = ResolveOwnExportedOverloads;
+        // Code generation emits exactly the config's sources, so an import resolving to any other
+        // .spy is refused at the import rather than bound to a namespace no unit declares (#2234).
+        var sourceSet = new HashSet<string>(
+            _projectModel.Config.SourceFiles.Select(PathNormalizer.Normalize), StringComparer.Ordinal);
+        _importResolverBacking.IsCompiledSource = path => sourceSet.Contains(PathNormalizer.Normalize(path));
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _projectModel!.Units.Keys)

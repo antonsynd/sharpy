@@ -82,7 +82,22 @@ own directory, below the module root, below each search path, and below the proj
 `-m mods`, `from helper import f` names `mods/helper.spy` and `import pkg.mod` names
 `mods/pkg/mod.spy`. A single-file compile (`run`, `compile`, `emit csharp` on a `.spy`) compiles
 every module it reaches this way. A `.spyproj` compiles only its listed sources, so a module found
-through `<ModulePath>` must also be one of them.
+through `<ModulePath>` must also be one of them. An import that resolves — by any of these routes,
+or below the working directory — to a `.spy` that is not one of them is refused with `SPY0313`,
+which names the file; list it as a `<SpyFile>` (or widen a glob) to compile it with the project:
+
+```text
+app.spyproj      <SpyFile Include="main.spy" />  <ModulePath Include="mods" />
+main.spy         from helper import answer
+mods/helper.spy  def answer() -> int: ...
+
+$ sharpyc project app.spyproj
+error[SPY0313]: Module 'helper' resolves to '/…/mods/helper.spy', which is not a source of this
+project; list it as a <SpyFile> in the .spyproj, or remove the import (in main.spy)
+  --> /…/main.spy:1:1
+```
+
+With `<SpyFile Include="**/*.spy" />` the same project builds, and the program prints `42`.
 
 Because types sit beside the members class, a type may share its module's name: `class Thing[T]`
 (or a `struct`, `enum`, `union`, … named `Thing`) in `thing.spy` is simply `Merge.Thing.Thing`, and
