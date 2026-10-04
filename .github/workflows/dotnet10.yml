@@ -1,5 +1,17 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+#
+# Shape (#2178): build ONCE, then fan out. The `build` job restores, builds, runs the
+# whitespace-clean and test-project-drift gates, and hands its src/**/bin + src/**/obj to the
+# test jobs as one tarball artifact; every test job runs `dotnet test --no-build` against it.
+#
+#   build ─┬─ test-fast                 CLI + Core + Stdlib + LSP (one step each)
+#          ├─ compiler (matrix 1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace
+#          ├─ sweep (matrix of 5)       one job per GapDiscovery sweep, filters unchanged
+#          ├─ stdlib-spy-gates          .spy native compile + generated-C# staleness gates
+#          └─ compiler-shard-partition  proves the shards partition the main-step filter
+#   ci-summary (needs all, always runs) the single check to require: fails unless every job
+#                                       succeeded and every expected trx reports tests.
 
 name: .NET 10
 
@@ -19,12 +31,85 @@ on:
       - 'sharpy.sln'
       - '.github/workflows/dotnet10.yml'
 
+permissions:
+  contents: read
+
+env:
+  # The pre-#2178 "Test Compiler" step filter, verbatim. Every Compiler shard runs
+  # COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>, so each GapDiscovery sweep excluded here by name
+  # still runs exactly once (in its own `sweep` job) and never inline in a shard.
+  # Why these sweeps are excluded from the main pass (moved from the old step's comments):
+  # the interop conformance sweep (#1034) is heavy (~1–2 min, thousands of in-process compiles).
+  # The generic-reference matrix (#1143, ~158 in-process compiles) still runs INLINE in the main
+  # pass: it is light enough that a dedicated job isn't warranted. The front-end parity sweep
+  # (#1144) runs inline in the LSP step for the same reason. Split any of them out only if they
+  # grow heavy. The metamorphic corpus sweep (#1157) IS heavy (~1.5 min, ~14,600 in-process
+  # compiles); excluding it here also keeps its RandomProperty sibling
+  # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
+  # The CPython execution oracle likewise earned its own job when #1202 took it from a
+  # 60-program sample to the full ~565-cell pool.
+  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance"
+  # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
+  # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 4 excludes shard 3's
+  # sub-bucket by negation); shard 7 is "everything else" — the negation of every other bucket
+  # (`!~Semantic.` negates shards 3+4, whose buckets are both inside `Semantic.`). The
+  # `compiler-shard-partition` job re-proves on every run, by `--list-tests`, that the shards'
+  # union equals the main filter's list with no overlap, and `ci-summary` requires one trx per
+  # COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler` matrix,
+  # and add its bucket's negation to the last shard.
+  # Balanced on per-test CI durations from mainline run 37006384170 (sum of per-test time, min):
+  # 1 fixtures 12.7 · 2 Integration P–V + CodeGen 10.4 · 3 Semantic P–V 12.8 ·
+  # 4 Semantic rest 12.9 · 5 Properties 12.5 · 6 Conformance 12.1 · 7 everything else 11.6.
+  # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
+  # fails on a filter substring that matches no test. A new class whose initial has no term
+  # falls through to shard 4 (Semantic) or shard 7 (Integration), so it is still run exactly once.
+  # 1: the file-based fixture Theory (one class, cannot be split further by FullyQualifiedName).
+  COMPILER_SHARD_1: "FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests."
+  # 2: Integration classes whose name starts P, S, T, U or V, plus CodeGen.
+  COMPILER_SHARD_2: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.P|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.S|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.T|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.U|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.V|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.CodeGen.)"
+  # 3: Semantic classes (and sub-namespaces, e.g. Semantic.Validation) whose name starts P–V.
+  COMPILER_SHARD_3: "(FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.P|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.Q|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.R|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.S|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.T|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.U|\
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.V)"
+  # 4: the rest of Semantic (exactly `Semantic.` minus shard 3).
+  COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.P&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.Q&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.R&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.S&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.T&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.U&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.V"
+  # 5: Properties (includes CPythonDifferentialParseTests, which needs the pinned python).
+  COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties."
+  # 6: Conformance (non-sweep conformance suites; the sweeps are excluded by the main filter).
+  COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Conformance."
+  # 7: everything else — Integration classes outside shards 1–2, Parser, Lexer, Project,
+  # Infrastructure, root-namespace tests, and any namespace added later. The negation of every
+  # bucket above.
+  COMPILER_SHARD_7: "FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.P&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.S&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.T&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.U&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.V&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.CodeGen.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Conformance."
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     steps:
     - uses: actions/checkout@v7
@@ -32,25 +117,6 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
-    - name: Setup Python
-      # Required by BOTH CPython oracles: the differential-parse property tests
-      # (Sharpy.Compiler.Tests -> CPythonDifferentialParseTests, #1037), which oracle
-      # generated programs against `python3` ast.parse, AND the differential-execution
-      # sweep (DifferentialExecutionTests, #1156), which compares compiled-program stdout
-      # against `python3` running the same source. Pinned to 3.12 so behavior is stable.
-      # Both soft-skip if no suitable python is found — so removing this step would not
-      # fail CI, it would silently disarm the execution oracle's ratchet. Keep the pin.
-      uses: actions/setup-python@v7
-      with:
-        python-version: '3.12'
-    - name: Install oracle third-party modules
-      # ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py) declares the
-      # non-stdlib modules the execution oracle compares against CPython (currently PyYAML).
-      # This install is load-bearing, not an optimization: the oracle's vacuity guard in
-      # DifferentialExecutionTests FAILS (it does not skip) when a whitelisted module's
-      # cells can never be compared because the children cannot import it — which is what
-      # a runner without PyYAML produces. Keep this list in step with ORACLE_THIRD_PARTY.
-      run: python -m pip install "pyyaml>=6,<7"
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -70,71 +136,266 @@ jobs:
           echo "Update the test steps in .github/workflows/dotnet10.yml"
           exit 1
         fi
+    - name: Package build output for the test jobs
+      # One tarball rather than a path glob: upload-artifact drops POSIX permission bits (the
+      # sharpyc apphost must stay executable) and mtimes; tar keeps both. obj/ rides along because
+      # `dotnet test --no-build` still evaluates each project (project.assets.json, nuget.g.props);
+      # the absolute paths baked into obj/ match because every job checks out to the same
+      # $GITHUB_WORKSPACE on the same runner image.
+      run: |
+        set -o pipefail
+        find src -type d \( -name bin -o -name obj \) -prune -print0 \
+          | tar --null -cf - -T - \
+          | zstd -T0 -3 -q -c > build-output.tar.zst
+        ls -l build-output.tar.zst
+    - name: Upload build output
+      uses: actions/upload-artifact@v7
+      with:
+        name: build-output
+        path: build-output.tar.zst
+        retention-days: 1
+        compression-level: 0
+        if-no-files-found: error
+
+  test-fast:
+    name: Test CLI, Core, Stdlib, LSP
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Restore dependencies
+      # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
+      run: dotnet restore
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      id: unpack
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
+    # Each assembly reports even if an earlier one failed.
     - name: Test CLI
-      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=cli.trx" --results-directory TestResults
     - name: Test Core
-      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
-    - name: Test Compiler
-      # The interop conformance sweep (#1034) is heavy (~1–2 min, thousands of in-process
-      # compiles); it runs in its own dedicated step below so the main test pass stays fast.
-      # The generic-reference matrix (#1143, ~158 in-process compiles) still runs INLINE here:
-      # it is light enough that a dedicated step isn't warranted. The front-end parity sweep
-      # (#1144) runs inline in the LSP step for the same reason. Split any of them out only if
-      # they grow heavy.
-      # The metamorphic corpus sweep (#1157) IS heavy (~1.5 min, ~14,600 in-process compiles)
-      # and has its own step below; excluding it here also keeps its RandomProperty sibling
-      # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
-      # The CPython execution oracle likewise earned its own step when #1202 took it from a
-      # 60-program sample to the full ~565-cell pool.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance"
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=core.trx" --results-directory TestResults
     - name: Test Stdlib
-      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=stdlib.trx" --results-directory TestResults
     - name: Test LSP
-      run: dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
-    - name: Interop conformance sweep (#1034)
-      # Generated interop conformance sweep over every public stdlib member. Emits
-      # .claude/tmp/interop-conformance-report.json; becomes a ratchet once the reviewed
-      # allowlist (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"
-    - name: Metamorphic corpus sweep (#1157)
-      # Every executing fixture x every semantics-preserving transform must still compile with
-      # no new diagnostic code (~14,600 cells, ~1.5 min). Emits
-      # .claude/tmp/metamorphic-corpus-report.json and ratchets against the reviewed allowlist
-      # (src/Sharpy.Compiler.Tests/Conformance/metamorphic-allowlist.txt), which also fails on
-      # STALE entries so a landed fix must drain its lines.
-      # Category=GapDiscovery deliberately selects the compile-clean sweep ONLY: the
-      # output-invariance sample is Category=RandomProperty, executes real programs in
-      # subprocesses, and draws a fresh sample per run — it belongs in /property-stress, not in a
-      # deterministic CI gate.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"
-    - name: CPython differential execution oracle (#1202)
-      # Sharpy-compiled stdout vs batched `python3` over the shared executable subset. Since
-      # #1202 the fixture arm sweeps its ENTIRE eligible pool every run (565 cells, ~46 s on a
-      # dev machine) rather than a 60-program sample that reached 4% of it, which is what moved
-      # it out of the main Compiler step. Emits .claude/tmp/differential-exec-report.json —
-      # including the run's own coverage % — and ratchets against the reviewed allowlist
-      # (src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt), where every
-      # entry cites a docs/deviations.yaml id or an issue number.
-      # Needs the python step above; the test soft-skips (green) without a suitable python3, so
-      # a missing report means the oracle did not run, not that it agreed.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"
-    - name: Format-spec differential sweep (#1943, #1944, #1945)
-      # Generated PEP-3101 spec x operand-kind cells (fixed-seed System.Random, 240 cells) compared
-      # byte-for-byte against batched `python3`, ratcheting the reviewed allowlist
-      # (src/Sharpy.Compiler.Tests/Conformance/format-spec-differential-allowlist.txt), where every
-      # entry cites an issue and stale entries fail. The '#'-on-float gap (#1958) is excluded at
-      # generation; the sweep soft-skips (green) without a suitable python3. Split from the main
-      # Compiler step above (which excludes it by name) so a sweep runs exactly once.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential"
-    - name: Formatter emit-invariance sweep (#2062, #2068)
-      # Every executing single-file fixture P: the Roslyn-normalised C# of Format(P) equals P's with
-      # every #line directive line removed (~2,400 fixtures, compiled to C# in process, ~30 s on a
-      # dev machine). Emits .claude/tmp/formatter-emit-invariance-report.json and ratchets the
-      # `emitChanged` section of src/Sharpy.Compiler.Tests/Conformance/
-      # formatter-meaning-preservation-allowlist.txt (drain-on-fix). The parse-level twin sweep
-      # (FormatterMeaningPreservationSweepTests) runs inline in the main Compiler step; this one is
-      # excluded there by name so it runs exactly once.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance"
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "Category!=Benchmark" --logger "trx;LogFileName=lsp.trx" --results-directory TestResults
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: trx-fast
+        path: TestResults/*.trx
+        retention-days: 14
+        if-no-files-found: warn
+
+  compiler:
+    name: Test Compiler (shard ${{ matrix.shard }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per COMPILER_SHARD_<n> in the workflow env above.
+        shard: [1, 2, 3, 4, 5, 6, 7]
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Setup Python
+      # Required by the differential-parse property tests (Sharpy.Compiler.Tests ->
+      # CPythonDifferentialParseTests, #1037), which oracle generated programs against `python3`
+      # ast.parse. Set up in EVERY shard so a test moving between namespace buckets can never
+      # land on a runner without the pinned interpreter. Pinned to 3.12 so behavior is stable.
+      # The tests soft-skip if no suitable python is found — so removing this step would not
+      # fail CI, it would silently disarm the oracle. Keep the pin.
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    - name: Install oracle third-party modules
+      # Same interpreter environment the main Compiler pass had before #2178. Keep this list in
+      # step with ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py).
+      run: python -m pip install "pyyaml>=6,<7"
+    - name: Restore dependencies
+      # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
+      run: dotnet restore
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
+    - name: Test Compiler (shard ${{ matrix.shard }})
+      # The filter is spelled inline as "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_<n>" (not via a
+      # shell variable) so CiFilterCoverageConformanceTests can resolve it from this file.
+      run: |
+        if [ -z "${COMPILER_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::COMPILER_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
+        echo "filter: $COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}"
+        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: trx-compiler-shard-${{ matrix.shard }}
+        path: TestResults/*.trx
+        retention-days: 14
+        if-no-files-found: warn
+
+  sweep:
+    name: Sweep (${{ matrix.name }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Interop conformance sweep (#1034). Generated interop conformance sweep over every
+          # public stdlib member. Emits .claude/tmp/interop-conformance-report.json; becomes a
+          # ratchet once the reviewed allowlist
+          # (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
+          - name: interop-conformance
+            filter: "Category=GapDiscovery&FullyQualifiedName~InteropConformance"
+            python: false
+          # Metamorphic corpus sweep (#1157). Every executing fixture x every
+          # semantics-preserving transform must still compile with no new diagnostic code
+          # (~14,600 cells, ~1.5 min). Emits .claude/tmp/metamorphic-corpus-report.json and
+          # ratchets against the reviewed allowlist
+          # (src/Sharpy.Compiler.Tests/Conformance/metamorphic-allowlist.txt), which also fails
+          # on STALE entries so a landed fix must drain its lines.
+          # Category=GapDiscovery deliberately selects the compile-clean sweep ONLY: the
+          # output-invariance sample is Category=RandomProperty, executes real programs in
+          # subprocesses, and draws a fresh sample per run — it belongs in /property-stress, not
+          # in a deterministic CI gate.
+          - name: metamorphic-corpus
+            filter: "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"
+            python: false
+          # CPython differential execution oracle (#1202). Sharpy-compiled stdout vs batched
+          # `python3` over the shared executable subset. Since #1202 the fixture arm sweeps its
+          # ENTIRE eligible pool every run (565 cells, ~46 s on a dev machine) rather than a
+          # 60-program sample that reached 4% of it, which is what moved it out of the main
+          # Compiler step. Emits .claude/tmp/differential-exec-report.json — including the run's
+          # own coverage % — and ratchets against the reviewed allowlist
+          # (src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt), where every
+          # entry cites a docs/deviations.yaml id or an issue number.
+          # Needs the python steps (python: true); the test soft-skips (green) without a suitable
+          # python3, so a missing report means the oracle did not run, not that it agreed.
+          - name: differential-execution
+            filter: "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"
+            python: true
+          # Format-spec differential sweep (#1943, #1944, #1945). Generated PEP-3101 spec x
+          # operand-kind cells (fixed-seed System.Random, 240 cells) compared byte-for-byte
+          # against batched `python3`, ratcheting the reviewed allowlist
+          # (src/Sharpy.Compiler.Tests/Conformance/format-spec-differential-allowlist.txt), where
+          # every entry cites an issue and stale entries fail. The '#'-on-float gap (#1958) is
+          # excluded at generation; the sweep soft-skips (green) without a suitable python3.
+          # Excluded from the Compiler shards by name (COMPILER_MAIN_FILTER) so it runs exactly
+          # once.
+          - name: format-spec-differential
+            filter: "Category=GapDiscovery&FullyQualifiedName~FormatSpecDifferential"
+            python: true
+          # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
+          # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
+          # removed (~2,400 fixtures, compiled to C# in process, ~30 s on a dev machine). Emits
+          # .claude/tmp/formatter-emit-invariance-report.json and ratchets the `emitChanged`
+          # section of src/Sharpy.Compiler.Tests/Conformance/
+          # formatter-meaning-preservation-allowlist.txt (drain-on-fix). The parse-level twin
+          # sweep (FormatterMeaningPreservationSweepTests) runs inline in the Compiler shards;
+          # this one is excluded there by name so it runs exactly once.
+          - name: formatter-emit-invariance
+            filter: "Category=GapDiscovery&FullyQualifiedName~FormatterEmitInvariance"
+            python: false
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Setup Python
+      # Required by both CPython oracles here: the differential-execution sweep
+      # (DifferentialExecutionTests, #1156) compares compiled-program stdout against `python3`
+      # running the same source, and the format-spec differential sweep compares against
+      # batched `python3`. Pinned to 3.12 so behavior is stable. Both soft-skip if no suitable
+      # python is found — so removing this step would not fail CI, it would silently disarm the
+      # execution oracle's ratchet. Keep the pin.
+      if: ${{ matrix.python }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    - name: Install oracle third-party modules
+      # ORACLE_THIRD_PARTY (build_tools/differential_exec/run_programs.py) declares the
+      # non-stdlib modules the execution oracle compares against CPython (currently PyYAML).
+      # This install is load-bearing, not an optimization: the oracle's vacuity guard in
+      # DifferentialExecutionTests FAILS (it does not skip) when a whitelisted module's
+      # cells can never be compared because the children cannot import it — which is what
+      # a runner without PyYAML produces. Keep this list in step with ORACLE_THIRD_PARTY.
+      if: ${{ matrix.python }}
+      run: python -m pip install "pyyaml>=6,<7"
+    - name: Restore dependencies
+      # Populates the NuGet package folder that the restored obj/*.nuget.g.props import from.
+      run: dotnet restore
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
+    - name: Sweep ${{ matrix.name }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "${{ matrix.filter }}" --logger "trx;LogFileName=sweep-${{ matrix.name }}.trx" --results-directory TestResults
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: trx-sweep-${{ matrix.name }}
+        path: TestResults/*.trx
+        retention-days: 14
+        if-no-files-found: warn
+
+  stdlib-spy-gates:
+    name: Stdlib .spy compile + staleness gates
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      # `dotnet run` below restores and incrementally builds as it did in the sequential job;
+      # the checkout's fresh source mtimes may make that build non-trivial here (time only).
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
@@ -156,3 +417,125 @@ jobs:
           size=$(stat --format="%s" "$monolith" 2>/dev/null || stat -f "%z" "$monolith" 2>/dev/null)
           printf "  %-40s %s bytes\n" "$(basename "$monolith")" "$size"
         fi
+
+  compiler-shard-partition:
+    name: Compiler shard partition check
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Download build output
+      uses: actions/download-artifact@v8
+      with:
+        name: build-output
+    - name: Unpack build output
+      run: |
+        set -o pipefail
+        zstd -dc build-output.tar.zst | tar -xf -
+        rm build-output.tar.zst
+    - name: Verify the shards partition the main-step filter
+      # Lists (does not run) the tests selected by COMPILER_MAIN_FILTER and by each
+      # COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>, and fails unless the sorted concatenation of the
+      # shard lists equals the main list (no test dropped, none double-run) and no shard is empty.
+      # Names are compared as a multiset: xUnit truncates long theory arguments in display names,
+      # but rows sharing a truncated name share a FullyQualifiedName and so always share a shard.
+      run: |
+        set -euo pipefail
+        list() {
+          dotnet test src/Sharpy.Compiler.Tests --no-build --list-tests --filter "$1" > list.out
+          sed -n 's/^    //p' list.out | LC_ALL=C sort
+        }
+        list "$COMPILER_MAIN_FILTER" > main.txt
+        : > union.txt
+        shards=$(compgen -v COMPILER_SHARD_ | sed 's/^COMPILER_SHARD_//' | sort -n)
+        for n in $shards; do
+          var="COMPILER_SHARD_$n"
+          list "$COMPILER_MAIN_FILTER&${!var}" > "shard-$n.txt"
+          count=$(wc -l < "shard-$n.txt")
+          echo "shard $n: $count"
+          if [ "$count" -eq 0 ]; then echo "::error::Compiler shard $n selects no tests"; exit 1; fi
+          cat "shard-$n.txt" >> union.txt
+        done
+        LC_ALL=C sort union.txt -o union.txt
+        echo "main filter: $(wc -l < main.txt); sum of shards: $(wc -l < union.txt)"
+        if [ "$(wc -l < main.txt)" -eq 0 ]; then echo "::error::the main filter lists no tests"; exit 1; fi
+        if ! cmp -s main.txt union.txt; then
+          echo "::error::Compiler shards do not partition the main-step filter (< only in main = dropped, > only in shards = double-run)"
+          diff main.txt union.txt | head -100 || true
+          exit 1
+        fi
+
+  ci-summary:
+    name: CI summary
+    if: ${{ always() }}
+    needs: [build, test-fast, compiler, sweep, stdlib-spy-gates, compiler-shard-partition]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download test results
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        pattern: trx-*
+        path: trx
+        merge-multiple: true
+    - name: Per-assembly and per-sweep test counts
+      # Prints Total / Passed / Failed / Skipped per trx (to the log and the run summary) for
+      # comparison against a sequential control run, and fails if an expected trx is missing or
+      # reports zero tests (a --no-build run that silently discovered nothing).
+      if: ${{ !cancelled() }}
+      run: |
+        python3 - <<'PY'
+        import glob, os, sys
+        import xml.etree.ElementTree as ET
+        NS = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+        shards = sorted(int(k[len("COMPILER_SHARD_"):]) for k in os.environ if k.startswith("COMPILER_SHARD_"))
+        sweeps = ["interop-conformance", "metamorphic-corpus", "differential-execution",
+                  "format-spec-differential", "formatter-emit-invariance"]
+        expected = (["cli", "core", "stdlib", "lsp"] + [f"compiler-shard-{n}" for n in shards]
+                    + [f"sweep-{s}" for s in sweeps])
+        found = {os.path.basename(p)[:-4]: p for p in glob.glob("trx/**/*.trx", recursive=True)}
+        rows, problems = [], []
+        main = [0, 0, 0, 0]
+        for name in expected + sorted(set(found) - set(expected)):
+            if name not in found:
+                problems.append(f"{name}: no trx")
+                rows.append((name, "-", "-", "-", "-"))
+                continue
+            root = ET.parse(found[name]).getroot()
+            c = root.find(f"{NS}ResultSummary/{NS}Counters")
+            # Skipped is NOT Counters/@notExecuted: the trx logger leaves that 0 for xUnit skips
+            # (measured on run 37162960837); a skipped test is a UnitTestResult whose outcome is
+            # NotExecuted, so count those.
+            skipped = sum(1 for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "NotExecuted")
+            vals = [int(c.get(a, "0")) for a in ("total", "passed", "failed")] + [skipped]
+            if vals[0] == 0:
+                problems.append(f"{name}: zero tests")
+            if name.startswith("compiler-shard-"):
+                main = [m + v for m, v in zip(main, vals)]
+            rows.append((name, *vals))
+        rows.append(("compiler (sum of shards)", *main))
+        lines = ["| trx | Total | Passed | Failed | Skipped |", "|---|---:|---:|---:|---:|"]
+        lines += [f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} |" for r in rows]
+        print("\n".join(lines))
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write("\n".join(lines) + "\n")
+        for p in problems:
+            print(f"::error::{p}")
+        sys.exit(1 if problems else 0)
+        PY
+    - name: Fail unless every needed job succeeded
+      if: ${{ always() }}
+      env:
+        NEEDS: ${{ toJSON(needs) }}
+      run: |
+        echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+        bad=$(echo "$NEEDS" | jq '[to_entries[] | select(.value.result != "success")] | length')
+        if [ "$bad" -ne 0 ]; then echo "::error::$bad needed job(s) did not succeed"; exit 1; fi
