@@ -525,8 +525,13 @@ jobs:
                 problems.append(f"{name}: no trx")
                 rows.append((name, "-", "-", "-", "-"))
                 continue
-            c = ET.parse(found[name]).getroot().find(f"{NS}ResultSummary/{NS}Counters")
-            vals = [int(c.get(a, "0")) for a in ("total", "passed", "failed", "notExecuted")]
+            root = ET.parse(found[name]).getroot()
+            c = root.find(f"{NS}ResultSummary/{NS}Counters")
+            # Skipped is NOT Counters/@notExecuted: the trx logger leaves that 0 for xUnit skips
+            # (measured on run 37162960837); a skipped test is a UnitTestResult whose outcome is
+            # NotExecuted, so count those.
+            skipped = sum(1 for r in root.iter(f"{NS}UnitTestResult") if r.get("outcome") == "NotExecuted")
+            vals = [int(c.get(a, "0")) for a in ("total", "passed", "failed")] + [skipped]
             if vals[0] == 0:
                 problems.append(f"{name}: zero tests")
             if name.startswith("compiler-shard-"):
