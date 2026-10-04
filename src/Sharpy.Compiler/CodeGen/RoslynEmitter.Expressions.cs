@@ -57,7 +57,8 @@ internal partial class RoslynEmitter
         // Argument slot cast (#1721): the TypeChecker bound this argument to a `T | None` slot of
         // an OVERLOADED callee and recorded the slot. Roslyn admits `T → Optional<T>` implicitly
         // (Sharpy.Core's conversion operator) where strict Optional does not, so without the cast
-        // the C# binder sees a tie the selection already broke (CS0121 behind SPY0908). Applied
+        // the C# binder sees a tie the selection already broke (CS0121 behind SPY0908). The None
+        // operand of a CLR-reference `== None` carries the same fact (#2238): `x == (T?)null`. Applied
         // last: the value is converted and materialized first, then cast to its slot.
         var slotCast = _context.SemanticInfo?.GetArgumentSlotCast(expr);
         return slotCast != null

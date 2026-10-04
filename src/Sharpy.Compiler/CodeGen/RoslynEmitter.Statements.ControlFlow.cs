@@ -225,7 +225,7 @@ internal partial class RoslynEmitter
         }
 
         // assert a == None / a != None whose recorded lowering is NOT the null pattern — a CLR
-        // reference's native `== null` (#2238, ruling R-ES) or a user __eq__ that admits None (#1719) —
+        // reference's native `== (T?)null` (#2238, ruling R-ES) or a user __eq__ that admits None (#1719) —
         // runs the type's operator, so the test host asserts exactly what `sharpyc run` computes:
         // Xunit.Assert.True(<the shared equality lowering>). The generic Assert.Equal(null, a) below
         // would ask xUnit's comparer, whose null check is a reference check that skips the operator

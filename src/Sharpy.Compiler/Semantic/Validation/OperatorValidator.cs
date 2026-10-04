@@ -158,7 +158,7 @@ internal class OperatorValidator : ValidatingAstWalker
             // Equals/IEquatable but define no op_Equality) are resolved by the inference service
             // to an EqualsCall lowering. Reference-type ==/!= None is resolved to a NoneCheck
             // (null pattern) lowering (#901), and ==/!= None on a CLR reference type to the native
-            // `== null` that runs its operator (#2238). Those are genuinely supported, so don't emit
+            // `== (T?)null` that runs its operator (#2238). Those are genuinely supported, so don't emit
             // SPY0402 — but only for these specific cases, to preserve the error for user-defined types
             // (and generics) that lack __eq__ entirely (#886), and for value-type == None (SPY0222).
             if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual

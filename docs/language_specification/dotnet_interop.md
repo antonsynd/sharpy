@@ -529,13 +529,13 @@ def main() -> None:
     print(v is not None)   # True
 ```
 
-A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, write `== None` / `!= None`, which lowers to C# `v == null` and runs the overload. That holds for every operand: a declared `T`, a `T | None`, and a `T | None` that an assignment or an `is not None` test has narrowed to `T`:
+A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, write `== None` / `!= None`, which lowers to C# `v == (T?)null` and runs the type's same-type overload — the typed null keeps a second `==` overload (say, against another type) from making the comparison ambiguous, and a type with no same-type `==` compares references. That holds for every operand: a declared `T`, a `T | None`, a `T | None` that an assignment or an `is not None` test has narrowed to `T`, and a `T?` narrowed by `is not None`:
 
 ```python
 from system import Version
 
 def is_gone(w: Version | None) -> bool:
-    return w == None       # lowered to `w == null`, through Version's operator ==
+    return w == None       # lowered to `w == (Version?)null`, through Version's operator ==
 
 def main() -> None:
     print(is_gone(None))               # True
@@ -545,7 +545,7 @@ def main() -> None:
     print(None != v)                   # True
 ```
 
-Inside a `@test` function, `assert v == None` asserts that same lowering (`Assert.True(v == null)`), so a test and `sharpyc run` agree on what the comparison means.
+Inside a `@test` function, `assert v == None` asserts that same lowering (`Assert.True(v == (Version?)null)`), so a test and `sharpyc run` agree on what the comparison means.
 
 ## IDisposable Pattern
 

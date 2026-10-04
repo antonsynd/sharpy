@@ -106,7 +106,7 @@ A class whose `__eq__` accepts `None` (`__eq__(self, other: object)`) is asked, 
 holding `None` is `True`.
 
 A **.NET** reference type (`from system import Version`) is asked through its own `==`: `v == None`
-lowers to C# `v == null` and runs the type's overloaded `operator ==` — on a declared `Version`, a
+lowers to C# `v == (Version?)null` and runs the type's overloaded `operator ==` — on a declared `Version`, a
 `Version | None`, or one narrowed to `Version` (see
 [.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none)).
 

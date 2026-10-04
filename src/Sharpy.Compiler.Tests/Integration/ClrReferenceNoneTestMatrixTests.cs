@@ -11,28 +11,35 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// One rule for <c>None</c> tests on a .NET reference type (#2238, ruling R-ES, lifting #2221's R-DX part 1
 /// for CLR types): <c>== None</c> / <c>!= None</c> is admitted on EVERY operand — declared <c>T</c>,
-/// <c>T | None</c>, narrowed by assignment, narrowed by <c>is not None</c> — and runs the type's
-/// <c>operator ==</c> (the native <c>x == null</c>), so a destroyed "fake null" object answers
-/// <c>== None</c> → True. <c>is None</c> stays the reference check that never runs user code (#2224,
-/// ruling R-EJ): the same destroyed object answers <c>is None</c> → False. Sharpy classes, value types and
-/// the Optional family are controls whose verdicts the lift does not touch.
+/// <c>T | None</c>, narrowed by assignment, narrowed by <c>is not None</c>, a <c>T?</c> narrowed by
+/// <c>is not None</c> — and runs the type's SAME-TYPE <c>operator ==</c> / <c>!=</c>: the None operand is
+/// emitted as a typed null, <c>x == (T?)null</c> (cure A), so no operator-overload shape makes it ambiguous
+/// (CS9342) and a destroyed "fake null" object answers <c>== None</c> → True. <c>is None</c> stays the
+/// reference check that never runs user code (#2224, ruling R-EJ): the same destroyed object answers
+/// <c>is None</c> → False. Sharpy classes, value types and the un-narrowed Optional are controls whose
+/// verdicts the lift does not touch.
 /// </summary>
 /// <remarks>
-/// <para>Axes: kind {CLR reference with a fake-null <c>==</c> (the destroyed-object <c>Handle</c> of
-/// <see cref="IsNoneReferenceCheckMatrixTests"/>), CLR reference with a plain overloaded <c>==</c>
-/// (<c>System.Version</c>), CLR reference without one (<c>StringBuilder</c>), Sharpy class with a
-/// well-behaved <c>__eq__(object)</c>, with a permissive (always-True) one — the Sharpy analogue of the fake
-/// null —, without <c>__eq__</c>, value type <c>int</c>, Optional <c>Handle?</c>}
-/// × form {declared <c>T</c>, <c>T | None</c> un-narrowed, narrowed by assignment, narrowed by
-/// <c>is not None</c>} × spelling {<c>x == None</c>, <c>x != None</c>, <c>None == x</c>, <c>None != x</c>, and
-/// the <c>is</c> twins <c>x is None</c>, <c>x is not None</c>, <c>None is x</c>, <c>None is not x</c>} ×
-/// position {<c>return</c>, <c>if</c>, <c>assert</c>, <c>assert</c> under the <c>@test</c> host}.</para>
+/// <para>Axes: kind {CLR reference with a fake-null same-type <c>==</c> (the destroyed-object <c>Handle</c>
+/// of <see cref="IsNoneReferenceCheckMatrixTests"/>), with a plain same-type <c>==</c>
+/// (<c>System.Version</c>), with none (<c>StringBuilder</c>), with TWO nullable overloads
+/// (<c>Amb</c>: same-type + <c>Other</c>), with a same-type + <c>object</c> overload (<c>WithObject</c>), with an
+/// <c>==</c> only against ANOTHER type (<c>OnlyOther</c> — the typed null binds reference equality); Sharpy
+/// class with a well-behaved <c>__eq__(object)</c>, with a permissive (always-True) one, without
+/// <c>__eq__</c>; value type <c>int</c>} × form {declared <c>T</c>, <c>T | None</c> un-narrowed, narrowed by
+/// assignment, narrowed by <c>is not None</c>, <c>T?</c> un-narrowed, <c>T?</c> narrowed by <c>is not None</c>}
+/// × spelling {<c>x == None</c>, <c>x != None</c>, <c>None == x</c>, <c>None != x</c>, and the <c>is</c> twins
+/// <c>x is None</c>, <c>x is not None</c>, <c>None is x</c>, <c>None is not x</c>} × position {<c>return</c>,
+/// <c>if</c>, <c>assert</c>, <c>assert</c> under the <c>@test</c> host}.</para>
 /// <para>The verdict table (<see cref="IsRefused"/>) and the truth table (<see cref="Truth"/>) are spelled
 /// by hand. Every admitted cell is EXECUTED for every subject state its form can hold (a destroyed and a
-/// live <c>Handle</c>; absent only for the un-narrowed form); the truth is python3's for the Sharpy
-/// controls and the operator's answer for the CLR kinds. An assert cell observes both directions (holds →
-/// True, violated → the assertion error, never another throw). Every refused cell must report SPY0222 with
-/// the <c>is None</c> steer at its own line.</para>
+/// live specimen; absent only for the un-narrowed forms). The specimens' operators make WHICH overload ran
+/// visible: each same-type <c>==</c> treats a destroyed object as null, and each cross-type overload
+/// (against <c>Other</c> or <c>object</c>) answers True to BOTH <c>==</c> and <c>!=</c> — no consistent
+/// operator does — so a cell that bound it, or that fell to reference equality on a type with a same-type
+/// operator, prints a value no expected row holds. An assert cell observes both directions (holds → True,
+/// violated → the assertion error, never another throw). Every refused cell must report SPY0222 with the
+/// <c>is None</c> steer at its own line.</para>
 /// </remarks>
 [Collection("HeavyCompilation")]
 public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
@@ -41,17 +48,83 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
     {
     }
 
+    /// <summary>
+    /// Operator-overload shapes. A cross-type overload answers True to both <c>==</c> and <c>!=</c>, so a
+    /// test bound to it is distinguishable from the same-type operator (fake null: a destroyed object
+    /// equals null) and from reference equality.
+    /// </summary>
+    private const string OverloadSource = """
+        namespace Spyoverloads
+        {
+            public class Other { }
+
+            public class Amb
+            {
+                public Amb(bool destroyed) { Destroyed = destroyed; }
+                public bool Destroyed { get; }
+
+                public static bool operator ==(Amb? a, Amb? b)
+                {
+                    var aNull = a is null || a.Destroyed;
+                    var bNull = b is null || b.Destroyed;
+                    return aNull || bNull ? aNull && bNull : ReferenceEquals(a, b);
+                }
+
+                public static bool operator !=(Amb? a, Amb? b) => !(a == b);
+                public static bool operator ==(Amb? a, Other? b) => true;
+                public static bool operator !=(Amb? a, Other? b) => true;
+                public override bool Equals(object? obj) => ReferenceEquals(this, obj);
+                public override int GetHashCode() => 0;
+            }
+
+            public class WithObject
+            {
+                public WithObject(bool destroyed) { Destroyed = destroyed; }
+                public bool Destroyed { get; }
+
+                public static bool operator ==(WithObject? a, WithObject? b)
+                {
+                    var aNull = a is null || a.Destroyed;
+                    var bNull = b is null || b.Destroyed;
+                    return aNull || bNull ? aNull && bNull : ReferenceEquals(a, b);
+                }
+
+                public static bool operator !=(WithObject? a, WithObject? b) => !(a == b);
+                public static bool operator ==(WithObject? a, object? b) => true;
+                public static bool operator !=(WithObject? a, object? b) => true;
+                public override bool Equals(object? obj) => ReferenceEquals(this, obj);
+                public override int GetHashCode() => 0;
+            }
+
+            public class OnlyOther
+            {
+                public OnlyOther(bool destroyed) { Destroyed = destroyed; }
+                public bool Destroyed { get; }
+
+                public static bool operator ==(OnlyOther? a, Other? b) => true;
+                public static bool operator !=(OnlyOther? a, Other? b) => true;
+                public override bool Equals(object? obj) => ReferenceEquals(this, obj);
+                public override int GetHashCode() => 0;
+            }
+        }
+        """;
+
+    private static readonly Lazy<string> OverloadAssembly =
+        new(() => IsNoneReferenceCheckMatrixTests.BuildSpecimenAssembly("Spyoverloads", OverloadSource));
+
     protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
         => base.GetAdditionalReferenceAssemblyPaths()
             .Append(typeof(Xunit.Assert).Assembly.Location)
-            .Append(IsNoneReferenceCheckMatrixTests.FakeNullAssembly.Value);
+            .Append(IsNoneReferenceCheckMatrixTests.FakeNullAssembly.Value)
+            .Append(OverloadAssembly.Value);
 
     public enum Kind
     {
-        ClrFakeNull, ClrOverloadedEq, ClrPlainReference, SharpyEq, SharpyPermissiveEq, SharpyNoEq, ValueType, Optional,
+        ClrFakeNull, ClrOverloadedEq, ClrPlainReference, ClrTwoNullableOverloads, ClrObjectOverload,
+        ClrOnlyOtherTypeOverload, SharpyEq, SharpyPermissiveEq, SharpyNoEq, ValueType,
     }
 
-    public enum Form { Declared, Unnarrowed, NarrowedByAssignment, NarrowedByIsNotNone }
+    public enum Form { Declared, Unnarrowed, NarrowedByAssignment, NarrowedByIsNotNone, Optional, NarrowedOptional }
 
     public enum Spelling { EqNone, NotEqNone, NoneEq, NoneNotEq, IsNone, IsNotNone, NoneIs, NoneIsNot }
 
@@ -61,6 +134,7 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
         from system import Version
         from system.text import StringBuilder
         from spyfakenull import Handle
+        from spyoverloads import Amb, WithObject, OnlyOther
         from xunit.sdk import XunitException
 
         class W:
@@ -86,68 +160,48 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
             def __init__(self, v: int):
                 self.v = v
 
-        def launder_handle(v: Handle | None) -> Handle | None:
-            return v
-
-        def launder_version(v: Version | None) -> Version | None:
-            return v
-
-        def launder_sb(v: StringBuilder | None) -> StringBuilder | None:
-            return v
-
-        def launder_w(v: W | None) -> W | None:
-            return v
-
-        def launder_p(v: P | None) -> P | None:
-            return v
-
-        def launder_n(v: N | None) -> N | None:
-            return v
-
-        def launder_int(v: int | None) -> int | None:
-            return v
-
-        def launder_opt(v: Handle?) -> Handle?:
-            return v
-
 
         """;
 
-    /// <summary>One subject state: the value expression, whether it is absent, and whether the type's
-    /// <c>==</c> calls it equal to None while it is present (the destroyed <c>Handle</c>, and <c>P</c> whose
-    /// <c>__eq__</c> says True to everything — python3: <c>P(2) == None</c> and <c>None == P(2)</c> are True).</summary>
-    private sealed record State(string Name, string Value, bool Absent, bool FakeNull);
+    /// <summary>One subject state: the value expression (absent: null), and what the type's selected
+    /// <c>==</c> answers for <c>x == None</c> while it is present — True for a destroyed specimen whose
+    /// same-type <c>==</c> treats it as null, and for <c>P</c> whose <c>__eq__</c> says True to everything
+    /// (python3: <c>P(2) == None</c> and <c>None == P(2)</c> are True).</summary>
+    private sealed record State(string Name, string? Value, bool EqualsNone)
+    {
+        public bool Absent => Value is null;
+    }
 
-    /// <summary>The declared type, the <c>T | None</c> spelling (the Optional family has none — it stays
-    /// <c>T?</c>), the absent value, the launder function, and the present states.</summary>
-    private sealed record KindSpec(string Type, string NullableType, string AbsentValue, string Launder, State[] Present);
+    /// <summary>A launder-function key, the declared type, and the present states.</summary>
+    private sealed record KindSpec(string Key, string Type, State[] Present);
+
+    private static State[] DestroyedAndLive(string type, bool sameTypeOperator) => new[]
+    {
+        new State("destroyed", $"{type}(True)", sameTypeOperator), new State("live", $"{type}(False)", false),
+    };
 
     private static KindSpec Spec(Kind kind) => kind switch
     {
-        Kind.ClrFakeNull => new("Handle", "Handle | None", "None", "launder_handle", new[]
-        {
-            new State("destroyed", "Handle(True)", false, true), new State("live", "Handle(False)", false, false),
-        }),
-        Kind.ClrOverloadedEq => new("Version", "Version | None", "None", "launder_version",
-            new[] { new State("value", "Version(1, 2)", false, false) }),
-        Kind.ClrPlainReference => new("StringBuilder", "StringBuilder | None", "None", "launder_sb",
-            new[] { new State("value", "StringBuilder()", false, false) }),
-        Kind.SharpyEq => new("W", "W | None", "None", "launder_w", new[] { new State("value", "W(2)", false, false) }),
-        Kind.SharpyPermissiveEq => new("P", "P | None", "None", "launder_p",
-            new[] { new State("value", "P(2)", false, true) }),
-        Kind.SharpyNoEq => new("N", "N | None", "None", "launder_n", new[] { new State("value", "N(2)", false, false) }),
-        Kind.ValueType => new("int", "int | None", "None", "launder_int", new[] { new State("value", "0", false, false) }),
-        Kind.Optional => new("Handle?", "Handle?", "None()", "launder_opt",
-            new[] { new State("destroyed", "Some(Handle(True))", false, true) }),
+        Kind.ClrFakeNull => new("handle", "Handle", DestroyedAndLive("Handle", true)),
+        Kind.ClrOverloadedEq => new("version", "Version", new[] { new State("value", "Version(1, 2)", false) }),
+        Kind.ClrPlainReference => new("sb", "StringBuilder", new[] { new State("value", "StringBuilder()", false) }),
+        Kind.ClrTwoNullableOverloads => new("amb", "Amb", DestroyedAndLive("Amb", true)),
+        Kind.ClrObjectOverload => new("withobj", "WithObject", DestroyedAndLive("WithObject", true)),
+        // No same-type operator: the typed null binds reference equality, so a destroyed object is not None.
+        Kind.ClrOnlyOtherTypeOverload => new("onlyother", "OnlyOther", DestroyedAndLive("OnlyOther", false)),
+        Kind.SharpyEq => new("w", "W", new[] { new State("value", "W(2)", false) }),
+        Kind.SharpyPermissiveEq => new("p", "P", new[] { new State("value", "P(2)", true) }),
+        Kind.SharpyNoEq => new("n", "N", new[] { new State("value", "N(2)", false) }),
+        Kind.ValueType => new("int", "int", new[] { new State("value", "0", false) }),
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
-    /// <summary>Subject states per form: only the un-narrowed form can hold None.</summary>
+    /// <summary>Subject states per form: only the un-narrowed forms can hold None.</summary>
     private static State[] States(Kind kind, Form form)
     {
         var spec = Spec(kind);
-        return form == Form.Unnarrowed
-            ? spec.Present.Append(new State("absent", spec.AbsentValue, true, false)).ToArray()
+        return form is Form.Unnarrowed or Form.Optional
+            ? spec.Present.Append(new State("absent", null, true)).ToArray()
             : spec.Present;
     }
 
@@ -155,19 +209,17 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
 
     /// <summary>
     /// Hand-spelled verdicts. Every CLR-reference and Sharpy-class cell is admitted (R-ES). The equality
-    /// spellings stay refused on a value type (statically always-False, SPY0222 — `int | None` included)
-    /// and on the Optional family, which must be narrowed first: an Optional narrowed by `is not None` IS
-    /// the bare CLR reference, so it takes the R-ES rule; narrowing by assignment does not narrow `T?`.
+    /// spellings stay refused on a value type (statically always-False, SPY0222 — `int | None` and a
+    /// narrowed `int?` included) and on an un-narrowed Optional `T?`, which must be narrowed first: a `T?`
+    /// narrowed by `is not None` IS the bare `T`, so it takes the rule of `T`.
     /// </summary>
     private static bool IsRefused(Kind kind, Form form, Spelling spelling)
-        => IsEquality(spelling)
-            && (kind == Kind.ValueType || (kind == Kind.Optional && form != Form.NarrowedByIsNotNone));
+        => IsEquality(spelling) && (kind == Kind.ValueType || form == Form.Optional);
 
-    /// <summary>The truth value: <c>is</c> asks absence; <c>==</c> asks the type's operator, which for the
-    /// fake-null <c>Handle</c> also says a destroyed object equals None (python3 for the Sharpy classes).</summary>
+    /// <summary>The truth value: <c>is</c> asks absence; <c>==</c> asks the type's selected operator.</summary>
     private static bool Truth(Spelling spelling, State state)
     {
-        var equalsNone = IsEquality(spelling) ? state.Absent || state.FakeNull : state.Absent;
+        var equalsNone = IsEquality(spelling) ? state.Absent || state.EqualsNone : state.Absent;
         var negated = spelling is Spelling.NotEqNone or Spelling.NoneNotEq or Spelling.IsNotNone or Spelling.NoneIsNot;
         return equalsNone != negated;
     }
@@ -188,14 +240,24 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
     private static string Steer(Spelling spelling)
         => spelling is Spelling.EqNone or Spelling.NoneEq ? "Did you mean 'is None'?" : "Did you mean 'is not None'?";
 
-    /// <summary>The lines binding <c>x</c> for a form and state.</summary>
+    /// <summary>The lines binding <c>x</c> for a form and state; the un-narrowed forms pass the value
+    /// through a launder function so nothing narrows it.</summary>
     private static string[] Binding(KindSpec spec, Form form, State state) => form switch
     {
         Form.Declared => new[] { $"x: {spec.Type} = {state.Value}" },
-        Form.Unnarrowed or Form.NarrowedByIsNotNone => new[] { $"x: {spec.NullableType} = {spec.Launder}({state.Value})" },
-        Form.NarrowedByAssignment => new[] { $"x: {spec.NullableType} = {spec.AbsentValue}", $"x = {state.Value}" },
+        Form.Unnarrowed or Form.NarrowedByIsNotNone =>
+            new[] { $"x: {spec.Type} | None = launder_{spec.Key}({state.Value ?? "None"})" },
+        Form.NarrowedByAssignment => new[] { $"x: {spec.Type} | None = None", $"x = {state.Value}" },
+        Form.Optional or Form.NarrowedOptional => new[]
+        {
+            $"x: {spec.Type}? = launder_opt_{spec.Key}({(state.Value is null ? "None()" : $"Some({state.Value})")})",
+        },
         _ => throw new ArgumentOutOfRangeException(nameof(form)),
     };
+
+    private static string Launders(KindSpec spec)
+        => $"def launder_{spec.Key}(v: {spec.Type} | None) -> {spec.Type} | None:\n    return v\n\n"
+            + $"def launder_opt_{spec.Key}(v: {spec.Type}?) -> {spec.Type}?:\n    return v\n\n";
 
     /// <summary>The statements testing <paramref name="test"/> in a position; the index of the line that
     /// carries the test is returned for the refusal's location check.</summary>
@@ -246,7 +308,7 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
                         var (body, testLine) = Body(position, Test(spelling));
                         var lines = new List<string>();
                         lines.AddRange(Binding(spec, form, state));
-                        if (form == Form.NarrowedByIsNotNone)
+                        if (form is Form.NarrowedByIsNotNone or Form.NarrowedOptional)
                         {
                             lines.Add("if x is not None:");
                             testLine += lines.Count;
@@ -280,7 +342,7 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
                 }
 
         // Lay the program out and resolve each cell's absolute test line.
-        var program = new StringBuilder(Prelude);
+        var program = new StringBuilder(Prelude).Append(Launders(spec));
         var lineOf = new Dictionary<int, int>();
         int Lines(StringBuilder sb) => sb.ToString().Count(c => c == '\n');
         var fnIndex = 0;
@@ -335,15 +397,16 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
     [Fact]
     public void Matrix_CoversEveryCell()
     {
-        // Anchored to literals: 8 kinds × 4 forms × 8 spellings × 4 positions = 1024 cells, of which
-        // value type 4 forms × 4 equality spellings × 4 positions = 64 and Optional 3 forms × 4 × 4 = 48
-        // are refusals (112). Executed rows: states per form are 2/3/2/2 for Handle and 1/2/1/1 otherwise
-        // (44 kind×form×state rows) × 8 spellings × 4 positions = 1408, minus the refused rows
-        // (value type 5 × 4 × 4 = 80, Optional 4 × 4 × 4 = 64) = 1264.
-        CellCount(refused: false).Should().Be(912);
-        CellCount(refused: true).Should().Be(112);
-        Enum.GetValues<Kind>().Sum(k => BuildProgram(k, refused: false).Cells.Count).Should().Be(1264);
-        Enum.GetValues<Kind>().Sum(k => BuildProgram(k, refused: true).Cells.Count).Should().Be(112);
+        // Anchored to literals: 10 kinds × 6 forms × 8 spellings × 4 positions = 1920 cells, of which
+        // value type 6 forms × 4 equality spellings × 4 positions = 96 and the un-narrowed `T?` form of the
+        // other 9 kinds 9 × 4 × 4 = 144 are refusals (240). Executed rows: states per form are
+        // 2/3/2/2/3/2 for the 4 destroyed+live kinds and 1/2/1/1/2/1 for the other 6 (104 kind×form×state
+        // rows) × 8 spellings × 4 positions = 3328, minus the refused rows (value type 8 × 4 × 4 = 128,
+        // un-narrowed `T?` (4 × 3 + 5 × 2) × 4 × 4 = 352) = 2848.
+        CellCount(refused: false).Should().Be(1680);
+        CellCount(refused: true).Should().Be(240);
+        Enum.GetValues<Kind>().Sum(k => BuildProgram(k, refused: false).Cells.Count).Should().Be(2848);
+        Enum.GetValues<Kind>().Sum(k => BuildProgram(k, refused: true).Cells.Count).Should().Be(240);
     }
 
     [Theory]
@@ -391,11 +454,11 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
 
     /// <summary>The acceptance cell (#2238): a destroyed object, narrowed, answers <c>== None</c> → True
     /// (its operator runs) and <c>is None</c> → False (the reference check), and a comparison-chain link
-    /// agrees with the binary form.</summary>
+    /// agrees with the binary form — including a None shared by two links over a two-overload type.</summary>
     [Fact]
     public void DestroyedObject_Narrowed_EqualsNone_ButIsNotNone()
     {
-        var result = CompileAndExecute(Prelude + """
+        var result = CompileAndExecute(Prelude + Launders(Spec(Kind.ClrFakeNull)) + """
             def main() -> None:
                 x: Handle | None = None
                 x = Handle(True)
@@ -406,10 +469,15 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
                 v: Version = Version(1, 2)
                 s: StringBuilder = StringBuilder()
                 print(v == None == s, v != None != s)
+                a: Amb = Amb(True)
+                b: Amb = Amb(True)
+                c: Amb = Amb(False)
+                print(a == None == b, a == None == c, None != c != None)
             """);
 
         result.Success.Should().BeTrue(
             $"{string.Join("; ", result.CompilationErrors)} stderr: {result.StandardError}");
-        result.StandardOutput.Replace("\r\n", "\n").Should().Be("True False False True\nTrue False\nFalse True\n");
+        result.StandardOutput.Replace("\r\n", "\n").Should().Be(
+            "True False False True\nTrue False\nFalse True\nTrue False True\n");
     }
 }

@@ -216,6 +216,13 @@ internal partial class TypeChecker
             {
                 _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(link.Kind));
             }
+
+            // A CLR-reference `== None` / `!= None` emits its None operand as a typed null so C# binds
+            // the type's same-type operator == (#2238, cure A) — the argument-slot cast fact (#1721).
+            if (_typeInference.ClrReferenceNoneComparandSlot(binOp.Operator, leftType, rightType) is { } slot)
+            {
+                _semanticInfo.SetArgumentSlotCast(leftType is VoidType ? binOp.Left : binOp.Right, slot);
+            }
         }
 
         // Constant-fold integer exponentiation so a result that fits a wider integer type
@@ -1396,6 +1403,8 @@ internal partial class TypeChecker
         // Unknown-operand or refused link records the native form — so the emitter reads one
         // fact per operator and never needs a fallback (#1642).
         var links = ImmutableArray.CreateBuilder<ComparisonLinkLowering>(chain.Operators.Length);
+        // The typed-null slot each link proposes for its None operand (#2238, cure A), per operand.
+        var noneSlots = new SemanticType?[chain.Operators.Length, 2];
         for (int i = 0; i < chain.Operators.Length; i++)
         {
             var leftType = OperandView(operandTypes[i]!);
@@ -1444,6 +1453,22 @@ internal partial class TypeChecker
 
             // The SAME classifier the binary form `Operands[i] <op> Operands[i+1]` uses.
             links.Add(ClassifyComparisonLowering(binaryOp, leftType, rightType));
+            if (_typeInference.ClrReferenceNoneComparandSlot(binaryOp, leftType, rightType) is { } slot)
+                noneSlots[i, leftType is VoidType ? 0 : 1] = slot;
+        }
+
+        // A None operand is emitted ONCE and read by both adjacent links, so it is cast to the typed-null
+        // slot only when every link reading it proposes that same slot (the binary form's fact, #2238).
+        // A middle None between two different CLR types (or a CLR type and a non-CLR operand) keeps the
+        // bare `null`, which reference-converts to both sides.
+        for (int k = 0; k < chain.Operands.Length; k++)
+        {
+            var asRight = k > 0 ? noneSlots[k - 1, 1] : null;
+            var asLeft = k < chain.Operators.Length ? noneSlots[k, 0] : null;
+            var readers = (k > 0 ? 1 : 0) + (k < chain.Operators.Length ? 1 : 0);
+            var proposals = new[] { asRight, asLeft }.Where(p => p != null).ToList();
+            if (proposals.Count == readers && proposals.Distinct().Count() == 1)
+                _semanticInfo.SetArgumentSlotCast(chain.Operands[k], proposals[0]!);
         }
 
         _semanticInfo.SetComparisonChainLowering(chain, new ComparisonChainLowering(links.MoveToImmutable()));

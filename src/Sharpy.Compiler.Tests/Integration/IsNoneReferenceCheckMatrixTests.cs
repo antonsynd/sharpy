@@ -68,29 +68,33 @@ public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
         """;
 
     /// <summary>The fake-null specimen assembly, shared with <see cref="ClrReferenceNoneTestMatrixTests"/>.</summary>
-    internal static readonly Lazy<string> FakeNullAssembly = new(() =>
+    internal static readonly Lazy<string> FakeNullAssembly = new(() => BuildSpecimenAssembly("Spyfakenull", FakeNullSource));
+
+    /// <summary>Compiles an in-test C# specimen into its own assembly (nullable context enabled) and
+    /// returns its path; a specimen that does not build is a test-setup error.</summary>
+    internal static string BuildSpecimenAssembly(string name, string source)
     {
         var references = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
             .ToList<MetadataReference>();
         var compilation = CSharpCompilation.Create(
-            "Spyfakenull",
-            new[] { CSharpSyntaxTree.ParseText(FakeNullSource) },
+            name,
+            new[] { CSharpSyntaxTree.ParseText(source) },
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                 nullableContextOptions: NullableContextOptions.Enable));
-        var dir = Path.Combine(Path.GetTempPath(), $"sharpy_fakenull_{Guid.NewGuid():N}");
+        var dir = Path.Combine(Path.GetTempPath(), $"sharpy_{name.ToLowerInvariant()}_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, "Spyfakenull.dll");
+        var path = Path.Combine(dir, $"{name}.dll");
         var result = compilation.Emit(path);
         if (!result.Success)
         {
-            throw new InvalidOperationException("the fake-null specimen assembly must build: "
+            throw new InvalidOperationException($"the {name} specimen assembly must build: "
                 + string.Join("; ", result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
         }
         return path;
-    });
+    }
 
     protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
         => base.GetAdditionalReferenceAssemblyPaths().Append(FakeNullAssembly.Value);

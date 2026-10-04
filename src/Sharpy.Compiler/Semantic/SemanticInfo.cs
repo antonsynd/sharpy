@@ -268,7 +268,9 @@ public class SemanticInfo : ISemanticQuery
     // conversion operator) and would report CS0121 for the same call. The emitter casts the
     // argument to the recorded slot so the C# binder sees the selection the checker made. Recorded
     // at the one seam every overload route binds through (BindArgumentsToSelectedOverload);
-    // node-keyed on the ARGUMENT expression.
+    // node-keyed on the ARGUMENT expression. The None operand of a CLR-reference `== None` /
+    // `!= None` is the same fact (#2238, cure A): an argument of op_Equality cast to its `T | None`
+    // formal, `x == (T?)null`, so C# binds the same-type overload instead of reporting CS9342.
     private readonly ConcurrentDictionary<Expression, SemanticType> _argumentSlotCasts = new(ReferenceEqualityComparer.Instance);
 
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type

@@ -102,7 +102,8 @@ internal class TypeInferenceService
     internal BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
     {
         // `x == None` / `x != None` on a CLR reference type — bare, narrowed, or `T | None` — is the
-        // native `x == null`, which runs T's `operator ==` (#2238, ruling R-ES). Decided before the
+        // native `x == (T?)null`, which runs T's `operator ==` (#2238, ruling R-ES; the typed null is
+        // ClrReferenceNoneComparandSlot). Decided before the
         // #901 null pattern below, which would skip the operator it names.
         if (IsClrReferenceNoneEquality(op, left, right))
             return BinaryOpLowering.NativeOperator;
@@ -1102,7 +1103,7 @@ internal class TypeInferenceService
     /// Sharpy builtin — whether the operand is the bare <c>T</c> (declared, or narrowed by assignment or
     /// by <c>is not None</c>) or <c>T | None</c> (<see cref="NullableType"/>). One rule for every such
     /// operand (#2238, ruling R-ES, lifting #2221's R-DX part 1 for CLR types): the comparison is
-    /// admitted and lowers to the native <c>x == null</c>, which runs T's <c>operator ==</c> — Unity's
+    /// admitted and lowers to the native <c>x == (T?)null</c>, which runs T's <c>operator ==</c> — Unity's
     /// destroyed-object "fake null" answers True — while <c>is None</c> stays the reference null check
     /// that never runs user code (#2224, ruling R-EJ).
     /// <para>Out of scope by construction: <c>str</c> and the Sharpy collections (Sharpy surface whose
@@ -1124,6 +1125,23 @@ internal class TypeInferenceService
         if (other is NullableType nullable)
             other = nullable.UnderlyingType;
         return HasClrReferenceIdentity(TypeChecker.OperandView(other));
+    }
+
+    /// <summary>
+    /// The typed-null slot of a CLR-reference <c>== None</c> / <c>!= None</c>
+    /// (<see cref="IsClrReferenceNoneEquality"/>): <c>T | None</c> for the reference type <c>T</c>, or null
+    /// for every other comparison. The None operand is emitted cast to it, <c>x == (T?)null</c>, so C#
+    /// binds T's SAME-TYPE <c>operator ==</c> (or reference equality when T declares none) — a bare
+    /// <c>null</c> converts to every nullable formal and is ambiguous (CS9342) on a type with a second
+    /// <c>op_Equality</c> overload (#2238, cure A). Always recorded for this lowering: one emit shape.
+    /// </summary>
+    internal SemanticType? ClrReferenceNoneComparandSlot(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (!IsClrReferenceNoneEquality(op, left, right))
+            return null;
+
+        var other = left is VoidType ? right : left;
+        return other as NullableType ?? new NullableType { UnderlyingType = TypeChecker.OperandView(other) };
     }
 
     /// <summary>
