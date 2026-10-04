@@ -37,7 +37,7 @@ public enum OperandSlot
 /// given slot of a given parent, and wraps it when it does.</description></item>
 /// <item><description>The factory wrappers (<see cref="Binary"/>, <see cref="Member"/>,
 /// <see cref="Cast"/>, <see cref="Prefix"/>, <see cref="Postfix"/>, <see cref="Conditional"/>,
-/// <see cref="IsPattern"/>, <see cref="Await"/>, <see cref="Element"/>,
+/// <see cref="IsPattern"/>, <see cref="Switch"/>, <see cref="Await"/>, <see cref="Element"/>,
 /// <see cref="ConditionalAccess"/>) build the same node the raw <c>SyntaxFactory</c> call would
 /// and route every operand slot through <see cref="Operand"/>. Emitter code that wraps a
 /// <em>generated</em> expression builds it through them; a literal, identifier or invocation
@@ -303,6 +303,14 @@ public static class EmittedTreePrecedence
     /// <summary><c>await operand</c> — the operand must be unary or tighter.</summary>
     public static AwaitExpressionSyntax Await(ExpressionSyntax operand)
         => AwaitExpression(Operand(operand, SyntaxKind.AwaitExpression, OperandSlot.AwaitOperand));
+
+    /// <summary>
+    /// <c>governing switch { arms }</c> — the governing expression must be range or tighter (a C#
+    /// switch expression binds tighter than every binary operator, so <c>n + 2 switch { … }</c>
+    /// reparses as <c>n + (2 switch { … })</c>, #2226).
+    /// </summary>
+    public static SwitchExpressionSyntax Switch(ExpressionSyntax governing, SeparatedSyntaxList<SwitchExpressionArmSyntax> arms)
+        => SwitchExpression(Operand(governing, SyntaxKind.SwitchExpression, OperandSlot.SwitchGoverning), arms);
 
     /// <summary><c>receiver[...]</c> — the receiver must be primary; the argument list is added by the caller.</summary>
     public static ElementAccessExpressionSyntax Element(ExpressionSyntax receiver)

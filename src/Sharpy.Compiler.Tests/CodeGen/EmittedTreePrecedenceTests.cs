@@ -437,6 +437,26 @@ public class EmittedTreePrecedenceTests
             .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
     }
 
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void Switch_ParenthesizesEveryGoverningExpressionBelowRange()
+    {
+        // #2226: `n + 2 switch { … }` reparses as `n + (2 switch { … })` — a switch expression binds
+        // tighter than every binary operator, so anything below range level needs parentheses.
+        var arms = SingletonSeparatedList(SwitchExpressionArm(DiscardPattern(), Name("d")));
+        var sum = BinaryExpression(SyntaxKind.AddExpression, Name("a"), Name("b"));
+        var conditional = ConditionalExpression(Name("a"), Name("b"), Name("c"));
+        var negation = PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, Name("a"));
+
+        EmittedTreePrecedence.Switch(sum, arms).GoverningExpression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Switch(conditional, arms).GoverningExpression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Switch(negation, arms).GoverningExpression
+            .IsIncrementallyIdenticalTo(negation).Should().BeTrue("unary binds tighter than switch");
+        EmittedTreePrecedence.Switch(Name("a"), arms).GoverningExpression.Should().BeOfType<IdentifierNameSyntax>();
+        EmittedTreePrecedence.Violations(WrapInCompilationUnit(EmittedTreePrecedence.Switch(sum, arms)))
+            .Should().BeEmpty();
+    }
+
     // --- Violations walkers added for the postfix and switch-governing slots ---
 
     [Fact]

@@ -1108,7 +1108,9 @@ internal partial class RoslynEmitter
             switchArms.Add(switchArm);
         }
 
-        return SwitchExpression(scrutineeExpr, SeparatedList(switchArms));
+        // Through the precedence seam: a non-primary scrutinee (`match n + 2:`) is parenthesized in
+        // the governing slot, as the match statement's `switch (…)` and the is-chain temp get for free.
+        return Switch(scrutineeExpr, SeparatedList(switchArms));
     }
 
     /// <summary>

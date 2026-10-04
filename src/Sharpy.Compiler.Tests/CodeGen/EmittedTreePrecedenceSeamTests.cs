@@ -77,6 +77,20 @@ public class EmittedTreePrecedenceSeamTests
 
     [Fact]
     [Trait("Category", "Infrastructure")]
+    public void MatchExpressionSeam_CompositeScrutinee_IsParenthesized()
+    {
+        // #2226: the switch-expression governing slot of a match EXPRESSION.
+        var cs = Emit("    n: int = 1\n    s = match n + 2:\n        case 3: \"three\"\n        case _: \"other\"\n    print(s)\n"
+            + "    t = match n > 5:\n        case True: \"big\"\n        case _: \"small\"\n    print(t)\n"
+            + "    u = match n:\n        case 1: \"one\"\n        case _: \"other\"\n    print(u)\n");
+        cs.Should().Contain("(n + 2) switch");
+        cs.Should().Contain("(n > 5) switch");
+        cs.Should().Contain("n switch", "a primary scrutinee passes through unparenthesized");
+        cs.Should().NotContain("(n) switch");
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
     public void PrimaryOperands_PassThroughUnparenthesized()
     {
         // The seam adds parentheses only where precedence requires them: an identifier receiver and
