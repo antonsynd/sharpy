@@ -573,6 +573,14 @@ deviations:
   spec_ref: null
   existing_diagnostic: null
   planned_diagnostic: null
+- id: nullable-truthiness-is-a-null-check
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/logical_operators.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: numeric-widening-in-typed-context
   category: types
   audience: python
@@ -636,6 +644,22 @@ deviations:
   code: null
   spec_ref: docs/language_specification/bitwise_operators.md
   existing_diagnostic: SPY0348
+  planned_diagnostic: null
+- id: socket-gettimeout-not-rounded
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
+  planned_diagnostic: null
+- id: socket-timeout-wait-saturates
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: sort-refusal-operand-order
   category: stdlib

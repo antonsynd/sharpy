@@ -2035,3 +2035,92 @@ deviations:
         @lru_cache(maxsize=-1)   # error SPY0442: '@lru_cache' on 'g' requires a non-negative 'maxsize' value.
         def g(k: int) -> int:
             return k
+
+  - id: nullable-truthiness-is-a-null-check
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "Truthiness of a value that may be `None` tests the VALUE: `0`, `\"\"` and empty collections are falsy as well as `None`."
+    sharpy_behavior: "A `T | None` operand in a condition position is a null check and nothing else (`logical_operators.md`, truthiness table: `T | None` lowers to a null test, falsy value `None`): a non-None `0` or `\"\"` held in `int | None` / `str | None` is truthy. Test the value explicitly (`if i is not None and i != 0:`), or narrow first — a narrowed `int` / `str` uses its own truthiness."
+    spec_ref: docs/language_specification/logical_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        i = 0
+        print("truthy" if i else "falsy")    # falsy
+        t = ""
+        print("truthy" if t else "falsy")    # falsy
+      sharpy: |
+        def pick(n: int) -> int | None:
+            return n
+
+        def name(s: str) -> str | None:
+            return s
+
+        def main():
+            i = pick(0)
+            if i:
+                print("truthy")   # prints: truthy — `i` is not None
+            else:
+                print("falsy")
+            t = name("")
+            if t:
+                print("truthy")   # prints: truthy — `t` is not None
+            else:
+                print("falsy")
+
+  - id: socket-gettimeout-not-rounded
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`socket.settimeout(t)` stores the timeout as an integer nanosecond count, so `gettimeout()` reads back the rounded value: `1e-10` reads back `1e-09` (rounded up to one nanosecond) and `-0.0` reads back `0.0`."
+    sharpy_behavior: "`gettimeout()` returns the float that was passed, unrounded: `1e-10` reads back `1e-10` and `-0.0` reads back `-0.0`. Which values are accepted or refused, and where the refusal is raised, match python (#2228)."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import socket
+        s = socket.socket()
+        s.settimeout(1e-10)
+        print(s.gettimeout())   # 1e-09
+        s.settimeout(-0.0)
+        print(s.gettimeout())   # 0.0
+      sharpy: |
+        import socket
+
+        def main():
+            s = socket.socket()
+            s.settimeout(1e-10)
+            print(s.gettimeout())   # 1e-10
+            s.settimeout(-0.0)
+            print(s.gettimeout())   # -0.0
+            s.close()
+
+  - id: socket-timeout-wait-saturates
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "A socket timeout up to about 9.22e9 seconds (the int64 nanosecond range) is accepted and waited in full."
+    sharpy_behavior: "The same values are accepted and `gettimeout()` reports them, but the underlying .NET socket timeout is a 32-bit millisecond count, so the actual wait SATURATES at `int.MaxValue` ms (about 24.8 days) (#2228 — before, the value was refused with OverflowError)."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import socket
+        s = socket.socket()
+        s.settimeout(9.2e9)
+        print(s.gettimeout())   # 9200000000.0 — waits up to 9.2e9 s
+      sharpy: |
+        import socket
+
+        def main():
+            s = socket.socket()
+            s.settimeout(9.2e9)
+            print(s.gettimeout())   # 9200000000.0 — the wait itself is capped at ~24.8 days
+            s.close()
