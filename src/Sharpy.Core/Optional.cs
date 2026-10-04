@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -136,8 +137,10 @@ namespace Sharpy
 
         // Cached reflection accessors per concrete Optional<T> type to avoid
         // repeated GetProperty/GetField lookups on every TryFormat call.
-        private static readonly Dictionary<Type, (PropertyInfo isSome, FieldInfo value)> ReflectionCache
-            = new Dictionary<Type, (PropertyInfo, FieldInfo)>();
+        // Concurrent: str()/print() of an Optional can run on any thread, and a plain
+        // Dictionary written from two threads corrupts itself and throws from then on.
+        private static readonly ConcurrentDictionary<Type, (PropertyInfo isSome, FieldInfo value)> ReflectionCache
+            = new ConcurrentDictionary<Type, (PropertyInfo, FieldInfo)>();
 
         /// <summary>Create an Optional containing the given value.</summary>
         public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
@@ -156,15 +159,10 @@ namespace Sharpy
 
         private static (PropertyInfo isSome, FieldInfo value) GetAccessors(Type type)
         {
-            if (!ReflectionCache.TryGetValue(type, out var accessors))
-            {
-                accessors = (
-                    type.GetProperty("IsSome")!,
-                    type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance)!
-                );
-                ReflectionCache[type] = accessors;
-            }
-            return accessors;
+            return ReflectionCache.GetOrAdd(type, static t => (
+                t.GetProperty("IsSome")!,
+                t.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance)!
+            ));
         }
 
         /// <summary>
