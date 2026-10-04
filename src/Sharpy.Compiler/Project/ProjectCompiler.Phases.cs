@@ -154,6 +154,14 @@ internal partial class ProjectCompiler
         // absolutely (a false SPY0300) while `sharpyc run` ran the same tree (P14b, one path
         // authority). The project directory stays a fallback for a module file outside the source set.
         ImportResolver.AddSearchPath(ComputeSourceRootPath(config));
+        // Every user-supplied module search path (`-m`, `<ModulePath>`) is an import root too, ahead
+        // of the project-directory fallback — the order single-file discovery
+        // (SyntheticProject.DiscoverLocalImportClosure) already searches them in. Without it the
+        // registry and discovery saw the path but import resolution did not, so a module discovery
+        // pulled into the compilation was SPY0300 at its own import (#2233). A relative path means
+        // what the CLI and the registry take it to mean: relative to the working directory.
+        foreach (var modulePath in config.ModulePaths)
+            ImportResolver.AddSearchPath(Path.GetFullPath(modulePath));
         ImportResolver.AddSearchPath(config.ProjectDirectory);
 
         // Resolve imports for each module

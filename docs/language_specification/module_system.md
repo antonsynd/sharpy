@@ -74,6 +74,16 @@ With a pinned root, `src/game/core/greeting.spy` is always `game.core.greeting` 
 instead of below the `.spyproj`'s directory (`src/game/core/greeting.cs`). A `<SourceRoot>` that
 does not exist, or a source file outside it, is an error when the project is loaded.
 
+**Module search paths.** A module may also be found through a search path the user supplies: `-m`
+(`--module-path`) on `run`, `compile`, `build` and `emit csharp` (a relative path is relative to the
+working directory), or a `<ModulePath Include="…"/>` item in a `.spyproj` (relative to the
+`.spyproj`'s directory). An absolute import is resolved, in order, relative to the importing file's
+own directory, below the module root, below each search path, and below the project directory. With
+`-m mods`, `from helper import f` names `mods/helper.spy` and `import pkg.mod` names
+`mods/pkg/mod.spy`. A single-file compile (`run`, `compile`, `emit csharp` on a `.spy`) compiles
+every module it reaches this way. A `.spyproj` compiles only its listed sources, so a module found
+through `<ModulePath>` must also be one of them.
+
 Because types sit beside the members class, a type may share its module's name: `class Thing[T]`
 (or a `struct`, `enum`, `union`, … named `Thing`) in `thing.spy` is simply `Merge.Thing.Thing`, and
 a function and a type whose emitted names coincide (`def foo_bar` and `class FooBar`) live in two

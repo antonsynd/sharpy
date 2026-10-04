@@ -370,6 +370,14 @@ public class ProjectCompilationHelper : IDisposable
         projectContent.AppendLine($"    <SourceFile Include=\"{sourceFilePattern}\" />");
         projectContent.AppendLine("  </ItemGroup>");
 
+        if (Options.ModulePaths.Count > 0)
+        {
+            projectContent.AppendLine("  <ItemGroup>");
+            foreach (var modulePath in Options.ModulePaths)
+                projectContent.AppendLine($"    <ModulePath Include=\"{modulePath}\" />");
+            projectContent.AppendLine("  </ItemGroup>");
+        }
+
         if (_assemblyReferences.Count > 0)
         {
             projectContent.AppendLine("  <ItemGroup>");
@@ -897,6 +905,12 @@ public class ProjectOptions
     /// module root instead of letting it float to the sources' common directory.
     /// </summary>
     public string? SourceRoot { get; set; }
+
+    /// <summary>
+    /// Emitted as <c>&lt;ModulePath Include="…"/&gt;</c> items, one per entry (relative to the
+    /// project directory, or absolute): module search paths an absolute import is spelled from.
+    /// </summary>
+    public List<string> ModulePaths { get; set; } = new();
 }
 
 /// <summary>
