@@ -320,7 +320,8 @@ internal static class ProjectCommand
 
             Console.WriteLine($"Saving generated C# code to: {outputDir.FullName}");
 
-            // Each unit mirrors its project-relative path under the output directory, so two
+            // Each unit mirrors its path relative to the project directory (or to the pinned
+            // <SourceRoot>, when the .spyproj sets one) under the output directory, so two
             // units sharing a file stem in different directories land at distinct paths; a unit
             // mapping to an already-written path is refused loudly, never written over the first
             // (#2060). CliHelpers.WriteMirroredCSharp is the one writer every command shares (#2159).

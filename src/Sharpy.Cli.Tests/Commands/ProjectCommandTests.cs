@@ -283,4 +283,86 @@ public class ProjectCommandTests
         var written = File.ReadAllText(Path.Combine(outDir, "ext", "lib.cs"));
         written.Should().Contain("PackageMarker").And.NotContain("FlatMarker");
     }
+
+    // ---- <SourceRoot> pins the module root (the Unity plugin's layout) ----
+    // The plugin writes Library/Sharpy/unity.spyproj with <SourceRoot>../../Assets</SourceRoot> and
+    // compiles every .spy under Assets/. Units mirror their path below the pinned root, and a
+    // source appearing in a new top-level folder changes no existing file, namespace or import.
+
+    private static string WriteUnityShapedProject(TempWorkspace ws)
+        => ws.WriteFile(Path.Combine("My Game", "Library", "Sharpy", "unity.spyproj"),
+            "<Project>\n" +
+            "  <PropertyGroup>\n" +
+            "    <RootNamespace>Game</RootNamespace>\n" +
+            "    <OutputType>library</OutputType>\n" +
+            "    <TargetFramework>net10.0</TargetFramework>\n" +
+            "    <SourceRoot>../../Assets</SourceRoot>\n" +
+            "  </PropertyGroup>\n" +
+            "  <ItemGroup>\n" +
+            "    <SourceFile Include=\"../../Assets/**/*.spy\" />\n" +
+            "  </ItemGroup>\n" +
+            "</Project>\n");
+
+    private static Dictionary<string, string> ReadTree(string root)
+        => Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+            .ToDictionary(p => Path.GetRelativePath(root, p), File.ReadAllText);
+
+    [Fact]
+    public void EmitCsTo_PinnedSourceRoot_MirrorsBelowIt_AndANewTopLevelFolderChangesNoExistingUnit()
+    {
+        using var ws = new TempWorkspace();
+        var assets = Path.Combine("My Game", "Assets");
+        ws.WriteFile(Path.Combine(assets, "Scripts", "Core", "greeting.spy"), "def greet() -> str:\n    return \"hi\"\n");
+        ws.WriteFile(Path.Combine(assets, "Scripts", "Ui", "greeting.spy"), "def banner() -> str:\n    return \"ui\"\n");
+        ws.WriteFile(Path.Combine(assets, "Scripts", "Smoke", "smoke.spy"),
+            "from Scripts.Core.greeting import greet\n\ndef hello() -> str:\n    return greet()\n");
+        var proj = WriteUnityShapedProject(ws);
+        var outDir = ws.PathFor(Path.Combine("My Game", "Library", "Sharpy", "emit"));
+
+        EmitTo(proj, outDir);
+        var before = ReadTree(outDir);
+
+        before.Keys.Should().BeEquivalentTo(
+            Path.Combine("Scripts", "Core", "greeting.cs"),
+            Path.Combine("Scripts", "Ui", "greeting.cs"),
+            Path.Combine("Scripts", "Smoke", "smoke.cs"));
+        before[Path.Combine("Scripts", "Core", "greeting.cs")].Should().Contain("namespace Game.Scripts.Core.Greeting");
+        before[Path.Combine("Scripts", "Ui", "greeting.cs")].Should().Contain("namespace Game.Scripts.UI.Greeting");
+        before[Path.Combine("Scripts", "Smoke", "smoke.cs")].Should().Contain("namespace Game.Scripts.Smoke.Smoke");
+
+        ws.WriteFile(Path.Combine(assets, "Other", "thing.spy"), "def thing() -> int:\n    return 1\n");
+        EmitTo(proj, outDir);
+        var after = ReadTree(outDir);
+
+        after.Should().HaveCount(4);
+        after[Path.Combine("Other", "thing.cs")].Should().Contain("namespace Game.Other.Thing");
+        foreach (var (path, code) in before)
+        {
+            after[path].Should().Be(code, $"{path} must not change when a source appears in a new top-level folder");
+        }
+    }
+
+    [Fact]
+    public void Project_SourceOutsidePinnedSourceRoot_FailsWithTheLoadError()
+    {
+        using var ws = new TempWorkspace();
+        ws.WriteFile(Path.Combine("My Game", "Assets", "Scripts", "a.spy"), MarkerModule("flat_marker"));
+        ws.WriteFile(Path.Combine("My Game", "Packages", "b.spy"), MarkerModule("package_marker"));
+        var proj = ws.WriteFile(Path.Combine("My Game", "Library", "Sharpy", "unity.spyproj"),
+            "<Project>\n" +
+            "  <PropertyGroup>\n" +
+            "    <RootNamespace>Game</RootNamespace>\n" +
+            "    <SourceRoot>../../Assets</SourceRoot>\n" +
+            "  </PropertyGroup>\n" +
+            "  <ItemGroup>\n" +
+            "    <SourceFile Include=\"../../**/*.spy\" />\n" +
+            "  </ItemGroup>\n" +
+            "</Project>\n");
+
+        var invocation = CliTestHarness.Invoke($"project \"{proj}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Error: Invalid .spyproj file: 1 source file(s) outside <SourceRoot>")
+            .And.Contain(Path.Combine("Packages", "b.spy"));
+    }
 }
