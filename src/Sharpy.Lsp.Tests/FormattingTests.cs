@@ -81,6 +81,29 @@ public class FormattingTests : IDisposable
         formatted.Should().Be("def foo():\n    x: int = 1\n    return x\n");
     }
 
+    /// <summary>
+    /// #2227: a match-expression statement already in canonical layout gets no edit — the unparser
+    /// used to invent a blank line after the arms, so Format Document rewrote every such file.
+    /// </summary>
+    [Fact]
+    public async Task MatchExpressionStatement_AlreadyFormatted_ReturnsNullAsync()
+    {
+        var source = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n    return s\n";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().BeNull();
+    }
+
+    /// <summary>#2227: a user-written blank line after a match-expression statement is dropped exactly like one after any statement — never doubled.</summary>
+    [Fact]
+    public async Task MatchExpressionStatement_BlankLineAfter_IsNormalizedLikeAnyStatementAsync()
+    {
+        var source = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n\n    return s\n";
+        var formatted = await FormatAsync(source);
+
+        formatted.Should().Be("def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n    return s\n");
+    }
+
     [Fact]
     public async Task TabSize2_FourSpaceDocument_GetsNoEditsAsync()
     {

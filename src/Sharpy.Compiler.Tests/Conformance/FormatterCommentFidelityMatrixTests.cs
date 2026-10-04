@@ -46,9 +46,9 @@ public class FormatterCommentFidelityMatrixTests : IntegrationTestBase
         { "eof.without_newline", "def main():\n    print(1)\n\n\n# end of file", "1" },
         // A comment at the def's BODY indent at the end of the file ends the body: no blank lines.
         { "eof.body_indent", "def main():\n    print(1)\n    # end of the body\n", "1" },
-        // Match-expression arms are non-statement body lines, like enum members (the blank line
-        // after the match expression is the unparser's existing layout for it).
-        { "match_expression.arm_comments", "def main():\n    x = 1\n    y = match x:  # the match\n        case 1: \"one\"  # the one arm\n        # before the rest\n        case _: \"other\"  # the rest\n        # end of the arms\n\n    print(y)\n", "one" },
+        // Match-expression arms are non-statement body lines, like enum members. No blank line
+        // follows the arms: until #2227 the unparser invented one after every match expression.
+        { "match_expression.arm_comments", "def main():\n    x = 1\n    y = match x:  # the match\n        case 1: \"one\"  # the one arm\n        # before the rest\n        case _: \"other\"  # the rest\n        # end of the arms\n    print(y)\n", "one" },
     };
 
     [Theory]

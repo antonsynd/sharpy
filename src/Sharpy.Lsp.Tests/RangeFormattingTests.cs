@@ -113,6 +113,20 @@ public class RangeFormattingTests : IDisposable
         edits.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// #2227: Format Selection over a canonical match-expression statement makes no edit. The
+    /// selection route maps the formatter's lines back one by one, so the blank line the unparser
+    /// used to invent after the arms shifted every later line of the range.
+    /// </summary>
+    [Fact]
+    public async Task MatchExpressionStatement_AlreadyFormatted_ReturnsEmptyAsync()
+    {
+        var source = "def foo(n: int) -> str:\n    s = match n:\n        case 3: \"three\"\n        case _: \"other\"\n    print(s)\n    return s\n";
+        var edits = await FormatRangeAsync(source, 1, 0, 5, 12);
+
+        edits.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ParseError_FallsBackToIndentOnlyAsync()
     {

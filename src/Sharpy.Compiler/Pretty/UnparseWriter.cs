@@ -10,6 +10,13 @@ internal sealed class UnparseWriter
     private int _indentLevel;
     private bool _atLineStart = true;
 
+    // True right after a block-bodied expression (a match expression, the only expression that
+    // owns indented lines) wrote its last line: that line break also ends the line its host started
+    // (`s = match n:`, `return match n:`, an enclosing arm). The host's own terminator — the next
+    // WriteLine() — is absorbed, so no blank line is invented after the block (#2227). Any written
+    // text clears it.
+    private bool _lineEndedByBlockExpression;
+
     // Output spans written verbatim that contain a line break (a multi-line replacement field,
     // #2022; a triple-quoted string or docstring, #2068); a trailing-comment insertion must never
     // land inside one.
@@ -26,6 +33,8 @@ internal sealed class UnparseWriter
 
     public void Write(string text)
     {
+        if (text.Length > 0)
+            _lineEndedByBlockExpression = false;
         if (_atLineStart && text.Length > 0)
         {
             for (int i = 0; i < _indentLevel; i++)
@@ -50,8 +59,24 @@ internal sealed class UnparseWriter
 
     public void WriteLine()
     {
+        if (_lineEndedByBlockExpression)
+        {
+            _lineEndedByBlockExpression = false;
+            return;
+        }
         _sb.Append(_lineEnding);
         _atLineStart = true;
+    }
+
+    /// <summary>
+    /// Records that a block-bodied expression has just ended its last line (the writer is at a line
+    /// start): the line break it wrote is also its host's line end, so the host's terminating
+    /// <see cref="WriteLine()"/> is absorbed rather than writing an empty line.
+    /// </summary>
+    public void EndLineByBlockExpression()
+    {
+        if (_atLineStart)
+            _lineEndedByBlockExpression = true;
     }
 
     public void WriteLine(string text)

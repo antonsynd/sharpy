@@ -468,6 +468,9 @@ internal sealed partial class UnparseVisitor
             CloseBody(LastLineOf(lastArm.Span, lastArm.LineEnd));
         }
         _w.Dedent();
+        // The last arm's line break ends the host's line too (`s = match n:`, `return match n:`, an
+        // enclosing arm): the host's terminator must not add an empty line after the arms (#2227).
+        _w.EndLineByBlockExpression();
     }
 
     #endregion

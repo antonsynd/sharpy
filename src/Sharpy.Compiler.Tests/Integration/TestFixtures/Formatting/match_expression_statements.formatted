@@ -1,0 +1,49 @@
+n = 3
+s = match n:
+    case 3: "three"
+    case _: "other"
+print(s)
+
+
+def middle(n: int) -> str:
+    s = match n:
+        case 3: "three"
+        case _: "other"
+    print(s)
+    return s
+
+
+def last_in_body(n: int) -> str:
+    return match n:
+        case 3: "three"
+        case _: "other"
+
+
+def then_comment(n: int) -> str:
+    s: str = match n:
+        case 3: "three"
+        case _: "other"
+    # after the arms
+    return s
+
+
+def then_blank(n: int) -> str:
+    s = match n:
+        case 3: "three"
+        case _: "other"
+    return s
+
+
+def nested(n: int) -> str:
+    if n > 0:
+        s = match n:
+            case 3: match n:
+                case 3: "a"
+                case _: "b"
+            case _: "c"
+    return "x"
+
+
+t = match n:
+    case 3: "three"
+    case _: "other"
