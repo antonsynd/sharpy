@@ -596,6 +596,142 @@ def test_settimeout_negative_raises_value_error():
     assert s.gettimeout() is None
     s.close()
 
+# ---- One timeout-value rule for every entry point (#2228) ----
+#
+# Cells: entry point {setdefaulttimeout, settimeout, create_connection(timeout=)}
+# x value, each measured against python3 3.12:
+#   None, 0.0, -0.0, 1.5, 1e6, 9.2e9 (int64 ns fits)   accepted
+#   -1.0, -1e-10 (negative)                            ValueError
+#   nan                                                ValueError
+#   inf, -inf, 9.3e9, 1e300, -1e300 (int64 ns overflow) OverflowError
+# The refusal is raised AT the call (setdefaulttimeout used to store the value
+# and let the next socket() construction raise), and a refused call leaves the
+# previous timeout / default unchanged.
+
+def _timeout_outcome(e: Exception) -> str:
+    if isinstance(e, OverflowError):
+        return "OverflowError"
+    if isinstance(e, ValueError):
+        return "ValueError"
+    if isinstance(e, socket.error):
+        return "socket.error"
+    return "other"
+
+def _same_timeout(actual: float | None, expected: float | None) -> bool:
+    if actual is None or expected is None:
+        return actual is None and expected is None
+    a: float = actual
+    b: float = expected
+    return a == b
+
+def _closed_loopback_port() -> int:
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.bind(("127.0.0.1", 0))
+    port: int = probe.getsockname()[1]
+    probe.close()
+    return port
+
+def _assert_timeout_rule(value: float | None, expected: str) -> None:
+    # setdefaulttimeout: the outcome is decided at the call. The next socket()
+    # construction never raises and sees the accepted value, or the previous
+    # default when the call was refused.
+    survivor: float | None = 2.0
+    if expected == "accepted":
+        survivor = value
+    outcome: str = "accepted"
+    socket.setdefaulttimeout(2.0)
+    try:
+        try:
+            socket.setdefaulttimeout(value)
+        except Exception as e:
+            outcome = _timeout_outcome(e)
+        assert outcome == expected
+        assert _same_timeout(socket.getdefaulttimeout(), survivor)
+        fresh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        assert _same_timeout(fresh.gettimeout(), survivor)
+        fresh.close()
+    finally:
+        # Never leak a default (refused or not) into the other socket tests.
+        socket.setdefaulttimeout(None)
+
+    # settimeout: same rule; a refused call keeps the socket's previous timeout.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2.0)
+    outcome = "accepted"
+    try:
+        s.settimeout(value)
+    except Exception as e:
+        outcome = _timeout_outcome(e)
+    assert outcome == expected
+    assert _same_timeout(s.gettimeout(), survivor)
+    s.close()
+
+    # create_connection(timeout=): a refused value raises before any connect;
+    # an accepted one reaches the connect, which the closed port refuses with
+    # socket.error (never socket.timeout: the refusal is immediate).
+    port: int = _closed_loopback_port()
+    outcome = "accepted"
+    try:
+        c: socket.socket = socket.create_connection(("127.0.0.1", port), timeout=value)
+        c.close()
+    except Exception as e:
+        outcome = _timeout_outcome(e)
+        assert not isinstance(e, socket.timeout)
+    if expected == "accepted":
+        assert outcome == "socket.error"
+    else:
+        assert outcome == expected
+
+@test
+def test_timeout_rule_accepts_none_zero_and_positive():
+    _assert_timeout_rule(None, "accepted")
+    _assert_timeout_rule(0.0, "accepted")
+    _assert_timeout_rule(-0.0, "accepted")
+    _assert_timeout_rule(1.5, "accepted")
+
+@test
+def test_timeout_rule_accepts_very_large_within_int64_nanoseconds():
+    _assert_timeout_rule(1e6, "accepted")
+    _assert_timeout_rule(9.2e9, "accepted")
+
+@test
+def test_timeout_rule_refuses_negative_with_value_error():
+    _assert_timeout_rule(-1.0, "ValueError")
+    _assert_timeout_rule(-1e-10, "ValueError")
+
+@test
+def test_timeout_rule_refuses_nan_with_value_error():
+    _assert_timeout_rule(float("nan"), "ValueError")
+
+@test
+def test_timeout_rule_refuses_int64_nanosecond_overflow_with_overflow_error():
+    _assert_timeout_rule(float("inf"), "OverflowError")
+    _assert_timeout_rule(float("-inf"), "OverflowError")
+    _assert_timeout_rule(9.3e9, "OverflowError")
+    _assert_timeout_rule(1e300, "OverflowError")
+    _assert_timeout_rule(-1e300, "OverflowError")
+
+@test
+def test_very_large_timeout_still_governs_loopback_connect_and_recv():
+    # 9.2e9 s is accepted (python3 too) but exceeds the int milliseconds .NET
+    # takes; it must wait (capped), not overflow into a 1 ms timeout.
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.settimeout(9.2e9)
+    client.connect(("127.0.0.1", port))
+    conn, _ = server.accept()
+    conn.settimeout(9.2e9)
+    sent: int = client.send(b"ping")
+    assert sent == 4
+    received: bytes = conn.recv(16)
+    assert received == b"ping"
+    conn.close()
+    client.close()
+    server.close()
+
 # ---- ToString ----
 
 @test

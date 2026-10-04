@@ -1,6 +1,6 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from system import IDisposable, Array
+from system import IDisposable, Array, Double
 from system.net import IPAddress, IPEndPoint, EndPoint, Dns
 from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError, SelectMode
 
@@ -38,6 +38,28 @@ SOMAXCONN: int = 128
 
 # Default timeout applied to newly created sockets (None means blocking mode).
 _default_timeout: float | None = None
+
+def _check_timeout(timeout: float | None) -> None:
+    """Refuse a timeout value python3 refuses, at the call that receives it (#2228).
+
+    The one rule shared by every timeout-accepting entry point (settimeout,
+    setdefaulttimeout, create_connection(timeout=)), applied before any state
+    changes, in python3's order: NaN -> ValueError; a value whose nanosecond
+    count does not fit int64 (+-inf, |t| >= ~9.22e9 s) -> OverflowError;
+    negative -> ValueError. None (blocking) and 0.0 (non-blocking) are accepted.
+    """
+    if timeout is None:
+        return
+    value: float = timeout
+    if Double.is_na_n(value):
+        raise ValueError("Invalid value NaN (not a number)")
+    # python3 converts the seconds to int64 nanoseconds first; at this
+    # magnitude every double is integral, so its rounding cannot move the bound.
+    ns: float = value * 1000000000.0
+    if ns >= 9223372036854775808.0 or ns < -9223372036854775808.0:
+        raise OverflowError("timestamp out of range for platform time_t")
+    if value < 0.0:
+        raise ValueError("Timeout value out of range")
 
 class error(Exception):
     """Base exception for socket-related errors. Corresponds to Python's socket.error."""
@@ -284,10 +306,7 @@ class socket(IDisposable):
 
     def settimeout(self, timeout: float | None) -> None:
         """Set the timeout in seconds for blocking operations, or None for blocking mode."""
-        if timeout is not None:
-            requested: float = timeout
-            if requested < 0.0:
-                raise ValueError("Timeout value out of range")
+        _check_timeout(timeout)
         self._timeout = timeout
         if timeout is None:
             self._socket.blocking = True
@@ -315,7 +334,15 @@ class socket(IDisposable):
         value: float = t
         if value <= 0.0:
             return 0
-        ms: int = (value * 1000.0) as! int
+        # Send/ReceiveTimeout, WaitOne and Poll take whole milliseconds as an
+        # int, so an accepted timeout longer than that (~24.8 days, up to the
+        # ~9.22e9 s _check_timeout allows) waits the longest .NET can wait
+        # rather than overflowing the conversion.
+        max_ms: int = 2147483647
+        ms_float: float = value * 1000.0
+        if ms_float >= (max_ms as! float):
+            return max_ms
+        ms: int = ms_float as! int
         if ms < 1:
             return 1
         return ms
@@ -406,12 +433,16 @@ def getdefaulttimeout() -> float | None:
 
 def setdefaulttimeout(timeout: float | None) -> None:
     """Set the default timeout for new sockets. None means blocking mode."""
+    _check_timeout(timeout)
     _default_timeout = timeout
 
 # ---- Connection helper ----
 
 def create_connection(address: tuple[host: str, port: int], timeout: float | None = None) -> socket:
     """Connect to a TCP (host, port) address and return the connected socket."""
+    # A refused timeout raises before any socket is created (the same rule
+    # settimeout applies).
+    _check_timeout(timeout)
     sock: socket = socket(AF_INET, SOCK_STREAM, 0)
     try:
         if timeout is not None:

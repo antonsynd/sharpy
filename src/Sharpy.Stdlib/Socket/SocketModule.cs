@@ -37,6 +37,39 @@ namespace Sharpy.SocketModule
         public static int SOMAXCONN = 128;
         public static double? _DefaultTimeout = null;
         /// <summary>
+        /// Refuse a timeout value python3 refuses, at the call that receives it (#2228).
+        /// The one rule shared by every timeout-accepting entry point (settimeout,
+        /// setdefaulttimeout, create_connection(timeout=)), applied before any state
+        /// changes, in python3's order: NaN -> ValueError; a value whose nanosecond
+        /// count does not fit int64 (+-inf, |t| >= ~9.22e9 s) -> OverflowError;
+        /// negative -> ValueError. None (blocking) and 0.0 (non-blocking) are accepted.
+        /// </summary>
+        internal static void _CheckTimeout(double? timeout)
+        {
+            if (timeout is null)
+            {
+                return;
+            }
+
+            double value = timeout.Value;
+            if (global::System.Double.IsNaN(value))
+            {
+                throw new global::Sharpy.ValueError("Invalid value NaN (not a number)");
+            }
+
+            double ns = value * 1000000000.0d;
+            if (ns >= 9223372036854775808.0d || ns < -9223372036854775808.0d)
+            {
+                throw new global::Sharpy.OverflowError("timestamp out of range for platform time_t");
+            }
+
+            if (value < 0.0d)
+            {
+                throw new global::Sharpy.ValueError("Timeout value out of range");
+            }
+        }
+
+        /// <summary>
         /// Return the default timeout in seconds for new sockets, or None.
         /// </summary>
         public static double? Getdefaulttimeout()
@@ -49,6 +82,7 @@ namespace Sharpy.SocketModule
         /// </summary>
         public static void Setdefaulttimeout(double? timeout)
         {
+            global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             _DefaultTimeout = timeout;
         }
 
@@ -57,6 +91,7 @@ namespace Sharpy.SocketModule
         /// </summary>
         public static global::Sharpy.SocketModule.Socket CreateConnection((string host, int port) address, double? timeout = null)
         {
+            global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM, 0);
             try
             {
@@ -540,15 +575,7 @@ namespace Sharpy.SocketModule
         /// </summary>
         public void Settimeout(double? timeout)
         {
-            if (timeout is not null)
-            {
-                double requested = timeout.Value;
-                if (requested < 0.0d)
-                {
-                    throw new global::Sharpy.ValueError("Timeout value out of range");
-                }
-            }
-
+            global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             this._Timeout = timeout;
             if (timeout is null)
             {
@@ -591,7 +618,14 @@ namespace Sharpy.SocketModule
                 return 0;
             }
 
-            int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
+            int maxMs = 2147483647;
+            double msFloat = value * 1000.0d;
+            if (msFloat >= ((double)maxMs))
+            {
+                return maxMs;
+            }
+
+            int ms = global::Sharpy.NumericCheckedCast.ToInt(msFloat);
             if (ms < 1)
             {
                 return 1;
