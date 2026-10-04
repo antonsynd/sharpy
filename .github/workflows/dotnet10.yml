@@ -58,35 +58,28 @@ env:
   # COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler` matrix,
   # and add its bucket's negation to the last shard.
   # Balanced on per-test CI durations from mainline run 37006384170 (sum of per-test time, min):
-  # 1 fixtures 12.7 · 2 Integration P–Z + CodeGen 10.4 · 3 Semantic P–Z 12.8 ·
+  # 1 fixtures 12.7 · 2 Integration P–V + CodeGen 10.4 · 3 Semantic P–V 12.8 ·
   # 4 Semantic rest 12.9 · 5 Properties 12.5 · 6 Conformance 12.1 · 7 everything else 11.6.
+  # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
+  # fails on a filter substring that matches no test. A new class whose initial has no term
+  # falls through to shard 4 (Semantic) or shard 7 (Integration), so it is still run exactly once.
   # 1: the file-based fixture Theory (one class, cannot be split further by FullyQualifiedName).
   COMPILER_SHARD_1: "FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests."
-  # 2: Integration classes whose name starts P–Z, plus CodeGen.
+  # 2: Integration classes whose name starts P, S, T, U or V, plus CodeGen.
   COMPILER_SHARD_2: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.P|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.Q|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.R|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.S|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.T|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.U|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.V|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.W|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.X|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.Y|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.Z|\
     FullyQualifiedName~Sharpy.Compiler.Tests.CodeGen.)"
-  # 3: Semantic classes (and sub-namespaces, e.g. Semantic.Validation) whose name starts P–Z.
+  # 3: Semantic classes (and sub-namespaces, e.g. Semantic.Validation) whose name starts P–V.
   COMPILER_SHARD_3: "(FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.P|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.Q|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.R|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.S|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.T|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.U|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.V|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.W|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.X|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.Y|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.Z)"
+    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.V)"
   # 4: the rest of Semantic (exactly `Semantic.` minus shard 3).
   COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.P&\
@@ -95,29 +88,20 @@ env:
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.S&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.T&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.U&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.V&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.W&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.X&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.Y&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.Z"
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.V"
   # 5: Properties (includes CPythonDifferentialParseTests, which needs the pinned python).
   COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties."
   # 6: Conformance (non-sweep conformance suites; the sweeps are excluded by the main filter).
   COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Conformance."
-  # 7: everything else — Integration A–O, Parser, Lexer, Project, Infrastructure, root-namespace
-  # tests, and any namespace added later. The negation of every bucket above.
+  # 7: everything else — Integration classes outside shards 1–2, Parser, Lexer, Project,
+  # Infrastructure, root-namespace tests, and any namespace added later. The negation of every
+  # bucket above.
   COMPILER_SHARD_7: "FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.P&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.Q&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.R&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.S&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.T&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.U&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.V&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.W&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.X&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.Y&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.Z&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.CodeGen.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.&\
@@ -262,12 +246,12 @@ jobs:
         zstd -dc build-output.tar.zst | tar -xf -
         rm build-output.tar.zst
     - name: Test Compiler (shard ${{ matrix.shard }})
+      # The filter is spelled inline as "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_<n>" (not via a
+      # shell variable) so CiFilterCoverageConformanceTests can resolve it from this file.
       run: |
-        var="COMPILER_SHARD_${{ matrix.shard }}"
-        if [ -z "${!var:-}" ]; then echo "::error::$var is not defined in the workflow env"; exit 1; fi
-        filter="$COMPILER_MAIN_FILTER&${!var}"
-        echo "filter: $filter"
-        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$filter" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults
+        if [ -z "${COMPILER_SHARD_${{ matrix.shard }}:-}" ]; then echo "::error::COMPILER_SHARD_${{ matrix.shard }} is not defined in the workflow env"; exit 1; fi
+        echo "filter: $COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}"
+        dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "$COMPILER_MAIN_FILTER&$COMPILER_SHARD_${{ matrix.shard }}" --logger "trx;LogFileName=compiler-shard-${{ matrix.shard }}.trx" --results-directory TestResults
     - name: Upload test results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
