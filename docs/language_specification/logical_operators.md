@@ -8,7 +8,7 @@
 
 ## Truthiness
 
-Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same rule that governs `if`, `while`, `assert`, ternary conditions, comprehension filters, and match guards. A type is truth-testable when it has a falsy case:
+Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same rule that governs `if`, `while`, `assert`, ternary conditions, comprehension filters, and match guards (an arm guard `case p if g:` and a per-alternative guard pattern `(p if g)` alike). A type is truth-testable when it has a falsy case:
 
 | Type | Truthiness lowering | Falsy value |
 |------|-------------------|-------------|
@@ -32,7 +32,7 @@ Operands of `and`, `or`, and `not` are evaluated for **truthiness** — the same
 
 **Deviation from Python (tuple truthiness):** every non-empty Python tuple is truthy and `()` is falsy — `bool()`/`len()`-based, like any other sequence. A fixed-arity `tuple[T1, ..., Tn]` in Sharpy is refused instead: its arity is part of its TYPE, so every value of that type has the SAME truthiness (always truthy for a non-empty arity, always falsy for the zero-arity `tuple[]` the `()` literal spells) — testing it is never a runtime question, only a compile-time constant. Test `len(t)` or a specific element instead. A tuple reached through a loose `tuple[...] | None` or a strict `tuple[...]?` wrapper is unaffected — the wrapper's own truthiness (null-check / is-some) is tested, never the tuple's.
 
-The refusal is **not uniform across every use of the word "truthiness"**: it covers the fourteen
+The refusal is **not uniform across every use of the word "truthiness"**: it covers the sixteen
 **truth-testing positions** — `if`, `while`, `assert`, `and`/`or`/`not`, ternary conditions,
 comprehension filters, match guards and the rest of the list above — where a tuple operand is a
 compile-time constant masquerading as a runtime test. An explicit `bool(t)` **call** is a

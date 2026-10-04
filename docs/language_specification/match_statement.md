@@ -716,7 +716,13 @@ generics, so an open name denotes nothing to test against.
 
 ## Guard Patterns
 
-Guard clauses add conditions to any pattern using `if`. The `GuardPattern` AST node wraps an inner pattern with a boolean guard expression.
+Guard clauses add conditions to any pattern using `if`. The `GuardPattern` AST node wraps an inner pattern with a guard expression.
+
+A guard is a **truthiness** position, the same rule as `if`, `while` and the other conditions
+([Truthiness](logical_operators.md#truthiness)): `case x if items:` takes the arm when `items` is non-empty,
+and `case x if count:` when `count` is non-zero. A guard whose type has no falsy case (a plain object,
+a function, a fixed-arity tuple) is refused with SPY0241. The rule is the same for an arm guard
+(`case p if g:`) and a per-alternative guard pattern (`(p if g)`, below).
 
 ### Basic Guard
 

@@ -59,6 +59,22 @@ internal partial class TypeChecker
         return SemanticType.Unknown;
     }
 
+    /// <summary>
+    /// The ONE guard-condition rule (#2237, R-ER): every guard position — a match-statement arm
+    /// guard, a match-expression arm guard, and a per-alternative guard pattern <c>(p if g)</c>
+    /// at any nesting — is a truthiness position. Records the <see cref="TruthinessLowering"/> the
+    /// emitter applies, or refuses a type with no falsy case with the same code and message.
+    /// </summary>
+    private void CheckGuardCondition(Expression guard)
+    {
+        var (testable, guardType) = CheckTruthinessTest(guard);
+        if (!testable)
+        {
+            ReportNotTruthTestable(guard, guardType, "Guard condition must be a boolean expression",
+                code: DiagnosticCodes.Semantic.ConditionNotBoolean);
+        }
+    }
+
     private void CheckMatch(MatchStatement matchStmt)
     {
         // Resolve the subject against the facts in effect at the dispatch point, exactly as CheckIf
@@ -92,14 +108,7 @@ internal partial class TypeChecker
                 CheckPattern(matchCase.Pattern, scrutineeType);
 
                 if (matchCase.Guard != null)
-                {
-                    var (mcGuardTestable, mcGuardType) = CheckTruthinessTest(matchCase.Guard);
-                    if (!mcGuardTestable)
-                    {
-                        ReportNotTruthTestable(matchCase.Guard, mcGuardType, "Guard condition must be a boolean expression",
-                            code: DiagnosticCodes.Semantic.ConditionNotBoolean);
-                    }
-                }
+                    CheckGuardCondition(matchCase.Guard);
 
                 foreach (var stmt in matchCase.Body)
                     CheckStatement(stmt);
@@ -435,15 +444,7 @@ internal partial class TypeChecker
             case GuardPattern guardPattern:
                 {
                     CheckPattern(guardPattern.Inner, scrutineeType);
-                    var guardType = CheckExpression(guardPattern.Guard);
-                    if (guardType != SemanticType.Bool && guardType != SemanticType.Unknown)
-                    {
-                        AddError(
-                            $"Guard expression must be bool, got '{guardType.GetDisplayName()}'",
-                            guardPattern.Guard.LineStart, guardPattern.Guard.ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: guardPattern.Guard.Span);
-                    }
+                    CheckGuardCondition(guardPattern.Guard);
                     break;
                 }
 

@@ -1085,14 +1085,7 @@ internal partial class TypeChecker
                 CheckPattern(arm.Pattern, scrutineeType);
 
                 if (arm.Guard != null)
-                {
-                    var (guardTruthTestable, guardType) = CheckTruthinessTest(arm.Guard);
-                    if (!guardTruthTestable)
-                    {
-                        ReportNotTruthTestable(arm.Guard, guardType, "Guard condition must be a boolean expression",
-                            code: DiagnosticCodes.Semantic.ConditionNotBoolean);
-                    }
-                }
+                    CheckGuardCondition(arm.Guard);
 
                 if (arm.IsRaise)
                 {

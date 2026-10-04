@@ -15,7 +15,8 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Conformance matrix for truthiness (#1558): position (9) x type (15).
+/// Conformance matrix for truthiness (#1558): position x type. The per-alternative guard pattern
+/// (#2237) is a position: in the refusal roster and the executed guard-position matrix.
 /// Each cell asserts either accepted (truth-testable) or refused (SPY0220/SPY0241).
 /// Adding a new truth position or type without updating this matrix is a loud failure.
 /// </summary>
@@ -509,14 +510,92 @@ class CountLen:
             $"every comprehension-filter position must agree with python3 for {typeName}\n{source}");
     }
 
+    // ═════════ #2237 (R-ER): guard positions × operand type × match form, EXECUTED ═════════
+
+    private const string GuardMatrixPreamble = @"
+class Pt:
+    a: int
+    b: int
+    def __init__(self, a: int, b: int):
+        self.a = a
+        self.b = b
+
+";
+
+    /// <summary>
+    /// The guard-position axis: every pattern form the parser admits a guard pattern <c>(p if g)</c>
+    /// in (a parenthesized single pattern: an or-alternative in any slot, top level, under <c>as</c>,
+    /// a tuple / list element, a class positional or keyword sub-pattern, another guard pattern),
+    /// with the arm guard <c>case p if g</c> as the twin. Every subject matches the GUARDED pattern,
+    /// so Python's answer is the arm guard's: the arm is taken exactly when the operand is truthy.
+    /// </summary>
+    // No cell has the subject match an UNGUARDED alternative (`(2 if x) | 0` with subject 0): a
+    // per-alternative guard is applied to the whole or-pattern today (`case 2 or 0 when x`), a
+    // separate guard-scope defect recorded as #2237's follow-up. These cells pin the truthiness rule
+    // only, so each discriminates on the guarded alternative.
+    private static readonly (string Id, string Subject, string Pattern)[] GuardPositions =
+    {
+        ("arm", "n", "2 if x"),
+        ("alt-first", "n", "(2 if x) | 9"),
+        ("alt-second", "n", "9 | (2 if x)"),
+        ("alt-middle", "n", "8 | (2 if x) | 9"),
+        ("alt-both", "n", "(2 if x) | (9 if x)"),
+        ("bare", "n", "(2 if x)"),
+        ("as", "n", "(2 if x) as v"),
+        ("tuple-element", "t", "((2 if x), 1)"),
+        ("tuple-element-alt", "t", "((2 if x) | 9, 1)"),
+        ("list-element", "l", "[(2 if x), 1]"),
+        ("class-positional", "p", "Pt((2 if x), 1)"),
+        ("class-keyword", "p", "Pt(a=(2 if x))"),
+        ("guard-in-guard", "n", "((2 if x) if x)"),
+        ("element-and-arm", "t", "((2 if x), 1) if x"),
+    };
+
+    /// <summary>
+    /// Operand axis = <see cref="FilterOperandTypes"/> (falsy first): each cell runs the guard with
+    /// the falsy then the truthy operand and must print <c>other</c> then <c>A</c> — a dropped guard
+    /// prints <c>A A</c>, an inverted one <c>A other</c>, a missing wrap is SPY0908, and the pre-#2237
+    /// exactly-bool rule refused every non-bool row with SPY0220.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(FilterOperandTypes))]
+    public void GuardPositions_ExecuteAsPython(string typeName, string decl)
+    {
+        var body = new System.Text.StringBuilder();
+        var expected = new List<string>();
+        for (var i = 0; i < GuardPositions.Length; i++)
+        {
+            var (id, subject, pattern) = GuardPositions[i];
+            pattern = pattern.Replace(" as v", $" as v{i}", StringComparison.Ordinal);
+            body.Append($"    print(\"{id}-stmt\")\n    for x in xs[:2]:\n        match {subject}:\n"
+                + $"            case {pattern}:\n                print(\"A\")\n"
+                + "            case _:\n                print(\"other\")\n");
+            body.Append($"    print(\"{id}-expr\")\n    for x in xs[:2]:\n        r{i}: str = match {subject}:\n"
+                + $"            case {pattern}: \"A\"\n            case _: \"other\"\n        print(r{i})\n");
+            expected.Add($"{id}-stmt\nother\nA\n{id}-expr\nother\nA");
+        }
+
+        var source = FilterMatrixPreamble + GuardMatrixPreamble + "def main() -> None:\n    " + decl + "\n"
+            + "    n: int = 2\n    t: tuple[int, int] = (2, 1)\n    l: list[int] = [2, 1]\n    p: Pt = Pt(2, 1)\n"
+            + body;
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"every guard position must accept {typeName}: " + string.Join(", ", result.CompilationErrors) + "\n" + source);
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be(string.Join("\n", expected),
+            $"every guard position must take the arm exactly when the {typeName} operand is truthy\n{source}");
+    }
+
     // ════════════════════ #1861, R-AU: RefusalNamesTheFact ════════════════════
 
     /// <summary>
-    /// One AXIS VALUE per SITE (14), not per human-readable "position" (12) — <c>and</c> and
+    /// One AXIS VALUE per SITE (16), not per human-readable "position" (13) — <c>and</c> and
     /// <c>or</c> each cover TWO sites (their left and right operand), and the guard-mutation
     /// acceptance criterion ("bypass the helper at ONE site... proves per-site totality") needs each
-    /// of the 14 <c>AddError</c> call sites independently exercised, or a mutation at, say, the
-    /// <c>or</c> RIGHT operand specifically would slip past a matrix that only tests the left.
+    /// of the 14 original <c>AddError</c> call sites independently exercised, or a mutation at, say, the
+    /// <c>or</c> RIGHT operand specifically would slip past a matrix that only tests the left. The
+    /// three guard positions (arm guard under each match form, per-alternative guard pattern under
+    /// each form) share one call, <c>CheckGuardCondition</c>, since #2237.
     /// </summary>
     private sealed record Position(string Id, string Code, Func<string, string> Body);
 
@@ -555,6 +634,14 @@ class CountLen:
         new("match-expr-guard", DiagnosticCodes.Semantic.ConditionNotBoolean,
             x => "    val: int = 1\n    y: int = match val:\n"
                 + $"        case v if {x}: 1\n        case _: 2\n    print(y)\n"),
+        // #2237 (R-ER): the per-alternative guard pattern `(p if g)` is the same guard rule —
+        // same code, same message — not the exactly-`bool` SPY0220 it was before.
+        new("match-stmt-alt-guard", DiagnosticCodes.Semantic.ConditionNotBoolean,
+            x => "    val: int = 1\n    match val:\n"
+                + $"        case (1 if {x}) | 2:\n            print(\"t\")\n        case _:\n            print(\"f\")\n"),
+        new("match-expr-alt-guard", DiagnosticCodes.Semantic.ConditionNotBoolean,
+            x => "    val: int = 1\n    y: int = match val:\n"
+                + $"        case (1 if {x}) | 2: 1\n        case _: 2\n    print(y)\n"),
     };
 
     /// <param name="Id">Cell id fragment.</param>
@@ -618,8 +705,10 @@ class CountLen:
             {
                 "if", "elif", "while", "assert", "not", "and-left", "and-right", "or-left", "or-right",
                 "ternary-condition", "ternary-branch", "comprehension-filter", "match-stmt-guard", "match-expr-guard",
+                "match-stmt-alt-guard", "match-expr-alt-guard",
             },
-            "the 14 truthiness-refusal SITES (12 human-readable positions, and/or each split into two)");
+            "the 16 truthiness-refusal SITES (13 human-readable positions, and/or each split into two, the "
+            + "per-alternative guard under both match forms)");
         Subjects.Select(s => s.Id).Should().BeEquivalentTo(
             new[]
             {
@@ -628,8 +717,8 @@ class CountLen:
             },
             "the subject axis");
 
-        (Positions.Length * Subjects.Length).Should().Be(98, "14 sites x 7 subjects");
-        RefusalCells.Count().Should().Be(98, "every cell is live — no N/A in this matrix");
+        (Positions.Length * Subjects.Length).Should().Be(112, "16 sites x 7 subjects");
+        RefusalCells.Count().Should().Be(112, "every cell is live — no N/A in this matrix");
     }
 
     // ──────── controls: the wrapper families and non-tuple collections still run ────────
@@ -671,7 +760,9 @@ class CountLen:
     /// </summary>
     private static IReadOnlyList<LiteralSite> FindPhraseLiterals()
     {
-        string[] phrases = { "must be boolean", "must be truth-testable", "must be a boolean expression" };
+        // "must be bool" (not "must be boolean"): the per-alternative guard's own exactly-bool
+        // message, "Guard expression must be bool, got ...", slipped past the longer phrase (#2237).
+        string[] phrases = { "must be bool", "must be truth-testable", "must be a boolean expression" };
         var results = new List<LiteralSite>();
 
         foreach (var file in Directory.GetFiles(FindCompilerSemanticDirectory(), "TypeChecker*.cs"))
@@ -748,11 +839,12 @@ class CountLen:
             + "literal found elsewhere is a hand-written message the helper missed. Found: "
             + string.Join("; ", violations.Select(v => $"{v.File}:{v.Line} in {v.Method}(): {v.Text}")));
 
-        // Positive control: the scan must find the 14 real sites (not zero, which would make the
-        // BeEmpty assertion above pass vacuously) — anchored to the pre-fix literal count Decision 6
-        // measured.
-        truthinessSites.Should().HaveCount(14,
-            "14 truthiness-refusal sites, each now passing its message through ReportNotTruthTestable; got: "
+        // Positive control: the scan must find the 13 real sites (not zero, which would make the
+        // BeEmpty assertion above pass vacuously) — anchored to the 14 literals Decision 6 measured,
+        // less the two arm-guard sites that #2237 folded into CheckGuardCondition with the
+        // per-alternative guard (14 - 2 + 1).
+        truthinessSites.Should().HaveCount(13,
+            "13 truthiness-refusal sites, each now passing its message through ReportNotTruthTestable; got: "
             + string.Join("; ", truthinessSites.Select(v => $"{v.File}:{v.Line} in {v.Method}(): {v.Text}")));
     }
 }

@@ -552,8 +552,8 @@ internal partial class RoslynEmitter
                 {
                     var innerPattern = GenerateMatchPattern(
                         guardPattern.Inner, memberGuards, ref matchVarCounter, scrutineeType);
-                    var guardExpr = GenerateExpression(guardPattern.Guard);
-                    memberGuards.Add(guardExpr);
+                    memberGuards.Add(
+                        WrapTruthinessIfNeeded(GenerateExpression(guardPattern.Guard), guardPattern.Guard));
                     return innerPattern;
                 }
 
