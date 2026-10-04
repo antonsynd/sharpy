@@ -101,11 +101,17 @@ s2: str | None = None
 print(s2 == None)        # True
 ```
 
-A non-nullable **.NET** reference type (`from system import Version`) is the exception: `v == None`
-is refused with the same `is None` steer, because `is None` on it honours an overloaded `==` and
-the two spellings would answer differently (see [.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none)).
+A class whose `__eq__` accepts `None` (`__eq__(self, other: object)`) is asked, as in Python:
+`d == None` runs `__eq__`. A `None` left operand is never dereferenced — `z == None` with `z`
+holding `None` is `True`.
 
-`is None` works for both and is the spelling that narrows (see
+A non-nullable **.NET** reference type (`from system import Version`) is the exception: `v == None`
+is refused with the same `is None` steer. To compare a .NET reference against `None` through its
+own overloaded `==`, declare it `Version | None` and write `v == None` (see
+[.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none)).
+
+`is None` works for every operand, never runs user code (it is a reference null check — see
+[Identity Operators](identity_operators.md)), and is the spelling that narrows (see
 [Type Narrowing](type_narrowing.md)), so prefer it everywhere.
 
 *Implementation*

@@ -346,7 +346,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (223, 5) - (223, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.NotNull(t);
 #line (224, 5) - (225, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            if (t != null)
+            if (t is not null)
 #line hidden
             {
 #line (225, 9) - (225, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -383,7 +383,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (242, 5) - (242, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.NotNull(d);
 #line (243, 5) - (244, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            if (d != null)
+            if (d is not null)
 #line hidden
             {
 #line (244, 9) - (244, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -408,7 +408,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Socket.SocketModuleTests
 #line (252, 5) - (252, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
             Xunit.Assert.NotNull(t);
 #line (253, 5) - (254, 25) 12 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-            if (t != null)
+            if (t is not null)
 #line hidden
             {
 #line (254, 9) - (254, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"

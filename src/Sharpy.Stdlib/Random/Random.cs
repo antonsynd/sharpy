@@ -53,7 +53,7 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static T Choice<T>(Sharpy.List<T> seq)
         {
-            if (seq == null || global::Sharpy.Builtins.Len(seq) == 0)
+            if (seq is null || global::Sharpy.Builtins.Len(seq) == 0)
             {
                 throw new global::Sharpy.IndexError("Cannot choose from an empty sequence");
             }
@@ -67,7 +67,7 @@ namespace Sharpy.RandomModule
         /// </summary>
         public static void Shuffle<T>(Sharpy.List<T> x)
         {
-            if (x == null)
+            if (x is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' object cannot be shuffled");
             }

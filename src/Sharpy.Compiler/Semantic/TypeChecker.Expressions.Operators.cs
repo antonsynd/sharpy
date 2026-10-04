@@ -265,12 +265,14 @@ internal partial class TypeChecker
                 new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
         }
 
+        // `x is None` / `x is not None` / `None is x` (#2224, ruling R-EJ): `is` never runs user code —
+        // every None test records HOW its subject is tested, so the emitter never falls back to a
+        // `x == null` that binds a user `operator ==` (synthesized from `__eq__`, or a CLR overload).
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot
             && (binOp.Right is NoneLiteral || binOp.Left is NoneLiteral)
-            && (leftType is OptionalType || rightType is OptionalType))
+            && ClassifyNoneTest(binOp.Right is NoneLiteral ? leftType : rightType) is { } noneTestKind)
         {
-            _semanticInfo.SetOperatorLowering(binOp,
-                new OperatorLowering(OperatorLoweringKind.OptionalNoneTest));
+            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(noneTestKind));
         }
 
         if (binOp.Operator == BinaryOperator.NullCoalesce && leftType is OptionalType)
@@ -474,6 +476,63 @@ internal partial class TypeChecker
         }
 
         return (candidates.Where(c => c.Parameters.Count >= 2).ToList(), dunder);
+    }
+
+    /// <summary>
+    /// How an <c>is None</c> / <c>is not None</c> test (the None literal on either side) observes its
+    /// subject (#2224, ruling R-EJ). <c>is</c> never runs user code, so no arm may lower to
+    /// <c>x == null</c>: that binds whatever <c>operator ==</c> the subject's type carries — the one
+    /// synthesized from a Sharpy <c>__eq__</c> or a CLR overload — which threw on a None subject and
+    /// answered True for a live one whose <c>__eq__</c> admits None.
+    /// <list type="bullet">
+    /// <item><see cref="OptionalType"/> → <see cref="OperatorLoweringKind.OptionalNoneTest"/>
+    /// (<c>.IsNone</c> / <c>.IsSome</c> on the struct).</item>
+    /// <item>a subject that can hold a C# null (<see cref="AdmitsNullPattern"/>) →
+    /// <see cref="OperatorLoweringKind.ReferenceNoneTest"/> (<c>x is null</c>).</item>
+    /// <item>any other subject — a non-nullable value type, or a type this classifier cannot prove
+    /// nullable — → <see cref="OperatorLoweringKind.BoxedNoneTest"/> (<c>(object)x is null</c>). The
+    /// boxed form is correct for EVERY type, so an unproven type errs toward it rather than toward a
+    /// <c>x is null</c> that C# refuses on a value type.</item>
+    /// <item>the None literal itself (<c>None is None</c>) → no record: <c>null == null</c> is a C#
+    /// constant with no user operator in reach (ConstEligibility relies on it).</item>
+    /// </list>
+    /// </summary>
+    private static OperatorLoweringKind? ClassifyNoneTest(SemanticType subject)
+    {
+        if (subject is VoidType)
+            return null;
+        if (subject is OptionalType)
+            return OperatorLoweringKind.OptionalNoneTest;
+        return AdmitsNullPattern(subject)
+            ? OperatorLoweringKind.ReferenceNoneTest
+            : OperatorLoweringKind.BoxedNoneTest;
+    }
+
+    /// <summary>
+    /// Whether the C# null pattern <c>x is null</c> is legal on <paramref name="type"/>: a reference
+    /// type, <c>T | None</c> (a nullable reference or <c>Nullable&lt;T&gt;</c>), or an unconstrained
+    /// type parameter. False is always safe (the caller boxes); true must be certain.
+    /// </summary>
+    private static bool AdmitsNullPattern(SemanticType type)
+    {
+        type = OperandView(type);
+        return type switch
+        {
+            NullableType => true,
+            FunctionType => true,
+            TypeParameterType tp => tp.Constraints.IsDefaultOrEmpty,
+            BuiltinType builtin => builtin.ClrType is { IsValueType: false },
+            // `object` is a symbol-less UserDefinedType singleton: System.Object, a reference.
+            UserDefinedType when type == SemanticType.Object => true,
+            UserDefinedType udt => udt.ClrType is { } clr
+                ? !clr.IsValueType
+                : udt.Symbol?.TypeKind is TypeKind.Class or TypeKind.Interface or TypeKind.Delegate,
+            GenericType generic => generic.GenericDefinition is { } definition
+                && (definition.ClrType is { } clrDefinition
+                    ? !clrDefinition.IsValueType
+                    : definition.TypeKind is TypeKind.Class or TypeKind.Interface or TypeKind.Delegate),
+            _ => false,
+        };
     }
 
     /// <summary>

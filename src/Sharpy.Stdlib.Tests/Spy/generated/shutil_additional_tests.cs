@@ -343,7 +343,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil.ShutilAdditionalTests
 #line (151, 5) - (151, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
             Xunit.Assert.NotNull(result);
 #line (152, 5) - (153, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
-            if (result != null)
+            if (result is not null)
 #line hidden
             {
 #line (153, 9) - (153, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
@@ -358,7 +358,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil.ShutilAdditionalTests
 #line (159, 5) - (159, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
             var lsPath = shutil.Which("ls");
 #line (160, 5) - (162, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
-            if (lsPath != null)
+            if (lsPath is not null)
 #line hidden
             {
 #line (161, 9) - (161, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"

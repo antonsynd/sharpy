@@ -371,7 +371,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Shutil.ShutilTests
 #line (159, 5) - (159, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
             Xunit.Assert.NotNull(result);
 #line (160, 5) - (161, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-            if (result != null)
+            if (result is not null)
 #line hidden
             {
 #line (161, 9) - (161, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"

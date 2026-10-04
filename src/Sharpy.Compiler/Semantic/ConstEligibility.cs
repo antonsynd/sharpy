@@ -539,7 +539,8 @@ internal sealed class ConstEligibility
     /// records NO power lowering for it, while every unfolded power (<c>2.0 ** 3.0</c> →
     /// <c>FloatPow</c>, <c>x ** 2</c> → <c>IntegerPowInt</c>) records one and is refused by the tail
     /// check below. <c>is</c>/<c>is not</c> is on it because <c>None is None</c> emits
-    /// <c>null == null</c>, while an Optional test records <c>OptionalNoneTest</c>.</para>
+    /// <c>null == null</c>, while every other None test records its kind (<c>OptionalNoneTest</c>,
+    /// <c>ReferenceNoneTest</c>, <c>BoxedNoneTest</c>, #2224) and is refused by the tail check.</para>
     /// </summary>
     private bool LowersToConstantExpression(Expression node) =>
         LowersToConstantExpression(node, _semanticInfo);

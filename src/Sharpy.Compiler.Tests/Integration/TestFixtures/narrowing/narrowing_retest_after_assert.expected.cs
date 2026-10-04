@@ -13,14 +13,14 @@ namespace NarrowingRetestAfterAssert
         public static int CheckNullable(int? x)
         {
 #line (6, 5) - (6, 26) 12 "narrowing_retest_after_assert.spy"
-            if (!(x != null))
+            if (!(x is not null))
 #line hidden
             {
                 throw new global::Sharpy.AssertionError();
             }
 
 #line (7, 5) - (8, 22) 12 "narrowing_retest_after_assert.spy"
-            if (x != null)
+            if (x is not null)
 #line hidden
             {
 #line (8, 9) - (8, 22) 16 "narrowing_retest_after_assert.spy"

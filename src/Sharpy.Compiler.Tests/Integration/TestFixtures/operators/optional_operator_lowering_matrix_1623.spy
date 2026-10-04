@@ -7,7 +7,7 @@ def main():
     y: int? = Some(42)
     print(y is not None)  # True
 
-    # is None on nullable — no tag (native == null)
+    # is None on nullable — ReferenceNoneTest (null pattern `z is null`, #2224)
     z: str | None = None
     print(z is None)      # True
 

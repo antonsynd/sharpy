@@ -163,6 +163,13 @@ Each `__eq__` overload generates a corresponding `Equals` overload with matching
 Only `__eq__(self, other: object)` generates `override bool Equals(object)` (overrides `System.Object`).
 `@override` is implicit for the `object` overload (per the implicit override rule for Object methods).
 
+On a class, the `operator ==` / `operator !=` generated from `__eq__` / `__ne__` never dereference a
+`None` left operand: they lower to `left?.Equals(right) ?? <answer>` (`left?.NotEquals(right)` for
+`__ne__`). With `left` None the answer is `right is null || right.Equals(left)` for an `object`
+parameter — Python asks the right operand's `__eq__` when the left is `None` — `right is null` for
+any other reference parameter, and `false` for a value-type parameter; `!=` answers the negation.
+`x is None` calls neither operator (see [Identity Operators](identity_operators.md)).
+
 **Warning SPY0454**: If any `__eq__` overload exists but none has parameter type `object`, the compiler
 warns that collections (`set`, `dict`) will use reference equality.
 

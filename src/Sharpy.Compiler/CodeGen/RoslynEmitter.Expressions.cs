@@ -1155,9 +1155,12 @@ internal partial class RoslynEmitter
                 SyntaxKind.SimpleMemberAccessExpression,
                 Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
                 IdentifierName("IsSome")),
-            TruthinessLowering.NullableNotNull => BinaryExpression(SyntaxKind.NotEqualsExpression,
-                Operand(expr, SyntaxKind.NotEqualsExpression, OperandSlot.Left),
-                LiteralExpression(SyntaxKind.NullLiteralExpression)),
+            // The null PATTERN, never `!= null` (#2224): `if x:` on a `T | None` must not run the
+            // operator != synthesized from T's `__eq__` (it threw on None, and a permissive `__eq__`
+            // made a live value falsy).
+            TruthinessLowering.NullableNotNull => IsPattern(expr,
+                UnaryPattern(Token(SyntaxKind.NotKeyword),
+                    ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)))),
             TruthinessLowering.BoolConvertible => MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),

@@ -181,7 +181,7 @@ namespace Sharpy.CsvModule
 
         public CsvReader(Sharpy.List<string> lines)
         {
-            if (lines == null)
+            if (lines is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -203,7 +203,7 @@ namespace Sharpy.CsvModule
         /// </summary>
         public void Writerow(Sharpy.List<string> row)
         {
-            if (row == null)
+            if (row is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -230,7 +230,7 @@ namespace Sharpy.CsvModule
         /// </summary>
         public void Writerows(Sharpy.List<Sharpy.List<string>> rows)
         {
-            if (rows == null)
+            if (rows is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -244,7 +244,7 @@ namespace Sharpy.CsvModule
 
         public CsvWriter(global::System.IO.TextWriter output)
         {
-            if (output == null)
+            if (output is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' object is not valid as output");
             }
@@ -263,7 +263,7 @@ namespace Sharpy.CsvModule
         protected Sharpy.List<string>? _Fieldnames;
         public System.Collections.Generic.IEnumerator<Sharpy.Dict<string, string>> GetEnumerator()
         {
-            bool isFirstRow = this._Fieldnames == null;
+            bool isFirstRow = this._Fieldnames is null;
             foreach (var __loopVar_5 in this._Lines)
             {
                 var line = __loopVar_5;
@@ -276,7 +276,7 @@ namespace Sharpy.CsvModule
                 }
 
                 Sharpy.List<string>? header = this._Fieldnames;
-                if (header != null)
+                if (header is not null)
                 {
                     Sharpy.List<string> names = header!;
                     Sharpy.Dict<string, string> d = new Sharpy.Dict<string, string>()
@@ -312,7 +312,7 @@ namespace Sharpy.CsvModule
 
         public CsvDictReader(Sharpy.List<string> lines, Sharpy.List<string>? fieldnames = null)
         {
-            if (lines == null)
+            if (lines is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -357,7 +357,7 @@ namespace Sharpy.CsvModule
         /// </summary>
         public void Writerow(Sharpy.Dict<string, string> row)
         {
-            if (row == null)
+            if (row is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -390,7 +390,7 @@ namespace Sharpy.CsvModule
         /// </summary>
         public void Writerows(Sharpy.List<Sharpy.Dict<string, string>> rows)
         {
-            if (rows == null)
+            if (rows is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' is not iterable");
             }
@@ -412,12 +412,12 @@ namespace Sharpy.CsvModule
 
         public CsvDictWriter(global::System.IO.TextWriter output, Sharpy.List<string> fieldnames)
         {
-            if (output == null)
+            if (output is null)
             {
                 throw new global::Sharpy.TypeError("'NoneType' object is not valid as output");
             }
 
-            if (fieldnames == null)
+            if (fieldnames is null)
             {
                 throw new global::Sharpy.TypeError("fieldnames must not be None");
             }

@@ -291,7 +291,7 @@ namespace TruthinessConditionalReceiverKinds1727
 #line (104, 5) - (104, 27) 12 "truthiness_conditional_receiver_kinds_1727.spy"
             string? nt = null;
 #line (105, 5) - (108, 46) 12 "truthiness_conditional_receiver_kinds_1727.spy"
-            if (flag ? nt != null : ns != null)
+            if (flag ? nt is not null : ns is not null)
 #line hidden
             {
 #line (106, 9) - (106, 47) 16 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -306,7 +306,7 @@ namespace TruthinessConditionalReceiverKinds1727
             }
 
 #line (109, 5) - (112, 45) 12 "truthiness_conditional_receiver_kinds_1727.spy"
-            if (flag ? ns != null : nt != null)
+            if (flag ? ns is not null : nt is not null)
 #line hidden
             {
 #line (110, 9) - (110, 46) 16 "truthiness_conditional_receiver_kinds_1727.spy"

@@ -140,7 +140,7 @@ namespace Sharpy.OsPathModule
         public static string Dirname(string path)
         {
             var result = global::System.IO.Path.GetDirectoryName(path);
-            if (result == null)
+            if (result is null)
             {
                 return "";
             }
@@ -154,7 +154,7 @@ namespace Sharpy.OsPathModule
         public static global::System.ValueTuple<string, string> Split(string path)
         {
             var dirPart = global::System.IO.Path.GetDirectoryName(path);
-            if (dirPart == null)
+            if (dirPart is null)
             {
                 dirPart = "";
             }

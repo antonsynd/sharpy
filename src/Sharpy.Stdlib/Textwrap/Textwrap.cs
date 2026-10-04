@@ -20,7 +20,7 @@ namespace Sharpy.Textwrap
         /// </summary>
         public static Sharpy.List<string> Wrap(string text, int width = 70)
         {
-            if (text == null)
+            if (text is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
@@ -99,7 +99,7 @@ namespace Sharpy.Textwrap
         /// </summary>
         public static string Dedent(string text)
         {
-            if (text == null)
+            if (text is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
@@ -172,12 +172,12 @@ namespace Sharpy.Textwrap
         /// </summary>
         public static string Indent(string text, string prefix)
         {
-            if (text == null)
+            if (text is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            if (prefix == null)
+            if (prefix is null)
             {
                 throw new global::Sharpy.TypeError("prefix must be str, not NoneType");
             }
@@ -203,7 +203,7 @@ namespace Sharpy.Textwrap
         /// </summary>
         public static string Shorten(string text, int width)
         {
-            if (text == null)
+            if (text is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }

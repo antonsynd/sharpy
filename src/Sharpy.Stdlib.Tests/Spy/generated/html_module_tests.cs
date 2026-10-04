@@ -31,7 +31,7 @@ namespace Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests
             {
                 var attr = __loopVar_0;
 #line (75, 9) - (78, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                if (attr.Item2 == null)
+                if (attr.Item2 is null)
 #line hidden
                 {
 #line (76, 13) - (76, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"

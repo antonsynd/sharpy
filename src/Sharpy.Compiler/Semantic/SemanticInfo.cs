@@ -3137,6 +3137,22 @@ public enum OperatorLoweringKind
     TrueDivisionCastLeft,
     ShiftCountCastToInt,
     OptionalNoneTest,
+
+    /// <summary>
+    /// <c>x is None</c> / <c>x is not None</c> (None literal on either side) whose subject can hold a
+    /// C# null — a reference type, <c>T | None</c>, an unconstrained type parameter (#2224, ruling
+    /// R-EJ). Emitted as the null PATTERN <c>x is null</c> / <c>x is not null</c>, which binds no user
+    /// <c>operator ==</c>: <c>is</c> never runs user code; <c>==</c> runs <c>__eq__</c> / <c>operator ==</c>.
+    /// </summary>
+    ReferenceNoneTest,
+
+    /// <summary>
+    /// <c>x is None</c> / <c>x is not None</c> whose subject is not provably C#-nullable — a
+    /// non-nullable value type (#2224). Emitted as <c>(object)x is null</c>: the subject is evaluated
+    /// once, boxed (never null), and no user operator is bound. The pattern <c>x is null</c> would be
+    /// CS0037 on a value type and <c>x == null</c> would bind a struct's <c>operator ==</c>.
+    /// </summary>
+    BoxedNoneTest,
     OptionalCoalesceBothOptional,
     OptionalUnwrapOr,
     StringRepeatStrLeft,

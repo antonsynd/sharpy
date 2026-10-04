@@ -219,7 +219,7 @@ namespace Sharpy.TempfileModule
             if (this._Rolled)
             {
                 string? path = this.Name;
-                if (path != null)
+                if (path is not null)
                 {
                     global::System.IO.File.AppendAllText(path!, data);
                 }
@@ -247,7 +247,7 @@ namespace Sharpy.TempfileModule
             if (this._Rolled)
             {
                 string? path = this.Name;
-                if (path != null)
+                if (path is not null)
                 {
                     return global::System.IO.File.ReadAllText(path!);
                 }
@@ -272,7 +272,7 @@ namespace Sharpy.TempfileModule
             if (this._Rolled)
             {
                 string? path = this.Name;
-                if (path != null)
+                if (path is not null)
                 {
                     if (global::System.IO.File.Exists(path!))
                     {

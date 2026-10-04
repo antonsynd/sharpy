@@ -132,7 +132,7 @@ define `__eq__(self, other: object)` explicitly.
 
 - `__eq__(self, other: Foo)` generates `public bool Equals(Foo rhs)` (new overload, not override)
 - `__eq__(self, other: object)` generates `public override bool Equals(object rhs)` (overrides `System.Object`)
-- `operator==` calls `left.Equals(right)` — C# overload resolution picks the right `Equals` at compile time
+- `operator==` calls `left?.Equals(right)` — C# overload resolution picks the right `Equals` at compile time; a `None` left operand is never dereferenced (see [Dunder Methods](dunder_methods.md#comparison-operators))
 
 **Warning SPY0454**: If any `__eq__` overload exists but none has parameter type `object`, the compiler
 warns that collections (`set`, `dict`) will use reference equality. This encourages users to define

@@ -75,7 +75,7 @@ namespace Sharpy.OsModule
             }
 
             var parent = global::System.IO.Path.GetDirectoryName(path);
-            if (parent != null)
+            if (parent is not null)
             {
                 if (parent!.Length > 0 && !global::System.IO.Directory.Exists(parent!))
                 {
@@ -173,7 +173,7 @@ namespace Sharpy.OsModule
         public static string? Getenv(string key)
         {
             var result = global::System.Environment.GetEnvironmentVariable(key);
-            if (result == null)
+            if (result is null)
             {
                 return null;
             }
@@ -187,7 +187,7 @@ namespace Sharpy.OsModule
         public static string Getenv(string key, string @default)
         {
             var result = global::System.Environment.GetEnvironmentVariable(key);
-            if (result == null)
+            if (result is null)
             {
                 return @default;
             }

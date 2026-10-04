@@ -151,8 +151,9 @@ internal class TypeInferenceService
             return null;
 
         // ...but `T | None == None` on such a T stays admitted: the nullable family lowers it to the
-        // native `== null`, which IS the `is None` lowering, so the two spellings already agree. The
-        // unwrap below would otherwise re-ask the question of the bare T and refuse it.
+        // native `== null`, which runs T's `operator ==` — the spelling that reaches an overload such
+        // as Unity's destroyed-object `==` (#2224, R-EJ: `is None` is the reference check, `==` runs
+        // the operator). The unwrap below would otherwise re-ask the question of the bare T and refuse it.
         if (IsNullableClrReferenceNoneEquality(op, left, right))
             return SemanticType.Bool;
 
@@ -1099,10 +1100,11 @@ internal class TypeInferenceService
     /// True when <c>==</c>/<c>!=</c> compares the <c>None</c> literal against a NON-NULLABLE CLR
     /// reference type — a type with a CLR identity of its own rather than one declared in Sharpy source
     /// or collapsed onto a Sharpy builtin (#2221, ruling R-DX part 1). Such a comparison is refused with
-    /// the <c>is None</c> steer: <c>is None</c> lowers to <c>== null</c>, which honours an overloaded
-    /// <c>op_Equality</c> (Unity's "fake null"), while the #901 null check lowered <c>== None</c> to a
-    /// reference <c>is null</c> — two spellings of one test with two answers. Rejected: lowering
-    /// <c>== None</c> like <c>is None</c> (two spellings for one test).
+    /// the <c>is None</c> steer: <c>is None</c> is the reference null check (#2224, ruling R-EJ — it
+    /// never runs an overloaded <c>op_Equality</c>), and the #901 null check would have lowered
+    /// <c>== None</c> to that same reference <c>is null</c>, so <c>==</c> would silently skip the
+    /// operator it names. The spelling that runs the overload (Unity's "fake null") is <c>== None</c> on
+    /// <c>T | None</c> (<see cref="IsNullableClrReferenceNoneEquality"/>).
     /// <para>Out of scope by construction: <c>str</c> and the Sharpy collections (Sharpy surface whose
     /// <c>== None</c> the spec documents), Sharpy-source classes (no CLR identity at check time; their
     /// <c>== None</c> dispatches through <c>__eq__</c>, #1719), value types (already SPY0222), and the
@@ -1123,8 +1125,9 @@ internal class TypeInferenceService
 
     /// <summary>
     /// <c>T | None</c> (<see cref="NullableType"/>) compared <c>==</c>/<c>!=</c> against the <c>None</c>
-    /// literal, where <c>T</c> is a CLR reference type (<see cref="HasClrReferenceIdentity"/>). Admitted:
-    /// the native <c>== null</c> it lowers to is the <c>is None</c> lowering (#2221).
+    /// literal, where <c>T</c> is a CLR reference type (<see cref="HasClrReferenceIdentity"/>). Admitted
+    /// (#2221): it lowers to the native <c>== null</c>, which runs T's <c>operator ==</c> — unlike
+    /// <c>is None</c>, the reference check (#2224, ruling R-EJ).
     /// </summary>
     private bool IsNullableClrReferenceNoneEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {

@@ -233,7 +233,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Tarfile.TarfileTests
 #line (95, 9) - (95, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.NotNull(data);
 #line (96, 9) - (97, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                if (data != null)
+                if (data is not null)
 #line hidden
                 {
 #line (97, 13) - (97, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"

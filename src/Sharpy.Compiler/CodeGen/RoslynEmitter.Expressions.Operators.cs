@@ -42,6 +42,37 @@ internal partial class RoslynEmitter
             : binOp.Left is NoneLiteral ? right
             : null;
 
+    /// <summary>
+    /// The lowering of one <c>is None</c> / <c>is not None</c> test, read from the kind the checker
+    /// recorded for it (<c>TypeChecker.ClassifyNoneTest</c>, #2224 ruling R-EJ: <c>is</c> never runs
+    /// user code). Every recorded arm is a form that cannot bind a user <c>operator ==</c>:
+    /// <c>.IsNone</c>/<c>.IsSome</c> on an Optional, the null pattern on a C#-nullable subject, the
+    /// null pattern on the boxed subject otherwise. Only the unrecorded <c>None is None</c> keeps
+    /// <c>null == null</c> — two null literals, a C# constant, no operator in reach.
+    /// </summary>
+    private ExpressionSyntax GenerateNoneTest(BinaryOp binOp, ExpressionSyntax subject, bool negated)
+    {
+        PatternSyntax NullPattern()
+        {
+            PatternSyntax pattern = ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression));
+            return negated ? UnaryPattern(Token(SyntaxKind.NotKeyword), pattern) : pattern;
+        }
+
+        switch (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind)
+        {
+            case OperatorLoweringKind.OptionalNoneTest:
+                return Member(subject, negated ? "IsSome" : "IsNone");
+            case OperatorLoweringKind.ReferenceNoneTest:
+                return IsPattern(subject, NullPattern());
+            case OperatorLoweringKind.BoxedNoneTest:
+                return IsPattern(Cast(PredefinedType(Token(SyntaxKind.ObjectKeyword)), subject), NullPattern());
+            default:
+                return Binary(negated ? SyntaxKind.NotEqualsExpression : SyntaxKind.EqualsExpression,
+                    subject,
+                    LiteralExpression(SyntaxKind.NullLiteralExpression));
+        }
+    }
+
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
         // `and` emits a plain `left && right` (kind mapped below). Narrowing of RHS reads
@@ -177,21 +208,12 @@ internal partial class RoslynEmitter
 
             case BinaryOperator.Is:
                 // `x is None` and `None is x` are one test (#2171): the subject is the operand on the
-                // side that is NOT the None literal, and the recorded OptionalNoneTest — which the
-                // checker records for EITHER side — selects the Optional arm. Keying the arm on
-                // `Right is NoneLiteral` alone sent `None is x` on an Optional to ReferenceEquals on a
-                // boxed struct: always false.
+                // side that is NOT the None literal, and the recorded None-test kind — which the
+                // checker records for EITHER side — selects the arm (#2224: never `x == null`, which
+                // bound a user operator ==). Keying the arm on `Right is NoneLiteral` alone sent
+                // `None is x` on an Optional to ReferenceEquals on a boxed struct: always false.
                 if (NoneTestSubject(binOp, left, right) is { } isNoneSubject)
-                {
-                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
-                        == OperatorLoweringKind.OptionalNoneTest)
-                    {
-                        return Member(isNoneSubject, "IsNone");
-                    }
-                    return Binary(SyntaxKind.EqualsExpression,
-                        isNoneSubject,
-                        LiteralExpression(SyntaxKind.NullLiteralExpression));
-                }
+                    return GenerateNoneTest(binOp, isNoneSubject, negated: false);
                 return InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         PredefinedType(Token(SyntaxKind.ObjectKeyword)),
@@ -203,16 +225,7 @@ internal partial class RoslynEmitter
             case BinaryOperator.IsNot:
                 // Mirror of the Is arm (#2171): `None is not x` is `x is not None`.
                 if (NoneTestSubject(binOp, left, right) is { } isNotNoneSubject)
-                {
-                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
-                        == OperatorLoweringKind.OptionalNoneTest)
-                    {
-                        return Member(isNotNoneSubject, "IsSome");
-                    }
-                    return Binary(SyntaxKind.NotEqualsExpression,
-                        isNotNoneSubject,
-                        LiteralExpression(SyntaxKind.NullLiteralExpression));
-                }
+                    return GenerateNoneTest(binOp, isNotNoneSubject, negated: true);
                 return Prefix(SyntaxKind.LogicalNotExpression,
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -908,8 +921,11 @@ internal partial class RoslynEmitter
         }
         else
         {
-            absentTest = BinaryExpression(SyntaxKind.EqualsExpression, leftRef,
-                LiteralExpression(SyntaxKind.NullLiteralExpression));
+            // The null PATTERN, never `== null` (#2224): a `T | None` left whose T carries an
+            // `operator ==` (synthesized from `__eq__`, or a CLR overload) must not run user code to
+            // decide absence — C#'s native `??` does not either.
+            absentTest = IsPatternExpression(leftRef,
+                ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)));
             presentValue = leftRef;
         }
 

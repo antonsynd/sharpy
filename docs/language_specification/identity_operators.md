@@ -4,8 +4,37 @@
 |----------|-------------|------------|
 | `is` | Identity comparison | `object.ReferenceEquals()` |
 | `is not` | Negated identity | `!object.ReferenceEquals()` |
-| `is None` | None check | `== null` (nullable/reference), `.IsNone` (Optional) |
-| `is not None` | Non-None check | `!= null` (nullable/reference), `!.IsNone` (Optional) |
+| `is None` | None check | `x is null` (reference / `T \| None`), `(object)x is null` (value type), `.IsNone` (Optional) |
+| `is not None` | Non-None check | `x is not null` (reference / `T \| None`), `(object)x is not null` (value type), `.IsSome` (Optional) |
+
+## `is None` Never Runs User Code
+
+`is None` / `is not None` are a reference null check on every type — a Sharpy class with
+`__eq__`, a .NET class with an overloaded `==`, `str`, a collection. They lower to the C# null
+pattern, which calls no operator. `==` is the spelling that runs `__eq__` (or a .NET
+`operator ==`):
+
+```python
+class Anything:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 0
+
+
+def main() -> None:
+    a: Anything | None = Anything()
+    print(a is None)      # False — a holds a live object
+    print(a == None)      # True — `==` runs __eq__, as in Python
+    b: Anything | None = None
+    print(b is None)      # True
+    print(b == None)      # True — a None left operand is never dereferenced
+```
+
+A .NET type whose `==` treats a live object as null (Unity's destroyed `Object`) answers `False`
+to `is None`; see [.NET Interop](dotnet_interop.md#testing-a-net-reference-for-none) for the
+spelling that asks its `==`.
 
 ## `is` Is Not a Type Test
 

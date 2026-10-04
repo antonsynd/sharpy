@@ -20,12 +20,12 @@ namespace Sharpy.FnmatchModule
         /// </summary>
         public static bool Fnmatch(string name, string pat)
         {
-            if (name == null)
+            if (name is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            if (pat == null)
+            if (pat is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
@@ -44,12 +44,12 @@ namespace Sharpy.FnmatchModule
         /// </summary>
         public static bool Fnmatchcase(string name, string pat)
         {
-            if (name == null)
+            if (name is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            if (pat == null)
+            if (pat is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
@@ -63,12 +63,12 @@ namespace Sharpy.FnmatchModule
         /// </summary>
         public static Sharpy.List<string> Filter(Sharpy.List<string> names, string pat)
         {
-            if (names == null)
+            if (names is null)
             {
                 throw new global::Sharpy.TypeError("argument must be list, not NoneType");
             }
 
-            if (pat == null)
+            if (pat is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
@@ -103,7 +103,7 @@ namespace Sharpy.FnmatchModule
         /// </summary>
         public static string Translate(string pat)
         {
-            if (pat == null)
+            if (pat is null)
             {
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }

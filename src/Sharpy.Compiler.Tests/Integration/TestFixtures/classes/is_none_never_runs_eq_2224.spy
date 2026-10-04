@@ -1,0 +1,44 @@
+# `is None` is a reference null check; `==` runs __eq__ (#2224, ruling R-EJ).
+class D:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, D) and self.v == other.v
+
+    def __hash__(self) -> int:
+        return self.v
+
+
+class Anything:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 0
+
+
+def pick(n: int) -> D | None:
+    if n > 0:
+        return D(n)
+    return None
+
+
+def main():
+    z = pick(0)
+    print(z is None)
+    print(z is not None)
+    print(None is z)
+    print(z == None)
+    print(None == z)
+    e = pick(3)
+    print(e is None)
+    print(e == None)
+    a = Anything()
+    print(a is None)
+    print(a is not None)
+    print(a == None)
+    if e is not None:
+        print(e.v)

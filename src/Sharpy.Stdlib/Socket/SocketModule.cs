@@ -60,7 +60,7 @@ namespace Sharpy.SocketModule
             global::Sharpy.SocketModule.Socket sock = new global::Sharpy.SocketModule.Socket(global::Sharpy.SocketModule.SocketModuleModule.AF_INET, global::Sharpy.SocketModule.SocketModuleModule.SOCK_STREAM, 0);
             try
             {
-                if (timeout != null)
+                if (timeout is not null)
                 {
                     sock.Settimeout(timeout.Value);
                 }
@@ -361,7 +361,7 @@ namespace Sharpy.SocketModule
 
                 var accepted = this._Socket.Accept();
                 var remote = accepted.RemoteEndPoint;
-                if (remote == null)
+                if (remote is null)
                 {
                     throw new global::Sharpy.SocketModule.Error("Accepted connection has no remote endpoint.");
                 }
@@ -522,7 +522,7 @@ namespace Sharpy.SocketModule
             try
             {
                 var opt = this._Socket.GetSocketOption((global::System.Net.Sockets.SocketOptionLevel)level, (global::System.Net.Sockets.SocketOptionName)optname);
-                if (opt == null)
+                if (opt is null)
                 {
                     return 0;
                 }
@@ -540,7 +540,7 @@ namespace Sharpy.SocketModule
         /// </summary>
         public void Settimeout(double? timeout)
         {
-            if (timeout != null)
+            if (timeout is not null)
             {
                 double requested = timeout.Value;
                 if (requested < 0.0d)
@@ -550,7 +550,7 @@ namespace Sharpy.SocketModule
             }
 
             this._Timeout = timeout;
-            if (timeout == null)
+            if (timeout is null)
             {
                 this._Socket.Blocking = true;
                 this._Socket.ReceiveTimeout = 0;
@@ -580,7 +580,7 @@ namespace Sharpy.SocketModule
         private int _TimeoutMs()
         {
             double? t = this._Timeout;
-            if (t == null)
+            if (t is null)
             {
                 return 0;
             }
@@ -686,7 +686,7 @@ namespace Sharpy.SocketModule
         public (string host, int port) Getsockname()
         {
             var endpoint = this._Socket.LocalEndPoint;
-            if (endpoint == null)
+            if (endpoint is null)
             {
                 throw new global::Sharpy.SocketModule.Error("Socket is not bound to an address.");
             }
@@ -701,7 +701,7 @@ namespace Sharpy.SocketModule
         public (string host, int port) Getpeername()
         {
             var endpoint = this._Socket.RemoteEndPoint;
-            if (endpoint == null)
+            if (endpoint is null)
             {
                 throw new global::Sharpy.SocketModule.Error("Socket is not connected.");
             }
@@ -780,7 +780,7 @@ namespace Sharpy.SocketModule
             this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
             this._Timeout = null;
             double? @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
-            if (@default != null)
+            if (@default is not null)
             {
                 this.Settimeout(@default.Value);
             }

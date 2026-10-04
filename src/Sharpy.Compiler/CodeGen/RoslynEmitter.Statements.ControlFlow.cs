@@ -257,9 +257,11 @@ internal partial class RoslynEmitter
         //     the null assertions made the test vacuous. The operand lowering is the one
         //     RoslynEmitter.Expressions.Operators.cs's Is/IsNot arms produce, so the test host and
         //     `sharpyc run` cannot disagree about what `is None` means.
-        //   - no record (a reference, or a CLR Nullable<T> from `T | None`) → Xunit.Assert.Null /
-        //     NotNull on the non-None operand. For Nullable<T> C# overload resolution binds xUnit's
-        //     Null<T>(T?)/NotNull<T>(T?) (where T : struct), which observes HasValue.
+        //   - ReferenceNoneTest / BoxedNoneTest (a reference, a CLR Nullable<T> from `T | None`, a
+        //     value type) → Xunit.Assert.Null / NotNull on the non-None operand. Both observe a
+        //     reference null check through an `object` formal, never a user operator == (#2224). For
+        //     Nullable<T> C# overload resolution binds xUnit's Null<T>(T?)/NotNull<T>(T?) (where
+        //     T : struct), which observes HasValue.
         if (test is BinaryOp { Operator: BinaryOperator.Is or BinaryOperator.IsNot } noneTest
             && (noneTest.Right is NoneLiteral || noneTest.Left is NoneLiteral))
         {

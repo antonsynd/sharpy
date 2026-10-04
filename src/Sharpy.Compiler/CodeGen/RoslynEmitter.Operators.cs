@@ -485,6 +485,18 @@ internal partial class RoslynEmitter
                 returnExpr = GenerateNullSafeEqualsExpression();
             }
         }
+        else if (funcDef.Name is DunderNames.Eq or DunderNames.Ne
+            && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
+        {
+            // `__eq__(self, other: object)` and an explicit `__ne__` on a class (#2224, ruling R-EJ
+            // part b): the operator must not dereference a None LEFT operand — `left.Equals(right)`
+            // threw for `z == None` / `None == z` on a `D | None` holding None.
+            returnExpr = GenerateNullLeftSafeEqualityExpression(
+                methodName,
+                negated: funcDef.Name == DunderNames.Ne,
+                rightAdmitsNone: IsEqualsObjectOverload(funcDef),
+                rightIsValue: paramShape == Semantic.EqualityParameterShape.ValueOrOptional);
+        }
         else
         {
             // For all other comparison operators (and struct __eq__): call dunder directly
@@ -521,6 +533,63 @@ internal partial class RoslynEmitter
             SyntaxKind.CoalesceExpression,
             nullConditionalEquals,
             LiteralExpression(SyntaxKind.FalseLiteralExpression));
+    }
+
+    /// <summary>
+    /// Generates <c>left?.M(right) ?? &lt;answer when left is None&gt;</c> for a class's <c>operator ==</c>
+    /// from <c>__eq__(self, other: object)</c> or <c>operator !=</c> from an explicit <c>__ne__</c>
+    /// (#2224, ruling R-EJ part b) — a None left operand is never dereferenced. The None-left answer
+    /// for <c>==</c>:
+    /// <list type="bullet">
+    /// <item>parameter <c>object</c> (admits None): <c>right is null || right.Equals(left)</c> — python3
+    /// asks the right operand's <c>__eq__</c> when the left is None (NoneType returns NotImplemented),
+    /// and <c>Equals(object)</c> is the virtual an object <c>__eq__</c> overrides.</item>
+    /// <item>a value-type / Optional parameter: <c>false</c> (<c>right is null</c> is not valid C#).</item>
+    /// <item>any other reference parameter: <c>right is null</c> (None is not admissible in the slot).</item>
+    /// </list>
+    /// <c>!=</c> answers the negation of the same expression, so the pair can never disagree.
+    /// </summary>
+    private static ExpressionSyntax GenerateNullLeftSafeEqualityExpression(
+        string methodName, bool negated, bool rightAdmitsNone, bool rightIsValue)
+    {
+        var leftCall = ConditionalAccessExpression(
+            IdentifierName("left"),
+            InvocationExpression(MemberBindingExpression(IdentifierName(methodName)))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right"))))));
+
+        var rightIsNull = IsPatternExpression(
+            IdentifierName("right"),
+            ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)));
+
+        ExpressionSyntax noneLeftAnswer;
+        if (rightIsValue)
+        {
+            noneLeftAnswer = LiteralExpression(negated
+                ? SyntaxKind.TrueLiteralExpression
+                : SyntaxKind.FalseLiteralExpression);
+        }
+        else if (rightAdmitsNone)
+        {
+            ExpressionSyntax reflected = ParenthesizedExpression(BinaryExpression(SyntaxKind.LogicalOrExpression,
+                rightIsNull,
+                InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("right"), IdentifierName("Equals")))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("left")))))));
+            noneLeftAnswer = negated
+                ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, reflected)
+                : reflected;
+        }
+        else
+        {
+            noneLeftAnswer = negated
+                ? IsPatternExpression(IdentifierName("right"),
+                    UnaryPattern(Token(SyntaxKind.NotKeyword),
+                        ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))))
+                : rightIsNull;
+        }
+
+        return BinaryExpression(SyntaxKind.CoalesceExpression, leftCall, noneLeftAnswer);
     }
 
     /// <summary>

@@ -1014,9 +1014,10 @@ internal partial class RoslynEmitter
             // nowhere to host the statements the right-hand side hoisted. The explicit null test
             // is the same short-circuit (`target` is re-read, never re-evaluated: the index and
             // member routes hoisted their receiver and index to temps before this call).
+            // The null PATTERN, never `== null` (#2224): absence must not run a user operator ==.
             return IfStatement(
-                BinaryExpression(SyntaxKind.EqualsExpression, target,
-                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                IsPattern(target,
+                    ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
                 GuardedCoalesceAssignBody(valueEvals, target, value));
         }
 

@@ -8,10 +8,11 @@ using Sharpy.TestInfrastructure.Integration;
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
-/// A <c>None</c> test on a non-nullable CLR reference type has ONE spelling and one lowering (#2221,
-/// ruling R-DX part 1). <c>is None</c> lowers to <c>== null</c> and so honours an overloaded
-/// <c>op_Equality</c>; <c>== None</c> used to lower to a reference <c>is null</c> — the same test with a
-/// second answer — and is now refused (SPY0222) with the <c>is None</c> steer.
+/// A <c>None</c> test on a non-nullable CLR reference type has ONE spelling (#2221, ruling R-DX part 1):
+/// <c>is None</c>, the reference null check (<c>v is null</c> — it never runs an overloaded
+/// <c>op_Equality</c>, #2224 ruling R-EJ). <c>== None</c> on it is refused (SPY0222) with the
+/// <c>is None</c> steer; <c>== None</c> on <c>T | None</c> is the spelling that runs the overload
+/// (pinned with a fake-null CLR type in <see cref="IsNoneReferenceCheckMatrixTests"/>).
 /// </summary>
 /// <remarks>
 /// <para>Axes: operand {CLR reference with an overloaded <c>==</c> (<c>System.Version</c>), CLR reference
@@ -70,7 +71,8 @@ public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
     /// <summary>
     /// Hand-spelled verdicts: the equality spellings are refused on a non-nullable CLR reference (#2221)
     /// and, as before, on the Optional family; a Sharpy class keeps the #901 null check and
-    /// <c>T | None</c> keeps the native <c>== null</c> (both agree with <c>is None</c>).
+    /// <c>T | None</c> keeps the native <c>== null</c> (for these operands — no fake-null overload —
+    /// both agree with <c>is None</c>).
     /// </summary>
     private static bool IsRefused(Operand operand, Spelling spelling)
         => spelling is Spelling.EqNone or Spelling.NotEqNone

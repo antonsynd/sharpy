@@ -516,18 +516,33 @@ Parameters from assemblies without NRT annotations (`NullabilityState.Unknown`) 
 
 ### Testing a .NET reference for `None`
 
-`is None` on a .NET reference type lowers to C# `== null`, so it honours an overloaded `==` — a type that overloads `==` decides what counts as null (a destroyed Unity `Object` reads as `None`):
+One rule covers every reference type, .NET and Sharpy alike: **`is` never runs user code; `==` runs the type's `operator ==`.**
+
+`is None` / `is not None` are a reference null check. They lower to the C# null pattern `v is null` / `v is not null`, which never calls an overloaded `==`:
 
 ```python
 from system import Version
 
 def main() -> None:
     v: Version = Version(1, 2)
-    print(v is None)       # False — lowered to `v == null`, through Version's operator ==
+    print(v is None)       # False — lowered to `v is null`, a reference check
     print(v is not None)   # True
 ```
 
-That is the one spelling: `== None` / `!= None` on a non-nullable .NET reference type is refused with the `is None` / `is not None` steer, because it would otherwise lower to a reference check that skips the overload:
+A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, compare an operand typed `T | None` with `== None` / `!= None`, which lowers to C# `v == null` and runs the overload:
+
+```python
+from system import Version
+
+def is_gone(w: Version | None) -> bool:
+    return w == None       # lowered to `w == null`, through Version's operator ==
+
+def main() -> None:
+    print(is_gone(None))               # True
+    print(is_gone(Version(1, 2)))      # False
+```
+
+`== None` / `!= None` on a **non-nullable** .NET reference type is refused with the `is None` / `is not None` steer (SPY0222) — including a `T | None` variable that an assignment or an `is not None` test has narrowed to `T` at that point. Write `is None` for the reference check, or compare an operand typed `T | None` to ask the type's `==`:
 
 <!-- spec-sweep: error SPY0222 -->
 ```python

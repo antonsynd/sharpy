@@ -113,7 +113,7 @@ namespace Sharpy.ReModule
         /// </summary>
         internal static string _TranslatePattern(string pattern)
         {
-            if (pattern == null)
+            if (pattern is null)
             {
                 throw new global::Sharpy.TypeError("expected string, got NoneType");
             }
@@ -307,7 +307,7 @@ namespace Sharpy.ReModule
         /// </summary>
         internal static string _ApplyEndpos(string s, int? endpos)
         {
-            if (endpos == null)
+            if (endpos is null)
             {
                 return s;
             }
@@ -464,7 +464,7 @@ namespace Sharpy.ReModule
             this.Msg = msg;
             this.Pattern = pattern;
             this.Pos = pos;
-            if (pos != null && pattern != null)
+            if (pos is not null && pattern is not null)
             {
                 int line = 1;
                 int col = pos.Value + 1;
@@ -515,7 +515,7 @@ namespace Sharpy.ReModule
             }
 
             int actualEndpos = s.Length;
-            if (endpos != null)
+            if (endpos is not null)
             {
                 actualEndpos = endpos.Value;
             }
@@ -536,7 +536,7 @@ namespace Sharpy.ReModule
             }
 
             int actualEndpos = s.Length;
-            if (endpos != null)
+            if (endpos is not null)
             {
                 actualEndpos = endpos.Value;
             }
@@ -557,7 +557,7 @@ namespace Sharpy.ReModule
             }
 
             int actualEndpos = s.Length;
-            if (endpos != null)
+            if (endpos is not null)
             {
                 actualEndpos = endpos.Value;
             }
@@ -625,7 +625,7 @@ namespace Sharpy.ReModule
             {
             };
             int actualEndpos = s.Length;
-            if (endpos != null)
+            if (endpos is not null)
             {
                 actualEndpos = endpos.Value;
             }
@@ -887,7 +887,7 @@ namespace Sharpy.ReModule
         /// </summary>
         public string? Group(string name)
         {
-            if (this._Re != null)
+            if (this._Re is not null)
             {
                 if (this._Re!.Regex.GroupNumberFromName(name) == -1)
                 {
@@ -926,7 +926,7 @@ namespace Sharpy.ReModule
             Sharpy.Dict<string, string?> result = new Sharpy.Dict<string, string?>()
             {
             };
-            if (this._Re == null)
+            if (this._Re is null)
             {
                 return result;
             }
@@ -1069,12 +1069,12 @@ namespace Sharpy.ReModule
             {
                 _ = "The name of the last matched capturing group, or None if unnamed.";
                 int? idx = this.Lastindex;
-                if (idx == null)
+                if (idx is null)
                 {
                     return null;
                 }
 
-                if (this._Re == null)
+                if (this._Re is null)
                 {
                     return null;
                 }

@@ -158,7 +158,7 @@ namespace Sharpy.ShutilModule
             }
 
             var rawPath = global::System.Environment.GetEnvironmentVariable("PATH");
-            if (rawPath == null)
+            if (rawPath is null)
             {
                 return null;
             }
@@ -177,7 +177,7 @@ namespace Sharpy.ShutilModule
             if (isWindows)
             {
                 var rawExt = global::System.Environment.GetEnvironmentVariable("PATHEXT");
-                string extValue = rawExt != null ? rawExt! : "";
+                string extValue = rawExt is not null ? rawExt! : "";
                 if (extValue.Length > 0)
                 {
                     extensions = new Sharpy.List<string>(global::Sharpy.StringExtensions.Split(extValue, ";"));

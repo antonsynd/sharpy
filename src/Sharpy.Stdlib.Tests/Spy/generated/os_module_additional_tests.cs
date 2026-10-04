@@ -306,7 +306,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleAdditionalTests
 #line (144, 5) - (144, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
             Xunit.Assert.NotNull(pathVal);
 #line (145, 5) - (146, 34) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
-            if (pathVal != null)
+            if (pathVal is not null)
 #line hidden
             {
 #line (146, 9) - (146, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
