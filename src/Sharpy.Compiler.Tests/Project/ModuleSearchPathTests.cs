@@ -120,7 +120,7 @@ public class ModuleSearchPathTests
     /// .spy outside the project's source set" class, which the #2233 round's findings ledger records
     /// for an owner decision (refuse cleanly, or compile the import closure).
     /// </summary>
-    [Fact(Skip = "Known red, not asserted: an import resolving to a .spy outside the project's source set is SPY0908 (#2233 findings ledger)")]
+    [Fact(Skip = "Known red, not asserted: an import resolving to a .spy outside the project's source set is SPY0908 (#2234)")]
     public void ModulePathModule_NotListedAsASource_KnownRed()
     {
         using var helper = new ProjectCompilationHelper(_output);

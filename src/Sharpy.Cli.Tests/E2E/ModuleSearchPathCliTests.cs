@@ -218,7 +218,7 @@ public class ModuleSearchPathCliTests : IDisposable
     /// macOS, where the temp directory sits below the <c>/var</c> symlink). Path identity belongs to
     /// the one path authority (#2127); recorded in the #2233 round's findings ledger.
     /// </summary>
-    [Fact(Skip = "Known red, not asserted: a module path spelled through a symlink derives the module name across two path spellings (#2127; #2233 findings ledger)")]
+    [Fact(Skip = "Known red, not asserted: a module path spelled through a symlink derives the module name across two path spellings (#2127)")]
     public void AbsoluteModulePath_SpelledThroughASymlink_KnownRed()
     {
         WriteLayout("from");
