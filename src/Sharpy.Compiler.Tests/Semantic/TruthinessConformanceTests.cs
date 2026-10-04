@@ -384,6 +384,131 @@ def main() -> None:
             $"comprehension filter refusal of {typeName} should produce SPY0241");
     }
 
+    // --- generator-expression filter position (#2225) ---
+
+    /// <summary>
+    /// The generator-expression row of the position axis. Same checker site as the comprehension
+    /// filter (<c>CheckComprehensionIfClause</c>), different lowering (a LINQ <c>Where</c>, not an
+    /// imperative <c>if</c>) — before #2225 that lowering skipped the recorded wrap, so every
+    /// non-bool subject was SPY0908 CS0029. Asserts the generator AGREES with its list-comprehension
+    /// twin in the same program, not just that it compiles (<c>x: int? = None()</c> is the falsy cell).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(TruthTestableTypes))]
+    public void GeneratorFilter_AcceptsTruthTestableType_AndAgreesWithListComprehension(string typeName, string decl)
+    {
+        var source = Preamble + $@"
+def main() -> None:
+    {decl}
+    print([1 for _ in range(1) if x])
+    print(list(1 for _ in range(1) if x))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"generator filter should accept truth-testable type {typeName}: {string.Join(", ", result.CompilationErrors)}");
+        var lines = result.StandardOutput.Trim().Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
+        lines.Should().HaveCount(2, $"two prints for {typeName}");
+        lines[1].Should().Be(lines[0], $"the generator filter must agree with its list-comprehension twin for {typeName}");
+    }
+
+    [Theory]
+    [MemberData(nameof(NonTruthTestableTypes))]
+    public void GeneratorFilter_RefusesNonTruthTestableType(string typeName, string decl)
+    {
+        var source = Preamble + $@"
+def main() -> None:
+    {decl}
+    print(list(1 for _ in range(1) if x))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"generator filter should refuse non-truth-testable type {typeName}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0241",
+            $"generator filter refusal of {typeName} should produce SPY0241");
+    }
+
+    // ═════════ #2225: comprehension-filter positions × operand type, EXECUTED against python3 ═════════
+
+    private const string FilterMatrixPreamble = @"
+class FlagBool:
+    _v: bool
+    def __init__(self, v: bool) -> None:
+        self._v = v
+    def __bool__(self) -> bool:
+        return self._v
+
+class CountLen:
+    _n: int
+    def __init__(self, n: int) -> None:
+        self._n = n
+    def __len__(self) -> int:
+        return self._n
+
+";
+
+    /// <summary>
+    /// The operand axis: three values, FALSY first, so every position's filter keeps indices 1 and 2
+    /// — the expected output is a function of the position alone. A dropped filter keeps index 0, an
+    /// inverted one keeps only index 0, and a missing wrap is SPY0908; all three are red. <c>bool</c>
+    /// is the control (no wrap needed: it ran before #2225).
+    /// </summary>
+    public static IEnumerable<object[]> FilterOperandTypes()
+    {
+        yield return new object[] { "bool", "xs: list[bool] = [False, True, True]" };
+        yield return new object[] { "int", "xs: list[int] = [0, 1, 2]" };
+        yield return new object[] { "float", "xs: list[float] = [0.0, 1.5, 2.5]" };
+        yield return new object[] { "str", "xs: list[str] = [\"\", \"a\", \"b\"]" };
+        yield return new object[] { "list", "xs: list[list[int]] = [[], [1], [2]]" };
+        yield return new object[] { "Optional", "xs: list[int?] = [None(), Some(1), Some(2)]" };
+        yield return new object[] { "nullable", "xs: list[str | None] = [None, \"a\", \"b\"]" };
+        yield return new object[] { "UDT __bool__", "xs: list[FlagBool] = [FlagBool(False), FlagBool(True), FlagBool(True)]" };
+        yield return new object[] { "UDT __len__", "xs: list[CountLen] = [CountLen(0), CountLen(1), CountLen(2)]" };
+    }
+
+    private const string E = "for i, x in enumerate(xs) if x";
+
+    /// <summary>
+    /// The position axis. Each body is spelled identically in Python; each expected line is
+    /// python3 3.12's output for the same text over <c>[falsy, truthy, truthy]</c> (measured
+    /// 2026-10-04). The three imperative forms are the twins the generator rows must agree with.
+    /// </summary>
+    private static readonly (string Id, string Body, string Expected)[] FilterPositions =
+    {
+        ("listcomp", $"print([i {E}])", "[1, 2]"),
+        ("setcomp", $"print({{i {E}}})", "{1, 2}"),
+        ("dictcomp", $"print({{i: i {E}}})", "{1: 1, 2: 2}"),
+        ("listcomp-two-ifs", $"print([i {E} if x])", "[1, 2]"),
+        ("genexp-list", $"print(list(i {E}))", "[1, 2]"),
+        ("genexp-set", $"print(set(i {E}))", "{1, 2}"),
+        ("genexp-sum", $"print(sum(i {E}))", "3"),
+        ("genexp-any", $"print(any(i == 0 {E}))", "False"),
+        ("genexp-all", $"print(all(i > 0 {E}))", "True"),
+        ("genexp-sorted", $"print(sorted(i {E}))", "[1, 2]"),
+        ("genexp-bound", $"g = (i {E})\n    for v in g:\n        print(v)", "1\n2"),
+        ("genexp-name-target", "print(len(list(1 for x in xs if x)))", "2"),
+        ("genexp-two-ifs", $"print(list(i {E} if x))", "[1, 2]"),
+        ("genexp-then-int-if", $"print(list(i {E} if i))", "[1, 2]"),
+        ("genexp-if-after-inner-for", "print(list(i for i, x in enumerate(xs) for _ in range(1) if x))", "[1, 2]"),
+        ("genexp-in-genexp-element", $"print(list(list(j for j in range(1) if x) {E}))", "[[0], [0]]"),
+        ("genexp-in-genexp-iterator", "print(list(i for i in (j for j, x in enumerate(xs) if x)))", "[1, 2]"),
+        ("genexp-in-listcomp-filter", "print([i for i, x in enumerate(xs) if sum(1 for _ in range(1) if x)])", "[1, 2]"),
+        ("listcomp-in-genexp-filter", "print(list(i for i, x in enumerate(xs) if [1 for _ in range(1) if x]))", "[1, 2]"),
+    };
+
+    [Theory]
+    [MemberData(nameof(FilterOperandTypes))]
+    public void FilterPositions_ExecuteAsPython(string typeName, string decl)
+    {
+        var source = FilterMatrixPreamble + "def main() -> None:\n    " + decl + "\n"
+            + string.Concat(FilterPositions.Select(p => $"    print(\"{p.Id}\")\n    {p.Body}\n"));
+        var expected = string.Join("\n", FilterPositions.Select(p => p.Id + "\n" + p.Expected));
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(
+            $"every comprehension-filter position must accept {typeName}: "
+            + string.Join(", ", result.CompilationErrors) + "\n" + source);
+        result.StandardOutput.Replace("\r\n", "\n").Trim().Should().Be(expected,
+            $"every comprehension-filter position must agree with python3 for {typeName}\n{source}");
+    }
+
     // ════════════════════ #1861, R-AU: RefusalNamesTheFact ════════════════════
 
     /// <summary>

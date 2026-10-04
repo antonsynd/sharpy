@@ -110,7 +110,7 @@ internal partial class RoslynEmitter
         foreach (var ifClause in ifClauses)
         {
             ExpressionSyntax condExpr = null!;
-            var condHoisted = CaptureHoisted(() => condExpr = GenerateExpression(ifClause.Condition));
+            var condHoisted = CaptureHoisted(() => condExpr = GenerateComprehensionFilter(ifClause));
             var condLambda = SimpleLambdaExpression(loopParam, GeneratorClauseBody(targetBinding, condHoisted, condExpr));
             chain = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -162,6 +162,19 @@ internal partial class RoslynEmitter
         statements.Add(ReturnStatement(body));
         return Block(statements);
     }
+
+    /// <summary>
+    /// THE comprehension filter: an <c>if</c> clause's condition, generated and wrapped with the
+    /// truthiness lowering the checker recorded for it (<c>CheckComprehensionIfClause</c>, shared by
+    /// every comprehension form). Every comprehension lowering — the imperative list/set/dict loop,
+    /// the dict-spread loop and the generator expression's LINQ <c>Where</c> — reads its filters
+    /// through this one method, so a form cannot generate the condition and skip the wrap. The
+    /// generator form used to call <see cref="GenerateExpression"/> directly: the checker had
+    /// recorded <c>IntNotZero</c> for <c>if x</c> on an <c>int</c>, nothing read it, and the
+    /// <c>Where</c> lambda returned an <c>int</c> (CS0029, SPY0908 — #2225).
+    /// </summary>
+    private ExpressionSyntax GenerateComprehensionFilter(IfClause ifClause)
+        => WrapTruthinessIfNeeded(GenerateExpression(ifClause.Condition), ifClause.Condition);
 
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
         => GenerateImperativeComprehension(
@@ -426,8 +439,7 @@ internal partial class RoslynEmitter
                 case IfClause ifClause:
                     // #1000: hoist condition sub-statements before the if, in the enclosing scope.
                     ExpressionSyntax condition = null!;
-                    var condHoisted = CaptureHoisted(() => condition = WrapTruthinessIfNeeded(
-                        GenerateExpression(ifClause.Condition), ifClause.Condition));
+                    var condHoisted = CaptureHoisted(() => condition = GenerateComprehensionFilter(ifClause));
                     currentBody = new List<StatementSyntax>(condHoisted) { IfStatement(condition, Block(currentBody)) };
                     break;
 
@@ -636,8 +648,7 @@ internal partial class RoslynEmitter
                     // #1000: hoist condition sub-statements (e.g. a nested async comprehension in the
                     // filter) before the if, in the enclosing scope where the condition is evaluated.
                     ExpressionSyntax condition = null!;
-                    condHoists[i] = CaptureHoisted(() => condition = WrapTruthinessIfNeeded(
-                        GenerateExpression(ifClause.Condition), ifClause.Condition));
+                    condHoists[i] = CaptureHoisted(() => condition = GenerateComprehensionFilter(ifClause));
                     condExprs[i] = condition;
                     break;
             }
