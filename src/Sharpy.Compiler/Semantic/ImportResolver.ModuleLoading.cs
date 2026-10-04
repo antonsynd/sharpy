@@ -363,19 +363,14 @@ internal partial class ImportResolver
             if (moduleInfo == null)
             {
                 var modulePath = ResolveModulePath(importAlias.Name, searchPath);
-                if (modulePath == null
-                    || RefuseImportOutsideCompilation(importAlias.Name, modulePath,
-                        importAlias.LineStart, importAlias.ColumnStart, importAlias.Span ?? importStmt.Span))
+                if (modulePath == null)
                 {
                     // Mark the module name as a root cause to suppress cascading errors
                     // at the diagnostic level (complements symbol-level IsErrorRecovery)
-                    if (modulePath == null)
-                    {
-                        _diagnostics.AddRootCauseError(importAlias.Name,
-                            $"Cannot find module '{importAlias.Name}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
-                            importAlias.LineStart, importAlias.ColumnStart, _currentModulePath,
-                            DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
-                    }
+                    _diagnostics.AddRootCauseError(importAlias.Name,
+                        $"Cannot find module '{importAlias.Name}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
+                        importAlias.LineStart, importAlias.ColumnStart, _currentModulePath,
+                        DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
 
                     // Create error recovery module to prevent cascading "undefined identifier" errors
                     // The module symbol will be registered in ResolveAllImports to suppress downstream errors
@@ -390,6 +385,9 @@ internal partial class ImportResolver
                     });
                     continue;
                 }
+
+                ReportImportOutsideCompilation(importAlias.Name, modulePath,
+                    importAlias.LineStart, importAlias.ColumnStart, importAlias.Span ?? importStmt.Span);
 
                 // Track the dependency (current module depends on imported module)
                 // Note: .NET modules are not tracked in the file dependency graph
@@ -634,20 +632,15 @@ internal partial class ImportResolver
         if (moduleInfo == null)
         {
             var resolution = ResolveModuleWithResult(fromImport.Module, searchPath);
-            if (resolution == null
-                || RefuseImportOutsideCompilation(fromImport.Module, resolution.FullPath,
-                    fromImport.LineStart, fromImport.ColumnStart, fromImport.Span))
+            if (resolution == null)
             {
-                if (resolution == null)
-                {
-                    _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
+                _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
 
-                    // Mark the module name as a root cause to suppress cascading errors
-                    _diagnostics.AddRootCauseError(fromImport.Module,
-                        $"Cannot find module '{fromImport.Module}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
-                        fromImport.LineStart, fromImport.ColumnStart, _currentModulePath,
-                        DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
-                }
+                // Mark the module name as a root cause to suppress cascading errors
+                _diagnostics.AddRootCauseError(fromImport.Module,
+                    $"Cannot find module '{fromImport.Module}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
+                    fromImport.LineStart, fromImport.ColumnStart, _currentModulePath,
+                    DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
 
                 // Create error recovery module with placeholder symbols for each imported name
                 // This prevents cascading "undefined identifier" errors in TypeChecker
@@ -686,6 +679,8 @@ internal partial class ImportResolver
             }
 
             _logger.LogDebug($"[ImportResolver]   Resolved to: {resolution.FullPath}");
+            ReportImportOutsideCompilation(fromImport.Module, resolution.FullPath,
+                fromImport.LineStart, fromImport.ColumnStart, fromImport.Span);
             _logger.LogDebug($"[ImportResolver]   Canonical name: {resolution.CanonicalModuleName ?? resolution.ModuleName}");
 
             // Store the resolved module path for code generation

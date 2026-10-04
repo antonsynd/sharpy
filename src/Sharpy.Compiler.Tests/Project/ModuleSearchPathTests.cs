@@ -213,7 +213,9 @@ public class ModuleSearchPathTests
         result.Success.Should().BeFalse(cell);
         var errors = result.Diagnostics.GetErrors().ToList();
         errors.Should().NotContain(d => d.Code == "SPY0908", $"{cell} the refusal precedes code generation");
-        var refusal = errors.Should().ContainSingle(d => d.Code == "SPY0313", cell).Subject;
+        // The import still binds the module's extraction, so nothing cascades from it.
+        var refusal = errors.Should().ContainSingle($"{cell} exactly the refusal").Subject;
+        refusal.Code.Should().Be("SPY0313", cell);
         refusal.Message.Should().Contain($"'{targetPath}'", $"{cell} the diagnostic names the resolved file");
         refusal.Message.Should().Contain("not a source of this project", cell);
         refusal.Message.Should().Contain("<SpyFile>", cell);
@@ -240,6 +242,30 @@ public class ModuleSearchPathTests
         result.Success.Should().BeFalse();
         result.Diagnostics.GetErrors().Should().ContainSingle(d => d.Code == "SPY0313")
             .Which.Message.Should().Contain($"'{targetPath}'");
+    }
+
+    /// <summary>
+    /// The refused module is still loaded for its extraction (hover and go-to-definition read it), and
+    /// its OWN import of another unlisted module is not a second refusal: only an import written in a
+    /// compiled source is refused, so the user sees one SPY0313, at the import they wrote.
+    /// </summary>
+    [Fact]
+    public void UnlistedModuleImportingAnotherUnlistedModule_IsOneRefusal_AtTheCompiledImport()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        var targetPath = LayOut(helper, Route.ModulePath, Form.From, Target.Unlisted);
+        File.WriteAllText(targetPath,
+            "from inner import inner_value\n\ndef helper_value() -> int:\n    return inner_value()\n");
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(targetPath)!, "inner.spy"),
+            "def inner_value() -> int:\n    return 42\n");
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        var errors = result.Diagnostics.GetErrors().ToList();
+        errors.Should().ContainSingle("one refusal, no cascade").Which.Code.Should().Be("SPY0313");
+        errors[0].Message.Should().Contain($"'{targetPath}'");
+        Path.GetFileName(errors[0].FilePath).Should().Be("main.spy");
     }
 
     /// <summary>

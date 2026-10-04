@@ -186,26 +186,35 @@ internal partial class ImportResolver
     internal Func<string, bool>? IsCompiledSource { get; set; }
 
     /// <summary>
-    /// Refuses an import of <paramref name="moduleName"/> that resolved to
-    /// <paramref name="resolvedPath"/>, a <c>.spy</c> outside the compilation, and returns true
-    /// (#2234, R-EQ). Code generation emits only the compilation's sources, so binding the import
-    /// made the generated C# name a namespace no unit declares (SPY0908, CS0234). Every resolution
-    /// route reaches this one check — the importing file's directory, the module root, a
-    /// <c>&lt;ModulePath&gt;</c>/<c>-m</c> search path, the project directory, the working directory.
+    /// Refuses an import of <paramref name="moduleName"/> written in a compiled source that resolved
+    /// to <paramref name="resolvedPath"/>, a <c>.spy</c> outside the compilation (#2234, R-EQ). Code
+    /// generation emits only the compilation's sources, so the import made the generated C# name a
+    /// namespace no unit declares (SPY0908, CS0234). Every resolution route reaches this one check —
+    /// the importing file's directory, the module root, a <c>&lt;ModulePath&gt;</c>/<c>-m</c> search
+    /// path, the project directory, the working directory.
     /// </summary>
-    private bool RefuseImportOutsideCompilation(string moduleName, string resolvedPath,
+    /// <remarks>
+    /// The refusal is reported and binding CONTINUES with <see cref="ModuleLoader"/>'s extraction:
+    /// the error stops code generation, so nothing is emitted against the missing namespace, while
+    /// the editor keeps hover and go-to-definition into the file (#1440/#1441) and no cascade
+    /// follows from an error-recovery binding. An import written inside an uncompiled module is not
+    /// reported — that module is loaded only for its extraction, and its own refusal is the one the
+    /// user acts on.
+    /// </remarks>
+    private void ReportImportOutsideCompilation(string moduleName, string resolvedPath,
         int? line, int? column, Text.TextSpan? span)
     {
         if (IsCompiledSource is not { } isCompiled || isCompiled(resolvedPath))
-            return false;
+            return;
+        if (_currentModulePath != null && !isCompiled(_currentModulePath))
+            return;
 
-        _diagnostics.AddRootCauseError(moduleName,
+        _diagnostics.AddError(
             $"Module '{moduleName}' resolves to '{resolvedPath}', which is not a source of this project; "
             + "list it as a <SpyFile> in the .spyproj, or remove the import"
             + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
             span, line, column, _currentModulePath,
             DiagnosticCodes.Semantic.ImportOutsideCompilation, CompilerPhase.ImportResolution);
-        return true;
     }
 
     private IDependencyRecorder? _dependencyRecorder;
