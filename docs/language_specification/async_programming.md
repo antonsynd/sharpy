@@ -98,6 +98,22 @@ async def collect() -> list[int]:
 > supported (see [comprehensions.md](comprehensions.md#generator-expressions)). For an async source,
 > use an async comprehension or an explicit `async for` loop instead.
 
+A generator expression is async — as in Python — when it has an `async for` clause, or an `await`
+in its element, a filter, or any `for` iterator but the first (the first iterator is evaluated
+outside the generator, so `(x for x in await f())` stays synchronous). Every async generator
+expression is refused with SPY0358 at the expression, in an `async def` or a plain `def`, whatever
+consumes it:
+
+<!-- spec-sweep: error SPY0358 -->
+```python
+async def gen() -> int:
+    for i in range(3):
+        yield i
+
+async def main():
+    items = list(x async for x in gen())    # error SPY0358: use [x async for x in gen()]
+```
+
 **Generator Return Types:**
 
 Functions using `yield` have special return type annotations:

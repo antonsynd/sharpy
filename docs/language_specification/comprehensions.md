@@ -307,7 +307,9 @@ Later dicts overwrite earlier keys (same as `dict.update()` semantics).
 Async comprehensions **are supported** inside `async def` functions: list, set, and dict comprehensions may use an `async for` clause and/or `await` in the element/key/value/filter, executing sequentially. See [async_programming.md](async_programming.md#async-comprehensions) for the rules, semantics, and examples.
 
 Async *generator expressions* (`(x async for x in src)`) are not supported: the `async for` clause is
-only available to list, set and dict comprehensions.
+only available to list, set and dict comprehensions. A generator expression with an `async for`
+clause, or an `await` anywhere but its first iterator, is refused with SPY0358 (see
+[async_programming.md](async_programming.md#async-comprehensions)).
 
 ## Generator Expressions
 

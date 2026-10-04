@@ -1,0 +1,11 @@
+# An async generator expression is refused at the expression (deviation
+# no-async-generator-expressions, #2235); this program was SPY0599 "Keyword 'void'".
+async def agen():
+    for i in range(3):
+        yield i
+
+async def main():
+    out: list[int] = []
+    async for v in (i async for i in agen()):
+        out.append(v)
+    print(out)

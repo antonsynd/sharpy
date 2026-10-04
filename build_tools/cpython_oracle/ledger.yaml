@@ -464,10 +464,10 @@ deviations:
 - id: no-async-generator-expressions
   category: syntax
   audience: python
-  severity: none
-  code: null
+  severity: error
+  code: SPY0358
   spec_ref: docs/language_specification/async_programming.md
-  existing_diagnostic: null
+  existing_diagnostic: SPY0358
   planned_diagnostic: null
 - id: no-classmethod
   category: syntax

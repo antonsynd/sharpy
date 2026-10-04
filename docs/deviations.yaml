@@ -540,19 +540,20 @@ deviations:
                 return Foo()
 
   - id: no-async-generator-expressions
-    code: null
+    code: SPY0358
     category: syntax
     audience: python
-    severity: none
-    python_behavior: "`(x async for x in src)` is an async generator expression producing a lazy async iterator."
-    sharpy_behavior: "Sharpy has no generator-expression construct (synchronous genexprs are likewise unavailable), so async generator expressions are unsupported. Async list/set/dict comprehensions ARE supported inside `async def` — use one of those, or an explicit `async for` loop and `append`."
+    severity: error
+    python_behavior: "`(x async for x in src)` is an async generator expression producing a lazy async iterator. A generator expression is async when it has an `async for` clause or an `await` anywhere but its first iterator, and is legal in a plain `def` too."
+    sharpy_behavior: "Async generator expressions are unsupported and refused with SPY0358 at the expression (#2235), in `async def` and plain `def` alike, whatever consumes them. Synchronous generator expressions are supported (#2225). Async list/set/dict comprehensions ARE supported inside `async def` — use one of those, or an explicit `async for` loop and `append`."
     spec_ref: docs/language_specification/async_programming.md
-    existing_diagnostic: null
+    existing_diagnostic: SPY0358
     planned_diagnostic: null
     example:
       python: |
         agen = (x async for x in source())
       sharpy: |
+        agen = (x async for x in source())  # ERROR SPY0358: async generator expressions are not supported
         # use an async list comprehension instead
         results: list[int] = [x async for x in source()]
 
