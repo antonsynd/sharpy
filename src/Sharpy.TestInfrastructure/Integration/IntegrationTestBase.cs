@@ -343,150 +343,9 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            // Phase 6: Execute the compiled assembly
-            // Write to a temp file and execute as a separate process to avoid
-            // reflection/interpreted mode issues on some platforms (.NET 10 on Linux x64)
-            var writeCopyStart = CallTiming.Start(timing);
-            var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempDir);
-            var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestAssembly.dll");
-
-            try
-            {
-                ms.Seek(0, SeekOrigin.Begin);
-                using (var fileStream = File.Create(tempAssemblyPath))
-                {
-                    ms.CopyTo(fileStream);
-                }
-
-                // Copy runtime dependencies
-                if (runtimePath != null && File.Exists(runtimePath))
-                {
-                    var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
-                    File.Copy(runtimePath, runtimeDest, overwrite: true);
-
-                    var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                    CopyRuntimeClosure(testBinDir, tempDir,
-                        new[] { runtimeDest }.Concat(additionalPaths));
-                }
-
-                foreach (var additionalPath in additionalPaths.Where(File.Exists))
-                {
-                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
-                    if (!File.Exists(destPath))
-                        File.Copy(additionalPath, destPath);
-                }
-
-                // Create a runtimeconfig.json for the assembly
-                var runtimeConfigPath = Path.Combine(tempDir, "SharpyTestAssembly.runtimeconfig.json");
-                var runtimeConfig = @"{
-  ""runtimeOptions"": {
-    ""tfm"": ""net10.0"",
-    ""framework"": {
-      ""name"": ""Microsoft.NETCore.App"",
-      ""version"": ""10.0.0""
-    }
-  }
-}";
-                File.WriteAllText(runtimeConfigPath, runtimeConfig);
-                timing?.Add(CallTiming.Component.WriteCopy, writeCopyStart);
-
-                // Execute the assembly as a separate process
-                var processStart = CallTiming.Start(timing);
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"exec \"{tempAssemblyPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    WorkingDirectory = tempDir
-                };
-
-                using var process = new Process { StartInfo = startInfo };
-                var stdout = new StringBuilder();
-                var stderr = new StringBuilder();
-                bool timedOut = false;
-
-                process.OutputDataReceived += (sender, e) =>
-                {
-                    if (e.Data != null)
-                        stdout.AppendLine(e.Data);
-                };
-                process.ErrorDataReceived += (sender, e) =>
-                {
-                    if (e.Data != null)
-                        stderr.AppendLine(e.Data);
-                };
-
-                process.Start();
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                var timeout = executionTimeoutMs > 0 ? executionTimeoutMs : 30000; // Default 30s timeout
-                if (!process.WaitForExit(timeout))
-                {
-                    timedOut = true;
-                    try
-                    { process.Kill(entireProcessTree: true); }
-                    catch { }
-                }
-
-                // Ensure async output handlers complete
-                process.WaitForExit();
-                timing?.Add(CallTiming.Component.Process, processStart);
-
-                if (timedOut)
-                {
-                    return new ExecutionResult
-                    {
-                        Success = false,
-                        TimedOut = true,
-                        StandardOutput = stdout.ToString(),
-                        StandardError = stderr.ToString(),
-                        GeneratedCSharp = generatedCSharp,
-                        CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
-                    };
-                }
-
-                if (process.ExitCode != 0)
-                {
-                    return new ExecutionResult
-                    {
-                        Success = false,
-                        StandardOutput = stdout.ToString(),
-                        StandardError = stderr.ToString(),
-                        GeneratedCSharp = generatedCSharp,
-                        CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
-                    };
-                }
-
-                return new ExecutionResult
-                {
-                    Success = true,
-                    StandardOutput = stdout.ToString(),
-                    StandardError = stderr.ToString(),
-                    GeneratedCSharp = generatedCSharp,
-                    CompilationWarnings = compilationWarnings,
-                    RawDiagnostics = rawDiagnostics
-                };
-            }
-            finally
-            {
-                // Clean up temp directory
-                var cleanupStart = CallTiming.Start(timing);
-                try
-                {
-                    if (Directory.Exists(tempDir))
-                        Directory.Delete(tempDir, recursive: true);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-                timing?.Add(CallTiming.Component.Cleanup, cleanupStart);
-            }
+            return RunEmittedProgram(
+                ms, compilation.AssemblyName!, runtimePath, additionalPaths, executionTimeoutMs,
+                generatedCSharp, compilationWarnings, rawDiagnostics, timing);
         }
         catch (TargetInvocationException ex)
         {
@@ -960,149 +819,9 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            // Execute the compiled assembly via external process to avoid
-            // reflection/interpreted mode issues on some platforms
-            var writeCopyStart = CallTiming.Start(timing);
-            var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempDir);
-            var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestProject.dll");
-
-            try
-            {
-                ms.Seek(0, SeekOrigin.Begin);
-                using (var fileStream = File.Create(tempAssemblyPath))
-                {
-                    ms.CopyTo(fileStream);
-                }
-
-                // Copy runtime dependencies
-                if (runtimePath != null && File.Exists(runtimePath))
-                {
-                    var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
-                    File.Copy(runtimePath, runtimeDest, overwrite: true);
-
-                    var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                    CopyRuntimeClosure(testBinDir, tempDir,
-                        new[] { runtimeDest }.Concat(additionalPaths));
-                }
-
-                foreach (var additionalPath in additionalPaths.Where(File.Exists))
-                {
-                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
-                    if (!File.Exists(destPath))
-                        File.Copy(additionalPath, destPath);
-                }
-
-                // Create a runtimeconfig.json for the assembly
-                var runtimeConfigPath = Path.Combine(tempDir, "SharpyTestProject.runtimeconfig.json");
-                var runtimeConfig = @"{
-  ""runtimeOptions"": {
-    ""tfm"": ""net10.0"",
-    ""framework"": {
-      ""name"": ""Microsoft.NETCore.App"",
-      ""version"": ""10.0.0""
-    }
-  }
-}";
-                File.WriteAllText(runtimeConfigPath, runtimeConfig);
-                timing?.Add(CallTiming.Component.WriteCopy, writeCopyStart);
-
-                // Execute the assembly as a separate process
-                var processStart = CallTiming.Start(timing);
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"exec \"{tempAssemblyPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    WorkingDirectory = tempDir
-                };
-
-                using var process = new Process { StartInfo = startInfo };
-                var stdout = new StringBuilder();
-                var stderr = new StringBuilder();
-                bool timedOut = false;
-
-                process.OutputDataReceived += (sender, e) =>
-                {
-                    if (e.Data != null)
-                        stdout.AppendLine(e.Data);
-                };
-                process.ErrorDataReceived += (sender, e) =>
-                {
-                    if (e.Data != null)
-                        stderr.AppendLine(e.Data);
-                };
-
-                process.Start();
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                var timeout = executionTimeoutMs > 0 ? executionTimeoutMs : 30000; // Default 30s timeout
-                if (!process.WaitForExit(timeout))
-                {
-                    timedOut = true;
-                    try
-                    { process.Kill(entireProcessTree: true); }
-                    catch { }
-                }
-
-                // Ensure async output handlers complete
-                process.WaitForExit();
-                timing?.Add(CallTiming.Component.Process, processStart);
-
-                if (timedOut)
-                {
-                    return new ExecutionResult
-                    {
-                        Success = false,
-                        TimedOut = true,
-                        StandardOutput = stdout.ToString(),
-                        StandardError = stderr.ToString(),
-                        GeneratedCSharp = generatedCSharpReport,
-                        CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
-                    };
-                }
-
-                if (process.ExitCode != 0)
-                {
-                    return new ExecutionResult
-                    {
-                        Success = false,
-                        StandardOutput = stdout.ToString(),
-                        StandardError = stderr.ToString(),
-                        GeneratedCSharp = generatedCSharpReport,
-                        CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
-                    };
-                }
-
-                return new ExecutionResult
-                {
-                    Success = true,
-                    StandardOutput = stdout.ToString(),
-                    StandardError = stderr.ToString(),
-                    GeneratedCSharp = generatedCSharpReport,
-                    CompilationWarnings = compilationWarnings,
-                    RawDiagnostics = rawDiagnostics ?? new()
-                };
-            }
-            finally
-            {
-                // Clean up temp directory
-                var cleanupStart = CallTiming.Start(timing);
-                try
-                {
-                    if (Directory.Exists(tempDir))
-                        Directory.Delete(tempDir, recursive: true);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-                timing?.Add(CallTiming.Component.Cleanup, cleanupStart);
-            }
+            return RunEmittedProgram(
+                ms, compilation.AssemblyName!, runtimePath, additionalPaths, executionTimeoutMs,
+                generatedCSharpReport, compilationWarnings, rawDiagnostics, timing);
         }
         catch (Exception ex)
         {
@@ -1119,6 +838,172 @@ public abstract class IntegrationTestBase
                 Exception = ex,
                 CompilationErrors = new List<string> { errorMessage }
             };
+        }
+    }
+
+    /// <summary>
+    /// Deploys an emitted program into a fresh temp directory and runs it out-of-process. This is
+    /// the one execute path of all three arms (<see cref="CompileAndExecute"/>,
+    /// <see cref="CompileAndExecuteProject"/>, <see cref="CompileAndExecuteEntryFile"/>), so a
+    /// behavioural difference between them is attributable to the compiler, never to the harness
+    /// (#1171). It catches nothing: an exception reaches the calling arm's own catch ladder.
+    /// </summary>
+    /// <param name="image">The emitted assembly; read from position 0.</param>
+    /// <param name="assemblyName">The compilation's assembly name; the deployed file is named
+    /// after it so the file and the assembly identity agree.</param>
+    private static ExecutionResult RunEmittedProgram(
+        MemoryStream image,
+        string assemblyName,
+        string? runtimePath,
+        IReadOnlyList<string> additionalPaths,
+        int executionTimeoutMs,
+        string? generatedCSharp,
+        List<string> compilationWarnings,
+        List<CompilerDiagnostic>? rawDiagnostics,
+        CallTiming? timing)
+    {
+        // Write to a temp file and execute as a separate process to avoid
+        // reflection/interpreted mode issues on some platforms (.NET 10 on Linux x64)
+        var writeCopyStart = CallTiming.Start(timing);
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var tempAssemblyPath = Path.Combine(tempDir, $"{assemblyName}.dll");
+
+        try
+        {
+            image.Seek(0, SeekOrigin.Begin);
+            using (var fileStream = File.Create(tempAssemblyPath))
+            {
+                image.CopyTo(fileStream);
+            }
+
+            // Copy runtime dependencies
+            if (runtimePath != null && File.Exists(runtimePath))
+            {
+                var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
+                File.Copy(runtimePath, runtimeDest, overwrite: true);
+
+                var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+                CopyRuntimeClosure(testBinDir, tempDir,
+                    new[] { runtimeDest }.Concat(additionalPaths));
+            }
+
+            foreach (var additionalPath in additionalPaths.Where(File.Exists))
+            {
+                var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
+                if (!File.Exists(destPath))
+                    File.Copy(additionalPath, destPath);
+            }
+
+            // Create a runtimeconfig.json for the assembly
+            var runtimeConfigPath = Path.Combine(tempDir, $"{assemblyName}.runtimeconfig.json");
+            var runtimeConfig = @"{
+  ""runtimeOptions"": {
+    ""tfm"": ""net10.0"",
+    ""framework"": {
+      ""name"": ""Microsoft.NETCore.App"",
+      ""version"": ""10.0.0""
+    }
+  }
+}";
+            File.WriteAllText(runtimeConfigPath, runtimeConfig);
+            timing?.Add(CallTiming.Component.WriteCopy, writeCopyStart);
+
+            // Execute the assembly as a separate process
+            var processStart = CallTiming.Start(timing);
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"exec \"{tempAssemblyPath}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = tempDir
+            };
+
+            using var process = new Process { StartInfo = startInfo };
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            bool timedOut = false;
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                    stdout.AppendLine(e.Data);
+            };
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                    stderr.AppendLine(e.Data);
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            var timeout = executionTimeoutMs > 0 ? executionTimeoutMs : 30000; // Default 30s timeout
+            if (!process.WaitForExit(timeout))
+            {
+                timedOut = true;
+                try
+                { process.Kill(entireProcessTree: true); }
+                catch { }
+            }
+
+            // Ensure async output handlers complete
+            process.WaitForExit();
+            timing?.Add(CallTiming.Component.Process, processStart);
+
+            if (timedOut)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    TimedOut = true,
+                    StandardOutput = stdout.ToString(),
+                    StandardError = stderr.ToString(),
+                    GeneratedCSharp = generatedCSharp,
+                    CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
+                };
+            }
+
+            if (process.ExitCode != 0)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    StandardOutput = stdout.ToString(),
+                    StandardError = stderr.ToString(),
+                    GeneratedCSharp = generatedCSharp,
+                    CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
+                };
+            }
+
+            return new ExecutionResult
+            {
+                Success = true,
+                StandardOutput = stdout.ToString(),
+                StandardError = stderr.ToString(),
+                GeneratedCSharp = generatedCSharp,
+                CompilationWarnings = compilationWarnings,
+                RawDiagnostics = rawDiagnostics ?? new()
+            };
+        }
+        finally
+        {
+            // Clean up temp directory
+            var cleanupStart = CallTiming.Start(timing);
+            try
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+            timing?.Add(CallTiming.Component.Cleanup, cleanupStart);
         }
     }
 
