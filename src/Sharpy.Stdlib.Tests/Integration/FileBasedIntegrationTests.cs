@@ -5,7 +5,6 @@ using IOPath = System.IO.Path;
 
 namespace Sharpy.Stdlib.Tests.Integration;
 
-[Collection("HeavyCompilation")]
 public class FileBasedIntegrationTests : FileBasedIntegrationTestsBase
 {
     private static readonly string FixturesPathValue = FixtureRoots.StdlibTests.Path;

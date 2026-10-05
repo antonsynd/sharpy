@@ -11,7 +11,6 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 /// </summary>
 [Trait("Category", "Property")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
 public class SemanticPropertyTests
 {
     private readonly ITestOutputHelper _output;

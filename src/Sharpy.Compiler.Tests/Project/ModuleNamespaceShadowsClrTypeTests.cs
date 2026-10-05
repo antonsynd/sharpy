@@ -19,7 +19,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// twin of the shape (a root <c>__init__.spy</c> type <c>A</c> beside a module <c>a.spy</c>) is
 /// SPY0526 refusal 2, not this check.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ModuleNamespaceShadowsClrTypeTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// pinned in <c>Sharpy.Cli.Tests.E2E.ModuleSearchPathCliTests</c>.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ModuleSearchPathTests
 {
     private readonly ITestOutputHelper _output;

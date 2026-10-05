@@ -32,7 +32,6 @@ namespace Sharpy.Compiler.Tests.Parser;
 /// non-parsing spellings (<see cref="NonParsingSpellings"/>) — a cell that only asserted the
 /// prefix is what let the defect live.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PropertyDecoratorMatrixTests : IntegrationTestBase
 {
     public PropertyDecoratorMatrixTests(ITestOutputHelper output) : base(output) { }

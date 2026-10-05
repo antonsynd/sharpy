@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// states are the ones only a bag-keyed verdict refuses.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class BuildVerdictMatrixTests
 {
     private readonly ITestOutputHelper _output;

@@ -45,7 +45,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// cache-served unit has no AST to recompute the entry bit from}.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ModuleClassNameAuthorityMatrixTests
 {
     private readonly ITestOutputHelper _output;

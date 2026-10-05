@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// root, a source outside it) and the unpinned default are pinned beside them.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class SourceRootPinTests
 {
     private readonly ITestOutputHelper _output;

@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// cell asserts that EVERY non-assembly diagnostic names a file of the project and the expected code
 /// names the offending one — the code's presence is its positive control.
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class DiagnosticFileProvenanceTests
 {
     private readonly ITestOutputHelper _output;
