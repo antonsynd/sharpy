@@ -170,7 +170,6 @@ public abstract class IntegrationTestBase
 
     /// <summary>
     /// Compiles Sharpy source code to C# and executes it, returning the result.
-    /// Forces GC after each call to prevent memory buildup from Roslyn compilation state.
     /// </summary>
     /// <param name="sharpySource">The Sharpy source code to compile and execute.</param>
     /// <param name="fileName">The file name to use for the source (for error messages).</param>
@@ -185,10 +184,6 @@ public abstract class IntegrationTestBase
         }
         finally
         {
-            var gcStart = CallTiming.Start(timing);
-            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
-            GC.WaitForPendingFinalizers();
-            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
             timing?.End();
         }
     }
@@ -424,10 +419,6 @@ public abstract class IntegrationTestBase
         }
         finally
         {
-            var gcStart = CallTiming.Start(timing);
-            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
-            GC.WaitForPendingFinalizers();
-            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
             timing?.End();
         }
     }
@@ -571,10 +562,6 @@ public abstract class IntegrationTestBase
         }
         finally
         {
-            var gcStart = CallTiming.Start(timing);
-            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
-            GC.WaitForPendingFinalizers();
-            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
             timing?.End();
         }
     }
@@ -862,8 +849,13 @@ public abstract class IntegrationTestBase
         List<CompilerDiagnostic>? rawDiagnostics,
         CallTiming? timing)
     {
-        // Write to a temp file and execute as a separate process to avoid
-        // reflection/interpreted mode issues on some platforms (.NET 10 on Linux x64)
+        // The program runs as a separate `dotnet exec` process. Measured @ b9d542c8f (#2180;
+        // FileBasedIntegrationTests, single arm, median ms per call): process start-to-exit 48.2
+        // of a 121.8 total, beside a per-call forced GC of 63.2 (since removed), pipeline 5.4,
+        // write+copy 1.9, cleanup 1.2 and emit 1.0. Running in-process instead would trade the
+        // process for ConsoleLock serialisation and lose kill-on-timeout, exit-code mapping and
+        // the per-program isolation of Sharpy.Core's static state; that route is deferred to an
+        // owner ruling on #2180.
         var writeCopyStart = CallTiming.Start(timing);
         var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -1111,8 +1103,8 @@ public abstract class IntegrationTestBase
     /// <c>SHARPY_TEST_TIMING=&lt;path&gt;</c> is set, in which case <see cref="Begin"/> returns
     /// <see langword="null"/>, every <c>timing?.</c> call is skipped and <see cref="Start"/> reads
     /// no clock. On, each call records how long it spent in each <see cref="Component"/> and its
-    /// own total wall (including the forced GC, excluding <see cref="CompileAndExecuteWithGC"/>'s
-    /// second one), and the testhost appends per-arm aggregates to the path at exit.
+    /// own total wall (excluding the GC <see cref="CompileAndExecuteWithGC"/> adds after it), and
+    /// the testhost appends per-arm aggregates to the path at exit.
     ///
     /// <para>Components are timed independently, not as laps, so time outside every component is
     /// left unattributed and shows up in the report's coverage row. That row is the instrument's
@@ -1124,10 +1116,10 @@ public abstract class IntegrationTestBase
     /// </summary>
     private sealed class CallTiming
     {
-        internal enum Component { Pipeline, Emit, WriteCopy, Process, Cleanup, ForcedGc }
+        internal enum Component { Pipeline, Emit, WriteCopy, Process, Cleanup }
 
         private static readonly string[] ComponentNames =
-            { "pipeline", "emit", "write+copy", "process", "cleanup", "forced-gc" };
+            { "pipeline", "emit", "write+copy", "process", "cleanup" };
 
         private static readonly string? ReportPath = ReadReportPath();
         private static readonly ConcurrentQueue<CallTiming> Completed = new();
@@ -1135,7 +1127,7 @@ public abstract class IntegrationTestBase
         private readonly string _arm;
         private readonly long _start = Stopwatch.GetTimestamp();
         // -1 = the call never reached the component (e.g. no emit after a Sharpy compile error).
-        private readonly long[] _ticks = { -1, -1, -1, -1, -1, -1 };
+        private readonly long[] _ticks = { -1, -1, -1, -1, -1 };
         private long _totalTicks;
 
         private CallTiming(string arm) => _arm = arm;
