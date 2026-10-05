@@ -374,7 +374,8 @@ public class ProcessGlobalStateConformanceTests
             }),
         ("Sharpy.Stdlib.Tests", "WallClockWindow",
             "test_timer_fires_after_interval (threading_module_tests.spy:323-330) gives a 50 ms Timer a fixed 200 ms window; " +
-            "the callback runs on a thread-pool timer (Threading/Timer.cs:31) and starves under parallel load (red at N=8)",
+            "the callback runs on a thread-pool timer (Threading/Timer.cs:31) and starves under parallel load (red at N=8); " +
+            "the row drains with #2251",
             new[] { "Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests.ThreadingModuleTestsModuleTests" }),
         ("Sharpy.Stdlib.Tests", "HostTimeZone",
             "sets TZ and clears the TimeZoneInfo cache, which time/datetime tests and child processes read",

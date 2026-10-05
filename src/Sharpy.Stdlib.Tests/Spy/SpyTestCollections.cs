@@ -104,7 +104,8 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonBisectTests
 
 namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
 {
-    // test_timer_fires_after_interval gives a 50 ms Timer a fixed 200 ms window.
+    // test_timer_fires_after_interval gives a 50 ms Timer a fixed 200 ms window. Leaves this
+    // collection once #2251 lands (Timer becomes a Thread and the test waits on an Event).
     [Collection("WallClockWindow")]
     public partial class ThreadingModuleTestsModuleTests
     {
