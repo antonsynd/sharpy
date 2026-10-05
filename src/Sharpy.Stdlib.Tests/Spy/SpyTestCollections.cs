@@ -30,6 +30,17 @@ namespace Sharpy.Stdlib.Tests.Spy
     public sealed class PrngStateCollection
     {
     }
+
+    /// <summary>
+    /// Tests that assert something happens inside a fixed wall-clock window. The threading
+    /// Timer callback runs on a thread-pool timer (Sharpy.Stdlib Threading/Timer.cs:31), so under a
+    /// saturated pool it misses the window: test_timer_fires_after_interval
+    /// (threading/threading_module_tests.spy:323-330) failed at MaxParallelThreads=8. These run alone.
+    /// </summary>
+    [CollectionDefinition("WallClockWindow", DisableParallelization = true)]
+    public sealed class WallClockWindowCollection
+    {
+    }
 }
 
 namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests
@@ -87,6 +98,15 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonBisectTests
 {
     [Collection("PrngState")]
     public partial class CpythonBisectTestsModuleTests
+    {
+    }
+}
+
+namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
+{
+    // test_timer_fires_after_interval gives a 50 ms Timer a fixed 200 ms window.
+    [Collection("WallClockWindow")]
+    public partial class ThreadingModuleTestsModuleTests
     {
     }
 }
