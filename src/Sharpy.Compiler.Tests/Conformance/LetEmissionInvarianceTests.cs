@@ -53,7 +53,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>SemanticInfo</c>) and fixtures with an <c>.error</c> sidecar (they do not compile). Both are
 /// excluded at discovery; see <see cref="Census_DiscoveryExclusionsAreCountedAndStated"/>.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LetEmissionInvarianceTests : FileBasedIntegrationTestsBase
 {
     private const string AllowlistFileName = "let-emission-invariance-allowlist.txt";

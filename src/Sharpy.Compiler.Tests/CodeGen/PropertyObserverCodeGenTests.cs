@@ -10,7 +10,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// backing field plus an expanded setter; every store — including constructor assignments —
 /// runs the observers in before → store → after order (Design Decision 9).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PropertyObserverCodeGenTests : IntegrationTestBase
 {
     public PropertyObserverCodeGenTests(ITestOutputHelper output) : base(output) { }

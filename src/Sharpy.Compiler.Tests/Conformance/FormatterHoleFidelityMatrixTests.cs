@@ -34,7 +34,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// without source re-visits the expression and must pad a brace-headed hole on both the top-level and
 /// nested-spec paths — python's <c>ast.unparse</c> rule).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatterHoleFidelityMatrixTests : IntegrationTestBase
 {
     public FormatterHoleFidelityMatrixTests(ITestOutputHelper output) : base(output) { }

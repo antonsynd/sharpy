@@ -18,7 +18,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// two diverged when Core's integral arm was the eight primitives while a
 /// <c>System.Numerics.BigInteger</c> fell to the IFormattable arm.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatOperandKindParityTests : IntegrationTestBase
 {
     public FormatOperandKindParityTests(ITestOutputHelper output) : base(output) { }

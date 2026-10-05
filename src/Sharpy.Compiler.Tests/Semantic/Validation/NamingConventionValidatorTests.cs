@@ -7,7 +7,6 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-[Collection("Sequential")]
 public class NamingConventionValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)

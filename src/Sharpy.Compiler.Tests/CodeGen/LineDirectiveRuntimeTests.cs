@@ -18,7 +18,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Tests that #line directives in generated C# result in correct .spy file
 /// references in runtime stack traces.
 /// </summary>
-[Collection("Sequential")]
 public class LineDirectiveRuntimeTests
 {
     private readonly ITestOutputHelper _output;

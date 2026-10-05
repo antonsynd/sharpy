@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// cache). The #2036 cells: the SPY0522 walk over a nested enum, and a string-enum member named
 /// like a member the lowering synthesizes.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class EnumMemberSpellingMatrixTests : IntegrationTestBase
 {
     public EnumMemberSpellingMatrixTests(ITestOutputHelper output) : base(output) { }

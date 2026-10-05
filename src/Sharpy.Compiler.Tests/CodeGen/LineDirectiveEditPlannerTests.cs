@@ -10,7 +10,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// post-processing arithmetic (#1108). These pin the plan itself (offsets, insertion positions,
 /// no-op cases); the end-to-end text byte-identity is proven by <see cref="LineDirectivePostProcessorTests"/>.
 /// </summary>
-[Collection("Sequential")]
 public class LineDirectiveEditPlannerTests
 {
     [Fact]

@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// whitespace-only inner line} and trailing comment × {in a call, statement ends inside the string,
 /// raw string}. The LSP twins live in <c>RangeFormattingTests</c>/<c>FormattingTests</c>.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatterStringFidelityMatrixTests : IntegrationTestBase
 {
     public FormatterStringFidelityMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -14,7 +14,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Tests that unrecognized AST statement types in code generation emit SPY0510 diagnostics
 /// instead of being silently dropped.
 /// </summary>
-[Collection("Sequential")]
 public class UnrecognizedStatementDiagnosticTests
 {
     /// <summary>

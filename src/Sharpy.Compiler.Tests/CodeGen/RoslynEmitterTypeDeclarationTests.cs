@@ -11,7 +11,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// generic classes, sealed/abstract modifiers, enums with values, interfaces with methods,
 /// and class inheritance.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class RoslynEmitterTypeDeclarationTests : IntegrationTestBase
 {
     public RoslynEmitterTypeDeclarationTests(ITestOutputHelper output) : base(output) { }

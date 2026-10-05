@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// which both seams call. Every CLR-backed type is emitted <c>global::</c>-qualified from the
 /// reflected <c>System.Type</c> so no <c>using</c> set can make it ambiguous.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class TypeNameQualificationSeamTests : IntegrationTestBase
 {
     public TypeNameQualificationSeamTests(ITestOutputHelper output) : base(output) { }

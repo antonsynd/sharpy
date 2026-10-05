@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// shaped exactly like the emitter's output (enhanced #line directives attached before
 /// <c>NormalizeWhitespace</c>; <c>#nullable enable</c> prepended with LF after).
 /// </summary>
-[Collection("Sequential")]
 public class LineDirectiveTreeRewriterTests
 {
     private static StatementSyntax WithLineDirective(StatementSyntax statement, int line, int col)

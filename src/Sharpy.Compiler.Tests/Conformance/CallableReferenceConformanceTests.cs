@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// (list elements, call arguments, return values) and that the callable-reference lowering
 /// survives the per-file → project merge.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CallableReferenceConformanceTests : IntegrationTestBase
 {
     public CallableReferenceConformanceTests(ITestOutputHelper output) : base(output) { }

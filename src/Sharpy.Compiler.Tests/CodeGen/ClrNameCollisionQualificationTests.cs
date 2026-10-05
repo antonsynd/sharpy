@@ -11,7 +11,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// a stdlib module reference — <c>StdlibAwareIntegrationTestBase</c> — which neither
 /// <c>IntegrationTestBase</c> nor the file-based fixtures provide ("Cannot find module 'pathlib'").
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ClrNameCollisionQualificationTests : StdlibAwareIntegrationTestBase
 {
     public ClrNameCollisionQualificationTests(ITestOutputHelper output) : base(output) { }

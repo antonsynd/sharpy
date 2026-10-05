@@ -73,7 +73,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// <c>__matmul__</c> needs <c>--enable-feature=matmul</c> (feature-flagged operator, #1650/#1740
 /// unrelated).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SuperDunderHostMatrixTests : IntegrationTestBase
 {
     public SuperDunderHostMatrixTests(ITestOutputHelper output) : base(output) { }

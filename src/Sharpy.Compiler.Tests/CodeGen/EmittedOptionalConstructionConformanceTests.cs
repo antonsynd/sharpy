@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// semantic-model conversion analysis over the full <c>.expected.cs</c> snapshot corpus.
 /// </summary>
 [Trait("Category", "Conformance")]
-[Collection("HeavyCompilation")]
 public class EmittedOptionalConstructionConformanceTests
 {
     private readonly ITestOutputHelper _output;

@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// the generator cannot reach (escaped KEYWORDS — T2 escapes identifiers only) is pinned by the
 /// <c>Formatting/backtick_escapes</c> layout fixture.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatterNameFidelityMatrixTests : IntegrationTestBase
 {
     public FormatterNameFidelityMatrixTests(ITestOutputHelper output) : base(output) { }

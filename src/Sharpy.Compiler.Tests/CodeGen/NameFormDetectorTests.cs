@@ -7,7 +7,6 @@ using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-[Collection("Sequential")]
 public class NameFormDetectorTests
 {
     #region Detect Tests

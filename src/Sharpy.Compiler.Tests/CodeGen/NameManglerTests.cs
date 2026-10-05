@@ -4,7 +4,6 @@ using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-[Collection("Sequential")]
 public class NameManglerTests
 {
     #region PascalCase Conversion Tests
