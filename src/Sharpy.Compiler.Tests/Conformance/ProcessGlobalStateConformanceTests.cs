@@ -33,6 +33,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// The positive control pins the known sites by name and requires each to be found and isolated;
 /// the synthetic controls run the same classifier on in-memory sources, one per roster entry and
 /// one per verdict.</para>
+///
+/// <para><b>The serial-collection roster.</b> A collection with <c>DisableParallelization = true</c>
+/// runs last and alone, so every such definition and every class in it costs wall clock for the
+/// whole suite (#2179: one 173-class collection made the suite serial). <see cref="SerialCollectionRoster"/>
+/// lists each one literally — project, name, why it must run alone, and its member classes — and
+/// the scan must find exactly that: an unlisted definition or member fails, and so does a roster
+/// row or member the scan no longer finds. Separately, every collection a class names must be
+/// defined in that class's own project, since a definition anywhere else is ignored.</para>
 /// </summary>
 public class ProcessGlobalStateConformanceTests
 {
@@ -304,6 +312,152 @@ public class ProcessGlobalStateConformanceTests
         });
 
         Assert.Contains("shared test library", analysis.Violation(Assert.Single(analysis.Sites)));
+    }
+
+    // ── serial-collection roster ─────────────────────────────────────────────
+
+    private const string PropertiesNs = "Sharpy.Compiler.Tests.Properties.";
+
+    /// <summary>
+    /// Every collection defined with <c>DisableParallelization = true</c> in the scanned projects, with
+    /// why it must run alone and its member classes (full names). Change it only with the audit that
+    /// justifies the run-alone cost.
+    /// </summary>
+    private static readonly (string Project, string Collection, string Reason, string[] Members)[] SerialCollectionRoster =
+    {
+        ("Sharpy.Compiler.Tests", "ProcessCwd",
+            "changes the process's current directory, which every compile in the assembly reads",
+            new[] { "Sharpy.Compiler.Tests.Semantic.ModuleResolverTests" }),
+        ("Sharpy.Compiler.Tests", "ConsoleCapture",
+            "ReplSession swaps Console.Out on a thread-pool thread, outside TestHelpers.ConsoleLock",
+            new[] { "Sharpy.Compiler.Tests.Services.ReplSessionTests" }),
+        ("Sharpy.Compiler.Tests", "PropertySerial",
+            "CsCheck Sample already uses one thread per core; compile-heavy property classes run alone to bound memory (#649)",
+            new[]
+            {
+                PropertiesNs + "Algebraic.ArithmeticPropertyTests", PropertiesNs + "Algebraic.BooleanPropertyTests",
+                PropertiesNs + "Algebraic.DictPropertyTests", PropertiesNs + "Algebraic.ListPropertyTests",
+                PropertiesNs + "Algebraic.MapZipPropertyTests", PropertiesNs + "Algebraic.SetPropertyTests",
+                PropertiesNs + "Algebraic.SortedPropertyTests", PropertiesNs + "Algebraic.StringPropertyTests",
+                PropertiesNs + "Algebraic.TuplePropertyTests",
+                PropertiesNs + "CodeGen.CsCleanPropertyTests", PropertiesNs + "CodeGen.ILCompilesPropertyTests",
+                PropertiesNs + "CodeGen.IncrementalCompilationPropertyTests",
+                PropertiesNs + "CodeGen.NormalizationIdempotencePropertyTests",
+                PropertiesNs + "CodeGen.RoslynParseablePropertyTests",
+                PropertiesNs + "Metamorphic.MetamorphicCorpusInvarianceTests", PropertiesNs + "Metamorphic.MetamorphicPropertyTests",
+                PropertiesNs + "Parser.ErrorRecoveryPropertyTests",
+                PropertiesNs + "Semantic.AsyncPropertyTests", PropertiesNs + "Semantic.BuiltinShadowingPropertyTests",
+                PropertiesNs + "Semantic.CfgWellFormednessPropertyTests", PropertiesNs + "Semantic.ClassInheritancePropertyTests",
+                PropertiesNs + "Semantic.CombinedFeaturePropertyTests", PropertiesNs + "Semantic.ContextManagerPropertyTests",
+                PropertiesNs + "Semantic.DecoratorPropertyTests", PropertiesNs + "Semantic.DeterminismPropertyTests",
+                PropertiesNs + "Semantic.DiagnosticSpanPropertyTests", PropertiesNs + "Semantic.ErrorCompletenessPropertyTests",
+                PropertiesNs + "Semantic.ExceptionPropertyTests", PropertiesNs + "Semantic.FStringPropertyTests",
+                PropertiesNs + "Semantic.FunctionSemanticsPropertyTests", PropertiesNs + "Semantic.GenericTypePropertyTests",
+                PropertiesNs + "Semantic.ImportResolutionPropertyTests", PropertiesNs + "Semantic.InterfacePropertyTests",
+                PropertiesNs + "Semantic.IteratorPropertyTests", PropertiesNs + "Semantic.OperatorOverloadPropertyTests",
+                PropertiesNs + "Semantic.OverloadOrderIndependencePropertyTests", PropertiesNs + "Semantic.PatternMatchPropertyTests",
+                PropertiesNs + "Semantic.SemanticInfoConsistencyTests", PropertiesNs + "Semantic.SymbolPositionPropertyTests",
+                PropertiesNs + "Semantic.TypeSoundnessPropertyTests", PropertiesNs + "Semantic.TypedAnalyzePropertyTests",
+                PropertiesNs + "Semantic.ValidatorOrderingPropertyTests", PropertiesNs + "Semantic.VariancePropertyTests",
+                PropertiesNs + "Stress.LargeProgramPropertyTests",
+            }),
+        ("Sharpy.Stdlib.Tests", "ProcessCwd",
+            "os.chdir changes the current directory and os.putenv the environment; getcwd, Path.cwd and relative paths read them",
+            new[] { "Sharpy.Stdlib.Tests.Spy.Os.OsModuleTests.OsModuleTestsModuleTests" }),
+        ("Sharpy.Stdlib.Tests", "ConsoleCapture",
+            "CapturedOutput/CapturedStderr swap Console.Out/Error; argparse --help and logging write the console unprotected",
+            new[]
+            {
+                "Sharpy.Core.Tests.UnittestCapturedOutputTests",
+                "Sharpy.Stdlib.Tests.Spy.Logging.LoggingModuleTests.LoggingModuleTestsModuleTests",
+                "Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests.LoggingCompleteTestsModuleTests",
+            }),
+        ("Sharpy.Stdlib.Tests", "HostTimeZone",
+            "sets TZ and clears the TimeZoneInfo cache, which time/datetime tests and child processes read",
+            new[] { "Sharpy.Stdlib.Tests.StrftimeHostTimeZoneTests" }),
+        ("Sharpy.Core.Tests", "ConsoleCapture",
+            "Console.SetOut swaps a process-global writer while Core.Tests runs collections in parallel",
+            new[] { "Sharpy.Core.Tests.Print_Tests" }),
+    };
+
+    /// <summary>Positive control: roster size at landing, counted by hand from the P2/P4 audit (not from the array).</summary>
+    private const int ExpectedSerialCollections = 7;
+
+    /// <summary>1 + 1 + 44 (Compiler) + 1 + 3 + 1 (Stdlib) + 1 (Core), counted by hand at landing.</summary>
+    private const int ExpectedSerialMembers = 52;
+
+    [Fact]
+    public void EveryRunAloneCollection_IsRostered_AndEveryRosterRowIsDefined()
+    {
+        var analysis = RepositoryAnalysis.Value;
+        var found = RunAloneDefinitions(analysis);
+        var rostered = SerialCollectionRoster.Select(r => (r.Project, r.Collection)).ToHashSet();
+
+        var unrostered = found.Except(rostered).Select(d => $"  + {d.Project}: \"{d.Collection}\"").ToList();
+        var stale = rostered.Except(found).Select(d => $"  - {d.Project}: \"{d.Collection}\"").ToList();
+
+        Assert.True(unrostered.Count == 0 && stale.Count == 0,
+            "the run-alone collections differ from SerialCollectionRoster:\n" + string.Join("\n", unrostered.Concat(stale)) +
+            "\n(+ defined with DisableParallelization = true but not rostered; - rostered but no longer defined so)." +
+            " A run-alone collection costs suite wall clock: roster it with its reason, or drop the row.");
+    }
+
+    [Fact]
+    public void EveryMemberOfARunAloneCollection_IsRostered()
+    {
+        var analysis = RepositoryAnalysis.Value;
+        var found = RunAloneMembers(analysis);
+        var rostered = SerialCollectionRoster
+            .SelectMany(r => r.Members.Select(m => (r.Project, r.Collection, Member: m)))
+            .ToHashSet();
+
+        var unrostered = found.Except(rostered).Select(m => $"  + {m.Project}: {m.Member} in \"{m.Collection}\"").ToList();
+        var stale = rostered.Except(found).Select(m => $"  - {m.Project}: {m.Member} in \"{m.Collection}\"").ToList();
+
+        Assert.True(unrostered.Count == 0 && stale.Count == 0,
+            "the members of run-alone collections differ from SerialCollectionRoster:\n" + string.Join("\n", unrostered.Concat(stale)) +
+            "\n(+ a class joined a run-alone collection without a roster entry; - a rostered member no longer names it).");
+    }
+
+    [Fact]
+    public void PositiveControl_TheRosterIsFoundInFull()
+    {
+        var analysis = RepositoryAnalysis.Value;
+
+        Assert.Equal(ExpectedSerialCollections, SerialCollectionRoster.Length);
+        Assert.Equal(ExpectedSerialMembers, SerialCollectionRoster.Sum(r => r.Members.Length));
+        Assert.Equal(ExpectedSerialCollections, RunAloneDefinitions(analysis).Count);
+        Assert.Equal(ExpectedSerialMembers, RunAloneMembers(analysis).Count);
+    }
+
+    [Fact]
+    public void EveryCollectionAClassNames_IsDefinedInItsOwnProject()
+    {
+        var analysis = RepositoryAnalysis.Value;
+
+        var inert = analysis.Memberships
+            .SelectMany(p => p.Value.SelectMany(t => t.Value.Select(c => (Project: p.Key, Type: t.Key, Collection: c))))
+            .Where(m => analysis.Definitions.GetValueOrDefault(m.Project)?.ContainsKey(m.Collection) != true)
+            .Select(m => $"  {m.Project}: {m.Type} names \"{m.Collection}\"")
+            .ToList();
+
+        Assert.True(inert.Count == 0,
+            "class(es) name a collection with no [CollectionDefinition] in their own project — xUnit v2 ignores " +
+            "definitions in other assemblies, so the attribute is inert:\n" + string.Join("\n", inert));
+    }
+
+    private static HashSet<(string Project, string Collection)> RunAloneDefinitions(Analysis analysis)
+        => analysis.Definitions
+            .SelectMany(p => p.Value.Where(d => d.Value).Select(d => (p.Key, d.Key)))
+            .ToHashSet();
+
+    private static HashSet<(string Project, string Collection, string Member)> RunAloneMembers(Analysis analysis)
+    {
+        var runAlone = RunAloneDefinitions(analysis);
+        return analysis.Memberships
+            .SelectMany(p => p.Value.SelectMany(t => t.Value.Select(c => (Project: p.Key, Collection: c, Member: t.Key))))
+            .Where(m => runAlone.Contains((m.Project, m.Collection)))
+            .ToHashSet();
     }
 
     // ── scan ─────────────────────────────────────────────────────────────────
