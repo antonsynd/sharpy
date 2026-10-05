@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// to returning the produced type, every covariant cell fails and the exact/mistyped cells stay
 /// green.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ComprehensionContextualTypingTests : IntegrationTestBase
 {
     public ComprehensionContextualTypingTests(ITestOutputHelper output) : base(output) { }

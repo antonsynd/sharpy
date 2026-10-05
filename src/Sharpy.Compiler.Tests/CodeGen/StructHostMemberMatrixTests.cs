@@ -37,7 +37,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// underscore members; the case field is emitted public and a keyword pattern binds it from outside
 /// (the recorded deviation cell).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StructHostMemberMatrixTests : IntegrationTestBase
 {
     public StructHostMemberMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -44,7 +44,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// regardless of the declaration's <c>const</c>-ness. The cell is asserted ADMITTED here, matching
 /// measured behavior, not the stale "(refused)" label.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class InitializerHostContextMatrixTests : IntegrationTestBase
 {
     public InitializerHostContextMatrixTests(ITestOutputHelper output) : base(output) { }

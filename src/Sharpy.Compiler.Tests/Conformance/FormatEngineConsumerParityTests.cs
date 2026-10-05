@@ -27,7 +27,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// oracle is quoted next to each group. Each hole is wrapped in <c>[...]</c> so padding is
 /// load-bearing and the comparison can be byte-exact.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatEngineConsumerParityTests : IntegrationTestBase
 {
     public FormatEngineConsumerParityTests(ITestOutputHelper output) : base(output) { }

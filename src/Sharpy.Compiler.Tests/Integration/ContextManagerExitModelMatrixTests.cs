@@ -45,7 +45,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <c>GeneratorValidator.FindYieldInSuppressingWith</c> turns the three
 /// <c>suppressing.yield.*</c> cells red.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ContextManagerExitModelMatrixTests : IntegrationTestBase
 {
     public ContextManagerExitModelMatrixTests(ITestOutputHelper output) : base(output) { }

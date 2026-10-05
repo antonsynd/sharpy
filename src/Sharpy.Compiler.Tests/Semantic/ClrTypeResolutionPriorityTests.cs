@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// them). The axis sizes are anchored to literals below, not counted off the same collection the
 /// rows come from.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ClrTypeResolutionPriorityTests : IntegrationTestBase
 {
     public ClrTypeResolutionPriorityTests(ITestOutputHelper output) : base(output) { }

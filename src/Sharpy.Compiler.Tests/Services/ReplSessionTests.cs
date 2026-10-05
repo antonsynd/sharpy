@@ -10,6 +10,7 @@ namespace Sharpy.Compiler.Tests.Services;
 /// bare expression auto-print, cumulative definitions, error reporting, and
 /// recovery semantics.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ReplSessionTests
 {
     // -------------------------------------------------------------------------

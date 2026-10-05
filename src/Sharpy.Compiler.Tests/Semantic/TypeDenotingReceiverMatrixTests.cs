@@ -30,7 +30,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <see cref="Cells_CoverEveryAxisOnce"/> anchors the axis sizes to LITERAL counts (9, 10, 6), not to
 /// the cell list, so the coverage claim cannot be vacuous.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class TypeDenotingReceiverMatrixTests : IntegrationTestBase
 {
     public TypeDenotingReceiverMatrixTests(ITestOutputHelper output) : base(output) { }

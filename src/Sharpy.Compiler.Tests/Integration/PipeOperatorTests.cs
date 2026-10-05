@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for pipe forward operator (|>).
 /// Tests end-to-end compilation and execution of pipe expressions.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PipeOperatorTests : IntegrationTestBase
 {
     public PipeOperatorTests(ITestOutputHelper output) : base(output)

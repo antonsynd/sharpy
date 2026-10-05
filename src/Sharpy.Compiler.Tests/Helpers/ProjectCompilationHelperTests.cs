@@ -8,7 +8,6 @@ namespace Sharpy.Compiler.Tests.Helpers;
 /// <summary>
 /// Demonstrates usage of ProjectCompilationHelper for multi-file compilation tests.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ProjectCompilationHelperTests
 {
     private readonly ITestOutputHelper _output;

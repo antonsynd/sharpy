@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// READ: <see cref="Totality"/> fails if any declared position has no cell, and every cell asserts
 /// the base message AND the steer.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LogicalResultSteerMatrixTests : IntegrationTestBase
 {
     public LogicalResultSteerMatrixTests(ITestOutputHelper output) : base(output) { }

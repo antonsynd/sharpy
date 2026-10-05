@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// recorded <c>IsStringEnum</c>. (They said <c>'str'</c>, a plain <c>Enum</c>'s message, until
 /// cells-b F12.)</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StringEnumFormatTests : IntegrationTestBase
 {
     public StringEnumFormatTests(ITestOutputHelper output) : base(output) { }

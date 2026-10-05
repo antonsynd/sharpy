@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// module, the case comment notes the faithful user-code reconstruction.
 /// </summary>
 [Trait("Category", "Regression")]
-[Collection("HeavyCompilation")]
 public class CsLeakRegressionCorpusTests
 {
     // The internal-error net for escaped Roslyn CS errors (registered by the SPY0908

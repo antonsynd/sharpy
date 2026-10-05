@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>UserSetItemOnly/Store</c> and <c>UserBoth/Store</c> cells red — the __setitem__-only
 /// class is refused on a correct key and the wrong key on a mismatched setter is accepted.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SubscriptKeyRuleTests : IntegrationTestBase
 {
     public SubscriptKeyRuleTests(ITestOutputHelper output) : base(output) { }

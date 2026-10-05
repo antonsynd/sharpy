@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// it drew a spurious SPY0483 and destroyed the bare builtin outright. A per-row fix would have
 /// left the next unplumbed form to be found the same way, so the matrix is the guard.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class BacktickEscapedBindingFormTests : IntegrationTestBase
 {
     public BacktickEscapedBindingFormTests(ITestOutputHelper output) : base(output)

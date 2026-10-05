@@ -23,7 +23,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// control (no nameable BCL shape reaches one generic interface at two instantiations through a
 /// Sharpy base list alone).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class InterfaceInstantiationClosureMatrixTests : IntegrationTestBase, IDisposable
 {
     private const int ConflictCellCount = 15;

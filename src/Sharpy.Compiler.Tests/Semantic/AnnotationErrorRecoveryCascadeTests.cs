@@ -16,7 +16,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (<c>SemanticInfo.MarkAnnotationErrorRecovery</c>) and the declaration check suppresses the
 /// cascade; a genuinely unannotated target still reports SPY0227 (the positive controls).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class AnnotationErrorRecoveryCascadeTests : IntegrationTestBase
 {
     public AnnotationErrorRecoveryCascadeTests(ITestOutputHelper output) : base(output) { }

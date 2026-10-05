@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class TypeSoundnessPropertyTests : IntegrationTestBase
 {
     public TypeSoundnessPropertyTests(ITestOutputHelper output) : base(output) { }

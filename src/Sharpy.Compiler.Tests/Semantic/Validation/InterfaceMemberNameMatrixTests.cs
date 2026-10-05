@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic.Validation;
 /// cells: → run (the relaxation ruling 2 names), except the 8 escaped event default-body cells, which
 /// stay CS0535 behind SPY0908 until #2067 (pinned below so its fix is visible).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class InterfaceMemberNameMatrixTests : IntegrationTestBase
 {
     public InterfaceMemberNameMatrixTests(ITestOutputHelper output) : base(output) { }

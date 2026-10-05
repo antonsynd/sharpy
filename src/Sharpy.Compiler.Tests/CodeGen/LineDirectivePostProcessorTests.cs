@@ -4,7 +4,6 @@ using Sharpy.Compiler.CodeGen;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-[Collection("Sequential")]
 public class LineDirectivePostProcessorTests
 {
     [Fact]

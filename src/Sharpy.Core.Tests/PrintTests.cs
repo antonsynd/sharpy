@@ -4,6 +4,14 @@ using System.IO;
 
 namespace Sharpy.Core.Tests;
 
+// Console.SetOut swaps a process-global writer and Core.Tests runs collections in parallel, so the
+// redirecting tests run alone. xUnit v2 reads [CollectionDefinition] only from this assembly (#2179).
+[CollectionDefinition("ConsoleCapture", DisableParallelization = true)]
+public class ConsoleCaptureCollection
+{
+}
+
+[Collection("ConsoleCapture")]
 public class Print_Tests : IDisposable
 {
     private readonly TextWriter _originalOut = Console.Out;

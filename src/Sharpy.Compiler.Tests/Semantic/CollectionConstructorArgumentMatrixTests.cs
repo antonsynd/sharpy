@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// undefined identifier) is a second control: the guard explicitly excludes Unknown so an
 /// already-reported error does not ALSO get a redundant "not iterable" diagnostic piled on top.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CollectionConstructorArgumentMatrixTests : IntegrationTestBase
 {
     public CollectionConstructorArgumentMatrixTests(ITestOutputHelper output) : base(output) { }

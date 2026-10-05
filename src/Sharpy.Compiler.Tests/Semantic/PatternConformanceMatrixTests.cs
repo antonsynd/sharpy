@@ -30,7 +30,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// capture on a closed subject keeps its element type (Group Capture below).
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PatternConformanceMatrixTests : IntegrationTestBase
 {
     public PatternConformanceMatrixTests(ITestOutputHelper output) : base(output) { }

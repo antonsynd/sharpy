@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// {<c>project</c>, <c>run</c>}. Every cell prints the imported value.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ImportSourceRootParityTests : IntegrationTestBase
 {
     public ImportSourceRootParityTests(ITestOutputHelper output) : base(output) { }

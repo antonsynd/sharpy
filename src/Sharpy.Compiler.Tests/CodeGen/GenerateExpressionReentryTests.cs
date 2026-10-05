@@ -72,7 +72,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// defect — the uncompilable-fixture skip-list ratchet below. That commit is not progress on the
 /// re-splicing gap; this is.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class GenerateExpressionReentryTests
 {
     private readonly ITestOutputHelper _output;

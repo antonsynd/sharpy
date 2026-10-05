@@ -99,7 +99,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// plan's Design Decision 6.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ReparseEquivalenceConformanceTests
 {
     private readonly ITestOutputHelper _output;

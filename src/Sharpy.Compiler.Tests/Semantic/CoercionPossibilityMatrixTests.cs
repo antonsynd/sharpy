@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// control guards against over-refusing an import alias for the same runtime type.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CoercionPossibilityMatrixTests : IntegrationTestBase
 {
     public CoercionPossibilityMatrixTests(ITestOutputHelper output) : base(output) { }

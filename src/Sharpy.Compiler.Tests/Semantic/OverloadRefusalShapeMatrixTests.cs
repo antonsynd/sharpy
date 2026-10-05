@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// Sharpy-core cell goes RED. <c>DivergentCandidates_KeepsSPY0354</c> is the discriminating positive
 /// control: it stays green under that mutation, so the guard cannot pass by refusing everything.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
 {
     public OverloadRefusalShapeMatrixTests(ITestOutputHelper output) : base(output) { }

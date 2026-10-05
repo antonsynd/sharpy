@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// to the own-methods/first-candidate lookup turns the inherited, keyword-argument, variadic and
 /// overload rows red while the ordinary-method controls stay green.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CallableObjectDispatchTests : IntegrationTestBase
 {
     public CallableObjectDispatchTests(ITestOutputHelper output) : base(output) { }

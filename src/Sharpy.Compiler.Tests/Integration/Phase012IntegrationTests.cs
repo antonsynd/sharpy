@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Integration tests for Phase 0-1-2: Minimal programs demonstrating
 /// the most basic compilation scenarios.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class Phase012IntegrationTests : IntegrationTestBase
 {
     public Phase012IntegrationTests(ITestOutputHelper output) : base(output)

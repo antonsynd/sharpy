@@ -27,7 +27,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// on a class — fails on output, not only on the result. The refused half is a literal count, so a
 /// cell that starts compiling shows up as a red anchor rather than a silent widening.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DunderEqualitySynthesisMatrixTests : IntegrationTestBase
 {
     public DunderEqualitySynthesisMatrixTests(ITestOutputHelper output) : base(output) { }

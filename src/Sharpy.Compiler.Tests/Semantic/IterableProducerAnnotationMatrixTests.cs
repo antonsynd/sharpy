@@ -47,7 +47,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// in <c>SynthesisAnalyzer</c> (same file, same gate, same phase) rather than filed — it is this
 /// decider's own contract, not a separate mechanism.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class IterableProducerAnnotationMatrixTests : IntegrationTestBase
 {
     public IterableProducerAnnotationMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -23,7 +23,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// already in formatter layout; every cell's stdout is the same with the bug present, so these are
 /// the discriminating observations); <c>run(F) == r0</c>; <c>Format(F) == F</c>.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatterCommentFidelityMatrixTests : IntegrationTestBase
 {
     public FormatterCommentFidelityMatrixTests(ITestOutputHelper output) : base(output) { }

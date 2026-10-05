@@ -53,7 +53,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// newly REFUSES (the <c>uint32</c>/<c>uint64</c> typing arms) was SPY0908 there, so no program
 /// that ran before is refused now.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
 {
     public NarrowWidthArithmeticMatrixTests(ITestOutputHelper output) : base(output) { }

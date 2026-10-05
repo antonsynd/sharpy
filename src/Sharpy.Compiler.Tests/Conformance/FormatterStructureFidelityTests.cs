@@ -24,7 +24,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// Each cell: <c>run(P)</c> succeeds with the pinned output, <c>Format(P)</c> is clean, re-parses to a
 /// structurally equal AST, keeps the written spelling, runs identically and is idempotent.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FormatterStructureFidelityTests : IntegrationTestBase
 {
     public FormatterStructureFidelityTests(ITestOutputHelper output) : base(output) { }

@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// bypassing the seam; <c>StoreSeamConformanceTests</c> is the Roslyn source scan that keeps the
 /// decision in one place; <c>StoreTargetMatrixTests</c> covers declared-type binding shape.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StoreConversionMatrixTests : IntegrationTestBase
 {
     public StoreConversionMatrixTests(ITestOutputHelper output) : base(output) { }

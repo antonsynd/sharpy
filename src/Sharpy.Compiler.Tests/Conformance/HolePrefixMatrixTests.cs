@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>df</c> are PEP 822 and pinned to their dedent result). <c>rf</c>/<c>fr</c> and uppercase prefixes are
 /// unsupported everywhere (#2045).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class HolePrefixMatrixTests : IntegrationTestBase
 {
     public HolePrefixMatrixTests(ITestOutputHelper output) : base(output) { }

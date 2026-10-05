@@ -46,7 +46,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 
 ### 5. Establish the baseline (measured, background)
 - `.claude/scripts/dotnet-serialized build sharpy.sln` (`dangerouslyDisableSandbox: true`) — if it fails, stop and report the build error
-- Start the whole-solution gate **in the background** and continue with read-only setup while it runs (~22 min):
+- Start the whole-solution gate **in the background** and continue with read-only setup while it runs (~30 min):
   `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` (`dangerouslyDisableSandbox: true`, `run_in_background: true`)
 - Record it as **`passed/failed/skipped @ <sha> (measured)`** — never a derived number. Read the counts from `.claude/tmp/dotnet-serialized-{0,1,2}.log` (the `-latest.log` symlink can rotate to a peer's run; verify the log's `Test run for` lines name this run).
 - If red: **triage before attributing** — check the parent round plan's open-class list (ILCompiles fresh seeds re-roll open classes) and the pre-existing allowlist reds; label each red as `pre-existing (#NNN)` or `unexplained`. Warn the user and ask whether to proceed.
@@ -123,7 +123,7 @@ SERIALIZED DOTNET:
 The wrapper takes an exclusive lock so only one dotnet process runs at a time; concurrent test runs
 consume 5–10 GB RAM EACH. It is a drop-in replacement (same args, output, exit code) and tees output
 to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (`-latest.log` symlinks the newest run — it may be a
-peer's). A whole-solution run is ~22 min; read a recent log before re-running:
+peer's). A whole-solution run is ~30 min; read a recent log before re-running:
   grep -i "FAIL\|error" .claude/tmp/dotnet-serialized-latest.log
 
 WORKFLOW:

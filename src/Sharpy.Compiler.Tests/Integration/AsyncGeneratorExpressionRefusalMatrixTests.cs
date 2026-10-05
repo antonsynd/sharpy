@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// refused by something else — every <c>def</c> cell by SPY0273 "'async for' can only be used
 /// inside 'async def'", some with a cascade — and none ran.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class AsyncGeneratorExpressionRefusalMatrixTests : IntegrationTestBase
 {
     public AsyncGeneratorExpressionRefusalMatrixTests(ITestOutputHelper output) : base(output) { }

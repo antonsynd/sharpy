@@ -3,7 +3,6 @@ using FluentAssertions;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-[Collection("Sequential")]
 public class NamespaceOptionTests
 {
     [Fact]

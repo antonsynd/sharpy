@@ -92,7 +92,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
-[Collection("HeavyCompilation")]
 public class GenericReferenceConformanceTests : IntegrationTestBase
 {
     public GenericReferenceConformanceTests(ITestOutputHelper output) : base(output) { }

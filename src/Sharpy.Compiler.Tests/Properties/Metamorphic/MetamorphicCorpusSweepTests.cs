@@ -56,7 +56,6 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 /// issue that will drain it.</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
-[Collection("HeavyCompilation")]
 public class MetamorphicCorpusSweepTests : IntegrationTestBase
 {
     // ---- outcome buckets ----

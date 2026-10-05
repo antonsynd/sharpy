@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// member of the module namespace (never nested in <c>ThingModule</c>), and the module's function
 /// is a member of <c>ThingModule</c>.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ModuleClassMergeMatrixTests : IntegrationTestBase
 {
     public ModuleClassMergeMatrixTests(ITestOutputHelper output) : base(output) { }

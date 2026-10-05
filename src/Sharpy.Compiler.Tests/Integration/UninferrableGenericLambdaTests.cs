@@ -10,7 +10,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// lambda's parameters reports SPY0237 (CannotInferGenericType) at the call site, instead of
 /// binding the parameter to Unknown and leaking a C# CS0411 error (#904).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class UninferrableGenericLambdaTests : StdlibAwareIntegrationTestBase
 {
     public UninferrableGenericLambdaTests(ITestOutputHelper output) : base(output) { }

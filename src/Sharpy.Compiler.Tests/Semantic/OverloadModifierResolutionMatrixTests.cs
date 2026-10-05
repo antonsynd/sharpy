@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// anywhere in this matrix, so SPY0353 is asserted absent on every cell — a tie that appears is a red
 /// anchor, not a cell to allowlist. The refused half is a literal count.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OverloadModifierResolutionMatrixTests : IntegrationTestBase, IDisposable
 {
     private const int PairCount = 5;

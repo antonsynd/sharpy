@@ -47,7 +47,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// float32/decimal slot — SPY0220 "float64 → decimal" — at BASE and HEAD alike; a sibling of the
 /// literal-derived-fact class, #1731/#1741, not of this seam).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 {
     public ParameterDefaultConstantMatrixTests(ITestOutputHelper output) : base(output) { }

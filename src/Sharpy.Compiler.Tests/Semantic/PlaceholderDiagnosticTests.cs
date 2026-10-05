@@ -14,7 +14,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// refusal. The bare rows are the positive controls (the <c>errors/placeholder_outside_call</c>
 /// fixture is the same cell as a file).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class PlaceholderDiagnosticTests : IntegrationTestBase
 {
     public PlaceholderDiagnosticTests(ITestOutputHelper output) : base(output) { }

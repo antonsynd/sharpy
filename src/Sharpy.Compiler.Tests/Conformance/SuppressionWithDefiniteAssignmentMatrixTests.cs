@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </list>
 /// Every cell is Python-pinned: value printed / <c>UnboundLocalError</c> at runtime / SPY0600.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SuppressionWithDefiniteAssignmentMatrixTests : IntegrationTestBase
 {
     public SuppressionWithDefiniteAssignmentMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -33,7 +33,6 @@ namespace Sharpy.Compiler.Tests.Project;
 /// things; things.Box</c>: resolves through the type's <c>[SharpyModuleType]</c> stamp (#2039).</item>
 /// </list>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class LibraryReferenceMatrixTests
 {
     private readonly ITestOutputHelper _output;

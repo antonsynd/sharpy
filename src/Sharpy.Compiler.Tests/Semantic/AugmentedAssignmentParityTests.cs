@@ -13,7 +13,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// (SPY0222) and both refuse. Positive controls must both accept and print the same stdout.
 /// Guards #1631.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class AugmentedAssignmentParityTests : IntegrationTestBase
 {
     public AugmentedAssignmentParityTests(ITestOutputHelper output) : base(output) { }

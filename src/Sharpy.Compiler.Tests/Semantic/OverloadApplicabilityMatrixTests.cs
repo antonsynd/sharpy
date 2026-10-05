@@ -33,7 +33,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// is the contract. A host-specific or spelling-specific expectation would be a matrix that drifted
 /// with the defect.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class OverloadApplicabilityMatrixTests : IntegrationTestBase, IDisposable
 {
     private const int HostCount = 10;

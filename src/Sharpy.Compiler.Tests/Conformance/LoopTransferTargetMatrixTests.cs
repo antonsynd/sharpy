@@ -23,7 +23,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <para>The <c>case 2 | 3</c> shape is excluded: at HEAD it printed <c>0 1 done</c> by coincidence
 /// (the arm re-catches 3), so it does not discriminate the fix.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LoopTransferTargetMatrixTests : IntegrationTestBase
 {
     public LoopTransferTargetMatrixTests(ITestOutputHelper output) : base(output) { }

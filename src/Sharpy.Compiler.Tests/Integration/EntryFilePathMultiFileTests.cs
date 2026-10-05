@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// namespaces are equal. Runtime behavior — stdout, diagnostics, warnings — is what has to match.
 /// </para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class EntryFilePathMultiFileTests : FileBasedIntegrationTestsBase
 {
     private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;

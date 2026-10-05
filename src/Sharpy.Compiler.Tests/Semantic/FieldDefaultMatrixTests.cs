@@ -54,7 +54,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// frozen-dataclass field outside the declaring class's own <c>__init__</c> is refused by name.
 /// <see cref="FrozenPostInit_AssignsAField_ShouldBeANamedRefusal_NotAnICE" /> asserts the refusal.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FieldDefaultMatrixTests : IntegrationTestBase
 {
     public FieldDefaultMatrixTests(ITestOutputHelper output) : base(output) { }

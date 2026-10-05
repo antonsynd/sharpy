@@ -22,7 +22,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </list>
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class HoistProducerContextMatrixTests : IntegrationTestBase
 {
     public HoistProducerContextMatrixTests(ITestOutputHelper output) : base(output) { }

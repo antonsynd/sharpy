@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// python runs is refused only where python refuses it).
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class UnpackingPositionMatrixTests : IntegrationTestBase
 {
     public UnpackingPositionMatrixTests(ITestOutputHelper output) : base(output) { }

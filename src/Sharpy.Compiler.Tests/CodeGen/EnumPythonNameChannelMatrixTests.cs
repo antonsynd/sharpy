@@ -27,7 +27,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// member name (<c>RED</c>, <c>Red</c>, <c>DarkBlue</c>, <c>Mygreen</c>); <c>repr</c> and a list
 /// element the same; <c>.name</c> the CLR name for every unescaped non-SCREAMING member (#2069).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class EnumPythonNameChannelMatrixTests : IntegrationTestBase
 {
     public EnumPythonNameChannelMatrixTests(ITestOutputHelper output) : base(output) { }

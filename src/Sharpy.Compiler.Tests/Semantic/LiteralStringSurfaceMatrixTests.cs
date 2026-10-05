@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para>Refusal twin: <c>x - "a"</c> must refuse identically (SPY0222) in both columns.
 /// R-P control: <c>x += s</c> (s: str) stays SPY0220 on the LiteralString column only.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
 {
     public LiteralStringSurfaceMatrixTests(ITestOutputHelper output) : base(output) { }

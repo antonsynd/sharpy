@@ -31,7 +31,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// by a class attribute, a parameter default naming a class member, a nested type in a return
 /// annotation and a bare method name all keep their pre-rule behaviour.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ScopeChainMatrixTests : IntegrationTestBase
 {
     public ScopeChainMatrixTests(ITestOutputHelper output) : base(output) { }

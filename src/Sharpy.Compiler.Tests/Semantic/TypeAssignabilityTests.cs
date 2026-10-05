@@ -11,7 +11,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// covariant widening, invariant rejection, and user-defined interface
 /// implementations.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class TypeAssignabilityTests : IntegrationTestBase
 {
     public TypeAssignabilityTests(ITestOutputHelper output) : base(output)

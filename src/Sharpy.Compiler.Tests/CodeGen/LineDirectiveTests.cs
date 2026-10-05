@@ -8,7 +8,6 @@ using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
-[Collection("Sequential")]
 public class LineDirectiveTests
 {
     [Fact]

@@ -43,7 +43,11 @@ public class DispatchSiteInventoryTests
     ///                                  <see cref="ContractMarkers"/>
     ///   walker-default-contract      — validator whose default-ignore is contractual; every
     ///                                  switch at the site must HAVE a default/discard arm
-    ///   refusal-net:&lt;TestClass&gt;      — a conformance net covers the dispatch; the class must exist
+    ///   refusal-net:&lt;TestClass&gt;      — a conformance net covers the dispatch; the class must exist,
+    ///                                  or name a sharded test GROUP: a namespace whose last
+    ///                                  segment is the name, holding ≥1 concrete test class, every
+    ///                                  one of which derives from one abstract base declared in that
+    ///                                  namespace (FileBasedIntegrationTests.Shard0..7, #2179)
     ///   pending-guard:#&lt;issue&gt;       — no guard/contract/net yet; the row cites its tracking
     ///                                  issue and drains when one lands (allowlist discipline)
     /// </summary>
@@ -956,6 +960,110 @@ public class DispatchSiteInventoryTests
     }
 
     /// <summary>
+    /// A sharded test group is citable (#2179): <c>FileBasedIntegrationTests</c> is no longer a
+    /// class but the namespace of its <c>Shard0..7</c> classes, and a refusal-net row citing it
+    /// resolves. The rule is not "any namespace word": <c>Transforms</c>
+    /// (<c>Properties.Metamorphic.Transforms</c>) is a namespace of helpers with no test class, and
+    /// <c>Integration</c> holds many unrelated test classes with no shared base — rows citing either
+    /// are refused as unknown classes. <c>LetEmissionInvarianceTests</c> (shards + a non-shard
+    /// <c>Controls</c> class) is refused too, recording the strict choice. A guarded-by row citing a
+    /// group is refused by name: a group has no one source that scans the site.
+    /// </summary>
+    [Fact]
+    public void GuardCitations_SyntheticRoster_ResolvesAShardedTestGroup_ButNotABroadOrHelperNamespace()
+    {
+        const string group = "FileBasedIntegrationTests";
+        const string helperNamespace = "Transforms";
+        const string broadNamespace = "Integration";
+        const string mixedNamespace = "LetEmissionInvarianceTests";
+        const string refusalRowGroup = "CodeGen/Synthetic.cs::Synthetic.CitesTestGroup";
+        const string refusalRowHelpers = "CodeGen/Synthetic.cs::Synthetic.CitesHelperNamespace";
+        const string guardedRowGroup = "CodeGen/Synthetic.cs::Synthetic.GuardedByTestGroup";
+        const string refusalRowBroad = "CodeGen/Synthetic.cs::Synthetic.CitesBroadNamespace";
+        const string refusalRowMixed = "CodeGen/Synthetic.cs::Synthetic.CitesMixedNamespace";
+
+        // Preconditions: the group is a namespace of test classes and NOT a type name; the helper
+        // namespace exists, holds types, none of them a test class, and is not a type name either.
+        var types = typeof(DispatchSiteInventoryTests).Assembly.GetTypes();
+        Assert.DoesNotContain(types, t => t.Name == group);
+        Assert.Contains(types, t => t.Namespace?.EndsWith("." + group, StringComparison.Ordinal) == true
+            && t.GetMethods().Any(m => m.IsDefined(typeof(FactAttribute), inherit: true)));
+        var helpers = types.Where(t => t.Namespace?.EndsWith("." + helperNamespace, StringComparison.Ordinal) == true).ToList();
+        Assert.NotEmpty(helpers);
+        Assert.DoesNotContain(helpers, t => t.GetMethods().Any(m => m.IsDefined(typeof(FactAttribute), inherit: true)));
+        Assert.DoesNotContain(types, t => t.Name == helperNamespace);
+        static bool IsTestClass(Type t) => t is { IsClass: true, IsAbstract: false }
+            && t.GetMethods().Any(m => m.IsDefined(typeof(FactAttribute), inherit: true));
+        Assert.True(types.Count(t => t.Namespace == "Sharpy.Compiler.Tests." + broadNamespace && IsTestClass(t)) > 1,
+            "fixture precondition: Integration holds several test classes");
+        Assert.DoesNotContain(types, t => t.Name == broadNamespace || t.Name == mixedNamespace);
+        Assert.Contains(types, t => t.Namespace?.EndsWith("." + mixedNamespace, StringComparison.Ordinal) == true && IsTestClass(t));
+
+        var synthetic = new Dictionary<string, string>
+        {
+            [refusalRowGroup] = $"refusal-net:{group}",
+            [refusalRowHelpers] = $"refusal-net:{helperNamespace}",
+            [guardedRowGroup] = $"guarded-by:{group}",
+            [refusalRowBroad] = $"refusal-net:{broadNamespace}",
+            [refusalRowMixed] = $"refusal-net:{mixedNamespace}",
+        };
+
+        var violations = CollectGuardCitationViolations(synthetic);
+        foreach (var v in violations)
+            _output.WriteLine($"SYNTHETIC VIOLATION: {v}");
+
+        Assert.DoesNotContain(violations, v => v.StartsWith(refusalRowGroup, StringComparison.Ordinal));
+        var helperViolation = Assert.Single(violations, v => v.StartsWith(refusalRowHelpers, StringComparison.Ordinal));
+        Assert.Contains("no such test class in any test assembly", helperViolation);
+        var guardedViolation = Assert.Single(violations, v => v.StartsWith(guardedRowGroup, StringComparison.Ordinal));
+        Assert.Contains("a sharded test group, which backs only a refusal-net row", guardedViolation);
+        foreach (var refused in new[] { refusalRowBroad, refusalRowMixed })
+        {
+            var violation = Assert.Single(violations, v => v.StartsWith(refused, StringComparison.Ordinal));
+            Assert.Contains("no such test class in any test assembly", violation);
+        }
+
+        Assert.Equal(4, violations.Count);
+    }
+
+    /// <summary>
+    /// The last namespace segment of every namespace that has the SHARD shape: it holds ≥1 concrete
+    /// test class (a non-abstract class with a <c>[Fact]</c>/<c>[Theory]</c> method, inherited ones
+    /// included) and every concrete test class in it derives from one abstract base declared in that
+    /// same namespace. A test corpus sharded into K classes keeps its old class name as that namespace
+    /// (#2179: <c>Integration.FileBasedIntegrationTests</c> = <c>CompilerFixtureShard</c> +
+    /// <c>Shard0..7</c>), so citing the name still denotes one set of tests. A namespace of unrelated
+    /// test classes (<c>Integration</c>, <c>Semantic</c>) is not a group: citing it would be a vague claim.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately strict: a namespace with ANY test class outside the shared base is not a group.
+    /// <c>Conformance.LetEmissionInvarianceTests</c> fails it — its <c>Controls</c> class (the census
+    /// and controls, which run once) does not derive from <c>LetTwinShard</c> — and nothing cites that
+    /// name today. Relax to "at most one non-shard controls class" only when a row needs it.
+    /// </remarks>
+    private static HashSet<string> TestGroupNames(IEnumerable<Type> types)
+        => types
+            .Where(t => t is { IsClass: true, IsAbstract: false, Namespace: not null }
+                && t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                    .Any(m => m.IsDefined(typeof(FactAttribute), inherit: true)))
+            .GroupBy(t => t.Namespace!, StringComparer.Ordinal)
+            .Where(g => SharesAnAbstractBaseDeclaredIn(g.Key, g.ToList()))
+            .Select(g => g.Key[(g.Key.LastIndexOf('.') + 1)..])
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static bool SharesAnAbstractBaseDeclaredIn(string ns, List<Type> testClasses)
+    {
+        for (var candidate = testClasses[0].BaseType; candidate != null; candidate = candidate.BaseType)
+        {
+            if (candidate.IsAbstract && candidate.Namespace == ns
+                && testClasses.All(t => candidate.IsAssignableFrom(t)))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// The citation validator's body, parameterized on the roster so the real roster and a
     /// synthetic one go through the same predicate. Returns the violation list (empty = clean).
     /// </summary>
@@ -963,9 +1071,11 @@ public class DispatchSiteInventoryTests
     {
         var repoRoot = DispatchSiteScan.FindRepoRoot();
         var lspTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests");
-        var testAssemblyTypes = typeof(DispatchSiteInventoryTests).Assembly.GetTypes()
+        var testTypes = typeof(DispatchSiteInventoryTests).Assembly.GetTypes();
+        var testAssemblyTypes = testTypes
             .Select(t => t.Name)
             .ToHashSet();
+        var testGroups = TestGroupNames(testTypes);
 
         bool ClassExistsInAnyTestProject(string className, string siteKey)
         {
@@ -989,9 +1099,17 @@ public class DispatchSiteInventoryTests
                 continue;
             var cited = parts[1];
 
-            if (!ClassExistsInAnyTestProject(cited, site))
+            var isClass = ClassExistsInAnyTestProject(cited, site);
+            if (!isClass && !testGroups.Contains(cited))
             {
                 violations.Add($"{site} cites '{cited}' — no such test class in any test assembly");
+                continue;
+            }
+
+            if (!isClass && parts[0] == "guarded-by")
+            {
+                violations.Add($"{site} cites '{cited}' — a sharded test group, which backs only a "
+                    + "refusal-net row: a guarded-by claim must cite the one test class whose source scans the site");
                 continue;
             }
 

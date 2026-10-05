@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -25,6 +26,54 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         {
             yield return new object[] { fixture.TestName, fixture.SpyFilePath, fixture.IsMultiFile };
         }
+    }
+
+    /// <summary>
+    /// One disk walk per fixture root, shared by every shard class of that root (#2179): K shard
+    /// classes each enumerate their rows at discovery and again at execution, and without this cache
+    /// that is 2K walks of the same tree.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, Lazy<(string RelativePath, object[] Row)[]>> ShardableFixtures =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The rows of <see cref="DiscoverTestFixtures(string)"/> that fall in <paramref name="shard"/>
+    /// of <paramref name="shardCount"/>, so one fixture corpus runs as K xUnit classes (xUnit v2
+    /// never runs two rows of one class concurrently) (#2179). A row's shard is
+    /// <see cref="ShardOf"/> of its fixture path relative to <paramref name="fixturesPath"/>, so a
+    /// fixture stays in its shard across machines, runs and the addition of other fixtures.
+    /// </summary>
+    public static IEnumerable<object[]> DiscoverTestFixtures(string fixturesPath, int shard, int shardCount)
+    {
+        if (shardCount < 1)
+            throw new ArgumentOutOfRangeException(nameof(shardCount), shardCount, "must be at least 1");
+        if (shard < 0 || shard >= shardCount)
+            throw new ArgumentOutOfRangeException(nameof(shard), shard, $"must be in [0, {shardCount})");
+
+        var rows = ShardableFixtures.GetOrAdd(fixturesPath, path =>
+            new Lazy<(string, object[])[]>(() => FixtureDiscoveryHelper.DiscoverFixtures(path)
+                .Select(f => (
+                    Path.GetRelativePath(path, f.SpyFilePath).Replace('\\', '/'),
+                    new object[] { f.TestName, f.SpyFilePath, f.IsMultiFile }))
+                .ToArray())).Value;
+
+        return rows.Where(r => ShardOf(r.RelativePath, shardCount) == shard).Select(r => r.Row);
+    }
+
+    /// <summary>
+    /// The shard of a fixture: 32-bit FNV-1a over the UTF-16 code units of its '/'-separated
+    /// relative path, modulo <paramref name="shardCount"/>. Stable by construction — never
+    /// <see cref="string.GetHashCode()"/>, which is randomised per process.
+    /// </summary>
+    public static int ShardOf(string relativePath, int shardCount)
+    {
+        var hash = 2166136261u;
+        foreach (var c in relativePath)
+        {
+            hash ^= c;
+            hash *= 16777619u;
+        }
+        return (int)(hash % (uint)shardCount);
     }
 
     protected void RunTestFixtureImpl(string testName, string path, bool isMultiFile)
@@ -453,7 +502,7 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         throw new InvalidOperationException($"No .spy files found in {projectDir}");
     }
 
-    protected static string NormalizeCSharp(string csharpCode)
+    public static string NormalizeCSharp(string csharpCode)
     {
         var normalizedInput = csharpCode.Replace("\r\n", "\n", StringComparison.Ordinal);
         var tree = CSharpSyntaxTree.ParseText(normalizedInput);

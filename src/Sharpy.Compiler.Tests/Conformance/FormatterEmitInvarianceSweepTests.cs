@@ -39,7 +39,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// and <c>.skip</c> fixtures (they do not execute). Both are counted in the census line.</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
-[Collection("HeavyCompilation")]
 public class FormatterEmitInvarianceSweepTests : FileBasedIntegrationTestsBase
 {
     private const string AllowlistFileName = "formatter-meaning-preservation-allowlist.txt";

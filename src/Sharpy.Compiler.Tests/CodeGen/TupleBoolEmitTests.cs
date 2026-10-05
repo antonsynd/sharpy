@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// argument, so no <c>bool</c> call records the cast — measured.)
 /// </para>
 /// </summary>
-[Collection("Sequential")]
 public class TupleBoolEmitTests
 {
     /// <summary>

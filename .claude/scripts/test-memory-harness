@@ -2,37 +2,86 @@
 # Memory harness: runs dotnet test with verbose output, samples RSS every second,
 # logs correlation of test names to memory usage, and auto-kills at threshold.
 #
-# Usage: .claude/scripts/test-memory-harness [--threshold MB] [--filter FILTER]
+# Usage: .claude/scripts/test-memory-harness [--threshold MB] [--filter FILTER] [--project PATH]
+#            [--threads N] [--out DIR] [--timing PATH] [--trx]
 # Default threshold: 36864 MB (36 GB)
 # Default filter: Category!=Benchmark
+#
+#   --threads N    xUnit MaxParallelThreads for this run, passed as the RunSettings override
+#                  `-- xUnit.MaxParallelThreads=N`, which takes precedence over the project's
+#                  xunit.runner.json (#2179). Omitted: the runner json decides (summary says
+#                  threads=json).
+#   --out DIR      where the logs (and the trx) go; default .claude/tmp/memory-harness. Give each
+#                  cell of a matrix its own DIR so cells do not clobber each other.
+#   --timing PATH  exports SHARPY_TEST_TIMING=PATH (absolutized) to the run: IntegrationTestBase
+#                  appends its per-call cost breakdown there at testhost exit (#2180).
+#   --trx          adds a trx logger writing DIR/tests.trx (per-test start/end times).
+#
+# Each sample takes ONE `ps` snapshot and records both the tree RSS (dotnet child + every
+# descendant: vstest, testhost, spawned test programs) and the largest testhost's own RSS. The
+# machine's used memory (vm_stat active + wired + compressor) and swap used are recorded when the
+# lock is acquired; swap again at exit. The last line is the summary:
+#   threads=N peak_rss_mb=… peak_testhost_mb=… wall_s=… passed=… failed=… skipped=… base_used_mb=… swap_mb=A->B
 
 set -uo pipefail
 
 THRESHOLD_MB=36864
 FILTER="Category!=Benchmark"
 PROJECT="src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj"
+THREADS=""
+OUT_DIR=""
+TIMING_PATH=""
+TRX=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --threshold) THRESHOLD_MB="$2"; shift 2 ;;
         --filter) FILTER="$2"; shift 2 ;;
         --project) PROJECT="$2"; shift 2 ;;
+        --threads) THREADS="$2"; shift 2 ;;
+        --out) OUT_DIR="$2"; shift 2 ;;
+        --timing) TIMING_PATH="$2"; shift 2 ;;
+        --trx) TRX=true; shift ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
 
+case "$THREADS" in
+    '') ;;
+    *[!0-9]*|0) echo "--threads needs a positive integer, got: $THREADS"; exit 1 ;;
+esac
+
+# Relative --out/--timing paths are the caller's, so resolve them before cd.
+absolutize() {
+    case "$1" in
+        /*) echo "$1" ;;
+        *) echo "$PWD/$1" ;;
+    esac
+}
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-LOG_DIR="$SCRIPT_DIR/../tmp"
-mkdir -p "$LOG_DIR"
+if [[ -z "$OUT_DIR" ]]; then
+    OUT_DIR="$REPO_ROOT/.claude/tmp/memory-harness"
+else
+    OUT_DIR="$(absolutize "$OUT_DIR")"
+fi
+mkdir -p "$OUT_DIR"
+if [[ -n "$TIMING_PATH" ]]; then
+    TIMING_PATH="$(absolutize "$TIMING_PATH")"
+    export SHARPY_TEST_TIMING="$TIMING_PATH"
+fi
 
-MEMORY_LOG="$LOG_DIR/memory-harness.log"
-TEST_LOG="$LOG_DIR/memory-harness-tests.log"
+MEMORY_LOG="$OUT_DIR/memory-harness.log"
+TEST_LOG="$OUT_DIR/memory-harness-tests.log"
 
 echo "=== Memory Harness ===" | tee "$MEMORY_LOG"
 echo "Threshold: ${THRESHOLD_MB} MB" | tee -a "$MEMORY_LOG"
 echo "Filter: ${FILTER}" | tee -a "$MEMORY_LOG"
 echo "Project: ${PROJECT}" | tee -a "$MEMORY_LOG"
+echo "Threads: ${THREADS:-json (xunit.runner.json)}" | tee -a "$MEMORY_LOG"
+echo "Timing: ${TIMING_PATH:-(off)}" | tee -a "$MEMORY_LOG"
+echo "Out: ${OUT_DIR}" | tee -a "$MEMORY_LOG"
 echo "---" | tee -a "$MEMORY_LOG"
 
 cd "$REPO_ROOT"
@@ -40,20 +89,57 @@ cd "$REPO_ROOT"
 # shellcheck source=dotnet-lock-env.sh
 source "$(dirname "$0")/dotnet-lock-env.sh"
 
-# Recursive RSS sum for a process tree rooted at $1 (KB).
-tree_rss_kb() {
-    local root_pid="$1" total=0
-    local rss
-    rss=$(ps -o rss= -p "$root_pid" 2>/dev/null || echo "0")
-    rss="${rss// /}"
-    total=$((total + ${rss:-0}))
-    local kid
-    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$root_pid" '$2 == p { print $1 }'); do
-        local child_rss
-        child_rss=$(tree_rss_kb "$kid")
-        total=$((total + child_rss))
-    done
-    echo "$total"
+# One `ps` snapshot → "TREE_KB TESTHOST_KB" for the process tree rooted at $1. The tree is the
+# fixpoint of "parent is in the tree"; the testhost is the largest tree member launched as
+# `dotnet exec --runtimeconfig <…>.Tests.runtimeconfig.json … testhost.dll`. Its `comm` is plain
+# `dotnet` (as is every spawned test program's), and `args` is truncated without -ww, which cuts
+# `testhost.dll` off the end — hence -ww and the runtimeconfig pattern, which the vstest.console
+# parent does not match.
+sample_rss_kb() {
+    ps -ww -A -o pid=,ppid=,rss=,args= 2>/dev/null | awk -v root="$1" '
+        { n++; pid[n] = $1; ppid[$1] = $2; rss[$1] = $3; th[$1] = ($0 ~ /exec --runtimeconfig [^ ]*\.Tests\.runtimeconfig\.json/) }
+        END {
+            tree[root] = 1
+            changed = 1
+            while (changed) {
+                changed = 0
+                for (i = 1; i <= n; i++) {
+                    p = pid[i]
+                    if (!(p in tree) && (ppid[p] in tree)) { tree[p] = 1; changed = 1 }
+                }
+            }
+            total = 0; host = 0
+            for (i = 1; i <= n; i++) {
+                p = pid[i]
+                if (p in tree) {
+                    total += rss[p]
+                    if (th[p] && rss[p] > host) host = rss[p]
+                }
+            }
+            printf "%d %d\n", total, host
+        }'
+}
+
+# Used memory in MB: (active + wired + occupied by compressor) pages × page size.
+used_memory_mb() {
+    vm_stat 2>/dev/null | awk '
+        /page size of/ { for (i = 1; i <= NF; i++) if ($i == "of") ps = $(i + 1) }
+        /^Pages active:/ { a = $3 }
+        /^Pages wired down:/ { w = $4 }
+        /^Pages occupied by compressor:/ { c = $5 }
+        END { gsub(/\./, "", a); gsub(/\./, "", w); gsub(/\./, "", c); printf "%d\n", (a + w + c) * ps / 1048576 }'
+}
+
+# Swap used in MB, from `vm.swapusage` ("total = …M  used = …M  free = …M").
+swap_used_mb() {
+    sysctl -n vm.swapusage 2>/dev/null | awk '
+        { for (i = 1; i <= NF; i++) if ($i == "used") v = $(i + 2) }
+        END {
+            mult = 1
+            if (v ~ /G$/) mult = 1024
+            sub(/[MG]$/, "", v)
+            printf "%d\n", v * mult
+        }'
 }
 
 kill_tree() {
@@ -65,9 +151,15 @@ kill_tree() {
     kill "$sig" "$pid" 2>/dev/null
 }
 
-"$SCRIPT_DIR/dotnet-serialized" test "$PROJECT" --no-build --filter "$FILTER" \
-    --logger "console;verbosity=detailed" \
-    > "$TEST_LOG" 2>&1 &
+TEST_ARGS=(test "$PROJECT" --no-build --filter "$FILTER" --logger "console;verbosity=detailed")
+if [[ "$TRX" == "true" ]]; then
+    TEST_ARGS+=(--results-directory "$OUT_DIR" --logger "trx;LogFileName=tests.trx")
+fi
+if [[ -n "$THREADS" ]]; then
+    TEST_ARGS+=(-- "xUnit.MaxParallelThreads=$THREADS")
+fi
+
+"$SCRIPT_DIR/dotnet-serialized" "${TEST_ARGS[@]}" > "$TEST_LOG" 2>&1 &
 WRAPPER_PID=$!
 
 # Handshake: wait until our wrapper owns the lock and the dotnet child PID is available.
@@ -93,24 +185,32 @@ while true; do
 done
 
 START_TIME=$(date +%s)
+BASE_USED_MB=$(used_memory_mb)
+SWAP_START_MB=$(swap_used_mb)
+echo "Baseline: used ${BASE_USED_MB} MB (active+wired+compressor), swap used ${SWAP_START_MB} MB" | tee -a "$MEMORY_LOG"
 PEAK_RSS=0
+PEAK_TESTHOST=0
 KILLED=false
 
 while kill -0 "$WRAPPER_PID" 2>/dev/null; do
     NOW=$(date +%s)
     ELAPSED=$((NOW - START_TIME))
 
-    TOTAL_RSS_KB=$(tree_rss_kb "$DOTNET_PID")
-    RSS_MB=$((TOTAL_RSS_KB / 1024))
+    read -r TREE_KB TESTHOST_KB <<< "$(sample_rss_kb "$DOTNET_PID")"
+    RSS_MB=$(( ${TREE_KB:-0} / 1024 ))
+    TESTHOST_MB=$(( ${TESTHOST_KB:-0} / 1024 ))
 
     if [[ $RSS_MB -gt $PEAK_RSS ]]; then
         PEAK_RSS=$RSS_MB
     fi
+    if [[ $TESTHOST_MB -gt $PEAK_TESTHOST ]]; then
+        PEAK_TESTHOST=$TESTHOST_MB
+    fi
 
-    CURRENT_TEST=$(grep -E "^\s*(Starting|Passed|Failed)" "$TEST_LOG" 2>/dev/null | tail -1 | sed 's/^[[:space:]]*//' | cut -c1-100)
+    CURRENT_TEST=$(tail -n 200 "$TEST_LOG" 2>/dev/null | grep -E "^\s*(Starting|Passed|Failed)" | tail -1 | sed 's/^[[:space:]]*//' | cut -c1-100)
 
     TIMESTAMP=$(printf "%dm%02ds" $((ELAPSED/60)) $((ELAPSED%60)))
-    echo "${TIMESTAMP} | RSS: ${RSS_MB} MB (peak: ${PEAK_RSS} MB) | ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
+    echo "${TIMESTAMP} | RSS: ${RSS_MB} MB (peak: ${PEAK_RSS} MB) | testhost: ${TESTHOST_MB} MB (peak: ${PEAK_TESTHOST} MB) | ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
 
     if [[ $RSS_MB -gt $THRESHOLD_MB ]]; then
         echo "" | tee -a "$MEMORY_LOG"
@@ -143,6 +243,7 @@ fi
 # 3 = zero results, 4 = watchdog kill, 124 = lock timeout, 125 = sandbox.
 if [[ "$KILLED" == "true" ]]; then
     TEST_EXIT=4
+    END_TIME=$(date +%s)
     echo "" | tee -a "$MEMORY_LOG"
     echo "=== KILLED AT THRESHOLD — NOT A PASS ===" | tee -a "$MEMORY_LOG"
     echo "This run did not complete; exiting 4." | tee -a "$MEMORY_LOG"
@@ -158,7 +259,38 @@ else
     echo "Exit code: ${TEST_EXIT}" | tee -a "$MEMORY_LOG"
 fi
 
+SWAP_END_MB=$(swap_used_mb)
+
+# Counts from the last test-run summary in the log, in either of vstest's two shapes: the
+# multi-line block the normal/detailed console logger prints ("Total tests: N" then "Passed: N" /
+# "Failed: N" / "Skipped: N", a zero line OMITTED, so an absent line under a present
+# "Total tests:" is 0), or the one-line minimal form ("Passed!  - Failed: N, Passed: N,
+# Skipped: N, …"). A killed or crashed run has neither and reports "?" rather than a number it
+# did not measure.
+read -r PASSED FAILED SKIPPED <<< "$(awk '
+    /^Total tests: / { inrun = 1; seen = 1; p = 0; f = 0; s = 0; next }
+    inrun && /^ +Passed: / { p = $2 }
+    inrun && /^ +Failed: / { f = $2 }
+    inrun && /^ +Skipped: / { s = $2 }
+    inrun && /Total time:/ { inrun = 0 }
+    /(Passed|Failed)! +- +Failed: / {
+        line = $0; gsub(/,/, " ", line); k = split(line, w, / +/)
+        for (i = 1; i < k; i++) {
+            if (w[i] == "Failed:") f = w[i + 1]
+            if (w[i] == "Passed:") p = w[i + 1]
+            if (w[i] == "Skipped:") s = w[i + 1]
+        }
+        seen = 1; inrun = 0
+    }
+    END { if (seen) print p, f, s; else print "? ? ?" }' "$TEST_LOG" 2>/dev/null)"
+
+SUMMARY="threads=${THREADS:-json} peak_rss_mb=${PEAK_RSS} peak_testhost_mb=${PEAK_TESTHOST} wall_s=$((END_TIME - START_TIME)) passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} base_used_mb=${BASE_USED_MB} swap_mb=${SWAP_START_MB}->${SWAP_END_MB}"
+
 echo ""
 echo "Logs: $MEMORY_LOG"
 echo "Test output: $TEST_LOG"
+if [[ "$TRX" == "true" ]]; then
+    echo "Trx: $OUT_DIR/tests.trx"
+fi
+echo "$SUMMARY" | tee -a "$MEMORY_LOG"
 exit "$TEST_EXIT"

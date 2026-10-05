@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// that control red while every absence assertion stays green — which is how this file was shown
 /// falsifiable.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class UnsubstitutedTypeParameterGuardTests : IntegrationTestBase
 {
     public UnsubstitutedTypeParameterGuardTests(ITestOutputHelper output) : base(output) { }

@@ -32,7 +32,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <para><b>Roster anchoring.</b> <see cref="SuffixRoster"/> is spelled as literals, not read from
 /// the lexer's table: a count read from the same source as the code under test is vacuous.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class IntegerSuffixBaseMatrixTests : IntegrationTestBase
 {
     public IntegerSuffixBaseMatrixTests(ITestOutputHelper output) : base(output) { }

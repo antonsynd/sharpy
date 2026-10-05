@@ -35,7 +35,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// removed recording, not just a removed warning.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CallTargetSeamConformanceTests : IntegrationTestBase
 {
     public CallTargetSeamConformanceTests(ITestOutputHelper output) : base(output) { }

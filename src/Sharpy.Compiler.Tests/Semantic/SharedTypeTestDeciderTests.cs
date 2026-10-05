@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// so its cells live in <see cref="TypeTestLoweringTests"/>.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SharedTypeTestDeciderTests : IntegrationTestBase
 {
     public SharedTypeTestDeciderTests(ITestOutputHelper output) : base(output) { }

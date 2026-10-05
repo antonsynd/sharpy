@@ -10,7 +10,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// integer powers are folded at semantic time, widening the result type to <c>long</c> when it
 /// no longer fits <c>int</c>, and emitting SPY0328 when it exceeds <c>long</c> (#905).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class IntegerPowerFoldingTests : IntegrationTestBase
 {
     public IntegerPowerFoldingTests(ITestOutputHelper output) : base(output)

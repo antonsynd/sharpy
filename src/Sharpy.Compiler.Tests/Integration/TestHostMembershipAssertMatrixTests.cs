@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// test host runs the assertion where it HOLDS (the test must pass) and where it is VIOLATED (the test
 /// must fail with an xUnit assertion exception — the non-vacuity direction).</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class TestHostMembershipAssertMatrixTests : IntegrationTestBase
 {
     public TestHostMembershipAssertMatrixTests(ITestOutputHelper output) : base(output)

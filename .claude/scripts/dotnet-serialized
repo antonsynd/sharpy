@@ -17,7 +17,7 @@
 #
 # `dotnet test sharpy.sln` runs all five test projects in ONE invocation and prints one summary
 # line PER ASSEMBLY, in COMPLETION order, with each assembly's events interleaved in the log —
-# Sharpy.Compiler.Tests finishes last (~17 min) while the others report in the first ~4. Reading
+# Sharpy.Compiler.Tests finishes last (~27 min @ af6f30901) while the others report in the first ~4. Reading
 # the wrong line, or reading before the slow one lands, attributes a small project's tally to the
 # big one. That is what #1384 recorded as a ~9,400-cell undercount; measured at 43c7dd07c, both
 # invocations discover the SAME 13,422 Compiler.Tests cells (identical name sets) and both execute
@@ -32,16 +32,21 @@
 
 # shellcheck source=dotnet-lock-env.sh
 source "$(dirname "$0")/dotnet-lock-env.sh"
-# The full suite takes ~18 minutes, so a 15-minute lock timeout made any queued run
-# behind one complete suite a GUARANTEED exit 124 — a structural failure, not a hung
-# peer (#1273). 45 minutes accommodates queueing behind two full suites.
+# A queued run must outlast whatever holds the lock, or it exits 124 for a structural reason, not
+# a hung peer (#1273: a 15-minute timeout behind an ~18-minute suite). The ceiling is one whole-
+# solution gate plus one more Compiler.Tests run, measured (#2179): Compiler.Tests is 1641 s at
+# the committed maxParallelThreads 2 and 2042 s at 1 (trx span @ af6f30901; 5325 s at 1 before
+# P41 @ 116c6e29d), and the other four projects add ~210 s (P0 control @ 116c6e29d) — so one gate
+# (~1850 s) plus one N=1 Compiler.Tests run (an N=1 matrix cell, 2042 s) is ~3900 s. 4500 s keeps
+# ~15% over that; the old 2700 s was already short of the pre-P41 suite (two queued runs exited
+# 124 behind one on 2026-10-05).
 #
 # The knobs below are env-overridable with their production values as defaults, purely so the
 # regression harness (build_tools/tests/test_dotnet_serialized_lock.py) can exercise the lock
-# protocol in seconds instead of 45 minutes. Nothing in normal use sets them, so default
-# behavior is unchanged; a test that had to wait out the real timeouts would never be written,
-# and this protocol has now been fixed three times without one (#1508).
-TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-2700}"  # 45 minutes
+# protocol in seconds instead of the production timeouts. Nothing in normal use sets them, so
+# default behavior is unchanged; a test that had to wait out the real timeouts would never be
+# written, and this protocol has now been fixed three times without one (#1508).
+TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-4500}"  # 75 minutes
 
 # Stall watchdog (#1481). A holder whose child is ALIVE but has stopped producing output is
 # wedged, not working, and the lock's own correctness keeps it that way: is_lock_stale fails

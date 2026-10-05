@@ -39,7 +39,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <para><see cref="KnownRed"/> is EMPTY at landing: every cell is green. A cell that regresses is a
 /// real defect, not an allowlist entry.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FStringReplacementFieldMatrixTests : IntegrationTestBase
 {
     public FStringReplacementFieldMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// with versioned local names. After #1560 the semantic phase (LocalNameAllocator) computes
 /// versioned spellings; these tests verify the end-to-end behaviour through the full pipeline.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class RoslynEmitterVariableRedefinitionTests : IntegrationTestBase
 {
     public RoslynEmitterVariableRedefinitionTests(ITestOutputHelper output) : base(output) { }

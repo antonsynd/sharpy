@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Negative tests for variable assignment edge cases.
 /// These tests verify that invalid code is properly rejected.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class VariableAssignmentNegativeTests : IntegrationTestBase
 {
     public VariableAssignmentNegativeTests(ITestOutputHelper output) : base(output)

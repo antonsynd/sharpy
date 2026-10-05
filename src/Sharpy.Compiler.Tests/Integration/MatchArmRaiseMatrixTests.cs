@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <para><b>Base classification (measured with <c>sharpyc run</c> at 6b208066e):</b> all 12 matrix
 /// cells were SPY0100 "Unexpected token: Raise".</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MatchArmRaiseMatrixTests : IntegrationTestBase
 {
     public MatchArmRaiseMatrixTests(ITestOutputHelper output) : base(output) { }

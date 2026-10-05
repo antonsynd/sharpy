@@ -21,7 +21,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// the argument-position cells and the #1195 fixture go RED; the no-suffix cells stay green, so the
 /// mutation cannot pass by removing the suffix everywhere.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class LambdaBodyRefusalContextTests : IntegrationTestBase
 {
     public LambdaBodyRefusalContextTests(ITestOutputHelper output) : base(output) { }

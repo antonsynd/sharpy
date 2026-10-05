@@ -38,7 +38,6 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// expression text, the <c>=</c> text and a nested string (universal newlines). Oracle: python3.14
 /// (2026-09-25; the CRLF cells 2026-09-26).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class TemplateSurfaceMatrixTests : IntegrationTestBase
 {
     public TemplateSurfaceMatrixTests(ITestOutputHelper output) : base(output) { }

@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// - Enum usage in code (accessing enum members)
 /// - Int and string enum values (with type consistency)
 /// </summary>
-[Collection("HeavyCompilation")]
 public class Phase018IntegrationTests : IntegrationTestBase
 {
     public Phase018IntegrationTests(ITestOutputHelper output) : base(output)

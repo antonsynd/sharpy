@@ -22,7 +22,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// generated C# is valid — including that the lambda → <c>Converter&lt;int,string&gt;</c> conversion binds.
 /// </para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class BclGenericInstanceMethodCodeGenTests : IntegrationTestBase
 {
     public BclGenericInstanceMethodCodeGenTests(ITestOutputHelper output) : base(output) { }

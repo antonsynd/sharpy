@@ -32,7 +32,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// None-test siblings that also lowered to <c>== null</c> / <c>!= null</c>: truthiness of a
 /// <c>T | None</c> and the hoisted <c>??</c> / <c>??=</c>.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class IsNoneReferenceCheckMatrixTests : IntegrationTestBase
 {
     public IsNoneReferenceCheckMatrixTests(ITestOutputHelper output) : base(output)

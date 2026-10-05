@@ -29,7 +29,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <c>module.Body</c> import-scan sweep must cover both projects — #1124's D4 sweep stopped at the
 /// compiler boundary and left these two LSP consumers type-testing the bare import type.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DecoratedImportConformanceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

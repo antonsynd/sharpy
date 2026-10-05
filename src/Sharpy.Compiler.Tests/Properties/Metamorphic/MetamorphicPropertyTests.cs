@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
 [Trait("Speed", "Slow")]
-[Collection("HeavyCompilation")]
+[Collection("PropertySerial")]
 public class MetamorphicPropertyTests : IntegrationTestBase
 {
     // The transform registry lives in MetamorphicTransforms.All (shared with the corpus sweep, which

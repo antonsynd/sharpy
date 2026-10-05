@@ -16,7 +16,6 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para>These seed the Phase 4 mutation controls; the full 80-cell matrix is
 /// <c>SequencePatternSubjectMatrixTests</c> (Phase 7).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SequenceSubjectTests : IntegrationTestBase
 {
     public SequenceSubjectTests(ITestOutputHelper output) : base(output)
