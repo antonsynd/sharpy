@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -176,18 +178,22 @@ public abstract class IntegrationTestBase
     /// <param name="features">Optional experimental feature flags to enable for this compile (e.g. from a fixture's <c>.features</c> sidecar). Defaults to none.</param>
     protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
+        var timing = CallTiming.Begin("single");
         try
         {
-            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs, features ?? FeatureFlags.None);
+            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs, features ?? FeatureFlags.None, timing);
         }
         finally
         {
+            var gcStart = CallTiming.Start(timing);
             GC.Collect(2, GCCollectionMode.Forced, blocking: true);
             GC.WaitForPendingFinalizers();
+            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
+            timing?.End();
         }
     }
 
-    private ExecutionResult CompileAndExecuteCore(string sharpySource, string fileName, int executionTimeoutMs, FeatureFlags features)
+    private ExecutionResult CompileAndExecuteCore(string sharpySource, string fileName, int executionTimeoutMs, FeatureFlags features, CallTiming? timing)
     {
         // Track path to Sharpy.Core for copying to temp execution directory
         string? runtimePath = null;
@@ -211,6 +217,7 @@ public abstract class IntegrationTestBase
             if (!safeName.EndsWith(".spy", StringComparison.Ordinal))
                 safeName += ".spy";
 
+            var sourceWriteStart = CallTiming.Start(timing);
             var tempSourceDir = Path.Combine(Path.GetTempPath(), $"sharpy_src_{Guid.NewGuid():N}");
             Directory.CreateDirectory(tempSourceDir);
             var sourceFilePath = Path.Combine(tempSourceDir, safeName);
@@ -219,7 +226,9 @@ public abstract class IntegrationTestBase
             try
             {
                 File.WriteAllText(sourceFilePath, sharpySource);
+                timing?.Add(CallTiming.Component.WriteCopy, sourceWriteStart);
 
+                var pipelineStart = CallTiming.Start(timing);
                 var defaultReferences = new List<string> { SharpyCoreReference.Location };
                 defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
 
@@ -243,11 +252,13 @@ public abstract class IntegrationTestBase
                 };
 
                 compileResult = api.Compile(sharpySource, options, sourceFilePath);
+                timing?.Add(CallTiming.Component.Pipeline, pipelineStart);
             }
             finally
             {
                 // The compiler has read everything it needs off disk by now; drop the
                 // temp source so it does not accumulate across ~9,600 tests.
+                var sourceCleanupStart = CallTiming.Start(timing);
                 try
                 {
                     if (Directory.Exists(tempSourceDir))
@@ -257,6 +268,7 @@ public abstract class IntegrationTestBase
                 {
                     // Best-effort cleanup.
                 }
+                timing?.Add(CallTiming.Component.Cleanup, sourceCleanupStart);
             }
 
             var rawDiagnostics = compileResult.Diagnostics.ToList();
@@ -296,6 +308,7 @@ public abstract class IntegrationTestBase
             }
 
             // Phase 5: Compile C# to assembly
+            var emitStart = CallTiming.Start(timing);
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);
 
             runtimePath = SharedReferences.Value.RuntimePath;
@@ -313,6 +326,7 @@ public abstract class IntegrationTestBase
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
+            timing?.Add(CallTiming.Component.Emit, emitStart);
 
             if (!emitResult.Success)
             {
@@ -332,6 +346,7 @@ public abstract class IntegrationTestBase
             // Phase 6: Execute the compiled assembly
             // Write to a temp file and execute as a separate process to avoid
             // reflection/interpreted mode issues on some platforms (.NET 10 on Linux x64)
+            var writeCopyStart = CallTiming.Start(timing);
             var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
             Directory.CreateDirectory(tempDir);
             var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestAssembly.dll");
@@ -374,8 +389,10 @@ public abstract class IntegrationTestBase
   }
 }";
                 File.WriteAllText(runtimeConfigPath, runtimeConfig);
+                timing?.Add(CallTiming.Component.WriteCopy, writeCopyStart);
 
                 // Execute the assembly as a separate process
+                var processStart = CallTiming.Start(timing);
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "dotnet",
@@ -418,6 +435,7 @@ public abstract class IntegrationTestBase
 
                 // Ensure async output handlers complete
                 process.WaitForExit();
+                timing?.Add(CallTiming.Component.Process, processStart);
 
                 if (timedOut)
                 {
@@ -457,6 +475,7 @@ public abstract class IntegrationTestBase
             finally
             {
                 // Clean up temp directory
+                var cleanupStart = CallTiming.Start(timing);
                 try
                 {
                     if (Directory.Exists(tempDir))
@@ -466,6 +485,7 @@ public abstract class IntegrationTestBase
                 {
                     // Ignore cleanup errors
                 }
+                timing?.Add(CallTiming.Component.Cleanup, cleanupStart);
             }
         }
         catch (TargetInvocationException ex)
@@ -538,21 +558,26 @@ public abstract class IntegrationTestBase
     /// whole project (e.g. from a fixture's <c>.features</c> sidecar). Defaults to none.</param>
     protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
+        var timing = CallTiming.Begin("project");
         try
         {
-            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs, features ?? FeatureFlags.None);
+            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs, features ?? FeatureFlags.None, timing);
         }
         finally
         {
+            var gcStart = CallTiming.Start(timing);
             GC.Collect(2, GCCollectionMode.Forced, blocking: true);
             GC.WaitForPendingFinalizers();
+            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
+            timing?.End();
         }
     }
 
-    private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs, FeatureFlags features)
+    private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs, FeatureFlags features, CallTiming? timing)
     {
         try
         {
+            var pipelineStart = CallTiming.Start(timing);
             var logger = new OutputTestLogger(Output);
 
             // Discover all .spy files in the directory (including subdirectories for packages).
@@ -605,6 +630,7 @@ public abstract class IntegrationTestBase
             var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
                 ProjectCompilerOptions.Default with { Features = features });
             var result = projectCompiler.Compile(projectConfig);
+            timing?.Add(CallTiming.Component.Pipeline, pipelineStart);
 
             // Collect warnings and hints from the project compilation. Hints are
             // surfaced alongside warnings (see semantic-phase comment above) so that
@@ -638,6 +664,7 @@ public abstract class IntegrationTestBase
             Output.WriteLine("====================");
 
             return EmitAndRunProjectAssembly(
+                timing,
                 result.GeneratedCSharpFiles.Values.ToList(),
                 FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles),
                 projectWarnings,
@@ -678,22 +705,27 @@ public abstract class IntegrationTestBase
     protected ExecutionResult CompileAndExecuteEntryFile(
         string entryFilePath, int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
+        var timing = CallTiming.Begin("entry-file");
         try
         {
-            return CompileAndExecuteEntryFileCore(entryFilePath, executionTimeoutMs, features ?? FeatureFlags.None);
+            return CompileAndExecuteEntryFileCore(entryFilePath, executionTimeoutMs, features ?? FeatureFlags.None, timing);
         }
         finally
         {
+            var gcStart = CallTiming.Start(timing);
             GC.Collect(2, GCCollectionMode.Forced, blocking: true);
             GC.WaitForPendingFinalizers();
+            timing?.Add(CallTiming.Component.ForcedGc, gcStart);
+            timing?.End();
         }
     }
 
     private ExecutionResult CompileAndExecuteEntryFileCore(
-        string entryFilePath, int executionTimeoutMs, FeatureFlags features)
+        string entryFilePath, int executionTimeoutMs, FeatureFlags features, CallTiming? timing)
     {
         try
         {
+            var pipelineStart = CallTiming.Start(timing);
             var logger = new OutputTestLogger(Output);
 
             var defaultReferences = new List<string> { SharpyCoreReference.Location };
@@ -713,6 +745,7 @@ public abstract class IntegrationTestBase
             };
 
             var result = api.CompileFile(entryFilePath, options);
+            timing?.Add(CallTiming.Component.Pipeline, pipelineStart);
 
             var rawDiagnostics = result.Diagnostics.ToList();
             var compilationErrors = rawDiagnostics
@@ -748,6 +781,7 @@ public abstract class IntegrationTestBase
             }
 
             return EmitAndRunProjectAssembly(
+                timing,
                 result.GeneratedCSharpFiles.Values.ToList(),
                 generatedReport,
                 compilationWarnings,
@@ -864,6 +898,7 @@ public abstract class IntegrationTestBase
     /// to the compiler, not to the harness (#1171).
     /// </summary>
     private ExecutionResult EmitAndRunProjectAssembly(
+        CallTiming? timing,
         IReadOnlyList<string> csharpSources,
         string generatedCSharpReport,
         List<string> compilationWarnings,
@@ -876,6 +911,7 @@ public abstract class IntegrationTestBase
         try
         {
             // Parse and compile the generated C#
+            var emitStart = CallTiming.Start(timing);
             var syntaxTrees = csharpSources
                 .Select(code => CSharpSyntaxTree.ParseText(code))
                 .ToList();
@@ -901,6 +937,7 @@ public abstract class IntegrationTestBase
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
+            timing?.Add(CallTiming.Component.Emit, emitStart);
 
             if (!emitResult.Success)
             {
@@ -925,6 +962,7 @@ public abstract class IntegrationTestBase
 
             // Execute the compiled assembly via external process to avoid
             // reflection/interpreted mode issues on some platforms
+            var writeCopyStart = CallTiming.Start(timing);
             var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
             Directory.CreateDirectory(tempDir);
             var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestProject.dll");
@@ -967,8 +1005,10 @@ public abstract class IntegrationTestBase
   }
 }";
                 File.WriteAllText(runtimeConfigPath, runtimeConfig);
+                timing?.Add(CallTiming.Component.WriteCopy, writeCopyStart);
 
                 // Execute the assembly as a separate process
+                var processStart = CallTiming.Start(timing);
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "dotnet",
@@ -1011,6 +1051,7 @@ public abstract class IntegrationTestBase
 
                 // Ensure async output handlers complete
                 process.WaitForExit();
+                timing?.Add(CallTiming.Component.Process, processStart);
 
                 if (timedOut)
                 {
@@ -1050,6 +1091,7 @@ public abstract class IntegrationTestBase
             finally
             {
                 // Clean up temp directory
+                var cleanupStart = CallTiming.Start(timing);
                 try
                 {
                     if (Directory.Exists(tempDir))
@@ -1059,6 +1101,7 @@ public abstract class IntegrationTestBase
                 {
                     // Ignore cleanup errors
                 }
+                timing?.Add(CallTiming.Component.Cleanup, cleanupStart);
             }
         }
         catch (Exception ex)
@@ -1176,5 +1219,123 @@ public abstract class IntegrationTestBase
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Opt-in per-call cost breakdown of the three execute arms (#2180). Off unless
+    /// <c>SHARPY_TEST_TIMING=&lt;path&gt;</c> is set, in which case <see cref="Begin"/> returns
+    /// <see langword="null"/>, every <c>timing?.</c> call is skipped and <see cref="Start"/> reads
+    /// no clock. On, each call records how long it spent in each <see cref="Component"/> and its
+    /// own total wall (including the forced GC, excluding <see cref="CompileAndExecuteWithGC"/>'s
+    /// second one), and the testhost appends per-arm aggregates to the path at exit.
+    ///
+    /// <para>Components are timed independently, not as laps, so time outside every component is
+    /// left unattributed and shows up in the report's coverage row. That row is the instrument's
+    /// own check: a region whose recording is dropped makes Σcomponents fall short of Σtotal
+    /// instead of being silently folded into its neighbour. "pipeline" is the whole Sharpy
+    /// compile (lex → semantic → validation → C# generation) because the compiler API does not
+    /// expose the C#-generation seam; "emit" is Roslyn parse + compile to an in-memory
+    /// assembly.</para>
+    /// </summary>
+    private sealed class CallTiming
+    {
+        internal enum Component { Pipeline, Emit, WriteCopy, Process, Cleanup, ForcedGc }
+
+        private static readonly string[] ComponentNames =
+            { "pipeline", "emit", "write+copy", "process", "cleanup", "forced-gc" };
+
+        private static readonly string? ReportPath = ReadReportPath();
+        private static readonly ConcurrentQueue<CallTiming> Completed = new();
+
+        private readonly string _arm;
+        private readonly long _start = Stopwatch.GetTimestamp();
+        // -1 = the call never reached the component (e.g. no emit after a Sharpy compile error).
+        private readonly long[] _ticks = { -1, -1, -1, -1, -1, -1 };
+        private long _totalTicks;
+
+        private CallTiming(string arm) => _arm = arm;
+
+        private static string? ReadReportPath()
+        {
+            var path = Environment.GetEnvironmentVariable("SHARPY_TEST_TIMING");
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => WriteReport();
+            return path;
+        }
+
+        /// <summary>A per-call recorder for <paramref name="arm"/>, or null when timing is off.</summary>
+        public static CallTiming? Begin(string arm) => ReportPath is null ? null : new CallTiming(arm);
+
+        /// <summary>The clock now, or 0 when timing is off (the value is then never read).</summary>
+        public static long Start(CallTiming? timing) => timing is null ? 0 : Stopwatch.GetTimestamp();
+
+        public void Add(Component component, long startTimestamp)
+        {
+            var elapsed = Stopwatch.GetTimestamp() - startTimestamp;
+            var i = (int)component;
+            _ticks[i] = _ticks[i] < 0 ? elapsed : _ticks[i] + elapsed;
+        }
+
+        public void End()
+        {
+            _totalTicks = Stopwatch.GetTimestamp() - _start;
+            Completed.Enqueue(this);
+        }
+
+        private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+
+        private static void WriteReport()
+        {
+            try
+            {
+                var calls = Completed.ToArray();
+                var pid = Environment.ProcessId;
+                var ci = CultureInfo.InvariantCulture;
+                var sb = new StringBuilder();
+                sb.AppendLine(string.Format(ci,
+                    "pid={0} # sharpy test timing at {1:O}: {2} calls; ms; n = calls that reached the component",
+                    pid, DateTime.UtcNow, calls.Length));
+
+                foreach (var arm in calls.Select(c => c._arm).Distinct().OrderBy(a => a, StringComparer.Ordinal))
+                {
+                    var armCalls = calls.Where(c => c._arm == arm).ToArray();
+                    double componentSum = 0;
+                    for (var i = 0; i < ComponentNames.Length; i++)
+                    {
+                        var values = armCalls.Where(c => c._ticks[i] >= 0).Select(c => Ms(c._ticks[i])).ToArray();
+                        componentSum += values.Sum();
+                        AppendRow(sb, ci, pid, arm, ComponentNames[i], values);
+                    }
+
+                    var totals = armCalls.Select(c => Ms(c._totalTicks)).ToArray();
+                    AppendRow(sb, ci, pid, arm, "total", totals);
+
+                    var totalSum = totals.Sum();
+                    var ratio = totalSum > 0 ? componentSum / totalSum : 0;
+                    sb.AppendLine(string.Format(ci,
+                        "pid={0} arm={1} coverage sum_components={2:F1} sum_total={3:F1} unattributed={4:F1} ratio={5:F4} within_5pct={6}",
+                        pid, arm, componentSum, totalSum, totalSum - componentSum, ratio,
+                        Math.Abs(1 - ratio) <= 0.05 ? "yes" : "no"));
+                }
+
+                File.AppendAllText(ReportPath!, sb.ToString());
+            }
+            catch
+            {
+                // A report that cannot be written must not turn a finished run into a crash at exit.
+            }
+        }
+
+        private static void AppendRow(StringBuilder sb, CultureInfo ci, int pid, string arm, string component, double[] values)
+        {
+            Array.Sort(values);
+            var n = values.Length;
+            var median = n == 0 ? 0 : n % 2 == 1 ? values[n / 2] : (values[n / 2 - 1] + values[n / 2]) / 2;
+            var p90 = n == 0 ? 0 : values[Math.Max(0, (int)Math.Ceiling(0.9 * n) - 1)];
+            sb.AppendLine(string.Format(ci,
+                "pid={0} arm={1} component={2} n={3} median={4:F2} p90={5:F2} sum={6:F1}",
+                pid, arm, component, n, median, p90, values.Sum()));
+        }
     }
 }
