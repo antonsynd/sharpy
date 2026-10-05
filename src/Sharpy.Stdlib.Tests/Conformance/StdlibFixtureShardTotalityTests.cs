@@ -63,4 +63,19 @@ public class StdlibFixtureShardTotalityTests
 
         Assert.True(empty.Length == 0, "empty shard classes: " + string.Join(", ", empty));
     }
+
+    /// <summary>
+    /// The rows above are what each shard OFFERS; this is how xUnit RUNS them: every shard's
+    /// <c>RunTestFixture</c> is one un-skipped <c>[Theory]</c> over its own <c>GetTestFixtures</c>, with no
+    /// trait the shard base lacks — a <c>Skip</c> collapses a shard to one skipped row and a
+    /// Category trait lets a CI filter drop it, both invisible to the row totality.
+    /// </summary>
+    [Fact]
+    public void EveryShard_RunsItsRowsAsOneUnskippedUncategorisedTheory()
+    {
+        var (checkedClasses, violations) = FixtureShardScan.ShardMethodViolations(typeof(StdlibFixtureShard), "RunTestFixture");
+
+        Assert.Equal(ExpectedShardClasses, checkedClasses);
+        Assert.True(violations.Count == 0, "shard methods xUnit would not run as offered:\n" + string.Join("\n", violations));
+    }
 }

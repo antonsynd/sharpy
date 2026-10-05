@@ -65,6 +65,21 @@ public class FixtureShardTotalityTests
     }
 
     /// <summary>
+    /// The rows above are what each shard OFFERS; this is how xUnit RUNS them: every shard's
+    /// <c>RunTestFixture</c> is one un-skipped <c>[Theory]</c> over its own <c>GetTestFixtures</c>, with no
+    /// trait the shard base lacks — a <c>Skip</c> collapses a shard to one skipped row and a
+    /// Category trait lets a CI filter drop it, both invisible to the row totality.
+    /// </summary>
+    [Fact]
+    public void EveryShard_RunsItsRowsAsOneUnskippedUncategorisedTheory()
+    {
+        var (checkedClasses, violations) = FixtureShardScan.ShardMethodViolations(typeof(CompilerFixtureShard), "RunTestFixture");
+
+        Assert.Equal(ExpectedShardClasses, checkedClasses);
+        Assert.True(violations.Count == 0, "shard methods xUnit would not run as offered:\n" + string.Join("\n", violations));
+    }
+
+    /// <summary>
     /// The shard function is 32-bit FNV-1a: "foobar" hashes to 0xbf9cf968 (the published test
     /// vector), and two fixture paths land where the reference implementation puts them. A swap to
     /// a per-process-randomised hash (string.GetHashCode) would move rows between the discovery and
