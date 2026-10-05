@@ -9,7 +9,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Tests that verify parity between single-file and multi-file compilation modes.
 /// Each test runs in both modes and asserts identical output.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CrossModuleParityTests : DualModeIntegrationTestBase
 {
     public CrossModuleParityTests(ITestOutputHelper output) : base(output)

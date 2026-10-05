@@ -13,7 +13,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// These tests verify that classes can inherit from classes/interfaces
 /// defined in other modules.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class CrossModuleInheritanceTests : IntegrationTestBase
 {
     public CrossModuleInheritanceTests(ITestOutputHelper output) : base(output)

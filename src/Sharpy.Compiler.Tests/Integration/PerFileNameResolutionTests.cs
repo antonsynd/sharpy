@@ -4,7 +4,6 @@ using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
-[Collection("HeavyCompilation")]
 public class PerFileNameResolutionTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

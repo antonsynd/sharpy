@@ -28,7 +28,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <c>Xunit.Assert.NotNull(optional)</c>, which a boxed struct can never fail, and
 /// <c>None is x</c> on an Optional printed False under <c>sharpyc run</c>.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class TestHostNoneAssertMatrixTests : IntegrationTestBase
 {
     public TestHostNoneAssertMatrixTests(ITestOutputHelper output) : base(output)

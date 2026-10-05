@@ -25,7 +25,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <c>"s"</c> was CS0029 and a bare <c>10 + 1</c> silently overwrote <c>_</c>. Every position runs
 /// again with two such statements before the read (<see cref="DiscardRows"/>).</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class UnderscoreLocalDesignationTests : IntegrationTestBase
 {
     public UnderscoreLocalDesignationTests(ITestOutputHelper output) : base(output)

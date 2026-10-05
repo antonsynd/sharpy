@@ -12,7 +12,6 @@ namespace Sharpy.Compiler.Tests.Integration.SpecDeviations;
 /// Current behavior: int / int = int (C# semantics)
 /// Expected behavior: int / int = float64 (Python semantics)
 /// </summary>
-[Collection("HeavyCompilation")]
 public class DivisionDeviationTests : IntegrationTestBase
 {
     public DivisionDeviationTests(ITestOutputHelper output) : base(output)

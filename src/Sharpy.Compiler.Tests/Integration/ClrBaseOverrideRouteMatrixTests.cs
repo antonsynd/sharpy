@@ -19,7 +19,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Cells: base form × {no @override → SPY0248, @override → runs} × {single-file run, project};
 /// every running cell dispatches through the base-typed reference.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ClrBaseOverrideRouteMatrixTests : StdlibAwareIntegrationTestBase
 {
     public ClrBaseOverrideRouteMatrixTests(ITestOutputHelper output) : base(output) { }

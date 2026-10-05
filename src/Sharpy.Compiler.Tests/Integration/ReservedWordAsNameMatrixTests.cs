@@ -30,7 +30,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// set-equal to <c>Lexer.KeywordNames</c> (minus the contextual <c>self</c>) — a roster read from
 /// the table under test would make a missing keyword invisible.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ReservedWordAsNameMatrixTests : IntegrationTestBase
 {
     public ReservedWordAsNameMatrixTests(ITestOutputHelper output) : base(output) { }

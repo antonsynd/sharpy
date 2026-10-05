@@ -12,7 +12,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// multi-file pipeline, and behavior must be identical when warnings are promoted to errors
 /// (&lt;WarningsAsErrors&gt; stamps the original severity so promoted warnings stay suppressible).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class SuppressionProjectTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

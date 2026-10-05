@@ -15,7 +15,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// - Multi-file compilation
 /// - Module resolution and discovery
 /// </summary>
-[Collection("HeavyCompilation")]
 public class Phase0110IntegrationTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

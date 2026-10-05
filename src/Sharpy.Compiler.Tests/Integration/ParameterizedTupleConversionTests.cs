@@ -16,7 +16,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// the type it gives the expression, exactly as an annotated <c>x: float = 1</c> emits a real
 /// <c>double</c> (Axiom 1/3 over Axiom 2).</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ParameterizedTupleConversionTests : IntegrationTestBase
 {
     public ParameterizedTupleConversionTests(ITestOutputHelper output) : base(output)

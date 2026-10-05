@@ -26,7 +26,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// (<c>EmittedTreePrecedence.Switch</c>). Floor-division, power, <c>not</c>, unary minus, call,
 /// index, attribute, <c>in</c> and the controls lower to unary-or-primary C# and already ran.</para>
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MatchExpressionSubjectFormMatrixTests : IntegrationTestBase
 {
     public MatchExpressionSubjectFormMatrixTests(ITestOutputHelper output) : base(output) { }

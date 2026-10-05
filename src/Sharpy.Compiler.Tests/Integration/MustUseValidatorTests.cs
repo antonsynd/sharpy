@@ -12,7 +12,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Runs the full NameResolver + TypeChecker (which drives the validation pipeline) because the
 /// validator reads effective types from SemanticInfo.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class MustUseValidatorTests
 {
     private static TypeChecker Check(string code)

@@ -6,7 +6,6 @@ using Sharpy.TestInfrastructure.Integration;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
-[Collection("HeavyCompilation")]
 public class InplaceAugassignTests : IntegrationTestBase
 {
     public InplaceAugassignTests(ITestOutputHelper output) : base(output) { }

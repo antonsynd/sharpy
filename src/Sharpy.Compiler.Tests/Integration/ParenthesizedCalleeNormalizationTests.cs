@@ -12,7 +12,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// behave identically wrapped and unwrapped. Before the fix these programs either mis-resolved
 /// (SPY0224/SPY0220 against an arbitrary overload) or emitted C# that would not bind (SPY0908).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class ParenthesizedCalleeNormalizationTests : IntegrationTestBase
 {
     public ParenthesizedCalleeNormalizationTests(ITestOutputHelper output) : base(output)

@@ -8,7 +8,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// Integration tests for function definitions and calls.
 /// </summary>
-[Collection("HeavyCompilation")]
 public class FunctionTests : IntegrationTestBase
 {
     public FunctionTests(ITestOutputHelper output) : base(output)

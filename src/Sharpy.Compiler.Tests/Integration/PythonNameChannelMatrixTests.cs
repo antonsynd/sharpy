@@ -30,7 +30,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <c>ToString</c>) — python prints <c>&lt;mod.S object&gt;</c> for those repr sites; the
 /// deviation is <c>docs/deviations.yaml</c> <c>str-only-class-repr-is-str</c>.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class PythonNameChannelMatrixTests : IntegrationTestBase
 {
     public PythonNameChannelMatrixTests(ITestOutputHelper output) : base(output) { }

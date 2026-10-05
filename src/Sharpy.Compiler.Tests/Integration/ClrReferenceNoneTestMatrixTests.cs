@@ -41,7 +41,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// violated → the assertion error, never another throw). Every refused cell must report SPY0222 with the
 /// <c>is None</c> steer at its own line.</para>
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class ClrReferenceNoneTestMatrixTests : IntegrationTestBase
 {
     public ClrReferenceNoneTestMatrixTests(ITestOutputHelper output) : base(output)

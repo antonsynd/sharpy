@@ -4,7 +4,6 @@ using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
-[Collection("HeavyCompilation")]
 public class FileBasedIntegrationTests : FileBasedIntegrationTestsBase
 {
     private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;

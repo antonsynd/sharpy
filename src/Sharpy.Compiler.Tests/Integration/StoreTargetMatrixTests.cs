@@ -14,7 +14,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// starred) either compiles and runs or is refused with the expected diagnostic.
 /// Guards the ParseStoreTarget / GenerateStore routing (#1672 E2).
 /// </summary>
-[Collection("HeavyCompilation")]
 public class StoreTargetMatrixTests : IntegrationTestBase
 {
     public StoreTargetMatrixTests(ITestOutputHelper output) : base(output) { }

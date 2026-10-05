@@ -23,7 +23,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// fresh local and the outer value is printed). A <c>defer</c> block runs at scope exit, so its
 /// cells expect the deferred lines after the rest.
 /// </remarks>
-[Collection("HeavyCompilation")]
 public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
 {
     public BlockScopeRedeclarationMatrixTests(ITestOutputHelper output) : base(output)
