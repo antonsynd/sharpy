@@ -50,19 +50,22 @@ env:
   # 60-program sample to the full ~565-cell pool.
   COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
-  # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 4 excludes shard 3's
+  # PARTITION INVARIANT: shards 1–6 are positive namespace buckets (shard 5 excludes shard 4's
   # sub-bucket by negation); shard 7 is "everything else" — the negation of every other bucket
-  # (`!~Semantic.` negates shards 3+4, whose buckets are both inside `Semantic.`). The
+  # (`!~Properties.` negates shards 4+5, whose buckets are both inside `Properties.`). The
   # `compiler-shard-partition` job re-proves on every run, by `--list-tests`, that the shards'
   # union equals the main filter's list with no overlap, and `ci-summary` requires one trx per
   # COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler` matrix,
   # and add its bucket's negation to the last shard.
-  # Balanced on per-test CI durations from mainline run 37006384170 (sum of per-test time, min):
-  # 1 fixtures 12.7 · 2 Integration P–V + CodeGen 10.4 · 3 Semantic P–V 12.8 ·
-  # 4 Semantic rest 12.9 · 5 Properties 12.5 · 6 Conformance 12.1 · 7 everything else 11.6.
+  # Balanced on per-shard trx spans of PR run 37378225480 @ 86825825e (#2179, maxParallelThreads 2),
+  # in s: 1 fixtures 124 · 2 Integration P–V + CodeGen 305 · Semantic 108 + 133 (then shards 3, 4)
+  # · Properties 492 (then shard 5: 287 s parallel phase led by CPythonDifferentialParse 178 and
+  # AmbiguityHotspot 169, then a 204 s run-alone PropertySerial phase) · 6 Conformance 150 ·
+  # 7 everything else 259. Re-balanced (#2179): the two Semantic shards merged into 3, and
+  # Properties split into 4 (Properties.Parser) and 5 (the rest).
   # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
   # fails on a filter substring that matches no test. A new class whose initial has no term
-  # falls through to shard 4 (Semantic) or shard 7 (Integration), so it is still run exactly once.
+  # falls through to shard 7 (Integration), so it is still run exactly once.
   # 1: the file-based fixture corpus (the Shard0..Shard7 classes of the FileBasedIntegrationTests
   # namespace, #2179; the trailing dot selects them all).
   COMPILER_SHARD_1: "FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests."
@@ -73,25 +76,15 @@ env:
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.U|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.V|\
     FullyQualifiedName~Sharpy.Compiler.Tests.CodeGen.)"
-  # 3: Semantic classes (and sub-namespaces, e.g. Semantic.Validation) whose name starts P–V.
-  COMPILER_SHARD_3: "(FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.P|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.Q|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.R|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.S|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.T|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.U|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.V)"
-  # 4: the rest of Semantic (exactly `Semantic.` minus shard 3).
-  COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Semantic.&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.P&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.Q&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.R&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.S&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.T&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.U&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.V"
-  # 5: Properties (includes CPythonDifferentialParseTests, which needs the pinned python).
-  COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties."
+  # 3: Semantic (all of it, sub-namespaces included, e.g. Semantic.Validation).
+  COMPILER_SHARD_3: "FullyQualifiedName~Sharpy.Compiler.Tests.Semantic."
+  # 4: Properties.Parser (includes CPythonDifferentialParseTests, which needs the pinned python,
+  # and AmbiguityHotspotPropertyTests — the two longest classes of the old Properties shard).
+  COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Parser."
+  # 5: the rest of Properties (exactly `Properties.` minus shard 4), including the run-alone
+  # PropertySerial phase.
+  COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Parser."
   # 6: Conformance (non-sweep conformance suites; the sweeps are excluded by the main filter).
   COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Conformance."
   # 7: everything else — Integration classes outside shards 1–2, Parser, Lexer, Project,
