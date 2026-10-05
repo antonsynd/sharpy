@@ -45,7 +45,7 @@ All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `
 
 ```bash
 .claude/scripts/dotnet-serialized build sharpy.sln                                      # Build all
-.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"                   # Whole-solution gate (~22 min)
+.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"                   # Whole-solution gate (~30 min)
 .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Parser" --no-build  # Edit loop
 dotnet format whitespace                 # Format code (auto-formatted on save by Claude hook)
 python3 -c "..."                         # Verify Python behavior

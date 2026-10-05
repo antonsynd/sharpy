@@ -151,7 +151,8 @@ loop, never the gate. Ask what a change can **reach**, not which file it lives i
 and the three GapDiscovery sweeps CI runs as *separate steps* (`InteropConformance` #1034,
 `MetamorphicCorpus` #1157, `DifferentialExecution` #1202 — the main Compiler step excludes them,
 so a local whole-solution run is the only thing that covers all three at once). A full run is
-~22 min wall clock; read `.claude/tmp/dotnet-serialized-*.log` rather than re-running. A log
+~30 min wall clock (`maxParallelThreads` 2, measured @ af6f30901); read
+`.claude/tmp/dotnet-serialized-*.log` rather than re-running. A log
 whose binaries predate the change is not a green.
 
 *Why:* Batch G verified four phases with `FullyQualifiedName~FileBasedIntegrationTests` and pushed

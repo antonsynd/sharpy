@@ -658,7 +658,7 @@ def orchestrate(
 
         # One acquisition per ROUND, not per invocation, so the two compared arms cannot be
         # separated by a peer's run; released in `finally` between rounds so peers can schedule
-        # (and so an exception here cannot wedge every agent for the 45-minute timeout).
+        # (and so an exception here cannot wedge every agent for the lock's waiter timeout).
         lock_held = acquire_round_lock(repo_root)
         round_measurements: list[Measurement] = []
         try:
