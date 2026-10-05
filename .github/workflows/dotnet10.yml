@@ -63,7 +63,8 @@ env:
   # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
   # fails on a filter substring that matches no test. A new class whose initial has no term
   # falls through to shard 4 (Semantic) or shard 7 (Integration), so it is still run exactly once.
-  # 1: the file-based fixture Theory (one class, cannot be split further by FullyQualifiedName).
+  # 1: the file-based fixture corpus (the Shard0..Shard7 classes of the FileBasedIntegrationTests
+  # namespace, #2179; the trailing dot selects them all).
   COMPILER_SHARD_1: "FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests."
   # 2: Integration classes whose name starts P, S, T, U or V, plus CodeGen.
   COMPILER_SHARD_2: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.P|\
